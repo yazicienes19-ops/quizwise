@@ -1,0 +1,166 @@
+
+<!DOCTYPE html>
+<html lang="de">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>QuizWise - AI Document Quizzer</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script>
+        // Theme
+        if (localStorage.getItem('theme') === 'light') {
+            document.documentElement.classList.remove('dark');
+        } else {
+            document.documentElement.classList.add('dark');
+        }
+        // Akzentfarbe
+        const _ac = localStorage.getItem('accent_color');
+        if (_ac) document.documentElement.style.setProperty('--primary', _ac);
+
+        tailwind.config = {
+            darkMode: 'class',
+            theme: {
+                extend: {
+                    fontFamily: {
+                        sans: ['Inter', 'system-ui', 'sans-serif'],
+                    },
+                    colors: {
+                        // Claude coral/orange palette (replaces indigo throughout the app)
+                        indigo: {
+                            50:  '#FFF8F5',
+                            100: '#FFE9DC',
+                            200: '#FFD0B8',
+                            300: '#FFB094',
+                            400: '#F08C6A',
+                            500: '#E07050',
+                            600: '#D97757',
+                            700: '#C25F3E',
+                            800: '#A04A2C',
+                            900: '#7D381C',
+                            950: '#5C2610',
+                        },
+                        // Blue-tinted neutrals for crisp white/dark-blue theme
+                        slate: {
+                            50:  '#F8FAFF',
+                            100: '#F1F5FF',
+                            200: '#E2E9F8',
+                            300: '#C8D5EE',
+                            400: '#8FA3C4',
+                            500: '#607494',
+                            600: '#475C7A',
+                            700: '#2E4060',
+                            800: '#1A2D4F',
+                            900: '#0F1E3A',
+                            950: '#080F20',
+                        },
+                    },
+                    boxShadow: {
+                        '3d-raised': '0 10px 30px -5px rgba(0, 0, 0, 0.08), 0 4px 10px -2px rgba(0, 0, 0, 0.03), inset 0 1px 0 0 rgba(255, 255, 255, 0.5)',
+                        '3d-pressed': 'inset 0 2px 4px 0 rgba(0, 0, 0, 0.05), 0 1px 2px 0 rgba(0, 0, 0, 0.04)',
+                        '3d-deep': '0 30px 60px -12px rgba(0, 0, 0, 0.15), 0 18px 36px -18px rgba(0, 0, 0, 0.2), inset 0 1px 0 0 rgba(255, 255, 255, 0.1)',
+                    },
+                },
+            },
+        }
+    </script>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@200;300;400;500;600;700;800;900&display=swap" rel="stylesheet">
+    <style>
+        :root {
+            --bg-main:       #FFFFFF;
+            --bg-sidebar:    #F8FAFF;
+            --border-color:  #E2E9F8;
+            --text-main:     #0F1E3A;
+            --accent:        #D97757;
+        }
+        .dark {
+            --bg-main:       #0B1525;
+            --bg-sidebar:    #0F1E35;
+            --border-color:  #1A3055;
+            --text-main:     #E2ECF8;
+            --accent:        #E08465;
+        }
+        body {
+            font-family: 'Inter', sans-serif;
+            background-color: var(--bg-main);
+            -webkit-font-smoothing: antialiased;
+            color: var(--text-main);
+            transition: background-color 0.3s ease, color 0.3s ease;
+            margin: 0;
+            padding: 0;
+        }
+        ::-webkit-scrollbar { width: 6px; height: 6px; }
+        ::-webkit-scrollbar-track { background: transparent; }
+        ::-webkit-scrollbar-thumb { background: color-mix(in srgb, var(--primary, #D97757) 50%, transparent); border-radius: 10px; }
+
+        /* ── Dynamic accent color palette ── */
+        :root {
+            --primary: #D97757;
+            --p50:  color-mix(in srgb, var(--primary)  8%, white);
+            --p100: color-mix(in srgb, var(--primary) 15%, white);
+            --p200: color-mix(in srgb, var(--primary) 28%, white);
+            --p300: color-mix(in srgb, var(--primary) 48%, white);
+            --p400: color-mix(in srgb, var(--primary) 68%, white);
+            --p500: color-mix(in srgb, var(--primary) 88%, #111);
+            --p600: var(--primary);
+            --p700: color-mix(in srgb, var(--primary) 82%, black);
+            --p800: color-mix(in srgb, var(--primary) 60%, black);
+            --p900: color-mix(in srgb, var(--primary) 35%, black);
+            --p950: color-mix(in srgb, var(--primary) 18%, black);
+        }
+
+        /* bg */
+        .bg-indigo-50   { background-color: var(--p50)  !important; }
+        .bg-indigo-100  { background-color: var(--p100) !important; }
+        .bg-indigo-500  { background-color: var(--p500) !important; }
+        .bg-indigo-600  { background-color: var(--p600) !important; }
+        .bg-indigo-700  { background-color: var(--p700) !important; }
+        .bg-indigo-900  { background-color: var(--p900) !important; }
+        .bg-indigo-950  { background-color: var(--p950) !important; }
+        .hover\:bg-indigo-600:hover { background-color: var(--p600) !important; }
+
+        /* text */
+        .text-indigo-400 { color: var(--p400) !important; }
+        .text-indigo-500 { color: var(--p500) !important; }
+        .text-indigo-600 { color: var(--p600) !important; }
+        .text-indigo-900 { color: var(--p900) !important; }
+        .hover\:text-indigo-600:hover      { color: var(--p600) !important; }
+        .dark .dark\:text-indigo-400       { color: var(--p400) !important; }
+        .dark .dark\:hover\:text-indigo-400:hover { color: var(--p400) !important; }
+
+        /* border */
+        .border-indigo-100 { border-color: var(--p100) !important; }
+        .border-indigo-200 { border-color: var(--p200) !important; }
+        .border-indigo-300 { border-color: var(--p300) !important; }
+        .border-indigo-400 { border-color: var(--p400) !important; }
+        .border-indigo-500 { border-color: var(--p500) !important; }
+        .border-indigo-600 { border-color: var(--p600) !important; }
+        .border-indigo-800 { border-color: var(--p800) !important; }
+        .border-indigo-900 { border-color: var(--p900) !important; }
+        .dark .dark\:border-indigo-900 { border-color: var(--p900) !important; }
+
+        /* ring & shadow */
+        .ring-indigo-500    { --tw-ring-color: var(--p500) !important; }
+        .ring-indigo-600    { --tw-ring-color: var(--p600) !important; }
+        .shadow-indigo-200  { --tw-shadow-color: var(--p200) !important; }
+        .shadow-indigo-900  { --tw-shadow-color: var(--p900) !important; }
+    </style>
+<script type="importmap">
+{
+  "imports": {
+    "@google/genai": "https://esm.sh/@google/genai@^1.40.0",
+    "react-dom/": "https://esm.sh/react-dom@^19.2.4/",
+    "react/": "https://esm.sh/react@^19.2.4/",
+    "react": "https://esm.sh/react@^19.2.4",
+    "mammoth": "https://esm.sh/mammoth@1.8.0"
+  }
+}
+</script>
+<link rel="stylesheet" href="/index.css">
+</head>
+<body>
+    <div id="root"></div>
+<script type="module" src="/index.tsx"></script>
+</body>
+</html>
