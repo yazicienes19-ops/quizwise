@@ -1,4 +1,9 @@
 import React, { useState, useEffect } from 'react';
+import { supabase } from './services/supabaseClient';
+import type { User } from '@supabase/supabase-js';
+import { AuthModal } from './components/AuthModal';
+import { UpgradeModal } from './components/UpgradeModal';
+import { SettingsModal } from './components/SettingsModal';
 import { Layout } from './components/Layout';
 import { Dashboard } from './components/Dashboard';
 import { QuizPlayer } from './components/QuizPlayer';
@@ -22,6 +27,9 @@ import { toast } from './services/toast';
 import mammoth from 'mammoth';
 
 const App: React.FC = () => {
+  const [user, setUser] = useState<User | null>(null);
+  const [authChecked, setAuthChecked] = useState(false);
+  const [showAuthModal, setShowAuthModal] = useState(false);
   const [activeTab, setActiveTab] = useState<ActiveTab>(ActiveTab.DASHBOARD);
   const [documents, setDocuments] = useState<ProcessedDocument[]>([]);
   const [collections, setCollections] = useState<Collection[]>([]);
@@ -33,6 +41,17 @@ const App: React.FC = () => {
   const [isSearching, setIsSearching] = useState(false);
   const [metrics, setMetrics] = useState<TopicMetric[]>([]);
   const [isOffline, setIsOffline] = useState(!navigator.onLine);
+  const [showUpgradeHint, setShowUpgradeHint] = useState(false);
+  const [showUpgradeModal, setShowUpgradeModal] = useState(false);
+  const [showSettings, setShowSettings] = useState(false);
+  const [isDark, setIsDark] = useState(() => localStorage.getItem('theme') === 'dark');
+
+  const toggleTheme = () => {
+    const next = !isDark;
+    setIsDark(next);
+    document.documentElement.classList.toggle('dark', next);
+    localStorage.setItem('theme', next ? 'dark' : 'light');
+  };
   const [decks, setDecks] = useState<FlashcardDeck[]>([]);
   const [examTerms, setExamTerms] = useState<ExamTerm[]>([]);
   
@@ -40,6 +59,19 @@ const App: React.FC = () => {
     const saved = localStorage.getItem('quizwise_flow_result');
     return saved ? JSON.parse(saved) : null;
   });
+
+  useEffect(() => {
+    // Beim Start prüfen ob der Nutzer noch eingeloggt ist (gespeicherte Session)
+    supabase.auth.getSession().then(({ data: { session } }) => {
+      setUser(session?.user ?? null);
+      setAuthChecked(true);
+    });
+    // Auf Login/Logout-Events hören (z.B. Token läuft ab)
+    const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
+      setUser(session?.user ?? null);
+    });
+    return () => subscription.unsubscribe();
+  }, []);
 
   useEffect(() => {
     const handleStatus = () => setIsOffline(!navigator.onLine);
@@ -120,6 +152,17 @@ const App: React.FC = () => {
       );
       saveFlowResult(flow);
     } catch (e) { console.error("Flow error", e); }
+  };
+
+  const handleApiError = (e: any) => {
+    if (e?.message === 'LIMIT_REACHED') {
+      setShowUpgradeHint(true);
+      toast.error('Tageslimit erreicht. Upgrade auf Pro für unlimitierten Zugriff.');
+    } else if (e?.message?.includes('einloggen')) {
+      setShowAuthModal(true);
+    } else {
+      toast.error(e?.message || 'Unbekannter Fehler.');
+    }
   };
 
   const handleFileUpload = async (file: File, collectionId?: string) => {
@@ -275,14 +318,47 @@ const App: React.FC = () => {
     }
   };
 
+  if (!authChecked) return null; // kurz warten bis Session geprüft ist
+
   return (
     <>
     <ToastContainer />
-    <Layout activeTab={activeTab} onTabChange={setActiveTab}>
+    {showAuthModal && (
+      <AuthModal
+        onClose={() => setShowAuthModal(false)}
+        onSuccess={() => setShowAuthModal(false)}
+      />
+    )}
+    {showUpgradeModal && (
+      <UpgradeModal onClose={() => setShowUpgradeModal(false)} />
+    )}
+    {showSettings && (
+      <SettingsModal
+        user={user}
+        isDark={isDark}
+        onToggleTheme={toggleTheme}
+        onLogout={() => supabase.auth.signOut()}
+        onClose={() => setShowSettings(false)}
+      />
+    )}
+    <Layout activeTab={activeTab} onTabChange={setActiveTab} user={user} onLoginClick={() => setShowAuthModal(true)} onLogout={() => supabase.auth.signOut()} onUpgradeClick={() => setShowUpgradeModal(true)} onSettingsClick={() => setShowSettings(true)}>
       {isOffline && (
         <div className="mb-4 p-3 bg-amber-500/10 border border-amber-500/30 rounded-2xl flex items-center justify-center gap-2">
-          <GeneratedImage prompt="Warning alert icon, minimalist academic" className="w-4 h-4 rounded-full" />
           <p className="text-[10px] font-bold text-amber-600 dark:text-amber-400 uppercase tracking-widest">Offline-Modus aktiv</p>
+        </div>
+      )}
+      {showUpgradeHint && (
+        <div className="mb-4 p-4 bg-indigo-50 dark:bg-indigo-950/30 border border-indigo-200 dark:border-indigo-800 rounded-2xl flex items-center justify-between gap-4">
+          <p className="text-[11px] font-bold text-indigo-700 dark:text-indigo-300">
+            Tageslimit (20 Anfragen) erreicht. Mit <strong>Pro</strong> unlimitiert lernen.
+          </p>
+          <button
+            onClick={() => { setShowUpgradeHint(false); setShowUpgradeModal(true); }}
+            className="text-[10px] font-black uppercase tracking-widest px-4 py-2 rounded-xl text-white shrink-0"
+            style={{ background: 'var(--primary)' }}
+          >
+            Upgrade zu Pro
+          </button>
         </div>
       )}
       {renderContent()}

@@ -4,17 +4,25 @@ import { ActiveTab } from '../types';
 import {
   Home, BookOpen, HelpCircle, Calendar, Brain, GraduationCap,
   Layers, Lightbulb, BarChart2, Search, FileText, Moon, Sun,
-  X, Menu, Network, type LucideIcon
+  X, Menu, Network, KeyRound, LogIn, LogOut, Zap, Settings, type LucideIcon
 } from 'lucide-react';
+import type { User } from '@supabase/supabase-js';
 import { ColorPicker } from './ColorPicker';
+import { ApiKeySettings } from './ApiKeySettings';
+import { hasApiKey } from '../services/geminiService';
 
 interface LayoutProps {
   children: React.ReactNode;
   activeTab: ActiveTab;
   onTabChange: (tab: ActiveTab) => void;
+  user?: User | null;
+  onLoginClick?: () => void;
+  onLogout?: () => void;
+  onUpgradeClick?: () => void;
+  onSettingsClick?: () => void;
 }
 
-export const Layout: React.FC<LayoutProps> = ({ children, activeTab, onTabChange }) => {
+export const Layout: React.FC<LayoutProps> = ({ children, activeTab, onTabChange, user, onLoginClick, onLogout, onUpgradeClick, onSettingsClick }) => {
   const [isDark, setIsDark] = useState(() => {
     const saved = localStorage.getItem('theme');
     if (saved) return saved === 'dark';
@@ -22,6 +30,14 @@ export const Layout: React.FC<LayoutProps> = ({ children, activeTab, onTabChange
   });
 
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
+  const [showApiSettings, setShowApiSettings] = useState(false);
+  const [apiKeySet, setApiKeySet] = useState(hasApiKey);
+
+  useEffect(() => {
+    const check = () => setApiKeySet(hasApiKey());
+    window.addEventListener('storage', check);
+    return () => window.removeEventListener('storage', check);
+  }, []);
 
   useEffect(() => {
     if (isDark) {
@@ -88,18 +104,54 @@ export const Layout: React.FC<LayoutProps> = ({ children, activeTab, onTabChange
             ))}
           </nav>
 
-          <div className="mt-auto pt-10 space-y-2" style={{ borderTop: '1px solid var(--border-color)' }}>
+          {/* User / Login */}
+          <div className="mt-6 space-y-2">
+            {user ? (
+              <>
+                <div className="flex items-center gap-3 px-4 py-3 rounded-2xl" style={{ background: 'color-mix(in srgb, var(--border-color) 40%, var(--bg-sidebar))' }}>
+                  <div className="w-8 h-8 bg-indigo-600 rounded-xl flex items-center justify-center text-white text-[10px] font-black shrink-0">
+                    {(user.user_metadata?.full_name || user.email || 'U')[0].toUpperCase()}
+                  </div>
+                  <div className="flex-1 min-w-0">
+                    <p className="text-[10px] font-black dark:text-white truncate">{user.user_metadata?.full_name || 'Nutzer'}</p>
+                    <p className="text-[9px] text-slate-400 truncate">{user.email}</p>
+                  </div>
+                  <button onClick={onLogout} className="text-slate-400 hover:text-rose-500 transition-colors shrink-0">
+                    <LogOut className="w-4 h-4" strokeWidth={1.75} />
+                  </button>
+                </div>
+                <button
+                  onClick={onUpgradeClick}
+                  className="w-full flex items-center justify-center gap-2 px-4 py-2.5 rounded-2xl text-[10px] font-black uppercase tracking-widest transition-all hover:scale-[1.02] active:scale-95"
+                  style={{ background: 'color-mix(in srgb, var(--primary) 15%, transparent)', color: 'var(--primary)', border: '1px solid color-mix(in srgb, var(--primary) 30%, transparent)' }}
+                >
+                  <Zap className="w-3.5 h-3.5" strokeWidth={2} />
+                  Upgrade zu Pro
+                </button>
+              </>
+            ) : (
+              <button
+                onClick={onLoginClick}
+                className="w-full flex items-center justify-center gap-2 px-4 py-3 rounded-2xl text-[10px] font-black uppercase tracking-widest text-white transition-all hover:scale-[1.02] active:scale-95"
+                style={{ background: 'var(--primary)' }}
+              >
+                <LogIn className="w-4 h-4" strokeWidth={1.75} />
+                Einloggen / Registrieren
+              </button>
+            )}
+          </div>
+
+          <div className="mt-4 pt-6" style={{ borderTop: '1px solid var(--border-color)' }}>
             <button
-              onClick={toggleTheme}
-              className="w-full flex justify-between items-center px-4 py-3 rounded-xl text-[10px] font-black uppercase text-slate-500 dark:text-slate-400 hover:text-indigo-600 dark:hover:text-indigo-400 shadow-inner transition-all active:scale-95 group"
+              onClick={onSettingsClick}
+              className="w-full flex items-center justify-between px-4 py-3 rounded-xl text-[10px] font-black uppercase text-slate-500 dark:text-slate-400 hover:text-indigo-600 dark:hover:text-indigo-400 transition-all active:scale-95 group"
               style={{ background: 'color-mix(in srgb, var(--border-color) 40%, var(--bg-sidebar))' }}
             >
               <span className="group-hover:translate-x-1 transition-transform flex items-center gap-2">
-                {isDark ? 'Nachtmodus' : 'Tagmodus'}
-                {isDark ? <Moon className="w-4 h-4" strokeWidth={1.75} /> : <Sun className="w-4 h-4" strokeWidth={1.75} />}
+                <Settings className="w-4 h-4" strokeWidth={1.75} />
+                Einstellungen
               </span>
             </button>
-            <ColorPicker />
           </div>
         </div>
       </aside>
@@ -157,10 +209,23 @@ export const Layout: React.FC<LayoutProps> = ({ children, activeTab, onTabChange
               ))}
             </div>
 
+            {/* API Key button in mobile menu */}
+            <button
+              onClick={() => { setIsMobileMenuOpen(false); setShowApiSettings(true); }}
+              className="mt-4 w-full flex items-center justify-between px-5 py-4 rounded-2xl border transition-all active:scale-95"
+              style={{ borderColor: apiKeySet ? 'var(--border-color)' : '#f59e0b', background: apiKeySet ? 'var(--bg-main)' : 'rgba(245,158,11,0.08)', color: apiKeySet ? 'var(--text-main)' : '#f59e0b' }}
+            >
+              <span className="text-[10px] font-black uppercase tracking-wider flex items-center gap-2">
+                <KeyRound className="w-4 h-4" strokeWidth={1.75} />
+                {apiKeySet ? 'API-Schlüssel' : 'API-Key fehlt!'}
+              </span>
+              <span className={`w-2 h-2 rounded-full ${apiKeySet ? 'bg-emerald-500' : 'bg-amber-400 animate-pulse'}`} />
+            </button>
+
             {/* Theme toggle in mobile menu */}
             <button
               onClick={toggleTheme}
-              className="mt-4 w-full flex items-center justify-between px-5 py-4 rounded-2xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 text-slate-700 dark:text-slate-200 transition-all active:scale-95"
+              className="mt-2 w-full flex items-center justify-between px-5 py-4 rounded-2xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 text-slate-700 dark:text-slate-200 transition-all active:scale-95"
             >
               <span className="text-[10px] font-black uppercase tracking-wider">
                 {isDark ? 'Tagmodus' : 'Nachtmodus'}
@@ -178,6 +243,10 @@ export const Layout: React.FC<LayoutProps> = ({ children, activeTab, onTabChange
       <main className="flex-grow p-4 sm:p-8 lg:p-16 overflow-y-auto w-full relative pb-32 lg:pb-16 pt-[max(1rem,env(safe-area-inset-top))]">
         <div className="max-w-6xl mx-auto relative z-10">{children}</div>
       </main>
+
+      {showApiSettings && (
+        <ApiKeySettings onClose={() => { setShowApiSettings(false); setApiKeySet(hasApiKey()); }} />
+      )}
     </div>
   );
 };

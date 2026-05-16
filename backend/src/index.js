@@ -1,0 +1,55 @@
+require('dotenv').config();
+const express = require('express');
+const cors = require('cors');
+
+const geminiRoutes = require('./routes/gemini');
+const userRoutes = require('./routes/user');
+const stripeRoutes = require('./routes/stripe');
+const { requireAuth } = require('./middleware/auth');
+const { checkUsageLimit } = require('./middleware/limits');
+
+const app = express();
+const PORT = process.env.PORT || 4000;
+
+const allowedOrigins = [
+  'http://localhost:3001',
+  'http://localhost:5173',
+  process.env.FRONTEND_URL,
+].filter(Boolean);
+
+app.use(cors({
+  origin: (origin, callback) => {
+    if (!origin || allowedOrigins.includes(origin)) callback(null, true);
+    else callback(new Error('CORS: Diese Domain ist nicht erlaubt.'));
+  },
+}));
+
+// Stripe Webhook muss VOR express.json eingebunden werden
+// (Stripe braucht den raw/unverarbeiteten Request-Body für die Signatur)
+app.use('/api/stripe/webhook', express.raw({ type: 'application/json' }));
+
+app.use(express.json({ limit: '10mb' }));
+
+// Öffentlich
+app.get('/health', (req, res) => {
+  res.json({ status: 'ok', geminiKey: !!process.env.GEMINI_API_KEY, supabase: !!process.env.SUPABASE_URL });
+});
+
+// Stripe: Webhook öffentlich, Checkout geschützt
+app.use('/api/stripe', stripeRoutes);
+
+// Geschützt: Login erforderlich
+app.use('/api/user', requireAuth, userRoutes);
+
+// Geschützt: Login + Nutzungslimit
+app.use('/api/gemini', requireAuth, checkUsageLimit, geminiRoutes);
+
+app.use((err, req, res, next) => {
+  console.error(err.message);
+  res.status(500).json({ error: err.message || 'Interner Serverfehler' });
+});
+
+app.listen(PORT, () => {
+  console.log(`QuizWise Backend laeuft auf Port ${PORT}`);
+  console.log(`Gemini: ${!!process.env.GEMINI_API_KEY} | Supabase: ${!!process.env.SUPABASE_URL}`);
+});

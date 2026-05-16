@@ -1,8 +1,24 @@
 
-import React, { useState } from 'react';
+import React, { useState, useMemo } from 'react';
 import { ActiveTab, LearningFlowResult, StudyEntry } from '../types';
 import { GeneratedImage } from './GeneratedImage';
 import { toast } from '../services/toast';
+
+const USAGE_KEY = 'quizwise_feature_usage';
+
+function getUsageCounts(): Record<string, number> {
+  try {
+    return JSON.parse(localStorage.getItem(USAGE_KEY) || '{}');
+  } catch {
+    return {};
+  }
+}
+
+function trackUsage(id: ActiveTab) {
+  const counts = getUsageCounts();
+  counts[id] = (counts[id] || 0) + 1;
+  localStorage.setItem(USAGE_KEY, JSON.stringify(counts));
+}
 
 interface DashboardProps {
   onTabChange: (tab: ActiveTab) => void;
@@ -19,16 +35,28 @@ interface ActionCard {
   badge?: string;
 }
 
+const BASE_CARDS: ActionCard[] = [
+  { id: ActiveTab.RECALL, title: 'Recall Studio', desc: 'Meistere Themen mit der Feynman-Methode.', prompt: 'Human brain active recall, academic illustration', color: 'text-indigo-600', badge: 'Active Recall' },
+  { id: ActiveTab.LIBRARY, title: 'Bibliothek', desc: 'Verwalte deine PDF-Sammlung und Quellen.', prompt: 'Academic library books, minimalist illustration', color: 'text-blue-500' },
+  { id: ActiveTab.QUIZ, title: 'Quiz Center', desc: 'KI-gestützte Tests für maximalen Erfolg.', prompt: 'Target bullseye icon, academic minimalist illustration', color: 'text-indigo-500', badge: 'KI-Powered' },
+  { id: ActiveTab.EXAM, title: 'Klausur-Modus', desc: 'Simuliere echte Prüfungen unter Zeitdruck.', prompt: 'Exam paper graduation cap, academic illustration', color: 'text-rose-500', badge: 'Advanced' },
+  { id: ActiveTab.CARDS, title: 'Karteikarten', desc: 'Training nach Anki-Standard.', prompt: 'Flashcards study deck, minimalist illustration', color: 'text-violet-500' },
+  { id: ActiveTab.RADAR, title: 'Lern-Analyse', desc: 'Identifiziere Lücken im Verständnis.', prompt: 'Data analysis radar chart, academic illustration', color: 'text-emerald-500' }
+];
+
 export const Dashboard: React.FC<DashboardProps> = ({ onTabChange, flowResult }) => {
   const [hovered, setHovered] = useState<ActiveTab | null>(null);
-  const cards: ActionCard[] = [
-    { id: ActiveTab.RECALL, title: 'Recall Studio', desc: 'Meistere Themen mit der Feynman-Methode.', prompt: 'Human brain active recall, academic illustration', color: 'text-indigo-600', badge: 'Active Recall' },
-    { id: ActiveTab.LIBRARY, title: 'Bibliothek', desc: 'Verwalte deine PDF-Sammlung und Quellen.', prompt: 'Academic library books, minimalist illustration', color: 'text-blue-500' },
-    { id: ActiveTab.QUIZ, title: 'Quiz Center', desc: 'KI-gestützte Tests für maximalen Erfolg.', prompt: 'Target bullseye icon, academic minimalist illustration', color: 'text-indigo-500', badge: 'KI-Powered' },
-    { id: ActiveTab.EXAM, title: 'Klausur-Modus', desc: 'Simuliere echte Prüfungen unter Zeitdruck.', prompt: 'Exam paper graduation cap, academic illustration', color: 'text-rose-500', badge: 'Advanced' },
-    { id: ActiveTab.CARDS, title: 'Karteikarten', desc: 'Training nach Anki-Standard.', prompt: 'Flashcards study deck, minimalist illustration', color: 'text-violet-500' },
-    { id: ActiveTab.RADAR, title: 'Lern-Analyse', desc: 'Identifiziere Lücken im Verständnis.', prompt: 'Data analysis radar chart, academic illustration', color: 'text-emerald-500' }
-  ];
+  const [usageCounts, setUsageCounts] = useState<Record<string, number>>(getUsageCounts);
+
+  const cards = useMemo(() => {
+    return [...BASE_CARDS].sort((a, b) => (usageCounts[b.id] || 0) - (usageCounts[a.id] || 0));
+  }, [usageCounts]);
+
+  const handleCardClick = (id: ActiveTab) => {
+    trackUsage(id);
+    setUsageCounts(getUsageCounts());
+    onTabChange(id);
+  };
 
   const handleAcceptSuggestion = (suggestion: any) => {
     const plan = JSON.parse(localStorage.getItem('study_plan') || '[]');
@@ -115,7 +143,7 @@ export const Dashboard: React.FC<DashboardProps> = ({ onTabChange, flowResult })
           return (
             <button
               key={card.id}
-              onClick={() => onTabChange(card.id)}
+              onClick={() => handleCardClick(card.id)}
               onMouseEnter={() => setHovered(card.id)}
               onMouseLeave={() => setHovered(null)}
               className="group relative rounded-[32px] lg:rounded-[48px] p-8 lg:p-12 text-left shadow-3d-raised hover:shadow-3d-deep hover:-translate-y-2 transition-all duration-300 overflow-hidden active:scale-[0.98]"
