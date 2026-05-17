@@ -1,17 +1,15 @@
 
 import React, { useState, useMemo } from 'react';
 import { ActiveTab, LearningFlowResult, StudyEntry } from '../types';
-import { GeneratedImage } from './GeneratedImage';
 import { toast } from '../services/toast';
+import { Brain, BookOpen, HelpCircle, GraduationCap, Layers, BarChart2, ArrowRight } from 'lucide-react';
+import type { LucideIcon } from 'lucide-react';
 
 const USAGE_KEY = 'quizwise_feature_usage';
 
 function getUsageCounts(): Record<string, number> {
-  try {
-    return JSON.parse(localStorage.getItem(USAGE_KEY) || '{}');
-  } catch {
-    return {};
-  }
+  try { return JSON.parse(localStorage.getItem(USAGE_KEY) || '{}'); }
+  catch { return {}; }
 }
 
 function trackUsage(id: ActiveTab) {
@@ -20,36 +18,48 @@ function trackUsage(id: ActiveTab) {
   localStorage.setItem(USAGE_KEY, JSON.stringify(counts));
 }
 
+function getWeekNumber(): number {
+  const d = new Date();
+  const oneJan = new Date(d.getFullYear(), 0, 1);
+  return Math.ceil(((d.getTime() - oneJan.getTime()) / 86400000 + oneJan.getDay() + 1) / 7);
+}
+
+function getDateline(): string {
+  const days = ['Sonntag', 'Montag', 'Dienstag', 'Mittwoch', 'Donnerstag', 'Freitag', 'Samstag'];
+  const months = ['Jan.', 'Feb.', 'März', 'Apr.', 'Mai', 'Juni', 'Juli', 'Aug.', 'Sep.', 'Okt.', 'Nov.', 'Dez.'];
+  const d = new Date();
+  return `${days[d.getDay()]}, ${d.getDate()}. ${months[d.getMonth()]}`;
+}
+
 interface DashboardProps {
   onTabChange: (tab: ActiveTab) => void;
   flowResult: LearningFlowResult | null;
   onAcceptFlow: (res: LearningFlowResult) => void;
 }
 
-interface ActionCard {
+interface ModuleCard {
   id: ActiveTab;
+  num: string;
   title: string;
+  kicker: string;
   desc: string;
-  prompt: string;
-  color: string;
-  badge?: string;
+  icon: LucideIcon;
 }
 
-const BASE_CARDS: ActionCard[] = [
-  { id: ActiveTab.RECALL, title: 'Recall Studio', desc: 'Meistere Themen mit der Feynman-Methode.', prompt: 'Human brain active recall, academic illustration', color: 'text-indigo-600', badge: 'Active Recall' },
-  { id: ActiveTab.LIBRARY, title: 'Bibliothek', desc: 'Verwalte deine PDF-Sammlung und Quellen.', prompt: 'Academic library books, minimalist illustration', color: 'text-blue-500' },
-  { id: ActiveTab.QUIZ, title: 'Quiz Center', desc: 'KI-gestützte Tests für maximalen Erfolg.', prompt: 'Target bullseye icon, academic minimalist illustration', color: 'text-indigo-500', badge: 'KI-Powered' },
-  { id: ActiveTab.EXAM, title: 'Klausur-Modus', desc: 'Simuliere echte Prüfungen unter Zeitdruck.', prompt: 'Exam paper graduation cap, academic illustration', color: 'text-rose-500', badge: 'Advanced' },
-  { id: ActiveTab.CARDS, title: 'Karteikarten', desc: 'Training nach Anki-Standard.', prompt: 'Flashcards study deck, minimalist illustration', color: 'text-violet-500' },
-  { id: ActiveTab.RADAR, title: 'Lern-Analyse', desc: 'Identifiziere Lücken im Verständnis.', prompt: 'Data analysis radar chart, academic illustration', color: 'text-emerald-500' }
+const MODULES: ModuleCard[] = [
+  { id: ActiveTab.RECALL,  num: '01', title: 'Recall Studio',  kicker: 'Active Recall',  desc: 'Meistere Themen mit der Feynman-Methode — erkläre, was du weißt.', icon: Brain },
+  { id: ActiveTab.LIBRARY, num: '02', title: 'Bibliothek',     kicker: 'Quellenarchiv',  desc: 'Verwalte PDFs und eigene Notizen als durchsuchbares Archiv.', icon: BookOpen },
+  { id: ActiveTab.QUIZ,    num: '03', title: 'Quiz Center',    kicker: 'KI-Powered',     desc: 'Aus deinen Quellen generierte Testfragen. Lernen mit Feedback.', icon: HelpCircle },
+  { id: ActiveTab.EXAM,    num: '04', title: 'Klausur-Modus',  kicker: 'Prüfungssimulation', desc: 'Zeitgesteuerte Prüfungssimulation mit Nachbesprechung.', icon: GraduationCap },
+  { id: ActiveTab.CARDS,   num: '05', title: 'Karteikarten',   kicker: 'Spaced Repetition', desc: 'Anki-inspiriertes Kartentraining mit Selbsteinschätzung.', icon: Layers },
+  { id: ActiveTab.RADAR,   num: '06', title: 'Lern-Analyse',   kicker: 'Lückenradar',    desc: 'Finde blinde Flecken und priorisiere deine Lernzeit.', icon: BarChart2 },
 ];
 
 export const Dashboard: React.FC<DashboardProps> = ({ onTabChange, flowResult }) => {
-  const [hovered, setHovered] = useState<ActiveTab | null>(null);
   const [usageCounts, setUsageCounts] = useState<Record<string, number>>(getUsageCounts);
 
-  const cards = useMemo(() => {
-    return [...BASE_CARDS].sort((a, b) => (usageCounts[b.id] || 0) - (usageCounts[a.id] || 0));
+  const modules = useMemo(() => {
+    return [...MODULES].sort((a, b) => (usageCounts[b.id] || 0) - (usageCounts[a.id] || 0));
   }, [usageCounts]);
 
   const handleCardClick = (id: ActiveTab) => {
@@ -62,140 +72,148 @@ export const Dashboard: React.FC<DashboardProps> = ({ onTabChange, flowResult })
     const plan = JSON.parse(localStorage.getItem('study_plan') || '[]');
     const newEntry: StudyEntry = {
       id: Math.random().toString(36).substr(2, 9),
-      day: suggestion.day,
-      startTime: suggestion.start_time,
-      endTime: "12:00",
-      subject: suggestion.module,
-      topic: suggestion.focus_topics.join(', '),
-      completed: false,
-      isAutoGenerated: true,
-      color: 'indigo'
+      day: suggestion.day, startTime: suggestion.start_time, endTime: '12:00',
+      subject: suggestion.module, topic: suggestion.focus_topics.join(', '),
+      completed: false, isAutoGenerated: true, color: 'indigo',
     };
     localStorage.setItem('study_plan', JSON.stringify([...plan, newEntry]));
     toast.success('Im Lernplan eingetragen!');
     onTabChange(ActiveTab.PLANNER);
   };
 
+  const week = getWeekNumber();
+
   return (
-    <div className="space-y-12 lg:space-y-24 py-12 px-4 animate-in fade-in duration-1000">
-      {/* Hero Section */}
-      <div className="text-center space-y-6">
-        <div className="space-y-2">
-            <h1 className="text-7xl sm:text-8xl lg:text-9xl font-light tracking-tighter text-slate-900 dark:text-white leading-none">
-                Quiz<span className="font-bold text-indigo-500">Wise</span>
-            </h1>
-            <p className="text-[10px] sm:text-xs font-black uppercase tracking-[1em] text-slate-400 dark:text-white/30 pl-4">
-                Advanced Academic Intelligence
-            </p>
+    <div className="animate-in fade-in duration-700" style={{ maxWidth: 860, margin: '0 auto' }}>
+
+      {/* ── Masthead ── */}
+      <div style={{ display: 'flex', alignItems: 'flex-end', justifyContent: 'space-between', marginBottom: 8 }}>
+        <div style={{
+          fontFamily: 'var(--font-sans)', fontSize: 11, color: 'var(--mute)',
+          letterSpacing: '0.22em', textTransform: 'uppercase',
+        }}>
+          Heute&nbsp;·&nbsp;Woche&nbsp;{week}
+        </div>
+        <div style={{ display: 'flex', gap: 14, fontFamily: 'var(--font-sans)', fontSize: 12, color: 'var(--mute)' }}>
+          <span>SS 26</span><span>·</span><span>{getDateline()}</span>
         </div>
       </div>
 
-      {/* Intelligence Insights */}
+      <h1 style={{
+        fontFamily: 'var(--font-serif)', fontSize: 'clamp(36px, 6vw, 52px)',
+        fontWeight: 500, color: 'var(--ink)', letterSpacing: '-0.015em',
+        lineHeight: 1.08, marginBottom: 24,
+      }}>
+        Heute den Unterschied machen.
+      </h1>
+
+      <div style={{ borderTop: '1.5px solid var(--border-color)', marginBottom: 32 }} />
+
+      {/* ── KI-Empfehlung (wenn vorhanden) ── */}
       {flowResult && (
-        <div className="max-w-6xl mx-auto space-y-8 animate-in slide-in-from-bottom-8 duration-700">
-          <div className="flex justify-between items-center px-4">
-            <h2 className="text-[11px] font-black uppercase tracking-[0.4em] text-indigo-500 flex items-center gap-2">
-              Nächste Schritte (KI-Empfehlung)
-              <GeneratedImage prompt="Sparkles icon, academic minimalist" className="w-4 h-4 rounded-full" />
-            </h2>
+        <div style={{ marginBottom: 40 }}>
+          <div style={{
+            fontFamily: 'var(--font-sans)', fontSize: 10, color: 'var(--primary)',
+            letterSpacing: '0.2em', textTransform: 'uppercase', marginBottom: 14,
+          }}>
+            Nächste Schritte — KI-Empfehlung
           </div>
-          
-          <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
             {flowResult.next_actions.map((action, i) => (
-              <button 
-                key={i}
+              <button key={i}
                 onClick={() => onTabChange(action.module.toUpperCase() as ActiveTab)}
-                className="bg-indigo-600 p-8 rounded-[32px] text-white text-left shadow-3d-deep hover:scale-105 transition-all group overflow-hidden relative"
+                style={{
+                  background: 'var(--primary)', color: '#fff', border: 'none',
+                  borderRadius: 6, padding: '18px 20px', textAlign: 'left', cursor: 'pointer',
+                  transition: 'opacity 0.15s',
+                }}
+                className="hover:opacity-90 active:scale-[0.98] transition-all"
               >
-                <div className="absolute top-0 right-0 w-24 h-24 bg-white/5 blur-2xl rounded-full translate-x-8 -translate-y-8"></div>
-                <div className="relative z-10 space-y-4">
-                  <div className="flex justify-between items-center">
-                    <span className="text-[9px] font-black uppercase tracking-widest opacity-60">{action.timebox_minutes} Min. Fokus</span>
-                    <span className="text-xs">➔</span>
-                  </div>
-                  <h3 className="text-xl font-black leading-tight">{action.title}</h3>
-                  <p className="text-[11px] font-medium opacity-80 italic">"{action.why}"</p>
+                <div style={{ fontFamily: 'var(--font-mono)', fontSize: 10, color: 'rgba(255,255,255,0.6)', marginBottom: 8 }}>
+                  {action.timebox_minutes} Min.
+                </div>
+                <div style={{ fontFamily: 'var(--font-sans)', fontSize: 15, fontWeight: 600, lineHeight: 1.3, marginBottom: 6 }}>
+                  {action.title}
+                </div>
+                <div style={{ fontFamily: 'var(--font-sans)', fontSize: 12, color: 'rgba(255,255,255,0.7)', fontStyle: 'italic' }}>
+                  "{action.why}"
                 </div>
               </button>
             ))}
 
-            {flowResult.calendar_suggestion.should_schedule && flowResult.calendar_suggestion.suggested_blocks.map((block, i) => (
-               <div key={i} className="p-8 rounded-[32px] flex flex-col justify-between group border-2 border-dashed border-indigo-200 dark:border-indigo-900" style={{ background: 'var(--bg-sidebar)' }}>
-                  <div>
-                    <span className="text-[9px] font-black uppercase text-indigo-500 tracking-widest mb-2 block">Lernplan-Vorschlag</span>
-                    <h3 className="text-lg font-black dark:text-white">{block.day}, {block.start_time} Uhr</h3>
-                    <p className="text-[11px] text-slate-500 mt-1">{block.focus_topics.join(', ')}</p>
+            {flowResult.calendar_suggestion.should_schedule &&
+              flowResult.calendar_suggestion.suggested_blocks.map((block, i) => (
+                <div key={i} style={{
+                  background: 'var(--card)', border: '1px dashed var(--border-color)',
+                  borderRadius: 6, padding: '18px 20px',
+                }}>
+                  <div style={{ fontFamily: 'var(--font-mono)', fontSize: 10, color: 'var(--primary)', marginBottom: 8, textTransform: 'uppercase', letterSpacing: '0.1em' }}>
+                    Lernplan-Vorschlag
                   </div>
-                  <button 
-                    onClick={() => handleAcceptSuggestion(block)}
-                    className="mt-6 w-full py-3 bg-slate-50 dark:bg-slate-800 text-[10px] font-black uppercase tracking-widest rounded-xl hover:bg-indigo-600 hover:text-white transition-all"
-                  >In Kalender eintragen</button>
-               </div>
-            ))}
+                  <div style={{ fontFamily: 'var(--font-sans)', fontSize: 14, fontWeight: 600, color: 'var(--ink)', marginBottom: 4 }}>
+                    {block.day}, {block.start_time} Uhr
+                  </div>
+                  <p style={{ fontSize: 12, color: 'var(--mute)', marginBottom: 14 }}>{block.focus_topics.join(', ')}</p>
+                  <button onClick={() => handleAcceptSuggestion(block)} style={{
+                    width: '100%', padding: '7px', borderRadius: 4, fontSize: 11,
+                    fontWeight: 600, cursor: 'pointer', fontFamily: 'var(--font-sans)',
+                    background: 'var(--primary-soft)', color: 'var(--primary)',
+                    border: '1px solid color-mix(in srgb, var(--primary) 25%, transparent)',
+                    textTransform: 'uppercase', letterSpacing: '0.1em',
+                  }}>
+                    In Kalender eintragen
+                  </button>
+                </div>
+              ))
+            }
           </div>
+          <div style={{ borderTop: '1px solid var(--border-soft)', marginTop: 32, marginBottom: 32 }} />
         </div>
       )}
 
-      {/* Standard Navigation Grid */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6 lg:gap-8 max-w-6xl mx-auto w-full">
-        {cards.map((card) => {
-          const isHovered = hovered === card.id;
-          return (
-            <button
-              key={card.id}
-              onClick={() => handleCardClick(card.id)}
-              onMouseEnter={() => setHovered(card.id)}
-              onMouseLeave={() => setHovered(null)}
-              className="group relative rounded-[32px] lg:rounded-[48px] p-8 lg:p-12 text-left shadow-3d-raised hover:shadow-3d-deep hover:-translate-y-2 transition-all duration-300 overflow-hidden active:scale-[0.98]"
-              style={isHovered
-                ? { background: 'var(--primary)', border: '1px solid var(--primary)', boxShadow: '0 20px 40px color-mix(in srgb, var(--primary) 35%, transparent)' }
-                : { background: 'var(--bg-sidebar)', border: '1px solid var(--border-color)' }
-              }
-            >
-              <div className="absolute top-0 right-0 w-40 h-40 rounded-full blur-3xl transition-opacity duration-300 pointer-events-none"
-                style={{ background: isHovered ? 'rgba(255,255,255,0.15)' : 'transparent', opacity: isHovered ? 1 : 0 }}
-              />
-              <div className="relative z-10 space-y-6">
-                <div className="flex justify-between items-start">
-                  <div
-                    className="w-12 h-12 lg:w-16 lg:h-16 rounded-2xl flex items-center justify-center group-hover:scale-110 transition-all duration-300"
-                    style={isHovered
-                      ? { background: 'rgba(255,255,255,0.2)', color: 'white' }
-                      : { background: 'color-mix(in srgb, var(--primary) 12%, var(--bg-sidebar))', color: 'var(--primary)' }
-                    }
-                  >
-                    <GeneratedImage prompt={card.prompt} className="w-7 h-7 lg:w-9 lg:h-9" />
-                  </div>
-                  {card.badge && (
-                    <span
-                      className="text-[9px] font-black uppercase tracking-widest px-3 py-1.5 rounded-full transition-colors duration-300"
-                      style={isHovered
-                        ? { background: 'rgba(255,255,255,0.2)', color: 'white', border: '1px solid rgba(255,255,255,0.3)' }
-                        : { background: 'var(--p50)', color: 'var(--primary)', border: '1px solid var(--p100)' }
-                      }
-                    >
-                      {card.badge}
-                    </span>
-                  )}
-                </div>
-                <div className="space-y-2">
-                  <h3
-                    className="text-2xl lg:text-3xl font-black tracking-tight transition-colors duration-300"
-                    style={{ color: isHovered ? 'white' : undefined }}
-                  >
-                    {card.title}
-                  </h3>
-                  <p
-                    className="text-sm lg:text-base leading-relaxed font-medium transition-colors duration-300"
-                    style={{ color: isHovered ? 'rgba(255,255,255,0.75)' : undefined }}
-                  >
-                    {card.desc}
-                  </p>
-                </div>
-              </div>
-            </button>
-          );
-        })}
+      {/* ── Module Grid ── */}
+      <div style={{
+        display: 'grid',
+        gridTemplateColumns: 'repeat(auto-fill, minmax(260px, 1fr))',
+        gap: 1,
+        border: '1px solid var(--border-color)',
+        borderRadius: 4,
+        overflow: 'hidden',
+      }}>
+        {modules.map((mod) => (
+          <button key={mod.id} onClick={() => handleCardClick(mod.id)}
+            style={{
+              background: 'var(--card)', padding: '20px 22px 22px',
+              textAlign: 'left', cursor: 'pointer', border: 'none',
+              borderBottom: '1px solid var(--border-color)',
+              transition: 'background 0.12s',
+            }}
+            className="group hover:bg-[--p50]"
+            onMouseEnter={e => (e.currentTarget.style.background = 'color-mix(in srgb, var(--primary) 5%, var(--card))')}
+            onMouseLeave={e => (e.currentTarget.style.background = 'var(--card)')}
+          >
+            <div style={{ display: 'flex', alignItems: 'baseline', justifyContent: 'space-between', marginBottom: 12 }}>
+              <span style={{ fontFamily: 'var(--font-mono)', fontSize: 11, color: 'var(--mute)', letterSpacing: '0.06em' }}>
+                {mod.num}
+              </span>
+              <span style={{ fontFamily: 'var(--font-sans)', fontSize: 10, color: 'var(--mute)', letterSpacing: '0.16em', textTransform: 'uppercase' }}>
+                {mod.kicker}
+              </span>
+            </div>
+            <div style={{ fontFamily: 'var(--font-serif)', fontSize: 26, lineHeight: 1.08, color: 'var(--ink)', letterSpacing: '-0.015em', marginBottom: 8 }}>
+              {mod.title}
+            </div>
+            <div style={{ fontFamily: 'var(--font-sans)', fontSize: 13, color: 'var(--ink2)', lineHeight: 1.5 }}>
+              {mod.desc}
+            </div>
+            <div style={{
+              display: 'flex', alignItems: 'center', gap: 5, marginTop: 18,
+              fontFamily: 'var(--font-sans)', fontSize: 12, color: 'var(--primary)', fontWeight: 500,
+            }}>
+              Öffnen <ArrowRight style={{ width: 13, height: 13 }} strokeWidth={2} />
+            </div>
+          </button>
+        ))}
       </div>
     </div>
   );

@@ -23,7 +23,10 @@ interface LayoutProps {
   onSettingsClick?: () => void;
 }
 
-export const Layout: React.FC<LayoutProps> = ({ children, activeTab, onTabChange, user, onLoginClick, onLogout, onUpgradeClick, onSettingsClick }) => {
+export const Layout: React.FC<LayoutProps> = ({
+  children, activeTab, onTabChange, user,
+  onLoginClick, onLogout, onUpgradeClick, onSettingsClick,
+}) => {
   const [isDark, setIsDark] = useState(() => {
     const saved = localStorage.getItem('theme');
     if (saved) return saved === 'dark';
@@ -51,208 +54,286 @@ export const Layout: React.FC<LayoutProps> = ({ children, activeTab, onTabChange
     }
   }, [isDark]);
 
-  const toggleTheme = () => {
-    setIsDark(!isDark);
+  const toggleTheme = () => setIsDark(d => !d);
+
+  const studioItems: { id: ActiveTab; label: string; icon: LucideIcon }[] = [
+    { id: ActiveTab.DASHBOARD, label: 'Dashboard',  icon: Home },
+    { id: ActiveTab.LIBRARY,   label: 'Bibliothek', icon: BookOpen },
+    { id: ActiveTab.QUIZ,      label: 'Quiz',        icon: HelpCircle },
+    { id: ActiveTab.PLANNER,   label: 'Lernplaner',  icon: Calendar },
+  ];
+
+  const toolItems: { id: ActiveTab; label: string; icon: LucideIcon }[] = [
+    { id: ActiveTab.RECALL,    label: 'Recall Studio',  icon: Brain },
+    { id: ActiveTab.EXAM,      label: 'Klausur-Modus',  icon: GraduationCap },
+    { id: ActiveTab.CARDS,     label: 'Karteikarten',   icon: Layers },
+    { id: ActiveTab.EXPLAINER, label: 'KI-Erklärer',    icon: Lightbulb },
+    { id: ActiveTab.RADAR,     label: 'Lern-Analyse',   icon: BarChart2 },
+    { id: ActiveTab.SEARCH,    label: 'Recherche',      icon: Search },
+    { id: ActiveTab.PAPER,     label: 'Hausarbeit',     icon: FileText },
+  ];
+
+  const navItemStyle = (active: boolean): React.CSSProperties => ({
+    display: 'flex', alignItems: 'center', gap: 12,
+    padding: '8px 10px', borderRadius: 6, fontSize: 14, width: '100%',
+    fontFamily: 'var(--font-sans)', textAlign: 'left', cursor: 'pointer',
+    background: active ? 'color-mix(in srgb, var(--ink) 8%, transparent)' : 'transparent',
+    color: active ? 'var(--ink)' : 'var(--ink2)',
+    fontWeight: active ? 500 : 400,
+    border: 'none', whiteSpace: 'nowrap',
+    transition: 'background 0.12s, color 0.12s',
+  });
+
+  const sectionLabelStyle: React.CSSProperties = {
+    fontSize: 10, letterSpacing: '0.18em', color: 'var(--mute)',
+    textTransform: 'uppercase', padding: '12px 8px 4px',
+    fontFamily: 'var(--font-sans)',
   };
-
-  const mainNavItems: { id: ActiveTab; label: string; icon: LucideIcon }[] = [
-    { id: ActiveTab.DASHBOARD, label: 'Home', icon: Home },
-    { id: ActiveTab.LIBRARY, label: 'Bib', icon: BookOpen },
-    { id: ActiveTab.QUIZ, label: 'Quiz', icon: HelpCircle },
-    { id: ActiveTab.PLANNER, label: 'Plan', icon: Calendar },
-  ];
-
-  const secondaryNavItems: { id: ActiveTab; label: string; icon: LucideIcon }[] = [
-    { id: ActiveTab.RECALL, label: 'Recall Studio', icon: Brain },
-    { id: ActiveTab.EXAM, label: 'Klausur-Modus', icon: GraduationCap },
-    { id: ActiveTab.CARDS, label: 'Karteikarten', icon: Layers },
-    { id: ActiveTab.EXPLAINER, label: 'KI-Erklärer', icon: Lightbulb },
-    { id: ActiveTab.RADAR, label: 'Lern-Analyse', icon: BarChart2 },
-    { id: ActiveTab.SEARCH, label: 'Recherche', icon: Search },
-    { id: ActiveTab.PAPER, label: 'Hausarbeit', icon: FileText },
-  ];
 
   const handleMobileTabChange = (tab: ActiveTab) => {
     onTabChange(tab);
     setIsMobileMenuOpen(false);
   };
 
+  const legalLabels = { impressum: 'Impressum', datenschutz: 'Datenschutz', agb: 'AGB' } as const;
+
   return (
     <div className="min-h-screen flex transition-colors duration-300 overflow-hidden bg-transparent">
-      {/* Desktop Sidebar */}
-      <aside className="w-72 hidden lg:flex flex-col h-screen sticky top-0 shadow-[4px_0_24px_rgba(0,0,0,0.05)] z-20" style={{ background: 'var(--bg-sidebar)', borderRight: '1px solid var(--border-color)' }}>
-        <div className="p-10 flex flex-col h-full">
-          <div className="flex items-center gap-4 mb-12">
-            <div className="w-10 h-10 bg-indigo-600 rounded-xl flex items-center justify-center text-white font-black shadow-[0_4px_12px_rgba(79,70,229,0.4)] transform rotate-3 shrink-0">QW</div>
-            <span className="text-xl font-black tracking-tighter text-slate-900 dark:text-white uppercase truncate">QuizWise</span>
-          </div>
-          
-          <nav className="space-y-1.5 overflow-y-auto pr-2 scrollbar-hide">
-            {[...mainNavItems, ...secondaryNavItems].map(item => (
-              <button
-                key={item.id}
-                onClick={() => onTabChange(item.id)}
-                className={`w-full flex items-center gap-4 px-5 py-3 rounded-2xl text-[10px] font-black uppercase tracking-wider transition-all duration-300 ${
-                  activeTab === item.id
-                    ? 'bg-indigo-600 text-white scale-[1.02]'
-                    : 'text-slate-500 dark:text-slate-400 hover:bg-slate-50 dark:hover:bg-slate-800 hover:translate-x-1'
-                }`}
-                style={activeTab === item.id ? { boxShadow: '0 8px 16px color-mix(in srgb, var(--primary) 35%, transparent)' } : {}}
-              >
-                <item.icon className="w-5 h-5 shrink-0" strokeWidth={1.75} />
-                <span className="truncate">{item.label}</span>
-              </button>
-            ))}
-          </nav>
 
-          {/* User / Login */}
-          <div className="mt-6 space-y-2">
-            {user ? (
-              <>
-                <div className="flex items-center gap-3 px-4 py-3 rounded-2xl" style={{ background: 'color-mix(in srgb, var(--border-color) 40%, var(--bg-sidebar))' }}>
-                  <div className="w-8 h-8 bg-indigo-600 rounded-xl flex items-center justify-center text-white text-[10px] font-black shrink-0">
-                    {(user.user_metadata?.full_name || user.email || 'U')[0].toUpperCase()}
-                  </div>
-                  <div className="flex-1 min-w-0">
-                    <p className="text-[10px] font-black dark:text-white truncate">{user.user_metadata?.full_name || 'Nutzer'}</p>
-                    <p className="text-[9px] text-slate-400 truncate">{user.email}</p>
-                  </div>
-                  <button onClick={onLogout} className="text-slate-400 hover:text-rose-500 transition-colors shrink-0">
-                    <LogOut className="w-4 h-4" strokeWidth={1.75} />
-                  </button>
-                </div>
-                <button
-                  onClick={onUpgradeClick}
-                  className="w-full flex items-center justify-center gap-2 px-4 py-2.5 rounded-2xl text-[10px] font-black uppercase tracking-widest transition-all hover:scale-[1.02] active:scale-95"
-                  style={{ background: 'color-mix(in srgb, var(--primary) 15%, transparent)', color: 'var(--primary)', border: '1px solid color-mix(in srgb, var(--primary) 30%, transparent)' }}
-                >
-                  <Zap className="w-3.5 h-3.5" strokeWidth={2} />
-                  Upgrade zu Pro
-                </button>
-              </>
-            ) : (
-              <button
-                onClick={onLoginClick}
-                className="w-full flex items-center justify-center gap-2 px-4 py-3 rounded-2xl text-[10px] font-black uppercase tracking-widest text-white transition-all hover:scale-[1.02] active:scale-95"
-                style={{ background: 'var(--primary)' }}
-              >
-                <LogIn className="w-4 h-4" strokeWidth={1.75} />
-                Einloggen / Registrieren
-              </button>
-            )}
-          </div>
+      {/* ── Desktop Sidebar ── */}
+      <aside className="hidden lg:flex flex-col h-screen sticky top-0 z-20" style={{
+        width: 240, padding: '28px 0', flexShrink: 0,
+        background: 'var(--bg-sidebar)',
+        borderRight: '1px solid var(--border-color)',
+      }}>
 
-          <div className="mt-4 pt-6 space-y-2" style={{ borderTop: '1px solid var(--border-color)' }}>
-            <button
-              onClick={onSettingsClick}
-              className="w-full flex items-center justify-between px-4 py-3 rounded-xl text-[10px] font-black uppercase text-slate-500 dark:text-slate-400 hover:text-indigo-600 dark:hover:text-indigo-400 transition-all active:scale-95 group"
-              style={{ background: 'color-mix(in srgb, var(--border-color) 40%, var(--bg-sidebar))' }}
-            >
-              <span className="group-hover:translate-x-1 transition-transform flex items-center gap-2">
-                <Settings className="w-4 h-4" strokeWidth={1.75} />
-                Einstellungen
-              </span>
-            </button>
-            <div className="flex justify-center gap-3 pt-2">
-              {(['impressum', 'datenschutz', 'agb'] as const).map(p => (
-                <button
-                  key={p}
-                  onClick={() => setLegalPage(p)}
-                  className="text-[8px] font-bold uppercase tracking-widest text-slate-400 hover:text-slate-600 dark:hover:text-slate-300 transition-colors"
-                >
-                  {p === 'impressum' ? 'Impressum' : p === 'datenschutz' ? 'Datenschutz' : 'AGB'}
-                </button>
-              ))}
-            </div>
+        {/* Wordmark */}
+        <div style={{ padding: '0 22px 24px' }}>
+          <div style={{
+            fontFamily: 'var(--font-serif)', fontSize: 26, fontWeight: 500,
+            letterSpacing: '-0.02em', color: 'var(--ink)', lineHeight: 1.1,
+          }}>
+            QuizWise
+          </div>
+          <div style={{
+            fontFamily: 'var(--font-sans)', fontSize: 11, color: 'var(--mute)',
+            letterSpacing: '0.14em', textTransform: 'uppercase', marginTop: 4,
+          }}>
+            Studienjahr&nbsp;·&nbsp;SS&nbsp;26
           </div>
         </div>
+
+        {/* Nav */}
+        <nav className="flex-1 overflow-y-auto" style={{ padding: '0 14px' }}>
+          <div style={{ ...sectionLabelStyle, paddingTop: 4 }}>Studio</div>
+          {studioItems.map(item => (
+            <button key={item.id} style={navItemStyle(activeTab === item.id)} onClick={() => onTabChange(item.id)}>
+              <item.icon style={{ width: 16, height: 16, color: 'var(--mute)', flexShrink: 0 }} strokeWidth={1.5} />
+              <span style={{ flex: 1 }}>{item.label}</span>
+              {activeTab === item.id && (
+                <span style={{ width: 4, height: 4, borderRadius: '50%', background: 'var(--primary)', flexShrink: 0 }} />
+              )}
+            </button>
+          ))}
+
+          <div style={{ ...sectionLabelStyle, paddingTop: 18 }}>Werkzeuge</div>
+          {toolItems.map(item => (
+            <button key={item.id} style={navItemStyle(activeTab === item.id)} onClick={() => onTabChange(item.id)}>
+              <item.icon style={{ width: 16, height: 16, color: 'var(--mute)', flexShrink: 0 }} strokeWidth={1.5} />
+              <span style={{ flex: 1 }}>{item.label}</span>
+              {activeTab === item.id && (
+                <span style={{ width: 4, height: 4, borderRadius: '50%', background: 'var(--primary)', flexShrink: 0 }} />
+              )}
+            </button>
+          ))}
+        </nav>
+
+        {/* User section */}
+        <div style={{ padding: '16px 22px', borderTop: '1px solid var(--border-color)' }}>
+          {user ? (
+            <>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+                <div style={{
+                  width: 30, height: 30, borderRadius: '50%', flexShrink: 0,
+                  background: 'var(--primary)', color: '#fff',
+                  display: 'flex', alignItems: 'center', justifyContent: 'center',
+                  fontFamily: 'var(--font-serif)', fontSize: 14, fontWeight: 500,
+                }}>
+                  {(user.user_metadata?.full_name || user.email || 'U')[0].toUpperCase()}
+                </div>
+                <div style={{ flex: 1, minWidth: 0 }}>
+                  <div style={{
+                    fontFamily: 'var(--font-sans)', fontSize: 13, fontWeight: 500,
+                    color: 'var(--ink)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap',
+                  }}>
+                    {user.user_metadata?.full_name || 'Nutzer'}
+                  </div>
+                  <div style={{ fontSize: 11, color: 'var(--mute)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                    {user.email}
+                  </div>
+                </div>
+                <button onClick={onSettingsClick} style={{
+                  color: 'var(--mute)', cursor: 'pointer', flexShrink: 0,
+                  background: 'none', border: 'none', padding: 0, display: 'flex',
+                }}>
+                  <Settings style={{ width: 15, height: 15 }} strokeWidth={1.5} />
+                </button>
+              </div>
+
+              <div style={{ display: 'flex', gap: 6, marginTop: 10 }}>
+                <button onClick={onUpgradeClick} style={{
+                  flex: 1, padding: '6px 8px', borderRadius: 6, fontSize: 12, fontWeight: 500,
+                  fontFamily: 'var(--font-sans)', cursor: 'pointer',
+                  background: 'var(--primary-soft)', color: 'var(--primary)',
+                  border: '1px solid color-mix(in srgb, var(--primary) 25%, transparent)',
+                  display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 5,
+                }}>
+                  <Zap style={{ width: 12, height: 12 }} strokeWidth={1.75} />
+                  Pro
+                </button>
+                <button onClick={toggleTheme} title={isDark ? 'Tagmodus' : 'Nachtmodus'} style={{
+                  padding: '6px 9px', borderRadius: 6, cursor: 'pointer',
+                  background: 'transparent', color: 'var(--mute)',
+                  border: '1px solid var(--border-color)', display: 'flex',
+                }}>
+                  {isDark
+                    ? <Sun style={{ width: 14, height: 14 }} strokeWidth={1.5} />
+                    : <Moon style={{ width: 14, height: 14 }} strokeWidth={1.5} />}
+                </button>
+                <button onClick={onLogout} title="Abmelden" style={{
+                  padding: '6px 9px', borderRadius: 6, cursor: 'pointer',
+                  background: 'transparent', color: 'var(--mute)',
+                  border: '1px solid var(--border-color)', display: 'flex',
+                }}>
+                  <LogOut style={{ width: 14, height: 14 }} strokeWidth={1.5} />
+                </button>
+              </div>
+
+              <div style={{ display: 'flex', justifyContent: 'center', gap: 12, marginTop: 10 }}>
+                {(['impressum', 'datenschutz', 'agb'] as const).map(p => (
+                  <button key={p} onClick={() => setLegalPage(p)} style={{
+                    fontSize: 9, fontWeight: 600, letterSpacing: '0.1em', textTransform: 'uppercase',
+                    color: 'var(--mute)', background: 'none', border: 'none', cursor: 'pointer',
+                    fontFamily: 'var(--font-sans)',
+                  }}>
+                    {legalLabels[p]}
+                  </button>
+                ))}
+              </div>
+            </>
+          ) : (
+            <>
+              <button onClick={onLoginClick} style={{
+                width: '100%', padding: '9px 14px', borderRadius: 6, fontSize: 13, fontWeight: 500,
+                fontFamily: 'var(--font-sans)', cursor: 'pointer',
+                background: 'var(--primary)', color: '#fff', border: 'none',
+                display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8,
+              }}>
+                <LogIn style={{ width: 15, height: 15 }} strokeWidth={1.75} />
+                Einloggen / Registrieren
+              </button>
+              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginTop: 10 }}>
+                <button onClick={toggleTheme} style={{
+                  padding: '5px 9px', borderRadius: 6, cursor: 'pointer',
+                  background: 'transparent', color: 'var(--mute)',
+                  border: '1px solid var(--border-color)',
+                  display: 'flex', alignItems: 'center', gap: 6,
+                  fontSize: 11, fontFamily: 'var(--font-sans)',
+                }}>
+                  {isDark ? <Sun style={{ width: 13, height: 13 }} strokeWidth={1.5} /> : <Moon style={{ width: 13, height: 13 }} strokeWidth={1.5} />}
+                  {isDark ? 'Tag' : 'Nacht'}
+                </button>
+                <div style={{ display: 'flex', gap: 10 }}>
+                  {(['impressum', 'datenschutz', 'agb'] as const).map(p => (
+                    <button key={p} onClick={() => setLegalPage(p)} style={{
+                      fontSize: 9, fontWeight: 600, letterSpacing: '0.1em', textTransform: 'uppercase',
+                      color: 'var(--mute)', background: 'none', border: 'none', cursor: 'pointer',
+                      fontFamily: 'var(--font-sans)',
+                    }}>
+                      {legalLabels[p]}
+                    </button>
+                  ))}
+                </div>
+              </div>
+            </>
+          )}
+        </div>
       </aside>
-      
-      {/* Mobile Bottom Navigation */}
-      <nav className="lg:hidden fixed bottom-0 left-0 right-0 backdrop-blur-xl z-[60] flex justify-around items-center pt-2 pb-[max(0.5rem,env(safe-area-inset-bottom))] shadow-2xl" style={{ background: 'color-mix(in srgb, var(--bg-sidebar) 95%, transparent)', borderTop: '1px solid var(--border-color)' }}>
-        {mainNavItems.map(item => (
-          <button
-            key={item.id}
-            onClick={() => handleMobileTabChange(item.id)}
-            className={`flex flex-col items-center gap-1 p-2 rounded-xl transition-all active:scale-90 ${
-              activeTab === item.id ? 'text-indigo-600' : 'text-slate-400'
-            }`}
+
+      {/* ── Mobile Bottom Nav ── */}
+      <nav className="lg:hidden fixed bottom-0 left-0 right-0 backdrop-blur-xl z-[60] flex justify-around items-center pt-2 pb-[max(0.5rem,env(safe-area-inset-bottom))]" style={{
+        background: 'color-mix(in srgb, var(--bg-sidebar) 95%, transparent)',
+        borderTop: '1px solid var(--border-color)',
+      }}>
+        {studioItems.map(item => (
+          <button key={item.id} onClick={() => handleMobileTabChange(item.id)}
+            className="flex flex-col items-center gap-1 p-2 transition-all active:scale-90"
+            style={{ color: activeTab === item.id ? 'var(--primary)' : 'var(--mute)', border: 'none', background: 'none', cursor: 'pointer' }}
           >
-            <item.icon className="w-6 h-6" strokeWidth={1.75} />
-            <span className="text-[8px] font-black uppercase tracking-widest">{item.label}</span>
+            <item.icon className="w-6 h-6" strokeWidth={1.5} />
+            <span style={{ fontSize: 9, fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.1em', fontFamily: 'var(--font-sans)' }}>
+              {item.label}
+            </span>
           </button>
         ))}
-        
-        <button 
-          onClick={() => setIsMobileMenuOpen(!isMobileMenuOpen)}
-          className={`flex flex-col items-center gap-1 p-2 rounded-xl transition-all active:scale-90 ${
-            isMobileMenuOpen ? 'text-indigo-600' : 'text-slate-400'
-          }`}
+        <button onClick={() => setIsMobileMenuOpen(!isMobileMenuOpen)}
+          className="flex flex-col items-center gap-1 p-2 transition-all active:scale-90"
+          style={{ color: isMobileMenuOpen ? 'var(--primary)' : 'var(--mute)', border: 'none', background: 'none', cursor: 'pointer' }}
         >
-          <span className="text-2xl flex items-center justify-center">
-            {isMobileMenuOpen ? (
-              <X className="w-6 h-6" strokeWidth={1.75} />
-            ) : (
-              <Menu className="w-6 h-6" strokeWidth={1.75} />
-            )}
-          </span>
-          <span className="text-[8px] font-black uppercase tracking-widest">Mehr</span>
+          {isMobileMenuOpen ? <X className="w-6 h-6" strokeWidth={1.5} /> : <Menu className="w-6 h-6" strokeWidth={1.5} />}
+          <span style={{ fontSize: 9, fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.1em', fontFamily: 'var(--font-sans)' }}>Mehr</span>
         </button>
       </nav>
 
-      {/* Mobile Menu Overlay */}
+      {/* ── Mobile Menu Overlay ── */}
       {isMobileMenuOpen && (
-        <div className="lg:hidden fixed inset-0 z-[55] bg-slate-900/40 backdrop-blur-sm animate-in fade-in duration-300">
-          <div className="absolute bottom-[max(4.5rem,calc(env(safe-area-inset-bottom)+4rem))] left-4 right-4 rounded-[32px] p-6 shadow-3d-deep animate-in slide-in-from-bottom-8 duration-500 overflow-y-auto max-h-[70vh]" style={{ background: 'var(--bg-sidebar)', border: '1px solid var(--border-color)' }}>
-            <div className="grid grid-cols-2 gap-4">
-              {secondaryNavItems.map(item => (
-                <button
-                  key={item.id}
-                  onClick={() => handleMobileTabChange(item.id)}
-                  className={`flex items-center gap-3 p-4 rounded-2xl border transition-all active:scale-95 ${
-                    activeTab === item.id
-                    ? 'bg-indigo-600 border-indigo-600 text-white'
-                    : 'bg-slate-50 dark:bg-slate-800 border-slate-100 dark:border-slate-700 text-slate-700 dark:text-slate-200'
-                  }`}
-                >
-                  <item.icon className="w-6 h-6 shrink-0" strokeWidth={1.75} />
-                  <span className="text-[9px] font-black uppercase tracking-wider text-left">{item.label}</span>
+        <div className="lg:hidden fixed inset-0 z-[55] backdrop-blur-sm animate-in fade-in duration-300"
+          style={{ background: 'rgba(0,0,0,0.35)' }}>
+          <div className="absolute bottom-[max(4.5rem,calc(env(safe-area-inset-bottom)+4rem))] left-4 right-4 p-5 animate-in slide-in-from-bottom-8 duration-500 overflow-y-auto max-h-[70vh]"
+            style={{ borderRadius: 20, background: 'var(--bg-sidebar)', border: '1px solid var(--border-color)', boxShadow: '0 30px 60px rgba(0,0,0,0.25)' }}>
+            <div className="grid grid-cols-2 gap-2.5">
+              {toolItems.map(item => (
+                <button key={item.id} onClick={() => handleMobileTabChange(item.id)}
+                  className="flex items-center gap-3 p-3.5 transition-all active:scale-95"
+                  style={{
+                    borderRadius: 8, border: '1px solid var(--border-color)', cursor: 'pointer',
+                    background: activeTab === item.id ? 'var(--primary-soft)' : 'var(--card)',
+                    color: activeTab === item.id ? 'var(--primary)' : 'var(--ink2)',
+                  }}>
+                  <item.icon className="w-5 h-5 shrink-0" strokeWidth={1.5} />
+                  <span style={{ fontSize: 12, fontFamily: 'var(--font-sans)' }}>{item.label}</span>
                 </button>
               ))}
             </div>
 
-            {/* API Key button in mobile menu */}
-            <button
-              onClick={() => { setIsMobileMenuOpen(false); setShowApiSettings(true); }}
-              className="mt-4 w-full flex items-center justify-between px-5 py-4 rounded-2xl border transition-all active:scale-95"
-              style={{ borderColor: apiKeySet ? 'var(--border-color)' : '#f59e0b', background: apiKeySet ? 'var(--bg-main)' : 'rgba(245,158,11,0.08)', color: apiKeySet ? 'var(--text-main)' : '#f59e0b' }}
-            >
-              <span className="text-[10px] font-black uppercase tracking-wider flex items-center gap-2">
-                <KeyRound className="w-4 h-4" strokeWidth={1.75} />
-                {apiKeySet ? 'API-Schlüssel' : 'API-Key fehlt!'}
-              </span>
-              <span className={`w-2 h-2 rounded-full ${apiKeySet ? 'bg-emerald-500' : 'bg-amber-400 animate-pulse'}`} />
-            </button>
-
-            {/* Theme toggle in mobile menu */}
-            <button
-              onClick={toggleTheme}
-              className="mt-2 w-full flex items-center justify-between px-5 py-4 rounded-2xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 text-slate-700 dark:text-slate-200 transition-all active:scale-95"
-            >
-              <span className="text-[10px] font-black uppercase tracking-wider">
-                {isDark ? 'Tagmodus' : 'Nachtmodus'}
-              </span>
-              {isDark
-                ? <Sun className="w-5 h-5 text-indigo-400" strokeWidth={1.75} />
-                : <Moon className="w-5 h-5 text-slate-500" strokeWidth={1.75} />
-              }
-            </button>
+            <div className="mt-3 flex gap-2">
+              <button onClick={() => { setIsMobileMenuOpen(false); setShowApiSettings(true); }}
+                className="flex-1 flex items-center justify-between p-3.5 transition-all active:scale-95"
+                style={{
+                  borderRadius: 8, cursor: 'pointer', fontFamily: 'var(--font-sans)',
+                  border: apiKeySet ? '1px solid var(--border-color)' : '1px solid #f59e0b',
+                  background: apiKeySet ? 'var(--card)' : 'rgba(245,158,11,0.08)',
+                  color: apiKeySet ? 'var(--ink2)' : '#f59e0b',
+                }}>
+                <span className="text-xs flex items-center gap-2">
+                  <KeyRound className="w-4 h-4" strokeWidth={1.5} />
+                  {apiKeySet ? 'API-Schlüssel' : 'API-Key fehlt!'}
+                </span>
+                <span className={`w-2 h-2 rounded-full ${apiKeySet ? 'bg-emerald-500' : 'bg-amber-400 animate-pulse'}`} />
+              </button>
+              <button onClick={toggleTheme}
+                className="p-3.5 transition-all active:scale-95"
+                style={{ borderRadius: 8, border: '1px solid var(--border-color)', background: 'var(--card)', color: 'var(--ink2)', cursor: 'pointer' }}>
+                {isDark ? <Sun className="w-5 h-5" strokeWidth={1.5} /> : <Moon className="w-5 h-5" strokeWidth={1.5} />}
+              </button>
+            </div>
             <ColorPicker />
           </div>
         </div>
       )}
-      
-      <main className="flex-grow p-4 sm:p-8 lg:p-16 overflow-y-auto w-full relative pb-32 lg:pb-16 pt-[max(1rem,env(safe-area-inset-top))]">
+
+      {/* ── Main content ── */}
+      <main className="flex-grow overflow-y-auto w-full relative p-4 sm:p-8 lg:p-16 pb-32 lg:pb-16 pt-[max(1rem,env(safe-area-inset-top))]">
         <div className="max-w-6xl mx-auto relative z-10">{children}</div>
       </main>
 
