@@ -104,7 +104,7 @@ export const generateRecallChallenge = async (source: GenerationSource): Promise
   Liefere zudem eine Liste von Keywords, die in der Antwort vorkommen sollten.` });
 
   const text = await callBackend({
-    model: 'gemini-2.0-flash',
+    model: 'gemini-1.5-flash',
     parts,
     config: {
       responseMimeType: 'application/json',
@@ -124,7 +124,7 @@ export const generateRecallChallenge = async (source: GenerationSource): Promise
 
 export const evaluateRecallResponse = async (challenge: RecallChallenge, userAnswer: string): Promise<RecallEvaluation> => {
   const text = await callBackend({
-    model: 'gemini-2.0-flash',
+    model: 'gemini-1.5-flash',
     parts: [{ text: `Bewerte folgende Antwort auf die Recall-Frage: "${challenge.question}".
   Kontext des Konzepts: ${challenge.conceptContext}
   Erwartete Begriffe: ${challenge.expectedKeywords.join(', ')}
@@ -161,7 +161,7 @@ export const orchestrateLearningFlow = async (
   };
 
   const text = await callBackend({
-    model: 'gemini-2.0-flash',
+    model: 'gemini-1.5-flash',
     parts: [{ text: `Analysiere folgende Lernaktivität und erzeuge den 'Next Best Actions'-Plan:
   ${JSON.stringify(context)}
   FORMATREGELN: max. 3 next_actions. Falls Lücken vorhanden (>30% Fehler), schlage einen Kalenderblock vor.` }],
@@ -231,7 +231,7 @@ export const orchestrateLearningFlow = async (
 
 export const searchScholar = async (query: string): Promise<{ text: string, results: SearchResult[] }> => {
   const text = await callBackend({
-    model: 'gemini-2.0-flash',
+    model: 'gemini-1.5-flash',
     parts: [{ text: `Führe eine akademische Recherche zu folgendem Thema durch: "${query}".
   ANFORDERUNGEN:
   1. Liefere maximal 10 REALE wissenschaftliche Publikationen.
@@ -292,7 +292,7 @@ export const generateSmartStudyPlan = async (metrics: TopicMetric[], decks: Flas
   };
 
   const text = await callBackend({
-    model: 'gemini-2.0-flash',
+    model: 'gemini-1.5-flash',
     parts: [{ text: `Erstelle einen intelligenten Wochen-Lernplan (Montag bis Sonntag) basierend auf diesen Daten:
   ${JSON.stringify(context)}
   ANFORDERUNGEN:
@@ -330,7 +330,7 @@ export const generateQuizFromDocument = async (source: GenerationSource, quizTyp
   Zu jeder Frage liefere: korrekten Antwort-Index (Array), Boolean ob Multiple-Choice, Erklärung, Textbezug, Thema und Schwierigkeitsgrad.` });
 
   const text = await callBackend({
-    model: 'gemini-2.0-flash',
+    model: 'gemini-1.5-flash',
     parts,
     config: {
       responseMimeType: 'application/json',
@@ -364,7 +364,7 @@ export const generateFlashcardsFromDocument = async (source: GenerationSource, c
   parts.push({ text: `Erstelle ${count} hochwertige Karteikarten.` });
 
   const text = await callBackend({
-    model: 'gemini-2.0-flash',
+    model: 'gemini-1.5-flash',
     parts,
     config: {
       responseMimeType: 'application/json',
@@ -388,7 +388,7 @@ export const generateQuizFromFlashcards = async (deck: FlashcardDeck): Promise<Q
   const cardsJson = JSON.stringify(deck.cards.map(c => ({ q: c.front, a: c.back })));
 
   const text = await callBackend({
-    model: 'gemini-2.0-flash',
+    model: 'gemini-1.5-flash',
     parts: [{ text: `Erstelle ein Quiz aus diesen Karteikarten: ${cardsJson}` }],
     config: {
       responseMimeType: 'application/json',
@@ -421,7 +421,7 @@ export const generatePaperOutline = async (topic: string, focus: string, sources
   parts.push({ text: `Erstelle eine wissenschaftliche Gliederung für eine Hausarbeit zum Thema: "${topic}". Fokus: "${focus}". Basierend auf den bereitgestellten Quellen.` });
 
   const text = await callBackend({
-    model: 'gemini-2.0-flash',
+    model: 'gemini-1.5-flash',
     parts,
     config: {
       responseMimeType: 'application/json',
@@ -443,7 +443,7 @@ export const generatePaperOutline = async (topic: string, focus: string, sources
 
 export const formatCitation = async (source: AcademicSource, style: CitationStyle): Promise<string> => {
   const text = await callBackend({
-    model: 'gemini-2.0-flash',
+    model: 'gemini-1.5-flash',
     parts: [{ text: `Formatiere folgende Quelle im ${style}-Stil:
   Titel: ${source.title}, Autoren: ${source.authors}, Jahr: ${source.year}, Journal: ${source.journal}, URL/DOI: ${source.url}
   Gib ausschließlich den formatierten Zitations-String zurück.` }]
@@ -453,7 +453,7 @@ export const formatCitation = async (source: AcademicSource, style: CitationStyl
 
 export const magicFormatCitation = async (input: string): Promise<MultiStyleCitation> => {
   const text = await callBackend({
-    model: 'gemini-2.0-flash',
+    model: 'gemini-1.5-flash',
     parts: [{ text: `Extrahiere bibliographische Informationen aus diesem Textfragment und erstelle Zitationen in verschiedenen Stilen: "${input}"` }],
     config: {
       responseMimeType: 'application/json',
@@ -490,7 +490,7 @@ export const magicFormatCitation = async (input: string): Promise<MultiStyleCita
 
 export const analyzeLearningProgress = async (metrics: TopicMetric[]): Promise<LearningAnalysis> => {
   const text = await callBackend({
-    model: 'gemini-2.0-flash',
+    model: 'gemini-1.5-flash',
     parts: [{ text: `Analysiere den Lernfortschritt basierend auf diesen Daten: ${JSON.stringify(metrics)}.
   Identifiziere Fehlermuster, gib Empfehlungen und eine Gesamteinschätzung ab.` }],
     config: {
@@ -537,7 +537,7 @@ export const generateExplanation = async (source: GenerationSource, concept: str
   else if (source.text) parts.push({ text: source.text });
   parts.push({ text: `Erkläre das Konzept "${concept}" basierend auf dem Material. Strukturiere in 3 Stufen: Grundlagen, Vertiefung und Kontext. Antworte in Markdown.` });
 
-  return callBackend({ model: 'gemini-2.0-flash', parts });
+  return callBackend({ model: 'gemini-1.5-flash', parts });
 };
 
 export const generateFullExam = async (content: GenerationSource, style?: GenerationSource, options?: { count: number, difficulty: string }): Promise<ExamQuestion[]> => {
@@ -554,7 +554,7 @@ export const generateFullExam = async (content: GenerationSource, style?: Genera
   Mische MC-Fragen (mc) und offene Fragen (open). Gib Punktzahl und Musterlösung an.` });
 
   const text = await callBackend({
-    model: 'gemini-2.0-flash',
+    model: 'gemini-1.5-flash',
     parts,
     config: {
       responseMimeType: 'application/json',
@@ -577,7 +577,7 @@ export const generateFullExam = async (content: GenerationSource, style?: Genera
 
 export const evaluateExamAnswers = async (questions: ExamQuestion[]): Promise<ExamQuestion[]> => {
   const text = await callBackend({
-    model: 'gemini-2.0-flash',
+    model: 'gemini-1.5-flash',
     parts: [{ text: `Bewerte die folgenden Klausurantworten. Vergleiche 'userAnswer' mit 'solution'.
   Vergib 'achievedPoints' und erstelle konstruktives 'feedback' pro Aufgabe.
   Daten: ${JSON.stringify(questions)}` }],
