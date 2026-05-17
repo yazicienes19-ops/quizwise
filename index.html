@@ -106,18 +106,13 @@
         body {
             font-family: var(--font-sans);
             background-color: var(--bg-main);
-            background-image: var(--tex),
-                repeating-linear-gradient(0deg, transparent 0, transparent 31px, rgba(74,110,168,0.13) 31px, rgba(74,110,168,0.13) 32px);
-            background-size: 320px 320px, 100% 32px;
+            background-image: var(--tex);
+            background-size: 320px 320px;
             -webkit-font-smoothing: antialiased;
             color: var(--ink);
             transition: background-color 0.3s ease, color 0.3s ease;
             margin: 0;
             padding: 0;
-        }
-        .dark body {
-            background-image: var(--tex),
-                repeating-linear-gradient(0deg, transparent 0, transparent 31px, rgba(140,170,220,0.07) 31px, rgba(140,170,220,0.07) 32px);
         }
         ::-webkit-scrollbar { width: 6px; height: 6px; }
         ::-webkit-scrollbar-track { background: transparent; }
