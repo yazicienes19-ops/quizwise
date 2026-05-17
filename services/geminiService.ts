@@ -531,34 +531,6 @@ export const analyzeLearningProgress = async (metrics: TopicMetric[]): Promise<L
   return JSON.parse(text || '{}');
 };
 
-export const suggestConceptsForMindMap = async (source: GenerationSource, existingLabels: string[]): Promise<any[]> => {
-  const parts: any[] = [];
-  if (source.file) parts.push({ inlineData: { data: source.file.data, mimeType: source.file.mimeType } });
-  else if (source.text) parts.push({ text: source.text });
-  parts.push({ text: `Schlage 5-8 relevante Konzepte für eine Mindmap vor. Vermeide Duplikate mit: ${existingLabels.join(', ')}.` });
-
-  const text = await callBackend({
-    model: 'gemini-2.0-flash',
-    parts,
-    config: {
-      responseMimeType: 'application/json',
-      responseSchema: {
-        type: Type.ARRAY,
-        items: {
-          type: Type.OBJECT,
-          properties: {
-            label: { type: Type.STRING },
-            category: { type: Type.STRING },
-            summary: { type: Type.STRING }
-          },
-          required: ['label', 'category', 'summary']
-        }
-      }
-    }
-  });
-  return JSON.parse(text || '[]');
-};
-
 export const generateExplanation = async (source: GenerationSource, concept: string): Promise<string> => {
   const parts: any[] = [];
   if (source.file) parts.push({ inlineData: { data: source.file.data, mimeType: source.file.mimeType } });

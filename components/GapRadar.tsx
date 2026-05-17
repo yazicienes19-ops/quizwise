@@ -161,7 +161,7 @@ export const GapRadar: React.FC<GapRadarProps> = ({ metrics, onNavigate }) => {
           <button 
             onClick={handleRunAnalysis}
             disabled={isAnalyzing}
-            className="w-full sm:w-auto px-10 py-4 bg-slate-900 dark:bg-white dark:text-slate-900 text-white rounded-2xl font-black uppercase text-[11px] tracking-[0.2em] shadow-xl hover:scale-105 active:scale-95 transition-all disabled:opacity-50"
+            className="w-full sm:w-auto px-10 py-4 bg-slate-900 dark:bg-slate-700 text-white rounded-2xl font-black uppercase text-[11px] tracking-[0.2em] shadow-xl hover:scale-105 active:scale-95 transition-all disabled:opacity-50"
           >
             {isAnalyzing ? "KI analysiert Muster..." : <span>Tiefenanalyse starten <EmojiImage emoji="✨" size={16} /></span>}
           </button>
@@ -169,7 +169,7 @@ export const GapRadar: React.FC<GapRadarProps> = ({ metrics, onNavigate }) => {
 
         {analysis && (
           <div className="space-y-12 animate-in slide-in-from-bottom-8 duration-700">
-            <section className="bg-slate-900 dark:bg-white p-10 rounded-[40px] text-white dark:text-slate-900 shadow-3d-deep">
+            <section className="bg-slate-900 dark:bg-slate-800 p-10 rounded-[40px] text-white dark:text-slate-100 shadow-3d-deep">
               <h2 className="text-[10px] font-black uppercase tracking-widest opacity-60 mb-4">Psychologische Synthese</h2>
               <p className="text-xl lg:text-2xl font-medium leading-relaxed italic">"{analysis.overallHealth}"</p>
             </section>

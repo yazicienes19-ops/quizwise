@@ -2,12 +2,19 @@
 import React, { useState } from 'react';
 import { ExamGenerator } from './ExamGenerator';
 import { ExamView } from './ExamView';
-import { ExamQuestion } from '../types';
+import { ExamQuestion, ProcessedDocument, Collection } from '../types';
 import { generateFullExam, evaluateExamAnswers, GenerationSource } from '../services/geminiService';
 import { GeneratedImage } from './GeneratedImage';
 import { toast } from '../services/toast';
 
-export const ExamSystem: React.FC = () => {
+interface ExamSystemProps {
+  documents: ProcessedDocument[];
+  collections: Collection[];
+  getDocumentSource?: (doc: ProcessedDocument) => Promise<GenerationSource>;
+  onSaveToLibrary?: (file: File) => void;
+}
+
+export const ExamSystem: React.FC<ExamSystemProps> = ({ documents, collections, getDocumentSource, onSaveToLibrary }) => {
   const [questions, setQuestions] = useState<ExamQuestion[] | null>(null);
   const [isLoading, setIsLoading] = useState(false);
   const [mode, setMode] = useState<'edit' | 'solve' | 'result'>('edit');
@@ -58,7 +65,14 @@ export const ExamSystem: React.FC = () => {
   }
 
   if (!questions) {
-    return <ExamGenerator onGenerate={handleGenerate} isLoading={isLoading} />;
+    return <ExamGenerator
+      onGenerate={handleGenerate}
+      isLoading={isLoading}
+      documents={documents}
+      collections={collections}
+      getDocumentSource={getDocumentSource}
+      onSaveToLibrary={onSaveToLibrary}
+    />;
   }
 
   return (

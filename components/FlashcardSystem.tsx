@@ -1,23 +1,29 @@
 
 import React, { useState, useEffect, useMemo } from 'react';
-import { FlashcardDeck, Flashcard, ProcessedDocument } from '../types';
+import { FlashcardDeck, Flashcard, ProcessedDocument, Collection } from '../types';
+import type { GenerationSource } from '../services/geminiService';
 import { EmojiImage } from './EmojiImage';
 import { generateFlashcardsFromDocument } from '../services/geminiService';
 import { FlashcardPlayer } from './FlashcardPlayer';
+import { SourceSelector } from './SourceSelector';
 
 interface FlashcardSystemProps {
   availableDocuments: ProcessedDocument[];
+  collections: Collection[];
   onDeleteDoc: (id: string) => void;
-  onUploadNew: (file: File) => void;
+  onSaveToLibrary?: (file: File) => void;
   onGenerateQuizFromDeck: (deck: FlashcardDeck) => void;
+  getDocumentSource?: (doc: ProcessedDocument) => Promise<GenerationSource>;
   isQuizLoading?: boolean;
 }
 
-export const FlashcardSystem: React.FC<FlashcardSystemProps> = ({ 
-  availableDocuments, 
+export const FlashcardSystem: React.FC<FlashcardSystemProps> = ({
+  availableDocuments,
+  collections,
   onDeleteDoc,
-  onUploadNew,
+  onSaveToLibrary,
   onGenerateQuizFromDeck,
+  getDocumentSource,
   isQuizLoading = false
 }) => {
   const [decks, setDecks] = useState<FlashcardDeck[]>([]);
@@ -93,19 +99,14 @@ export const FlashcardSystem: React.FC<FlashcardSystemProps> = ({
     saveDecks(updated);
   };
 
-  const handleGenerateFromDoc = async (doc: ProcessedDocument) => {
-    setIsGenerating(doc.id);
+  const handleGenerateFromSource = async (source: GenerationSource, name: string, docId?: string) => {
+    setIsGenerating(docId ?? name);
     try {
-      const source = doc.type === 'pdf' 
-        ? { file: { data: doc.content, mimeType: 'application/pdf' } } 
-        : { text: doc.content };
-
       const generated = await generateFlashcardsFromDocument(source, selectedCount);
-      
       const newDeck: FlashcardDeck = {
         id: Math.random().toString(36).substr(2, 9),
-        title: doc.name.replace(/\.[^/.]+$/, ""),
-        sourceDocumentId: doc.id,
+        title: name.replace(/\.[^/.]+$/, ''),
+        sourceDocumentId: docId,
         cards: generated.map(c => ({
           id: Math.random().toString(36).substr(2, 9),
           front: c.front || '',
@@ -118,10 +119,19 @@ export const FlashcardSystem: React.FC<FlashcardSystemProps> = ({
       saveDecks([...decks, newDeck]);
     } catch (e) {
       console.error(e);
-      alert("Fehler bei der Generierung.");
+      alert('Fehler bei der Generierung.');
     } finally {
       setIsGenerating(null);
     }
+  };
+
+  const handleSelectDocument = async (doc: ProcessedDocument) => {
+    const source = getDocumentSource
+      ? await getDocumentSource(doc)
+      : doc.type === 'pdf'
+        ? { file: { data: doc.content, mimeType: 'application/pdf' } }
+        : { text: doc.content };
+    handleGenerateFromSource(source, doc.name, doc.id);
   };
 
   const deckStats = useMemo(() => {
@@ -328,7 +338,7 @@ export const FlashcardSystem: React.FC<FlashcardSystemProps> = ({
 
             <div className="space-y-6 pt-4 border-t border-slate-50 dark:border-slate-800">
               <h3 className="text-[10px] lg:text-[11px] font-black uppercase tracking-[0.4em] text-indigo-600">KI Deck Generator</h3>
-              
+
               <div className="space-y-4">
                 <div className="flex justify-between items-center text-[9px] lg:text-[10px] font-black uppercase text-slate-400 tracking-widest px-2">
                   <span>Karten-Anzahl</span>
@@ -347,27 +357,21 @@ export const FlashcardSystem: React.FC<FlashcardSystemProps> = ({
                 </div>
               </div>
 
-              <div className="space-y-3 max-h-[300px] lg:max-h-[350px] overflow-y-auto pr-2 scrollbar-thin">
-                {availableDocuments.map(doc => (
-                  <button
-                    key={doc.id}
-                    onClick={() => handleGenerateFromDoc(doc)}
-                    disabled={isGenerating !== null}
-                    className="w-full p-4 bg-slate-50 dark:bg-slate-800/50 rounded-xl lg:rounded-2xl border-2 border-transparent hover:border-indigo-500/30 transition-all flex flex-col gap-1 text-left group active:scale-95"
-                  >
-                    <span className="text-xs lg:text-sm font-bold text-slate-800 dark:text-white truncate w-full group-hover:text-indigo-600">{doc.name}</span>
-                    <div className="flex justify-between items-center mt-1">
-                      <span className="text-[8px] lg:text-[9px] font-black uppercase text-slate-400">{doc.type}</span>
-                      <span className="text-[8px] lg:text-[9px] font-black uppercase text-indigo-600 opacity-60">
-                        {isGenerating === doc.id ? 'KI lädt...' : 'KI-Erstellen →'}
-                      </span>
-                    </div>
-                  </button>
-                ))}
-                {availableDocuments.length === 0 && (
-                  <p className="text-[10px] text-slate-400 italic text-center py-4">Keine Dokumente für KI-Generierung verfügbar.</p>
-                )}
-              </div>
+              {isGenerating ? (
+                <div className="py-8 flex flex-col items-center gap-3 text-center">
+                  <div className="w-8 h-8 border-4 border-indigo-100 border-t-indigo-600 rounded-full animate-spin" />
+                  <p className="text-[10px] font-black uppercase tracking-widest text-indigo-600 animate-pulse">KI generiert Karten...</p>
+                </div>
+              ) : (
+                <SourceSelector
+                  documents={availableDocuments}
+                  collections={collections}
+                  onSelectDocument={handleSelectDocument}
+                  onSelectSource={(source, name) => handleGenerateFromSource(source, name)}
+                  onSaveToLibrary={onSaveToLibrary}
+                  isLoading={isGenerating !== null}
+                />
+              )}
             </div>
           </div>
         </div>

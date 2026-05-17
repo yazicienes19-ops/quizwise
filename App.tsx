@@ -18,11 +18,22 @@ import { ExplainerSystem } from './components/ExplainerSystem';
 import { LibrarySystem } from './components/LibrarySystem';
 import { ExamSystem } from './components/ExamSystem';
 import { ActiveRecall } from './components/ActiveRecall';
-import { MindMapSystem } from './components/MindMapSystem';
 import { GeneratedImage } from './components/GeneratedImage';
 import { ToastContainer } from './components/Toast';
 import { ActiveTab, ProcessedDocument, QuizQuestion, UserAnswer, TopicMetric, SearchResult, QuizType, FlashcardDeck, Collection, ExamTerm, LearningFlowResult } from './types';
-import { generateQuizFromDocument, searchScholar, generateQuizFromFlashcards, generateFlashcardsFromDocument, orchestrateLearningFlow } from './services/geminiService';
+
+import { generateQuizFromDocument, searchScholar, generateQuizFromFlashcards, orchestrateLearningFlow } from './services/geminiService';
+import {
+  loadDocumentsFromSupabase,
+  loadCollectionsFromSupabase,
+  saveDocumentToSupabase,
+  deleteDocumentFromSupabase,
+  saveCollectionToSupabase,
+  deleteCollectionFromSupabase,
+  updateDocumentCollectionInSupabase,
+  downloadPdfAsBase64,
+} from './services/documentService';
+import type { GenerationSource } from './services/geminiService';
 import { toast } from './services/toast';
 import mammoth from 'mammoth';
 
@@ -61,17 +72,37 @@ const App: React.FC = () => {
   });
 
   useEffect(() => {
-    // Beim Start prüfen ob der Nutzer noch eingeloggt ist (gespeicherte Session)
+    const timeout = setTimeout(() => setAuthChecked(true), 3000);
     supabase.auth.getSession().then(({ data: { session } }) => {
+      clearTimeout(timeout);
       setUser(session?.user ?? null);
       setAuthChecked(true);
+    }).catch(() => {
+      clearTimeout(timeout);
+      setAuthChecked(true);
     });
-    // Auf Login/Logout-Events hören (z.B. Token läuft ab)
     const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
       setUser(session?.user ?? null);
     });
     return () => subscription.unsubscribe();
   }, []);
+
+  // Beim Login: Dokumente und Sammlungen aus Supabase laden (Supabase ist Quelle der Wahrheit)
+  useEffect(() => {
+    if (!user) return;
+    loadDocumentsFromSupabase()
+      .then(docs => {
+        setDocuments(docs);
+        localStorage.setItem('quizwise_docs', JSON.stringify(docs));
+      })
+      .catch(() => toast.error('Dokumente konnten nicht aus der Cloud geladen werden.'));
+    loadCollectionsFromSupabase()
+      .then(cols => {
+        setCollections(cols);
+        localStorage.setItem('quizwise_collections', JSON.stringify(cols));
+      })
+      .catch(() => {});
+  }, [user]);
 
   useEffect(() => {
     const handleStatus = () => setIsOffline(!navigator.onLine);
@@ -102,6 +133,42 @@ const App: React.FC = () => {
   const saveCollections = (cols: Collection[]) => {
     setCollections(cols);
     localStorage.setItem('quizwise_collections', JSON.stringify(cols));
+  };
+
+  const addCollection = (col: Collection) => {
+    saveCollections([...collections, col]);
+    if (user) saveCollectionToSupabase(col).catch(() => {});
+  };
+
+  const removeCollection = (id: string) => {
+    saveCollections(collections.filter(c => c.id !== id));
+    if (user) deleteCollectionFromSupabase(id).catch(() => {});
+  };
+
+  const deleteDoc = (id: string) => {
+    const doc = documents.find(d => d.id === id);
+    saveDocs(documents.filter(d => d.id !== id));
+    if (user && doc) deleteDocumentFromSupabase(doc).catch(() => {});
+  };
+
+  const moveDoc = (docId: string, collectionId: string | undefined) => {
+    const updated = documents.map(d => d.id === docId ? { ...d, collectionId } : d);
+    saveDocs(updated);
+    if (user) updateDocumentCollectionInSupabase(docId, collectionId).catch(() => {});
+  };
+
+  // Gibt den KI-tauglichen Inhalt eines Dokuments zurück.
+  // PDFs ohne content werden on-demand aus Storage geladen.
+  const getDocumentSource = async (doc: ProcessedDocument): Promise<GenerationSource> => {
+    if (doc.type !== 'pdf') return { text: doc.content };
+    if (doc.content) return { file: { data: doc.content, mimeType: 'application/pdf' } };
+    if (doc.storagePath) {
+      const base64 = await downloadPdfAsBase64(doc.storagePath);
+      // Im lokalen State cachen damit nachfolgende Aufrufe schnell sind
+      setDocuments(prev => prev.map(d => d.id === doc.id ? { ...d, content: base64 } : d));
+      return { file: { data: base64, mimeType: 'application/pdf' } };
+    }
+    throw new Error('PDF-Inhalt nicht verfügbar.');
   };
 
   const saveExamTerms = (terms: ExamTerm[]) => {
@@ -166,7 +233,10 @@ const App: React.FC = () => {
   };
 
   const handleFileUpload = async (file: File, collectionId?: string) => {
-    if (isOffline) return;
+    if (isOffline) {
+      toast.error('Hochladen ist im Offline-Modus nicht möglich.');
+      return;
+    }
     setIsLoading(true);
     try {
       const ext = file.name.split('.').pop()?.toLowerCase();
@@ -174,8 +244,14 @@ const App: React.FC = () => {
       let docType: 'pdf' | 'docx' | 'text' = 'text';
 
       if (ext === 'pdf') {
-        content = await fileToBase64(file);
         docType = 'pdf';
+        // PDFs werden NICHT als Base64 in localStorage gespeichert (Limit ~5 MB).
+        // Stattdessen: direkt in Supabase Storage hochladen, content bleibt leer,
+        // on-demand laden via getDocumentSource.
+        if (!user) {
+          toast.error('Zum Speichern von PDFs bitte zuerst anmelden.');
+          return;
+        }
       } else if (ext === 'docx') {
         const arrayBuffer = await file.arrayBuffer();
         const result = await mammoth.extractRawText({ arrayBuffer });
@@ -185,26 +261,33 @@ const App: React.FC = () => {
         content = await file.text();
         docType = 'text';
       }
-      
+
       const newDoc: ProcessedDocument = {
         id: Math.random().toString(36).substr(2, 9),
         name: file.name,
-        content: content,
+        content, // leer bei PDFs — wird später on-demand aus Storage geladen
         type: docType,
         uploadDate: Date.now(),
-        collectionId: collectionId
+        collectionId,
       };
-      saveDocs([...documents, newDoc]);
+
+      if (docType === 'pdf') {
+        // PDF: erst in Storage hochladen, dann in State aufnehmen (kein localStorage-Limit-Problem)
+        const storagePath = await saveDocumentToSupabase(newDoc, file);
+        saveDocs([...documents, { ...newDoc, storagePath: storagePath ?? undefined }]);
+      } else {
+        // Text/DOCX: sofort in State + localStorage, Supabase im Hintergrund
+        saveDocs([...documents, newDoc]);
+        if (user) {
+          saveDocumentToSupabase(newDoc)
+            .catch(() => toast.error('Cloud-Sync fehlgeschlagen. Dokument nur lokal gespeichert.'));
+        }
+      }
     } catch (e) {
       toast.error('Dokument konnte nicht verarbeitet werden.');
     } finally {
       setIsLoading(false);
     }
-  };
-
-  const handleMoveDocument = (docId: string, collectionId: string | undefined) => {
-    const updated = documents.map(d => d.id === docId ? { ...d, collectionId } : d);
-    saveDocs(updated);
   };
 
   const onQuizComplete = async (ans: UserAnswer[]) => {
@@ -216,56 +299,13 @@ const App: React.FC = () => {
     await updateMetricsAfterSession(score, topicName, 'quiz');
   };
 
-  const handleQuizFromConcept = async (concept: string) => {
-    setIsLoading(true);
-    setActiveTab(ActiveTab.QUIZ);
-    setAnswers([]);
-    setQuestions([]);
-    try {
-      const q = await generateQuizFromDocument({ text: `Erkläre und teste das folgende Konzept gründlich: "${concept}"` }, QuizType.FAST);
-      setQuestions(q);
-    } catch (e) {
-      toast.error('Quiz-Generierung fehlgeschlagen.');
-    } finally {
-      setIsLoading(false);
-    }
-  };
-
-  const handleCardsFromConcept = async (concept: string) => {
-    setIsLoading(true);
-    try {
-      const raw = await generateFlashcardsFromDocument({ text: `Erkläre das folgende Konzept: "${concept}"` }, 8);
-      const cards = raw.map(c => ({
-        id: Math.random().toString(36).substr(2, 9),
-        front: c.front ?? '',
-        back: c.back ?? '',
-        level: c.level ?? 0,
-        nextReview: c.nextReview ?? Date.now(),
-      }));
-      const newDeck: FlashcardDeck = {
-        id: Math.random().toString(36).substr(2, 9),
-        title: concept,
-        cards,
-      };
-      const updated = [...decks, newDeck];
-      setDecks(updated);
-      localStorage.setItem('flashcard_decks', JSON.stringify(updated));
-      toast.success(`Deck "${concept}" wurde erstellt.`);
-      setActiveTab(ActiveTab.CARDS);
-    } catch (e) {
-      toast.error('Karteikarten-Generierung fehlgeschlagen.');
-    } finally {
-      setIsLoading(false);
-    }
-  };
-
   const handleStartQuizFromDoc = async (doc: ProcessedDocument, quizType: QuizType = QuizType.FAST) => {
     setIsLoading(true);
     setActiveTab(ActiveTab.QUIZ);
     setAnswers([]);
     setQuestions([]);
     try {
-      const source = doc.type === 'pdf' ? { file: { data: doc.content, mimeType: 'application/pdf' } } : { text: doc.content };
+      const source = await getDocumentSource(doc);
       const quiz = await generateQuizFromDocument(source, quizType);
       setQuestions(quiz);
       localStorage.setItem('quizwise_current_quiz', JSON.stringify(quiz));
@@ -298,22 +338,61 @@ const App: React.FC = () => {
       case ActiveTab.DASHBOARD:
         return <Dashboard onTabChange={setActiveTab} flowResult={flowResult} onAcceptFlow={saveFlowResult} />;
       case ActiveTab.LIBRARY:
-        return <LibrarySystem documents={documents} collections={collections} onUpload={handleFileUpload} onDelete={(id) => saveDocs(documents.filter(d => d.id !== id))} onAction={(tab, doc) => tab === ActiveTab.QUIZ ? handleStartQuizFromDoc(doc) : setActiveTab(tab)} onAddCollection={(col) => saveCollections([...collections, col])} onDeleteCollection={(id) => saveCollections(collections.filter(c => c.id !== id))} onMoveDocument={handleMoveDocument} isLoading={isLoading} />;
+        return <LibrarySystem documents={documents} collections={collections} onUpload={handleFileUpload} onDelete={deleteDoc} onAction={(tab, doc) => tab === ActiveTab.QUIZ ? handleStartQuizFromDoc(doc) : setActiveTab(tab)} onAddCollection={addCollection} onDeleteCollection={removeCollection} onMoveDocument={moveDoc} isLoading={isLoading} />;
       case ActiveTab.QUIZ:
         if (questions.length > 0 && answers.length === 0) return <QuizPlayer questions={questions} onComplete={onQuizComplete} />;
         if (answers.length > 0) return <ResultView answers={answers} questions={questions} onRestart={() => { setAnswers([]); setQuestions([]); }} />;
-        return <FileUploader onFileSelect={(file, type) => handleStartQuizFromDoc({ id: 'temp', name: file.name, content: '', type: 'pdf', uploadDate: Date.now() } as any, type)} onTextSubmit={async (text, type) => { setIsLoading(true); const q = await generateQuizFromDocument({ text }, type); setQuestions(q); setIsLoading(false); }} onDeckSelect={async (deck) => { setIsLoading(true); const q = await generateQuizFromFlashcards(deck); setQuestions(q); setIsLoading(false); }} availableDecks={decks} isLoading={isLoading} />;
+        return <FileUploader
+          documents={documents}
+          collections={collections}
+          onDocumentSelect={(doc, type) => handleStartQuizFromDoc(doc, type)}
+          onSourceSelect={async (source, _name, type) => {
+            setIsLoading(true);
+            setAnswers([]);
+            setQuestions([]);
+            try {
+              const q = await generateQuizFromDocument(source, type);
+              setQuestions(q);
+              localStorage.setItem('quizwise_current_quiz', JSON.stringify(q));
+            } catch (e) { handleApiError(e); } finally { setIsLoading(false); }
+          }}
+          onDeckSelect={async (deck) => { setIsLoading(true); const q = await generateQuizFromFlashcards(deck); setQuestions(q); setIsLoading(false); }}
+          onSaveToLibrary={file => handleFileUpload(file)}
+          availableDecks={decks}
+          isLoading={isLoading}
+        />;
       case ActiveTab.RECALL:
-        // Fixed: Provide a wrapper for updateMetricsAfterSession to match the onComplete signature from ActiveRecall.
-        return <ActiveRecall availableDocuments={documents} onComplete={(score, topic) => updateMetricsAfterSession(score, topic, 'recall')} />;
-      case ActiveTab.EXAM: return <ExamSystem />;
+        return <ActiveRecall
+          availableDocuments={documents}
+          collections={collections}
+          getDocumentSource={getDocumentSource}
+          onSaveToLibrary={file => handleFileUpload(file)}
+          onComplete={(score, topic) => updateMetricsAfterSession(score, topic, 'recall')}
+        />;
+      case ActiveTab.EXAM: return <ExamSystem
+          documents={documents}
+          collections={collections}
+          getDocumentSource={getDocumentSource}
+          onSaveToLibrary={file => handleFileUpload(file)}
+        />;
       case ActiveTab.RADAR: return <GapRadar metrics={metrics} onNavigate={setActiveTab} />;
-      case ActiveTab.EXPLAINER: return <ExplainerSystem availableDocuments={documents} onUploadNew={handleFileUpload} />;
+      case ActiveTab.EXPLAINER: return <ExplainerSystem
+          availableDocuments={documents}
+          collections={collections}
+          getDocumentSource={getDocumentSource}
+          onSaveToLibrary={file => handleFileUpload(file)}
+        />;
       case ActiveTab.PAPER: return <TermPaperSystem availableDocuments={documents} onUploadNew={handleFileUpload} initialSources={savedSources} />;
       case ActiveTab.SEARCH: return <ScholarSearch results={searchResults} onSearch={async (q) => { setIsSearching(true); const { results } = await searchScholar(q); setSearchResults(results); setIsSearching(false); }} isSearching={isSearching} onGenerateQuiz={(res) => handleStartQuizFromDoc({ id: 'search', name: res.title, content: res.abstract || res.snippet, type: 'text', uploadDate: Date.now() } as any)} onSaveToPaper={(s) => setSavedSources([...savedSources, s])} savedResults={savedSources} />;
       case ActiveTab.PLANNER: return <StudyPlanner metrics={metrics} decks={decks} examTerms={examTerms} onUpdateExams={saveExamTerms} />;
-      case ActiveTab.CARDS: return <FlashcardSystem availableDocuments={documents} onDeleteDoc={(id) => saveDocs(documents.filter(d => d.id !== id))} onUploadNew={handleFileUpload} onGenerateQuizFromDeck={async (deck) => { setIsLoading(true); const q = await generateQuizFromFlashcards(deck); setQuestions(q); setIsLoading(false); setActiveTab(ActiveTab.QUIZ); }} />;
-      case ActiveTab.MINDMAP: return <MindMapSystem availableDocuments={documents} onGenerateQuizFromConcept={handleQuizFromConcept} onGenerateCardsFromConcept={handleCardsFromConcept} />;
+      case ActiveTab.CARDS: return <FlashcardSystem
+          availableDocuments={documents}
+          collections={collections}
+          onDeleteDoc={deleteDoc}
+          onSaveToLibrary={file => handleFileUpload(file)}
+          getDocumentSource={getDocumentSource}
+          onGenerateQuizFromDeck={async (deck) => { setIsLoading(true); const q = await generateQuizFromFlashcards(deck); setQuestions(q); setIsLoading(false); setActiveTab(ActiveTab.QUIZ); }}
+        />;
       default: return <Dashboard onTabChange={setActiveTab} flowResult={flowResult} onAcceptFlow={saveFlowResult} />;
     }
   };

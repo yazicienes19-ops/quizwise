@@ -1,54 +1,59 @@
 
-import React, { useState, useEffect } from 'react';
-import { ProcessedDocument, RecallChallenge, RecallEvaluation } from '../types';
+import React, { useState } from 'react';
+import { ProcessedDocument, Collection, RecallChallenge, RecallEvaluation } from '../types';
+import type { GenerationSource } from '../services/geminiService';
 import { generateRecallChallenge, evaluateRecallResponse } from '../services/geminiService';
 import { GeneratedImage } from './GeneratedImage';
+import { SourceSelector } from './SourceSelector';
 
 interface ActiveRecallProps {
   availableDocuments: ProcessedDocument[];
+  collections: Collection[];
+  getDocumentSource?: (doc: ProcessedDocument) => Promise<GenerationSource>;
+  onSaveToLibrary?: (file: File) => void;
   onComplete: (score: number, topic: string) => void;
 }
 
-export const ActiveRecall: React.FC<ActiveRecallProps> = ({ availableDocuments, onComplete }) => {
-  const [selectedDocId, setSelectedDocId] = useState<string | null>(null);
+export const ActiveRecall: React.FC<ActiveRecallProps> = ({
+  availableDocuments,
+  collections,
+  getDocumentSource,
+  onSaveToLibrary,
+  onComplete,
+}) => {
+  const [activeSource, setActiveSource] = useState<GenerationSource | null>(null);
+  const [activeSourceName, setActiveSourceName] = useState('');
   const [challenge, setChallenge] = useState<RecallChallenge | null>(null);
   const [userAnswer, setUserAnswer] = useState('');
   const [evaluation, setEvaluation] = useState<RecallEvaluation | null>(null);
   const [isLoading, setIsLoading] = useState(false);
   const [isEvaluating, setIsEvaluating] = useState(false);
 
-  // Sync selectedDocId when documents become available or change
-  useEffect(() => {
-    if (!selectedDocId && availableDocuments.length > 0) {
-      setSelectedDocId(availableDocuments[0].id);
-    }
-  }, [availableDocuments, selectedDocId]);
+  const handleSelectDocument = async (doc: ProcessedDocument) => {
+    const source = getDocumentSource
+      ? await getDocumentSource(doc)
+      : doc.type === 'pdf'
+        ? { file: { data: doc.content, mimeType: 'application/pdf' } }
+        : { text: doc.content };
+    setActiveSource(source);
+    setActiveSourceName(doc.name);
+  };
 
   const startNewChallenge = async () => {
-    const doc = availableDocuments.find(d => d.id === selectedDocId);
-    if (!doc) {
-      alert("Bitte wähle ein Dokument aus.");
+    if (!activeSource) {
+      alert('Bitte wähle zuerst eine Quelle aus.');
       return;
     }
-
     setIsLoading(true);
     setEvaluation(null);
     setUserAnswer('');
     try {
-      const source = doc.type === 'pdf' 
-        ? { file: { data: doc.content, mimeType: 'application/pdf' } } 
-        : { text: doc.content };
-      
-      const res = await generateRecallChallenge(source);
-      
-      if (!res || !res.question) {
-        throw new Error("Ungültige Antwort der KI");
-      }
-      
+      const res = await generateRecallChallenge(activeSource);
+      if (!res || !res.question) throw new Error('Ungültige Antwort der KI');
       setChallenge(res);
     } catch (e) {
-      console.error("Recall Start Error:", e);
-      alert("Herausforderung konnte nicht geladen werden. Bitte überprüfe deine Internetverbindung oder versuche es mit einem anderen Dokument.");
+      console.error('Recall Start Error:', e);
+      alert('Herausforderung konnte nicht geladen werden. Bitte überprüfe deine Internetverbindung oder versuche es mit einem anderen Dokument.');
     } finally {
       setIsLoading(false);
     }
@@ -60,11 +65,10 @@ export const ActiveRecall: React.FC<ActiveRecallProps> = ({ availableDocuments, 
     try {
       const res = await evaluateRecallResponse(challenge, userAnswer);
       setEvaluation(res);
-      const topicName = availableDocuments.find(d => d.id === selectedDocId)?.name || 'Recall Session';
-      onComplete(res.score, topicName);
+      onComplete(res.score, activeSourceName || 'Recall Session');
     } catch (e) {
-      console.error("Evaluation Error:", e);
-      alert("Bewertung fehlgeschlagen.");
+      console.error('Evaluation Error:', e);
+      alert('Bewertung fehlgeschlagen.');
     } finally {
       setIsEvaluating(false);
     }
@@ -81,39 +85,39 @@ export const ActiveRecall: React.FC<ActiveRecallProps> = ({ availableDocuments, 
       </div>
 
       {!challenge ? (
-        <div className="bg-white dark:bg-slate-900 rounded-[32px] lg:rounded-[40px] border border-slate-200 dark:border-slate-800 p-6 lg:p-12 text-center shadow-3d-deep space-y-6 lg:space-y-8">
-          <div className="space-y-4">
-            <h3 className="text-[9px] lg:text-[10px] font-black uppercase tracking-[0.3em] text-indigo-500">
-              {availableDocuments.length > 0 ? 'Fokus wählen' : 'Bibliothek leer'}
-            </h3>
-            
-            {availableDocuments.length > 0 ? (
-              <div className="flex flex-wrap justify-center gap-2 max-h-40 overflow-y-auto p-1 scrollbar-hide">
-                {availableDocuments.map(doc => (
-                  <button
-                    key={doc.id}
-                    onClick={() => setSelectedDocId(doc.id)}
-                    className={`px-4 lg:px-5 py-2 lg:py-2.5 rounded-xl text-[10px] lg:text-[11px] font-bold tracking-tight transition-all border-2 ${
-                      selectedDocId === doc.id 
-                        ? 'bg-indigo-600 text-white border-indigo-600 shadow-md scale-105' 
-                        : 'bg-slate-50 dark:bg-slate-800 border-transparent text-slate-400 hover:border-slate-200'
-                    }`}
-                  >
-                    {doc.name.length > 25 ? doc.name.substring(0, 22) + '...' : doc.name}
-                  </button>
-                ))}
+        <div className="space-y-6">
+          {/* Quellenauswahl */}
+          {activeSource ? (
+            <div className="bg-white dark:bg-slate-900 rounded-[32px] border border-slate-200 dark:border-slate-800 p-6 flex items-center justify-between shadow-3d-raised">
+              <div className="flex items-center gap-3">
+                <div className="w-3 h-3 rounded-full bg-indigo-500 shrink-0" />
+                <div>
+                  <p className="text-[9px] font-black uppercase text-slate-400 tracking-widest">Aktive Quelle</p>
+                  <p className="text-sm font-black dark:text-white truncate max-w-xs">{activeSourceName}</p>
+                </div>
               </div>
-            ) : (
-              <div className="py-6 text-slate-400 italic text-xs">
-                Lade Dokumente hoch, um hier zu trainieren.
-              </div>
-            )}
-          </div>
-          
-          <button 
+              <button
+                onClick={() => { setActiveSource(null); setActiveSourceName(''); }}
+                className="text-slate-300 hover:text-rose-500 transition-colors font-black text-sm"
+              >✕</button>
+            </div>
+          ) : (
+            <SourceSelector
+              documents={availableDocuments}
+              collections={collections}
+              onSelectDocument={handleSelectDocument}
+              onSelectSource={(source, name) => { setActiveSource(source); setActiveSourceName(name); }}
+              onSaveToLibrary={onSaveToLibrary}
+              isLoading={isLoading}
+              label="Fokus wählen"
+            />
+          )}
+
+          <div className="text-center">
+          <button
             onClick={startNewChallenge}
-            disabled={isLoading || !selectedDocId}
-            className="w-full sm:w-auto bg-slate-900 dark:bg-white dark:text-slate-900 text-white px-8 lg:px-10 py-4 lg:py-5 rounded-2xl lg:rounded-3xl font-black uppercase tracking-[0.2em] text-[10px] lg:text-[11px] shadow-3d-deep hover:scale-105 active:scale-95 transition-all disabled:opacity-50"
+            disabled={isLoading || !activeSource}
+            className="w-full sm:w-auto bg-slate-900 dark:bg-slate-700 text-white px-8 lg:px-10 py-4 lg:py-5 rounded-2xl lg:rounded-3xl font-black uppercase tracking-[0.2em] text-[10px] lg:text-[11px] shadow-3d-deep hover:scale-105 active:scale-95 transition-all disabled:opacity-50"
           >
             {isLoading ? (
               <div className="flex items-center justify-center gap-2">
@@ -127,6 +131,7 @@ export const ActiveRecall: React.FC<ActiveRecallProps> = ({ availableDocuments, 
               </span>
             )}
           </button>
+          </div>
         </div>
       ) : !evaluation ? (
         <div className="space-y-6 lg:space-y-8 animate-in slide-in-from-bottom-6">

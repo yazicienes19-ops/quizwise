@@ -57,10 +57,11 @@ export interface FlashcardDeck {
 export interface ProcessedDocument {
   id: string;
   name: string;
-  content: string;
+  content: string;        // base64 (PDF) oder extrahierter Text; leer wenn PDF aus Storage noch nicht geladen
   type: 'pdf' | 'text' | 'docx';
   uploadDate: number;
   collectionId?: string;
+  storagePath?: string;   // gesetzt wenn PDF in Supabase Storage liegt
 }
 
 export interface TopicMetric {
@@ -84,8 +85,7 @@ export enum ActiveTab {
   RADAR = 'RADAR',
   EXPLAINER = 'EXPLAINER',
   EXAM = 'EXAM',
-  RECALL = 'RECALL',
-  MINDMAP = 'MINDMAP'
+  RECALL = 'RECALL'
 }
 
 export enum QuizType {
@@ -212,28 +212,3 @@ export interface LearningFlowResult {
   blocking_questions: { question: string; needed_field: string }[];
 }
 
-// --- Mind Map Types ---
-
-export interface MindMapNode {
-  id: string;
-  label: string;
-  category: 'core' | 'definition' | 'process' | 'example';
-  summary: string;
-  x: number;
-  y: number;
-}
-
-export interface MindMapEdge {
-  id: string;
-  from: string;
-  to: string;
-  label: string;
-}
-
-export interface MindMapProject {
-  id: string;
-  title: string;
-  lastModified: number;
-  nodes: MindMapNode[];
-  edges: MindMapEdge[];
-}

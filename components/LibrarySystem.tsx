@@ -201,14 +201,19 @@ export const LibrarySystem: React.FC<LibrarySystemProps> = ({
 
           <div className="grid grid-cols-1 md:grid-cols-2 gap-6 min-h-[400px]">
             {filteredDocs.length === 0 ? (
-              <div className="col-span-full flex flex-col items-center justify-center py-20 opacity-30 text-center space-y-4">
-                <EmojiImage emoji="📭" size={64} />
-                <p className="text-sm font-black uppercase tracking-widest">Diese Sammlung ist leer</p>
-                <button 
+              <div className="col-span-full flex flex-col items-center justify-center py-24 text-center space-y-6">
+                <div className="w-24 h-24 bg-indigo-50 dark:bg-indigo-950/30 rounded-full flex items-center justify-center">
+                  <EmojiImage emoji="📭" size={48} />
+                </div>
+                <div className="space-y-2">
+                  <p className="text-base font-black uppercase tracking-widest text-slate-700 dark:text-slate-200">Noch nichts hier</p>
+                  <p className="text-sm text-slate-400 max-w-xs mx-auto">Lade ein Dokument hoch — es steht dann in allen Lernmodulen zur Verfügung.</p>
+                </div>
+                <button
                   onClick={() => fileInputRef.current?.click()}
-                  className="text-xs font-black uppercase text-indigo-600 hover:underline"
+                  className="px-8 py-3 bg-indigo-600 text-white rounded-2xl font-black uppercase text-[10px] tracking-widest shadow-lg hover:scale-105 transition-all"
                 >
-                  Erstes Dokument hinzufügen
+                  + Erstes Dokument hochladen
                 </button>
               </div>
             ) : (
@@ -268,19 +273,31 @@ export const LibrarySystem: React.FC<LibrarySystemProps> = ({
                     <p className="text-[9px] font-black uppercase text-slate-400 tracking-widest">Material • {new Date(doc.uploadDate).toLocaleDateString()}</p>
                   </div>
 
-                  <div className="mt-8 pt-6 border-t border-slate-50 dark:border-slate-800 grid grid-cols-3 gap-2 shrink-0">
-                    <button 
-                      onClick={() => onAction(ActiveTab.QUIZ, doc)}
-                      className="bg-indigo-600 text-white py-3 rounded-2xl text-[9px] font-black uppercase hover:scale-105 active:scale-95 transition-all shadow-md"
-                    >Quiz</button>
-                    <button 
-                      onClick={() => onAction(ActiveTab.CARDS, doc)}
-                      className="bg-white dark:bg-slate-800 border-2 border-indigo-600 text-indigo-600 dark:text-indigo-400 py-3 rounded-2xl text-[9px] font-black uppercase hover:scale-105 active:scale-95 transition-all"
-                    >Karten</button>
-                    <button 
-                      onClick={() => onAction(ActiveTab.EXPLAINER, doc)}
-                      className="bg-slate-50 dark:bg-slate-800 text-slate-400 py-3 rounded-2xl text-[9px] font-black uppercase hover:text-indigo-600 transition-all"
-                    >Erklärung</button>
+                  <div className="mt-8 pt-6 border-t border-slate-50 dark:border-slate-800 space-y-2 shrink-0">
+                    <div className="grid grid-cols-3 gap-2">
+                      <button
+                        onClick={() => onAction(ActiveTab.QUIZ, doc)}
+                        className="bg-indigo-600 text-white py-3 rounded-2xl text-[9px] font-black uppercase hover:scale-105 active:scale-95 transition-all shadow-md"
+                      >Quiz</button>
+                      <button
+                        onClick={() => onAction(ActiveTab.CARDS, doc)}
+                        className="bg-white dark:bg-slate-800 border-2 border-indigo-600 text-indigo-600 dark:text-indigo-400 py-3 rounded-2xl text-[9px] font-black uppercase hover:scale-105 active:scale-95 transition-all"
+                      >Karten</button>
+                      <button
+                        onClick={() => onAction(ActiveTab.EXPLAINER, doc)}
+                        className="bg-slate-50 dark:bg-slate-800 text-slate-400 py-3 rounded-2xl text-[9px] font-black uppercase hover:text-indigo-600 transition-all"
+                      >Erklärer</button>
+                    </div>
+                    <div className="grid grid-cols-2 gap-2">
+                      <button
+                        onClick={() => onAction(ActiveTab.RECALL, doc)}
+                        className="bg-slate-50 dark:bg-slate-800 text-slate-400 py-3 rounded-2xl text-[9px] font-black uppercase hover:text-indigo-600 transition-all"
+                      >Recall</button>
+                      <button
+                        onClick={() => onAction(ActiveTab.EXAM, doc)}
+                        className="bg-slate-50 dark:bg-slate-800 text-slate-400 py-3 rounded-2xl text-[9px] font-black uppercase hover:text-rose-600 transition-all"
+                      >Klausur</button>
+                    </div>
                   </div>
                 </div>
               ))

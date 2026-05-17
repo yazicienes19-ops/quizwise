@@ -4,11 +4,12 @@ import { ActiveTab } from '../types';
 import {
   Home, BookOpen, HelpCircle, Calendar, Brain, GraduationCap,
   Layers, Lightbulb, BarChart2, Search, FileText, Moon, Sun,
-  X, Menu, Network, KeyRound, LogIn, LogOut, Zap, Settings, type LucideIcon
+  X, Menu, KeyRound, LogIn, LogOut, Zap, Settings, type LucideIcon
 } from 'lucide-react';
 import type { User } from '@supabase/supabase-js';
 import { ColorPicker } from './ColorPicker';
 import { ApiKeySettings } from './ApiKeySettings';
+import { LegalModal } from './LegalModal';
 import { hasApiKey } from '../services/geminiService';
 
 interface LayoutProps {
@@ -32,6 +33,7 @@ export const Layout: React.FC<LayoutProps> = ({ children, activeTab, onTabChange
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
   const [showApiSettings, setShowApiSettings] = useState(false);
   const [apiKeySet, setApiKeySet] = useState(hasApiKey);
+  const [legalPage, setLegalPage] = useState<'impressum' | 'datenschutz' | 'agb' | null>(null);
 
   useEffect(() => {
     const check = () => setApiKeySet(hasApiKey());
@@ -68,7 +70,6 @@ export const Layout: React.FC<LayoutProps> = ({ children, activeTab, onTabChange
     { id: ActiveTab.RADAR, label: 'Lern-Analyse', icon: BarChart2 },
     { id: ActiveTab.SEARCH, label: 'Recherche', icon: Search },
     { id: ActiveTab.PAPER, label: 'Hausarbeit', icon: FileText },
-    { id: ActiveTab.MINDMAP, label: 'Mind Maps', icon: Network },
   ];
 
   const handleMobileTabChange = (tab: ActiveTab) => {
@@ -141,7 +142,7 @@ export const Layout: React.FC<LayoutProps> = ({ children, activeTab, onTabChange
             )}
           </div>
 
-          <div className="mt-4 pt-6" style={{ borderTop: '1px solid var(--border-color)' }}>
+          <div className="mt-4 pt-6 space-y-2" style={{ borderTop: '1px solid var(--border-color)' }}>
             <button
               onClick={onSettingsClick}
               className="w-full flex items-center justify-between px-4 py-3 rounded-xl text-[10px] font-black uppercase text-slate-500 dark:text-slate-400 hover:text-indigo-600 dark:hover:text-indigo-400 transition-all active:scale-95 group"
@@ -152,6 +153,17 @@ export const Layout: React.FC<LayoutProps> = ({ children, activeTab, onTabChange
                 Einstellungen
               </span>
             </button>
+            <div className="flex justify-center gap-3 pt-2">
+              {(['impressum', 'datenschutz', 'agb'] as const).map(p => (
+                <button
+                  key={p}
+                  onClick={() => setLegalPage(p)}
+                  className="text-[8px] font-bold uppercase tracking-widest text-slate-400 hover:text-slate-600 dark:hover:text-slate-300 transition-colors"
+                >
+                  {p === 'impressum' ? 'Impressum' : p === 'datenschutz' ? 'Datenschutz' : 'AGB'}
+                </button>
+              ))}
+            </div>
           </div>
         </div>
       </aside>
@@ -246,6 +258,9 @@ export const Layout: React.FC<LayoutProps> = ({ children, activeTab, onTabChange
 
       {showApiSettings && (
         <ApiKeySettings onClose={() => { setShowApiSettings(false); setApiKeySet(hasApiKey()); }} />
+      )}
+      {legalPage && (
+        <LegalModal page={legalPage} onClose={() => setLegalPage(null)} />
       )}
     </div>
   );
