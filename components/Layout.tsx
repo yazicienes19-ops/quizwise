@@ -98,7 +98,19 @@ export const Layout: React.FC<LayoutProps> = ({
   const legalLabels = { impressum: 'Impressum', datenschutz: 'Datenschutz', agb: 'AGB' } as const;
 
   return (
-    <div className="min-h-screen flex transition-colors duration-300 overflow-hidden bg-transparent">
+    <div className="min-h-screen flex transition-colors duration-300 overflow-hidden bg-transparent" style={{ position: 'relative' }}>
+
+      {/* ── Rote Randlinie (Notizbuch-Margin) — nur Desktop ── */}
+      <div className="hidden lg:block" style={{
+        position: 'fixed', top: 0, bottom: 0, left: 289,
+        width: 1.5, background: 'rgba(178,52,52,0.5)',
+        pointerEvents: 'none', zIndex: 30,
+      }} />
+      <div className="hidden lg:block" style={{
+        position: 'fixed', top: 0, bottom: 0, left: 292,
+        width: 0.5, background: 'rgba(178,52,52,0.25)',
+        pointerEvents: 'none', zIndex: 30,
+      }} />
 
       {/* ── Desktop Sidebar ── */}
       <aside className="hidden lg:flex flex-col h-screen sticky top-0 z-20" style={{
