@@ -4,7 +4,7 @@ import { ActiveTab } from '../types';
 import {
   Home, BookOpen, HelpCircle, Calendar, Brain, GraduationCap,
   Layers, Lightbulb, BarChart2, Search, FileText, Moon, Sun,
-  X, Menu, KeyRound, LogIn, LogOut, Zap, Settings, type LucideIcon
+  X, Menu, KeyRound, LogIn, LogOut, Zap, Settings, Bell, type LucideIcon
 } from 'lucide-react';
 import type { User } from '@supabase/supabase-js';
 import { ColorPicker } from './ColorPicker';
@@ -333,8 +333,44 @@ export const Layout: React.FC<LayoutProps> = ({
       )}
 
       {/* ── Main content ── */}
-      <main className="flex-grow overflow-y-auto w-full relative p-4 sm:p-8 lg:p-16 pb-32 lg:pb-16 pt-[max(1rem,env(safe-area-inset-top))]">
-        <div className="max-w-6xl mx-auto relative z-10">{children}</div>
+      <main className="flex-grow flex flex-col overflow-hidden w-full">
+        {/* Top bar — desktop only */}
+        <header className="hidden lg:flex items-center gap-5 flex-shrink-0" style={{
+          padding: '20px 48px', borderBottom: '1px solid var(--border-color)',
+        }}>
+          <div style={{ flex: 1, position: 'relative' }}>
+            <Search style={{ position: 'absolute', left: 12, top: 9, width: 15, height: 15, color: 'var(--mute)' }} strokeWidth={1.5} />
+            <input
+              placeholder="In Skripten, Karten und Notizen suchen…"
+              style={{
+                width: '100%', padding: '8px 48px 8px 36px',
+                border: '1px solid var(--border-color)',
+                background: 'rgba(255,250,240,0.5)', borderRadius: 4,
+                fontFamily: 'var(--font-sans)', fontSize: 13,
+                color: 'var(--ink)', outline: 'none',
+              }}
+            />
+            <span style={{
+              position: 'absolute', right: 10, top: 7, padding: '2px 6px', borderRadius: 3,
+              border: '1px solid var(--border-color)', fontFamily: 'var(--font-mono)',
+              fontSize: 11, color: 'var(--mute)', whiteSpace: 'nowrap',
+            }}>⌘ K</span>
+          </div>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 14, color: 'var(--ink2)', flexShrink: 0 }}>
+            <Bell style={{ width: 17, height: 17 }} strokeWidth={1.4} />
+            <span style={{
+              fontFamily: 'var(--font-serif)', fontStyle: 'italic', fontSize: 15,
+              color: 'var(--ink2)', whiteSpace: 'nowrap',
+            }}>
+              {new Date().toLocaleDateString('de-DE', { weekday: 'long', day: 'numeric', month: 'long' }).replace(/(\w+),\s(\d+)\.\s(\w+)/, '$1, $2. $3')}
+            </span>
+          </div>
+        </header>
+
+        {/* Scrollable content */}
+        <div className="flex-1 overflow-y-auto p-4 sm:p-8 pb-32 lg:pb-12 pt-[max(1rem,env(safe-area-inset-top))] lg:pt-0">
+          <div className="lg:px-12 lg:py-9">{children}</div>
+        </div>
       </main>
 
       {showApiSettings && (

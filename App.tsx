@@ -336,7 +336,7 @@ const App: React.FC = () => {
 
     switch (activeTab) {
       case ActiveTab.DASHBOARD:
-        return <Dashboard onTabChange={setActiveTab} flowResult={flowResult} onAcceptFlow={saveFlowResult} />;
+        return <Dashboard onTabChange={setActiveTab} flowResult={flowResult} onAcceptFlow={saveFlowResult} user={user} documents={documents} />;
       case ActiveTab.LIBRARY:
         return <LibrarySystem documents={documents} collections={collections} onUpload={handleFileUpload} onDelete={deleteDoc} onAction={(tab, doc) => tab === ActiveTab.QUIZ ? handleStartQuizFromDoc(doc) : setActiveTab(tab)} onAddCollection={addCollection} onDeleteCollection={removeCollection} onMoveDocument={moveDoc} isLoading={isLoading} />;
       case ActiveTab.QUIZ:
