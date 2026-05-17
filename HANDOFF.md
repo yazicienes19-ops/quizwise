@@ -1,5 +1,5 @@
 # QuizWise — Session Handoff
-**Stand: 16. Mai 2026**
+**Stand: 17. Mai 2026**
 
 ---
 
@@ -26,41 +26,36 @@ QuizWise ist eine KI-gestützte Lern-App für Studenten. Ziel: Veröffentlichung
 
 ```
 /Users/enesyazici/Desktop/
-├── quizwise/                  ← Frontend (React App)
-│   ├── App.tsx                ← Haupt-App, Routing, Auth-State
-│   ├── types.ts               ← TypeScript-Typen + ActiveTab Enum
-│   ├── index.html             ← Tailwind Config, CSS-Variablen, Dark Mode
-│   ├── .env                   ← VITE_BACKEND_URL, VITE_SUPABASE_*
-│   ├── components/
-│   │   ├── Layout.tsx         ← Sidebar, Navigation, User-Bereich
-│   │   ├── SettingsModal.tsx  ← Einstellungen (5 Tabs)
-│   │   ├── AuthModal.tsx      ← Login / Registrierung
-│   │   ├── UpgradeModal.tsx   ← Stripe Checkout CTA
-│   │   ├── ColorPicker.tsx    ← Akzentfarbe (applyAccentColor exportiert)
-│   │   ├── ApiKeySettings.tsx ← API Key Modal (Legacy, in Settings integriert)
-│   │   ├── Dashboard.tsx      ← Startseite mit Flow-Cards
-│   │   ├── Toast.tsx          ← Toast-Benachrichtigungen
-│   │   └── ... (alle anderen Feature-Komponenten)
-│   └── services/
-│       ├── geminiService.ts   ← Alle KI-Funktionen → rufen Backend auf
-│       ├── supabaseClient.ts  ← Supabase-Client (anon key)
-│       ├── stripeService.ts   ← startCheckout() Funktion
-│       ├── userService.ts     ← changePassword, deleteAccount, exportData, getInvoices, cancelSubscription
-│       └── toast.ts           ← Globales Toast-System
-│
-└── quizwise-backend/          ← Backend (Node.js Server)
-    ├── src/
-    │   ├── index.js           ← Express Server, CORS, Routen
-    │   ├── routes/
-    │   │   ├── gemini.js      ← POST /api/gemini/generate (Proxy zu Gemini)
-    │   │   ├── user.js        ← GET /profile, GET /export, DELETE /account
-    │   │   └── stripe.js      ← Checkout, Invoices, Cancel, Webhook
-    │   └── middleware/
-    │       ├── auth.js        ← requireAuth (Supabase Token prüfen)
-    │       └── limits.js      ← checkUsageLimit (Free: 20/Tag, Pro: ∞)
-    ├── .env                   ← Alle geheimen Keys (NIEMALS ins Git!)
-    ├── .gitignore             ← node_modules + .env ignoriert
-    └── supabase_schema.sql    ← Datenbank-Schema (bereits ausgeführt)
+└── quizwise/                  ← Frontend + Backend (zusammen im selben Repo)
+    ├── App.tsx
+    ├── types.ts
+    ├── index.html
+    ├── .env                   ← VITE_BACKEND_URL, VITE_SUPABASE_*  (nicht im Git!)
+    ├── .gitignore             ← .env ist ausgeschlossen ✅
+    ├── components/
+    │   ├── Dashboard.tsx      ← Adaptives Raster (nach Nutzung sortiert)
+    │   ├── Layout.tsx
+    │   ├── SettingsModal.tsx
+    │   ├── AuthModal.tsx
+    │   ├── UpgradeModal.tsx
+    │   └── ... (alle anderen Feature-Komponenten)
+    ├── services/
+    │   ├── geminiService.ts   ← Alle KI-Funktionen → rufen Backend auf
+    │   ├── supabaseClient.ts
+    │   ├── stripeService.ts
+    │   └── userService.ts
+    └── backend/               ← Node.js Server
+        ├── src/
+        │   ├── index.js
+        │   ├── routes/
+        │   │   ├── gemini.js
+        │   │   ├── user.js
+        │   │   └── stripe.js
+        │   └── middleware/
+        │       ├── auth.js
+        │       └── limits.js
+        ├── .env               ← Alle geheimen Keys (NIEMALS ins Git!)
+        └── supabase_schema.sql
 ```
 
 ---
@@ -74,18 +69,21 @@ VITE_SUPABASE_URL=https://qijxpizcceqyuvozawua.supabase.co
 VITE_SUPABASE_ANON_KEY=eyJhbGci... (anon key)
 ```
 
-### Backend `.env` (`/Desktop/quizwise-backend/.env`)
+### Backend `.env` (`/Desktop/quizwise/backend/.env`)
 ```
-GEMINI_API_KEY=         ← Noch einzutragen (aistudio.google.com)
+GEMINI_API_KEY=AIzaSyBdEEFfH1pOaMsY0sHbZ_cGrZxtif0ZIgc   ← Hat Quota 0! Neuen Key nötig
 PORT=4000
 FRONTEND_URL=http://localhost:3001
 SUPABASE_URL=https://qijxpizcceqyuvozawua.supabase.co
-SUPABASE_ANON_KEY=eyJhbGci... (anon key)
+SUPABASE_ANON_KEY=eyJhbGci...
 SUPABASE_SERVICE_KEY=eyJhbGci... (service role key — geheim!)
-STRIPE_SECRET_KEY=sk_test_51TXTТ... (Test-Key)
-STRIPE_WEBHOOK_SECRET=whsec_... ← Noch nicht gesetzt (kommt beim Deployen)
+STRIPE_SECRET_KEY=sk_test_51TXTT...
+STRIPE_WEBHOOK_SECRET=whsec_fcaf24d6f100939b97210e24f6456dc0d2b6f4afe19814731d77d6b3ffc11ecc  ← Lokal gültig
 STRIPE_PRO_PRICE_ID=price_1TXTYl3PCOgu8W2oftRimgHe
 ```
+
+> ⚠️ Der Stripe Webhook Secret `whsec_...` ist nur für lokale Tests gültig (Stripe CLI).
+> Nach dem Railway-Deployment muss ein neuer Webhook in stripe.com/dashboard eingerichtet und der neue Secret eingetragen werden.
 
 ### Supabase
 - **Projekt-URL:** https://qijxpizcceqyuvozawua.supabase.co
@@ -97,20 +95,9 @@ STRIPE_PRO_PRICE_ID=price_1TXTYl3PCOgu8W2oftRimgHe
 - **Modus:** Test-Modus (sk_test_...)
 - **Testkarte:** 4242 4242 4242 4242 (beliebiges Datum + CVC)
 
----
-
-## Supabase Datenbank-Tabellen
-
-Alle bereits erstellt und mit Row Level Security (RLS) gesichert:
-
-| Tabelle | Inhalt |
-|---|---|
-| `profiles` | User-Profil, Plan (free/pro), API-Nutzungszähler |
-| `metrics` | Lernfortschritt pro Thema |
-| `flashcard_decks` | Karteikarten-Decks mit Karten als JSON |
-| `study_plan` | Studienplan-Einträge + Prüfungstermine |
-
-**Trigger:** `on_auth_user_created` → erstellt automatisch ein Profil bei Registrierung.
+### GitHub
+- **Repo:** https://github.com/yazicienes19-ops/quizwise
+- **Branch:** main (aktuell, Stand 17.05.2026)
 
 ---
 
@@ -120,12 +107,15 @@ Alle bereits erstellt und mit Row Level Security (RLS) gesichert:
 # Terminal 1 — Frontend
 cd /Users/enesyazici/Desktop/quizwise
 npm run dev -- --port 3001
-# → http://localhost:3001
+# → http://localhost:3001 (oder 3002 falls 3001 belegt)
 
 # Terminal 2 — Backend
-cd /Users/enesyazici/Desktop/quizwise-backend
+cd /Users/enesyazici/Desktop/quizwise/backend
 node src/index.js
 # → http://localhost:4000
+
+# Terminal 3 — Stripe Webhook (nur für lokale Stripe-Tests)
+stripe listen --forward-to localhost:4000/api/stripe/webhook
 
 # Health-Check
 curl http://localhost:4000/health
@@ -134,109 +124,66 @@ curl http://localhost:4000/health
 
 ---
 
-## Architektur: Request-Fluss
+## Was diese Session erledigt wurde (17. Mai 2026)
 
-```
-Browser (React App)
-  │
-  ├─ Supabase Auth → Login/Registrierung
-  │   └─ Token wird in jeder API-Anfrage mitgeschickt
-  │
-  └─ fetch() → http://localhost:4000
-       │
-       ├─ requireAuth    → Token prüfen (Supabase)
-       ├─ checkUsageLimit → Zähler in DB (Free: 20/Tag)
-       └─ gemini.js      → Gemini API (Key sicher auf Server)
-```
+| Aufgabe | Status |
+|---|---|
+| Gemini API Key eingetragen | ✅ (Key hat aber Quota 0 — siehe unten) |
+| Adaptives Dashboard implementiert | ✅ |
+| Stripe Webhook lokal getestet | ✅ |
+| .gitignore für .env gesichert | ✅ |
+| Alles auf GitHub gepusht | ✅ |
 
 ---
 
-## Freemium-Modell
+## Adaptives Dashboard — wie es funktioniert
 
-| Plan | Preis | Limit |
-|---|---|---|
-| Free | kostenlos | 20 KI-Anfragen/Tag |
-| Pro | 4,99€/Monat | Unlimitiert |
-
-Limit-Logik: `src/middleware/limits.js` — Zähler in `profiles.api_calls_today`, Reset täglich.
-
-Plan auf Pro setzen (manuell für Tests):
-```sql
--- In Supabase SQL Editor ausführen:
-UPDATE public.profiles SET plan = 'pro'
-WHERE id = (SELECT id FROM auth.users WHERE email = 'deine@email.de');
-```
-
----
-
-## Features im Frontend
-
-| Feature | Status | Komponente |
-|---|---|---|
-| Quiz-Generator | ✅ | QuizPlayer, FileUploader |
-| Karteikarten (SRS) | ✅ | FlashcardSystem |
-| Klausur-Simulator | ✅ | ExamSystem |
-| Active Recall | ✅ | ActiveRecall |
-| Lernplan (KI) | ✅ | StudyPlanner |
-| Mind Maps | ✅ | MindMapSystem |
-| Gap-Radar | ✅ | GapRadar |
-| KI-Erklärer | ✅ | ExplainerSystem |
-| Hausarbeit-Assistent | ✅ | TermPaperSystem |
-| Scholar-Suche | ✅ | ScholarSearch |
-| Bibliothek | ✅ | LibrarySystem |
-| Dashboard + Flow | ✅ | Dashboard |
-| Login / Registrierung | ✅ | AuthModal |
-| Einstellungen (5 Tabs) | ✅ | SettingsModal |
-| Upgrade zu Pro | ✅ | UpgradeModal |
-
----
-
-## Design-System
-
-- **Theme:** Hell (weiß) / Dunkel (Mitternachtsblau #0B1525)
-- **Akzentfarbe:** CSS Variable `--primary` (Standard: Claude Coral #D97757)
-- **Farbwechsel:** `applyAccentColor()` in ColorPicker.tsx
-- **Schriften:** System-Font, sehr fett (font-black), UPPERCASE
-- **Icons:** Ausschließlich Lucide React (keine Emojis, keine KI-Bilder)
+`components/Dashboard.tsx` — Die 6 Kacheln sortieren sich automatisch nach Nutzungshäufigkeit:
+- Klicks werden in `localStorage` unter dem Key `quizwise_feature_usage` gespeichert
+- Beim nächsten Dashboard-Besuch: meist genutzte Funktion landet oben links
+- Kein Backend nötig, funktioniert sofort
 
 ---
 
 ## Was noch fehlt (nächste Session)
 
-### Priorität 1 — Technisch (1-2 Sessions)
-- [ ] **Stripe Webhook lokal testen** mit Stripe CLI (`stripe listen --forward-to localhost:4000/api/stripe/webhook`)
-- [ ] **Frontend deployen** auf Vercel (kostenlos, ein Klick)
-- [ ] **Backend deployen** auf Railway (~5€/Monat)
-- [ ] **Stripe Webhook Secret** nach Deployment eintragen
-- [ ] **GEMINI_API_KEY** in Backend `.env` eintragen (fehlt noch!)
-- [ ] **Supabase E-Mail SMTP** konfigurieren (Bestätigungs-E-Mails)
+### Priorität 1 — Gemini API Key reparieren (BLOCKIERT alles)
+- [ ] **Google Cloud Billing aktivieren:** console.cloud.google.com → Abrechnung → Kreditkarte hinterlegen
+- [ ] **Danach neuen Key** in aistudio.google.com erstellen → in `backend/.env` eintragen
+- [ ] **Problem:** Alle bisherigen Keys (3 Stück, 2 Accounts) haben `limit: 0` wegen fehlendem Billing
+- [ ] Ohne funktionierenden Key kann kein Feature der App getestet werden
 
-### Priorität 2 — Rechtlich (vor Launch Pflicht!)
+### Priorität 2 — Deployment (nächster großer Schritt)
+- [ ] **Frontend auf Vercel deployen** (GitHub Repo ist bereit, ein Klick)
+  - Umgebungsvariablen in Vercel eintragen: `VITE_BACKEND_URL`, `VITE_SUPABASE_URL`, `VITE_SUPABASE_ANON_KEY`
+  - `VITE_BACKEND_URL` vorerst auf `http://localhost:4000` — später Railway-URL eintragen
+- [ ] **Backend auf Railway deployen** (~5€/Monat)
+  - Alle Backend `.env` Variablen in Railway eintragen
+  - Nach Deployment: `VITE_BACKEND_URL` in Vercel auf die Railway-URL aktualisieren
+- [ ] **Neuen Stripe Webhook** für Produktions-URL einrichten (stripe.com/dashboard → Webhooks)
+  - Neuen `STRIPE_WEBHOOK_SECRET` in Railway eintragen
+
+### Priorität 3 — Rechtlich (vor Launch Pflicht!)
 - [ ] **Impressum** (Name, Adresse, E-Mail — Pflicht in DE)
-- [ ] **Datenschutzerklärung** (DSGVO — e-recht24.de empfohlen, ~100€)
+- [ ] **Datenschutzerklärung** (DSGVO — e-recht24.de empfohlen)
 - [ ] **AGB** (für Abo-Modell mit Stripe erforderlich)
-- [ ] **Cookie-Banner** (falls Tracking eingebaut wird)
 
-### Priorität 3 — Nice to have
+### Priorität 4 — Nice to have
 - [ ] Google / Apple Login (Supabase OAuth)
-- [ ] Profilbild hochladen
-- [ ] Push-Benachrichtigungen für Lernplan
-- [ ] Mobile App (React Native / Capacitor)
+- [ ] Supabase E-Mail SMTP konfigurieren (Bestätigungs-E-Mails)
 - [ ] Dashboard MindMap-Kachel fehlt noch
 
 ---
 
 ## Nächster konkreter Schritt
 
-**Stripe Webhook testen:**
-```bash
-# Stripe CLI installieren: stripe.com/docs/stripe-cli
-stripe login
-stripe listen --forward-to localhost:4000/api/stripe/webhook
-# → gibt STRIPE_WEBHOOK_SECRET aus → in .env eintragen
-```
+**Gemini API Key reparieren:**
+1. console.cloud.google.com → Billing → Kreditkarte hinterlegen
+2. aistudio.google.com → neuen Key erstellen
+3. Key in `backend/.env` eintragen, Backend neu starten
+4. Testen: `curl` direkt gegen Gemini API
 
-Danach: **Vercel + Railway Deployment.**
+**Danach sofort: Vercel Deployment** (GitHub Repo ist push-bereit).
 
 ---
 
@@ -247,7 +194,7 @@ Danach: **Vercel + Railway Deployment.**
 | Vercel (Frontend) | Kostenlos |
 | Railway (Backend) | ~5€/Monat |
 | Supabase | Kostenlos bis 50k User |
-| Gemini API | Kostenlos bis 1.500 req/Tag, dann ~$0,075/1M Token |
+| Gemini API | Kostenlos bis 1.500 req/Tag |
 | Stripe | 2,9% + 0,25€ pro Transaktion |
 | Domain | ~10-15€/Jahr |
 
