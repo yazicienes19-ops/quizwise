@@ -23,7 +23,7 @@ router.post('/generate', async (req, res, next) => {
     if (systemInstruction)        generationConfig.systemInstruction = systemInstruction;
 
     const request = {
-      model: model || 'gemini-1.5-flash',
+      model: 'gemini-1.5-flash',
       contents: [{ role: 'user', parts }],
       config: generationConfig,
     };
