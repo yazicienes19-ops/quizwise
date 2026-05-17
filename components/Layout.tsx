@@ -161,39 +161,47 @@ export const Layout: React.FC<LayoutProps> = ({
           ))}
         </nav>
 
-        {/* User section */}
-        <div style={{ padding: '16px 22px', borderTop: '1px solid var(--border-color)' }}>
+        {/* User + Settings section */}
+        <div style={{ padding: '12px 14px', borderTop: '1px solid var(--border-color)' }}>
+
+          {/* Einstellungen-Button — immer sichtbar */}
+          <button onClick={onSettingsClick} style={{
+            width: '100%', display: 'flex', alignItems: 'center', gap: 12,
+            padding: '8px 10px', borderRadius: 6, fontSize: 14, cursor: 'pointer',
+            fontFamily: 'var(--font-sans)', background: 'transparent',
+            color: 'var(--ink2)', border: 'none', marginBottom: 8,
+            transition: 'background 0.12s',
+          }}
+          onMouseEnter={e => (e.currentTarget.style.background = 'color-mix(in srgb, var(--ink) 8%, transparent)')}
+          onMouseLeave={e => (e.currentTarget.style.background = 'transparent')}
+          >
+            <Settings style={{ width: 16, height: 16, color: 'var(--mute)', flexShrink: 0 }} strokeWidth={1.5} />
+            <span style={{ flex: 1, textAlign: 'left' }}>Einstellungen</span>
+          </button>
+
           {user ? (
             <>
-              <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+              {/* Avatar + Name + Aktionen */}
+              <div style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '8px 10px' }}>
                 <div style={{
                   width: 30, height: 30, borderRadius: '50%', flexShrink: 0,
                   background: 'var(--primary)', color: '#fff',
                   display: 'flex', alignItems: 'center', justifyContent: 'center',
-                  fontFamily: 'var(--font-serif)', fontSize: 14, fontWeight: 500,
+                  fontFamily: "'EB Garamond', serif", fontSize: 14, fontWeight: 500,
                 }}>
                   {(user.user_metadata?.full_name || user.email || 'U')[0].toUpperCase()}
                 </div>
                 <div style={{ flex: 1, minWidth: 0 }}>
-                  <div style={{
-                    fontFamily: 'var(--font-sans)', fontSize: 13, fontWeight: 500,
-                    color: 'var(--ink)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap',
-                  }}>
+                  <div style={{ fontFamily: 'var(--font-sans)', fontSize: 13, fontWeight: 500, color: 'var(--ink)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
                     {user.user_metadata?.full_name || 'Nutzer'}
                   </div>
                   <div style={{ fontSize: 11, color: 'var(--mute)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
                     {user.email}
                   </div>
                 </div>
-                <button onClick={onSettingsClick} style={{
-                  color: 'var(--mute)', cursor: 'pointer', flexShrink: 0,
-                  background: 'none', border: 'none', padding: 0, display: 'flex',
-                }}>
-                  <Settings style={{ width: 15, height: 15 }} strokeWidth={1.5} />
-                </button>
               </div>
 
-              <div style={{ display: 'flex', gap: 6, marginTop: 10 }}>
+              <div style={{ display: 'flex', gap: 6, marginTop: 6, padding: '0 4px' }}>
                 <button onClick={onUpgradeClick} style={{
                   flex: 1, padding: '6px 8px', borderRadius: 6, fontSize: 12, fontWeight: 500,
                   fontFamily: 'var(--font-sans)', cursor: 'pointer',
@@ -209,9 +217,7 @@ export const Layout: React.FC<LayoutProps> = ({
                   background: 'transparent', color: 'var(--mute)',
                   border: '1px solid var(--border-color)', display: 'flex',
                 }}>
-                  {isDark
-                    ? <Sun style={{ width: 14, height: 14 }} strokeWidth={1.5} />
-                    : <Moon style={{ width: 14, height: 14 }} strokeWidth={1.5} />}
+                  {isDark ? <Sun style={{ width: 14, height: 14 }} strokeWidth={1.5} /> : <Moon style={{ width: 14, height: 14 }} strokeWidth={1.5} />}
                 </button>
                 <button onClick={onLogout} title="Abmelden" style={{
                   padding: '6px 9px', borderRadius: 6, cursor: 'pointer',
@@ -245,7 +251,7 @@ export const Layout: React.FC<LayoutProps> = ({
                 <LogIn style={{ width: 15, height: 15 }} strokeWidth={1.75} />
                 Einloggen / Registrieren
               </button>
-              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginTop: 10 }}>
+              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginTop: 10, padding: '0 4px' }}>
                 <button onClick={toggleTheme} style={{
                   padding: '5px 9px', borderRadius: 6, cursor: 'pointer',
                   background: 'transparent', color: 'var(--mute)',
@@ -320,18 +326,21 @@ export const Layout: React.FC<LayoutProps> = ({
             </div>
 
             <div className="mt-3 flex gap-2">
+              <button onClick={() => { setIsMobileMenuOpen(false); onSettingsClick?.(); }}
+                className="flex-1 flex items-center justify-center gap-2 p-3.5 transition-all active:scale-95"
+                style={{ borderRadius: 8, cursor: 'pointer', fontFamily: 'var(--font-sans)', border: '1px solid var(--border-color)', background: 'var(--card)', color: 'var(--ink2)' }}>
+                <Settings className="w-4 h-4" strokeWidth={1.5} />
+                <span style={{ fontSize: 12 }}>Einstellungen</span>
+              </button>
               <button onClick={() => { setIsMobileMenuOpen(false); setShowApiSettings(true); }}
-                className="flex-1 flex items-center justify-between p-3.5 transition-all active:scale-95"
+                className="flex items-center justify-center gap-2 p-3.5 transition-all active:scale-95"
                 style={{
-                  borderRadius: 8, cursor: 'pointer', fontFamily: 'var(--font-sans)',
+                  borderRadius: 8, cursor: 'pointer',
                   border: apiKeySet ? '1px solid var(--border-color)' : '1px solid #f59e0b',
                   background: apiKeySet ? 'var(--card)' : 'rgba(245,158,11,0.08)',
                   color: apiKeySet ? 'var(--ink2)' : '#f59e0b',
                 }}>
-                <span className="text-xs flex items-center gap-2">
-                  <KeyRound className="w-4 h-4" strokeWidth={1.5} />
-                  {apiKeySet ? 'API-Schlüssel' : 'API-Key fehlt!'}
-                </span>
+                <KeyRound className="w-4 h-4" strokeWidth={1.5} />
                 <span className={`w-2 h-2 rounded-full ${apiKeySet ? 'bg-emerald-500' : 'bg-amber-400 animate-pulse'}`} />
               </button>
               <button onClick={toggleTheme}
@@ -340,7 +349,6 @@ export const Layout: React.FC<LayoutProps> = ({
                 {isDark ? <Sun className="w-5 h-5" strokeWidth={1.5} /> : <Moon className="w-5 h-5" strokeWidth={1.5} />}
               </button>
             </div>
-            <ColorPicker />
           </div>
         </div>
       )}
