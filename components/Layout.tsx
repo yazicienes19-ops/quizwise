@@ -122,8 +122,9 @@ export const Layout: React.FC<LayoutProps> = ({
         {/* Wordmark */}
         <div style={{ padding: '0 22px 24px' }}>
           <div style={{
-            fontFamily: 'var(--font-serif)', fontSize: 26, fontWeight: 500,
-            letterSpacing: '-0.02em', color: 'var(--ink)', lineHeight: 1.1,
+            fontFamily: "'EB Garamond', 'Times New Roman', serif",
+            fontSize: 26, fontWeight: 400, fontStyle: 'italic',
+            letterSpacing: '-0.01em', color: 'var(--ink)', lineHeight: 1.1,
           }}>
             QuizWise
           </div>
