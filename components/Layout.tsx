@@ -57,20 +57,20 @@ export const Layout: React.FC<LayoutProps> = ({
   const toggleTheme = () => setIsDark(d => !d);
 
   const studioItems: { id: ActiveTab; label: string; icon: LucideIcon }[] = [
-    { id: ActiveTab.DASHBOARD, label: 'Dashboard',  icon: Home },
-    { id: ActiveTab.LIBRARY,   label: 'Bibliothek', icon: BookOpen },
-    { id: ActiveTab.QUIZ,      label: 'Quiz',        icon: HelpCircle },
-    { id: ActiveTab.PLANNER,   label: 'Lernplaner',  icon: Calendar },
+    { id: ActiveTab.DASHBOARD, label: 'Home',          icon: Home },
+    { id: ActiveTab.LIBRARY,   label: 'Bibliothek',    icon: BookOpen },
+    { id: ActiveTab.QUIZ,      label: 'Quiz Center',   icon: HelpCircle },
+    { id: ActiveTab.PLANNER,   label: 'StudyFlow',     icon: Calendar },
+    { id: ActiveTab.RECALL,    label: 'Recall Studio', icon: Brain },
   ];
 
   const toolItems: { id: ActiveTab; label: string; icon: LucideIcon }[] = [
-    { id: ActiveTab.RECALL,    label: 'Recall Studio',  icon: Brain },
-    { id: ActiveTab.EXAM,      label: 'Klausur-Modus',  icon: GraduationCap },
-    { id: ActiveTab.CARDS,     label: 'Karteikarten',   icon: Layers },
-    { id: ActiveTab.EXPLAINER, label: 'KI-Erklärer',    icon: Lightbulb },
-    { id: ActiveTab.RADAR,     label: 'Lern-Analyse',   icon: BarChart2 },
-    { id: ActiveTab.SEARCH,    label: 'Recherche',      icon: Search },
-    { id: ActiveTab.PAPER,     label: 'Hausarbeit',     icon: FileText },
+    { id: ActiveTab.EXAM,      label: 'Klausur-Modus', icon: GraduationCap },
+    { id: ActiveTab.CARDS,     label: 'Karteikarten',  icon: Layers },
+    { id: ActiveTab.EXPLAINER, label: 'KI-Erklärer',   icon: Lightbulb },
+    { id: ActiveTab.RADAR,     label: 'Lern-Analyse',  icon: BarChart2 },
+    { id: ActiveTab.SEARCH,    label: 'Recherche',     icon: Search },
+    { id: ActiveTab.PAPER,     label: 'Hausarbeit',    icon: FileText },
   ];
 
   const navItemStyle = (active: boolean): React.CSSProperties => ({
@@ -100,17 +100,6 @@ export const Layout: React.FC<LayoutProps> = ({
   return (
     <div className="min-h-screen flex transition-colors duration-300 overflow-hidden bg-transparent" style={{ position: 'relative' }}>
 
-      {/* ── Rote Randlinie (Notizbuch-Margin) — nur Desktop ── */}
-      <div className="hidden lg:block" style={{
-        position: 'fixed', top: 0, bottom: 0, left: 289,
-        width: 1.5, background: 'rgba(178,52,52,0.5)',
-        pointerEvents: 'none', zIndex: 30,
-      }} />
-      <div className="hidden lg:block" style={{
-        position: 'fixed', top: 0, bottom: 0, left: 292,
-        width: 0.5, background: 'rgba(178,52,52,0.25)',
-        pointerEvents: 'none', zIndex: 30,
-      }} />
 
       {/* ── Desktop Sidebar ── */}
       <aside className="hidden lg:flex flex-col h-screen sticky top-0 z-20" style={{

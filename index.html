@@ -17,6 +17,34 @@
         const _ac = localStorage.getItem('accent_color');
         if (_ac) document.documentElement.style.setProperty('--primary', _ac);
 
+        // Paper pattern — applied immediately before first render to avoid flash
+        function applyPaperPattern() {
+            const pattern = localStorage.getItem('paper_pattern') || 'lined';
+            const dark = document.documentElement.classList.contains('dark');
+            const lc = dark ? 'rgba(140,170,220,0.10)' : 'rgba(74,110,168,0.18)';
+            const r = document.documentElement.style;
+            if (pattern === 'lined') {
+                r.setProperty('--paper-pattern', `repeating-linear-gradient(0deg, transparent 0, transparent 31px, ${lc} 31px, ${lc} 32px)`);
+                r.setProperty('--paper-pattern-size', '100% 32px');
+                r.setProperty('--paper-pattern-pos', '0 0');
+            } else if (pattern === 'grid') {
+                r.setProperty('--paper-pattern', `repeating-linear-gradient(0deg, transparent 0, transparent 23px, ${lc} 23px, ${lc} 24px), repeating-linear-gradient(90deg, transparent 0, transparent 23px, ${lc} 23px, ${lc} 24px)`);
+                r.setProperty('--paper-pattern-size', '100% 24px, 24px 100%');
+                r.setProperty('--paper-pattern-pos', '0 0, 0 0');
+            } else if (pattern === 'dots') {
+                const dc = dark ? 'rgba(140,170,220,0.18)' : 'rgba(74,110,168,0.22)';
+                r.setProperty('--paper-pattern', `radial-gradient(circle, ${dc} 1.2px, transparent 1.5px)`);
+                r.setProperty('--paper-pattern-size', '22px 22px');
+                r.setProperty('--paper-pattern-pos', '11px 11px');
+            } else {
+                r.setProperty('--paper-pattern', 'none');
+                r.setProperty('--paper-pattern-size', 'auto');
+                r.setProperty('--paper-pattern-pos', '0 0');
+            }
+        }
+        applyPaperPattern();
+        window.applyPaperPattern = applyPaperPattern;
+
         tailwind.config = {
             darkMode: 'class',
             theme: {
@@ -106,8 +134,9 @@
         body {
             font-family: var(--font-sans);
             background-color: var(--bg-main);
-            background-image: var(--tex);
-            background-size: 320px 320px;
+            background-image: var(--tex), var(--paper-pattern, none);
+            background-size: 320px 320px, var(--paper-pattern-size, auto);
+            background-position: 0 0, var(--paper-pattern-pos, 0 0);
             -webkit-font-smoothing: antialiased;
             color: var(--ink);
             transition: background-color 0.3s ease, color 0.3s ease;

@@ -12,14 +12,14 @@ import { changePassword, deleteAccount, exportUserData, getInvoices, cancelSubsc
 import { toast } from '../services/toast';
 
 const PRESETS = [
-  { name: 'Claude Coral', value: '#D97757' },
-  { name: 'Indigo',       value: '#6366F1' },
-  { name: 'Blau',         value: '#3B82F6' },
-  { name: 'Teal',         value: '#14B8A6' },
-  { name: 'Grün',         value: '#22C55E' },
-  { name: 'Rose',         value: '#F43F5E' },
-  { name: 'Violet',       value: '#8B5CF6' },
-  { name: 'Amber',        value: '#F59E0B' },
+  { name: 'Coral',      value: '#D97757' },
+  { name: 'Burgunder',  value: '#7A1F2B' },
+  { name: 'Ocker',      value: '#A56A1F' },
+  { name: 'Wald',       value: '#2F5742' },
+  { name: 'Marine',     value: '#1F3D7A' },
+  { name: 'Aubergine',  value: '#5A2A6B' },
+  { name: 'Rose',       value: '#F43F5E' },
+  { name: 'Graphit',    value: '#444444' },
 ];
 
 type Tab = 'profil' | 'abo' | 'design' | 'datenschutz' | 'api';
@@ -55,6 +55,7 @@ export const SettingsModal: React.FC<Props> = ({ user, isDark, onToggleTheme, on
 
   // Design
   const [accentColor, setAccentColor] = useState(() => localStorage.getItem('accent_color') || '#D97757');
+  const [paperPattern, setPaperPattern] = useState(() => localStorage.getItem('paper_pattern') || 'lined');
 
   // API
   const [apiKey, setApiKey] = useState(localStorage.getItem('gemini_api_key') || '');
@@ -125,6 +126,12 @@ export const SettingsModal: React.FC<Props> = ({ user, isDark, onToggleTheme, on
   };
 
   const handleAccentColor = (color: string) => { setAccentColor(color); applyAccentColor(color); };
+
+  const handlePaperPattern = (pattern: string) => {
+    setPaperPattern(pattern);
+    localStorage.setItem('paper_pattern', pattern);
+    (window as any).applyPaperPattern?.();
+  };
 
   const handleSaveApiKey = () => {
     const trimmed = apiKey.trim();
@@ -341,6 +348,31 @@ export const SettingsModal: React.FC<Props> = ({ user, isDark, onToggleTheme, on
           {/* ── DESIGN ── */}
           {tab === 'design' && (
             <div className="space-y-8">
+
+              {/* Paper pattern */}
+              <div className="space-y-3">
+                <p className="text-[10px] font-black uppercase tracking-widest text-slate-400">Papiermuster</p>
+                <div className="grid grid-cols-4 gap-2">
+                  {[
+                    { value: 'lined', label: 'Liniert',  preview: '─ ─ ─' },
+                    { value: 'grid',  label: 'Kariert',  preview: '⊞' },
+                    { value: 'dots',  label: 'Punkte',   preview: '· · ·' },
+                    { value: 'blank', label: 'Blanko',   preview: '□' },
+                  ].map(p => (
+                    <button key={p.value} onClick={() => handlePaperPattern(p.value)}
+                      className="flex flex-col items-center gap-2 py-3 px-2 rounded-2xl transition-all active:scale-95"
+                      style={{
+                        border: `1px solid ${paperPattern === p.value ? 'var(--primary)' : 'var(--border-color)'}`,
+                        background: paperPattern === p.value ? 'color-mix(in srgb, var(--primary) 10%, var(--bg-main))' : 'var(--card)',
+                        color: paperPattern === p.value ? 'var(--primary)' : 'var(--ink2)',
+                      }}>
+                      <span style={{ fontSize: 16, fontFamily: 'var(--font-mono)' }}>{p.preview}</span>
+                      <span style={{ fontSize: 9, fontWeight: 700, letterSpacing: '0.12em', textTransform: 'uppercase', fontFamily: 'var(--font-sans)' }}>{p.label}</span>
+                    </button>
+                  ))}
+                </div>
+              </div>
+
               <div className="space-y-3">
                 <p className="text-[10px] font-black uppercase tracking-widest text-slate-400">Erscheinungsbild</p>
                 <div className="flex p-1 rounded-2xl gap-1" style={{ background: 'color-mix(in srgb, var(--border-color) 40%, var(--bg-main))' }}>
