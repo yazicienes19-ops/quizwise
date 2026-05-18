@@ -5,6 +5,7 @@ import { ChevronDown, ChevronUp, ExternalLink, BookOpen, GraduationCap, Copy, Ch
 
 interface ScholarSearchProps {
   onSearch: (query: string) => void;
+  onSearchWeb: (query: string) => void;
   onGenerateQuiz: (result: SearchResult) => void;
   onSaveToPaper: (result: SearchResult) => void;
   results: SearchResult[];
@@ -15,6 +16,7 @@ interface ScholarSearchProps {
 
 export const ScholarSearch: React.FC<ScholarSearchProps> = ({
   onSearch,
+  onSearchWeb,
   onGenerateQuiz,
   onSaveToPaper,
   results,
@@ -22,6 +24,8 @@ export const ScholarSearch: React.FC<ScholarSearchProps> = ({
   isSearching
 }) => {
   const [query, setQuery] = useState('');
+  const [searchMode, setSearchMode] = useState<'web' | 'scholar'>('web');
+  const [lastSearchMode, setLastSearchMode] = useState<'web' | 'scholar' | null>(null);
   const [expandedIndex, setExpandedIndex] = useState<number | null>(null);
   const [copiedIndex, setCopiedIndex] = useState<number | null>(null);
   const [toast, setToast] = useState<string | null>(null);
@@ -30,8 +34,18 @@ export const ScholarSearch: React.FC<ScholarSearchProps> = ({
     e.preventDefault();
     if (query.trim()) {
       setExpandedIndex(null);
-      onSearch(query.trim());
+      setLastSearchMode(searchMode);
+      if (searchMode === 'scholar') {
+        onSearch(query.trim());
+      } else {
+        onSearchWeb(query.trim());
+      }
     }
+  };
+
+  const handleModeChange = (mode: 'web' | 'scholar') => {
+    setSearchMode(mode);
+    setExpandedIndex(null);
   };
 
   const showToast = (msg: string) => {
@@ -64,11 +78,42 @@ export const ScholarSearch: React.FC<ScholarSearchProps> = ({
       {/* Header */}
       <div className="text-center space-y-3">
         <h1 className="text-4xl lg:text-6xl font-black text-slate-900 dark:text-white tracking-tighter">
-          Akademische <span className="text-indigo-600">Recherche</span>
+          {searchMode === 'scholar'
+            ? <>Akademische <span className="text-indigo-600">Recherche</span></>
+            : <>Web<span className="text-indigo-600">suche</span></>
+          }
         </h1>
         <p className="text-sm text-slate-500 dark:text-slate-400 font-medium">
-          Wissenschaftlich fundiertes Grounding aus validen Datenbanken.
+          {searchMode === 'scholar'
+            ? 'Wissenschaftlich fundiertes Grounding aus validen Datenbanken.'
+            : 'Allgemeinwissen aus Wikipedia – für Schüler & Studenten.'}
         </p>
+      </div>
+
+      {/* Mode Tabs */}
+      <div className="flex items-center justify-center gap-1 max-w-xs mx-auto bg-slate-100 dark:bg-slate-800/50 rounded-2xl p-1">
+        <button
+          type="button"
+          onClick={() => handleModeChange('web')}
+          className="flex-1 py-2 px-4 rounded-xl text-[10px] font-black uppercase tracking-widest transition-all"
+          style={searchMode === 'web'
+            ? { background: 'var(--primary)', color: 'white' }
+            : { background: 'transparent', color: 'var(--text-secondary)' }
+          }
+        >
+          Web
+        </button>
+        <button
+          type="button"
+          onClick={() => handleModeChange('scholar')}
+          className="flex-1 py-2 px-4 rounded-xl text-[10px] font-black uppercase tracking-widest transition-all"
+          style={searchMode === 'scholar'
+            ? { background: 'var(--primary)', color: 'white' }
+            : { background: 'transparent', color: 'var(--text-secondary)' }
+          }
+        >
+          Scholar
+        </button>
       </div>
 
       {/* Search */}
@@ -78,7 +123,7 @@ export const ScholarSearch: React.FC<ScholarSearchProps> = ({
           type="text"
           value={query}
           onChange={(e) => setQuery(e.target.value)}
-          placeholder="Fachbegriff oder Thema recherchieren..."
+          placeholder={searchMode === 'scholar' ? 'Fachbegriff oder Thema recherchieren...' : 'Thema oder Begriff suchen...'}
           className="relative w-full pl-6 pr-36 py-5 bg-white dark:bg-slate-900 border-2 border-slate-200 dark:border-slate-800 rounded-[28px] shadow-3d-raised focus:border-indigo-500 outline-none transition-all text-lg text-slate-900 dark:text-white font-medium"
         />
         <button
@@ -104,10 +149,10 @@ export const ScholarSearch: React.FC<ScholarSearchProps> = ({
       )}
 
       {/* Results — compact list */}
-      {!isSearching && results.length > 0 && (
+      {!isSearching && results.length > 0 && lastSearchMode === searchMode && (
         <div className="max-w-4xl mx-auto space-y-3">
           <p className="text-[10px] font-black uppercase text-slate-400 tracking-[0.3em] px-1">
-            {results.length} verifizierte Quellen
+            {results.length} {searchMode === 'scholar' ? 'verifizierte Quellen' : 'Ergebnisse'}
           </p>
 
           {results.map((result, i) => {
@@ -166,14 +211,16 @@ export const ScholarSearch: React.FC<ScholarSearchProps> = ({
                     >
                       <BookOpen className="w-3.5 h-3.5" strokeWidth={2} />
                     </button>
-                    <button
-                      onClick={(e) => { e.stopPropagation(); handleCopy(result, i); }}
-                      title="APA kopieren"
-                      className="w-8 h-8 rounded-xl flex items-center justify-center transition-all hover:scale-110 active:scale-95"
-                      style={{ background: 'var(--border-color)', color: copied ? '#10b981' : 'var(--text-main)' }}
-                    >
-                      {copied ? <Check className="w-3.5 h-3.5" strokeWidth={2.5} /> : <Copy className="w-3.5 h-3.5" strokeWidth={2} />}
-                    </button>
+                    {!result.isWeb && (
+                      <button
+                        onClick={(e) => { e.stopPropagation(); handleCopy(result, i); }}
+                        title="APA kopieren"
+                        className="w-8 h-8 rounded-xl flex items-center justify-center transition-all hover:scale-110 active:scale-95"
+                        style={{ background: 'var(--border-color)', color: copied ? '#10b981' : 'var(--text-main)' }}
+                      >
+                        {copied ? <Check className="w-3.5 h-3.5" strokeWidth={2.5} /> : <Copy className="w-3.5 h-3.5" strokeWidth={2} />}
+                      </button>
+                    )}
                     {result.url !== '#' && (
                       <a
                         href={result.url}
@@ -199,19 +246,29 @@ export const ScholarSearch: React.FC<ScholarSearchProps> = ({
                   <div className="px-4 pb-4 space-y-4 animate-in fade-in slide-in-from-top-2 duration-200">
                     <div className="h-px" style={{ background: 'var(--border-color)' }} />
 
-                    {result.abstract && (
+                    {result.isWeb ? (
                       <div className="rounded-xl p-4" style={{ background: 'color-mix(in srgb, var(--border-color) 50%, var(--bg-sidebar))' }}>
-                        <p className="text-[9px] font-black uppercase text-slate-400 mb-2 tracking-widest">Abstract</p>
-                        <p className="text-xs text-slate-600 dark:text-slate-300 leading-relaxed italic">
-                          "{result.abstract}"
+                        <p className="text-[9px] font-black uppercase text-slate-400 mb-2 tracking-widest">Zusammenfassung</p>
+                        <p className="text-xs text-slate-600 dark:text-slate-300 leading-relaxed">
+                          {result.snippet}
                         </p>
                       </div>
-                    )}
-
-                    {result.doi && (
-                      <p className="text-[9px] font-black uppercase text-slate-400 tracking-widest">
-                        DOI: <span className="text-indigo-600 dark:text-indigo-400 select-all normal-case">{result.doi}</span>
-                      </p>
+                    ) : (
+                      <>
+                        {result.abstract && (
+                          <div className="rounded-xl p-4" style={{ background: 'color-mix(in srgb, var(--border-color) 50%, var(--bg-sidebar))' }}>
+                            <p className="text-[9px] font-black uppercase text-slate-400 mb-2 tracking-widest">Abstract</p>
+                            <p className="text-xs text-slate-600 dark:text-slate-300 leading-relaxed italic">
+                              "{result.abstract}"
+                            </p>
+                          </div>
+                        )}
+                        {result.doi && (
+                          <p className="text-[9px] font-black uppercase text-slate-400 tracking-widest">
+                            DOI: <span className="text-indigo-600 dark:text-indigo-400 select-all normal-case">{result.doi}</span>
+                          </p>
+                        )}
+                      </>
                     )}
 
                     <button

@@ -22,7 +22,7 @@ import { GeneratedImage } from './components/GeneratedImage';
 import { ToastContainer } from './components/Toast';
 import { ActiveTab, ProcessedDocument, QuizQuestion, UserAnswer, TopicMetric, SearchResult, QuizType, FlashcardDeck, Collection, ExamTerm, LearningFlowResult } from './types';
 
-import { generateQuizFromDocument, searchScholar, generateQuizFromFlashcards, orchestrateLearningFlow } from './services/geminiService';
+import { generateQuizFromDocument, searchScholar, searchWeb, generateQuizFromFlashcards, orchestrateLearningFlow } from './services/geminiService';
 import {
   loadDocumentsFromSupabase,
   loadCollectionsFromSupabase,
@@ -299,14 +299,14 @@ const App: React.FC = () => {
     await updateMetricsAfterSession(score, topicName, 'quiz');
   };
 
-  const handleStartQuizFromDoc = async (doc: ProcessedDocument, quizType: QuizType = QuizType.FAST) => {
+  const handleStartQuizFromDoc = async (doc: ProcessedDocument, quizType: QuizType = QuizType.FAST, options?: any) => {
     setIsLoading(true);
     setActiveTab(ActiveTab.QUIZ);
     setAnswers([]);
     setQuestions([]);
     try {
       const source = await getDocumentSource(doc);
-      const quiz = await generateQuizFromDocument(source, quizType);
+      const quiz = await generateQuizFromDocument(source, quizType, options);
       setQuestions(quiz);
       localStorage.setItem('quizwise_current_quiz', JSON.stringify(quiz));
     } catch (e) { toast.error('Quiz-Generierung fehlgeschlagen. Bitte prüfe deinen API-Key.'); } finally { setIsLoading(false); }
@@ -345,13 +345,13 @@ const App: React.FC = () => {
         return <FileUploader
           documents={documents}
           collections={collections}
-          onDocumentSelect={(doc, type) => handleStartQuizFromDoc(doc, type)}
-          onSourceSelect={async (source, _name, type) => {
+          onDocumentSelect={(doc, type, opts) => handleStartQuizFromDoc(doc, type, opts)}
+          onSourceSelect={async (source, _name, type, opts) => {
             setIsLoading(true);
             setAnswers([]);
             setQuestions([]);
             try {
-              const q = await generateQuizFromDocument(source, type);
+              const q = await generateQuizFromDocument(source, type, opts);
               setQuestions(q);
               localStorage.setItem('quizwise_current_quiz', JSON.stringify(q));
             } catch (e) { handleApiError(e); } finally { setIsLoading(false); }
@@ -383,7 +383,7 @@ const App: React.FC = () => {
           onSaveToLibrary={file => handleFileUpload(file)}
         />;
       case ActiveTab.PAPER: return <TermPaperSystem availableDocuments={documents} onUploadNew={handleFileUpload} initialSources={savedSources} />;
-      case ActiveTab.SEARCH: return <ScholarSearch results={searchResults} onSearch={async (q) => { setIsSearching(true); const { results } = await searchScholar(q); setSearchResults(results); setIsSearching(false); }} isSearching={isSearching} onGenerateQuiz={(res) => handleStartQuizFromDoc({ id: 'search', name: res.title, content: res.abstract || res.snippet, type: 'text', uploadDate: Date.now() } as any)} onSaveToPaper={(s) => setSavedSources([...savedSources, s])} savedResults={savedSources} />;
+      case ActiveTab.SEARCH: return <ScholarSearch results={searchResults} onSearch={async (q) => { setIsSearching(true); const { results } = await searchScholar(q); setSearchResults(results); setIsSearching(false); }} onSearchWeb={async (q) => { setIsSearching(true); const { results } = await searchWeb(q); setSearchResults(results); setIsSearching(false); }} isSearching={isSearching} onGenerateQuiz={(res) => handleStartQuizFromDoc({ id: 'search', name: res.title, content: res.abstract || res.snippet, type: 'text', uploadDate: Date.now() } as any)} onSaveToPaper={(s) => setSavedSources([...savedSources, s])} savedResults={savedSources} />;
       case ActiveTab.PLANNER: return <StudyPlanner metrics={metrics} decks={decks} examTerms={examTerms} onUpdateExams={saveExamTerms} />;
       case ActiveTab.CARDS: return <FlashcardSystem
           availableDocuments={documents}

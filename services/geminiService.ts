@@ -104,7 +104,7 @@ export const generateRecallChallenge = async (source: GenerationSource): Promise
   Liefere zudem eine Liste von Keywords, die in der Antwort vorkommen sollten.` });
 
   const text = await callBackend({
-    model: 'gemini-1.5-flash',
+    model: 'gemini-2.5-flash',
     parts,
     config: {
       responseMimeType: 'application/json',
@@ -124,7 +124,7 @@ export const generateRecallChallenge = async (source: GenerationSource): Promise
 
 export const evaluateRecallResponse = async (challenge: RecallChallenge, userAnswer: string): Promise<RecallEvaluation> => {
   const text = await callBackend({
-    model: 'gemini-1.5-flash',
+    model: 'gemini-2.5-flash',
     parts: [{ text: `Bewerte folgende Antwort auf die Recall-Frage: "${challenge.question}".
   Kontext des Konzepts: ${challenge.conceptContext}
   Erwartete Begriffe: ${challenge.expectedKeywords.join(', ')}
@@ -161,7 +161,7 @@ export const orchestrateLearningFlow = async (
   };
 
   const text = await callBackend({
-    model: 'gemini-1.5-flash',
+    model: 'gemini-2.5-flash',
     parts: [{ text: `Analysiere folgende Lernaktivität und erzeuge den 'Next Best Actions'-Plan:
   ${JSON.stringify(context)}
   FORMATREGELN: max. 3 next_actions. Falls Lücken vorhanden (>30% Fehler), schlage einen Kalenderblock vor.` }],
@@ -229,59 +229,30 @@ export const orchestrateLearningFlow = async (
   return JSON.parse(text || '{}');
 };
 
-export const searchScholar = async (query: string): Promise<{ text: string, results: SearchResult[] }> => {
-  const text = await callBackend({
-    model: 'gemini-1.5-flash',
-    parts: [{ text: `Führe eine akademische Recherche zu folgendem Thema durch: "${query}".
-  ANFORDERUNGEN:
-  1. Liefere maximal 10 REALE wissenschaftliche Publikationen.
-  2. Jedes Ergebnis MUSS eine funktionierende URL oder DOI haben.
-  3. Erstelle für jedes Ergebnis eine korrekte APA 7 Zitation.
-  4. Extrahiere ein kurzes Abstract (max 400 Zeichen).` }],
-    systemInstruction: SYSTEM_INSTRUCTION,
-    tools: [{ googleSearch: {} }],
-    config: {
-      responseMimeType: 'application/json',
-      responseSchema: {
-        type: Type.OBJECT,
-        properties: {
-          results: {
-            type: Type.ARRAY,
-            items: {
-              type: Type.OBJECT,
-              properties: {
-                title: { type: Type.STRING }, authors: { type: Type.STRING },
-                year: { type: Type.STRING }, journal: { type: Type.STRING },
-                doi: { type: Type.STRING }, abstract: { type: Type.STRING },
-                apa_citation: { type: Type.STRING }, doi_url: { type: Type.STRING }
-              },
-              required: ['title', 'authors', 'year', 'journal', 'abstract', 'apa_citation']
-            }
-          }
-        },
-        required: ['results']
-      }
-    }
+export const searchWeb = async (query: string): Promise<{ results: SearchResult[] }> => {
+  const authHeader = await getAuthHeader();
+  const res = await fetch(`${BACKEND_URL}/api/search/web?query=${encodeURIComponent(query)}`, {
+    headers: { ...authHeader },
   });
-
-  try {
-    const parsed = JSON.parse(text || '{"results": []}');
-    const results: SearchResult[] = parsed.results.map((r: any) => ({
-      title: r.title || 'Unbekannter Titel',
-      authors: r.authors || 'Unbekannte Autoren',
-      year: r.year || 'n.d.',
-      journal: r.journal || 'Academic Journal',
-      url: r.doi_url || (r.doi ? `https://doi.org/${r.doi}` : '#'),
-      apaCitation: r.apa_citation || `${r.authors} (${r.year}). ${r.title}.`,
-      snippet: r.abstract || 'Keine Zusammenfassung verfügbar.',
-      abstract: r.abstract,
-      doi: r.doi,
-      doi_url: r.doi_url || (r.doi ? `https://doi.org/${r.doi}` : undefined)
-    }));
-    return { text: '', results };
-  } catch {
-    return { text: '', results: [] };
+  if (!res.ok) {
+    const err = await res.json().catch(() => ({ error: 'Suchfehler' }));
+    throw new Error(err.error || `Suchfehler: ${res.status}`);
   }
+  const data = await res.json();
+  return { results: data.results || [] };
+};
+
+export const searchScholar = async (query: string): Promise<{ text: string, results: SearchResult[] }> => {
+  const authHeader = await getAuthHeader();
+  const res = await fetch(`${BACKEND_URL}/api/search/scholar?query=${encodeURIComponent(query)}`, {
+    headers: { ...authHeader },
+  });
+  if (!res.ok) {
+    const err = await res.json().catch(() => ({ error: 'Suchfehler' }));
+    throw new Error(err.error || `Suchfehler: ${res.status}`);
+  }
+  const data = await res.json();
+  return { text: '', results: data.results || [] };
 };
 
 export const generateSmartStudyPlan = async (metrics: TopicMetric[], decks: FlashcardDeck[], exams: ExamTerm[]): Promise<StudyEntry[]> => {
@@ -292,7 +263,7 @@ export const generateSmartStudyPlan = async (metrics: TopicMetric[], decks: Flas
   };
 
   const text = await callBackend({
-    model: 'gemini-1.5-flash',
+    model: 'gemini-2.5-flash',
     parts: [{ text: `Erstelle einen intelligenten Wochen-Lernplan (Montag bis Sonntag) basierend auf diesen Daten:
   ${JSON.stringify(context)}
   ANFORDERUNGEN:
@@ -322,17 +293,53 @@ export const generateSmartStudyPlan = async (metrics: TopicMetric[], decks: Flas
   return JSON.parse(text || '[]').map((entry: any) => ({ ...entry, isAutoGenerated: true }));
 };
 
-export const generateQuizFromDocument = async (source: GenerationSource, quizType: QuizType = QuizType.FAST): Promise<QuizQuestion[]> => {
+export const generateQuizFromDocument = async (
+  source: GenerationSource,
+  quizType: QuizType = QuizType.FAST,
+  options?: { customCount?: number; customDifficulty?: string; customFocus?: string }
+): Promise<QuizQuestion[]> => {
   const parts: any[] = [];
   if (source.file) parts.push({ inlineData: { data: source.file.data, mimeType: source.file.mimeType } });
   else if (source.text) parts.push({ text: source.text });
-  parts.push({ text: `Erstelle ein Quiz basierend auf dem Material. Modus: ${quizType}.
-  Zu jeder Frage liefere: korrekten Antwort-Index (Array), Boolean ob Multiple-Choice, Erklärung, Textbezug, Thema und Schwierigkeitsgrad.` });
+
+  let count: number;
+  let difficulty: string;
+  let focusLine = '';
+
+  if (quizType === QuizType.CUSTOM && options) {
+    count = options.customCount ?? 10;
+    difficulty = options.customDifficulty ?? 'mittel';
+    focusLine = options.customFocus ? `\nSchwerpunkt: ${options.customFocus}` : '';
+  } else if (quizType === QuizType.INTENSIVE) {
+    count = 17;
+    difficulty = 'mittel bis schwer';
+  } else {
+    count = 7;
+    difficulty = 'leicht bis mittel';
+  }
+
+  const seed = Math.random().toString(36).slice(2, 8);
+
+  parts.push({ text: `Erstelle ein Quiz mit genau ${count} Fragen basierend auf dem Material.
+Schwierigkeit: ${difficulty}.${focusLine}
+Zufalls-Seed für Abwechslung: ${seed}
+
+WICHTIG für Vielfalt:
+- Verteile die Fragen gleichmäßig über ALLE Abschnitte/Themen des Materials
+- Mische Fragetypen: Definitionen, Anwendung, Vergleiche, Ursache-Wirkung, Beispiele
+- Nutze verschiedene kognitive Ebenen: Wissen, Verstehen, Anwenden, Analysieren
+- Jede Frage soll sich in Formulierung und Inhalt deutlich von den anderen unterscheiden
+- MINDESTENS 70% der Fragen sollen Multiple-Choice sein (mehrere korrekte Antworten aus 4 Optionen)
+- Bei Multiple-Choice: 2-3 korrekte Antworten pro Frage, Falschantworten plausibel aber klar falsch
+- Single-Choice nur für einfache Definitionen oder Ja/Nein-Fakten
+
+Zu jeder Frage: korrekte Antwort-Indices (Array), Boolean ob Multiple-Choice, Erklärung, Textbezug, Thema und Schwierigkeitsgrad.` });
 
   const text = await callBackend({
-    model: 'gemini-1.5-flash',
+    model: 'gemini-2.5-flash',
     parts,
     config: {
+      temperature: 1.0,
       responseMimeType: 'application/json',
       responseSchema: {
         type: Type.ARRAY,
@@ -364,7 +371,7 @@ export const generateFlashcardsFromDocument = async (source: GenerationSource, c
   parts.push({ text: `Erstelle ${count} hochwertige Karteikarten.` });
 
   const text = await callBackend({
-    model: 'gemini-1.5-flash',
+    model: 'gemini-2.5-flash',
     parts,
     config: {
       responseMimeType: 'application/json',
@@ -388,7 +395,7 @@ export const generateQuizFromFlashcards = async (deck: FlashcardDeck): Promise<Q
   const cardsJson = JSON.stringify(deck.cards.map(c => ({ q: c.front, a: c.back })));
 
   const text = await callBackend({
-    model: 'gemini-1.5-flash',
+    model: 'gemini-2.5-flash',
     parts: [{ text: `Erstelle ein Quiz aus diesen Karteikarten: ${cardsJson}` }],
     config: {
       responseMimeType: 'application/json',
@@ -421,7 +428,7 @@ export const generatePaperOutline = async (topic: string, focus: string, sources
   parts.push({ text: `Erstelle eine wissenschaftliche Gliederung für eine Hausarbeit zum Thema: "${topic}". Fokus: "${focus}". Basierend auf den bereitgestellten Quellen.` });
 
   const text = await callBackend({
-    model: 'gemini-1.5-flash',
+    model: 'gemini-2.5-flash',
     parts,
     config: {
       responseMimeType: 'application/json',
@@ -443,7 +450,7 @@ export const generatePaperOutline = async (topic: string, focus: string, sources
 
 export const formatCitation = async (source: AcademicSource, style: CitationStyle): Promise<string> => {
   const text = await callBackend({
-    model: 'gemini-1.5-flash',
+    model: 'gemini-2.5-flash',
     parts: [{ text: `Formatiere folgende Quelle im ${style}-Stil:
   Titel: ${source.title}, Autoren: ${source.authors}, Jahr: ${source.year}, Journal: ${source.journal}, URL/DOI: ${source.url}
   Gib ausschließlich den formatierten Zitations-String zurück.` }]
@@ -453,7 +460,7 @@ export const formatCitation = async (source: AcademicSource, style: CitationStyl
 
 export const magicFormatCitation = async (input: string): Promise<MultiStyleCitation> => {
   const text = await callBackend({
-    model: 'gemini-1.5-flash',
+    model: 'gemini-2.5-flash',
     parts: [{ text: `Extrahiere bibliographische Informationen aus diesem Textfragment und erstelle Zitationen in verschiedenen Stilen: "${input}"` }],
     config: {
       responseMimeType: 'application/json',
@@ -490,7 +497,7 @@ export const magicFormatCitation = async (input: string): Promise<MultiStyleCita
 
 export const analyzeLearningProgress = async (metrics: TopicMetric[]): Promise<LearningAnalysis> => {
   const text = await callBackend({
-    model: 'gemini-1.5-flash',
+    model: 'gemini-2.5-flash',
     parts: [{ text: `Analysiere den Lernfortschritt basierend auf diesen Daten: ${JSON.stringify(metrics)}.
   Identifiziere Fehlermuster, gib Empfehlungen und eine Gesamteinschätzung ab.` }],
     config: {
@@ -537,7 +544,7 @@ export const generateExplanation = async (source: GenerationSource, concept: str
   else if (source.text) parts.push({ text: source.text });
   parts.push({ text: `Erkläre das Konzept "${concept}" basierend auf dem Material. Strukturiere in 3 Stufen: Grundlagen, Vertiefung und Kontext. Antworte in Markdown.` });
 
-  return callBackend({ model: 'gemini-1.5-flash', parts });
+  return callBackend({ model: 'gemini-2.5-flash', parts });
 };
 
 export const generateFullExam = async (content: GenerationSource, style?: GenerationSource, options?: { count: number, difficulty: string }): Promise<ExamQuestion[]> => {
@@ -550,13 +557,34 @@ export const generateFullExam = async (content: GenerationSource, style?: Genera
     else if (style.text) parts.push({ text: `Nutze diesen STIL für die Prüfung: ${style.text}` });
   }
 
-  parts.push({ text: `Erstelle eine akademische Klausur mit ${options?.count || 10} Fragen auf Niveau "${options?.difficulty || 'mittel'}".
-  Mische MC-Fragen (mc) und offene Fragen (open). Gib Punktzahl und Musterlösung an.` });
+  const count = options?.count || 10;
+  const difficulty = options?.difficulty || 'mittel';
+
+  const mcCount   = Math.round(count * 0.45);
+  const transCount = Math.round(count * 0.35);
+  const essayCount = count - mcCount - transCount;
+
+  const seed = Math.random().toString(36).slice(2, 8);
+
+  parts.push({ text: `Erstelle eine akademische Klausur mit genau ${count} Aufgaben auf Niveau "${difficulty}".
+Zufalls-Seed: ${seed}
+
+FRAGETYPEN-VERTEILUNG (zwingend einhalten):
+- ${mcCount} Multiple-Choice-Fragen (type: "mc"): Je 4 Optionen, MEHRERE korrekte Antworten (2-3). Teste Faktenwissen & Konzeptverständnis. Punkte: 2-4 pro Frage.
+- ${transCount} Transferaufgaben (type: "open"): Wende Konzepte auf NEUE, konkrete Situationen an. Formulierungen wie: "Ein Student beobachtet X — erklären Sie warum...", "Analysieren Sie folgenden Fall aus der Praxis...", "Welche Theorie erklärt Situation Y, und warum?". Punkte: 5-8 pro Frage.
+- ${essayCount} Schreibaufgaben / Erörterungen (type: "open"): Tiefe Auseinandersetzung, kritisches Denken. Formulierungen wie: "Erläutern Sie ausführlich...", "Diskutieren Sie kritisch...", "Vergleichen Sie X und Y und bewerten Sie...". Punkte: 8-15 pro Frage.
+
+QUALITÄTSREGELN:
+- Jede Aufgabe deckt einen ANDEREN Aspekt/Abschnitt des Materials ab
+- Bei MC: options[] enthält genau 4 Antworten, solution nennt die korrekten Buchstaben mit Begründung
+- Bei open (Transfer + Schreiben): options[] ist leer ([]), solution ist eine vollständige Musterantwort (mind. 4-6 Sätze mit Fachbegriffen)
+- id = fortlaufend "q1", "q2", ...` });
 
   const text = await callBackend({
-    model: 'gemini-1.5-flash',
+    model: 'gemini-2.5-flash',
     parts,
     config: {
+      temperature: 1.0,
       responseMimeType: 'application/json',
       responseSchema: {
         type: Type.ARRAY,
@@ -577,10 +605,18 @@ export const generateFullExam = async (content: GenerationSource, style?: Genera
 
 export const evaluateExamAnswers = async (questions: ExamQuestion[]): Promise<ExamQuestion[]> => {
   const text = await callBackend({
-    model: 'gemini-1.5-flash',
-    parts: [{ text: `Bewerte die folgenden Klausurantworten. Vergleiche 'userAnswer' mit 'solution'.
-  Vergib 'achievedPoints' und erstelle konstruktives 'feedback' pro Aufgabe.
-  Daten: ${JSON.stringify(questions)}` }],
+    model: 'gemini-2.5-flash',
+    parts: [{ text: `Bewerte die folgenden Klausurantworten als fairer Hochschulprüfer.
+
+BEWERTUNGSREGELN — STRENGER HOCHSCHULMASSSTAB:
+- type "mc": Volle Punkte NUR wenn ALLE korrekten Optionen gewählt und KEINE falschen. 0 Punkte wenn falsche Optionen dabei sind. Halbe Punkte nur wenn alle richtigen gewählt aber keine falschen fehlen teilweise.
+- type "open" (Transfer/Schreiben): Bewerte inhaltlich streng — fehlende Fachbegriffe, oberflächliche Argumentation, falsche Konzepte = Punktabzug. Teilpunkte nur für Antworten die inhaltlich korrekte Kernaussagen enthalten. Allgemeinplätze ohne Substanz geben keine Punkte.
+- Punktevergabe: Volle Punkte nur bei vollständiger, präziser Antwort. 75% bei guter aber unvollständiger Antwort. 50% bei richtiger Kernaussage ohne Tiefe. 25% bei schwacher Teilantwort. 0% bei falschem oder leerem Inhalt.
+- feedback: Direkt und klar. Benenne konkret was fehlte oder falsch war. Kein unnötiges Loben bei schlechten Antworten. Max. 3 Sätze.
+- achievedPoints: nie negativ, nie größer als points.
+- Wenn userAnswer leer/fehlt: achievedPoints = 0, feedback = "Keine Antwort gegeben."
+
+Daten: ${JSON.stringify(questions)}` }],
     config: {
       responseMimeType: 'application/json',
       responseSchema: {

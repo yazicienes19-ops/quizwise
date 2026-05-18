@@ -112,6 +112,7 @@ export interface SearchResult {
   abstract?: string;
   openalex_id?: string;
   doi_url?: string;
+  isWeb?: boolean;
 }
 
 export interface PaperOutlineSection {
