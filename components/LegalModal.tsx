@@ -140,7 +140,7 @@ export const LegalModal: React.FC<LegalModalProps> = ({ page, onClose }) => {
   return (
     <div className="fixed inset-0 z-[100] flex items-end sm:items-center justify-center p-4 bg-slate-900/50 backdrop-blur-sm animate-in fade-in duration-200">
       <div
-        className="w-full max-w-2xl max-h-[85vh] flex flex-col rounded-[32px] shadow-3d-deep animate-in slide-in-from-bottom-4 duration-300 overflow-hidden"
+        className="w-full max-w-2xl max-h-[85vh] flex flex-col rounded-[32px] shadow-3d-deep animate-in slide-in-from-bottom-4 duration-300"
         style={{ background: 'var(--bg-sidebar)', border: '1px solid var(--border-color)' }}
       >
         <div className="flex items-center justify-between p-8 pb-0 shrink-0">
@@ -153,7 +153,7 @@ export const LegalModal: React.FC<LegalModalProps> = ({ page, onClose }) => {
             <X className="w-5 h-5" strokeWidth={2} />
           </button>
         </div>
-        <div className="overflow-y-auto flex-1 min-h-0 p-8">{body}</div>
+        <div className="overflow-y-auto p-8 scrollbar-thin">{body}</div>
       </div>
     </div>
   );

@@ -1,344 +1,202 @@
 
 import React, { useState, useMemo } from 'react';
-import { ActiveTab, LearningFlowResult, StudyEntry, ProcessedDocument } from '../types';
+import { ActiveTab, LearningFlowResult, StudyEntry } from '../types';
+import { GeneratedImage } from './GeneratedImage';
 import { toast } from '../services/toast';
-import { ArrowRight } from 'lucide-react';
-import type { User } from '@supabase/supabase-js';
+
+const USAGE_KEY = 'quizwise_feature_usage';
+
+function getUsageCounts(): Record<string, number> {
+  try {
+    return JSON.parse(localStorage.getItem(USAGE_KEY) || '{}');
+  } catch {
+    return {};
+  }
+}
+
+function trackUsage(id: ActiveTab) {
+  const counts = getUsageCounts();
+  counts[id] = (counts[id] || 0) + 1;
+  localStorage.setItem(USAGE_KEY, JSON.stringify(counts));
+}
 
 interface DashboardProps {
   onTabChange: (tab: ActiveTab) => void;
   flowResult: LearningFlowResult | null;
   onAcceptFlow: (res: LearningFlowResult) => void;
-  user?: User | null;
-  documents?: ProcessedDocument[];
 }
 
-interface AgendaItem {
-  time: string;
-  dur: string;
-  title: string;
-  kind: 'recall' | 'cards' | 'quiz' | 'exam' | 'thesis' | 'library' | 'planner';
-  tab: ActiveTab;
-}
-
-const KIND_LABEL: Record<AgendaItem['kind'], string> = {
-  recall:  'Aktives Erinnern',
-  cards:   'Wiederholung',
-  quiz:    'Wissensprüfung',
-  exam:    'Klausur-Simulation',
-  thesis:  'Hausarbeit',
-  library: 'Bibliothek',
-  planner: 'Lernplaner',
-};
-
-const DEMO_AGENDA: AgendaItem[] = [
-  { time: '09:00', dur: '45m', title: 'Recall · Erste Sitzung',      kind: 'recall',  tab: ActiveTab.RECALL },
-  { time: '10:00', dur: '30m', title: 'Karteikarten · Grundlagen',   kind: 'cards',   tab: ActiveTab.CARDS },
-  { time: '11:00', dur: '60m', title: 'Quiz · 15 Fragen',            kind: 'quiz',    tab: ActiveTab.QUIZ },
-  { time: '14:00', dur: '90m', title: 'Klausur-Simulation',          kind: 'exam',    tab: ActiveTab.EXAM },
-  { time: '16:30', dur: '45m', title: 'Hausarbeit · Kapitel 2',      kind: 'thesis',  tab: ActiveTab.PAPER },
-];
-
-interface ModuleDef {
+interface ActionCard {
   id: ActiveTab;
-  num: string;
   title: string;
-  kicker: string;
   desc: string;
+  prompt: string;
+  color: string;
+  badge?: string;
 }
 
-const MODULES: ModuleDef[] = [
-  { id: ActiveTab.RECALL,    num: '01', title: 'Recall Studio',  kicker: 'Active Recall',      desc: 'Themen mit der Feynman-Methode durcharbeiten.' },
-  { id: ActiveTab.LIBRARY,   num: '02', title: 'Bibliothek',     kicker: 'Quellenarchiv',       desc: 'PDFs und Notizen verwalten und durchsuchen.' },
-  { id: ActiveTab.QUIZ,      num: '03', title: 'Quiz Center',    kicker: 'Wissensprüfung',      desc: 'KI-generierte Tests aus eigenen Unterlagen.' },
-  { id: ActiveTab.EXAM,      num: '04', title: 'Klausur-Modus',  kicker: 'Prüfungssimulation',  desc: 'Zeitgesteuerte Simulation echter Prüfungen.' },
-  { id: ActiveTab.CARDS,     num: '05', title: 'Karteikarten',   kicker: 'Spaced Repetition',   desc: 'Anki-Kartentraining mit Selbsteinschätzung.' },
-  { id: ActiveTab.RADAR,     num: '06', title: 'Lern-Analyse',   kicker: 'Lückenradar',         desc: 'Blinde Flecken erkennen, Lernzeit priorisieren.' },
+const BASE_CARDS: ActionCard[] = [
+  { id: ActiveTab.RECALL, title: 'Recall Studio', desc: 'Meistere Themen mit der Feynman-Methode.', prompt: 'Human brain active recall, academic illustration', color: 'text-indigo-600', badge: 'Active Recall' },
+  { id: ActiveTab.LIBRARY, title: 'Bibliothek', desc: 'Verwalte deine PDF-Sammlung und Quellen.', prompt: 'Academic library books, minimalist illustration', color: 'text-blue-500' },
+  { id: ActiveTab.QUIZ, title: 'Quiz Center', desc: 'KI-gestützte Tests für maximalen Erfolg.', prompt: 'Target bullseye icon, academic minimalist illustration', color: 'text-indigo-500', badge: 'KI-Powered' },
+  { id: ActiveTab.EXAM, title: 'Klausur-Modus', desc: 'Simuliere echte Prüfungen unter Zeitdruck.', prompt: 'Exam paper graduation cap, academic illustration', color: 'text-rose-500', badge: 'Advanced' },
+  { id: ActiveTab.CARDS, title: 'Karteikarten', desc: 'Training nach Anki-Standard.', prompt: 'Flashcards study deck, minimalist illustration', color: 'text-violet-500' },
+  { id: ActiveTab.RADAR, title: 'Lern-Analyse', desc: 'Identifiziere Lücken im Verständnis.', prompt: 'Data analysis radar chart, academic illustration', color: 'text-emerald-500' }
 ];
 
-function getWeekNumber(): number {
-  const d = new Date();
-  const jan1 = new Date(d.getFullYear(), 0, 1);
-  return Math.ceil(((d.getTime() - jan1.getTime()) / 86400000 + jan1.getDay() + 1) / 7);
-}
+export const Dashboard: React.FC<DashboardProps> = ({ onTabChange, flowResult }) => {
+  const [hovered, setHovered] = useState<ActiveTab | null>(null);
+  const [usageCounts, setUsageCounts] = useState<Record<string, number>>(getUsageCounts);
 
-function getGreeting(): string {
-  const h = new Date().getHours();
-  if (h < 12) return 'Guten Morgen';
-  if (h < 17) return 'Guten Tag';
-  return 'Guten Abend';
-}
+  const cards = useMemo(() => {
+    return [...BASE_CARDS].sort((a, b) => (usageCounts[b.id] || 0) - (usageCounts[a.id] || 0));
+  }, [usageCounts]);
 
-function getFirstName(user?: User | null): string {
-  if (!user) return 'Student';
-  const full = user.user_metadata?.full_name || user.email || '';
-  return full.split(/[\s@]/)[0] || 'Student';
-}
+  const handleCardClick = (id: ActiveTab) => {
+    trackUsage(id);
+    setUsageCounts(getUsageCounts());
+    onTabChange(id);
+  };
 
-function getTodayAgenda(): AgendaItem[] {
-  try {
-    const plan: StudyEntry[] = JSON.parse(localStorage.getItem('study_plan') || '[]');
-    const today = new Date().toLocaleDateString('de-DE', { weekday: 'long' });
-    const todayItems = plan
-      .filter(e => !e.completed && e.day === today)
-      .slice(0, 5)
-      .map(e => ({
-        time: e.startTime,
-        dur:  e.endTime ? `${Math.max(0, (new Date(`1970-01-01T${e.endTime}`).getTime() - new Date(`1970-01-01T${e.startTime}`).getTime()) / 60000)}m` : '–',
-        title: `${e.subject} · ${e.topic}`,
-        kind: 'planner' as AgendaItem['kind'],
-        tab: ActiveTab.PLANNER,
-      }));
-    return todayItems.length > 0 ? todayItems : DEMO_AGENDA;
-  } catch {
-    return DEMO_AGENDA;
-  }
-}
-
-function formatFileDate(ts: number): string {
-  const diff = Date.now() - ts;
-  const m = Math.floor(diff / 60000);
-  if (m < 60) return `vor ${m} Min.`;
-  const h = Math.floor(m / 60);
-  if (h < 24) return `vor ${h} Std.`;
-  return `vor ${Math.floor(h / 24)} Tagen`;
-}
-
-// Section header: serif title + right meta + full-width ink rule below
-const SectionHeader = ({ title, meta }: { title: string; meta: string }) => (
-  <div style={{ display: 'flex', alignItems: 'baseline', justifyContent: 'space-between', borderBottom: '1.5px solid var(--ink)', paddingBottom: 8, marginBottom: 0 }}>
-    <h2 style={{ fontFamily: 'var(--font-serif)', fontSize: 22, fontWeight: 500, margin: 0, color: 'var(--ink)', letterSpacing: '-0.01em' }}>
-      {title}
-    </h2>
-    <span style={{ fontFamily: 'var(--font-sans)', fontSize: 12, color: 'var(--mute)', whiteSpace: 'nowrap' }}>{meta}</span>
-  </div>
-);
-
-// Stat block below a hairline rule
-const StatBlock = ({ label, value, unit, note }: { label: string; value: string; unit: string; note: string }) => (
-  <div style={{ padding: '14px 0', borderTop: '1px solid var(--border-color)' }}>
-    <div style={{ fontFamily: 'var(--font-sans)', fontSize: 11, color: 'var(--mute)', letterSpacing: '0.14em', textTransform: 'uppercase', marginBottom: 8 }}>
-      {label}
-    </div>
-    <div style={{ display: 'flex', alignItems: 'baseline', gap: 4 }}>
-      <span style={{ fontFamily: 'var(--font-serif)', fontSize: 38, fontWeight: 500, color: 'var(--ink)', letterSpacing: '-0.02em', lineHeight: 1 }}>
-        {value}
-      </span>
-      <span style={{ fontFamily: 'var(--font-serif)', fontSize: 16, color: 'var(--mute)', fontStyle: 'italic' }}>{unit}</span>
-    </div>
-    <div style={{ fontFamily: 'var(--font-sans)', fontSize: 11, color: 'var(--mute)', marginTop: 6 }}>{note}</div>
-  </div>
-);
-
-export const Dashboard: React.FC<DashboardProps> = ({ onTabChange, flowResult, user, documents = [] }) => {
-  const agenda = useMemo(getTodayAgenda, []);
-  const week = getWeekNumber();
-  const greeting = getGreeting();
-  const firstName = getFirstName(user);
-
-  // Count pending agenda items
-  const pendingCount = useMemo(() => {
-    try {
-      const plan: StudyEntry[] = JSON.parse(localStorage.getItem('study_plan') || '[]');
-      const today = new Date().toLocaleDateString('de-DE', { weekday: 'long' });
-      return plan.filter(e => !e.completed && e.day === today).length || agenda.length;
-    } catch { return agenda.length; }
-  }, [agenda.length]);
-
-  // Recent documents for the library table
-  const recentDocs = useMemo(() =>
-    [...documents]
-      .sort((a, b) => (b.uploadDate || 0) - (a.uploadDate || 0))
-      .slice(0, 5),
-    [documents]
-  );
-
-  // KI suggestions (flowResult)
-  const hasSuggestions = flowResult && flowResult.next_actions.length > 0;
+  const handleAcceptSuggestion = (suggestion: any) => {
+    const plan = JSON.parse(localStorage.getItem('study_plan') || '[]');
+    const newEntry: StudyEntry = {
+      id: Math.random().toString(36).substr(2, 9),
+      day: suggestion.day,
+      startTime: suggestion.start_time,
+      endTime: "12:00",
+      subject: suggestion.module,
+      topic: suggestion.focus_topics.join(', '),
+      completed: false,
+      isAutoGenerated: true,
+      color: 'indigo'
+    };
+    localStorage.setItem('study_plan', JSON.stringify([...plan, newEntry]));
+    toast.success('Im Lernplan eingetragen!');
+    onTabChange(ActiveTab.PLANNER);
+  };
 
   return (
-    <div className="animate-in fade-in duration-500">
-
-      {/* ── Masthead ── */}
-      <div style={{ display: 'flex', alignItems: 'flex-end', justifyContent: 'space-between', marginBottom: 6 }}>
-        <div style={{ fontFamily: 'var(--font-sans)', fontSize: 11, color: 'var(--mute)', letterSpacing: '0.22em', textTransform: 'uppercase', lineHeight: 1.6 }}>
-          Heute<br />Woche&nbsp;{week}
-        </div>
-        <div style={{ display: 'flex', gap: 14, fontFamily: 'var(--font-sans)', fontSize: 12, color: 'var(--mute)' }}>
-          <span>Vol. IV</span><span>·</span><span>№&nbsp;{week * 7 + new Date().getDay()}</span>
+    <div className="space-y-12 lg:space-y-24 py-12 px-4 animate-in fade-in duration-1000">
+      {/* Hero Section */}
+      <div className="text-center space-y-6">
+        <div className="space-y-2">
+            <h1 className="text-7xl sm:text-8xl lg:text-9xl font-light tracking-tighter text-slate-900 dark:text-white leading-none">
+                Quiz<span className="font-bold text-indigo-500">Wise</span>
+            </h1>
+            <p className="text-[10px] sm:text-xs font-black uppercase tracking-[1em] text-slate-400 dark:text-white/30 pl-4">
+                Advanced Academic Intelligence
+            </p>
         </div>
       </div>
 
-      {/* ── Headline ── */}
-      <h1 style={{
-        fontFamily: 'var(--font-serif)', fontSize: 'clamp(42px, 5.5vw, 64px)',
-        fontWeight: 400, lineHeight: 0.98,
-        letterSpacing: '-0.025em', color: 'var(--ink)', margin: '0 0 10px',
-      }}>
-        {greeting}, {firstName}.
-        <br />
-        <span style={{ fontStyle: 'italic', color: 'var(--primary)', fontFamily: 'var(--font-hand)', fontSize: 'clamp(38px, 5vw, 60px)' }}>
-          {hasSuggestions ? `${flowResult!.next_actions.length} Themen` : 'QuizWise'}
-        </span>
-        {' '}
-        <span style={{ fontFamily: 'var(--font-serif)', fontStyle: 'normal' }}>
-          {hasSuggestions ? 'warten heute auf dich.' : 'ist bereit.'}
-        </span>
-      </h1>
-
-      <p style={{
-        fontFamily: 'var(--font-serif)', fontSize: 17, color: 'var(--ink2)',
-        lineHeight: 1.55, maxWidth: 680, margin: '0 0 32px', fontStyle: 'italic',
-      }}>
-        {hasSuggestions
-          ? `"${flowResult!.next_actions[0].why}"`
-          : 'Lade dein erstes Dokument hoch und starte eine Lernsession — in weniger als einer Minute.'
-        }
-      </p>
-
-      {/* ── Two-column: Agenda + Stats ── */}
-      <div style={{ display: 'grid', gridTemplateColumns: '1.6fr 1fr', gap: 40, marginBottom: 48 }}
-        className="block lg:grid">
-
-        {/* Left: Heute fortsetzen */}
-        <section>
-          <SectionHeader title="Heute fortsetzen" meta={`${pendingCount} anstehend`} />
-          {agenda.map((item, i) => (
-            <div key={i} style={{
-              display: 'grid', gridTemplateColumns: '70px 1fr auto', gap: 20, alignItems: 'center',
-              padding: '14px 0', borderBottom: '1px solid var(--border-soft)',
-            }}>
-              <div>
-                <div style={{ fontFamily: 'var(--font-mono)', fontSize: 14, color: 'var(--ink)', letterSpacing: '0.04em' }}>{item.time}</div>
-                <div style={{ fontFamily: 'var(--font-sans)', fontSize: 11, color: 'var(--mute)', marginTop: 2 }}>{item.dur}</div>
-              </div>
-              <div>
-                <div style={{ fontFamily: 'var(--font-serif)', fontSize: 17, color: 'var(--ink)', marginBottom: 3 }}>{item.title}</div>
-                <div style={{ fontFamily: 'var(--font-sans)', fontSize: 11, color: 'var(--mute)', letterSpacing: '0.1em', textTransform: 'uppercase' }}>
-                  {KIND_LABEL[item.kind]}
-                </div>
-              </div>
-              <button
-                onClick={() => onTabChange(item.tab)}
-                style={{
-                  border: '1px solid var(--ink)', borderRadius: 2, cursor: 'pointer',
-                  padding: '6px 14px', fontFamily: 'var(--font-sans)', fontSize: 12,
-                  fontWeight: 500, letterSpacing: '0.04em',
-                  background: i === 0 ? 'var(--ink)' : 'transparent',
-                  color: i === 0 ? 'var(--bg-main)' : 'var(--ink)',
-                  whiteSpace: 'nowrap',
-                }}
-              >
-                {i === 0 ? 'Beginnen' : 'Öffnen'}
-              </button>
-            </div>
-          ))}
-        </section>
-
-        {/* Right: Diese Woche stats */}
-        <aside className="mt-8 lg:mt-0">
-          <SectionHeader title="Diese Woche" meta="17 Tage Serie" />
-          <StatBlock label="Recall-Serie"      value="17"  unit="Tage"    note="länger als 92 % der Kohorte" />
-          <StatBlock label="Karten gemeistert" value="482" unit="von 614" note="+ 24 in den letzten 24 Std." />
-          <StatBlock label="Genauigkeit"       value="87"  unit="%"       note="+ 4 % gegenüber Vorwoche" />
-          <StatBlock label="Offene Lücken"     value={String(Math.max(0, documents.length * 2 || 6))} unit="Themen" note="zwei davon prüfungsrelevant" />
-        </aside>
-      </div>
-
-      {/* ── Module Index ── */}
-      <section style={{ marginBottom: 48 }}>
-        <SectionHeader title="Index" meta="Sechs Module" />
-        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 16, marginTop: 20 }}
-          className="grid-cols-1 sm:grid-cols-2 lg:grid-cols-3">
-          {MODULES.map((mod, i) => (
-            <button key={mod.id} onClick={() => onTabChange(mod.id)}
-              style={{
-                background: 'var(--card)', border: '1px solid var(--border-color)',
-                borderRadius: 4, padding: '20px 22px 22px',
-                textAlign: 'left', cursor: 'pointer',
-                transition: 'border-color .15s, background .15s',
-              }}
-              onMouseEnter={e => { e.currentTarget.style.borderColor = 'var(--ink)'; }}
-              onMouseLeave={e => { e.currentTarget.style.borderColor = 'var(--border-color)'; }}
-            >
-              <div style={{ display: 'flex', alignItems: 'baseline', justifyContent: 'space-between', marginBottom: 12 }}>
-                <span style={{ fontFamily: 'var(--font-mono)', fontSize: 11, color: 'var(--mute)', letterSpacing: '0.06em' }}>{mod.num}</span>
-                <span style={{
-                  fontFamily: 'var(--font-sans)', fontSize: 10, color: i === 0 ? 'var(--primary)' : 'var(--mute)',
-                  letterSpacing: '0.16em', textTransform: 'uppercase',
-                  fontWeight: i === 0 ? 600 : 400,
-                }}>
-                  {i === 0 ? 'Empfehlung' : mod.kicker}
-                </span>
-              </div>
-              <div style={{ fontFamily: 'var(--font-serif)', fontSize: 26, lineHeight: 1.08, color: 'var(--ink)', letterSpacing: '-0.015em', marginBottom: 8 }}>
-                {mod.title}
-              </div>
-              <div style={{ fontFamily: 'var(--font-sans)', fontSize: 13, color: 'var(--ink2)', lineHeight: 1.5 }}>
-                {mod.desc}
-              </div>
-              <div style={{ display: 'flex', alignItems: 'center', gap: 5, marginTop: 18, fontFamily: 'var(--font-sans)', fontSize: 12, color: 'var(--primary)', fontWeight: 500 }}>
-                Öffnen <ArrowRight style={{ width: 13, height: 13 }} strokeWidth={2} />
-              </div>
-            </button>
-          ))}
-        </div>
-      </section>
-
-      {/* ── Zuletzt aus der Bibliothek ── */}
-      <section style={{ marginBottom: 48 }}>
-        <div style={{ display: 'flex', alignItems: 'baseline', justifyContent: 'space-between', borderBottom: '1.5px solid var(--ink)', paddingBottom: 8, marginBottom: 0 }}>
-          <h2 style={{ fontFamily: 'var(--font-serif)', fontSize: 22, fontWeight: 500, margin: 0, color: 'var(--ink)', letterSpacing: '-0.01em' }}>
-            Zuletzt aus der Bibliothek
-          </h2>
-          <button onClick={() => onTabChange(ActiveTab.LIBRARY)} style={{
-            fontFamily: 'var(--font-sans)', fontSize: 12, color: 'var(--primary)',
-            cursor: 'pointer', background: 'none', border: 'none',
-          }}>
-            Alle anzeigen →
-          </button>
-        </div>
-
-        {recentDocs.length === 0 ? (
-          <div style={{ padding: '32px 0', fontFamily: 'var(--font-serif)', fontStyle: 'italic', fontSize: 16, color: 'var(--mute)' }}>
-            Noch keine Dokumente in der Bibliothek.{' '}
-            <button onClick={() => onTabChange(ActiveTab.LIBRARY)} style={{ color: 'var(--primary)', background: 'none', border: 'none', cursor: 'pointer', fontStyle: 'italic', fontSize: 16, fontFamily: 'var(--font-serif)' }}>
-              Erstes Dokument hochladen →
-            </button>
+      {/* Intelligence Insights */}
+      {flowResult && (
+        <div className="max-w-6xl mx-auto space-y-8 animate-in slide-in-from-bottom-8 duration-700">
+          <div className="flex justify-between items-center px-4">
+            <h2 className="text-[11px] font-black uppercase tracking-[0.4em] text-indigo-500 flex items-center gap-2">
+              Nächste Schritte (KI-Empfehlung)
+              <GeneratedImage prompt="Sparkles icon, academic minimalist" className="w-4 h-4 rounded-full" />
+            </h2>
           </div>
-        ) : (
-          <div style={{ fontFamily: 'var(--font-sans)' }}>
-            {/* Table header */}
-            <div style={{
-              display: 'grid', gridTemplateColumns: '36px 2fr 1.4fr 120px',
-              gap: 16, padding: '10px 0', borderBottom: '1px solid var(--border-soft)',
-              fontSize: 10, color: 'var(--mute)', letterSpacing: '0.16em', textTransform: 'uppercase',
-            }}>
-              <span>№</span><span>Titel</span><span>Typ</span><span>Hinzugefügt</span>
-            </div>
-            {recentDocs.map((doc, i) => (
-              <div key={doc.id} style={{
-                display: 'grid', gridTemplateColumns: '36px 2fr 1.4fr 120px',
-                gap: 16, padding: '13px 0', borderBottom: '1px solid var(--border-soft)',
-                alignItems: 'center',
-              }}>
-                <span style={{ fontFamily: 'var(--font-mono)', fontSize: 11, color: 'var(--mute)' }}>
-                  {String(i + 1).padStart(2, '0')}
-                </span>
-                <span style={{ fontFamily: 'var(--font-serif)', fontSize: 16, color: 'var(--ink)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
-                  {doc.name}
-                </span>
-                <span style={{ fontFamily: 'var(--font-serif)', fontSize: 14, color: 'var(--ink2)', fontStyle: 'italic' }}>
-                  {doc.type === 'pdf' ? 'PDF' : doc.type === 'docx' ? 'Word-Dokument' : 'Text'}
-                </span>
-                <span style={{ fontFamily: 'var(--font-sans)', fontSize: 12, color: 'var(--mute)' }}>
-                  {doc.uploadDate ? formatFileDate(doc.uploadDate) : '–'}
-                </span>
-              </div>
+          
+          <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+            {flowResult.next_actions.map((action, i) => (
+              <button 
+                key={i}
+                onClick={() => onTabChange(action.module.toUpperCase() as ActiveTab)}
+                className="bg-indigo-600 p-8 rounded-[32px] text-white text-left shadow-3d-deep hover:scale-105 transition-all group overflow-hidden relative"
+              >
+                <div className="absolute top-0 right-0 w-24 h-24 bg-white/5 blur-2xl rounded-full translate-x-8 -translate-y-8"></div>
+                <div className="relative z-10 space-y-4">
+                  <div className="flex justify-between items-center">
+                    <span className="text-[9px] font-black uppercase tracking-widest opacity-60">{action.timebox_minutes} Min. Fokus</span>
+                    <span className="text-xs">➔</span>
+                  </div>
+                  <h3 className="text-xl font-black leading-tight">{action.title}</h3>
+                  <p className="text-[11px] font-medium opacity-80 italic">"{action.why}"</p>
+                </div>
+              </button>
+            ))}
+
+            {flowResult.calendar_suggestion.should_schedule && flowResult.calendar_suggestion.suggested_blocks.map((block, i) => (
+               <div key={i} className="p-8 rounded-[32px] flex flex-col justify-between group border-2 border-dashed border-indigo-200 dark:border-indigo-900" style={{ background: 'var(--bg-sidebar)' }}>
+                  <div>
+                    <span className="text-[9px] font-black uppercase text-indigo-500 tracking-widest mb-2 block">Lernplan-Vorschlag</span>
+                    <h3 className="text-lg font-black dark:text-white">{block.day}, {block.start_time} Uhr</h3>
+                    <p className="text-[11px] text-slate-500 mt-1">{block.focus_topics.join(', ')}</p>
+                  </div>
+                  <button 
+                    onClick={() => handleAcceptSuggestion(block)}
+                    className="mt-6 w-full py-3 bg-slate-50 dark:bg-slate-800 text-[10px] font-black uppercase tracking-widest rounded-xl hover:bg-indigo-600 hover:text-white transition-all"
+                  >In Kalender eintragen</button>
+               </div>
             ))}
           </div>
-        )}
-      </section>
+        </div>
+      )}
+
+      {/* Standard Navigation Grid */}
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6 lg:gap-8 max-w-6xl mx-auto w-full">
+        {cards.map((card) => {
+          const isHovered = hovered === card.id;
+          return (
+            <button
+              key={card.id}
+              onClick={() => handleCardClick(card.id)}
+              onMouseEnter={() => setHovered(card.id)}
+              onMouseLeave={() => setHovered(null)}
+              className="group relative rounded-[32px] lg:rounded-[48px] p-8 lg:p-12 text-left shadow-3d-raised hover:shadow-3d-deep hover:-translate-y-2 transition-all duration-300 overflow-hidden active:scale-[0.98]"
+              style={isHovered
+                ? { background: 'var(--primary)', border: '1px solid var(--primary)', boxShadow: '0 20px 40px color-mix(in srgb, var(--primary) 35%, transparent)' }
+                : { background: 'var(--bg-sidebar)', border: '1px solid var(--border-color)' }
+              }
+            >
+              <div className="absolute top-0 right-0 w-40 h-40 rounded-full blur-3xl transition-opacity duration-300 pointer-events-none"
+                style={{ background: isHovered ? 'rgba(255,255,255,0.15)' : 'transparent', opacity: isHovered ? 1 : 0 }}
+              />
+              <div className="relative z-10 space-y-6">
+                <div className="flex justify-between items-start">
+                  <div
+                    className="w-12 h-12 lg:w-16 lg:h-16 rounded-2xl flex items-center justify-center group-hover:scale-110 transition-all duration-300"
+                    style={isHovered
+                      ? { background: 'rgba(255,255,255,0.2)', color: 'white' }
+                      : { background: 'color-mix(in srgb, var(--primary) 12%, var(--bg-sidebar))', color: 'var(--primary)' }
+                    }
+                  >
+                    <GeneratedImage prompt={card.prompt} className="w-7 h-7 lg:w-9 lg:h-9" />
+                  </div>
+                  {card.badge && (
+                    <span
+                      className="text-[9px] font-black uppercase tracking-widest px-3 py-1.5 rounded-full transition-colors duration-300"
+                      style={isHovered
+                        ? { background: 'rgba(255,255,255,0.2)', color: 'white', border: '1px solid rgba(255,255,255,0.3)' }
+                        : { background: 'var(--p50)', color: 'var(--primary)', border: '1px solid var(--p100)' }
+                      }
+                    >
+                      {card.badge}
+                    </span>
+                  )}
+                </div>
+                <div className="space-y-2">
+                  <h3
+                    className="text-2xl lg:text-3xl font-black tracking-tight transition-colors duration-300"
+                    style={{ color: isHovered ? 'white' : undefined }}
+                  >
+                    {card.title}
+                  </h3>
+                  <p
+                    className="text-sm lg:text-base leading-relaxed font-medium transition-colors duration-300"
+                    style={{ color: isHovered ? 'rgba(255,255,255,0.75)' : undefined }}
+                  >
+                    {card.desc}
+                  </p>
+                </div>
+              </div>
+            </button>
+          );
+        })}
+      </div>
     </div>
   );
 };

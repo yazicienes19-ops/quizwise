@@ -62,7 +62,6 @@ const App: React.FC = () => {
     setIsDark(next);
     document.documentElement.classList.toggle('dark', next);
     localStorage.setItem('theme', next ? 'dark' : 'light');
-    (window as any).applyPaperPattern?.();
   };
   const [decks, setDecks] = useState<FlashcardDeck[]>([]);
   const [examTerms, setExamTerms] = useState<ExamTerm[]>([]);
@@ -337,7 +336,7 @@ const App: React.FC = () => {
 
     switch (activeTab) {
       case ActiveTab.DASHBOARD:
-        return <Dashboard onTabChange={setActiveTab} flowResult={flowResult} onAcceptFlow={saveFlowResult} user={user} documents={documents} />;
+        return <Dashboard onTabChange={setActiveTab} flowResult={flowResult} onAcceptFlow={saveFlowResult} />;
       case ActiveTab.LIBRARY:
         return <LibrarySystem documents={documents} collections={collections} onUpload={handleFileUpload} onDelete={deleteDoc} onAction={(tab, doc) => tab === ActiveTab.QUIZ ? handleStartQuizFromDoc(doc) : setActiveTab(tab)} onAddCollection={addCollection} onDeleteCollection={removeCollection} onMoveDocument={moveDoc} isLoading={isLoading} />;
       case ActiveTab.QUIZ:
