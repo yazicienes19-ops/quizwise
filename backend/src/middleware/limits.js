@@ -1,7 +1,8 @@
 const { supabase } = require('./auth');
 
 const LIMITS = {
-  free: 20,  // Anfragen pro Tag
+  free: 20,
+  demo: Infinity,
   pro: Infinity,
 };
 
