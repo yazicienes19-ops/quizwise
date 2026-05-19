@@ -9,7 +9,7 @@ interface ResultViewProps {
   docName?: string;
   onRetryWrong?: (wrongQuestions: QuizQuestion[]) => void;
   onGoToSource?: () => void;
-  onCreateFlashcards?: () => void;
+  onCreateFlashcards?: (wrongQuestions: QuizQuestion[]) => void;
 }
 
 export const ResultView: React.FC<ResultViewProps> = ({
@@ -130,15 +130,15 @@ export const ResultView: React.FC<ResultViewProps> = ({
             <span className="text-[10px] font-black uppercase tracking-widest">Neues Quiz</span>
           </button>
 
-          {onCreateFlashcards && (
+          {onCreateFlashcards && wrongQuestions.length > 0 && (
             <button
-              onClick={onCreateFlashcards}
+              onClick={() => onCreateFlashcards(wrongQuestions)}
               className="flex items-center justify-center gap-2 px-4 py-4 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 text-slate-700 dark:text-slate-300 rounded-[20px] shadow-3d-raised hover:scale-[1.02] active:scale-[0.98] transition-all"
             >
               <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
                 <rect x="2" y="5" width="20" height="14" rx="2"/><line x1="2" y1="10" x2="22" y2="10"/>
               </svg>
-              <span className="text-[10px] font-black uppercase tracking-widest">Karteikarten</span>
+              <span className="text-[10px] font-black uppercase tracking-widest">Karten aus Fehlern ({wrongQuestions.length})</span>
             </button>
           )}
 

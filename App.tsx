@@ -21,11 +21,11 @@ import { ExamSystem } from './components/ExamSystem';
 import { ActiveRecall } from './components/ActiveRecall';
 import { GeneratedImage } from './components/GeneratedImage';
 import { ToastContainer } from './components/Toast';
-import { ActiveTab, ProcessedDocument, QuizQuestion, UserAnswer, TopicMetric, SearchResult, QuizType, FlashcardDeck, Collection, ExamTerm, LearningFlowResult, QuizConfig } from './types';
+import { ActiveTab, ProcessedDocument, QuizQuestion, UserAnswer, TopicMetric, SearchResult, QuizType, FlashcardDeck, Flashcard, Collection, ExamTerm, LearningFlowResult, QuizConfig } from './types';
 
 import { generateQuizFromDocument, searchScholar, searchWeb, generateQuizFromFlashcards, orchestrateLearningFlow } from './services/geminiService';
 import { saveQuizResult, getDocStats } from './services/quizHistoryService';
-import { saveMeta } from './services/libraryService';
+import { saveMeta, getMeta } from './services/libraryService';
 import {
   loadDocumentsFromSupabase,
   loadCollectionsFromSupabase,
@@ -358,6 +358,50 @@ const App: React.FC = () => {
     } catch (e) { handleApiError(e); } finally { setIsLoading(false); }
   };
 
+  const handleCreateFlashcardsFromMistakes = (wrongQuestions: QuizQuestion[]) => {
+    if (!wrongQuestions.length) return;
+
+    const cards: Flashcard[] = wrongQuestions.map(q => {
+      const correctAnswerText = q.options.length > 0
+        ? q.correctAnswerIndices.map(i => q.options[i]).filter(Boolean).join(' / ')
+        : '';
+      const back = correctAnswerText
+        ? correctAnswerText + (q.explanation ? `\n\n${q.explanation}` : '')
+        : q.explanation || '';
+
+      return {
+        id: Math.random().toString(36).slice(2, 9),
+        front: q.question,
+        back,
+        level: 0,
+        nextReview: Date.now(),
+      };
+    });
+
+    const deckTitle = `Fehler: ${activeQuizMeta?.docName || 'Quiz'}`;
+    const newDeck: FlashcardDeck = {
+      id: Math.random().toString(36).slice(2, 9),
+      title: deckTitle,
+      cards,
+      sourceDocumentId: activeQuizMeta?.docId,
+    };
+
+    const updatedDecks = [...decks, newDeck];
+    setDecks(updatedDecks);
+    localStorage.setItem('flashcard_decks', JSON.stringify(updatedDecks));
+
+    if (activeQuizMeta?.docId) {
+      const current = getMeta(activeQuizMeta.docId);
+      saveMeta(activeQuizMeta.docId, {
+        flashcardCount: (current.flashcardCount ?? 0) + cards.length,
+      });
+    }
+
+    toast.success(`${cards.length} Karteikarten aus Fehlern erstellt`);
+    setPendingActionDoc(null);
+    setActiveTab(ActiveTab.CARDS);
+  };
+
   const fileToBase64 = (file: File): Promise<string> => {
     return new Promise((resolve, reject) => {
       const reader = new FileReader();
@@ -453,7 +497,7 @@ const App: React.FC = () => {
             onRestart={() => { setQuestions([]); setAnswers([]); }}
             onRetryWrong={(wrongQs) => { setQuestions(wrongQs); setAnswers([]); }}
             onGoToSource={() => { setPendingActionDoc(null); setQuestions([]); setAnswers([]); setActiveTab(ActiveTab.LIBRARY); }}
-            onCreateFlashcards={pendingActionDoc ? () => { setActiveTab(ActiveTab.CARDS); } : undefined}
+            onCreateFlashcards={pendingActionDoc ? handleCreateFlashcardsFromMistakes : undefined}
           />;
         }
         return <FileUploader
