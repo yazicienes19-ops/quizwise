@@ -36,6 +36,15 @@ export interface QuizQuestion {
   topic?: string;
   difficulty?: 'leicht' | 'mittel' | 'schwer';
   learningGoal?: string;
+  questionType?: 'mc' | 'truefalse' | 'open';
+}
+
+export interface QuizConfig {
+  questionType: 'mc' | 'truefalse' | 'open' | 'mixed';
+  difficulty: 'leicht' | 'mittel' | 'schwer' | 'klausurnah';
+  questionCount: number;
+  focus: 'all' | 'weak';
+  examMode: boolean;
 }
 
 export interface Flashcard {

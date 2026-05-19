@@ -160,7 +160,7 @@ export const Dashboard: React.FC<DashboardProps> = ({ onTabChange, flowResult })
                   <div
                     className="w-12 h-12 lg:w-16 lg:h-16 rounded-2xl flex items-center justify-center group-hover:scale-110 transition-all duration-300"
                     style={isHovered
-                      ? { background: 'rgba(255,255,255,0.2)', color: 'white' }
+                      ? { background: 'rgba(255,255,255,0.2)', color: 'var(--primary-text)' }
                       : { background: 'color-mix(in srgb, var(--primary) 12%, var(--bg-sidebar))', color: 'var(--primary)' }
                     }
                   >
@@ -170,7 +170,7 @@ export const Dashboard: React.FC<DashboardProps> = ({ onTabChange, flowResult })
                     <span
                       className="text-[9px] font-black uppercase tracking-widest px-3 py-1.5 rounded-full transition-colors duration-300"
                       style={isHovered
-                        ? { background: 'rgba(255,255,255,0.2)', color: 'white', border: '1px solid rgba(255,255,255,0.3)' }
+                        ? { background: 'rgba(255,255,255,0.2)', color: 'var(--primary-text)', border: '1px solid rgba(255,255,255,0.3)' }
                         : { background: 'var(--p50)', color: 'var(--primary)', border: '1px solid var(--p100)' }
                       }
                     >
@@ -181,13 +181,13 @@ export const Dashboard: React.FC<DashboardProps> = ({ onTabChange, flowResult })
                 <div className="space-y-2">
                   <h3
                     className="text-2xl lg:text-3xl font-black tracking-tight transition-colors duration-300"
-                    style={{ color: isHovered ? 'white' : undefined }}
+                    style={{ color: isHovered ? 'var(--primary-text)' : undefined }}
                   >
                     {card.title}
                   </h3>
                   <p
                     className="text-sm lg:text-base leading-relaxed font-medium transition-colors duration-300"
-                    style={{ color: isHovered ? 'rgba(255,255,255,0.75)' : undefined }}
+                    style={{ color: isHovered ? 'color-mix(in srgb, var(--primary-text) 75%, transparent)' : undefined }}
                   >
                     {card.desc}
                   </p>

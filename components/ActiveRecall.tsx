@@ -1,5 +1,5 @@
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { ProcessedDocument, Collection, RecallChallenge, RecallEvaluation } from '../types';
 import type { GenerationSource } from '../services/geminiService';
 import { generateRecallChallenge, evaluateRecallResponse } from '../services/geminiService';
@@ -12,6 +12,7 @@ interface ActiveRecallProps {
   getDocumentSource?: (doc: ProcessedDocument) => Promise<GenerationSource>;
   onSaveToLibrary?: (file: File) => void;
   onComplete: (score: number, topic: string) => void;
+  initialDoc?: ProcessedDocument;
 }
 
 export const ActiveRecall: React.FC<ActiveRecallProps> = ({
@@ -20,9 +21,19 @@ export const ActiveRecall: React.FC<ActiveRecallProps> = ({
   getDocumentSource,
   onSaveToLibrary,
   onComplete,
+  initialDoc,
 }) => {
   const [activeSource, setActiveSource] = useState<GenerationSource | null>(null);
   const [activeSourceName, setActiveSourceName] = useState('');
+
+  // Auto-select source when navigated from Library
+  useEffect(() => {
+    if (!initialDoc || !getDocumentSource) return;
+    getDocumentSource(initialDoc).then(source => {
+      setActiveSource(source);
+      setActiveSourceName(initialDoc.name.replace(/\.[^/.]+$/, ''));
+    }).catch(() => {});
+  }, []); // eslint-disable-line react-hooks/exhaustive-deps
   const [challenge, setChallenge] = useState<RecallChallenge | null>(null);
   const [userAnswer, setUserAnswer] = useState('');
   const [evaluation, setEvaluation] = useState<RecallEvaluation | null>(null);

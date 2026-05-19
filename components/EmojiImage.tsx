@@ -5,7 +5,7 @@ import {
   BarChart2, Radio, Plus, Map, X, Trash2, Layers, MousePointerClick,
   BookMarked, Book, FileText, BookOpen, Download, Folder, Keyboard,
   MailOpen, Archive, Zap, Settings, PenLine, Clipboard, FlaskConical,
-  Building2, Microscope, Trophy, Star, TrendingUp, type LucideIcon,
+  Building2, Microscope, Trophy, Star, TrendingUp, Calendar, type LucideIcon,
 } from 'lucide-react';
 
 const emojiToIcon: Record<string, LucideIcon> = {
@@ -45,6 +45,9 @@ const emojiToIcon: Record<string, LucideIcon> = {
   '🏆': Trophy,
   '🌟': Star,
   '📈': TrendingUp,
+  '🃏': Layers,
+  '📅': Calendar,
+  '✍️': PenLine,
 };
 
 interface EmojiImageProps {

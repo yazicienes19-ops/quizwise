@@ -296,7 +296,12 @@ export const generateSmartStudyPlan = async (metrics: TopicMetric[], decks: Flas
 export const generateQuizFromDocument = async (
   source: GenerationSource,
   quizType: QuizType = QuizType.FAST,
-  options?: { customCount?: number; customDifficulty?: string; customFocus?: string }
+  options?: {
+    customCount?: number;
+    customDifficulty?: string;
+    customFocus?: string;
+    questionType?: 'mc' | 'truefalse' | 'open' | 'mixed';
+  }
 ): Promise<QuizQuestion[]> => {
   const parts: any[] = [];
   if (source.file) parts.push({ inlineData: { data: source.file.data, mimeType: source.file.mimeType } });
@@ -318,20 +323,30 @@ export const generateQuizFromDocument = async (
     difficulty = 'leicht bis mittel';
   }
 
+  const qt = options?.questionType ?? 'mixed';
+  let typeInstruction: string;
+  if (qt === 'mc') {
+    typeInstruction = 'FRAGETYP: Erstelle AUSSCHLIESSLICH Multiple-Choice-Fragen (isMultipleChoice: true, 2-3 korrekte Antworten aus 4 Optionen).';
+  } else if (qt === 'truefalse') {
+    typeInstruction = 'FRAGETYP: Erstelle NUR Wahr/Falsch-Fragen. options MUSS genau ["Wahr", "Falsch"] sein. isMultipleChoice: false. correctAnswerIndices: [0] für wahr, [1] für falsch. questionType: "truefalse".';
+  } else if (qt === 'open') {
+    typeInstruction = 'FRAGETYP: Erstelle AUSSCHLIESSLICH offene Fragen. options: [] (leeres Array). correctAnswerIndices: []. isMultipleChoice: false. Die vollständige Musterantwort steht in explanation. questionType: "open".';
+  } else {
+    typeInstruction = 'FRAGETYP: Gemischt — ca. 60% Multiple-Choice (mehrere korrekte Antworten), 25% Single-Choice, 15% Wahr/Falsch.';
+  }
+
   const seed = Math.random().toString(36).slice(2, 8);
 
   parts.push({ text: `Erstelle ein Quiz mit genau ${count} Fragen basierend auf dem Material.
 Schwierigkeit: ${difficulty}.${focusLine}
 Zufalls-Seed für Abwechslung: ${seed}
 
+${typeInstruction}
+
 WICHTIG für Vielfalt:
 - Verteile die Fragen gleichmäßig über ALLE Abschnitte/Themen des Materials
-- Mische Fragetypen: Definitionen, Anwendung, Vergleiche, Ursache-Wirkung, Beispiele
-- Nutze verschiedene kognitive Ebenen: Wissen, Verstehen, Anwenden, Analysieren
+- Mische kognitive Ebenen: Wissen, Verstehen, Anwenden, Analysieren
 - Jede Frage soll sich in Formulierung und Inhalt deutlich von den anderen unterscheiden
-- MINDESTENS 70% der Fragen sollen Multiple-Choice sein (mehrere korrekte Antworten aus 4 Optionen)
-- Bei Multiple-Choice: 2-3 korrekte Antworten pro Frage, Falschantworten plausibel aber klar falsch
-- Single-Choice nur für einfache Definitionen oder Ja/Nein-Fakten
 
 Zu jeder Frage: korrekte Antwort-Indices (Array), Boolean ob Multiple-Choice, Erklärung, Textbezug, Thema und Schwierigkeitsgrad.` });
 
@@ -354,7 +369,8 @@ Zu jeder Frage: korrekte Antwort-Indices (Array), Boolean ob Multiple-Choice, Er
             distractorExplanations: { type: Type.ARRAY, items: { type: Type.STRING } },
             sourceReference: { type: Type.STRING },
             topic: { type: Type.STRING },
-            difficulty: { type: Type.STRING }
+            difficulty: { type: Type.STRING },
+            questionType: { type: Type.STRING }
           },
           required: ['question', 'options', 'correctAnswerIndices', 'isMultipleChoice', 'explanation', 'sourceReference']
         }

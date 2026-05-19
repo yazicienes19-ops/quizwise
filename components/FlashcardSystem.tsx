@@ -1,5 +1,5 @@
 
-import React, { useState, useEffect, useMemo } from 'react';
+import React, { useState, useEffect, useMemo, useRef, useCallback } from 'react';
 import { FlashcardDeck, Flashcard, ProcessedDocument, Collection } from '../types';
 import type { GenerationSource } from '../services/geminiService';
 import { EmojiImage } from './EmojiImage';
@@ -15,6 +15,7 @@ interface FlashcardSystemProps {
   onGenerateQuizFromDeck: (deck: FlashcardDeck) => void;
   getDocumentSource?: (doc: ProcessedDocument) => Promise<GenerationSource>;
   isQuizLoading?: boolean;
+  initialDoc?: ProcessedDocument;
 }
 
 export const FlashcardSystem: React.FC<FlashcardSystemProps> = ({
@@ -24,7 +25,8 @@ export const FlashcardSystem: React.FC<FlashcardSystemProps> = ({
   onSaveToLibrary,
   onGenerateQuizFromDeck,
   getDocumentSource,
-  isQuizLoading = false
+  isQuizLoading = false,
+  initialDoc,
 }) => {
   const [decks, setDecks] = useState<FlashcardDeck[]>([]);
   const [activeDeckId, setActiveDeckId] = useState<string | null>(null);
@@ -41,6 +43,7 @@ export const FlashcardSystem: React.FC<FlashcardSystemProps> = ({
   const [newCardBack, setNewCardBack] = useState('');
 
   const cardCounts = [5, 10, 15, 20, 30];
+  const importInputRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
     const saved = localStorage.getItem('flashcard_decks');
@@ -48,6 +51,14 @@ export const FlashcardSystem: React.FC<FlashcardSystemProps> = ({
       try { setDecks(JSON.parse(saved)); } catch (e) { console.error(e); }
     }
   }, []);
+
+  // Auto-generate cards when navigated from Library source detail
+  useEffect(() => {
+    if (!initialDoc || !getDocumentSource) return;
+    getDocumentSource(initialDoc).then(source => {
+      handleGenerateFromSource(source, initialDoc.name.replace(/\.[^/.]+$/, ''), initialDoc.id);
+    }).catch(() => {});
+  }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
   const saveDecks = (newDecks: FlashcardDeck[]) => {
     setDecks(newDecks);
@@ -189,6 +200,91 @@ export const FlashcardSystem: React.FC<FlashcardSystemProps> = ({
       };
     });
     saveDecks(newDecks);
+  };
+
+  const handleExportDeck = (deck: FlashcardDeck) => {
+    const data = {
+      title: deck.title,
+      exportedAt: new Date().toISOString(),
+      cards: deck.cards.map(c => ({ front: c.front, back: c.back }))
+    };
+    const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `${deck.title.replace(/[^a-z0-9äöüß]/gi, '_')}.json`;
+    a.click();
+    URL.revokeObjectURL(url);
+  };
+
+  const handleExportAll = () => {
+    const data = {
+      exportedAt: new Date().toISOString(),
+      decks: decks.map(deck => ({
+        title: deck.title,
+        cards: deck.cards.map(c => ({ front: c.front, back: c.back }))
+      }))
+    };
+    const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `quizwise_alle_decks_${new Date().toISOString().slice(0, 10)}.json`;
+    a.click();
+    URL.revokeObjectURL(url);
+  };
+
+  const handleImport = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    const reader = new FileReader();
+    reader.onload = (ev) => {
+      try {
+        const json = JSON.parse(ev.target?.result as string);
+        let imported: FlashcardDeck[] = [];
+
+        if (Array.isArray(json.decks)) {
+          // Alle-sichern Format
+          imported = json.decks.map((d: { title: string; cards: { front: string; back: string }[] }) => ({
+            id: Math.random().toString(36).substr(2, 9),
+            title: d.title,
+            cards: d.cards.map((c: { front: string; back: string }) => ({
+              id: Math.random().toString(36).substr(2, 9),
+              front: c.front,
+              back: c.back,
+              level: 0,
+              nextReview: Date.now(),
+              lastInterval: 0
+            }))
+          }));
+        } else if (json.title && Array.isArray(json.cards)) {
+          // Einzelnes Deck Format
+          imported = [{
+            id: Math.random().toString(36).substr(2, 9),
+            title: json.title,
+            cards: json.cards.map((c: { front: string; back: string }) => ({
+              id: Math.random().toString(36).substr(2, 9),
+              front: c.front,
+              back: c.back,
+              level: 0,
+              nextReview: Date.now(),
+              lastInterval: 0
+            }))
+          }];
+        } else {
+          alert('Ungültiges Format. Nur QuizWise-Exporte werden unterstützt.');
+          return;
+        }
+
+        saveDecks([...decks, ...imported]);
+        alert(`${imported.length} Deck${imported.length !== 1 ? 's' : ''} mit ${imported.reduce((sum, d) => sum + d.cards.length, 0)} Karten importiert.`);
+      } catch {
+        alert('Fehler beim Lesen der Datei. Ist es eine gültige JSON-Datei?');
+      } finally {
+        if (importInputRef.current) importInputRef.current.value = '';
+      }
+    };
+    reader.readAsText(file);
   };
 
   const getActiveDeckCards = () => {
@@ -379,7 +475,32 @@ export const FlashcardSystem: React.FC<FlashcardSystemProps> = ({
         <div className="lg:col-span-8 bg-white dark:bg-slate-900 rounded-[30px] lg:rounded-[48px] border border-slate-200 dark:border-slate-800 shadow-3d-deep overflow-hidden order-1 lg:order-2">
           <div className="p-6 lg:p-10 border-b border-slate-50 dark:border-slate-800 flex flex-col sm:flex-row justify-between items-center gap-4 lg:gap-0">
             <h3 className="text-[10px] lg:text-[11px] font-black uppercase tracking-[0.3em] lg:tracking-[0.4em] text-slate-400">Deine Stapel ({decks.length})</h3>
-            <div className="flex gap-4">
+            <div className="flex gap-4 items-center">
+              <input
+                ref={importInputRef}
+                type="file"
+                accept=".json"
+                className="hidden"
+                onChange={handleImport}
+              />
+              <button
+                onClick={() => importInputRef.current?.click()}
+                className="flex items-center gap-2 px-4 py-2 bg-slate-100 dark:bg-slate-800 text-slate-500 hover:text-indigo-600 rounded-xl text-[9px] font-black uppercase tracking-widest transition-colors"
+                title="Decks aus JSON importieren"
+              >
+                <svg xmlns="http://www.w3.org/2000/svg" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+                Importieren
+              </button>
+              {decks.length > 0 && (
+                <button
+                  onClick={handleExportAll}
+                  className="flex items-center gap-2 px-4 py-2 bg-slate-100 dark:bg-slate-800 text-slate-500 hover:text-indigo-600 rounded-xl text-[9px] font-black uppercase tracking-widest transition-colors"
+                  title="Alle Stapel als JSON exportieren"
+                >
+                  <svg xmlns="http://www.w3.org/2000/svg" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+                  Alle sichern
+                </button>
+              )}
                <div className="flex items-center gap-2">
                  <div className="w-2 h-2 rounded-full bg-blue-500"></div>
                  <span className="text-[9px] font-black text-slate-400 uppercase">Neu</span>
@@ -434,12 +555,19 @@ export const FlashcardSystem: React.FC<FlashcardSystemProps> = ({
                         >
                           Lernen
                         </button>
-                        <button 
+                        <button
                           onClick={() => setEditingDeckId(deck.id)}
                           className="p-3 bg-slate-50 dark:bg-slate-800 text-slate-400 hover:text-indigo-600 rounded-xl transition-all"
                           title="Bearbeiten"
                         >
                           <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"></path><path d="M18.5 2.5a2.121 2.121 0 1 1 3 3L12 15l-4 1 1-4 9.5-9.5z"></path></svg>
+                        </button>
+                        <button
+                          onClick={() => handleExportDeck(deck)}
+                          className="p-3 bg-slate-50 dark:bg-slate-800 text-slate-400 hover:text-indigo-600 rounded-xl transition-all"
+                          title="Als JSON exportieren"
+                        >
+                          <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
                         </button>
                         <button
                           onClick={() => onGenerateQuizFromDeck(deck)}

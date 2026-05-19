@@ -172,7 +172,8 @@ export const SettingsModal: React.FC<Props> = ({ user, isDark, onToggleTheme, on
           <div className="flex p-1 rounded-2xl gap-1 overflow-x-auto scrollbar-hide" style={{ background: 'color-mix(in srgb, var(--border-color) 40%, var(--bg-main))' }}>
             {tabs.map(t => (
               <button key={t.id} onClick={() => setTab(t.id)}
-                className={`flex-1 min-w-fit flex items-center justify-center gap-1.5 py-2.5 px-3 rounded-xl text-[10px] font-black uppercase tracking-wider transition-all whitespace-nowrap ${tab === t.id ? 'bg-indigo-600 text-white shadow-lg' : 'text-slate-400 hover:text-slate-600 dark:hover:text-slate-200'}`}>
+                className={`flex-1 min-w-fit flex items-center justify-center gap-1.5 py-2.5 px-3 rounded-xl text-[10px] font-black uppercase tracking-wider transition-all whitespace-nowrap ${tab === t.id ? 'bg-indigo-600 shadow-lg' : 'text-slate-400 hover:text-slate-600 dark:hover:text-slate-200'}`}
+                style={tab === t.id ? { color: 'var(--primary-text)' } : {}}>
                 {t.icon}<span className="hidden sm:inline">{t.label}</span>
               </button>
             ))}
@@ -187,7 +188,7 @@ export const SettingsModal: React.FC<Props> = ({ user, isDark, onToggleTheme, on
             <>
               {/* Avatar */}
               <div className="flex items-center gap-5">
-                <div className="w-16 h-16 bg-indigo-600 rounded-2xl flex items-center justify-center text-white text-2xl font-black shadow-lg shrink-0">
+                <div className="w-16 h-16 bg-indigo-600 rounded-2xl flex items-center justify-center text-2xl font-black shadow-lg shrink-0" style={{ color: 'var(--primary-text)' }}>
                   {(name || user.email || 'U')[0].toUpperCase()}
                 </div>
                 <div>

@@ -83,7 +83,7 @@ export const Layout: React.FC<LayoutProps> = ({ children, activeTab, onTabChange
       <aside className="w-72 hidden lg:flex flex-col h-screen sticky top-0 shadow-[4px_0_24px_rgba(0,0,0,0.05)] z-20" style={{ background: 'var(--bg-sidebar)', borderRight: '1px solid var(--border-color)' }}>
         <div className="p-10 flex flex-col h-full">
           <div className="flex items-center gap-4 mb-12">
-            <div className="w-10 h-10 bg-indigo-600 rounded-xl flex items-center justify-center text-white font-black shadow-[0_4px_12px_rgba(79,70,229,0.4)] transform rotate-3 shrink-0">QW</div>
+            <div className="w-10 h-10 bg-indigo-600 rounded-xl flex items-center justify-center font-black transform rotate-3 shrink-0" style={{ color: 'var(--primary-text)', boxShadow: '0 4px 12px color-mix(in srgb, var(--primary) 40%, transparent)' }}>QW</div>
             <span className="text-xl font-black tracking-tighter text-slate-900 dark:text-white uppercase truncate">QuizWise</span>
           </div>
           
@@ -97,7 +97,7 @@ export const Layout: React.FC<LayoutProps> = ({ children, activeTab, onTabChange
                     ? 'bg-indigo-600 text-white scale-[1.02]'
                     : 'text-slate-500 dark:text-slate-400 hover:bg-slate-50 dark:hover:bg-slate-800 hover:translate-x-1'
                 }`}
-                style={activeTab === item.id ? { boxShadow: '0 8px 16px color-mix(in srgb, var(--primary) 35%, transparent)' } : {}}
+                style={activeTab === item.id ? { boxShadow: '0 8px 16px color-mix(in srgb, var(--primary) 35%, transparent)', color: 'var(--primary-text)' } : {}}
               >
                 <item.icon className="w-5 h-5 shrink-0" strokeWidth={1.75} />
                 <span className="truncate">{item.label}</span>
@@ -110,7 +110,7 @@ export const Layout: React.FC<LayoutProps> = ({ children, activeTab, onTabChange
             {user ? (
               <>
                 <div className="flex items-center gap-3 px-4 py-3 rounded-2xl" style={{ background: 'color-mix(in srgb, var(--border-color) 40%, var(--bg-sidebar))' }}>
-                  <div className="w-8 h-8 bg-indigo-600 rounded-xl flex items-center justify-center text-white text-[10px] font-black shrink-0">
+                  <div className="w-8 h-8 bg-indigo-600 rounded-xl flex items-center justify-center text-[10px] font-black shrink-0" style={{ color: 'var(--primary-text)' }}>
                     {(user.user_metadata?.full_name || user.email || 'U')[0].toUpperCase()}
                   </div>
                   <div className="flex-1 min-w-0">

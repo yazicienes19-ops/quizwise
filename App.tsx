@@ -7,6 +7,7 @@ import { SettingsModal } from './components/SettingsModal';
 import { Layout } from './components/Layout';
 import { Dashboard } from './components/Dashboard';
 import { QuizPlayer } from './components/QuizPlayer';
+import { QuizSetup } from './components/QuizSetup';
 import { ResultView } from './components/ResultView';
 import { FileUploader } from './components/FileUploader';
 import { ScholarSearch } from './components/ScholarSearch';
@@ -20,9 +21,11 @@ import { ExamSystem } from './components/ExamSystem';
 import { ActiveRecall } from './components/ActiveRecall';
 import { GeneratedImage } from './components/GeneratedImage';
 import { ToastContainer } from './components/Toast';
-import { ActiveTab, ProcessedDocument, QuizQuestion, UserAnswer, TopicMetric, SearchResult, QuizType, FlashcardDeck, Collection, ExamTerm, LearningFlowResult } from './types';
+import { ActiveTab, ProcessedDocument, QuizQuestion, UserAnswer, TopicMetric, SearchResult, QuizType, FlashcardDeck, Collection, ExamTerm, LearningFlowResult, QuizConfig } from './types';
 
 import { generateQuizFromDocument, searchScholar, searchWeb, generateQuizFromFlashcards, orchestrateLearningFlow } from './services/geminiService';
+import { saveQuizResult, getDocStats } from './services/quizHistoryService';
+import { saveMeta } from './services/libraryService';
 import {
   loadDocumentsFromSupabase,
   loadCollectionsFromSupabase,
@@ -56,6 +59,8 @@ const App: React.FC = () => {
   const [showUpgradeModal, setShowUpgradeModal] = useState(false);
   const [showSettings, setShowSettings] = useState(false);
   const [isDark, setIsDark] = useState(() => localStorage.getItem('theme') === 'dark');
+  const [pendingActionDoc, setPendingActionDoc] = useState<ProcessedDocument | null>(null);
+  const [activeQuizMeta, setActiveQuizMeta] = useState<{ docId: string; docName: string } | null>(null);
 
   const toggleTheme = () => {
     const next = !isDark;
@@ -232,10 +237,10 @@ const App: React.FC = () => {
     }
   };
 
-  const handleFileUpload = async (file: File, collectionId?: string) => {
+  const handleFileUpload = async (file: File, collectionId?: string): Promise<string | null> => {
     if (isOffline) {
       toast.error('Hochladen ist im Offline-Modus nicht möglich.');
-      return;
+      return null;
     }
     setIsLoading(true);
     try {
@@ -245,12 +250,9 @@ const App: React.FC = () => {
 
       if (ext === 'pdf') {
         docType = 'pdf';
-        // PDFs werden NICHT als Base64 in localStorage gespeichert (Limit ~5 MB).
-        // Stattdessen: direkt in Supabase Storage hochladen, content bleibt leer,
-        // on-demand laden via getDocumentSource.
         if (!user) {
           toast.error('Zum Speichern von PDFs bitte zuerst anmelden.');
-          return;
+          return null;
         }
       } else if (ext === 'docx') {
         const arrayBuffer = await file.arrayBuffer();
@@ -265,26 +267,26 @@ const App: React.FC = () => {
       const newDoc: ProcessedDocument = {
         id: Math.random().toString(36).substr(2, 9),
         name: file.name,
-        content, // leer bei PDFs — wird später on-demand aus Storage geladen
+        content,
         type: docType,
         uploadDate: Date.now(),
         collectionId,
       };
 
       if (docType === 'pdf') {
-        // PDF: erst in Storage hochladen, dann in State aufnehmen (kein localStorage-Limit-Problem)
         const storagePath = await saveDocumentToSupabase(newDoc, file);
         saveDocs([...documents, { ...newDoc, storagePath: storagePath ?? undefined }]);
       } else {
-        // Text/DOCX: sofort in State + localStorage, Supabase im Hintergrund
         saveDocs([...documents, newDoc]);
         if (user) {
           saveDocumentToSupabase(newDoc)
             .catch(() => toast.error('Cloud-Sync fehlgeschlagen. Dokument nur lokal gespeichert.'));
         }
       }
+      return newDoc.id;
     } catch (e) {
       toast.error('Dokument konnte nicht verarbeitet werden.');
+      return null;
     } finally {
       setIsLoading(false);
     }
@@ -294,9 +296,29 @@ const App: React.FC = () => {
     setAnswers(ans);
     localStorage.removeItem('quizwise_current_quiz');
     const correct = ans.filter(a => a.isCorrect).length;
-    const score = Math.round((correct / ans.length) * 100);
-    const topicName = documents[documents.length - 1]?.name || 'Quiz Session';
-    await updateMetricsAfterSession(score, topicName, 'quiz');
+    const score   = Math.round((correct / ans.length) * 100);
+
+    const wrongQs    = questions.filter((_, i) => !ans[i]?.isCorrect);
+    const weakTopics = [...new Set(wrongQs.map(q => q.topic).filter((t): t is string => Boolean(t)))];
+
+    if (activeQuizMeta) {
+      saveQuizResult({
+        docId: activeQuizMeta.docId,
+        docName: activeQuizMeta.docName,
+        timestamp: Date.now(),
+        score, correctCount: correct, totalCount: ans.length,
+        weakTopics, questions, answers: ans,
+      });
+      const stats = getDocStats(activeQuizMeta.docId);
+      saveMeta(activeQuizMeta.docId, {
+        quizCount: stats.count,
+        lastQuizAt: Date.now(),
+        avgQuizAccuracy: stats.avgAccuracy ?? score,
+        weakTopics: stats.weakTopics,
+      });
+    }
+
+    await updateMetricsAfterSession(score, activeQuizMeta?.docName || 'Quiz Session', 'quiz');
   };
 
   const handleStartQuizFromDoc = async (doc: ProcessedDocument, quizType: QuizType = QuizType.FAST, options?: any) => {
@@ -308,8 +330,32 @@ const App: React.FC = () => {
       const source = await getDocumentSource(doc);
       const quiz = await generateQuizFromDocument(source, quizType, options);
       setQuestions(quiz);
+      setActiveQuizMeta({ docId: doc.id, docName: doc.name.replace(/\.[^/.]+$/, '') });
       localStorage.setItem('quizwise_current_quiz', JSON.stringify(quiz));
     } catch (e) { toast.error('Quiz-Generierung fehlgeschlagen. Bitte prüfe deinen API-Key.'); } finally { setIsLoading(false); }
+  };
+
+  const handleStartQuizFromSetup = async (config: QuizConfig) => {
+    if (!pendingActionDoc) return;
+    setIsLoading(true);
+    setQuestions([]);
+    setAnswers([]);
+    try {
+      const source = await getDocumentSource(pendingActionDoc);
+      setActiveQuizMeta({ docId: pendingActionDoc.id, docName: pendingActionDoc.name.replace(/\.[^/.]+$/, '') });
+      const stats = getDocStats(pendingActionDoc.id);
+      const customFocus = config.focus === 'weak' && stats.weakTopics.length > 0
+        ? `Fokus auf schwache Themen: ${stats.weakTopics.join(', ')}`
+        : undefined;
+      const quiz = await generateQuizFromDocument(source, QuizType.CUSTOM, {
+        customCount: config.questionCount,
+        customDifficulty: config.difficulty,
+        customFocus,
+        questionType: config.questionType,
+      });
+      setQuestions(quiz);
+      localStorage.setItem('quizwise_current_quiz', JSON.stringify(quiz));
+    } catch (e) { handleApiError(e); } finally { setIsLoading(false); }
   };
 
   const fileToBase64 = (file: File): Promise<string> => {
@@ -338,10 +384,78 @@ const App: React.FC = () => {
       case ActiveTab.DASHBOARD:
         return <Dashboard onTabChange={setActiveTab} flowResult={flowResult} onAcceptFlow={saveFlowResult} />;
       case ActiveTab.LIBRARY:
-        return <LibrarySystem documents={documents} collections={collections} onUpload={handleFileUpload} onDelete={deleteDoc} onAction={(tab, doc) => tab === ActiveTab.QUIZ ? handleStartQuizFromDoc(doc) : setActiveTab(tab)} onAddCollection={addCollection} onDeleteCollection={removeCollection} onMoveDocument={moveDoc} isLoading={isLoading} />;
+        return <LibrarySystem
+          documents={documents}
+          collections={collections}
+          onUpload={handleFileUpload}
+          onDelete={deleteDoc}
+          onAction={(tab, doc) => {
+            if (tab === ActiveTab.QUIZ) {
+              setPendingActionDoc(doc);
+              setQuestions([]);
+              setAnswers([]);
+              setActiveTab(ActiveTab.QUIZ);
+            } else if (tab === ActiveTab.EXPLAINER || tab === ActiveTab.CARDS || tab === ActiveTab.RECALL) {
+              setPendingActionDoc(doc);
+              setActiveTab(tab);
+            } else {
+              setPendingActionDoc(null);
+              setActiveTab(tab);
+            }
+          }}
+          onAddCollection={addCollection}
+          onDeleteCollection={removeCollection}
+          onMoveDocument={moveDoc}
+          isLoading={isLoading}
+        />;
       case ActiveTab.QUIZ:
-        if (questions.length > 0 && answers.length === 0) return <QuizPlayer questions={questions} onComplete={onQuizComplete} />;
-        if (answers.length > 0) return <ResultView answers={answers} questions={questions} onRestart={() => { setAnswers([]); setQuestions([]); }} />;
+        if (isLoading) return (
+          <div className="flex flex-col items-center justify-center py-32 space-y-6 animate-in fade-in duration-500 px-4">
+            <div className="relative w-20 h-20">
+              <div className="w-20 h-20 border-8 border-indigo-100 dark:border-indigo-900/30 rounded-full" />
+              <div className="w-20 h-20 border-8 border-indigo-600 border-t-transparent rounded-full animate-spin absolute top-0 left-0" />
+            </div>
+            <div className="text-center space-y-1">
+              <p className="text-lg font-black uppercase tracking-tighter dark:text-white">Quiz wird generiert</p>
+              <p className="text-sm text-slate-500 dark:text-slate-400">KI liest deine Quelle...</p>
+            </div>
+          </div>
+        );
+        if (pendingActionDoc && questions.length === 0 && answers.length === 0) {
+          return <QuizSetup
+            doc={pendingActionDoc}
+            onStart={handleStartQuizFromSetup}
+            onBack={() => { setPendingActionDoc(null); setActiveTab(ActiveTab.LIBRARY); }}
+          />;
+        }
+        if (questions.length > 0 && answers.length === 0) {
+          return <QuizPlayer
+            questions={questions}
+            sourceName={activeQuizMeta?.docName}
+            examMode={false}
+            onComplete={onQuizComplete}
+            onCancel={() => {
+              setQuestions([]);
+              setAnswers([]);
+              if (pendingActionDoc) {
+                // Go back to setup
+              } else {
+                setPendingActionDoc(null);
+              }
+            }}
+          />;
+        }
+        if (answers.length > 0) {
+          return <ResultView
+            answers={answers}
+            questions={questions}
+            docName={activeQuizMeta?.docName}
+            onRestart={() => { setQuestions([]); setAnswers([]); }}
+            onRetryWrong={(wrongQs) => { setQuestions(wrongQs); setAnswers([]); }}
+            onGoToSource={() => { setPendingActionDoc(null); setQuestions([]); setAnswers([]); setActiveTab(ActiveTab.LIBRARY); }}
+            onCreateFlashcards={pendingActionDoc ? () => { setActiveTab(ActiveTab.CARDS); } : undefined}
+          />;
+        }
         return <FileUploader
           documents={documents}
           collections={collections}
@@ -363,11 +477,13 @@ const App: React.FC = () => {
         />;
       case ActiveTab.RECALL:
         return <ActiveRecall
+          key={pendingActionDoc ? `recall-${pendingActionDoc.id}` : 'recall'}
           availableDocuments={documents}
           collections={collections}
           getDocumentSource={getDocumentSource}
           onSaveToLibrary={file => handleFileUpload(file)}
           onComplete={(score, topic) => updateMetricsAfterSession(score, topic, 'recall')}
+          initialDoc={pendingActionDoc ?? undefined}
         />;
       case ActiveTab.EXAM: return <ExamSystem
           documents={documents}
@@ -377,21 +493,25 @@ const App: React.FC = () => {
         />;
       case ActiveTab.RADAR: return <GapRadar metrics={metrics} onNavigate={setActiveTab} />;
       case ActiveTab.EXPLAINER: return <ExplainerSystem
+          key={pendingActionDoc ? `explainer-${pendingActionDoc.id}` : 'explainer'}
           availableDocuments={documents}
           collections={collections}
           getDocumentSource={getDocumentSource}
           onSaveToLibrary={file => handleFileUpload(file)}
+          initialDoc={pendingActionDoc ?? undefined}
         />;
       case ActiveTab.PAPER: return <TermPaperSystem availableDocuments={documents} onUploadNew={handleFileUpload} initialSources={savedSources} />;
       case ActiveTab.SEARCH: return <ScholarSearch results={searchResults} onSearch={async (q) => { setIsSearching(true); const { results } = await searchScholar(q); setSearchResults(results); setIsSearching(false); }} onSearchWeb={async (q) => { setIsSearching(true); const { results } = await searchWeb(q); setSearchResults(results); setIsSearching(false); }} isSearching={isSearching} onGenerateQuiz={(res) => handleStartQuizFromDoc({ id: 'search', name: res.title, content: res.abstract || res.snippet, type: 'text', uploadDate: Date.now() } as any)} onSaveToPaper={(s) => setSavedSources([...savedSources, s])} savedResults={savedSources} />;
       case ActiveTab.PLANNER: return <StudyPlanner metrics={metrics} decks={decks} examTerms={examTerms} onUpdateExams={saveExamTerms} />;
       case ActiveTab.CARDS: return <FlashcardSystem
+          key={pendingActionDoc ? `cards-${pendingActionDoc.id}` : 'cards'}
           availableDocuments={documents}
           collections={collections}
           onDeleteDoc={deleteDoc}
           onSaveToLibrary={file => handleFileUpload(file)}
           getDocumentSource={getDocumentSource}
           onGenerateQuizFromDeck={async (deck) => { setIsLoading(true); const q = await generateQuizFromFlashcards(deck); setQuestions(q); setIsLoading(false); setActiveTab(ActiveTab.QUIZ); }}
+          initialDoc={pendingActionDoc ?? undefined}
         />;
       default: return <Dashboard onTabChange={setActiveTab} flowResult={flowResult} onAcceptFlow={saveFlowResult} />;
     }
@@ -420,7 +540,7 @@ const App: React.FC = () => {
         onClose={() => setShowSettings(false)}
       />
     )}
-    <Layout activeTab={activeTab} onTabChange={setActiveTab} user={user} onLoginClick={() => setShowAuthModal(true)} onLogout={() => supabase.auth.signOut()} onUpgradeClick={() => setShowUpgradeModal(true)} onSettingsClick={() => setShowSettings(true)}>
+    <Layout activeTab={activeTab} onTabChange={(tab) => { setPendingActionDoc(null); setActiveTab(tab); }} user={user} onLoginClick={() => setShowAuthModal(true)} onLogout={() => supabase.auth.signOut()} onUpgradeClick={() => setShowUpgradeModal(true)} onSettingsClick={() => setShowSettings(true)}>
       {isOffline && (
         <div className="mb-4 p-3 bg-amber-500/10 border border-amber-500/30 rounded-2xl flex items-center justify-center gap-2">
           <p className="text-[10px] font-bold text-amber-600 dark:text-amber-400 uppercase tracking-widest">Offline-Modus aktiv</p>

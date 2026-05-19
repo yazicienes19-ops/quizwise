@@ -1,5 +1,5 @@
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { ProcessedDocument, Collection } from '../types';
 import type { GenerationSource } from '../services/geminiService';
 import { EmojiImage } from './EmojiImage';
@@ -11,6 +11,7 @@ interface ExplainerSystemProps {
   collections: Collection[];
   getDocumentSource?: (doc: ProcessedDocument) => Promise<GenerationSource>;
   onSaveToLibrary?: (file: File) => void;
+  initialDoc?: ProcessedDocument;
 }
 
 export const ExplainerSystem: React.FC<ExplainerSystemProps> = ({
@@ -18,9 +19,19 @@ export const ExplainerSystem: React.FC<ExplainerSystemProps> = ({
   collections,
   getDocumentSource,
   onSaveToLibrary,
+  initialDoc,
 }) => {
   const [activeSource, setActiveSource] = useState<GenerationSource | null>(null);
   const [activeSourceName, setActiveSourceName] = useState('');
+
+  // Auto-select source when navigated from Library
+  useEffect(() => {
+    if (!initialDoc || !getDocumentSource) return;
+    getDocumentSource(initialDoc).then(source => {
+      setActiveSource(source);
+      setActiveSourceName(initialDoc.name.replace(/\.[^/.]+$/, ''));
+    }).catch(() => {});
+  }, []); // eslint-disable-line react-hooks/exhaustive-deps
   const [concept, setConcept] = useState('');
   const [explanation, setExplanation] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(false);

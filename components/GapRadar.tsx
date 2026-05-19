@@ -79,7 +79,7 @@ export const GapRadar: React.FC<GapRadarProps> = ({ metrics, onNavigate }) => {
       {/* Header */}
       <div className="text-center space-y-4">
         <h1 className="text-5xl lg:text-7xl font-black text-slate-900 dark:text-white tracking-tighter">
-          Lern <span className="text-emerald-600">Radar</span> <EmojiImage emoji="📡" size={48} />
+          Lern <span className="text-indigo-600">Radar</span> <EmojiImage emoji="📡" size={48} />
         </h1>
         <p className="text-lg text-slate-500 dark:text-slate-400 font-medium opacity-80">
           Dein intelligenter Wegweiser zum Lernerfolg.
@@ -95,7 +95,7 @@ export const GapRadar: React.FC<GapRadarProps> = ({ metrics, onNavigate }) => {
             <div className="relative w-24 h-24 mx-auto mb-4">
               <svg className="w-full h-full transform -rotate-90">
                 <circle cx="48" cy="48" r="40" stroke="currentColor" strokeWidth="8" fill="transparent" className="text-slate-100 dark:text-slate-800" />
-                <circle cx="48" cy="48" r="40" stroke="currentColor" strokeWidth="8" fill="transparent" strokeDasharray={251.2} strokeDashoffset={251.2 - (251.2 * stats.averageConfidence) / 100} className="text-emerald-500 transition-all duration-1000" />
+                <circle cx="48" cy="48" r="40" stroke="currentColor" strokeWidth="8" fill="transparent" strokeDasharray={251.2} strokeDashoffset={251.2 - (251.2 * stats.averageConfidence) / 100} className="text-indigo-600 transition-all duration-1000" />
               </svg>
               <div className="absolute inset-0 flex items-center justify-center font-black text-2xl dark:text-white">{stats.averageConfidence}%</div>
             </div>

@@ -1,12 +1,16 @@
-
-import React, { useRef, useState, useMemo } from 'react';
+import React, { useState, useMemo, useCallback } from 'react';
 import { ProcessedDocument, ActiveTab, Collection } from '../types';
+import { getAllMeta, saveMeta, deleteMeta } from '../services/libraryService';
+import type { SourceMeta } from '../services/libraryService';
+import { SourceCard } from './SourceCard';
+import { SourceDetailPage } from './SourceDetailPage';
+import { UploadSourceModal } from './UploadSourceModal';
 import { EmojiImage } from './EmojiImage';
 
 interface LibrarySystemProps {
   documents: ProcessedDocument[];
   collections: Collection[];
-  onUpload: (file: File, collectionId?: string) => void;
+  onUpload: (file: File, collectionId?: string) => Promise<string | null>;
   onDelete: (id: string) => void;
   onAction: (tab: ActiveTab, doc: ProcessedDocument) => void;
   onAddCollection: (collection: Collection) => void;
@@ -15,296 +19,411 @@ interface LibrarySystemProps {
   isLoading: boolean;
 }
 
-export const LibrarySystem: React.FC<LibrarySystemProps> = ({ 
-  documents, 
+type SortKey  = 'recent' | 'name' | 'type';
+type ViewMode = 'grid' | 'list';
+type FilterType = 'all' | 'pdf' | 'docx' | 'text';
+
+const IconGrid = () => (
+  <svg xmlns="http://www.w3.org/2000/svg" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+    <rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/><rect x="14" y="14" width="7" height="7"/>
+  </svg>
+);
+
+const IconList = () => (
+  <svg xmlns="http://www.w3.org/2000/svg" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+    <line x1="8" y1="6" x2="21" y2="6"/><line x1="8" y1="12" x2="21" y2="12"/><line x1="8" y1="18" x2="21" y2="18"/>
+    <line x1="3" y1="6" x2="3.01" y2="6"/><line x1="3" y1="12" x2="3.01" y2="12"/><line x1="3" y1="18" x2="3.01" y2="18"/>
+  </svg>
+);
+
+const IconUpload = () => (
+  <svg xmlns="http://www.w3.org/2000/svg" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round">
+    <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/>
+    <polyline points="17 8 12 3 7 8"/>
+    <line x1="12" y1="3" x2="12" y2="15"/>
+  </svg>
+);
+
+export const LibrarySystem: React.FC<LibrarySystemProps> = ({
+  documents,
   collections,
-  onUpload, 
-  onDelete, 
+  onUpload,
+  onDelete,
   onAction,
   onAddCollection,
   onDeleteCollection,
   onMoveDocument,
-  isLoading 
+  isLoading,
 }) => {
-  const [activeCollectionId, setActiveCollectionId] = useState<string | 'all' | 'uncategorized'>('all');
-  const [isAddingCollection, setIsAddingCollection] = useState(false);
-  const [newColName, setNewColName] = useState('');
-  const [movingDocId, setMovingDocId] = useState<string | null>(null);
-  const fileInputRef = useRef<HTMLInputElement>(null);
+  const [allMeta, setAllMeta]           = useState<Record<string, SourceMeta>>(() => getAllMeta());
+  const [viewDocId, setViewDocId]       = useState<string | null>(null);
+  const [showUpload, setShowUpload]     = useState(false);
+  const [search, setSearch]             = useState('');
+  const [filterType, setFilterType]     = useState<FilterType>('all');
+  const [filterModule, setFilterModule] = useState('');
+  const [sortBy, setSortBy]             = useState<SortKey>('recent');
+  const [viewMode, setViewMode]         = useState<ViewMode>('grid');
+  const [activeColId, setActiveColId]   = useState<string | 'all' | 'uncategorized'>('all');
+  const [isAddingCol, setIsAddingCol]   = useState(false);
+  const [newColName, setNewColName]     = useState('');
 
-  const filteredDocs = useMemo(() => {
-    if (activeCollectionId === 'all') return documents;
-    if (activeCollectionId === 'uncategorized') return documents.filter(d => !d.collectionId);
-    return documents.filter(d => d.collectionId === activeCollectionId);
-  }, [documents, activeCollectionId]);
+  const refreshMeta = useCallback(() => setAllMeta(getAllMeta()), []);
 
-  const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    if (e.target.files && e.target.files[0]) {
-      const targetCol = activeCollectionId !== 'all' && activeCollectionId !== 'uncategorized' 
-        ? activeCollectionId 
-        : undefined;
-      onUpload(e.target.files[0], targetCol);
+  const modules = useMemo(() => {
+    const set = new Set<string>();
+    Object.values(allMeta).forEach(m => { if (m.module) set.add(m.module); });
+    return Array.from(set).sort();
+  }, [allMeta]);
+
+  const filtered = useMemo(() => {
+    let list = [...documents];
+
+    // Collection filter
+    if (activeColId === 'uncategorized') list = list.filter(d => !d.collectionId);
+    else if (activeColId !== 'all') list = list.filter(d => d.collectionId === activeColId);
+
+    // Search
+    if (search.trim()) {
+      const q = search.toLowerCase();
+      list = list.filter(d => {
+        const meta = allMeta[d.id] ?? {};
+        return (
+          d.name.toLowerCase().includes(q) ||
+          meta.displayTitle?.toLowerCase().includes(q) ||
+          meta.module?.toLowerCase().includes(q) ||
+          meta.tags?.some(t => t.toLowerCase().includes(q))
+        );
+      });
+    }
+
+    // Type filter
+    if (filterType !== 'all') list = list.filter(d => d.type === filterType);
+
+    // Module filter
+    if (filterModule) list = list.filter(d => allMeta[d.id]?.module === filterModule);
+
+    // Sort
+    list.sort((a, b) => {
+      if (sortBy === 'recent') return b.uploadDate - a.uploadDate;
+      if (sortBy === 'type')   return a.type.localeCompare(b.type);
+      const ta = (allMeta[a.id]?.displayTitle || a.name).toLowerCase();
+      const tb = (allMeta[b.id]?.displayTitle || b.name).toLowerCase();
+      return ta.localeCompare(tb);
+    });
+
+    return list;
+  }, [documents, allMeta, search, filterType, filterModule, sortBy, activeColId]);
+
+  const handleUpload = async (file: File, meta: Partial<SourceMeta>) => {
+    const targetCol = activeColId !== 'all' && activeColId !== 'uncategorized' ? activeColId : undefined;
+    const docId = await onUpload(file, targetCol);
+    if (docId) {
+      saveMeta(docId, meta);
+      refreshMeta();
     }
   };
 
-  const handleCreateCollection = (e: React.FormEvent) => {
+  const handleOpen = (doc: ProcessedDocument) => {
+    saveMeta(doc.id, { lastOpenedAt: Date.now() });
+    refreshMeta();
+    setViewDocId(doc.id);
+  };
+
+  const handleDelete = (doc: ProcessedDocument) => {
+    deleteMeta(doc.id);
+    refreshMeta();
+    onDelete(doc.id);
+    if (viewDocId === doc.id) setViewDocId(null);
+  };
+
+  const handleCreateCol = (e: React.FormEvent) => {
     e.preventDefault();
     if (!newColName.trim()) return;
-    
     const colors = ['bg-blue-500', 'bg-emerald-500', 'bg-rose-500', 'bg-indigo-500', 'bg-amber-500'];
     const emojis = ['📁', '💡', '🧪', '📚', '🏛️', '🔬', '🎓', '📝'];
     const newId = Math.random().toString(36).substr(2, 9);
-    
     onAddCollection({
       id: newId,
       name: newColName,
       emoji: emojis[Math.floor(Math.random() * emojis.length)],
-      color: colors[Math.floor(Math.random() * colors.length)]
+      color: colors[Math.floor(Math.random() * colors.length)],
     });
-    
     setNewColName('');
-    setIsAddingCollection(false);
-    setActiveCollectionId(newId); // Automatisch in die neue Sammlung wechseln
+    setIsAddingCol(false);
+    setActiveColId(newId);
   };
 
-  const getFileIcon = (type: string) => {
-    switch(type) {
-      case 'pdf': return <EmojiImage emoji="📕" size={32} />;
-      case 'docx': return <EmojiImage emoji="📘" size={32} />;
-      default: return <EmojiImage emoji="📄" size={32} />;
-    }
-  };
+  // — Detail view —
+  const viewDoc = viewDocId ? documents.find(d => d.id === viewDocId) : null;
+  if (viewDoc) {
+    return (
+      <>
+        {showUpload && <UploadSourceModal onClose={() => setShowUpload(false)} onUpload={handleUpload} />}
+        <SourceDetailPage
+          doc={viewDoc}
+          meta={allMeta[viewDoc.id] ?? {}}
+          onBack={() => setViewDocId(null)}
+          onAction={onAction}
+        />
+      </>
+    );
+  }
+
+  const colBtn = (id: string | 'all' | 'uncategorized', emoji: string, label: string, count: number) => (
+    <button
+      onClick={() => setActiveColId(id)}
+      className={`w-full flex justify-between items-center px-4 py-3 rounded-2xl text-[11px] font-black uppercase tracking-widest transition-all ${
+        activeColId === id
+          ? 'bg-indigo-600 shadow-lg'
+          : 'text-slate-500 dark:text-slate-400 hover:bg-slate-50 dark:hover:bg-slate-800'
+      }`}
+      style={activeColId === id ? { color: 'var(--primary-text)' } : {}}
+    >
+      <span className="flex items-center gap-2 truncate pr-2"><EmojiImage emoji={emoji} size={14} />{label}</span>
+      <span className={activeColId === id ? 'opacity-70' : 'opacity-40'}>{count}</span>
+    </button>
+  );
 
   return (
-    <div className="space-y-10 lg:space-y-16 animate-in fade-in duration-700 py-6 lg:py-10">
-      <div className="text-center space-y-4 px-4">
-        <h1 className="text-5xl lg:text-7xl font-black text-slate-900 dark:text-white tracking-tighter">
-          Deine <span className="text-indigo-600">Bibliothek</span> <EmojiImage emoji="📚" size={48} />
-        </h1>
-        <p className="text-lg lg:text-xl text-slate-500 dark:text-slate-400 font-medium opacity-80">
-          Strukturiere deine Lerninhalte so, wie du arbeitest.
-        </p>
-      </div>
+    <>
+      {showUpload && <UploadSourceModal onClose={() => setShowUpload(false)} onUpload={handleUpload} />}
 
-      <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 lg:gap-12 px-4">
-        {/* Left Sidebar: Collections */}
-        <div className="lg:col-span-3 space-y-8">
-          <div className="bg-white dark:bg-slate-900 rounded-[32px] border border-slate-200 dark:border-slate-800 shadow-3d-raised p-6 space-y-6">
-            <div className="flex justify-between items-center px-2">
-              <h3 className="text-[10px] font-black uppercase tracking-widest text-slate-400">Sammlungen</h3>
-              {!isAddingCollection && (
-                <button 
-                  onClick={() => setIsAddingCollection(true)}
-                  className="w-8 h-8 rounded-xl bg-indigo-50 dark:bg-indigo-950/30 text-indigo-600 flex items-center justify-center hover:scale-110 transition-transform"
-                  title="Neue Sammlung erstellen"
-                >
-                  +
-                </button>
-              )}
-            </div>
+      <div className="space-y-8 lg:space-y-12 animate-in fade-in duration-700 py-6 lg:py-10">
+        {/* Page header */}
+        <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 px-4">
+          <div>
+            <h1 className="text-4xl lg:text-5xl font-black text-slate-900 dark:text-white tracking-tighter">
+              Bibliothek <EmojiImage emoji="📚" size={36} className="inline-block" />
+            </h1>
+            <p className="text-sm text-slate-400 font-medium mt-1">
+              {documents.length} {documents.length === 1 ? 'Quelle' : 'Quellen'} · Dein persönliches Lernsystem
+            </p>
+          </div>
+          <button
+            onClick={() => !isLoading && setShowUpload(true)}
+            disabled={isLoading}
+            className="flex items-center gap-2 px-6 py-3 bg-indigo-600 rounded-2xl text-[10px] font-black uppercase tracking-widest shadow-lg hover:scale-105 active:scale-95 transition-all shrink-0 disabled:opacity-60 disabled:scale-100"
+            style={{ color: 'var(--primary-text)' }}
+          >
+            {isLoading
+              ? <><span className="w-3.5 h-3.5 border-2 border-white/30 border-t-white rounded-full animate-spin" /> Lädt…</>
+              : <><IconUpload /> Quelle hinzufügen</>
+            }
+          </button>
+        </div>
 
-            {isAddingCollection && (
-              <form onSubmit={handleCreateCollection} className="animate-in zoom-in-95 px-2 space-y-3">
-                <div className="space-y-1">
-                  <label className="text-[9px] font-black uppercase text-indigo-600 tracking-widest ml-1">Name der Sammlung</label>
-                  <input 
+        <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 lg:gap-10 px-4">
+          {/* Sidebar */}
+          <div className="lg:col-span-3 space-y-6">
+            <div className="bg-white dark:bg-slate-900 rounded-[28px] border border-slate-200 dark:border-slate-800 shadow-3d-raised p-5 space-y-4">
+              <div className="flex justify-between items-center px-1">
+                <span className="text-[10px] font-black uppercase tracking-widest text-slate-400">Sammlungen</span>
+                {!isAddingCol && (
+                  <button
+                    onClick={() => setIsAddingCol(true)}
+                    className="w-7 h-7 rounded-xl bg-indigo-50 dark:bg-indigo-950/30 text-indigo-600 flex items-center justify-center hover:scale-110 transition-transform text-sm font-black"
+                  >+</button>
+                )}
+              </div>
+
+              {isAddingCol && (
+                <form onSubmit={handleCreateCol} className="animate-in zoom-in-95 space-y-2 px-1">
+                  <input
                     autoFocus
                     value={newColName}
                     onChange={e => setNewColName(e.target.value)}
                     placeholder="z.B. Semester 1"
                     className="w-full p-3 bg-slate-50 dark:bg-slate-800 rounded-xl text-xs font-bold outline-none border-2 border-indigo-500 dark:text-white"
                   />
-                </div>
-                <div className="flex gap-2">
-                  <button 
-                    type="submit"
-                    className="flex-1 bg-indigo-600 text-white py-2 rounded-xl text-[10px] font-black uppercase tracking-widest hover:brightness-110 transition-all"
-                  >
-                    Speichern
-                  </button>
-                  <button 
-                    type="button"
-                    onClick={() => { setIsAddingCollection(false); setNewColName(''); }}
-                    className="px-3 bg-slate-100 dark:bg-slate-800 text-slate-500 py-2 rounded-xl text-[10px] font-black uppercase tracking-widest"
-                  >
-                    X
-                  </button>
-                </div>
-              </form>
-            )}
-
-            <nav className="space-y-1">
-              <button 
-                onClick={() => setActiveCollectionId('all')}
-                className={`w-full flex justify-between items-center px-4 py-3 rounded-2xl text-[11px] font-black uppercase tracking-widest transition-all ${activeCollectionId === 'all' ? 'bg-indigo-600 text-white shadow-lg' : 'text-slate-500 dark:text-slate-400 hover:bg-slate-50 dark:hover:bg-slate-800'}`}
-              >
-                <EmojiImage emoji="🌐" size={16} /> Alle Dokumente
-                <span className="opacity-60">{documents.length}</span>
-              </button>
-              
-              <button 
-                onClick={() => setActiveCollectionId('uncategorized')}
-                className={`w-full flex justify-between items-center px-4 py-3 rounded-2xl text-[11px] font-black uppercase tracking-widest transition-all ${activeCollectionId === 'uncategorized' ? 'bg-indigo-600 text-white shadow-lg' : 'text-slate-500 dark:text-slate-400 hover:bg-slate-50 dark:hover:bg-slate-800'}`}
-              >
-                <EmojiImage emoji="📥" size={16} /> Unsortiert
-                <span className="opacity-60">{documents.filter(d => !d.collectionId).length}</span>
-              </button>
-
-              <div className="pt-4 space-y-1">
-                {collections.map(col => (
-                  <div key={col.id} className="group relative">
-                    <button 
-                      onClick={() => setActiveCollectionId(col.id)}
-                      className={`w-full flex justify-between items-center px-4 py-3 rounded-2xl text-[11px] font-black uppercase tracking-widest transition-all ${activeCollectionId === col.id ? 'bg-indigo-600 text-white shadow-lg' : 'text-slate-500 dark:text-slate-400 hover:bg-slate-50 dark:hover:bg-slate-800'}`}
-                    >
-                      <span className="truncate pr-4"><EmojiImage emoji={col.emoji} size={16} /> {col.name}</span>
-                      <span className="opacity-60 shrink-0">{documents.filter(d => d.collectionId === col.id).length}</span>
-                    </button>
-                    <button 
-                      onClick={() => onDeleteCollection(col.id)}
-                      className="absolute right-[-10px] top-1/2 -translate-y-1/2 opacity-0 group-hover:opacity-100 bg-rose-500 text-white p-1 rounded-full shadow-lg transition-all hover:scale-125 z-10"
-                    >
-                      <svg xmlns="http://www.w3.org/2000/svg" width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="4" strokeLinecap="round" strokeLinejoin="round"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg>
-                    </button>
+                  <div className="flex gap-2">
+                    <button type="submit" className="flex-1 bg-indigo-600 py-2 rounded-xl text-[9px] font-black uppercase tracking-widest" style={{ color: 'var(--primary-text)' }}>Erstellen</button>
+                    <button type="button" onClick={() => { setIsAddingCol(false); setNewColName(''); }} className="px-3 bg-slate-100 dark:bg-slate-800 text-slate-400 py-2 rounded-xl text-[9px] font-black uppercase">✕</button>
                   </div>
-                ))}
-              </div>
-            </nav>
-          </div>
-          
-          <div className="bg-indigo-600 rounded-[32px] p-6 text-white shadow-3d-deep hidden lg:block">
-            <h4 className="text-[9px] font-black uppercase tracking-widest opacity-60 mb-2">Pro-Tipp</h4>
-            <p className="text-[11px] font-medium leading-relaxed">Wähle links eine Sammlung aus, bevor du hochlädst, um deine Dokumente direkt zu sortieren.</p>
-          </div>
-        </div>
+                </form>
+              )}
 
-        {/* Main Area: Document List & Action Bar */}
-        <div className="lg:col-span-9 space-y-8">
-          <div className="flex flex-col sm:flex-row justify-between items-center gap-4 bg-white dark:bg-slate-900 p-6 rounded-[32px] border border-slate-200 dark:border-slate-800 shadow-3d-raised">
-            <div className="flex flex-col">
-               <h3 className="text-xl font-black dark:text-white">
-                {activeCollectionId === 'all' ? 'Alle Dokumente' : 
-                 activeCollectionId === 'uncategorized' ? 'Unsortierte Inhalte' : 
-                 collections.find(c => c.id === activeCollectionId)?.name}
-               </h3>
-               <p className="text-[9px] font-black uppercase text-slate-400 tracking-widest">{filteredDocs.length} Einträge</p>
+              <nav className="space-y-1">
+                {colBtn('all',           '🌐', 'Alle',       documents.length)}
+                {colBtn('uncategorized', '📥', 'Unsortiert', documents.filter(d => !d.collectionId).length)}
+                {collections.length > 0 && <div className="pt-2 border-t border-slate-50 dark:border-slate-800 space-y-1">
+                  {collections.map(col => (
+                    <div key={col.id} className="group relative">
+                      {colBtn(col.id, col.emoji, col.name, documents.filter(d => d.collectionId === col.id).length)}
+                      <button
+                        onClick={() => onDeleteCollection(col.id)}
+                        className="absolute right-[-8px] top-1/2 -translate-y-1/2 opacity-0 group-hover:opacity-100 bg-rose-500 text-white p-1 rounded-full shadow transition-all hover:scale-125 z-10"
+                      >
+                        <svg xmlns="http://www.w3.org/2000/svg" width="8" height="8" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="4" strokeLinecap="round" strokeLinejoin="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+                      </button>
+                    </div>
+                  ))}
+                </div>}
+              </nav>
             </div>
-            
-            <button 
-              onClick={() => !isLoading && fileInputRef.current?.click()}
-              className="w-full sm:w-auto px-8 py-3 bg-indigo-600 text-white rounded-2xl font-black uppercase text-[10px] tracking-widest shadow-lg hover:scale-105 transition-all flex items-center justify-center gap-2"
-            >
-              <input type="file" ref={fileInputRef} onChange={handleFileChange} className="hidden" accept=".pdf,.docx,.txt" />
-              {isLoading ? '⏳ Verarbeite...' : '+ Dokument hochladen'}
-            </button>
+
+            {/* Module filter */}
+            {modules.length > 0 && (
+              <div className="bg-white dark:bg-slate-900 rounded-[28px] border border-slate-200 dark:border-slate-800 shadow-3d-raised p-5 space-y-3">
+                <span className="text-[10px] font-black uppercase tracking-widest text-slate-400 px-1 block">Module</span>
+                <div className="space-y-1">
+                  <button
+                    onClick={() => setFilterModule('')}
+                    className={`w-full text-left px-4 py-2.5 rounded-xl text-[11px] font-black uppercase tracking-widest transition-all ${!filterModule ? 'bg-indigo-600' : 'text-slate-500 hover:bg-slate-50 dark:hover:bg-slate-800'}`}
+                    style={!filterModule ? { color: 'var(--primary-text)' } : {}}
+                  >
+                    Alle Module
+                  </button>
+                  {modules.map(m => (
+                    <button
+                      key={m}
+                      onClick={() => setFilterModule(filterModule === m ? '' : m)}
+                      className={`w-full text-left px-4 py-2.5 rounded-xl text-[11px] font-black uppercase tracking-widest transition-all truncate ${filterModule === m ? 'bg-indigo-600' : 'text-slate-500 hover:bg-slate-50 dark:hover:bg-slate-800'}`}
+                      style={filterModule === m ? { color: 'var(--primary-text)' } : {}}
+                    >
+                      {m}
+                    </button>
+                  ))}
+                </div>
+              </div>
+            )}
           </div>
 
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-6 min-h-[400px]">
-            {filteredDocs.length === 0 ? (
-              <div className="col-span-full flex flex-col items-center justify-center py-24 text-center space-y-6">
-                <div className="w-24 h-24 bg-indigo-50 dark:bg-indigo-950/30 rounded-full flex items-center justify-center">
-                  <EmojiImage emoji="📭" size={48} />
-                </div>
-                <div className="space-y-2">
-                  <p className="text-base font-black uppercase tracking-widest text-slate-700 dark:text-slate-200">Noch nichts hier</p>
-                  <p className="text-sm text-slate-400 max-w-xs mx-auto">Lade ein Dokument hoch — es steht dann in allen Lernmodulen zur Verfügung.</p>
-                </div>
-                <button
-                  onClick={() => fileInputRef.current?.click()}
-                  className="px-8 py-3 bg-indigo-600 text-white rounded-2xl font-black uppercase text-[10px] tracking-widest shadow-lg hover:scale-105 transition-all"
+          {/* Main area */}
+          <div className="lg:col-span-9 space-y-5">
+            {/* Toolbar */}
+            <div className="space-y-2">
+              {/* Search */}
+              <div className="relative">
+                <svg className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-300 dark:text-slate-600" xmlns="http://www.w3.org/2000/svg" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+                <input
+                  value={search}
+                  onChange={e => setSearch(e.target.value)}
+                  placeholder="Quelle suchen…"
+                  className="w-full pl-10 pr-4 py-3 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl text-sm font-medium outline-none focus:border-indigo-500 dark:text-white shadow-3d-raised"
+                />
+              </div>
+
+              {/* Filters + View toggle */}
+              <div className="flex items-center gap-2 flex-wrap">
+                <select
+                  value={filterType}
+                  onChange={e => setFilterType(e.target.value as FilterType)}
+                  className="flex-1 min-w-[100px] px-3 py-2.5 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl text-[10px] font-black uppercase tracking-widest outline-none focus:border-indigo-500 dark:text-white shadow-3d-raised"
                 >
-                  + Erstes Dokument hochladen
+                  <option value="all">Alle Typen</option>
+                  <option value="pdf">PDF</option>
+                  <option value="docx">DOCX</option>
+                  <option value="text">Text</option>
+                </select>
+
+                <select
+                  value={sortBy}
+                  onChange={e => setSortBy(e.target.value as SortKey)}
+                  className="flex-1 min-w-[100px] px-3 py-2.5 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl text-[10px] font-black uppercase tracking-widest outline-none focus:border-indigo-500 dark:text-white shadow-3d-raised"
+                >
+                  <option value="recent">Neueste</option>
+                  <option value="name">Name</option>
+                  <option value="type">Typ</option>
+                </select>
+
+                <div className="flex bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl p-1 shadow-3d-raised shrink-0">
+                  <button
+                    onClick={() => setViewMode('grid')}
+                    className={`p-2 rounded-xl transition-all ${viewMode === 'grid' ? 'bg-indigo-600' : 'text-slate-400 hover:text-slate-600'}`}
+                    style={viewMode === 'grid' ? { color: 'var(--primary-text)' } : {}}
+                  ><IconGrid /></button>
+                  <button
+                    onClick={() => setViewMode('list')}
+                    className={`p-2 rounded-xl transition-all ${viewMode === 'list' ? 'bg-indigo-600' : 'text-slate-400 hover:text-slate-600'}`}
+                    style={viewMode === 'list' ? { color: 'var(--primary-text)' } : {}}
+                  ><IconList /></button>
+                </div>
+              </div>
+            </div>
+
+            {/* Results info */}
+            {(search || filterType !== 'all' || filterModule) && (
+              <div className="flex items-center justify-between px-1">
+                <p className="text-[10px] font-black uppercase tracking-widest text-slate-400">
+                  {filtered.length} {filtered.length === 1 ? 'Ergebnis' : 'Ergebnisse'}
+                </p>
+                <button
+                  onClick={() => { setSearch(''); setFilterType('all'); setFilterModule(''); }}
+                  className="text-[10px] font-black uppercase tracking-widest text-rose-500 hover:text-rose-600"
+                >
+                  Filter zurücksetzen
                 </button>
               </div>
+            )}
+
+            {/* Empty states */}
+            {documents.length === 0 ? (
+              <EmptyLibrary onUpload={() => setShowUpload(true)} />
+            ) : filtered.length === 0 ? (
+              <div className="flex flex-col items-center justify-center py-24 text-center space-y-4">
+                <EmojiImage emoji="🔍" size={48} />
+                <p className="text-sm font-black uppercase tracking-widest text-slate-400">Keine Treffer</p>
+                <p className="text-xs text-slate-400">Versuche einen anderen Suchbegriff oder entferne Filter.</p>
+              </div>
+            ) : viewMode === 'grid' ? (
+              <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-5">
+                {filtered.map(doc => (
+                  <SourceCard
+                    key={doc.id}
+                    doc={doc}
+                    meta={allMeta[doc.id] ?? {}}
+                    view="grid"
+                    onOpen={() => handleOpen(doc)}
+                    onDelete={() => handleDelete(doc)}
+                  />
+                ))}
+              </div>
             ) : (
-              filteredDocs.sort((a,b) => b.uploadDate - a.uploadDate).map(doc => (
-                <div key={doc.id} className="bg-white dark:bg-slate-900 rounded-[32px] border border-slate-200 dark:border-slate-800 p-8 shadow-3d-raised group hover:shadow-3d-deep transition-all relative overflow-hidden flex flex-col">
-                  {/* Category Indicator Tag */}
-                  {doc.collectionId && (
-                    <div className="absolute top-4 left-4">
-                      <span className="bg-indigo-50 dark:bg-indigo-900/40 text-indigo-600 dark:text-indigo-400 text-[8px] font-black px-2 py-1 rounded-lg uppercase tracking-widest">
-                        {collections.find(c => c.id === doc.collectionId)?.name}
-                      </span>
-                    </div>
-                  )}
-
-                  <div className="flex justify-between items-start mb-4 mt-2">
-                    <div className="text-4xl">{getFileIcon(doc.type)}</div>
-                    <div className="flex gap-1">
-                      <button 
-                        onClick={() => setMovingDocId(movingDocId === doc.id ? null : doc.id)}
-                        className={`p-2 rounded-xl transition-all ${movingDocId === doc.id ? 'bg-indigo-600 text-white' : 'text-slate-300 hover:text-indigo-600'}`}
-                        title="In eine andere Sammlung verschieben"
-                      >
-                        <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round"><polyline points="9 11 12 14 22 4"></polyline><path d="M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11"></path></svg>
-                      </button>
-                      <button 
-                        onClick={() => onDelete(doc.id)}
-                        className="text-slate-300 hover:text-rose-500 p-2 transition-colors"
-                      >
-                        <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round"><polyline points="3 6 5 6 21 6"></polyline><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path></svg>
-                      </button>
-                    </div>
-                  </div>
-
-                  {/* Move Menu Overlay */}
-                  {movingDocId === doc.id && (
-                    <div className="absolute inset-0 bg-white/95 dark:bg-slate-900/95 z-20 p-6 flex flex-col justify-center animate-in fade-in zoom-in-95">
-                      <p className="text-[10px] font-black uppercase text-slate-400 mb-4 text-center">In Sammlung verschieben</p>
-                      <div className="grid grid-cols-2 gap-2 overflow-y-auto pr-1">
-                        <button 
-                          onClick={() => { onMoveDocument(doc.id, undefined); setMovingDocId(null); }}
-                          className="p-3 bg-slate-100 dark:bg-slate-800 rounded-xl text-[9px] font-black uppercase dark:text-white hover:bg-indigo-600 hover:text-white"
-                        >Unsortiert</button>
-                        {collections.map(c => (
-                          <button 
-                            key={c.id}
-                            onClick={() => { onMoveDocument(doc.id, c.id); setMovingDocId(null); }}
-                            className="p-3 bg-slate-100 dark:bg-slate-800 rounded-xl text-[9px] font-black uppercase dark:text-white hover:bg-indigo-600 hover:text-white truncate"
-                          >{c.name}</button>
-                        ))}
-                      </div>
-                      <button onClick={() => setMovingDocId(null)} className="mt-6 text-[9px] font-black uppercase text-rose-500">Abbrechen</button>
-                    </div>
-                  )}
-
-                  <div className="flex-grow space-y-1">
-                    <h3 className="text-xl font-black text-slate-900 dark:text-white leading-tight line-clamp-2">{doc.name}</h3>
-                    <p className="text-[9px] font-black uppercase text-slate-400 tracking-widest">Material • {new Date(doc.uploadDate).toLocaleDateString()}</p>
-                  </div>
-
-                  <div className="mt-8 pt-6 border-t border-slate-50 dark:border-slate-800 space-y-2 shrink-0">
-                    <div className="grid grid-cols-3 gap-2">
-                      <button
-                        onClick={() => onAction(ActiveTab.QUIZ, doc)}
-                        className="bg-indigo-600 text-white py-3 rounded-2xl text-[9px] font-black uppercase hover:scale-105 active:scale-95 transition-all shadow-md"
-                      >Quiz</button>
-                      <button
-                        onClick={() => onAction(ActiveTab.CARDS, doc)}
-                        className="bg-white dark:bg-slate-800 border-2 border-indigo-600 text-indigo-600 dark:text-indigo-400 py-3 rounded-2xl text-[9px] font-black uppercase hover:scale-105 active:scale-95 transition-all"
-                      >Karten</button>
-                      <button
-                        onClick={() => onAction(ActiveTab.EXPLAINER, doc)}
-                        className="bg-slate-50 dark:bg-slate-800 text-slate-400 py-3 rounded-2xl text-[9px] font-black uppercase hover:text-indigo-600 transition-all"
-                      >Erklärer</button>
-                    </div>
-                    <div className="grid grid-cols-2 gap-2">
-                      <button
-                        onClick={() => onAction(ActiveTab.RECALL, doc)}
-                        className="bg-slate-50 dark:bg-slate-800 text-slate-400 py-3 rounded-2xl text-[9px] font-black uppercase hover:text-indigo-600 transition-all"
-                      >Recall</button>
-                      <button
-                        onClick={() => onAction(ActiveTab.EXAM, doc)}
-                        className="bg-slate-50 dark:bg-slate-800 text-slate-400 py-3 rounded-2xl text-[9px] font-black uppercase hover:text-rose-600 transition-all"
-                      >Klausur</button>
-                    </div>
-                  </div>
-                </div>
-              ))
+              <div className="space-y-2">
+                {filtered.map(doc => (
+                  <SourceCard
+                    key={doc.id}
+                    doc={doc}
+                    meta={allMeta[doc.id] ?? {}}
+                    view="list"
+                    onOpen={() => handleOpen(doc)}
+                    onDelete={() => handleDelete(doc)}
+                  />
+                ))}
+              </div>
             )}
           </div>
         </div>
       </div>
-    </div>
+    </>
   );
 };
+
+const EmptyLibrary: React.FC<{ onUpload: () => void }> = ({ onUpload }) => (
+  <div className="flex flex-col items-center justify-center py-32 text-center space-y-6 animate-in fade-in duration-500">
+    <div className="w-24 h-24 bg-indigo-50 dark:bg-indigo-950/30 rounded-full flex items-center justify-center">
+      <EmojiImage emoji="📭" size={48} />
+    </div>
+    <div className="space-y-3 max-w-sm">
+      <p className="text-lg font-black uppercase tracking-widest text-slate-700 dark:text-slate-200">
+        Noch keine Lernunterlagen
+      </p>
+      <p className="text-sm text-slate-400 leading-relaxed">
+        Lade dein erstes Skript hoch. QuizWise erstellt daraus Quiz, Karteikarten, Erklärungen und Lernpläne — direkt aus deinen echten Unterlagen.
+      </p>
+    </div>
+    <button
+      onClick={onUpload}
+      className="flex items-center gap-2 px-8 py-4 bg-indigo-600 rounded-2xl font-black uppercase text-[11px] tracking-widest shadow-lg hover:scale-105 active:scale-95 transition-all"
+      style={{ color: 'var(--primary-text)' }}
+    >
+      <IconUpload /> Erste Quelle hochladen
+    </button>
+    <div className="flex gap-6 pt-4">
+      {['PDF', 'DOCX', 'TXT', 'MD'].map(f => (
+        <span key={f} className="text-[9px] font-black uppercase tracking-widest text-slate-300 dark:text-slate-600">{f}</span>
+      ))}
+    </div>
+  </div>
+);
+

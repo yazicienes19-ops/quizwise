@@ -53,8 +53,8 @@ export const ExamSystem: React.FC<ExamSystemProps> = ({ documents, collections, 
     return (
       <div className="flex flex-col items-center justify-center py-20 lg:py-32 space-y-8 animate-in fade-in duration-500 px-4">
         <div className="relative">
-          <div className="w-24 h-24 border-8 border-rose-100 dark:border-rose-900/30 rounded-full"></div>
-          <div className="w-24 h-24 border-8 border-rose-600 border-t-transparent rounded-full animate-spin absolute top-0 left-0"></div>
+          <div className="w-24 h-24 border-8 border-indigo-100 dark:border-indigo-900/30 rounded-full"></div>
+          <div className="w-24 h-24 border-8 border-indigo-600 border-t-transparent rounded-full animate-spin absolute top-0 left-0"></div>
         </div>
         <div className="text-center space-y-2">
           <p className="text-2xl font-black text-slate-800 dark:text-white uppercase tracking-tighter">Prüfung wird konzipiert...</p>
@@ -86,7 +86,7 @@ export const ExamSystem: React.FC<ExamSystemProps> = ({ documents, collections, 
           {mode === 'edit' && (
             <button 
               onClick={handleStartExam}
-              className="bg-emerald-600 text-white px-8 py-3 rounded-2xl font-black uppercase text-[10px] tracking-[0.2em] shadow-lg hover:scale-105 transition-all flex items-center gap-2"
+              className="bg-indigo-600 text-white px-8 py-3 rounded-2xl font-black uppercase text-[10px] tracking-[0.2em] shadow-lg hover:scale-105 transition-all flex items-center gap-2"
             >
               Simulation starten
               <GeneratedImage prompt="Rocket launch icon, minimalist" className="w-4 h-4 rounded-full" />

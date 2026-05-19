@@ -166,10 +166,10 @@ export const FileUploader: React.FC<FileUploaderProps> = ({
       )}
 
       {isLoading && (
-        <div className="fixed inset-0 flex items-center justify-center bg-white/80 dark:bg-slate-900/80 z-[100] backdrop-blur-sm">
+        <div className="fixed inset-0 flex items-center justify-center z-[100] backdrop-blur-sm" style={{ backgroundColor: 'color-mix(in srgb, var(--bg-main) 85%, transparent)' }}>
           <div className="flex flex-col items-center gap-6">
-            <div className="w-16 h-16 border-8 border-indigo-100 dark:border-slate-800 border-t-indigo-600 rounded-full animate-spin"></div>
-            <p className="text-indigo-600 font-black uppercase tracking-[0.3em] text-[10px] animate-pulse">KI generiert dein Quiz...</p>
+            <div className="w-16 h-16 rounded-full animate-spin" style={{ border: '6px solid var(--primary-soft)', borderTopColor: 'var(--primary)' }}></div>
+            <p className="font-black uppercase tracking-[0.3em] text-[10px] animate-pulse" style={{ color: 'var(--primary)' }}>KI generiert dein Quiz...</p>
           </div>
         </div>
       )}

@@ -77,7 +77,7 @@ export const ExamGenerator: React.FC<ExamGeneratorProps> = ({
     <div className="max-w-4xl mx-auto space-y-10 lg:space-y-16 animate-in fade-in slide-in-from-bottom-4 duration-700 py-10 px-4">
       <div className="text-center space-y-4">
         <h1 className="text-5xl lg:text-7xl font-black text-slate-900 dark:text-white tracking-tighter flex items-center justify-center gap-4">
-          Klausur <span className="text-rose-600 dark:text-rose-400">Simulator</span>
+          Klausur <span className="text-indigo-600 dark:text-indigo-400">Simulator</span>
           <GeneratedImage prompt="Graduation cap, academic illustration" className="w-12 h-12 lg:w-16 lg:h-16 rounded-2xl" />
         </h1>
         <p className="text-lg lg:text-xl text-slate-500 dark:text-slate-400 font-medium">
@@ -139,7 +139,7 @@ export const ExamGenerator: React.FC<ExamGeneratorProps> = ({
             />
             <label
               htmlFor="style-input"
-              className="w-full py-4 bg-slate-100 dark:bg-slate-800 text-slate-500 dark:text-slate-400 rounded-2xl text-[11px] font-black uppercase tracking-widest hover:bg-rose-600 hover:text-white transition-all text-center cursor-pointer shadow-sm"
+              className="w-full py-4 bg-slate-100 dark:bg-slate-800 text-slate-500 dark:text-slate-400 rounded-2xl text-[11px] font-black uppercase tracking-widest hover:bg-indigo-600 hover:text-white transition-all text-center cursor-pointer shadow-sm"
             >
               {styleFile ? 'Datei ändern' : 'Datei wählen'}
             </label>
@@ -157,7 +157,7 @@ export const ExamGenerator: React.FC<ExamGeneratorProps> = ({
         {/* Config Column */}
         <div className="lg:col-span-5 space-y-6">
           <div className="bg-white dark:bg-slate-900 rounded-[32px] border border-slate-200 dark:border-slate-800 shadow-3d-deep p-8 space-y-10">
-            <h3 className="text-[11px] font-black uppercase tracking-[0.4em] text-rose-500">Prüfungs-Setup</h3>
+            <h3 className="text-[11px] font-black uppercase tracking-[0.4em] text-indigo-500">Prüfungs-Setup</h3>
 
             <div className="space-y-6">
               <div className="space-y-3">
@@ -188,7 +188,7 @@ export const ExamGenerator: React.FC<ExamGeneratorProps> = ({
                     <button
                       key={d}
                       onClick={() => setDifficulty(d)}
-                      className={`flex-1 py-3 rounded-xl text-[10px] font-black transition-all uppercase tracking-widest ${difficulty === d ? 'bg-rose-600 text-white shadow-lg' : 'text-slate-400 hover:text-slate-600'}`}
+                      className={`flex-1 py-3 rounded-xl text-[10px] font-black transition-all uppercase tracking-widest ${difficulty === d ? 'bg-indigo-600 text-white shadow-lg' : 'text-slate-400 hover:text-slate-600'}`}
                     >
                       {d}
                     </button>

@@ -192,7 +192,7 @@ export const StudyPlanner: React.FC<StudyPlannerProps> = ({ metrics, decks, exam
           <span className="text-[10px] font-black uppercase tracking-[0.3em] text-indigo-600">Zeitmanagement</span>
         </div>
         <h1 className="text-5xl lg:text-7xl font-black tracking-tighter dark:text-white">
-          Study <span className="text-amber-500">Flow</span> <GeneratedImage prompt="Calendar study planner icon, academic illustration" className="w-12 h-12 inline-block ml-2" />
+          Study <span className="text-indigo-600">Flow</span> <GeneratedImage prompt="Calendar study planner icon, academic illustration" className="w-12 h-12 inline-block ml-2" />
         </h1>
         <p className="text-slate-500 dark:text-slate-400 font-medium max-w-xl mx-auto">
           Dein akademischer Rhythmus. KI-gesteuert, datenbasiert und nahtlos integriert.
@@ -224,7 +224,7 @@ export const StudyPlanner: React.FC<StudyPlannerProps> = ({ metrics, decks, exam
             {knowledgeGaps.slice(0, 3).map(gap => (
               <div key={gap.id} className="flex justify-between items-center">
                 <span className="text-[11px] font-bold text-slate-600 dark:text-slate-300 truncate pr-2">{gap.topic}</span>
-                <span className="text-[10px] font-black text-indigo-500">{gap.confidence}%</span>
+                <span className="text-[10px] font-black text-indigo-600">{gap.confidence}%</span>
               </div>
             ))}
             {knowledgeGaps.length === 0 && <p className="text-[10px] text-slate-400 italic">Keine Lücken! <GeneratedImage prompt="Rocket launch icon, minimalist" className="w-3 h-3 inline-block ml-1" /></p>}
@@ -233,12 +233,12 @@ export const StudyPlanner: React.FC<StudyPlannerProps> = ({ metrics, decks, exam
 
         {/* Due Decks Widget */}
         <div className="p-6 rounded-[32px] bg-white/50 dark:bg-slate-900/50 backdrop-blur-sm border border-slate-200/50 dark:border-slate-800/50 transition-all hover:bg-white dark:hover:bg-slate-900">
-          <h3 className="text-[9px] font-black uppercase tracking-[0.4em] text-emerald-600 mb-4">Due Cards ({dueDecks.length})</h3>
+          <h3 className="text-[9px] font-black uppercase tracking-[0.4em] text-indigo-600 mb-4">Due Cards ({dueDecks.length})</h3>
           <div className="space-y-2">
             {dueDecks.slice(0, 3).map(deck => (
               <div key={deck.id} className="flex justify-between items-center">
                 <span className="text-[11px] font-bold text-slate-600 dark:text-slate-300 truncate pr-2">{deck.title}</span>
-                <div className="w-1.5 h-1.5 rounded-full bg-emerald-500"></div>
+                <div className="w-1.5 h-1.5 rounded-full bg-indigo-500"></div>
               </div>
             ))}
             {dueDecks.length === 0 && <p className="text-[10px] text-slate-400 italic">Alles gelernt! <GeneratedImage prompt="Sparkles icon, minimalist" className="w-3 h-3 inline-block ml-1" /></p>}
