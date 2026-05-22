@@ -6,8 +6,8 @@ interface Props {
   onUpload: (file: File, meta: Partial<SourceMeta>) => Promise<void>;
 }
 
-const ACCEPTED = '.pdf,.docx,.txt,.md';
-const FILE_EMOJI: Record<string, string> = { pdf: '📕', docx: '📘', txt: '📄', md: '📄' };
+const ACCEPTED = '.pdf,.docx,.txt,.md,.png,.jpg,.jpeg,.webp,.heic,.heif';
+const FILE_EMOJI: Record<string, string> = { pdf: '📕', docx: '📘', txt: '📄', md: '📄', png: '🖼️', jpg: '🖼️', jpeg: '🖼️', webp: '🖼️', heic: '📷', heif: '📷' };
 
 const Field: React.FC<{
   label: string;

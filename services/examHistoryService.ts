@@ -1,0 +1,26 @@
+
+const STORAGE_KEY = 'quizwise_exam_history';
+
+export interface ExamResult {
+  id: string;
+  docName: string;
+  timestamp: number;
+  score: number;
+  passed: boolean;
+  totalPoints: number;
+  achievedPoints: number;
+  weakTopics: string[];
+}
+
+const readAll = (): ExamResult[] => {
+  try { return JSON.parse(localStorage.getItem(STORAGE_KEY) || '[]'); } catch { return []; }
+};
+
+export const saveExamResult = (data: Omit<ExamResult, 'id'>): ExamResult => {
+  const all = readAll();
+  const entry: ExamResult = { ...data, id: Math.random().toString(36).slice(2, 9) };
+  localStorage.setItem(STORAGE_KEY, JSON.stringify([entry, ...all].slice(0, 200)));
+  return entry;
+};
+
+export const getAllExamResults = (): ExamResult[] => readAll();

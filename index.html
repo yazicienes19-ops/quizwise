@@ -13,6 +13,23 @@
         } else {
             document.documentElement.classList.add('dark');
         }
+        // Schriftart
+        const FONT_MAP = {
+            'inter':        "'Inter', system-ui, sans-serif",
+            'garamond':     "'EB Garamond', Georgia, serif",
+            'dm-sans':      "'DM Sans', system-ui, sans-serif",
+            'lato':         "'Lato', system-ui, sans-serif",
+            'nunito':       "'Nunito', system-ui, sans-serif",
+            'merriweather': "'Merriweather', Georgia, serif",
+        };
+        const _fnt = localStorage.getItem('font_choice');
+        if (_fnt && FONT_MAP[_fnt]) {
+            document.documentElement.style.setProperty('--font-app', FONT_MAP[_fnt]);
+        }
+        // Zeilenabstand
+        const _lh = localStorage.getItem('line_height');
+        if (_lh) document.documentElement.style.setProperty('--line-height-app', _lh);
+
         // Akzentfarbe + Textlesbarkeit
         const _ac = localStorage.getItem('accent_color');
         if (_ac) {
@@ -74,14 +91,16 @@
     </script>
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@200;300;400;500;600;700;800;900&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@300;400;500;600;700;800;900&family=EB+Garamond:ital,wght@0,400;0,500;0,600;1,400&family=Inter:wght@300;400;500;600;700;800;900&family=Lato:wght@300;400;700;900&family=Merriweather:ital,wght@0,300;0,400;0,700;1,300;1,400&family=Nunito:wght@300;400;500;600;700;800;900&display=swap" rel="stylesheet">
     <style>
         :root {
-            --bg-main:       #FFFFFF;
-            --bg-sidebar:    #F8FAFF;
-            --border-color:  #E2E9F8;
-            --text-main:     #0F1E3A;
-            --accent:        #D97757;
+            --bg-main:         #FFFFFF;
+            --bg-sidebar:      #F8FAFF;
+            --border-color:    #E2E9F8;
+            --text-main:       #0F1E3A;
+            --accent:          #D97757;
+            --font-app:        'Inter', system-ui, sans-serif;
+            --line-height-app: 1.6;
         }
         .dark {
             --bg-main:       #0B1525;
@@ -91,7 +110,8 @@
             --accent:        #E08465;
         }
         body {
-            font-family: 'Inter', sans-serif;
+            font-family: var(--font-app, 'Inter', sans-serif);
+            line-height: var(--line-height-app, 1.6);
             background-color: var(--bg-main);
             -webkit-font-smoothing: antialiased;
             color: var(--text-main);

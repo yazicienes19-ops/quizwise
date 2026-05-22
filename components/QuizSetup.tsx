@@ -6,6 +6,7 @@ interface QuizSetupProps {
   doc: ProcessedDocument;
   onStart: (config: QuizConfig) => void;
   onBack: () => void;
+  initialFocus?: QuizConfig['focus'];
 }
 
 const QUESTION_TYPES: { value: QuizConfig['questionType']; label: string; desc: string }[] = [
@@ -44,14 +45,14 @@ const Chip: React.FC<{ selected: boolean; onClick: () => void; label: string; de
   </button>
 );
 
-export const QuizSetup: React.FC<QuizSetupProps> = ({ doc, onStart, onBack }) => {
+export const QuizSetup: React.FC<QuizSetupProps> = ({ doc, onStart, onBack, initialFocus }) => {
   const [questionType, setQuestionType] = useState<QuizConfig['questionType']>('mixed');
   const [difficulty, setDifficulty]     = useState<QuizConfig['difficulty']>('mittel');
   const [questionCount, setQuestionCount] = useState(10);
   const [customCount, setCustomCount]   = useState('');
   const [showCustom, setShowCustom]     = useState(false);
   const [examMode, setExamMode]         = useState(false);
-  const [focus, setFocus]               = useState<QuizConfig['focus']>('all');
+  const [focus, setFocus]               = useState<QuizConfig['focus']>(initialFocus ?? 'all');
 
   const stats = useMemo(() => getDocStats(doc.id), [doc.id]);
   const docTitle = doc.name.replace(/\.[^/.]+$/, '');

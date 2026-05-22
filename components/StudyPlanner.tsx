@@ -215,7 +215,7 @@ export const StudyPlanner: React.FC<StudyPlannerProps> = ({ metrics, decks, exam
         <div className="inline-block px-4 py-1.5 bg-indigo-50 dark:bg-indigo-950/30 rounded-full border border-indigo-100 dark:border-indigo-900/50">
           <span className="text-[10px] font-black uppercase tracking-[0.3em] text-indigo-600">Zeitmanagement</span>
         </div>
-        <h1 className="text-5xl lg:text-7xl font-black tracking-tighter dark:text-white">
+        <h1 className="text-5xl lg:text-7xl font-black tracking-tighter" style={{ color: 'var(--text-main)' }}>
           Study <span className="text-indigo-600">Flow</span>
         </h1>
         <p className="text-slate-500 dark:text-slate-400 font-medium max-w-xl mx-auto">
@@ -232,13 +232,15 @@ export const StudyPlanner: React.FC<StudyPlannerProps> = ({ metrics, decks, exam
           </button>
           <button
             onClick={() => { setShowExamForm(true); setShowEventForm(false); }}
-            className="bg-white dark:bg-slate-900 text-slate-900 dark:text-white border-2 border-slate-200 dark:border-slate-800 px-6 py-4 rounded-3xl font-black uppercase tracking-[0.2em] text-[11px] hover:bg-slate-50 dark:hover:bg-slate-800 transition-all"
+            className="px-6 py-4 rounded-3xl font-black uppercase tracking-[0.2em] text-[11px] transition-all"
+            style={{ background: 'var(--bg-sidebar)', color: 'var(--text-main)', border: '2px solid var(--border-color)' }}
           >
             + Klausur
           </button>
           <button
             onClick={() => { setShowEventForm(true); setShowExamForm(false); }}
-            className="bg-white dark:bg-slate-900 text-slate-900 dark:text-white border-2 border-slate-200 dark:border-slate-800 px-6 py-4 rounded-3xl font-black uppercase tracking-[0.2em] text-[11px] hover:bg-slate-50 dark:hover:bg-slate-800 transition-all"
+            className="px-6 py-4 rounded-3xl font-black uppercase tracking-[0.2em] text-[11px] transition-all"
+            style={{ background: 'var(--bg-sidebar)', color: 'var(--text-main)', border: '2px solid var(--border-color)' }}
           >
             + Termin
           </button>
@@ -338,7 +340,8 @@ export const StudyPlanner: React.FC<StudyPlannerProps> = ({ metrics, decks, exam
             <button
               key={mode}
               onClick={() => setViewMode(mode)}
-              className={`px-5 py-2.5 rounded-xl text-[10px] font-black uppercase tracking-widest transition-all ${viewMode === mode ? 'bg-white dark:bg-slate-900 text-slate-900 dark:text-white shadow-sm' : 'text-slate-400 hover:text-slate-600 dark:hover:text-slate-300'}`}
+              className={`px-5 py-2.5 rounded-xl text-[10px] font-black uppercase tracking-widest transition-all ${viewMode === mode ? 'shadow-sm' : 'text-slate-400 hover:text-slate-600'}`}
+              style={viewMode === mode ? { background: 'var(--bg-sidebar)', color: 'var(--text-main)' } : {}}
             >
               {label}
             </button>
@@ -348,25 +351,25 @@ export const StudyPlanner: React.FC<StudyPlannerProps> = ({ metrics, decks, exam
 
       {/* ── MONAT VIEW ── */}
       {viewMode === 'monat' && (
-        <div className="max-w-5xl mx-auto bg-white dark:bg-slate-900 rounded-[32px] border border-slate-100 dark:border-slate-800 shadow-3d-raised overflow-hidden">
+        <div className="max-w-5xl mx-auto rounded-[32px] shadow-3d-raised overflow-hidden" style={{ background: 'var(--bg-sidebar)', border: '1px solid var(--border-color)' }}>
           {/* Calendar Nav */}
-          <div className="flex items-center justify-between px-6 py-5 border-b border-slate-100 dark:border-slate-800">
+          <div className="flex items-center justify-between px-6 py-5" style={{ borderBottom: '1px solid var(--border-color)' }}>
             <div className="flex items-center gap-3">
-              <button onClick={goPrev} className="w-9 h-9 flex items-center justify-center rounded-xl bg-slate-100 dark:bg-slate-800 text-slate-500 hover:text-slate-900 dark:hover:text-white transition-colors">
+              <button onClick={goPrev} className="w-9 h-9 flex items-center justify-center rounded-xl transition-colors" style={{ background: 'var(--bg-main)', color: 'var(--border-color)' }}>
                 <ChevronLeft size={16} />
               </button>
-              <button onClick={goNext} className="w-9 h-9 flex items-center justify-center rounded-xl bg-slate-100 dark:bg-slate-800 text-slate-500 hover:text-slate-900 dark:hover:text-white transition-colors">
+              <button onClick={goNext} className="w-9 h-9 flex items-center justify-center rounded-xl transition-colors" style={{ background: 'var(--bg-main)', color: 'var(--border-color)' }}>
                 <ChevronRight size={16} />
               </button>
-              <h2 className="text-base font-black dark:text-white capitalize ml-1">{monthLabel}</h2>
+              <h2 className="text-base font-black capitalize ml-1" style={{ color: 'var(--text-main)' }}>{monthLabel}</h2>
             </div>
-            <button onClick={goToday} className="px-4 py-2 rounded-xl bg-slate-100 dark:bg-slate-800 text-[10px] font-black uppercase tracking-widest text-slate-500 hover:text-slate-900 dark:hover:text-white transition-colors">
+            <button onClick={goToday} className="px-4 py-2 rounded-xl text-[10px] font-black uppercase tracking-widest transition-colors" style={{ background: 'var(--bg-main)', color: 'var(--border-color)' }}>
               Heute
             </button>
           </div>
 
           {/* Weekday headers */}
-          <div className="grid grid-cols-7 border-b border-slate-100 dark:border-slate-800">
+          <div className="grid grid-cols-7" style={{ borderBottom: '1px solid var(--border-color)' }}>
             {WEEK_DAYS_SHORT.map(d => (
               <div key={d} className="py-3 text-center text-[9px] font-black uppercase tracking-widest text-slate-400">
                 {d}
@@ -383,17 +386,20 @@ export const StudyPlanner: React.FC<StudyPlannerProps> = ({ metrics, decks, exam
               return (
                 <div
                   key={idx}
-                  className={`min-h-[100px] p-2 border-b border-r border-slate-50 dark:border-slate-800/50 last:border-r-0 transition-colors ${
-                    !cell.isCurrentMonth ? 'bg-slate-50/50 dark:bg-slate-900/50' : ''
-                  } ${idx % 7 === 6 ? 'border-r-0' : ''}`}
+                  className={`min-h-[100px] p-2 transition-colors ${idx % 7 === 6 ? '' : ''}`}
+                  style={{
+                    borderBottom: '1px solid var(--border-color)',
+                    borderRight: idx % 7 === 6 ? 'none' : '1px solid var(--border-color)',
+                    background: !cell.isCurrentMonth ? 'color-mix(in srgb, var(--bg-main) 60%, var(--bg-sidebar))' : undefined,
+                  }}
                 >
-                  <span className={`inline-flex items-center justify-center w-7 h-7 text-xs font-bold rounded-full mb-1.5 transition-colors ${
-                    isToday
-                      ? 'bg-amber-400 text-amber-900 font-black'
-                      : cell.isCurrentMonth
-                        ? 'text-slate-800 dark:text-slate-100'
-                        : 'text-slate-300 dark:text-slate-600'
-                  }`}>
+                  <span
+                    className="inline-flex items-center justify-center w-7 h-7 text-xs font-bold rounded-full mb-1.5 transition-colors"
+                    style={isToday
+                      ? { background: 'rgb(251,191,36)', color: 'rgb(120,53,15)', fontWeight: 900 }
+                      : { color: cell.isCurrentMonth ? 'var(--text-main)' : 'var(--border-color)' }
+                    }
+                  >
                     {cell.date.getDate()}
                   </span>
                   <div className="space-y-1">
@@ -421,7 +427,7 @@ export const StudyPlanner: React.FC<StudyPlannerProps> = ({ metrics, decks, exam
           </div>
 
           {/* Legend */}
-          <div className="flex items-center gap-4 px-6 py-4 border-t border-slate-100 dark:border-slate-800">
+          <div className="flex items-center gap-4 px-6 py-4" style={{ borderTop: '1px solid var(--border-color)' }}>
             <div className="flex items-center gap-1.5">
               <div className="w-3 h-3 rounded-sm bg-rose-200 dark:bg-rose-900/50" />
               <span className="text-[9px] font-black uppercase tracking-widest text-slate-400">Klausur</span>

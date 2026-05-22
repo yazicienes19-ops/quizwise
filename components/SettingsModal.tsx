@@ -22,6 +22,33 @@ const PRESETS = [
   { name: 'Amber',        value: '#F59E0B' },
 ];
 
+const FONTS = [
+  { id: 'inter',        name: 'Inter',        label: 'Modern',        stack: "'Inter', system-ui, sans-serif" },
+  { id: 'garamond',     name: 'EB Garamond',  label: 'Klassisch',     stack: "'EB Garamond', Georgia, serif" },
+  { id: 'dm-sans',      name: 'DM Sans',      label: 'Klar',          stack: "'DM Sans', system-ui, sans-serif" },
+  { id: 'lato',         name: 'Lato',         label: 'Freundlich',    stack: "'Lato', system-ui, sans-serif" },
+  { id: 'nunito',       name: 'Nunito',        label: 'Rund',          stack: "'Nunito', system-ui, sans-serif" },
+  { id: 'merriweather', name: 'Merriweather', label: 'Lesetauglich',  stack: "'Merriweather', Georgia, serif" },
+];
+
+const SPACING_OPTIONS = [
+  { id: '1.4', label: 'Kompakt' },
+  { id: '1.6', label: 'Normal'  },
+  { id: '1.9', label: 'Weit'    },
+];
+
+function applyFont(fontId: string) {
+  const font = FONTS.find(f => f.id === fontId);
+  if (!font) return;
+  document.documentElement.style.setProperty('--font-app', font.stack);
+  localStorage.setItem('font_choice', fontId);
+}
+
+function applyLineHeight(lh: string) {
+  document.documentElement.style.setProperty('--line-height-app', lh);
+  localStorage.setItem('line_height', lh);
+}
+
 type Tab = 'profil' | 'abo' | 'design' | 'datenschutz' | 'api';
 
 interface Props {
@@ -55,6 +82,8 @@ export const SettingsModal: React.FC<Props> = ({ user, isDark, onToggleTheme, on
 
   // Design
   const [accentColor, setAccentColor] = useState(() => localStorage.getItem('accent_color') || '#D97757');
+  const [fontChoice, setFontChoice] = useState(() => localStorage.getItem('font_choice') || 'inter');
+  const [lineHeight, setLineHeight] = useState(() => localStorage.getItem('line_height') || '1.6');
 
   // API
   const [apiKey, setApiKey] = useState(localStorage.getItem('gemini_api_key') || '');
@@ -342,6 +371,8 @@ export const SettingsModal: React.FC<Props> = ({ user, isDark, onToggleTheme, on
           {/* ── DESIGN ── */}
           {tab === 'design' && (
             <div className="space-y-8">
+
+              {/* Erscheinungsbild */}
               <div className="space-y-3">
                 <p className="text-[10px] font-black uppercase tracking-widest text-slate-400">Erscheinungsbild</p>
                 <div className="flex p-1 rounded-2xl gap-1" style={{ background: 'color-mix(in srgb, var(--border-color) 40%, var(--bg-main))' }}>
@@ -356,6 +387,59 @@ export const SettingsModal: React.FC<Props> = ({ user, isDark, onToggleTheme, on
                 </div>
               </div>
 
+              {/* Schriftart */}
+              <div className="space-y-4">
+                <p className="text-[10px] font-black uppercase tracking-widest text-slate-400">Schriftart</p>
+                <div className="grid grid-cols-2 gap-2">
+                  {FONTS.map(f => {
+                    const isSelected = fontChoice === f.id;
+                    return (
+                      <button
+                        key={f.id}
+                        onClick={() => { setFontChoice(f.id); applyFont(f.id); }}
+                        className="p-4 rounded-2xl text-left transition-all active:scale-95 hover:scale-[1.02]"
+                        style={{
+                          background: isSelected
+                            ? 'color-mix(in srgb, var(--primary) 12%, transparent)'
+                            : 'color-mix(in srgb, var(--border-color) 30%, var(--bg-main))',
+                          border: `1px solid ${isSelected ? 'color-mix(in srgb, var(--primary) 40%, transparent)' : 'var(--border-color)'}`,
+                        }}
+                      >
+                        <p className="text-base font-semibold dark:text-white leading-tight" style={{ fontFamily: f.stack }}>{f.name}</p>
+                        <p className="text-sm mt-1 text-slate-400" style={{ fontFamily: f.stack }}>Aa Bb 123</p>
+                        <p className="text-[9px] font-black uppercase tracking-widest mt-2 text-slate-400">{f.label}</p>
+                        {isSelected && (
+                          <span className="inline-flex items-center gap-1 mt-2 text-[9px] font-black uppercase tracking-wide" style={{ color: 'var(--primary)' }}>
+                            <Check className="w-3 h-3" strokeWidth={3} /> Aktiv
+                          </span>
+                        )}
+                      </button>
+                    );
+                  })}
+                </div>
+              </div>
+
+              {/* Zeilenabstand */}
+              <div className="space-y-3">
+                <p className="text-[10px] font-black uppercase tracking-widest text-slate-400">Zeilenabstand</p>
+                <div className="flex p-1 rounded-2xl gap-1" style={{ background: 'color-mix(in srgb, var(--border-color) 40%, var(--bg-main))' }}>
+                  {SPACING_OPTIONS.map(s => (
+                    <button
+                      key={s.id}
+                      onClick={() => { setLineHeight(s.id); applyLineHeight(s.id); }}
+                      className={`flex-1 py-2.5 rounded-xl text-[11px] font-black uppercase tracking-wide transition-all ${lineHeight === s.id ? '' : 'text-slate-400 hover:text-slate-600 dark:hover:text-slate-200'}`}
+                      style={lineHeight === s.id ? { background: 'var(--bg-sidebar)', color: 'var(--primary)', boxShadow: '0 1px 4px rgba(0,0,0,0.08)' } : {}}
+                    >
+                      {s.label}
+                    </button>
+                  ))}
+                </div>
+                <p className="text-[10px] text-slate-400">
+                  {lineHeight === '1.4' ? 'Platzsparend, geeignet für dichte Inhalte.' : lineHeight === '1.6' ? 'Ausgewogen — empfohlen für die meisten Nutzer.' : 'Großzügig, ideal zum entspannten Lesen.'}
+                </p>
+              </div>
+
+              {/* Akzentfarbe */}
               <div className="space-y-4">
                 <div className="flex items-center justify-between">
                   <p className="text-[10px] font-black uppercase tracking-widest text-slate-400">Akzentfarbe</p>
@@ -379,6 +463,7 @@ export const SettingsModal: React.FC<Props> = ({ user, isDark, onToggleTheme, on
                   </div>
                 </label>
               </div>
+
             </div>
           )}
 

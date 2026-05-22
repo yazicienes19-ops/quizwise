@@ -192,7 +192,7 @@ export const LibrarySystem: React.FC<LibrarySystemProps> = ({
         {/* Page header */}
         <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 px-4">
           <div>
-            <h1 className="text-4xl lg:text-5xl font-black text-slate-900 dark:text-white tracking-tighter">
+            <h1 className="text-4xl lg:text-5xl font-black tracking-tighter" style={{ color: 'var(--text-main)' }}>
               Bibliothek <EmojiImage emoji="📚" size={36} className="inline-block" />
             </h1>
             <p className="text-sm text-slate-400 font-medium mt-1">
@@ -215,7 +215,7 @@ export const LibrarySystem: React.FC<LibrarySystemProps> = ({
         <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 lg:gap-10 px-4">
           {/* Sidebar */}
           <div className="lg:col-span-3 space-y-6">
-            <div className="bg-white dark:bg-slate-900 rounded-[28px] border border-slate-200 dark:border-slate-800 shadow-3d-raised p-5 space-y-4">
+            <div className="rounded-[28px] shadow-3d-raised p-5 space-y-4" style={{ background: 'var(--bg-sidebar)', border: '1px solid var(--border-color)' }}>
               <div className="flex justify-between items-center px-1">
                 <span className="text-[10px] font-black uppercase tracking-widest text-slate-400">Sammlungen</span>
                 {!isAddingCol && (
@@ -233,11 +233,12 @@ export const LibrarySystem: React.FC<LibrarySystemProps> = ({
                     value={newColName}
                     onChange={e => setNewColName(e.target.value)}
                     placeholder="z.B. Semester 1"
-                    className="w-full p-3 bg-slate-50 dark:bg-slate-800 rounded-xl text-xs font-bold outline-none border-2 border-indigo-500 dark:text-white"
+                    className="w-full p-3 rounded-xl text-xs font-bold outline-none border-2 border-indigo-500"
+                    style={{ background: 'var(--bg-main)', color: 'var(--text-main)' }}
                   />
                   <div className="flex gap-2">
                     <button type="submit" className="flex-1 bg-indigo-600 py-2 rounded-xl text-[9px] font-black uppercase tracking-widest" style={{ color: 'var(--primary-text)' }}>Erstellen</button>
-                    <button type="button" onClick={() => { setIsAddingCol(false); setNewColName(''); }} className="px-3 bg-slate-100 dark:bg-slate-800 text-slate-400 py-2 rounded-xl text-[9px] font-black uppercase">✕</button>
+                    <button type="button" onClick={() => { setIsAddingCol(false); setNewColName(''); }} className="px-3 text-slate-400 py-2 rounded-xl text-[9px] font-black uppercase" style={{ background: 'var(--bg-main)' }}>✕</button>
                   </div>
                 </form>
               )}
@@ -245,7 +246,7 @@ export const LibrarySystem: React.FC<LibrarySystemProps> = ({
               <nav className="space-y-1">
                 {colBtn('all',           '🌐', 'Alle',       documents.length)}
                 {colBtn('uncategorized', '📥', 'Unsortiert', documents.filter(d => !d.collectionId).length)}
-                {collections.length > 0 && <div className="pt-2 border-t border-slate-50 dark:border-slate-800 space-y-1">
+                {collections.length > 0 && <div className="pt-2 space-y-1" style={{ borderTop: '1px solid var(--border-color)' }}>
                   {collections.map(col => (
                     <div key={col.id} className="group relative">
                       {colBtn(col.id, col.emoji, col.name, documents.filter(d => d.collectionId === col.id).length)}
@@ -263,7 +264,7 @@ export const LibrarySystem: React.FC<LibrarySystemProps> = ({
 
             {/* Module filter */}
             {modules.length > 0 && (
-              <div className="bg-white dark:bg-slate-900 rounded-[28px] border border-slate-200 dark:border-slate-800 shadow-3d-raised p-5 space-y-3">
+              <div className="rounded-[28px] shadow-3d-raised p-5 space-y-3" style={{ background: 'var(--bg-sidebar)', border: '1px solid var(--border-color)' }}>
                 <span className="text-[10px] font-black uppercase tracking-widest text-slate-400 px-1 block">Module</span>
                 <div className="space-y-1">
                   <button
@@ -299,7 +300,8 @@ export const LibrarySystem: React.FC<LibrarySystemProps> = ({
                   value={search}
                   onChange={e => setSearch(e.target.value)}
                   placeholder="Quelle suchen…"
-                  className="w-full pl-10 pr-4 py-3 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl text-sm font-medium outline-none focus:border-indigo-500 dark:text-white shadow-3d-raised"
+                  className="w-full pl-10 pr-4 py-3 rounded-2xl text-sm font-medium outline-none focus:border-indigo-500 shadow-3d-raised"
+                  style={{ background: 'var(--bg-sidebar)', border: '1px solid var(--border-color)', color: 'var(--text-main)' }}
                 />
               </div>
 
@@ -308,7 +310,8 @@ export const LibrarySystem: React.FC<LibrarySystemProps> = ({
                 <select
                   value={filterType}
                   onChange={e => setFilterType(e.target.value as FilterType)}
-                  className="flex-1 min-w-[100px] px-3 py-2.5 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl text-[10px] font-black uppercase tracking-widest outline-none focus:border-indigo-500 dark:text-white shadow-3d-raised"
+                  className="flex-1 min-w-[100px] px-3 py-2.5 rounded-2xl text-[10px] font-black uppercase tracking-widest outline-none focus:border-indigo-500 shadow-3d-raised"
+                  style={{ background: 'var(--bg-sidebar)', border: '1px solid var(--border-color)', color: 'var(--text-main)' }}
                 >
                   <option value="all">Alle Typen</option>
                   <option value="pdf">PDF</option>
@@ -319,14 +322,15 @@ export const LibrarySystem: React.FC<LibrarySystemProps> = ({
                 <select
                   value={sortBy}
                   onChange={e => setSortBy(e.target.value as SortKey)}
-                  className="flex-1 min-w-[100px] px-3 py-2.5 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl text-[10px] font-black uppercase tracking-widest outline-none focus:border-indigo-500 dark:text-white shadow-3d-raised"
+                  className="flex-1 min-w-[100px] px-3 py-2.5 rounded-2xl text-[10px] font-black uppercase tracking-widest outline-none focus:border-indigo-500 shadow-3d-raised"
+                  style={{ background: 'var(--bg-sidebar)', border: '1px solid var(--border-color)', color: 'var(--text-main)' }}
                 >
                   <option value="recent">Neueste</option>
                   <option value="name">Name</option>
                   <option value="type">Typ</option>
                 </select>
 
-                <div className="flex bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl p-1 shadow-3d-raised shrink-0">
+                <div className="flex rounded-2xl p-1 shadow-3d-raised shrink-0" style={{ background: 'var(--bg-sidebar)', border: '1px solid var(--border-color)' }}>
                   <button
                     onClick={() => setViewMode('grid')}
                     className={`p-2 rounded-xl transition-all ${viewMode === 'grid' ? 'bg-indigo-600' : 'text-slate-400 hover:text-slate-600'}`}

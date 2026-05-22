@@ -4,6 +4,7 @@ import { FlashcardDeck, Flashcard, ProcessedDocument, Collection } from '../type
 import type { GenerationSource } from '../services/geminiService';
 import { EmojiImage } from './EmojiImage';
 import { generateFlashcardsFromDocument } from '../services/geminiService';
+import { toast } from '../services/toast';
 import { FlashcardPlayer } from './FlashcardPlayer';
 import { SourceSelector } from './SourceSelector';
 
@@ -13,7 +14,7 @@ interface FlashcardSystemProps {
   onDeleteDoc: (id: string) => void;
   onSaveToLibrary?: (file: File) => void;
   onGenerateQuizFromDeck: (deck: FlashcardDeck) => void;
-  getDocumentSource?: (doc: ProcessedDocument) => Promise<GenerationSource>;
+  getDocumentSource?: (doc: ProcessedDocument) => GenerationSource;
   isQuizLoading?: boolean;
   initialDoc?: ProcessedDocument;
 }
@@ -55,9 +56,10 @@ export const FlashcardSystem: React.FC<FlashcardSystemProps> = ({
   // Auto-generate cards when navigated from Library source detail
   useEffect(() => {
     if (!initialDoc || !getDocumentSource) return;
-    getDocumentSource(initialDoc).then(source => {
+    try {
+      const source = getDocumentSource(initialDoc);
       handleGenerateFromSource(source, initialDoc.name.replace(/\.[^/.]+$/, ''), initialDoc.id);
-    }).catch(() => {});
+    } catch (_) {}
   }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
   const saveDecks = (newDecks: FlashcardDeck[]) => {
@@ -130,7 +132,7 @@ export const FlashcardSystem: React.FC<FlashcardSystemProps> = ({
       saveDecks([...decks, newDeck]);
     } catch (e) {
       console.error(e);
-      alert('Fehler bei der Generierung.');
+      toast.error('Fehler bei der Generierung.');
     } finally {
       setIsGenerating(null);
     }
@@ -138,7 +140,7 @@ export const FlashcardSystem: React.FC<FlashcardSystemProps> = ({
 
   const handleSelectDocument = async (doc: ProcessedDocument) => {
     const source = getDocumentSource
-      ? await getDocumentSource(doc)
+      ? getDocumentSource(doc)
       : doc.type === 'pdf'
         ? { file: { data: doc.content, mimeType: 'application/pdf' } }
         : { text: doc.content };
@@ -272,14 +274,14 @@ export const FlashcardSystem: React.FC<FlashcardSystemProps> = ({
             }))
           }];
         } else {
-          alert('Ungültiges Format. Nur QuizWise-Exporte werden unterstützt.');
+          toast.error('Ungültiges Format. Nur QuizWise-Exporte werden unterstützt.');
           return;
         }
 
         saveDecks([...decks, ...imported]);
-        alert(`${imported.length} Deck${imported.length !== 1 ? 's' : ''} mit ${imported.reduce((sum, d) => sum + d.cards.length, 0)} Karten importiert.`);
+        toast.success(`${imported.length} Deck${imported.length !== 1 ? 's' : ''} mit ${imported.reduce((sum, d) => sum + d.cards.length, 0)} Karten importiert.`);
       } catch {
-        alert('Fehler beim Lesen der Datei. Ist es eine gültige JSON-Datei?');
+        toast.error('Fehler beim Lesen der Datei. Ist es eine gültige JSON-Datei?');
       } finally {
         if (importInputRef.current) importInputRef.current.value = '';
       }
@@ -295,20 +297,26 @@ export const FlashcardSystem: React.FC<FlashcardSystemProps> = ({
     return deck.cards.filter(c => c.nextReview <= now || c.level === 0);
   };
 
-  if (activeDeckId) {
-    const cards = getActiveDeckCards();
-    if (cards.length === 0) {
-      alert("Dieses Deck ist für heute erledigt!");
-      setActiveDeckId(null);
-    } else {
-      return (
-        <FlashcardPlayer 
-          cards={cards} 
-          onReview={handleReview} 
-          onClose={() => setActiveDeckId(null)}
-        />
-      );
+  const handleOpenDeck = (deckId: string) => {
+    const deck = decks.find(d => d.id === deckId);
+    if (!deck) return;
+    const now = Date.now();
+    const due = deck.cards.filter(c => c.nextReview <= now || c.level === 0);
+    if (due.length === 0) {
+      toast.success("Dieses Deck ist für heute erledigt!");
+      return;
     }
+    setActiveDeckId(deckId);
+  };
+
+  if (activeDeckId) {
+    return (
+      <FlashcardPlayer
+        cards={getActiveDeckCards()}
+        onReview={handleReview}
+        onClose={() => setActiveDeckId(null)}
+      />
+    );
   }
 
   // Edit Mode View
@@ -533,7 +541,7 @@ export const FlashcardSystem: React.FC<FlashcardSystemProps> = ({
                   >
                     <div className="flex-grow min-w-0 text-center sm:text-left">
                       <div className="flex items-center gap-2 justify-center sm:justify-start">
-                        <h4 className="text-lg lg:text-xl font-black text-slate-900 dark:text-white truncate group-hover:text-indigo-600 transition-colors cursor-pointer" onClick={() => setActiveDeckId(deck.id)}>
+                        <h4 className="text-lg lg:text-xl font-black text-slate-900 dark:text-white truncate group-hover:text-indigo-600 transition-colors cursor-pointer" onClick={() => handleOpenDeck(deck.id)}>
                           {deck.title}
                         </h4>
                         {!deck.sourceDocumentId && <span className="bg-slate-100 dark:bg-slate-800 text-[8px] font-black uppercase px-2 py-0.5 rounded text-slate-400 tracking-tighter">Manuell</span>}
@@ -550,7 +558,7 @@ export const FlashcardSystem: React.FC<FlashcardSystemProps> = ({
                       
                       <div className="flex gap-2 w-full sm:w-auto items-center">
                         <button
-                          onClick={() => setActiveDeckId(deck.id)}
+                          onClick={() => handleOpenDeck(deck.id)}
                           className="flex-1 sm:flex-none bg-indigo-600 hover:bg-indigo-700 text-white px-5 lg:px-6 py-3 rounded-xl lg:rounded-2xl text-[9px] font-black uppercase tracking-widest shadow-lg hover:scale-105 active:scale-95 transition-all"
                         >
                           Lernen

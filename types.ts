@@ -66,11 +66,12 @@ export interface FlashcardDeck {
 export interface ProcessedDocument {
   id: string;
   name: string;
-  content: string;        // base64 (PDF) oder extrahierter Text; leer wenn PDF aus Storage noch nicht geladen
-  type: 'pdf' | 'text' | 'docx';
+  content: string;        // base64 (PDF/Bild) oder extrahierter Text; leer wenn aus Storage noch nicht geladen
+  type: 'pdf' | 'text' | 'docx' | 'image';
+  mimeType?: string;      // nur für type='image': 'image/png', 'image/jpeg', 'image/webp'
   uploadDate: number;
   collectionId?: string;
-  storagePath?: string;   // gesetzt wenn PDF in Supabase Storage liegt
+  storagePath?: string;   // gesetzt wenn Datei in Supabase Storage liegt
 }
 
 export interface TopicMetric {
@@ -165,11 +166,29 @@ export interface ExamTerm {
 export interface ExamQuestion {
   id: string;
   question: string;
-  type: 'mc' | 'open';
+  type: 'mc' | 'open' | 'matching' | 'truefalse' | 'fillblank';
+
+  // MC & Szenario-MC
   options?: string[];
+  correctIndices?: number[];
+
+  // Wahr/Falsch
+  tfCorrect?: boolean;
+  tfReasonOptions?: string[];
+  tfCorrectReasonIndex?: number;
+
+  // Zuordnung
+  matchLeft?: string[];
+  matchRight?: string[];
+  matchCorrect?: number[];
+
+  // Lückentext
+  blankText?: string;
+  blanks?: string[];
+
   solution: string;
   points: number;
-  userAnswer?: string | number[];
+  userAnswer?: any;
   feedback?: string;
   achievedPoints?: number;
 }

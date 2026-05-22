@@ -1,5 +1,5 @@
 import React, { useState, useRef, useMemo } from 'react';
-import { BookOpen, Upload, FileText, Search, ChevronRight, X } from 'lucide-react';
+import { BookOpen, Upload, FileText, Search, ChevronRight, X, File, Image } from 'lucide-react';
 import { ProcessedDocument, Collection } from '../types';
 import type { GenerationSource } from '../services/geminiService';
 import mammoth from 'mammoth';
@@ -20,7 +20,12 @@ interface SourceSelectorProps {
 
 type Tab = 'library' | 'upload' | 'text';
 
-const FILE_ICONS: Record<string, string> = { pdf: '📕', docx: '📘', text: '📄' };
+const DocIcon = ({ type }: { type: string }) => {
+  if (type === 'pdf') return <FileText size={20} className="text-rose-500 shrink-0" />;
+  if (type === 'docx') return <File size={20} className="text-blue-500 shrink-0" />;
+  if (type === 'image') return <Image size={20} className="text-emerald-500 shrink-0" />;
+  return <FileText size={20} className="text-slate-400 shrink-0" />;
+};
 
 export const SourceSelector: React.FC<SourceSelectorProps> = ({
   documents,
@@ -187,7 +192,7 @@ export const SourceSelector: React.FC<SourceSelectorProps> = ({
                           className="w-full flex items-center gap-4 px-5 py-4 rounded-2xl text-left transition-all hover:scale-[1.01] active:scale-[0.99] disabled:opacity-50 group"
                           style={{ background: 'color-mix(in srgb, var(--border-color) 25%, var(--bg-main))', border: '1px solid var(--border-color)' }}
                         >
-                          <span className="text-2xl shrink-0">{FILE_ICONS[doc.type] ?? '📄'}</span>
+                          <DocIcon type={doc.type} />
                           <div className="flex-1 min-w-0">
                             <p className="text-[12px] font-black dark:text-white truncate">{doc.name}</p>
                             <p className="text-[10px] text-slate-400 uppercase tracking-widest mt-0.5">
@@ -227,7 +232,7 @@ export const SourceSelector: React.FC<SourceSelectorProps> = ({
               ref={fileInputRef}
               type="file"
               className="hidden"
-              accept=".pdf,.docx,.txt,.md"
+              accept=".pdf,.docx,.txt,.md,.png,.jpg,.jpeg,.webp,.heic,.heif"
               onChange={e => { if (e.target.files?.[0]) handleFileSelected(e.target.files[0]); }}
             />
 

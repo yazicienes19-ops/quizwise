@@ -5,11 +5,12 @@ import type { GenerationSource } from '../services/geminiService';
 import { EmojiImage } from './EmojiImage';
 import { generateExplanation } from '../services/geminiService';
 import { SourceSelector } from './SourceSelector';
+import { toast } from '../services/toast';
 
 interface ExplainerSystemProps {
   availableDocuments: ProcessedDocument[];
   collections: Collection[];
-  getDocumentSource?: (doc: ProcessedDocument) => Promise<GenerationSource>;
+  getDocumentSource?: (doc: ProcessedDocument) => GenerationSource;
   onSaveToLibrary?: (file: File) => void;
   initialDoc?: ProcessedDocument;
 }
@@ -23,22 +24,23 @@ export const ExplainerSystem: React.FC<ExplainerSystemProps> = ({
 }) => {
   const [activeSource, setActiveSource] = useState<GenerationSource | null>(null);
   const [activeSourceName, setActiveSourceName] = useState('');
-
-  // Auto-select source when navigated from Library
-  useEffect(() => {
-    if (!initialDoc || !getDocumentSource) return;
-    getDocumentSource(initialDoc).then(source => {
-      setActiveSource(source);
-      setActiveSourceName(initialDoc.name.replace(/\.[^/.]+$/, ''));
-    }).catch(() => {});
-  }, []); // eslint-disable-line react-hooks/exhaustive-deps
   const [concept, setConcept] = useState('');
   const [explanation, setExplanation] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(false);
+  const [useExternalKnowledge, setUseExternalKnowledge] = useState(false);
+
+  useEffect(() => {
+    if (!initialDoc || !getDocumentSource) return;
+    try {
+      const source = getDocumentSource(initialDoc);
+      setActiveSource(source);
+      setActiveSourceName(initialDoc.name.replace(/\.[^/.]+$/, ''));
+    } catch (_) {}
+  }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
   const handleSelectDocument = async (doc: ProcessedDocument) => {
     const source = getDocumentSource
-      ? await getDocumentSource(doc)
+      ? getDocumentSource(doc)
       : doc.type === 'pdf'
         ? { file: { data: doc.content, mimeType: 'application/pdf' } }
         : { text: doc.content };
@@ -46,173 +48,241 @@ export const ExplainerSystem: React.FC<ExplainerSystemProps> = ({
     setActiveSourceName(doc.name);
   };
 
+  const canSubmit = concept.trim().length > 0 && (useExternalKnowledge || !!activeSource);
+
   const handleExplain = async (e?: React.FormEvent) => {
     if (e) e.preventDefault();
-    if (!activeSource || !concept.trim()) {
-      if (!activeSource) alert('Bitte wähle zuerst eine Quelle aus.');
-      return;
-    }
+    if (!canSubmit) return;
     setIsLoading(true);
     setExplanation(null);
     try {
-      const result = await generateExplanation(activeSource, concept.trim());
+      const result = await generateExplanation(activeSource, concept.trim(), useExternalKnowledge);
       setExplanation(result);
-    } catch (e) {
-      console.error(e);
-      alert('Fehler bei der Generierung der Erklärung.');
+    } catch (err: any) {
+      console.error(err);
+      toast.error('Erklärung konnte nicht generiert werden. Versuche es erneut.');
     } finally {
       setIsLoading(false);
     }
   };
 
+  const handleReset = () => {
+    setExplanation(null);
+    setConcept('');
+  };
+
   return (
-    <div className="max-w-5xl mx-auto space-y-12 py-6 lg:py-10 animate-in fade-in duration-700">
-      {/* Header + Eingabe */}
-      <div className={`transition-all duration-700 ease-in-out ${explanation ? 'mb-12' : 'mt-20 lg:mt-32 mb-20'}`}>
-        <div className="text-center space-y-6 max-w-3xl mx-auto">
-          <h1 className="text-4xl lg:text-6xl font-black text-slate-900 dark:text-white tracking-tighter">
-            KI <span className="text-indigo-600">Erklärer</span> <EmojiImage emoji="💡" size={48} />
-          </h1>
+    <div className="max-w-5xl mx-auto space-y-10 py-6 lg:py-10 px-4 animate-in fade-in duration-700 pb-32">
 
-          <form onSubmit={handleExplain} className="relative group">
-            <div className="absolute -inset-1 bg-indigo-500/20 blur-2xl opacity-0 group-hover:opacity-100 transition-opacity duration-500 rounded-[32px]"></div>
-            <div className="relative">
-              <input
-                type="text"
-                value={concept}
-                onChange={(e) => setConcept(e.target.value)}
-                placeholder="Welchen Begriff möchtest du verstehen?"
-                className="w-full pl-8 pr-40 py-6 sm:py-8 bg-white dark:bg-slate-900 border-2 border-slate-200 dark:border-slate-800 rounded-[32px] shadow-3d-raised focus:border-indigo-500 outline-none transition-all text-xl sm:text-2xl text-slate-900 dark:text-white font-bold"
-              />
-              <button
-                type="submit"
-                disabled={isLoading || !concept.trim() || !activeSource}
-                className="absolute right-3 top-1/2 -translate-y-1/2 bg-indigo-600 text-white px-8 py-3.5 sm:py-4 rounded-2xl font-black uppercase text-[10px] sm:text-[11px] tracking-widest hover:scale-105 active:scale-95 transition-all shadow-lg disabled:opacity-50"
-              >
-                {isLoading ? (
-                  <div className="w-5 h-5 border-2 border-white/30 border-t-white rounded-full animate-spin"></div>
-                ) : <span>Erklären <EmojiImage emoji="✨" size={16} /></span>}
-              </button>
-            </div>
-          </form>
+      {/* Header */}
+      <div className="text-center space-y-3">
+        <h1 className="text-4xl lg:text-7xl font-black text-slate-900 dark:text-white tracking-tighter">
+          KI <span className="text-indigo-600">Erklärer</span> <EmojiImage emoji="💡" size={44} />
+        </h1>
+        <p className="text-base text-slate-500 dark:text-slate-400 font-medium opacity-80">
+          Konzepte verstehen — aus deinen Unterlagen oder darüber hinaus
+        </p>
+      </div>
 
-          {/* Quelle wählen */}
-          <div className="flex flex-col items-center gap-3 animate-in fade-in slide-in-from-top-2 delay-300">
-            {activeSource ? (
-              <div className="flex items-center gap-3 px-5 py-3 bg-indigo-50 dark:bg-indigo-900/20 border-2 border-indigo-500 rounded-2xl">
+      {/* Eingabe-Bereich */}
+      <div className="space-y-4 max-w-3xl mx-auto">
+
+        {/* Suchfeld */}
+        <form onSubmit={handleExplain} className="relative">
+          <input
+            type="text"
+            value={concept}
+            onChange={e => setConcept(e.target.value)}
+            placeholder="Welchen Begriff möchtest du verstehen?"
+            className="w-full pl-6 pr-36 py-5 lg:py-6 rounded-[28px] text-lg lg:text-xl font-bold outline-none focus:border-indigo-400 transition-all"
+            style={{
+              background: 'var(--bg-sidebar)',
+              border: '1px solid var(--border-color)',
+              color: 'var(--text-main)',
+            }}
+          />
+          <button
+            type="submit"
+            disabled={isLoading || !canSubmit}
+            className="absolute right-3 top-1/2 -translate-y-1/2 bg-indigo-600 px-6 py-2.5 rounded-2xl font-black uppercase text-[10px] tracking-widest hover:scale-105 active:scale-95 transition-all shadow-lg disabled:opacity-40 flex items-center gap-2"
+            style={{ color: 'var(--primary-text)' }}
+          >
+            {isLoading
+              ? <div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" />
+              : <><EmojiImage emoji="✨" size={14} /> Erklären</>
+            }
+          </button>
+        </form>
+
+        {/* Quellenauswahl + Toggle in einer Reihe */}
+        <div className="space-y-3">
+
+          {/* Quelle */}
+          {activeSource ? (
+            <div className="flex items-center justify-between px-5 py-3 rounded-2xl" style={{ background: 'var(--bg-sidebar)', border: '1px solid var(--border-color)' }}>
+              <div className="flex items-center gap-2">
                 <div className="w-2 h-2 rounded-full bg-indigo-500 shrink-0" />
-                <p className="text-[11px] font-black text-indigo-600 dark:text-indigo-400 truncate max-w-xs">{activeSourceName}</p>
-                <button
-                  onClick={() => { setActiveSource(null); setActiveSourceName(''); }}
-                  className="text-indigo-400 hover:text-rose-500 transition-colors font-black text-xs ml-1"
-                >✕</button>
+                <span className="text-[11px] font-black text-indigo-600 dark:text-indigo-400 truncate max-w-[240px]">{activeSourceName}</span>
               </div>
-            ) : (
-              <p className="text-[10px] font-black uppercase text-slate-400 tracking-widest">Quelle wählen — basierend auf Dokument:</p>
-            )}
+              <button
+                onClick={() => { setActiveSource(null); setActiveSourceName(''); }}
+                className="text-slate-400 hover:text-rose-500 transition-colors font-black text-xs"
+              >✕</button>
+            </div>
+          ) : (
+            <div className="space-y-2">
+              {!useExternalKnowledge && (
+                <p className="text-[10px] font-black uppercase text-slate-400 tracking-widest text-center">
+                  Dokument wählen (Pflicht im Dokument-Modus)
+                </p>
+              )}
+              {useExternalKnowledge && (
+                <p className="text-[10px] font-black uppercase text-slate-400 tracking-widest text-center">
+                  Dokument wählen (optional — für zusätzlichen Kontext)
+                </p>
+              )}
+              <SourceSelector
+                documents={availableDocuments}
+                collections={collections}
+                onSelectDocument={handleSelectDocument}
+                onSelectSource={(source, name) => { setActiveSource(source); setActiveSourceName(name); }}
+                onSaveToLibrary={onSaveToLibrary}
+                isLoading={isLoading}
+              />
+            </div>
+          )}
 
-            {!activeSource && (
-              <div className="w-full max-w-2xl">
-                <SourceSelector
-                  documents={availableDocuments}
-                  collections={collections}
-                  onSelectDocument={handleSelectDocument}
-                  onSelectSource={(source, name) => { setActiveSource(source); setActiveSourceName(name); }}
-                  onSaveToLibrary={onSaveToLibrary}
-                  isLoading={isLoading}
-                />
+          {/* Externes Wissen Toggle */}
+          <button
+            onClick={() => setUseExternalKnowledge(v => !v)}
+            className="w-full flex items-center justify-between px-5 py-3.5 rounded-2xl transition-all"
+            style={useExternalKnowledge
+              ? { background: 'color-mix(in srgb, var(--primary) 10%, transparent)', border: '1px solid var(--primary)' }
+              : { background: 'var(--bg-sidebar)', border: '1px solid var(--border-color)' }
+            }
+          >
+            <div className="flex items-center gap-3">
+              <span className="text-base"><EmojiImage emoji="🌐" size={16} /></span>
+              <div className="text-left">
+                <p className="text-[11px] font-black uppercase tracking-widest" style={{ color: useExternalKnowledge ? 'var(--primary)' : undefined }}>
+                  {useExternalKnowledge ? 'Externes Wissen aktiv' : 'Nur eigene Quellen'}
+                </p>
+                <p className="text-[10px] text-slate-400 font-medium">
+                  {useExternalKnowledge
+                    ? 'KI nutzt Allgemeinwissen — Ergänzungen werden gekennzeichnet'
+                    : 'KI antwortet ausschließlich aus deinem Dokument'}
+                </p>
               </div>
-            )}
-          </div>
+            </div>
+            {/* Toggle-Pill */}
+            <div
+              className="w-10 h-5 rounded-full transition-all relative shrink-0"
+              style={{ background: useExternalKnowledge ? 'var(--primary)' : 'var(--border-color)' }}
+            >
+              <div
+                className="absolute top-0.5 w-4 h-4 rounded-full bg-white shadow transition-all"
+                style={{ left: useExternalKnowledge ? '1.35rem' : '0.125rem' }}
+              />
+            </div>
+          </button>
         </div>
       </div>
 
+      {/* Ladeanimation */}
+      {isLoading && !explanation && (
+        <div className="fixed inset-0 z-[100] flex items-center justify-center" style={{ background: 'color-mix(in srgb, var(--bg-main) 80%, transparent)', backdropFilter: 'blur(8px)' }}>
+          <div className="flex flex-col items-center gap-6 text-center p-10 rounded-[40px]" style={{ background: 'var(--bg-sidebar)', border: '1px solid var(--border-color)' }}>
+            <div className="relative">
+              <div className="w-20 h-20 rounded-full" style={{ border: '6px solid var(--border-color)' }} />
+              <div className="w-20 h-20 rounded-full border-t-transparent animate-spin absolute top-0 left-0" style={{ border: '6px solid var(--primary)', borderTopColor: 'transparent' }} />
+            </div>
+            <div className="space-y-1">
+              <p className="text-sm font-black uppercase tracking-widest text-slate-900 dark:text-white">KI erklärt...</p>
+              <p className="text-xs text-slate-400 font-medium italic">
+                {useExternalKnowledge && !activeSource ? 'Aus Allgemeinwissen' : activeSource ? 'Basierend auf deinem Dokument' : ''}
+              </p>
+            </div>
+          </div>
+        </div>
+      )}
+
       {/* Ergebnis */}
-      <div className="max-w-4xl mx-auto">
-        {explanation ? (
-          <div className="bg-white dark:bg-slate-900 rounded-[48px] border border-slate-200 dark:border-slate-800 shadow-3d-deep p-8 sm:p-16 space-y-12 animate-in slide-in-from-bottom-8 duration-700">
-            <div className="flex flex-col sm:flex-row justify-between items-start gap-4 pb-8 border-b border-slate-100 dark:border-slate-800">
-              <div className="space-y-1">
-                <span className="text-[10px] font-black uppercase text-indigo-500 tracking-[0.3em]">3-Stufen-Synthese</span>
-                <h2 className="text-3xl lg:text-4xl font-black dark:text-white leading-tight">{concept}</h2>
-              </div>
-              <div className="flex gap-2">
-                <button
-                  onClick={() => { navigator.clipboard.writeText(explanation); alert('Erklärung kopiert!'); }}
-                  className="p-3 bg-slate-50 dark:bg-slate-800 text-slate-400 hover:text-indigo-600 rounded-xl transition-all"
-                  title="Kopieren"
-                >
-                  <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round"><rect x="9" y="9" width="13" height="13" rx="2" ry="2"></rect><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path></svg>
-                </button>
-                <button
-                  onClick={() => { setExplanation(null); setConcept(''); }}
-                  className="p-3 bg-slate-50 dark:bg-slate-800 text-slate-400 hover:text-rose-500 rounded-xl transition-all"
-                  title="Schließen"
-                >
-                  <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg>
-                </button>
-              </div>
-            </div>
+      {explanation && (
+        <div className="max-w-4xl mx-auto rounded-[40px] p-8 sm:p-14 space-y-10 animate-in slide-in-from-bottom-8 duration-700 shadow-3d-deep" style={{ background: 'var(--bg-sidebar)', border: '1px solid var(--border-color)' }}>
 
-            <div className="prose dark:prose-invert max-w-none">
-              <div className="whitespace-pre-wrap leading-relaxed text-slate-700 dark:text-slate-300 space-y-10">
-                {explanation.split('\n\n').map((para, i) => {
-                  if (para.match(/^(Stufe|Phase|Grundlagen|Vertiefung|Kontext|#)/i)) {
-                    return (
-                      <div key={i} className="mt-12 first:mt-0 space-y-4">
-                        <h3 className="text-xl lg:text-2xl font-black text-slate-900 dark:text-white bg-indigo-50 dark:bg-indigo-900/20 px-6 py-2 rounded-2xl inline-block">
-                          {para.replace(/^#\s*/, '')}
-                        </h3>
-                      </div>
-                    );
-                  }
-                  return <p key={i} className="text-lg lg:text-xl font-medium opacity-90 leading-relaxed">{para}</p>;
-                })}
-              </div>
+          {/* Ergebnis-Header */}
+          <div className="flex flex-col sm:flex-row justify-between items-start gap-4 pb-8" style={{ borderBottom: '1px solid var(--border-color)' }}>
+            <div className="space-y-1">
+              <span className="text-[10px] font-black uppercase text-indigo-500 tracking-[0.3em]">
+                {useExternalKnowledge ? (activeSource ? 'Dokument + Allgemeinwissen' : 'Allgemeinwissen') : 'Nur aus deinem Dokument'}
+              </span>
+              <h2 className="text-3xl lg:text-4xl font-black dark:text-white leading-tight">{concept}</h2>
             </div>
-
-            <div className="pt-12 border-t border-slate-50 dark:border-slate-800 flex flex-col items-center gap-6">
-              <div className="bg-amber-50 dark:bg-amber-950/20 p-6 rounded-[32px] border border-amber-100 dark:border-amber-900/30 flex items-center gap-4 max-w-xl">
-                <EmojiImage emoji="🧠" size={32} />
-                <p className="text-xs font-bold text-amber-800 dark:text-amber-400 leading-relaxed italic">
-                  "Wusstest du? Diese Erklärung wurde speziell auf Basis deiner gewählten Unterlagen generiert, um maximale Relevanz für dein Studium zu garantieren."
-                </p>
-              </div>
+            <div className="flex gap-2 shrink-0">
               <button
-                onClick={() => { setExplanation(null); setConcept(''); }}
-                className="text-xs font-black uppercase text-slate-400 hover:text-indigo-600 tracking-widest transition-all"
+                onClick={() => { navigator.clipboard.writeText(explanation); toast.success('Erklärung kopiert!'); }}
+                className="p-3 rounded-xl transition-all text-slate-400 hover:text-indigo-500"
+                style={{ background: 'var(--bg-main)', border: '1px solid var(--border-color)' }}
+                title="Kopieren"
               >
-                Anderen Begriff suchen
+                <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><rect x="9" y="9" width="13" height="13" rx="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/></svg>
+              </button>
+              <button
+                onClick={handleReset}
+                className="p-3 rounded-xl transition-all text-slate-400 hover:text-rose-500"
+                style={{ background: 'var(--bg-main)', border: '1px solid var(--border-color)' }}
+                title="Schließen"
+              >
+                <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
               </button>
             </div>
           </div>
-        ) : (
-          !isLoading && (
-            <div className="flex flex-col items-center justify-center py-12 opacity-30 text-center space-y-6 animate-in fade-in duration-1000 delay-500">
-              <div className="w-24 h-24 bg-slate-100 dark:bg-slate-800 rounded-full flex items-center justify-center">
-                <EmojiImage emoji="💡" size={48} />
-              </div>
-              <div className="space-y-2">
-                <p className="text-lg font-black text-slate-400 uppercase tracking-widest">Wissens-Generator</p>
-                <p className="text-sm max-w-xs mx-auto">Gib oben einen Begriff ein, den du heute meistern willst.</p>
-              </div>
-            </div>
-          )
-        )}
-      </div>
 
-      {isLoading && !explanation && (
-        <div className="fixed inset-0 z-[100] bg-white/60 dark:bg-slate-900/60 backdrop-blur-md flex items-center justify-center animate-in fade-in duration-300">
-          <div className="flex flex-col items-center gap-8 text-center p-12">
-            <div className="relative">
-              <div className="w-24 h-24 border-8 border-indigo-100 dark:border-slate-800 rounded-full"></div>
-              <div className="w-24 h-24 border-8 border-indigo-600 border-t-transparent rounded-full animate-spin absolute top-0 left-0"></div>
-            </div>
-            <div className="space-y-2">
-              <p className="text-xl font-black text-slate-900 dark:text-white uppercase tracking-widest">KI denkt nach...</p>
-              <p className="text-slate-500 dark:text-slate-400 font-medium italic">Drei-Stufen-Synthese wird vorbereitet</p>
-            </div>
+          {/* Erklärungstext */}
+          <div className="space-y-8">
+            {explanation.split('\n\n').map((para, i) => {
+              if (para.match(/^(Stufe|Phase|Grundlagen|Vertiefung|Kontext|#)/i)) {
+                return (
+                  <h3 key={i} className="text-xl lg:text-2xl font-black text-slate-900 dark:text-white mt-4 first:mt-0">
+                    {para.replace(/^#+\s*/, '')}
+                  </h3>
+                );
+              }
+              if (para.startsWith('Allgemeinwissen:')) {
+                return (
+                  <div key={i} className="px-5 py-4 rounded-2xl" style={{ background: 'color-mix(in srgb, var(--primary) 8%, transparent)', border: '1px solid color-mix(in srgb, var(--primary) 20%, transparent)' }}>
+                    <p className="text-[9px] font-black uppercase tracking-widest mb-1" style={{ color: 'var(--primary)' }}>Externes Wissen</p>
+                    <p className="text-base font-medium text-slate-700 dark:text-slate-300 leading-relaxed">{para.replace('Allgemeinwissen:', '').trim()}</p>
+                  </div>
+                );
+              }
+              return <p key={i} className="text-base lg:text-lg font-medium text-slate-700 dark:text-slate-300 leading-relaxed">{para}</p>;
+            })}
           </div>
+
+          {/* Footer */}
+          <div className="pt-8 flex flex-col sm:flex-row items-center justify-between gap-4" style={{ borderTop: '1px solid var(--border-color)' }}>
+            <p className="text-[10px] font-black uppercase text-slate-400 tracking-widest">
+              {!useExternalKnowledge
+                ? `Quelle: ${activeSourceName}`
+                : activeSource ? `Primärquelle: ${activeSourceName} + Allgemeinwissen` : 'Quelle: Allgemeinwissen'
+              }
+            </p>
+            <button
+              onClick={handleReset}
+              className="text-[10px] font-black uppercase tracking-widest transition-colors text-slate-400 hover:text-indigo-500"
+            >
+              Anderen Begriff erklären →
+            </button>
+          </div>
+        </div>
+      )}
+
+      {/* Empty State */}
+      {!explanation && !isLoading && (
+        <div className="flex flex-col items-center justify-center py-16 text-center space-y-4 opacity-30 animate-in fade-in duration-1000 delay-300">
+          <EmojiImage emoji="💡" size={48} />
+          <p className="text-sm font-black uppercase tracking-widest text-slate-400">Begriff eingeben und los</p>
         </div>
       )}
     </div>

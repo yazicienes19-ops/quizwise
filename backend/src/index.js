@@ -5,6 +5,7 @@ const cors = require('cors');
 const geminiRoutes = require('./routes/gemini');
 const userRoutes = require('./routes/user');
 const stripeRoutes = require('./routes/stripe');
+const searchRoutes = require('./routes/search');
 const { requireAuth } = require('./middleware/auth');
 const { checkUsageLimit } = require('./middleware/limits');
 
@@ -28,7 +29,7 @@ app.use(cors({
 // (Stripe braucht den raw/unverarbeiteten Request-Body für die Signatur)
 app.use('/api/stripe/webhook', express.raw({ type: 'application/json' }));
 
-app.use(express.json({ limit: '10mb' }));
+app.use(express.json({ limit: '50mb' }));
 
 // Öffentlich
 app.get('/health', (req, res) => {
@@ -43,6 +44,9 @@ app.use('/api/user', requireAuth, userRoutes);
 
 // Geschützt: Login + Nutzungslimit
 app.use('/api/gemini', requireAuth, checkUsageLimit, geminiRoutes);
+
+// Geschützt: Login (kein Gemini-Limit, ruft externe API auf)
+app.use('/api/search', requireAuth, searchRoutes);
 
 app.use((err, req, res, next) => {
   console.error(err.message);

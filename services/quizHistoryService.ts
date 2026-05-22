@@ -29,6 +29,8 @@ export const saveQuizResult = (data: Omit<QuizResult, 'id'>): QuizResult => {
 export const getResultsForDoc = (docId: string): QuizResult[] =>
   readAll().filter(r => r.docId === docId);
 
+export const getAllResults = (): QuizResult[] => readAll();
+
 export const getDocStats = (docId: string): {
   count: number;
   lastAt: number | null;

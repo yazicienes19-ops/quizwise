@@ -1,63 +1,38 @@
 const { supabase } = require('./auth');
 
-const LIMITS = {
-  free: 20,
-  demo: Infinity,
-  pro: Infinity,
-};
-
-// Diese Funktion wird nach requireAuth ausgeführt.
-// Sie prüft: "Hat der Nutzer noch Anfragen übrig heute?"
 const checkUsageLimit = async (req, res, next) => {
   const userId = req.user.id;
+  const today  = new Date().toISOString().split('T')[0];
 
-  // Profil aus der Datenbank laden
-  const { data: profile, error } = await supabase
-    .from('profiles')
-    .select('plan, api_calls_today, api_calls_reset_at')
-    .eq('id', userId)
-    .single();
+  const { data, error } = await supabase.rpc('check_and_increment_api_calls', {
+    p_user_id: userId,
+    p_today:   today,
+  });
 
-  if (error || !profile) {
-    return res.status(500).json({ error: 'Profil nicht gefunden.' });
+  if (error) {
+    console.error('Usage-Limit RPC Fehler:', error);
+    return res.status(500).json({ error: 'Serverfehler beim Limit-Check.' });
   }
 
-  const today = new Date().toISOString().split('T')[0]; // "2026-05-15"
-
-  // Zähler zurücksetzen wenn ein neuer Tag begonnen hat
-  if (profile.api_calls_reset_at !== today) {
-    await supabase
-      .from('profiles')
-      .update({ api_calls_today: 0, api_calls_reset_at: today })
-      .eq('id', userId);
-    profile.api_calls_today = 0;
+  if (data?.error) {
+    return res.status(500).json({ error: data.error });
   }
 
-  const limit = LIMITS[profile.plan] || LIMITS.free;
-
-  // Limit erreicht?
-  if (profile.api_calls_today >= limit) {
+  if (!data?.allowed) {
     return res.status(429).json({
-      error: 'Tageslimit erreicht.',
-      plan: profile.plan,
-      limit,
-      used: profile.api_calls_today,
-      upgradeRequired: profile.plan === 'free',
+      error:           'Tageslimit erreicht.',
+      plan:            data.plan,
+      limit:           data.limit,
+      used:            data.used,
+      upgradeRequired: data.plan === 'free',
     });
   }
 
-  // Zähler erhöhen
-  await supabase
-    .from('profiles')
-    .update({ api_calls_today: profile.api_calls_today + 1 })
-    .eq('id', userId);
-
-  // Infos für die Route verfügbar machen
   req.usage = {
-    plan: profile.plan,
-    used: profile.api_calls_today + 1,
-    limit,
-    remaining: limit === Infinity ? null : limit - profile.api_calls_today - 1,
+    plan:      data.plan,
+    used:      data.used,
+    limit:     data.limit,
+    remaining: data.limit === null ? null : data.limit - data.used,
   };
 
   next();

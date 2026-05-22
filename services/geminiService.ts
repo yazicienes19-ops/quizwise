@@ -39,6 +39,7 @@ const callBackend = async (payload: {
     responseMimeType?: string;
     responseSchema?: any;
     temperature?: number;
+    thinkingConfig?: { thinkingBudget: number };
   };
   tools?: any[];
 }): Promise<string> => {
@@ -78,7 +79,17 @@ export const hasApiKey = (): boolean => true; // Key lebt jetzt auf dem Server
 export interface GenerationSource {
   text?: string;
   file?: { data: string; mimeType: string; };
+  storagePath?: string;  // Supabase Storage Pfad — Backend lädt die Datei direkt
+  mimeType?: string;     // Benötigt wenn storagePath gesetzt: 'application/pdf', 'image/png' etc.
 }
+
+// Wandelt eine GenerationSource in ein Gemini-Part um
+const sourceTopart = (source: GenerationSource): any => {
+  if (source.file) return { inlineData: { data: source.file.data, mimeType: source.file.mimeType } };
+  if (source.text) return { text: source.text };
+  if (source.storagePath) return { storageRef: { path: source.storagePath, mimeType: source.mimeType || 'application/pdf' } };
+  throw new Error('Kein Inhalt in der Quelle — weder Datei noch Text noch storagePath.');
+};
 
 // ─── System-Prompts ──────────────────────────────────────────────────────────
 const SYSTEM_INSTRUCTION = `Du bist ein hochqualifizierter akademischer Lernassistent.
@@ -96,17 +107,24 @@ GIB IMMER NUR STRIKTES JSON ZURÜCK.`;
 // ─── Feature-Funktionen ──────────────────────────────────────────────────────
 
 export const generateRecallChallenge = async (source: GenerationSource): Promise<RecallChallenge> => {
-  const parts: any[] = [];
-  if (source.file) parts.push({ inlineData: { data: source.file.data, mimeType: source.file.mimeType } });
-  else if (source.text) parts.push({ text: source.text });
-  parts.push({ text: `Erzeuge eine anspruchsvolle Active-Recall-Herausforderung basierend auf dem Material.
-  Stelle eine offene Frage, die den Nutzer zwingt, ein komplexes Konzept zu erklären (Feynman-Technik).
-  Liefere zudem eine Liste von Keywords, die in der Antwort vorkommen sollten.` });
+  const parts: any[] = [sourceTopart(source)];
+
+  parts.push({ text: `Erzeuge eine Active-Recall-Herausforderung nach der Feynman-Technik.
+
+STRENGE REGEL: Verwende AUSSCHLIESSLICH Inhalte aus dem oben bereitgestellten Dokument. Kein Allgemeinwissen, keine Ergänzungen aus dem Internet, keine Erfindungen. Wenn das Dokument zu einem Thema schweigt, stelle keine Frage dazu.
+
+Die Frage soll tiefes Verständnis prüfen — Zusammenhänge, Ursachen und Bedeutung, nicht bloßes Faktenwissen.
+
+Liefere:
+- question: Eine Erklärungsfrage die nur mit dem Dokument beantwortet werden kann
+- expectedKeywords: Die 6-10 zentralen Begriffe aus dem Dokument die in einer vollständigen Antwort vorkommen sollten
+- conceptContext: 4-6 Sätze was eine vollständige Antwort laut Dokument enthalten muss — Kernaussagen, Zusammenhänge, Beispiele aus dem Material` });
 
   const text = await callBackend({
     model: 'gemini-2.5-flash',
     parts,
     config: {
+      temperature: 0.5,
       responseMimeType: 'application/json',
       responseSchema: {
         type: Type.OBJECT,
@@ -122,15 +140,28 @@ export const generateRecallChallenge = async (source: GenerationSource): Promise
   return JSON.parse(text || '{}');
 };
 
-export const evaluateRecallResponse = async (challenge: RecallChallenge, userAnswer: string): Promise<RecallEvaluation> => {
+export const evaluateRecallResponse = async (challenge: RecallChallenge, userAnswer: string, source: GenerationSource): Promise<RecallEvaluation> => {
+  const parts: any[] = [sourceTopart(source)];
+
+  parts.push({ text: `Bewerte diese Feynman-Antwort präzise und direkt. Auf Deutsch.
+
+Das obige Dokument ist die einzige Quelle der Wahrheit — prüfe die Nutzerantwort direkt dagegen.
+Frage: "${challenge.question}"
+Kernbegriffe: ${challenge.expectedKeywords.join(', ')}
+Nutzerantwort: "${userAnswer}"
+
+Regeln: Synonyme und eigene Formulierungen zählen voll. Prüfe Verständnis (Zusammenhänge, Ursachen), nicht nur Faktenwissen. Kurze präzise Antwort > lange vage Antwort.
+Score: 0–30 kaum Verständnis | 31–60 Grundverständnis | 61–85 gut | 86–100 exzellent
+feedback: 2 Sätze spezifisch — was genau gut, was genau fehlt. Keine Phrasen wie "Gut gemacht".
+missingPoints: Nur Punkte die laut Dokument wirklich fehlen — keine Punkte die anders formuliert vorhanden sind.
+strengths: Spezifisch was verstanden wurde.
+suggestedReview: Welches Teilkonzept wiederholen und warum.` });
+
   const text = await callBackend({
     model: 'gemini-2.5-flash',
-    parts: [{ text: `Bewerte folgende Antwort auf die Recall-Frage: "${challenge.question}".
-  Kontext des Konzepts: ${challenge.conceptContext}
-  Erwartete Begriffe: ${challenge.expectedKeywords.join(', ')}
-  Antwort des Nutzers: "${userAnswer}"
-  Bewerte auf einer Skala von 0-100. Identifiziere vergessene Punkte und Stärken.` }],
+    parts,
     config: {
+      temperature: 0.3,
       responseMimeType: 'application/json',
       responseSchema: {
         type: Type.OBJECT,
@@ -303,9 +334,7 @@ export const generateQuizFromDocument = async (
     questionType?: 'mc' | 'truefalse' | 'open' | 'mixed';
   }
 ): Promise<QuizQuestion[]> => {
-  const parts: any[] = [];
-  if (source.file) parts.push({ inlineData: { data: source.file.data, mimeType: source.file.mimeType } });
-  else if (source.text) parts.push({ text: source.text });
+  const parts: any[] = [sourceTopart(source)];
 
   let count: number;
   let difficulty: string;
@@ -381,9 +410,7 @@ Zu jeder Frage: korrekte Antwort-Indices (Array), Boolean ob Multiple-Choice, Er
 };
 
 export const generateFlashcardsFromDocument = async (source: GenerationSource, count: number = 15): Promise<Partial<Flashcard>[]> => {
-  const parts: any[] = [];
-  if (source.file) parts.push({ inlineData: { data: source.file.data, mimeType: source.file.mimeType } });
-  else if (source.text) parts.push({ text: source.text });
+  const parts: any[] = [sourceTopart(source)];
   parts.push({ text: `Erstelle ${count} hochwertige Karteikarten.` });
 
   const text = await callBackend({
@@ -437,10 +464,7 @@ export const generateQuizFromFlashcards = async (deck: FlashcardDeck): Promise<Q
 
 export const generatePaperOutline = async (topic: string, focus: string, sources: GenerationSource[]): Promise<PaperOutlineSection[]> => {
   const parts: any[] = [];
-  sources.forEach(s => {
-    if (s.file) parts.push({ inlineData: { data: s.file.data, mimeType: s.file.mimeType } });
-    else if (s.text) parts.push({ text: s.text });
-  });
+  sources.forEach(s => parts.push(sourceTopart(s)));
   parts.push({ text: `Erstelle eine wissenschaftliche Gliederung für eine Hausarbeit zum Thema: "${topic}". Fokus: "${focus}". Basierend auf den bereitgestellten Quellen.` });
 
   const text = await callBackend({
@@ -511,11 +535,30 @@ export const magicFormatCitation = async (input: string): Promise<MultiStyleCita
   return JSON.parse(text || '{}');
 };
 
-export const analyzeLearningProgress = async (metrics: TopicMetric[]): Promise<LearningAnalysis> => {
+export interface WrongAnswerContext {
+  question: string;
+  topic?: string;
+  explanation: string;
+  docName: string;
+}
+
+export const analyzeLearningProgress = async (
+  metrics: TopicMetric[],
+  wrongAnswers: WrongAnswerContext[] = []
+): Promise<LearningAnalysis> => {
+  const metricsText = JSON.stringify(
+    metrics.map(m => ({ thema: m.topic, konfidenz: m.confidence + '%', versuche: m.totalAttempts }))
+  );
+  const wrongText = wrongAnswers.length > 0
+    ? `\n\nFalsch beantwortete Fragen (${wrongAnswers.length} Stück, wichtig für Fehlermuster):\n` +
+      wrongAnswers.map((w, i) =>
+        `${i + 1}. [${w.topic || 'Allgemein'}] "${w.question}"\n   Richtige Erklärung: ${w.explanation}`
+      ).join('\n\n')
+    : '';
+
   const text = await callBackend({
     model: 'gemini-2.5-flash',
-    parts: [{ text: `Analysiere den Lernfortschritt basierend auf diesen Daten: ${JSON.stringify(metrics)}.
-  Identifiziere Fehlermuster, gib Empfehlungen und eine Gesamteinschätzung ab.` }],
+    parts: [{ text: `Analysiere den Lernfortschritt eines Studenten auf Deutsch.\n\nThemen-Konfidenz: ${metricsText}${wrongText}\n\nIdentifiziere konkrete Fehlermuster aus den echten Fragen (z.B. "Begriffsverwechslungen", "Konzeptuelle Lücken"), gib gezielte Lernempfehlungen und eine psychologische Gesamteinschätzung.` }],
     config: {
       responseMimeType: 'application/json',
       responseSchema: {
@@ -554,47 +597,72 @@ export const analyzeLearningProgress = async (metrics: TopicMetric[]): Promise<L
   return JSON.parse(text || '{}');
 };
 
-export const generateExplanation = async (source: GenerationSource, concept: string): Promise<string> => {
-  const parts: any[] = [];
-  if (source.file) parts.push({ inlineData: { data: source.file.data, mimeType: source.file.mimeType } });
-  else if (source.text) parts.push({ text: source.text });
-  parts.push({ text: `Erkläre das Konzept "${concept}" basierend auf dem Material. Strukturiere in 3 Stufen: Grundlagen, Vertiefung und Kontext. Antworte in Markdown.` });
+export const generateExplanation = async (
+  source: GenerationSource | null,
+  concept: string,
+  useExternalKnowledge: boolean
+): Promise<string> => {
+  if (!useExternalKnowledge && !source?.file && !source?.text && !source?.storagePath) {
+    throw new Error('Kein Dokument übergeben — externe Quellen sind deaktiviert.');
+  }
 
-  return callBackend({ model: 'gemini-2.5-flash', parts });
+  const parts: any[] = [];
+  if (source) parts.push(sourceTopart(source));
+
+  if (!useExternalKnowledge) {
+    parts.push({ text: `Erkläre das Konzept "${concept}" ausschließlich basierend auf dem oben bereitgestellten Dokument.
+STRENGE REGEL: Verwende NUR Inhalte aus dem Dokument. Kein Allgemeinwissen, keine externen Quellen, keine Erfindungen. Wenn das Dokument zu "${concept}" nichts enthält, sage das klar.
+Strukturiere in 3 Stufen: Grundlagen, Vertiefung und Kontext. Antworte auf Deutsch.` });
+  } else if (source) {
+    parts.push({ text: `Erkläre das Konzept "${concept}".
+Nutze das oben bereitgestellte Dokument als primäre Quelle. Ergänze mit deinem Allgemeinwissen wo das Dokument lückenhaft ist — kennzeichne solche Ergänzungen mit "Allgemeinwissen:".
+Strukturiere in 3 Stufen: Grundlagen, Vertiefung und Kontext. Antworte auf Deutsch.` });
+  } else {
+    parts.push({ text: `Erkläre das Konzept "${concept}" umfassend aus deinem Allgemeinwissen.
+Strukturiere in 3 Stufen: Grundlagen, Vertiefung und Kontext. Antworte auf Deutsch.` });
+  }
+
+  return callBackend({
+    model: 'gemini-2.5-flash',
+    parts,
+    config: { temperature: 0.4, thinkingConfig: { thinkingBudget: 0 } },
+  });
 };
 
 export const generateFullExam = async (content: GenerationSource, style?: GenerationSource, options?: { count: number, difficulty: string }): Promise<ExamQuestion[]> => {
-  const parts: any[] = [];
-  if (content.file) parts.push({ inlineData: { data: content.file.data, mimeType: content.file.mimeType } });
-  else if (content.text) parts.push({ text: content.text });
+  const parts: any[] = [sourceTopart(content)];
 
   if (style) {
-    if (style.file) parts.push({ inlineData: { data: style.file.data, mimeType: style.file.mimeType } });
-    else if (style.text) parts.push({ text: `Nutze diesen STIL für die Prüfung: ${style.text}` });
+    if (style.text) parts.push({ text: `Nutze diesen STIL für die Prüfung: ${style.text}` });
+    else parts.push(sourceTopart(style));
   }
 
-  const count = options?.count || 10;
+  const count      = options?.count || 10;
   const difficulty = options?.difficulty || 'mittel';
 
-  const mcCount   = Math.round(count * 0.45);
-  const transCount = Math.round(count * 0.35);
-  const essayCount = count - mcCount - transCount;
+  const mcCount      = Math.max(1, Math.round(count * 0.30));
+  const matchCount   = Math.max(1, Math.round(count * 0.20));
+  const tfCount      = Math.max(1, Math.round(count * 0.20));
+  const fillCount    = Math.max(0, Math.round(count * 0.10));
+  const openCount    = Math.max(1, count - mcCount - matchCount - tfCount - fillCount);
 
   const seed = Math.random().toString(36).slice(2, 8);
 
   parts.push({ text: `Erstelle eine akademische Klausur mit genau ${count} Aufgaben auf Niveau "${difficulty}".
 Zufalls-Seed: ${seed}
 
-FRAGETYPEN-VERTEILUNG (zwingend einhalten):
-- ${mcCount} Multiple-Choice-Fragen (type: "mc"): Je 4 Optionen, MEHRERE korrekte Antworten (2-3). Teste Faktenwissen & Konzeptverständnis. Punkte: 2-4 pro Frage.
-- ${transCount} Transferaufgaben (type: "open"): Wende Konzepte auf NEUE, konkrete Situationen an. Formulierungen wie: "Ein Student beobachtet X — erklären Sie warum...", "Analysieren Sie folgenden Fall aus der Praxis...", "Welche Theorie erklärt Situation Y, und warum?". Punkte: 5-8 pro Frage.
-- ${essayCount} Schreibaufgaben / Erörterungen (type: "open"): Tiefe Auseinandersetzung, kritisches Denken. Formulierungen wie: "Erläutern Sie ausführlich...", "Diskutieren Sie kritisch...", "Vergleichen Sie X und Y und bewerten Sie...". Punkte: 8-15 pro Frage.
+FRAGETYPEN-VERTEILUNG (zwingend einhalten, Summe = ${count}):
+- ${mcCount} MC / Szenario-MC (type "mc"): Entweder klassische Faktenabfrage ODER Fallbeispiel im Fragetext (Situation beschreiben, dann Frage). options[]: genau 4 Antworten. correctIndices[]: Indizes der richtigen Antworten (1-3 korrekte). solution: kurze Begründung. Punkte: 2-4.
+- ${matchCount} Zuordnung (type "matching"): matchLeft[] + matchRight[] je 4 Einträge (Paare). matchCorrect[]: Für jedes matchLeft[i] der Index in matchRight (0-3). Beispiel Psychologie: Konzepte ↔ Definitionen, Forscher ↔ Theorien. options[]: leer. solution: korrekte Zuordnungen als Text. Punkte: 4-6.
+- ${tfCount} Wahr/Falsch (type "truefalse"): tfCorrect: true oder false. tfReasonOptions[]: genau 3 Antwortoptionen warum die Aussage wahr/falsch ist. tfCorrectReasonIndex: Index (0-2) der richtigen Begründung. options[]: leer. solution: Erklärung. Punkte: 2-3.
+- ${fillCount} Lückentext (type "fillblank"): blankText: Satz/Formel mit [LÜCKE] als Platzhalter (max. 4 Lücken). blanks[]: korrekte Füllwörter in gleicher Reihenfolge. options[]: leer. solution: kompletter Text. Punkte: 3-5.
+- ${openCount} Freitext/Kurzantwort (type "open"): Transfer oder 2-3-Satz-Erklärung unter Zeitdruck. options[]: leer. solution: Musterantwort mit Kernbegriffen. Punkte: 5-10.
 
-QUALITÄTSREGELN:
-- Jede Aufgabe deckt einen ANDEREN Aspekt/Abschnitt des Materials ab
-- Bei MC: options[] enthält genau 4 Antworten, solution nennt die korrekten Buchstaben mit Begründung
-- Bei open (Transfer + Schreiben): options[] ist leer ([]), solution ist eine vollständige Musterantwort (mind. 4-6 Sätze mit Fachbegriffen)
-- id = fortlaufend "q1", "q2", ...` });
+ALLGEMEINE REGELN:
+- Jede Aufgabe deckt einen ANDEREN Aspekt des Materials ab
+- id: fortlaufend "q1", "q2", ...
+- Alle Arrays die nicht für den Typ relevant sind: als leeres Array [] angeben
+- Nicht relevante Felder (z.B. tfCorrect bei MC): weglassen oder 0/false als Default` });
 
   const text = await callBackend({
     model: 'gemini-2.5-flash',
@@ -607,9 +675,21 @@ QUALITÄTSREGELN:
         items: {
           type: Type.OBJECT,
           properties: {
-            id: { type: Type.STRING }, question: { type: Type.STRING },
-            type: { type: Type.STRING }, options: { type: Type.ARRAY, items: { type: Type.STRING } },
-            solution: { type: Type.STRING }, points: { type: Type.NUMBER }
+            id:                   { type: Type.STRING },
+            question:             { type: Type.STRING },
+            type:                 { type: Type.STRING },
+            options:              { type: Type.ARRAY, items: { type: Type.STRING } },
+            correctIndices:       { type: Type.ARRAY, items: { type: Type.NUMBER } },
+            tfCorrect:            { type: Type.BOOLEAN },
+            tfReasonOptions:      { type: Type.ARRAY, items: { type: Type.STRING } },
+            tfCorrectReasonIndex: { type: Type.NUMBER },
+            matchLeft:            { type: Type.ARRAY, items: { type: Type.STRING } },
+            matchRight:           { type: Type.ARRAY, items: { type: Type.STRING } },
+            matchCorrect:         { type: Type.ARRAY, items: { type: Type.NUMBER } },
+            blankText:            { type: Type.STRING },
+            blanks:               { type: Type.ARRAY, items: { type: Type.STRING } },
+            solution:             { type: Type.STRING },
+            points:               { type: Type.NUMBER },
           },
           required: ['id', 'question', 'type', 'solution', 'points']
         }
@@ -619,6 +699,7 @@ QUALITÄTSREGELN:
   return JSON.parse(text || '[]');
 };
 
+// Nur für type="open" — alle anderen werden clientseitig ausgewertet
 export const evaluateExamAnswers = async (questions: ExamQuestion[]): Promise<ExamQuestion[]> => {
   const text = await callBackend({
     model: 'gemini-2.5-flash',

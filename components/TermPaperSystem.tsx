@@ -3,17 +3,20 @@ import React, { useState, useEffect, useRef } from 'react';
 import { PaperOutlineSection, AcademicSource, CitationStyle, SearchResult, ProcessedDocument, MultiStyleCitation } from '../types';
 import { EmojiImage } from './EmojiImage';
 import { generatePaperOutline, formatCitation, GenerationSource, magicFormatCitation } from '../services/geminiService';
+import { toast } from '../services/toast';
 
 interface TermPaperSystemProps {
   availableDocuments: ProcessedDocument[];
   onUploadNew: (file: File) => void;
   initialSources?: SearchResult[];
+  getDocumentSource?: (doc: ProcessedDocument) => GenerationSource;
 }
 
-export const TermPaperSystem: React.FC<TermPaperSystemProps> = ({ 
-  availableDocuments, 
+export const TermPaperSystem: React.FC<TermPaperSystemProps> = ({
+  availableDocuments,
   onUploadNew,
-  initialSources = [] 
+  initialSources = [],
+  getDocumentSource,
 }) => {
   const [step, setStep] = useState<'setup' | 'planner' | 'citations' | 'magic'>('setup');
   const [topic, setTopic] = useState('');
@@ -60,19 +63,19 @@ export const TermPaperSystem: React.FC<TermPaperSystemProps> = ({
   }, [initialSources]);
 
   const handleCreateOutline = async () => {
-    if (!topic) return alert("Thema angeben!");
+    if (!topic) { toast.error("Thema angeben!"); return; }
     setIsGenerating(true);
     try {
       const selectedDocs = availableDocuments.filter(d => selectedDocIds.includes(d.id));
-      const genSources: GenerationSource[] = selectedDocs.map(d => 
-        d.type === 'pdf' ? { file: { data: d.content, mimeType: 'application/pdf' } } : { text: d.content }
+      const genSources: GenerationSource[] = selectedDocs.map(d =>
+        getDocumentSource ? getDocumentSource(d) : d.type === 'pdf' ? { file: { data: d.content, mimeType: 'application/pdf' } } : { text: d.content }
       );
       if (manualText.trim()) genSources.push({ text: manualText });
       const res = await generatePaperOutline(topic, focus, genSources);
       setOutline(res);
       setStep('planner');
     } catch (e) {
-      alert("Fehler bei Gliederung.");
+      toast.error("Fehler bei Gliederung.");
     } finally {
       setIsGenerating(false);
     }
@@ -85,14 +88,14 @@ export const TermPaperSystem: React.FC<TermPaperSystemProps> = ({
       const res = await magicFormatCitation(magicInput);
       setMagicResult(res);
     } catch (e) {
-      alert("Fehler beim KI-Zitieren.");
+      toast.error("Fehler beim KI-Zitieren.");
     } finally {
       setIsMagicLoading(false);
     }
   };
 
   const addManualCitation = async () => {
-    if (!manualTitle || !manualAuthor) return alert("Autor und Titel sind Pflicht!");
+    if (!manualTitle || !manualAuthor) { toast.error("Autor und Titel sind Pflicht!"); return; }
     setIsFormatting(true);
     const newSource: AcademicSource = {
       id: `manual-${Date.now()}`,
@@ -112,7 +115,7 @@ export const TermPaperSystem: React.FC<TermPaperSystemProps> = ({
       setFormattedCitations(prev => ({ ...prev, [newSource.id]: formatted }));
       setManualAuthor(''); setManualTitle(''); setManualYear(''); setManualJournal(''); setManualUrl('');
     } catch (e) {
-      alert("Zitier-Fehler.");
+      toast.error("Zitier-Fehler.");
     } finally {
       setIsFormatting(false);
     }
@@ -120,7 +123,7 @@ export const TermPaperSystem: React.FC<TermPaperSystemProps> = ({
 
   const copyToClipboard = (text: string) => {
     navigator.clipboard.writeText(text);
-    alert("Kopiert!");
+    toast.success("Kopiert!");
   };
 
   return (

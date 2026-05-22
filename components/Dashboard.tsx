@@ -60,11 +60,14 @@ export const Dashboard: React.FC<DashboardProps> = ({ onTabChange, flowResult })
 
   const handleAcceptSuggestion = (suggestion: any) => {
     const plan = JSON.parse(localStorage.getItem('study_plan') || '[]');
+    const [h, m] = (suggestion.start_time as string).split(':').map(Number);
+    const endTotalMin = h * 60 + m + (suggestion.duration_minutes || 60);
+    const endTime = `${String(Math.floor(endTotalMin / 60) % 24).padStart(2, '0')}:${String(endTotalMin % 60).padStart(2, '0')}`;
     const newEntry: StudyEntry = {
       id: Math.random().toString(36).substr(2, 9),
       day: suggestion.day,
       startTime: suggestion.start_time,
-      endTime: "12:00",
+      endTime,
       subject: suggestion.module,
       topic: suggestion.focus_topics.join(', '),
       completed: false,
@@ -81,7 +84,7 @@ export const Dashboard: React.FC<DashboardProps> = ({ onTabChange, flowResult })
       {/* Hero Section */}
       <div className="text-center space-y-6">
         <div className="space-y-2">
-            <h1 className="text-7xl sm:text-8xl lg:text-9xl font-light tracking-tighter text-slate-900 dark:text-white leading-none">
+            <h1 className="text-7xl sm:text-8xl lg:text-9xl font-light tracking-tighter leading-none" style={{ color: 'var(--text-main)' }}>
                 Quiz<span className="font-bold text-indigo-500">Wise</span>
             </h1>
             <p className="text-[10px] sm:text-xs font-black uppercase tracking-[1em] text-slate-400 dark:text-white/30 pl-4">
@@ -104,7 +107,17 @@ export const Dashboard: React.FC<DashboardProps> = ({ onTabChange, flowResult })
             {flowResult.next_actions.map((action, i) => (
               <button 
                 key={i}
-                onClick={() => onTabChange(action.module.toUpperCase() as ActiveTab)}
+                onClick={() => {
+                  const moduleToTab: Record<string, ActiveTab> = {
+                    analyse: ActiveTab.RADAR,
+                    quiz: ActiveTab.QUIZ,
+                    cards: ActiveTab.CARDS,
+                    explain: ActiveTab.EXPLAINER,
+                    calendar: ActiveTab.PLANNER,
+                    exam: ActiveTab.EXAM,
+                  };
+                  onTabChange(moduleToTab[action.module] ?? ActiveTab.QUIZ);
+                }}
                 className="bg-indigo-600 p-8 rounded-[32px] text-white text-left shadow-3d-deep hover:scale-105 transition-all group overflow-hidden relative"
               >
                 <div className="absolute top-0 right-0 w-24 h-24 bg-white/5 blur-2xl rounded-full translate-x-8 -translate-y-8"></div>
@@ -126,9 +139,10 @@ export const Dashboard: React.FC<DashboardProps> = ({ onTabChange, flowResult })
                     <h3 className="text-lg font-black dark:text-white">{block.day}, {block.start_time} Uhr</h3>
                     <p className="text-[11px] text-slate-500 mt-1">{block.focus_topics.join(', ')}</p>
                   </div>
-                  <button 
+                  <button
                     onClick={() => handleAcceptSuggestion(block)}
-                    className="mt-6 w-full py-3 bg-slate-50 dark:bg-slate-800 text-[10px] font-black uppercase tracking-widest rounded-xl hover:bg-indigo-600 hover:text-white transition-all"
+                    className="mt-6 w-full py-3 text-[10px] font-black uppercase tracking-widest rounded-xl hover:bg-indigo-600 hover:text-white transition-all"
+                    style={{ background: 'var(--bg-main)', color: 'var(--text-secondary, #64748b)', border: '1px solid var(--border-color)' }}
                   >In Kalender eintragen</button>
                </div>
             ))}

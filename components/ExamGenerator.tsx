@@ -1,17 +1,18 @@
 
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, useEffect } from 'react';
 import { ProcessedDocument, Collection } from '../types';
 import { GenerationSource } from '../services/geminiService';
 import { GeneratedImage } from './GeneratedImage';
 import { SourceSelector } from './SourceSelector';
 
 interface ExamGeneratorProps {
-  onGenerate: (content: GenerationSource, style?: GenerationSource, options?: { count: number, difficulty: string }) => void;
+  onGenerate: (content: GenerationSource, style?: GenerationSource, options?: { count: number, difficulty: string }, docName?: string, totalMinutes?: number) => void;
   isLoading: boolean;
   documents: ProcessedDocument[];
   collections: Collection[];
-  getDocumentSource?: (doc: ProcessedDocument) => Promise<GenerationSource>;
+  getDocumentSource?: (doc: ProcessedDocument) => GenerationSource;
   onSaveToLibrary?: (file: File) => void;
+  initialDoc?: ProcessedDocument;
 }
 
 export const ExamGenerator: React.FC<ExamGeneratorProps> = ({
@@ -21,9 +22,23 @@ export const ExamGenerator: React.FC<ExamGeneratorProps> = ({
   collections,
   getDocumentSource,
   onSaveToLibrary,
+  initialDoc,
 }) => {
   const [contentSource, setContentSource] = useState<GenerationSource | null>(null);
   const [contentName, setContentName] = useState('');
+
+  useEffect(() => {
+    if (!initialDoc) return;
+    try {
+      const source = getDocumentSource
+        ? getDocumentSource(initialDoc)
+        : initialDoc.type === 'pdf'
+          ? { file: { data: initialDoc.content, mimeType: 'application/pdf' } }
+          : { text: initialDoc.content };
+      setContentSource(source);
+      setContentName(initialDoc.name);
+    } catch (_) {}
+  }, []); // eslint-disable-line react-hooks/exhaustive-deps
   const [styleFile, setStyleFile] = useState<File | null>(null);
   const [questionCount, setQuestionCount] = useState(10);
   const [difficulty, setDifficulty] = useState<'leicht' | 'mittel' | 'schwer'>('mittel');
@@ -46,21 +61,25 @@ export const ExamGenerator: React.FC<ExamGeneratorProps> = ({
     return { text };
   };
 
-  const handleSelectDocument = async (doc: ProcessedDocument) => {
-    const source = getDocumentSource
-      ? await getDocumentSource(doc)
-      : doc.type === 'pdf'
-        ? { file: { data: doc.content, mimeType: 'application/pdf' } }
-        : { text: doc.content };
-    setContentSource(source);
-    setContentName(doc.name);
+  const handleSelectDocument = (doc: ProcessedDocument) => {
+    try {
+      const source = getDocumentSource
+        ? getDocumentSource(doc)
+        : doc.type === 'pdf'
+          ? { file: { data: doc.content, mimeType: 'application/pdf' } }
+          : { text: doc.content };
+      setContentSource(source);
+      setContentName(doc.name);
+    } catch (_) {}
   };
 
   const handleStart = async () => {
     if (!contentSource) return;
     try {
       const styleSource = styleFile ? await processStyleFile(styleFile) : undefined;
-      onGenerate(contentSource, styleSource, { count: questionCount, difficulty });
+      const baseTimePerQuestion = difficulty === 'leicht' ? 4 : difficulty === 'mittel' ? 6 : 9;
+      const totalMinutes = questionCount * baseTimePerQuestion + 5;
+      onGenerate(contentSource, styleSource, { count: questionCount, difficulty }, contentName, totalMinutes);
     } catch (e) {
       console.error(e);
       throw e;

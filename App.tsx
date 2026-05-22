@@ -24,7 +24,9 @@ import { ToastContainer } from './components/Toast';
 import { ActiveTab, ProcessedDocument, QuizQuestion, UserAnswer, TopicMetric, SearchResult, QuizType, FlashcardDeck, Flashcard, Collection, ExamTerm, LearningFlowResult, QuizConfig } from './types';
 
 import { generateQuizFromDocument, searchScholar, searchWeb, generateQuizFromFlashcards, orchestrateLearningFlow } from './services/geminiService';
-import { saveQuizResult, getDocStats } from './services/quizHistoryService';
+import { saveQuizResult, getDocStats, getAllResults } from './services/quizHistoryService';
+import { saveRecallResult } from './services/recallHistoryService';
+import { saveExamResult } from './services/examHistoryService';
 import { saveMeta, getMeta } from './services/libraryService';
 import {
   loadDocumentsFromSupabase,
@@ -39,6 +41,7 @@ import {
 import type { GenerationSource } from './services/geminiService';
 import { toast } from './services/toast';
 import mammoth from 'mammoth';
+import heic2any from 'heic2any';
 
 const App: React.FC = () => {
   const [user, setUser] = useState<User | null>(null);
@@ -60,6 +63,7 @@ const App: React.FC = () => {
   const [showSettings, setShowSettings] = useState(false);
   const [isDark, setIsDark] = useState(() => localStorage.getItem('theme') === 'dark');
   const [pendingActionDoc, setPendingActionDoc] = useState<ProcessedDocument | null>(null);
+  const [pendingTopic, setPendingTopic] = useState<string | null>(null);
   const [activeQuizMeta, setActiveQuizMeta] = useState<{ docId: string; docName: string } | null>(null);
 
   const toggleTheme = () => {
@@ -164,15 +168,17 @@ const App: React.FC = () => {
 
   // Gibt den KI-tauglichen Inhalt eines Dokuments zurück.
   // PDFs ohne content werden on-demand aus Storage geladen.
-  const getDocumentSource = async (doc: ProcessedDocument): Promise<GenerationSource> => {
-    if (doc.type !== 'pdf') return { text: doc.content };
-    if (doc.content) return { file: { data: doc.content, mimeType: 'application/pdf' } };
-    if (doc.storagePath) {
-      const base64 = await downloadPdfAsBase64(doc.storagePath);
-      // Im lokalen State cachen damit nachfolgende Aufrufe schnell sind
-      setDocuments(prev => prev.map(d => d.id === doc.id ? { ...d, content: base64 } : d));
-      return { file: { data: base64, mimeType: 'application/pdf' } };
+  const getDocumentSource = (doc: ProcessedDocument): GenerationSource => {
+    if (doc.type === 'text' || doc.type === 'docx') return { text: doc.content };
+    if (doc.type === 'image') {
+      const mime = doc.mimeType || 'image/jpeg';
+      if (doc.storagePath) return { storagePath: doc.storagePath, mimeType: mime };
+      if (doc.content) return { file: { data: doc.content, mimeType: mime } };
+      throw new Error('Bild-Inhalt nicht verfügbar.');
     }
+    // PDF
+    if (doc.storagePath) return { storagePath: doc.storagePath, mimeType: 'application/pdf' };
+    if (doc.content) return { file: { data: doc.content, mimeType: 'application/pdf' } };
     throw new Error('PDF-Inhalt nicht verfügbar.');
   };
 
@@ -237,7 +243,8 @@ const App: React.FC = () => {
     }
   };
 
-  const handleFileUpload = async (file: File, collectionId?: string): Promise<string | null> => {
+  const handleFileUpload = async (fileInput: File, collectionId?: string): Promise<string | null> => {
+    let file = fileInput;
     if (isOffline) {
       toast.error('Hochladen ist im Offline-Modus nicht möglich.');
       return null;
@@ -246,7 +253,24 @@ const App: React.FC = () => {
     try {
       const ext = file.name.split('.').pop()?.toLowerCase();
       let content = '';
-      let docType: 'pdf' | 'docx' | 'text' = 'text';
+      let docType: 'pdf' | 'docx' | 'text' | 'image' = 'text';
+      let imageMimeType: string | undefined;
+
+      const IMAGE_MIME: Record<string, string> = {
+        png: 'image/png', jpg: 'image/jpeg', jpeg: 'image/jpeg', webp: 'image/webp',
+        heic: 'image/jpeg', heif: 'image/jpeg',
+      };
+
+      // HEIC/HEIF → JPEG konvertieren (iPhone Kamera-Format)
+      if (ext === 'heic' || ext === 'heif') {
+        try {
+          const converted = await heic2any({ blob: file, toType: 'image/jpeg', quality: 0.92 }) as Blob;
+          file = new File([converted], file.name.replace(/\.(heic|heif)$/i, '.jpg'), { type: 'image/jpeg' });
+        } catch {
+          toast.error('HEIC-Konvertierung fehlgeschlagen. Bitte als JPEG exportieren.');
+          return null;
+        }
+      }
 
       if (ext === 'pdf') {
         docType = 'pdf';
@@ -254,6 +278,15 @@ const App: React.FC = () => {
           toast.error('Zum Speichern von PDFs bitte zuerst anmelden.');
           return null;
         }
+      } else if (ext && IMAGE_MIME[ext]) {
+        docType = 'image';
+        imageMimeType = IMAGE_MIME[ext];
+        content = await new Promise<string>((resolve, reject) => {
+          const reader = new FileReader();
+          reader.onload = () => resolve((reader.result as string).split(',')[1]);
+          reader.onerror = reject;
+          reader.readAsDataURL(file);
+        });
       } else if (ext === 'docx') {
         const arrayBuffer = await file.arrayBuffer();
         const result = await mammoth.extractRawText({ arrayBuffer });
@@ -264,16 +297,21 @@ const App: React.FC = () => {
         docType = 'text';
       }
 
+      if ((docType === 'text' || docType === 'docx') && content.length > 900_000) {
+        toast.error('Dokument sehr groß — nur der erste Teil wird verarbeitet. Für beste Ergebnisse empfehlen wir PDF.');
+      }
+
       const newDoc: ProcessedDocument = {
         id: Math.random().toString(36).substr(2, 9),
         name: file.name,
         content,
         type: docType,
+        ...(imageMimeType ? { mimeType: imageMimeType } : {}),
         uploadDate: Date.now(),
         collectionId,
       };
 
-      if (docType === 'pdf') {
+      if (docType === 'pdf' || docType === 'image') {
         const storagePath = await saveDocumentToSupabase(newDoc, file);
         saveDocs([...documents, { ...newDoc, storagePath: storagePath ?? undefined }]);
       } else {
@@ -327,21 +365,27 @@ const App: React.FC = () => {
     setAnswers([]);
     setQuestions([]);
     try {
-      const source = await getDocumentSource(doc);
+      const source = getDocumentSource(doc);
       const quiz = await generateQuizFromDocument(source, quizType, options);
       setQuestions(quiz);
       setActiveQuizMeta({ docId: doc.id, docName: doc.name.replace(/\.[^/.]+$/, '') });
       localStorage.setItem('quizwise_current_quiz', JSON.stringify(quiz));
-    } catch (e) { toast.error('Quiz-Generierung fehlgeschlagen. Bitte prüfe deinen API-Key.'); } finally { setIsLoading(false); }
+    } catch (e: any) {
+      const msg = e?.message?.includes('nicht verfügbar')
+        ? `Dokument nicht verfügbar. Bitte lade es neu hoch.`
+        : 'Quiz-Generierung fehlgeschlagen. Bitte prüfe deinen API-Key.';
+      toast.error(msg);
+    } finally { setIsLoading(false); }
   };
 
   const handleStartQuizFromSetup = async (config: QuizConfig) => {
     if (!pendingActionDoc) return;
+    setPendingTopic(null);
     setIsLoading(true);
     setQuestions([]);
     setAnswers([]);
     try {
-      const source = await getDocumentSource(pendingActionDoc);
+      const source = getDocumentSource(pendingActionDoc);
       setActiveQuizMeta({ docId: pendingActionDoc.id, docName: pendingActionDoc.name.replace(/\.[^/.]+$/, '') });
       const stats = getDocStats(pendingActionDoc.id);
       const customFocus = config.focus === 'weak' && stats.weakTopics.length > 0
@@ -439,7 +483,7 @@ const App: React.FC = () => {
               setQuestions([]);
               setAnswers([]);
               setActiveTab(ActiveTab.QUIZ);
-            } else if (tab === ActiveTab.EXPLAINER || tab === ActiveTab.CARDS || tab === ActiveTab.RECALL) {
+            } else if (tab === ActiveTab.EXPLAINER || tab === ActiveTab.CARDS || tab === ActiveTab.RECALL || tab === ActiveTab.EXAM) {
               setPendingActionDoc(doc);
               setActiveTab(tab);
             } else {
@@ -466,10 +510,16 @@ const App: React.FC = () => {
           </div>
         );
         if (pendingActionDoc && questions.length === 0 && answers.length === 0) {
+          const fromRadar = !!pendingTopic;
           return <QuizSetup
             doc={pendingActionDoc}
             onStart={handleStartQuizFromSetup}
-            onBack={() => { setPendingActionDoc(null); setActiveTab(ActiveTab.LIBRARY); }}
+            onBack={() => {
+              setPendingActionDoc(null);
+              setPendingTopic(null);
+              setActiveTab(fromRadar ? ActiveTab.RADAR : ActiveTab.LIBRARY);
+            }}
+            initialFocus={pendingTopic ? 'weak' : 'all'}
           />;
         }
         if (questions.length > 0 && answers.length === 0) {
@@ -481,11 +531,7 @@ const App: React.FC = () => {
             onCancel={() => {
               setQuestions([]);
               setAnswers([]);
-              if (pendingActionDoc) {
-                // Go back to setup
-              } else {
-                setPendingActionDoc(null);
-              }
+              setPendingActionDoc(null);
             }}
           />;
         }
@@ -514,7 +560,7 @@ const App: React.FC = () => {
               localStorage.setItem('quizwise_current_quiz', JSON.stringify(q));
             } catch (e) { handleApiError(e); } finally { setIsLoading(false); }
           }}
-          onDeckSelect={async (deck) => { setIsLoading(true); const q = await generateQuizFromFlashcards(deck); setQuestions(q); setIsLoading(false); }}
+          onDeckSelect={async (deck) => { setIsLoading(true); try { const q = await generateQuizFromFlashcards(deck); setQuestions(q); } catch (e) { handleApiError(e); } finally { setIsLoading(false); } }}
           onSaveToLibrary={file => handleFileUpload(file)}
           availableDecks={decks}
           isLoading={isLoading}
@@ -526,16 +572,43 @@ const App: React.FC = () => {
           collections={collections}
           getDocumentSource={getDocumentSource}
           onSaveToLibrary={file => handleFileUpload(file)}
-          onComplete={(score, topic) => updateMetricsAfterSession(score, topic, 'recall')}
+          onComplete={(score, topic, missingPoints) => {
+            saveRecallResult({ docName: topic, timestamp: Date.now(), score, topic, missingPoints });
+            updateMetricsAfterSession(score, topic, 'recall');
+          }}
           initialDoc={pendingActionDoc ?? undefined}
         />;
       case ActiveTab.EXAM: return <ExamSystem
+          key={pendingActionDoc ? `exam-${pendingActionDoc.id}` : 'exam'}
           documents={documents}
           collections={collections}
           getDocumentSource={getDocumentSource}
           onSaveToLibrary={file => handleFileUpload(file)}
+          initialDoc={pendingActionDoc ?? undefined}
+          onComplete={({ score, docName, passed, totalPoints, achievedPoints }) => {
+            saveExamResult({ docName, timestamp: Date.now(), score, passed, totalPoints, achievedPoints, weakTopics: [] });
+            updateMetricsAfterSession(score, docName, 'exam');
+          }}
+          onNavigate={setActiveTab}
         />;
-      case ActiveTab.RADAR: return <GapRadar metrics={metrics} onNavigate={setActiveTab} />;
+      case ActiveTab.RADAR: return <GapRadar
+          metrics={metrics}
+          onNavigate={setActiveTab}
+          onAction={(topic, mode) => {
+            if (mode === 'quiz') {
+              const match = getAllResults().find(r => r.weakTopics.includes(topic));
+              const doc = match ? documents.find(d => d.id === match.docId) ?? null : null;
+              setPendingActionDoc(doc);
+              setPendingTopic(doc ? topic : null);
+              setQuestions([]);
+              setAnswers([]);
+              setActiveTab(ActiveTab.QUIZ);
+            } else {
+              const tabMap = { cards: ActiveTab.CARDS, recall: ActiveTab.RECALL, quiz: ActiveTab.QUIZ } as const;
+              setActiveTab(tabMap[mode]);
+            }
+          }}
+        />;
       case ActiveTab.EXPLAINER: return <ExplainerSystem
           key={pendingActionDoc ? `explainer-${pendingActionDoc.id}` : 'explainer'}
           availableDocuments={documents}
@@ -544,8 +617,8 @@ const App: React.FC = () => {
           onSaveToLibrary={file => handleFileUpload(file)}
           initialDoc={pendingActionDoc ?? undefined}
         />;
-      case ActiveTab.PAPER: return <TermPaperSystem availableDocuments={documents} onUploadNew={handleFileUpload} initialSources={savedSources} />;
-      case ActiveTab.SEARCH: return <ScholarSearch results={searchResults} onSearch={async (q) => { setIsSearching(true); const { results } = await searchScholar(q); setSearchResults(results); setIsSearching(false); }} onSearchWeb={async (q) => { setIsSearching(true); const { results } = await searchWeb(q); setSearchResults(results); setIsSearching(false); }} isSearching={isSearching} onGenerateQuiz={(res) => handleStartQuizFromDoc({ id: 'search', name: res.title, content: res.abstract || res.snippet, type: 'text', uploadDate: Date.now() } as any)} onSaveToPaper={(s) => setSavedSources([...savedSources, s])} savedResults={savedSources} />;
+      case ActiveTab.PAPER: return <TermPaperSystem availableDocuments={documents} onUploadNew={handleFileUpload} initialSources={savedSources} getDocumentSource={getDocumentSource} />;
+      case ActiveTab.SEARCH: return <ScholarSearch results={searchResults} onSearch={async (q) => { setIsSearching(true); const { results } = await searchScholar(q); setSearchResults(results); setIsSearching(false); }} onSearchWeb={async (q) => { setIsSearching(true); const { results } = await searchWeb(q); setSearchResults(results); setIsSearching(false); }} isSearching={isSearching} onGenerateQuiz={(res) => handleStartQuizFromDoc({ id: `search-${Date.now()}`, name: res.title, content: res.abstract || res.snippet, type: 'text', uploadDate: Date.now() })} onSaveToPaper={(s) => setSavedSources([...savedSources, s])} savedResults={savedSources} />;
       case ActiveTab.PLANNER: return <StudyPlanner metrics={metrics} decks={decks} examTerms={examTerms} onUpdateExams={saveExamTerms} />;
       case ActiveTab.CARDS: return <FlashcardSystem
           key={pendingActionDoc ? `cards-${pendingActionDoc.id}` : 'cards'}
@@ -584,7 +657,7 @@ const App: React.FC = () => {
         onClose={() => setShowSettings(false)}
       />
     )}
-    <Layout activeTab={activeTab} onTabChange={(tab) => { setPendingActionDoc(null); setActiveTab(tab); }} user={user} onLoginClick={() => setShowAuthModal(true)} onLogout={() => supabase.auth.signOut()} onUpgradeClick={() => setShowUpgradeModal(true)} onSettingsClick={() => setShowSettings(true)}>
+    <Layout activeTab={activeTab} onTabChange={(tab) => { setPendingActionDoc(null); setPendingTopic(null); setActiveTab(tab); }} user={user} onLoginClick={() => setShowAuthModal(true)} onLogout={() => supabase.auth.signOut()} onUpgradeClick={() => setShowUpgradeModal(true)} onSettingsClick={() => setShowSettings(true)}>
       {isOffline && (
         <div className="mb-4 p-3 bg-amber-500/10 border border-amber-500/30 rounded-2xl flex items-center justify-center gap-2">
           <p className="text-[10px] font-bold text-amber-600 dark:text-amber-400 uppercase tracking-widest">Offline-Modus aktiv</p>

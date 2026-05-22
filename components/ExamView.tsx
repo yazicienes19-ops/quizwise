@@ -1,6 +1,6 @@
 
-import React, { useState, useEffect } from 'react';
-import { ExamQuestion } from '../types';
+import React, { useState, useEffect, useRef } from 'react';
+import { ExamQuestion, ActiveTab } from '../types';
 import { EmojiImage } from './EmojiImage';
 
 interface ExamViewProps {
@@ -9,71 +9,346 @@ interface ExamViewProps {
   onSave: (questions: ExamQuestion[]) => void;
   onSubmit: (questions: ExamQuestion[]) => void;
   isEvaluating: boolean;
+  examDuration?: number;
+  onNewExam?: () => void;
+  onNavigate?: (tab: ActiveTab) => void;
 }
 
-export const ExamView: React.FC<ExamViewProps> = ({ questions, mode, onSave, onSubmit, isEvaluating }) => {
-  const [answers, setAnswers] = useState<{ [id: string]: string | number[] }>({});
-  const [editingId, setEditingId] = useState<string | null>(null);
+const formatTime = (s: number) =>
+  `${Math.floor(s / 60).toString().padStart(2, '0')}:${(s % 60).toString().padStart(2, '0')}`;
+
+const TYPE_LABELS: Record<string, string> = {
+  mc: 'Multiple Choice',
+  truefalse: 'Wahr / Falsch',
+  matching: 'Zuordnung',
+  fillblank: 'Lückentext',
+  open: 'Freitext',
+};
+
+export const ExamView: React.FC<ExamViewProps> = ({
+  questions, mode, onSave, onSubmit, isEvaluating,
+  examDuration, onNewExam, onNavigate,
+}) => {
+  const [answers, setAnswers]           = useState<Record<string, any>>({});
+  const [editingId, setEditingId]       = useState<string | null>(null);
   const [tempQuestion, setTempQuestion] = useState<ExamQuestion | null>(null);
+  const [timeLeft, setTimeLeft]         = useState<number | null>(null);
+  const [timerExpired, setTimerExpired] = useState(false);
 
-  const handleUpdateAnswer = (id: string, val: string | number[]) => {
-    setAnswers(prev => ({ ...prev, [id]: val }));
-  };
+  const timerRef   = useRef<ReturnType<typeof setInterval> | null>(null);
+  const answersRef = useRef(answers);
+  useEffect(() => { answersRef.current = answers; }, [answers]);
 
-  const handleOptionToggle = (id: string, optIdx: number) => {
-    const current = (answers[id] as number[]) || [];
-    const next = current.includes(optIdx) 
-      ? current.filter(i => i !== optIdx)
-      : [...current, optIdx];
-    handleUpdateAnswer(id, next);
-  };
-
-  const startEditing = (q: ExamQuestion) => {
-    setEditingId(q.id);
-    setTempQuestion({ ...q });
-  };
-
-  const saveEdit = () => {
-    if (tempQuestion) {
-      onSave(questions.map(q => q.id === tempQuestion.id ? tempQuestion : q));
-      setEditingId(null);
+  useEffect(() => {
+    if (mode !== 'solve') {
+      if (timerRef.current) clearInterval(timerRef.current);
+      setTimeLeft(null);
+      setTimerExpired(false);
+      return;
     }
+    if (!examDuration) return;
+    setTimeLeft(examDuration * 60);
+    timerRef.current = setInterval(() => {
+      setTimeLeft(prev => {
+        if (prev === null || prev <= 0) return 0;
+        if (prev === 1) { clearInterval(timerRef.current!); setTimerExpired(true); return 0; }
+        return prev - 1;
+      });
+    }, 1000);
+    return () => { if (timerRef.current) clearInterval(timerRef.current); };
+  }, [mode, examDuration]);
+
+  useEffect(() => {
+    if (!timerExpired || mode !== 'solve') return;
+    const finalQs = questions.map(q => ({ ...q, userAnswer: answersRef.current[q.id] }));
+    onSubmit(finalQs);
+  }, [timerExpired]);
+
+  const setAnswer = (id: string, val: any) =>
+    setAnswers(prev => ({ ...prev, [id]: val }));
+
+  const handleSubmit = () => {
+    const finalQs = questions.map(q => ({ ...q, userAnswer: answers[q.id] }));
+    onSubmit(finalQs);
   };
 
-  const totalPoints = questions.reduce((a, b) => a + b.points, 0);
-  const achievedPointsTotal = questions.reduce((a, b) => a + (b.achievedPoints || 0), 0);
-  const percentage = totalPoints > 0 ? (achievedPointsTotal / totalPoints) * 100 : 0;
-
-  const getGermanGrade = (p: number) => {
-    if (p >= 95) return { grade: "1.0", label: "Sehr Gut", color: "text-emerald-600", bg: "bg-emerald-50" };
-    if (p >= 90) return { grade: "1.3", label: "Sehr Gut", color: "text-emerald-600", bg: "bg-emerald-50" };
-    if (p >= 85) return { grade: "1.7", label: "Gut", color: "text-emerald-500", bg: "bg-emerald-50/50" };
-    if (p >= 80) return { grade: "2.0", label: "Gut", color: "text-emerald-500", bg: "bg-emerald-50/50" };
-    if (p >= 75) return { grade: "2.3", label: "Gut", color: "text-indigo-500", bg: "bg-indigo-50/50" };
-    if (p >= 70) return { grade: "2.7", label: "Befriedigend", color: "text-indigo-500", bg: "bg-indigo-50/50" };
-    if (p >= 65) return { grade: "3.0", label: "Befriedigend", color: "text-amber-500", bg: "bg-amber-50/50" };
-    if (p >= 60) return { grade: "3.3", label: "Befriedigend", color: "text-amber-500", bg: "bg-amber-50/50" };
-    if (p >= 55) return { grade: "3.7", label: "Ausreichend", color: "text-amber-600", bg: "bg-amber-100/50" };
-    if (p >= 50) return { grade: "4.0", label: "Ausreichend", color: "text-amber-600", bg: "bg-amber-100/50" };
-    return { grade: "5.0", label: "Nicht Bestanden", color: "text-rose-600", bg: "bg-rose-50" };
+  const startEditing = (q: ExamQuestion) => { setEditingId(q.id); setTempQuestion({ ...q }); };
+  const saveEdit = () => {
+    if (tempQuestion) { onSave(questions.map(q => q.id === tempQuestion.id ? tempQuestion : q)); setEditingId(null); }
   };
 
-  const gradeInfo = getGermanGrade(percentage);
+  const totalPoints    = questions.reduce((a, b) => a + b.points, 0);
+  const achievedTotal  = questions.reduce((a, b) => a + (b.achievedPoints || 0), 0);
+  const percentage     = totalPoints > 0 ? (achievedTotal / totalPoints) * 100 : 0;
+  const isTimeLow      = timeLeft !== null && timeLeft > 0 && timeLeft <= 300;
+
+  const getGrade = (p: number) => {
+    if (p >= 95) return { grade: '1.0', label: 'Sehr Gut',        color: 'text-emerald-600', bg: 'bg-emerald-50' };
+    if (p >= 90) return { grade: '1.3', label: 'Sehr Gut',        color: 'text-emerald-600', bg: 'bg-emerald-50' };
+    if (p >= 85) return { grade: '1.7', label: 'Gut',             color: 'text-emerald-500', bg: 'bg-emerald-50/50' };
+    if (p >= 80) return { grade: '2.0', label: 'Gut',             color: 'text-emerald-500', bg: 'bg-emerald-50/50' };
+    if (p >= 75) return { grade: '2.3', label: 'Gut',             color: 'text-indigo-500',  bg: 'bg-indigo-50/50' };
+    if (p >= 70) return { grade: '2.7', label: 'Befriedigend',    color: 'text-indigo-500',  bg: 'bg-indigo-50/50' };
+    if (p >= 65) return { grade: '3.0', label: 'Befriedigend',    color: 'text-amber-500',   bg: 'bg-amber-50/50' };
+    if (p >= 60) return { grade: '3.3', label: 'Befriedigend',    color: 'text-amber-500',   bg: 'bg-amber-50/50' };
+    if (p >= 55) return { grade: '3.7', label: 'Ausreichend',     color: 'text-amber-600',   bg: 'bg-amber-100/50' };
+    if (p >= 50) return { grade: '4.0', label: 'Ausreichend',     color: 'text-amber-600',   bg: 'bg-amber-100/50' };
+    return        { grade: '5.0', label: 'Nicht Bestanden',       color: 'text-rose-600',    bg: 'bg-rose-50' };
+  };
+  const gradeInfo = getGrade(percentage);
+
+  // ─── Question Body ─────────────────────────────────────────────────────────
+
+  const renderQuestionBody = (q: ExamQuestion) => {
+    const ans = answers[q.id];
+
+    /* ── MC / Szenario-MC ── */
+    if (q.type === 'mc' && q.options) {
+      return (
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 pl-4 lg:pl-10">
+          {q.options.map((opt, oi) => {
+            const selected  = ((ans as number[]) || []).includes(oi);
+            const isCorrect = q.correctIndices?.includes(oi);
+            let cls = 'border-slate-100 dark:border-slate-800 dark:text-slate-400 hover:border-indigo-200';
+            if (mode === 'solve') cls = selected ? 'border-indigo-600 bg-indigo-50 dark:bg-indigo-950/20 dark:text-white' : cls;
+            if (mode === 'result') {
+              if (isCorrect) cls = 'border-emerald-500 bg-emerald-50 dark:bg-emerald-950/20 text-emerald-800 dark:text-emerald-300';
+              else if (selected) cls = 'border-rose-400 bg-rose-50 dark:bg-rose-950/20 text-rose-700 opacity-70';
+              else cls = 'border-slate-100 dark:border-slate-800 opacity-30 text-slate-400';
+            }
+            return (
+              <button key={oi} disabled={mode !== 'solve'}
+                onClick={() => {
+                  const cur = (ans as number[]) || [];
+                  setAnswer(q.id, cur.includes(oi) ? cur.filter(i => i !== oi) : [...cur, oi]);
+                }}
+                className={`flex items-center gap-3 p-4 rounded-2xl border-2 transition-all text-left ${cls}`}
+              >
+                <div className={`w-6 h-6 rounded-lg border-2 flex items-center justify-center shrink-0 text-[10px] font-black ${
+                  mode === 'solve' && selected ? 'bg-indigo-600 border-indigo-600 text-white' : 'border-slate-300 dark:border-slate-600'
+                }`}>
+                  {mode === 'solve' && selected ? '✓' : String.fromCharCode(65 + oi)}
+                </div>
+                <span className="text-sm font-medium">{opt}</span>
+              </button>
+            );
+          })}
+        </div>
+      );
+    }
+
+    /* ── Wahr / Falsch ── */
+    if (q.type === 'truefalse') {
+      const tfAns = ans as { tf?: boolean; reason?: number } | undefined;
+      return (
+        <div className="pl-4 lg:pl-10 space-y-4">
+          <div className="flex gap-3">
+            {([true, false] as const).map(val => {
+              const sel = tfAns?.tf === val;
+              let cls = 'border-slate-200 dark:border-slate-700 text-slate-500 dark:text-slate-400';
+              if (sel) cls = val ? 'border-emerald-500 bg-emerald-50 dark:bg-emerald-950/20 text-emerald-700 dark:text-emerald-300' : 'border-rose-500 bg-rose-50 dark:bg-rose-950/20 text-rose-700 dark:text-rose-300';
+              if (mode === 'result' && q.tfCorrect === val) cls = 'border-emerald-500 bg-emerald-50 text-emerald-700';
+              return (
+                <button key={String(val)} disabled={mode !== 'solve'}
+                  onClick={() => setAnswer(q.id, { ...(tfAns || {}), tf: val })}
+                  className={`flex-1 py-4 rounded-[20px] font-black text-sm border-2 transition-all ${cls}`}
+                >
+                  {val ? '✓ Richtig' : '✗ Falsch'}
+                </button>
+              );
+            })}
+          </div>
+
+          {/* Begründungsauswahl */}
+          {q.tfReasonOptions && q.tfReasonOptions.length > 0 && (tfAns?.tf !== undefined || mode === 'result') && (
+            <div className="space-y-2 animate-in fade-in slide-in-from-top-2 duration-300">
+              <p className="text-[9px] font-black uppercase tracking-widest text-slate-400">Begründung</p>
+              {q.tfReasonOptions.map((reason, ri) => {
+                const sel = tfAns?.reason === ri;
+                const correct = mode === 'result' && ri === q.tfCorrectReasonIndex;
+                const wrong   = mode === 'result' && sel && ri !== q.tfCorrectReasonIndex;
+                return (
+                  <button key={ri} disabled={mode !== 'solve'}
+                    onClick={() => setAnswer(q.id, { ...(tfAns || {}), reason: ri })}
+                    className={`w-full text-left p-4 rounded-2xl border-2 transition-all text-sm font-medium ${
+                      correct ? 'border-emerald-500 bg-emerald-50 dark:bg-emerald-950/20 text-emerald-700' :
+                      wrong   ? 'border-rose-400 bg-rose-50 text-rose-700 opacity-70' :
+                      sel     ? 'border-indigo-500 bg-indigo-50 dark:bg-indigo-950/20 text-indigo-800 dark:text-indigo-200' :
+                      'border-slate-100 dark:border-slate-800 text-slate-500 dark:text-slate-400'
+                    }`}
+                  >
+                    {reason}
+                    {correct && <span className="ml-2 text-[9px] font-black uppercase text-emerald-500">✓</span>}
+                  </button>
+                );
+              })}
+            </div>
+          )}
+        </div>
+      );
+    }
+
+    /* ── Zuordnung ── */
+    if (q.type === 'matching' && q.matchLeft && q.matchRight) {
+      const pairs = (ans as number[]) || [];
+      return (
+        <div className="pl-4 lg:pl-10 space-y-3">
+          {q.matchLeft.map((left, li) => {
+            const selected  = pairs[li];
+            const isCorrect = mode === 'result' && selected === q.matchCorrect?.[li];
+            const isWrong   = mode === 'result' && selected !== undefined && selected !== -1 && !isCorrect;
+            return (
+              <div key={li} className="flex items-center gap-3">
+                <div className="flex-1 min-w-0 p-3 rounded-2xl text-sm font-bold bg-indigo-50 dark:bg-indigo-900/20 text-indigo-800 dark:text-indigo-200 border border-indigo-200 dark:border-indigo-800 truncate">
+                  {left}
+                </div>
+                <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" className="shrink-0 text-slate-400">
+                  <line x1="5" y1="12" x2="19" y2="12"/><polyline points="12 5 19 12 12 19"/>
+                </svg>
+                {mode === 'solve' ? (
+                  <select
+                    value={selected ?? ''}
+                    onChange={e => {
+                      const next = [...(Array.isArray(ans) ? ans : new Array(q.matchLeft!.length).fill(undefined))];
+                      next[li] = parseInt(e.target.value);
+                      setAnswer(q.id, next);
+                    }}
+                    className="flex-1 p-3 bg-white dark:bg-slate-800 rounded-2xl border-2 border-slate-200 dark:border-slate-700 text-sm font-medium dark:text-white outline-none focus:border-indigo-500 transition-colors"
+                  >
+                    <option value="">— wählen —</option>
+                    {q.matchRight.map((right, ri) => (
+                      <option key={ri} value={ri}>{right}</option>
+                    ))}
+                  </select>
+                ) : (
+                  <div className={`flex-1 p-3 rounded-2xl text-sm font-medium border ${
+                    isCorrect ? 'bg-emerald-50 dark:bg-emerald-950/20 border-emerald-300 text-emerald-700' :
+                    isWrong   ? 'bg-rose-50 dark:bg-rose-950/20 border-rose-300 text-rose-700' :
+                    'bg-slate-100 dark:bg-slate-800 border-slate-200 dark:border-slate-700 text-slate-500'
+                  }`}>
+                    {selected !== undefined && selected >= 0 ? q.matchRight[selected] : '—'}
+                    {isWrong && q.matchCorrect && (
+                      <span className="block text-[10px] text-emerald-600 dark:text-emerald-400 mt-0.5 font-black">
+                        ✓ {q.matchRight[q.matchCorrect[li]]}
+                      </span>
+                    )}
+                  </div>
+                )}
+              </div>
+            );
+          })}
+        </div>
+      );
+    }
+
+    /* ── Lückentext ── */
+    if (q.type === 'fillblank' && q.blankText) {
+      const parts  = q.blankText.split('[LÜCKE]');
+      const blanks = (ans as string[]) || [];
+      if (mode === 'solve') {
+        return (
+          <div className="pl-4 lg:pl-10 text-lg leading-loose text-slate-800 dark:text-slate-200">
+            {parts.map((part, pi) => (
+              <React.Fragment key={pi}>
+                {part}
+                {pi < parts.length - 1 && (
+                  <input
+                    type="text"
+                    value={blanks[pi] || ''}
+                    onChange={e => {
+                      const next = [...(Array.isArray(ans) ? ans : new Array(parts.length - 1).fill(''))];
+                      next[pi] = e.target.value;
+                      setAnswer(q.id, next);
+                    }}
+                    placeholder="..."
+                    className="mx-1 px-3 py-0.5 border-b-2 border-indigo-500 bg-transparent outline-none font-bold text-indigo-700 dark:text-indigo-300 min-w-[80px] text-center"
+                  />
+                )}
+              </React.Fragment>
+            ))}
+          </div>
+        );
+      }
+      if (mode === 'result') {
+        return (
+          <div className="pl-4 lg:pl-10 text-lg leading-loose text-slate-800 dark:text-slate-200">
+            {parts.map((part, pi) => {
+              const userBlank    = (q.userAnswer as string[])?.[pi] || '';
+              const correctBlank = q.blanks?.[pi] || '';
+              const ok = userBlank.trim().toLowerCase() === correctBlank.toLowerCase();
+              return (
+                <React.Fragment key={pi}>
+                  {part}
+                  {pi < parts.length - 1 && (
+                    <span className={`mx-1 inline-flex items-center gap-1 px-2 py-0.5 rounded font-bold ${ok ? 'bg-emerald-100 dark:bg-emerald-900/30 text-emerald-700' : 'bg-rose-100 dark:bg-rose-900/30 text-rose-700'}`}>
+                      {userBlank || '—'}
+                      {!ok && <span className="text-emerald-600 dark:text-emerald-400">→ {correctBlank}</span>}
+                    </span>
+                  )}
+                </React.Fragment>
+              );
+            })}
+          </div>
+        );
+      }
+      // Edit mode — Vorschau mit Unterstrichen
+      return (
+        <div className="pl-4 lg:pl-10 text-lg leading-loose text-slate-500 dark:text-slate-400">
+          {q.blankText.replace(/\[LÜCKE\]/g, ' ________ ')}
+        </div>
+      );
+    }
+
+    /* ── Freitext / Open ── */
+    if (q.type === 'open') {
+      if (mode === 'solve') {
+        return (
+          <div className="pl-4 lg:pl-10">
+            <textarea
+              value={(ans as string) || ''}
+              onChange={e => setAnswer(q.id, e.target.value)}
+              placeholder="Antwort hier formulieren..."
+              className="w-full h-40 p-6 bg-slate-50 dark:bg-slate-800 rounded-[32px] border-2 border-transparent focus:border-indigo-500 outline-none transition-all dark:text-white font-medium resize-none"
+            />
+          </div>
+        );
+      }
+      if (mode === 'result') {
+        return (
+          <div className="pl-4 lg:pl-10 bg-slate-100 dark:bg-slate-800 p-6 rounded-[32px] dark:text-slate-300 italic border border-slate-200 dark:border-slate-700">
+            {q.userAnswer || 'Keine Antwort gegeben.'}
+          </div>
+        );
+      }
+      return (
+        <div className="pl-4 lg:pl-10 h-32 border-b-2 border-slate-200 dark:border-slate-800 opacity-20 pointer-events-none bg-[linear-gradient(transparent_39px,#cbd5e1_40px)] dark:bg-[linear-gradient(transparent_39px,#334155_40px)] bg-[size:100%_40px]" />
+      );
+    }
+
+    return null;
+  };
+
+  // ─── Render ────────────────────────────────────────────────────────────────
 
   return (
     <div className="max-w-4xl mx-auto space-y-12 animate-in fade-in duration-700 pb-32">
-      {/* Header Section */}
+
+      {/* Protokoll-Header */}
       <div className="flex justify-between items-end border-b-4 border-slate-900 dark:border-slate-100 pb-8">
         <div>
           <h2 className="text-4xl font-black uppercase tracking-tighter dark:text-white">Klausurprotokoll</h2>
-          <p className="text-[11px] font-mono opacity-60 uppercase tracking-[0.3em] dark:text-slate-400 mt-2">Prüfungseinrichtung: QuizWise AI Academic Center</p>
+          <p className="text-[11px] font-mono opacity-60 uppercase tracking-[0.3em] dark:text-slate-400 mt-2">
+            Prüfungseinrichtung: QuizWise AI Academic Center
+          </p>
         </div>
         <div className="text-right dark:text-white">
-          <p className="font-black text-sm border-b-2 border-slate-300 dark:border-slate-700 min-w-[240px] pb-1">STUDIERENDER: ____________________</p>
+          <p className="font-black text-sm border-b-2 border-slate-300 dark:border-slate-700 min-w-[240px] pb-1">
+            STUDIERENDER: ____________________
+          </p>
           <div className="flex justify-end gap-6 mt-3">
             <div className="text-right">
               <p className="text-[9px] font-black uppercase text-slate-400">Gesamtpunkte</p>
-              <p className="text-lg font-black">{achievedPointsTotal} / {totalPoints}</p>
+              <p className="text-lg font-black">{achievedTotal} / {totalPoints}</p>
             </div>
             <div className="text-right">
               <p className="text-[9px] font-black uppercase text-slate-400">Prozent</p>
@@ -83,57 +358,66 @@ export const ExamView: React.FC<ExamViewProps> = ({ questions, mode, onSave, onS
         </div>
       </div>
 
-      {/* Grade Card - Only in result mode */}
+      {/* Note + Ergebnis-Aktionen */}
       {mode === 'result' && (
         <div className={`grid grid-cols-1 md:grid-cols-3 gap-8 ${gradeInfo.bg} dark:bg-slate-900/40 p-10 rounded-[40px] border-2 ${percentage >= 50 ? 'border-emerald-500' : 'border-rose-500'} animate-in zoom-in-95`}>
           <div className="flex flex-col items-center justify-center border-b md:border-b-0 md:border-r border-slate-200 dark:border-slate-800 pb-6 md:pb-0">
-             <span className="text-[10px] font-black uppercase tracking-widest text-slate-400 mb-2">Gesamtnote</span>
-             <span className={`text-7xl font-black ${gradeInfo.color}`}>{gradeInfo.grade}</span>
-             <span className={`text-xs font-black uppercase mt-2 tracking-widest ${gradeInfo.color}`}>{gradeInfo.label}</span>
+            <span className="text-[10px] font-black uppercase tracking-widest text-slate-400 mb-2">Gesamtnote</span>
+            <span className={`text-7xl font-black ${gradeInfo.color}`}>{gradeInfo.grade}</span>
+            <span className={`text-xs font-black uppercase mt-2 tracking-widest ${gradeInfo.color}`}>{gradeInfo.label}</span>
           </div>
-          
-          <div className="md:col-span-2 space-y-6 flex flex-col justify-center">
+          <div className="md:col-span-2 space-y-4 flex flex-col justify-center">
             <div className="space-y-2">
               <div className="flex justify-between items-center text-[10px] font-black uppercase tracking-widest text-slate-400">
                 <span>Leistungsstand</span>
                 <span>{percentage >= 50 ? 'Bestanden' : 'Nicht Bestanden'}</span>
               </div>
               <div className="h-4 bg-slate-200 dark:bg-slate-800 rounded-full overflow-hidden shadow-inner">
-                <div 
-                  className={`h-full transition-all duration-1000 ${percentage >= 50 ? 'bg-emerald-500' : 'bg-rose-500'}`}
-                  style={{ width: `${percentage}%` }}
-                />
+                <div className={`h-full transition-all duration-1000 ${percentage >= 50 ? 'bg-emerald-500' : 'bg-rose-500'}`} style={{ width: `${percentage}%` }} />
               </div>
               <div className="flex justify-between text-[9px] font-bold text-slate-400">
-                <span>0%</span>
-                <span className="text-amber-500">50% Bestanden</span>
-                <span>100%</span>
+                <span>0%</span><span className="text-amber-500">50% Bestanden</span><span>100%</span>
               </div>
             </div>
-            
             <p className="text-sm font-medium text-slate-600 dark:text-slate-400 italic">
-              {percentage >= 90 ? "Hervorragende Leistung! Sie haben das Thema tiefgreifend verstanden." :
-               percentage >= 70 ? "Gute Leistung. Sie beherrschen die wesentlichen Inhalte sicher." :
-               percentage >= 50 ? "Bestanden. Es sind jedoch noch Lücken in der Tiefe vorhanden." :
-               "Leider hat es diesmal nicht gereicht. Nutzen Sie die KI-Fehleranalyse für die Nachbereitung."}
+              {percentage >= 90 ? 'Hervorragende Leistung! Sie haben das Thema tiefgreifend verstanden.' :
+               percentage >= 70 ? 'Gute Leistung. Sie beherrschen die wesentlichen Inhalte sicher.' :
+               percentage >= 50 ? 'Bestanden. Es sind jedoch noch Lücken in der Tiefe vorhanden.' :
+               'Leider hat es diesmal nicht gereicht. Nutzen Sie die KI-Fehleranalyse für die Nachbereitung.'}
             </p>
+            <div className="flex flex-wrap gap-2 pt-2 border-t border-slate-200 dark:border-slate-700">
+              {onNewExam && (
+                <button onClick={onNewExam} className="bg-indigo-600 text-white px-5 py-2.5 rounded-[16px] font-black uppercase text-[9px] tracking-widest hover:scale-[1.02] transition-all shadow-lg">
+                  Neue Klausur
+                </button>
+              )}
+              {onNavigate && (
+                <>
+                  <button onClick={() => onNavigate(ActiveTab.RADAR)} className="px-5 py-2.5 rounded-[16px] border-2 border-slate-200 dark:border-slate-700 font-black uppercase text-[9px] tracking-widest text-slate-600 dark:text-slate-300 hover:border-indigo-400 hover:text-indigo-600 transition-all">
+                    Lern-Analyse
+                  </button>
+                  <button onClick={() => onNavigate(ActiveTab.LIBRARY)} className="px-5 py-2.5 rounded-[16px] border-2 border-slate-200 dark:border-slate-700 font-black uppercase text-[9px] tracking-widest text-slate-600 dark:text-slate-300 hover:border-indigo-400 hover:text-indigo-600 transition-all">
+                    Zur Bibliothek
+                  </button>
+                </>
+              )}
+            </div>
           </div>
         </div>
       )}
 
-      {/* Questions Section */}
+      {/* Fragen */}
       <div className="space-y-16">
         {questions.map((q, idx) => {
           const isEditing = editingId === q.id;
-          
           return (
             <div key={q.id} className="relative group p-6 -m-6 rounded-[32px] hover:bg-slate-50 dark:hover:bg-slate-900/50 transition-colors">
+
               {mode === 'edit' && !isEditing && (
-                <button 
-                  onClick={() => startEditing(q)}
-                  className="absolute top-6 right-6 opacity-0 group-hover:opacity-100 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 p-2 rounded-xl text-slate-400 hover:text-indigo-600 transition-all shadow-sm z-10"
-                >
-                  <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"></path><path d="M18.5 2.5a2.121 2.121 0 1 1 3 3L12 15l-4 1 1-4 9.5-9.5z"></path></svg>
+                <button onClick={() => startEditing(q)} className="absolute top-6 right-6 opacity-0 group-hover:opacity-100 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 p-2 rounded-xl text-slate-400 hover:text-indigo-600 transition-all shadow-sm z-10">
+                  <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+                    <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 1 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/>
+                  </svg>
                 </button>
               )}
 
@@ -141,18 +425,9 @@ export const ExamView: React.FC<ExamViewProps> = ({ questions, mode, onSave, onS
                 <div className="space-y-6 animate-in fade-in zoom-in-95 p-8 bg-white dark:bg-slate-800 rounded-[32px] shadow-2xl ring-4 ring-indigo-500/20">
                   <div className="flex justify-between items-center">
                     <h3 className="text-xl font-black dark:text-white">Aufgabe {idx + 1} anpassen</h3>
-                    <input 
-                      type="number" 
-                      value={tempQuestion.points}
-                      onChange={(e) => setTempQuestion({...tempQuestion, points: parseInt(e.target.value)})}
-                      className="w-16 p-2 bg-slate-50 dark:bg-slate-900 rounded-xl text-center font-black dark:text-white"
-                    />
+                    <input type="number" value={tempQuestion.points} onChange={e => setTempQuestion({ ...tempQuestion, points: parseInt(e.target.value) })} className="w-16 p-2 bg-slate-50 dark:bg-slate-900 rounded-xl text-center font-black dark:text-white" />
                   </div>
-                  <textarea 
-                    value={tempQuestion.question}
-                    onChange={(e) => setTempQuestion({...tempQuestion, question: e.target.value})}
-                    className="w-full p-4 bg-slate-50 dark:bg-slate-900 rounded-2xl dark:text-white border-2 border-transparent focus:border-indigo-500 outline-none"
-                  />
+                  <textarea value={tempQuestion.question} onChange={e => setTempQuestion({ ...tempQuestion, question: e.target.value })} className="w-full p-4 bg-slate-50 dark:bg-slate-900 rounded-2xl dark:text-white border-2 border-transparent focus:border-indigo-500 outline-none" />
                   <div className="flex justify-end gap-3">
                     <button onClick={() => setEditingId(null)} className="text-slate-400 font-black uppercase text-[10px]">Abbrechen</button>
                     <button onClick={saveEdit} className="bg-indigo-600 text-white px-6 py-2 rounded-xl font-black uppercase text-[10px]">Speichern</button>
@@ -161,71 +436,36 @@ export const ExamView: React.FC<ExamViewProps> = ({ questions, mode, onSave, onS
               ) : (
                 <div className="space-y-6">
                   <div className="flex justify-between items-start gap-4">
-                    <span className="font-black text-xl dark:text-white">Aufgabe {idx + 1}:</span>
-                    <span className="text-[10px] font-mono bg-slate-100 dark:bg-slate-800 px-3 py-1 rounded-lg dark:text-slate-400 uppercase tracking-widest">[{q.points} Pkt.]</span>
+                    <div className="flex items-center gap-3">
+                      <span className="font-black text-xl dark:text-white">Aufgabe {idx + 1}:</span>
+                      <span className="text-[8px] font-black uppercase tracking-widest bg-slate-100 dark:bg-slate-800 text-slate-400 px-2.5 py-1 rounded-lg">
+                        {TYPE_LABELS[q.type] || q.type}
+                      </span>
+                    </div>
+                    <span className="text-[10px] font-mono bg-slate-100 dark:bg-slate-800 px-3 py-1 rounded-lg dark:text-slate-400 uppercase tracking-widest shrink-0">
+                      [{q.points} Pkt.]
+                    </span>
                   </div>
-                  
+
                   <p className="text-xl leading-relaxed text-slate-800 dark:text-slate-200 font-medium">
                     {q.question}
                   </p>
 
-                  {/* Multiple Choice Solving */}
-                  {q.type === 'mc' && q.options && (
-                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 pl-4 lg:pl-10">
-                      {q.options.map((opt, oidx) => {
-                        const isSelected = ((answers[q.id] as number[]) || []).includes(oidx);
-                        return (
-                          <button 
-                            key={oidx}
-                            disabled={mode !== 'solve'}
-                            onClick={() => handleOptionToggle(q.id, oidx)}
-                            className={`flex items-center gap-4 p-4 rounded-2xl border-2 transition-all text-left ${
-                              isSelected 
-                                ? 'border-indigo-600 bg-indigo-50 dark:bg-indigo-950/20 dark:text-white' 
-                                : 'border-slate-100 dark:border-slate-800 dark:text-slate-400 hover:border-indigo-200'
-                            }`}
-                          >
-                            <div className={`w-6 h-6 rounded-lg border-2 flex items-center justify-center shrink-0 ${isSelected ? 'bg-indigo-600 border-indigo-600 text-white' : 'border-slate-300'}`}>
-                              {isSelected && '✓'}
-                            </div>
-                            <span className="text-sm font-bold">{opt}</span>
-                          </button>
-                        );
-                      })}
-                    </div>
-                  )}
+                  {renderQuestionBody(q)}
 
-                  {/* Open Question Solving */}
-                  {q.type === 'open' && (
-                    <div className="pl-4 lg:pl-10 space-y-4">
-                      {mode === 'solve' ? (
-                        <textarea 
-                          value={(answers[q.id] as string) || ''}
-                          onChange={(e) => handleUpdateAnswer(q.id, e.target.value)}
-                          placeholder="Antwort hier formulieren..."
-                          className="w-full h-48 p-6 bg-slate-50 dark:bg-slate-800 rounded-[32px] border-2 border-transparent focus:border-indigo-500 outline-none transition-all dark:text-white font-medium"
-                        />
-                      ) : mode === 'result' ? (
-                        <div className="bg-slate-100 dark:bg-slate-800 p-6 rounded-[32px] dark:text-slate-300 italic border border-slate-200 dark:border-slate-700">
-                          {q.userAnswer || "Keine Antwort gegeben."}
-                        </div>
-                      ) : (
-                        <div className="h-40 border-b-2 border-slate-200 dark:border-slate-800 w-full opacity-20 pointer-events-none bg-[linear-gradient(transparent_39px,#cbd5e1_40px)] dark:bg-[linear-gradient(transparent_39px,#334155_40px)] bg-[size:100%_40px]"></div>
-                      )}
-                    </div>
-                  )}
-
-                  {/* Result Mode: Feedback and achieved points */}
+                  {/* KI-Korrektur */}
                   {mode === 'result' && (
-                    <div className="mt-8 space-y-6 pl-4 lg:pl-10 animate-in slide-in-from-bottom-4">
-                      <div className={`p-6 rounded-[32px] border-l-8 ${q.achievedPoints === q.points ? 'bg-emerald-50 dark:bg-emerald-950/20 border-emerald-500' : 'bg-amber-50 dark:bg-amber-950/20 border-amber-500'}`}>
-                        <div className="flex justify-between items-center mb-4">
-                          <h4 className="text-[10px] font-black uppercase tracking-widest text-slate-400">KI-Korrektur</h4>
-                          <span className="text-sm font-black dark:text-white">{q.achievedPoints} / {q.points} Pkt.</span>
+                    <div className="mt-8 pl-4 lg:pl-10 animate-in slide-in-from-bottom-4">
+                      <div className={`p-6 rounded-[32px] border-l-8 ${(q.achievedPoints ?? 0) === q.points ? 'bg-emerald-50 dark:bg-emerald-950/20 border-emerald-500' : (q.achievedPoints ?? 0) > 0 ? 'bg-amber-50 dark:bg-amber-950/20 border-amber-500' : 'bg-rose-50 dark:bg-rose-950/20 border-rose-400'}`}>
+                        <div className="flex justify-between items-center mb-3">
+                          <h4 className="text-[10px] font-black uppercase tracking-widest text-slate-400">
+                            {q.type === 'open' ? 'KI-Korrektur' : 'Auswertung'}
+                          </h4>
+                          <span className="text-sm font-black dark:text-white">{q.achievedPoints ?? 0} / {q.points} Pkt.</span>
                         </div>
-                        <p className="text-sm font-bold dark:text-slate-200 mb-4">{q.feedback}</p>
+                        {q.feedback && <p className="text-sm font-bold dark:text-slate-200 mb-4">{q.feedback}</p>}
                         <div className="pt-4 border-t border-slate-200 dark:border-slate-700">
-                          <p className="text-[9px] font-black uppercase text-slate-400 mb-2">Erwartete Lösung</p>
+                          <p className="text-[9px] font-black uppercase text-slate-400 mb-2">Musterlösung</p>
                           <p className="text-xs italic text-slate-500 dark:text-slate-400 leading-relaxed">{q.solution}</p>
                         </div>
                       </div>
@@ -238,22 +478,25 @@ export const ExamView: React.FC<ExamViewProps> = ({ questions, mode, onSave, onS
         })}
       </div>
 
+      {/* Sticky Submit + Timer */}
       {mode === 'solve' && (
-        <div className="fixed bottom-10 left-1/2 -translate-x-1/2 z-[50] flex flex-col items-center gap-4">
-           <button 
-            onClick={() => {
-              const finalQuestions = questions.map(q => ({
-                ...q,
-                userAnswer: answers[q.id]
-              }));
-              onSubmit(finalQuestions);
-            }}
-            disabled={isEvaluating}
+        <div className="fixed bottom-10 left-1/2 -translate-x-1/2 z-[50] flex flex-col items-center gap-3">
+          <button onClick={handleSubmit} disabled={isEvaluating}
             className="bg-indigo-600 text-white px-16 py-6 rounded-[32px] font-black uppercase tracking-[0.3em] text-[11px] shadow-3d-deep hover:scale-110 active:scale-95 transition-all flex items-center gap-4"
           >
             {isEvaluating ? 'Korrektur läuft...' : <span>Klausur abgeben <EmojiImage emoji="📝" size={16} /></span>}
           </button>
-          <p className="bg-white/80 dark:bg-slate-900/80 backdrop-blur-sm px-6 py-2 rounded-full text-[9px] font-black uppercase text-slate-400 tracking-widest shadow-lg">Prüfungszeit läuft...</p>
+          {timeLeft !== null ? (
+            <p className={`px-6 py-2 rounded-full text-[10px] font-black uppercase tracking-widest shadow-lg backdrop-blur-sm transition-all ${
+              isTimeLow ? 'bg-rose-500 text-white animate-pulse' : 'bg-white/80 dark:bg-slate-900/80 text-slate-500 dark:text-slate-400'
+            }`}>
+              {timeLeft === 0 ? '⏱ Zeit abgelaufen — wird eingereicht...' : `⏱ ${formatTime(timeLeft)} verbleibend`}
+            </p>
+          ) : (
+            <p className="bg-white/80 dark:bg-slate-900/80 backdrop-blur-sm px-6 py-2 rounded-full text-[9px] font-black uppercase text-slate-400 tracking-widest shadow-lg">
+              Prüfungszeit läuft...
+            </p>
+          )}
         </div>
       )}
     </div>

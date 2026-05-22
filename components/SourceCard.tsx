@@ -22,7 +22,7 @@ interface Props {
 
 const Stat: React.FC<{ label: string; value: number }> = ({ label, value }) => (
   <div className="text-center">
-    <p className="font-black text-slate-900 dark:text-white text-sm">{value}</p>
+    <p className="font-black text-sm" style={{ color: 'var(--text-main)' }}>{value}</p>
     <p className="text-[8px] font-black uppercase text-slate-400 tracking-widest">{label}</p>
   </div>
 );
@@ -45,11 +45,11 @@ export const SourceCard: React.FC<Props> = ({ doc, meta, view, onOpen, onDelete 
 
   if (view === 'list') {
     return (
-      <div className="flex items-center gap-4 px-5 py-4 bg-white dark:bg-slate-900 rounded-2xl border border-slate-200 dark:border-slate-800 hover:shadow-3d-raised transition-all group">
+      <div className="flex items-center gap-4 px-5 py-4 rounded-2xl hover:shadow-3d-raised transition-all group" style={{ background: 'var(--bg-sidebar)', border: '1px solid var(--border-color)' }}>
         <EmojiImage emoji={emoji} size={28} />
         <div className="flex-grow min-w-0">
           <div className="flex items-center gap-2 flex-wrap">
-            <h4 className="font-black text-slate-900 dark:text-white text-sm truncate">{title}</h4>
+            <h4 className="font-black text-sm truncate" style={{ color: 'var(--text-main)' }}>{title}</h4>
             <SourceStatusBadge status={status} />
           </div>
           <div className="flex items-center gap-3 mt-0.5 flex-wrap">
@@ -79,7 +79,7 @@ export const SourceCard: React.FC<Props> = ({ doc, meta, view, onOpen, onDelete 
   }
 
   return (
-    <div className="bg-white dark:bg-slate-900 rounded-[28px] border border-slate-200 dark:border-slate-800 p-6 shadow-3d-raised hover:shadow-3d-deep transition-all flex flex-col group">
+    <div className="rounded-[28px] p-6 shadow-3d-raised hover:shadow-3d-deep transition-all flex flex-col group" style={{ background: 'var(--bg-sidebar)', border: '1px solid var(--border-color)' }}>
       <div className="flex justify-between items-start mb-4">
         <div className="flex gap-1 flex-wrap flex-grow min-w-0 mr-2">
           {meta.tags?.slice(0, 3).map(t => (
@@ -101,7 +101,7 @@ export const SourceCard: React.FC<Props> = ({ doc, meta, view, onOpen, onDelete 
       </div>
 
       <div className="flex-grow space-y-2">
-        <h3 className="font-black text-slate-900 dark:text-white leading-snug line-clamp-2 text-base">{title}</h3>
+        <h3 className="font-black leading-snug line-clamp-2 text-base" style={{ color: 'var(--text-main)' }}>{title}</h3>
         <div className="flex flex-wrap gap-x-3 gap-y-0.5">
           {meta.module   && <span className="text-[9px] font-black uppercase text-indigo-600">{meta.module}</span>}
           {meta.semester && <span className="text-[9px] font-black uppercase text-slate-400">{meta.semester}</span>}
@@ -112,7 +112,7 @@ export const SourceCard: React.FC<Props> = ({ doc, meta, view, onOpen, onDelete 
       </div>
 
       {hasStats && (
-        <div className="flex gap-6 py-3 mt-3 border-t border-slate-50 dark:border-slate-800">
+        <div className="flex gap-6 py-3 mt-3" style={{ borderTop: '1px solid var(--border-color)' }}>
           {meta.quizCount      ? <Stat label="Quiz"   value={meta.quizCount} /> : null}
           {meta.flashcardCount ? <Stat label="Karten" value={meta.flashcardCount} /> : null}
           {meta.topicCount     ? <Stat label="Themen" value={meta.topicCount} /> : null}
