@@ -411,6 +411,11 @@ STRENGE DIVERSITÄTS-REGELN (zwingend einhalten):
 4. Wechsle die kognitive Ebene pro Frage: Wissen → Verstehen → Anwenden → Analysieren → Bewerten → wieder von vorne
 5. Fragen die logisch ähnlich oder Umformulierungen voneinander sind, sind verboten
 
+ANTWORTOPTIONEN-REGELN (zwingend einhalten):
+6. Alle 4 Antwortoptionen MÜSSEN gleich lang sein — gleiche Anzahl Wörter (±3 Wörter Toleranz)
+7. Die richtige Antwort darf sich nicht durch Länge, Stil oder Formulierungsmuster von den falschen unterscheiden
+8. Keine offensichtlich falschen Distraktoren — alle Optionen müssen plausibel klingen
+
 Zu jeder Frage: korrekte Antwort-Indices (Array), Boolean ob Multiple-Choice, Erklärung, Textbezug, Thema und Schwierigkeitsgrad.` });
     return callBackend({
       model: 'gemini-2.5-flash',

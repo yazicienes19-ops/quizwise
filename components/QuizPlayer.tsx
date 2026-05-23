@@ -102,23 +102,20 @@ export const QuizPlayer: React.FC<QuizPlayerProps> = ({ questions, onComplete, o
 
       {/* Question card */}
       <div className="mx-4 bg-white dark:bg-slate-900 rounded-[32px] border border-slate-100 dark:border-slate-800 shadow-3d-raised overflow-hidden">
-        {/* Type badge */}
-        <div className="px-6 pt-5 pb-1">
-          <span className="inline-block bg-indigo-600 text-white text-[8px] font-black uppercase tracking-[0.25em] px-3 py-1 rounded-full">
-            {isOpenQuestion ? 'Offene Frage' : currentQuestion.isMultipleChoice ? 'Multiple Choice' : 'Single Choice'}
-          </span>
-        </div>
+        {/* Type badge — nur für offene Fragen */}
+        {isOpenQuestion && (
+          <div className="px-6 pt-5 pb-1">
+            <span className="inline-block bg-indigo-600 text-white text-[8px] font-black uppercase tracking-[0.25em] px-3 py-1 rounded-full">
+              Offene Frage
+            </span>
+          </div>
+        )}
 
         {/* Question */}
-        <div className="px-6 py-5">
+        <div className={`px-6 py-5 ${isOpenQuestion ? '' : 'pt-5'}`}>
           <h2 className="text-xl sm:text-2xl font-black text-slate-900 dark:text-white leading-snug tracking-tight">
             {currentQuestion.question}
           </h2>
-          {currentQuestion.isMultipleChoice && !isOpenQuestion && (
-            <p className="text-[9px] font-black uppercase tracking-widest text-indigo-500 mt-2">
-              Alle zutreffenden wählen
-            </p>
-          )}
         </div>
 
         {/* Answers */}
@@ -185,10 +182,7 @@ export const QuizPlayer: React.FC<QuizPlayerProps> = ({ questions, onComplete, o
                   className={`w-full text-left px-5 py-4 rounded-[20px] border-2 transition-all duration-300 font-semibold flex items-center gap-4 ${cls}`}
                 >
                   <span className={`w-8 h-8 rounded-xl flex items-center justify-center text-[11px] font-black shrink-0 transition-all ${isSelected && !showResult ? 'bg-indigo-600 text-white' : 'bg-white dark:bg-slate-800 text-slate-400 shadow-inner'}`}>
-                    {currentQuestion.isMultipleChoice
-                      ? (isSelected ? '✓' : '')
-                      : String.fromCharCode(65 + idx)
-                    }
+                    {String.fromCharCode(65 + idx)}
                   </span>
                   <span className="text-sm sm:text-base leading-snug">{option}</span>
                   {showResult && isCorrect && <EmojiImage emoji="✨" size={16} className="ml-auto shrink-0" />}
