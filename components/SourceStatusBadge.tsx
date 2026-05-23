@@ -17,3 +17,19 @@ export const SourceStatusBadge: React.FC<{ status: SourceStatus }> = ({ status }
     </span>
   );
 };
+
+const DIGEST_CONFIG = {
+  pending: { label: 'KI analysiert…', dot: 'bg-violet-500 animate-pulse', pill: 'bg-violet-50 text-violet-700 dark:bg-violet-900/30 dark:text-violet-400' },
+  ready:   { label: 'KI-bereit',      dot: 'bg-violet-500',               pill: 'bg-violet-50 text-violet-700 dark:bg-violet-900/30 dark:text-violet-400' },
+  error:   { label: 'Analyse-Fehler', dot: 'bg-rose-400',                 pill: 'bg-rose-50 text-rose-600 dark:bg-rose-900/30 dark:text-rose-400' },
+};
+
+export const DigestStatusBadge: React.FC<{ status: 'pending' | 'ready' | 'error' }> = ({ status }) => {
+  const { label, dot, pill } = DIGEST_CONFIG[status];
+  return (
+    <span className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[9px] font-black uppercase tracking-widest ${pill}`}>
+      <span className={`w-1.5 h-1.5 rounded-full ${dot}`} />
+      {label}
+    </span>
+  );
+};

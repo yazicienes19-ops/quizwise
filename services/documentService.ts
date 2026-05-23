@@ -49,8 +49,10 @@ export const loadDocumentsFromSupabase = async (): Promise<ProcessedDocument[]> 
     type: row.file_type as 'pdf' | 'text' | 'docx',
     collectionId: row.collection_id ?? undefined,
     uploadDate: row.upload_date,
-    content: row.content_text || '',   // PDF: leer bis on-demand geladen
+    content: row.content_text || '',
     storagePath: row.storage_path ?? undefined,
+    digestText: row.digest_text ?? undefined,
+    digestStatus: row.digest_status ?? undefined,
   }));
 };
 
@@ -108,6 +110,18 @@ export const updateDocumentCollectionInSupabase = async (
     .update({ collection_id: collectionId ?? null })
     .eq('id', docId);
   if (error) throw error;
+};
+
+// ── Dokument-Analyse triggern (fire & forget) ─────────────────────────────────
+
+export const triggerDocumentAnalysis = async (docId: string): Promise<void> => {
+  const { data: { session } } = await supabase.auth.getSession();
+  if (!session?.access_token) return;
+  const backendUrl = import.meta.env.VITE_BACKEND_URL || 'http://localhost:4000';
+  fetch(`${backendUrl}/api/documents/${docId}/analyze`, {
+    method: 'POST',
+    headers: { Authorization: `Bearer ${session.access_token}` },
+  }).catch(() => {});
 };
 
 // ── PDF on-demand laden ───────────────────────────────────────────────────────

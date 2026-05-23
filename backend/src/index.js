@@ -6,6 +6,7 @@ const geminiRoutes = require('./routes/gemini');
 const userRoutes = require('./routes/user');
 const stripeRoutes = require('./routes/stripe');
 const searchRoutes = require('./routes/search');
+const documentRoutes = require('./routes/documents');
 const { requireAuth } = require('./middleware/auth');
 const { checkUsageLimit } = require('./middleware/limits');
 
@@ -13,6 +14,7 @@ const app = express();
 const PORT = process.env.PORT || 4000;
 
 const allowedOrigins = [
+  'http://localhost:3000',
   'http://localhost:3001',
   'http://localhost:5173',
   process.env.FRONTEND_URL,
@@ -47,6 +49,7 @@ app.use('/api/gemini', requireAuth, checkUsageLimit, geminiRoutes);
 
 // Geschützt: Login (kein Gemini-Limit, ruft externe API auf)
 app.use('/api/search', requireAuth, searchRoutes);
+app.use('/api/documents', requireAuth, documentRoutes);
 
 app.use((err, req, res, next) => {
   console.error(err.message);

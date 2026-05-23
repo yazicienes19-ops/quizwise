@@ -1,7 +1,7 @@
 import React from 'react';
 import { ProcessedDocument } from '../types';
 import type { SourceMeta } from '../services/libraryService';
-import { SourceStatusBadge } from './SourceStatusBadge';
+import { SourceStatusBadge, DigestStatusBadge } from './SourceStatusBadge';
 import { EmojiImage } from './EmojiImage';
 
 const FILE_EMOJI: Record<string, string> = { pdf: '📕', docx: '📘', text: '📄' };
@@ -51,6 +51,7 @@ export const SourceCard: React.FC<Props> = ({ doc, meta, view, onOpen, onDelete 
           <div className="flex items-center gap-2 flex-wrap">
             <h4 className="font-black text-sm truncate" style={{ color: 'var(--text-main)' }}>{title}</h4>
             <SourceStatusBadge status={status} />
+            {doc.digestStatus && <DigestStatusBadge status={doc.digestStatus} />}
           </div>
           <div className="flex items-center gap-3 mt-0.5 flex-wrap">
             {meta.module   && <span className="text-[9px] font-black uppercase text-indigo-600">{meta.module}</span>}
@@ -106,8 +107,9 @@ export const SourceCard: React.FC<Props> = ({ doc, meta, view, onOpen, onDelete 
           {meta.module   && <span className="text-[9px] font-black uppercase text-indigo-600">{meta.module}</span>}
           {meta.semester && <span className="text-[9px] font-black uppercase text-slate-400">{meta.semester}</span>}
         </div>
-        <div className="pt-1">
+        <div className="pt-1 flex items-center gap-1.5 flex-wrap">
           <SourceStatusBadge status={status} />
+          {doc.digestStatus && <DigestStatusBadge status={doc.digestStatus} />}
         </div>
       </div>
 

@@ -37,6 +37,7 @@ import {
   deleteCollectionFromSupabase,
   updateDocumentCollectionInSupabase,
   downloadPdfAsBase64,
+  triggerDocumentAnalysis,
 } from './services/documentService';
 import type { GenerationSource } from './services/geminiService';
 import { toast } from './services/toast';
@@ -167,8 +168,9 @@ const App: React.FC = () => {
   };
 
   // Gibt den KI-tauglichen Inhalt eines Dokuments zurück.
-  // PDFs ohne content werden on-demand aus Storage geladen.
   const getDocumentSource = (doc: ProcessedDocument): GenerationSource => {
+    // Digest vorhanden → schnellster Pfad (kein Storage-Download, kleinere Payload)
+    if (doc.digestText && doc.digestStatus === 'ready') return { text: doc.digestText };
     if (doc.type === 'text' || doc.type === 'docx') return { text: doc.content };
     if (doc.type === 'image') {
       const mime = doc.mimeType || 'image/jpeg';
@@ -176,7 +178,7 @@ const App: React.FC = () => {
       if (doc.content) return { file: { data: doc.content, mimeType: mime } };
       throw new Error('Bild-Inhalt nicht verfügbar.');
     }
-    // PDF
+    // PDF ohne Digest → Storage-Pfad
     if (doc.storagePath) return { storagePath: doc.storagePath, mimeType: 'application/pdf' };
     if (doc.content) return { file: { data: doc.content, mimeType: 'application/pdf' } };
     throw new Error('PDF-Inhalt nicht verfügbar.');
@@ -313,11 +315,14 @@ const App: React.FC = () => {
 
       if (docType === 'pdf' || docType === 'image') {
         const storagePath = await saveDocumentToSupabase(newDoc, file);
-        saveDocs([...documents, { ...newDoc, storagePath: storagePath ?? undefined }]);
+        const savedDoc = { ...newDoc, storagePath: storagePath ?? undefined };
+        saveDocs([...documents, savedDoc]);
+        if (user && storagePath) triggerDocumentAnalysis(newDoc.id);
       } else {
         saveDocs([...documents, newDoc]);
         if (user) {
           saveDocumentToSupabase(newDoc)
+            .then(() => triggerDocumentAnalysis(newDoc.id))
             .catch(() => toast.error('Cloud-Sync fehlgeschlagen. Dokument nur lokal gespeichert.'));
         }
       }

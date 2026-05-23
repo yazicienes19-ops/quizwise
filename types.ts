@@ -72,6 +72,8 @@ export interface ProcessedDocument {
   uploadDate: number;
   collectionId?: string;
   storagePath?: string;   // gesetzt wenn Datei in Supabase Storage liegt
+  digestText?: string;    // KI-generierter Lerndigest — ersetzt Originaldatei für schnelle KI-Aufrufe
+  digestStatus?: 'pending' | 'ready' | 'error';
 }
 
 export interface TopicMetric {
