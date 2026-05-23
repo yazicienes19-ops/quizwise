@@ -368,12 +368,32 @@ export const generateQuizFromDocument = async (
     typeInstruction = 'FRAGETYP: Gemischt — ca. 60% Multiple-Choice (mehrere korrekte Antworten), 25% Single-Choice, 15% Wahr/Falsch.';
   }
 
-  const seed = Math.random().toString(36).slice(2, 8);
+  const quizSchema = {
+    type: Type.ARRAY,
+    items: {
+      type: Type.OBJECT,
+      properties: {
+        question: { type: Type.STRING },
+        options: { type: Type.ARRAY, items: { type: Type.STRING } },
+        correctAnswerIndices: { type: Type.ARRAY, items: { type: Type.INTEGER } },
+        isMultipleChoice: { type: Type.BOOLEAN },
+        explanation: { type: Type.STRING },
+        distractorExplanations: { type: Type.ARRAY, items: { type: Type.STRING } },
+        sourceReference: { type: Type.STRING },
+        topic: { type: Type.STRING },
+        difficulty: { type: Type.STRING },
+        questionType: { type: Type.STRING }
+      },
+      required: ['question', 'options', 'correctAnswerIndices', 'isMultipleChoice', 'explanation', 'sourceReference']
+    }
+  };
 
-  parts.push({ text: `Erstelle ein Quiz mit genau ${count} Fragen basierend auf dem Material.
+  const buildRequest = (batchCount: number, seedSuffix: string, focusHint: string) => {
+    const batchParts: any[] = [sourceTopart(source)];
+    batchParts.push({ text: `Erstelle ein Quiz mit genau ${batchCount} Fragen basierend auf dem Material.
 Schwierigkeit: ${difficulty}.${focusLine}
-Zufalls-Seed für Abwechslung: ${seed}
-
+Zufalls-Seed für Abwechslung: ${seedSuffix}
+${focusHint}
 ${typeInstruction}
 
 WICHTIG für Vielfalt:
@@ -382,35 +402,27 @@ WICHTIG für Vielfalt:
 - Jede Frage soll sich in Formulierung und Inhalt deutlich von den anderen unterscheiden
 
 Zu jeder Frage: korrekte Antwort-Indices (Array), Boolean ob Multiple-Choice, Erklärung, Textbezug, Thema und Schwierigkeitsgrad.` });
+    return callBackend({
+      model: 'gemini-2.5-flash',
+      parts: batchParts,
+      config: { temperature: 1.0, thinkingConfig: { thinkingBudget: 0 }, responseMimeType: 'application/json', responseSchema: quizSchema }
+    });
+  };
 
-  const text = await callBackend({
-    model: 'gemini-2.5-flash',
-    parts,
-    config: {
-      temperature: 1.0,
-      thinkingConfig: { thinkingBudget: 0 },
-      responseMimeType: 'application/json',
-      responseSchema: {
-        type: Type.ARRAY,
-        items: {
-          type: Type.OBJECT,
-          properties: {
-            question: { type: Type.STRING },
-            options: { type: Type.ARRAY, items: { type: Type.STRING } },
-            correctAnswerIndices: { type: Type.ARRAY, items: { type: Type.INTEGER } },
-            isMultipleChoice: { type: Type.BOOLEAN },
-            explanation: { type: Type.STRING },
-            distractorExplanations: { type: Type.ARRAY, items: { type: Type.STRING } },
-            sourceReference: { type: Type.STRING },
-            topic: { type: Type.STRING },
-            difficulty: { type: Type.STRING },
-            questionType: { type: Type.STRING }
-          },
-          required: ['question', 'options', 'correctAnswerIndices', 'isMultipleChoice', 'explanation', 'sourceReference']
-        }
-      }
-    }
-  });
+  // Intensive: 2 parallele Requests (9+8) für ~halbe Wartezeit
+  if (quizType === QuizType.INTENSIVE) {
+    const seed1 = Math.random().toString(36).slice(2, 8);
+    const seed2 = Math.random().toString(36).slice(2, 8);
+    const [text1, text2] = await Promise.all([
+      buildRequest(9, seed1, 'Fokus: erste Hälfte und Grundlagen des Materials.'),
+      buildRequest(8, seed2, 'Fokus: zweite Hälfte und Vertiefungsthemen des Materials.'),
+    ]);
+    const q1: QuizQuestion[] = JSON.parse(text1 || '[]');
+    const q2: QuizQuestion[] = JSON.parse(text2 || '[]');
+    return [...q1, ...q2];
+  }
+
+  const text = await buildRequest(count, Math.random().toString(36).slice(2, 8), '');
   return JSON.parse(text || '[]');
 };
 
