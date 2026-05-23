@@ -34,11 +34,7 @@ export const QuizPlayer: React.FC<QuizPlayerProps> = ({ questions, onComplete, o
 
   const handleOptionSelect = (idx: number) => {
     if (showResult) return;
-    if (currentQuestion.isMultipleChoice) {
-      setSelectedOptions(prev => prev.includes(idx) ? prev.filter(i => i !== idx) : [...prev, idx]);
-    } else {
-      setSelectedOptions([idx]);
-    }
+    setSelectedOptions(prev => prev.includes(idx) ? prev.filter(i => i !== idx) : [...prev, idx]);
   };
 
   const checkMcCorrectness = () => {
