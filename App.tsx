@@ -364,6 +364,19 @@ const App: React.FC = () => {
     await updateMetricsAfterSession(score, activeQuizMeta?.docName || 'Quiz Session', 'quiz');
   };
 
+  const getUsedTopics = (docId: string): string[] => {
+    try { return JSON.parse(localStorage.getItem(`quizwise_topics_${docId}`) || '[]'); }
+    catch { return []; }
+  };
+
+  const saveUsedTopics = (docId: string, questions: QuizQuestion[]) => {
+    const newTopics = questions.map(q => q.topic).filter(Boolean) as string[];
+    if (newTopics.length === 0) return;
+    const existing = getUsedTopics(docId);
+    const merged = [...existing, ...newTopics].slice(-60);
+    localStorage.setItem(`quizwise_topics_${docId}`, JSON.stringify(merged));
+  };
+
   const handleStartQuizFromDoc = async (doc: ProcessedDocument, quizType: QuizType = QuizType.FAST, options?: any) => {
     setIsLoading(true);
     setActiveTab(ActiveTab.QUIZ);
@@ -371,8 +384,10 @@ const App: React.FC = () => {
     setQuestions([]);
     try {
       const source = getDocumentSource(doc);
-      const quiz = await generateQuizFromDocument(source, quizType, options);
+      const excludeTopics = getUsedTopics(doc.id);
+      const quiz = await generateQuizFromDocument(source, quizType, { ...options, excludeTopics });
       setQuestions(quiz);
+      saveUsedTopics(doc.id, quiz);
       setActiveQuizMeta({ docId: doc.id, docName: doc.name.replace(/\.[^/.]+$/, '') });
       localStorage.setItem('quizwise_current_quiz', JSON.stringify(quiz));
     } catch (e: any) {
@@ -398,13 +413,16 @@ const App: React.FC = () => {
       const customFocus = config.focus === 'weak' && stats.weakTopics.length > 0
         ? `Fokus auf schwache Themen: ${stats.weakTopics.join(', ')}`
         : undefined;
+      const excludeTopics = getUsedTopics(pendingActionDoc.id);
       const quiz = await generateQuizFromDocument(source, QuizType.CUSTOM, {
         customCount: config.questionCount,
         customDifficulty: config.difficulty,
         customFocus,
         questionType: config.questionType,
+        excludeTopics,
       });
       setQuestions(quiz);
+      saveUsedTopics(pendingActionDoc.id, quiz);
       localStorage.setItem('quizwise_current_quiz', JSON.stringify(quiz));
     } catch (e) { handleApiError(e); } finally { setIsLoading(false); }
   };

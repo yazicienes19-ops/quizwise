@@ -336,6 +336,7 @@ export const generateQuizFromDocument = async (
     customDifficulty?: string;
     customFocus?: string;
     questionType?: 'mc' | 'truefalse' | 'open' | 'mixed';
+    excludeTopics?: string[];
   }
 ): Promise<QuizQuestion[]> => {
   const parts: any[] = [sourceTopart(source)];
@@ -388,18 +389,27 @@ export const generateQuizFromDocument = async (
     }
   };
 
+  const excludeTopics = options?.excludeTopics ?? [];
+  const excludeLine = excludeTopics.length > 0
+    ? `\nBEREITS ABGEFRAGT — diese Themen NICHT nochmal verwenden (wähle andere Aspekte des Materials):\n${excludeTopics.slice(-40).join(' | ')}\n`
+    : '';
+
+  const BLOOM_VERBS = ['Definiere', 'Erkläre', 'Vergleiche', 'Unterscheide', 'Wende an', 'Analysiere', 'Bewerte', 'Nenne', 'Warum', 'Wie unterscheidet sich'];
+
   const buildRequest = (batchCount: number, seedSuffix: string, focusHint: string) => {
     const batchParts: any[] = [sourceTopart(source)];
     batchParts.push({ text: `Erstelle ein Quiz mit genau ${batchCount} Fragen basierend auf dem Material.
 Schwierigkeit: ${difficulty}.${focusLine}
-Zufalls-Seed für Abwechslung: ${seedSuffix}
-${focusHint}
+Seed: ${seedSuffix}
+${focusHint}${excludeLine}
 ${typeInstruction}
 
-WICHTIG für Vielfalt:
-- Verteile die Fragen gleichmäßig über ALLE Abschnitte/Themen des Materials
-- Mische kognitive Ebenen: Wissen, Verstehen, Anwenden, Analysieren
-- Jede Frage soll sich in Formulierung und Inhalt deutlich von den anderen unterscheiden
+STRENGE DIVERSITÄTS-REGELN (zwingend einhalten):
+1. Jede Frage MUSS ein komplett anderes Unterthema abdecken — kein Thema darf auch nur ähnlich zweimal vorkommen
+2. Verteile die Fragen auf ALLE Abschnitte/Kapitel des Materials, nicht nur die Hauptthemen
+3. Starte jede Frage mit einem anderen Verb aus dieser Liste: ${BLOOM_VERBS.join(', ')}
+4. Wechsle die kognitive Ebene pro Frage: Wissen → Verstehen → Anwenden → Analysieren → Bewerten → wieder von vorne
+5. Fragen die logisch ähnlich oder Umformulierungen voneinander sind, sind verboten
 
 Zu jeder Frage: korrekte Antwort-Indices (Array), Boolean ob Multiple-Choice, Erklärung, Textbezug, Thema und Schwierigkeitsgrad.` });
     return callBackend({
@@ -426,9 +436,19 @@ Zu jeder Frage: korrekte Antwort-Indices (Array), Boolean ob Multiple-Choice, Er
   return JSON.parse(text || '[]');
 };
 
-export const generateFlashcardsFromDocument = async (source: GenerationSource, count: number = 15): Promise<Partial<Flashcard>[]> => {
+export const generateFlashcardsFromDocument = async (source: GenerationSource, count: number = 15, excludeTerms: string[] = []): Promise<Partial<Flashcard>[]> => {
   const parts: any[] = [sourceTopart(source)];
-  parts.push({ text: `Erstelle ${count} hochwertige Karteikarten.` });
+  const excludeLine = excludeTerms.length > 0
+    ? `\nBEREITS ERSTELLT — diese Begriffe/Konzepte NICHT nochmal verwenden: ${excludeTerms.slice(-30).join(' | ')}\n`
+    : '';
+  parts.push({ text: `Erstelle ${count} hochwertige Karteikarten basierend auf dem Material.
+${excludeLine}
+STRENGE DIVERSITÄTS-REGELN:
+1. Jede Karte deckt einen ANDEREN Begriff, ein anderes Konzept oder eine andere Theorie ab
+2. Verteile die Karten gleichmäßig über ALLE Abschnitte/Kapitel — nicht nur die prominentesten Themen
+3. Mische Kartentypen: Definition, Unterschied (A vs B), Anwendung, Ursache/Wirkung, Aufzählung
+4. Vorderseite: präzise Frage oder Begriff — Rückseite: vollständige prägnante Antwort (2-4 Sätze)
+5. Vermeide Karten die dasselbe Thema nur anders formulieren` });
 
   const text = await callBackend({
     model: 'gemini-2.5-flash',
