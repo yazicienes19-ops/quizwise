@@ -372,8 +372,10 @@ const App: React.FC = () => {
       localStorage.setItem('quizwise_current_quiz', JSON.stringify(quiz));
     } catch (e: any) {
       const msg = e?.message?.includes('nicht verfügbar')
-        ? `Dokument nicht verfügbar. Bitte lade es neu hoch.`
-        : 'Quiz-Generierung fehlgeschlagen. Bitte prüfe deinen API-Key.';
+        ? 'Dokument nicht verfügbar. Bitte lade es neu hoch.'
+        : e?.message?.includes('LIMIT_REACHED')
+        ? 'Tageslimit erreicht. Bitte versuche es morgen wieder.'
+        : `Quiz-Generierung fehlgeschlagen: ${e?.message || 'Unbekannter Fehler'}`;
       toast.error(msg);
     } finally { setIsLoading(false); }
   };

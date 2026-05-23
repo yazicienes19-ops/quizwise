@@ -1,6 +1,6 @@
 
 import React, { useState, useEffect } from 'react';
-import { X, Key, ExternalLink, Check, AlertTriangle } from 'lucide-react';
+import { X, Key, Check, AlertTriangle } from 'lucide-react';
 import { hasApiKey } from '../services/geminiService';
 
 interface ApiKeySettingsProps {
@@ -74,16 +74,7 @@ export const ApiKeySettings: React.FC<ApiKeySettingsProps> = ({ onClose }) => {
 
         {/* Info */}
         <div className="space-y-3 text-[11px] text-slate-500 dark:text-slate-400 leading-relaxed">
-          <p>Dein Gemini-Schlüssel wird nur lokal in deinem Browser gespeichert und niemals übertragen.</p>
-          <a
-            href="https://aistudio.google.com/app/apikey"
-            target="_blank"
-            rel="noopener noreferrer"
-            className="inline-flex items-center gap-1.5 font-bold text-indigo-600 dark:text-indigo-400 hover:underline"
-          >
-            Kostenlosen Schlüssel bei Google AI Studio holen
-            <ExternalLink className="w-3 h-3" strokeWidth={2} />
-          </a>
+          <p>Der Gemini-API-Schlüssel liegt sicher auf dem QuizWise-Server. Du musst hier nichts eintragen — alle KI-Funktionen laufen automatisch.</p>
         </div>
 
         {/* Input */}

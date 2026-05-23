@@ -125,6 +125,7 @@ Liefere:
     parts,
     config: {
       temperature: 0.5,
+      thinkingConfig: { thinkingBudget: 0 },
       responseMimeType: 'application/json',
       responseSchema: {
         type: Type.OBJECT,
@@ -162,6 +163,7 @@ suggestedReview: Welches Teilkonzept wiederholen und warum.` });
     parts,
     config: {
       temperature: 0.3,
+      thinkingConfig: { thinkingBudget: 0 },
       responseMimeType: 'application/json',
       responseSchema: {
         type: Type.OBJECT,
@@ -198,6 +200,7 @@ export const orchestrateLearningFlow = async (
   FORMATREGELN: max. 3 next_actions. Falls Lücken vorhanden (>30% Fehler), schlage einen Kalenderblock vor.` }],
     systemInstruction: ORCHESTRATOR_INSTRUCTION,
     config: {
+      thinkingConfig: { thinkingBudget: 0 },
       responseMimeType: 'application/json',
       responseSchema: {
         type: Type.OBJECT,
@@ -305,6 +308,7 @@ export const generateSmartStudyPlan = async (metrics: TopicMetric[], decks: Flas
   5. Sessions: 60 bis 120 Minuten.
   GIB NUR DAS JSON-ARRAY ZURÜCK.` }],
     config: {
+      thinkingConfig: { thinkingBudget: 0 },
       responseMimeType: 'application/json',
       responseSchema: {
         type: Type.ARRAY,
@@ -384,6 +388,7 @@ Zu jeder Frage: korrekte Antwort-Indices (Array), Boolean ob Multiple-Choice, Er
     parts,
     config: {
       temperature: 1.0,
+      thinkingConfig: { thinkingBudget: 0 },
       responseMimeType: 'application/json',
       responseSchema: {
         type: Type.ARRAY,
@@ -417,6 +422,7 @@ export const generateFlashcardsFromDocument = async (source: GenerationSource, c
     model: 'gemini-2.5-flash',
     parts,
     config: {
+      thinkingConfig: { thinkingBudget: 0 },
       responseMimeType: 'application/json',
       responseSchema: {
         type: Type.ARRAY,
@@ -441,6 +447,7 @@ export const generateQuizFromFlashcards = async (deck: FlashcardDeck): Promise<Q
     model: 'gemini-2.5-flash',
     parts: [{ text: `Erstelle ein Quiz aus diesen Karteikarten: ${cardsJson}` }],
     config: {
+      thinkingConfig: { thinkingBudget: 0 },
       responseMimeType: 'application/json',
       responseSchema: {
         type: Type.ARRAY,
@@ -471,6 +478,7 @@ export const generatePaperOutline = async (topic: string, focus: string, sources
     model: 'gemini-2.5-flash',
     parts,
     config: {
+      thinkingConfig: { thinkingBudget: 0 },
       responseMimeType: 'application/json',
       responseSchema: {
         type: Type.ARRAY,
@@ -503,6 +511,7 @@ export const magicFormatCitation = async (input: string): Promise<MultiStyleCita
     model: 'gemini-2.5-flash',
     parts: [{ text: `Extrahiere bibliographische Informationen aus diesem Textfragment und erstelle Zitationen in verschiedenen Stilen: "${input}"` }],
     config: {
+      thinkingConfig: { thinkingBudget: 0 },
       responseMimeType: 'application/json',
       responseSchema: {
         type: Type.OBJECT,
@@ -560,6 +569,7 @@ export const analyzeLearningProgress = async (
     model: 'gemini-2.5-flash',
     parts: [{ text: `Analysiere den Lernfortschritt eines Studenten auf Deutsch.\n\nThemen-Konfidenz: ${metricsText}${wrongText}\n\nIdentifiziere konkrete Fehlermuster aus den echten Fragen (z.B. "Begriffsverwechslungen", "Konzeptuelle Lücken"), gib gezielte Lernempfehlungen und eine psychologische Gesamteinschätzung.` }],
     config: {
+      thinkingConfig: { thinkingBudget: 0 },
       responseMimeType: 'application/json',
       responseSchema: {
         type: Type.OBJECT,
@@ -669,6 +679,7 @@ ALLGEMEINE REGELN:
     parts,
     config: {
       temperature: 1.0,
+      thinkingConfig: { thinkingBudget: 0 },
       responseMimeType: 'application/json',
       responseSchema: {
         type: Type.ARRAY,
@@ -715,6 +726,7 @@ BEWERTUNGSREGELN — STRENGER HOCHSCHULMASSSTAB:
 
 Daten: ${JSON.stringify(questions)}` }],
     config: {
+      thinkingConfig: { thinkingBudget: 0 },
       responseMimeType: 'application/json',
       responseSchema: {
         type: Type.ARRAY,

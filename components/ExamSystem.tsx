@@ -35,8 +35,8 @@ export const ExamSystem: React.FC<ExamSystemProps> = ({ documents, collections, 
       const exam = await generateFullExam(content, style, options);
       setQuestions(exam);
       setMode('edit');
-    } catch (e) {
-      toast.error('Klausur-Generierung fehlgeschlagen. Bitte prüfe den API-Key.');
+    } catch (e: any) {
+      toast.error(`Klausur-Generierung fehlgeschlagen: ${e?.message || 'Unbekannter Fehler'}`);
     } finally {
       setIsLoading(false);
     }

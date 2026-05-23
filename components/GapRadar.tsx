@@ -511,8 +511,8 @@ export const GapRadar: React.FC<GapRadarProps> = ({ metrics, onNavigate, onActio
     setIsAnalyzing(true);
     try {
       setAnalysis(await analyzeLearningProgress(metrics, wrongAnswersCtx));
-    } catch {
-      toast.error('Analyse fehlgeschlagen. Bitte prüfe den API-Key.');
+    } catch (e: any) {
+      toast.error(`Analyse fehlgeschlagen: ${e?.message || 'Unbekannter Fehler'}`);
     } finally {
       setIsAnalyzing(false);
     }
