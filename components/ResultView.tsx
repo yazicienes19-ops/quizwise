@@ -10,13 +10,17 @@ interface ResultViewProps {
   onRetryWrong?: (wrongQuestions: QuizQuestion[]) => void;
   onGoToSource?: () => void;
   onCreateFlashcards?: (wrongQuestions: QuizQuestion[]) => void;
+  onSaveQuiz?: (name: string) => void;
 }
 
 export const ResultView: React.FC<ResultViewProps> = ({
   answers, questions, onRestart, docName,
-  onRetryWrong, onGoToSource, onCreateFlashcards,
+  onRetryWrong, onGoToSource, onCreateFlashcards, onSaveQuiz,
 }) => {
   const [expandedIdx, setExpandedIdx] = useState<number | null>(null);
+  const [showSaveInput, setShowSaveInput] = useState(false);
+  const [saveName, setSaveName] = useState(docName ? `Quiz — ${docName}` : 'Mein Quiz');
+  const [saved, setSaved] = useState(false);
 
   const correctCount    = answers.filter(a => a.isCorrect).length;
   const wrongCount      = answers.length - correctCount;
@@ -96,6 +100,46 @@ export const ResultView: React.FC<ResultViewProps> = ({
                 ))}
               </div>
             </div>
+          )}
+        </div>
+      )}
+
+      {/* Save quiz offline */}
+      {onSaveQuiz && (
+        <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-[24px] p-5 space-y-3 shadow-3d-raised">
+          <p className="text-[9px] font-black uppercase tracking-widest text-slate-400">Offline speichern</p>
+          {saved ? (
+            <div className="flex items-center gap-2 text-emerald-600">
+              <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round"><polyline points="20 6 9 17 4 12"/></svg>
+              <span className="text-sm font-black">Quiz gespeichert — offline abrufbar</span>
+            </div>
+          ) : showSaveInput ? (
+            <div className="flex gap-2">
+              <input
+                autoFocus
+                value={saveName}
+                onChange={e => setSaveName(e.target.value)}
+                className="flex-1 px-4 py-2.5 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-[16px] text-sm font-medium dark:text-white outline-none focus:border-indigo-500 transition-colors"
+                placeholder="Quiz-Name..."
+              />
+              <button
+                onClick={() => { onSaveQuiz(saveName.trim() || 'Mein Quiz'); setSaved(true); setShowSaveInput(false); }}
+                className="px-5 py-2.5 bg-indigo-600 text-white rounded-[16px] text-[10px] font-black uppercase tracking-widest hover:scale-105 active:scale-95 transition-all shrink-0"
+              >
+                Speichern
+              </button>
+            </div>
+          ) : (
+            <button
+              onClick={() => setShowSaveInput(true)}
+              className="w-full flex items-center justify-between px-5 py-3.5 bg-slate-50 dark:bg-slate-800 rounded-[18px] hover:bg-slate-100 dark:hover:bg-slate-700 transition-colors"
+            >
+              <div className="flex items-center gap-3">
+                <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="text-indigo-600"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+                <span className="text-sm font-black dark:text-white">Quiz für offline speichern</span>
+              </div>
+              <span className="text-[9px] text-slate-400 font-black">{questions.length} Fragen</span>
+            </button>
           )}
         </div>
       )}

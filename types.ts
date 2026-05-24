@@ -36,11 +36,23 @@ export interface QuizQuestion {
   topic?: string;
   difficulty?: 'leicht' | 'mittel' | 'schwer';
   learningGoal?: string;
-  questionType?: 'mc' | 'truefalse' | 'open';
+  questionType?: 'mc' | 'single' | 'truefalse' | 'open' | 'matching' | 'cloze' | 'ranking' | 'numeric' | 'scenario';
+  // Szenario-basiert (Fallbeispiel)
+  scenarioText?: string;
+  // Matching / Zuordnung
+  matchPairs?: { left: string; right: string }[];
+  // Lückentext
+  clozeText?: string;
+  clozeAnswers?: string[];
+  // Ranking / Sortieren
+  rankingItems?: string[];
+  // Numerisch
+  numericAnswer?: number;
+  numericTolerance?: number;
 }
 
 export interface QuizConfig {
-  questionType: 'mc' | 'truefalse' | 'open' | 'mixed';
+  questionType: 'mc' | 'truefalse' | 'open' | 'mixed' | 'matching' | 'cloze' | 'ranking';
   difficulty: 'leicht' | 'mittel' | 'schwer' | 'klausurnah';
   questionCount: number;
   focus: 'all' | 'weak';
@@ -110,6 +122,11 @@ export interface UserAnswer {
   questionIndex: number;
   selectedOptionIndices: number[];
   isCorrect: boolean;
+  textAnswer?: string;
+  matchAnswer?: Record<number, string>;  // leftIndex → gewählter right-Text
+  clozeAnswer?: string[];
+  numericAnswer?: number;
+  rankingAnswer?: string[];
 }
 
 export interface SearchResult {
@@ -128,8 +145,18 @@ export interface SearchResult {
 }
 
 export interface PaperOutlineSection {
+  number: string;
   title: string;
   description: string;
+  wordCount?: number;
+  keyPoints?: string[];
+  subsections?: { number: string; title: string; description: string }[];
+}
+
+export interface PaperFramework {
+  fragestellung: string;
+  thesis: string;
+  outline: PaperOutlineSection[];
 }
 
 export interface AcademicSource extends SearchResult {
@@ -168,11 +195,12 @@ export interface ExamTerm {
 export interface ExamQuestion {
   id: string;
   question: string;
-  type: 'mc' | 'open' | 'matching' | 'truefalse' | 'fillblank';
+  type: 'mc' | 'open' | 'matching' | 'truefalse' | 'fillblank' | 'ranking' | 'numeric';
 
   // MC & Szenario-MC
   options?: string[];
   correctIndices?: number[];
+  scenarioText?: string;
 
   // Wahr/Falsch
   tfCorrect?: boolean;
@@ -187,6 +215,13 @@ export interface ExamQuestion {
   // Lückentext
   blankText?: string;
   blanks?: string[];
+
+  // Ranking / Sortieren
+  rankingItems?: string[];
+
+  // Numerisch
+  numericAnswer?: number;
+  numericTolerance?: number;
 
   solution: string;
   points: number;

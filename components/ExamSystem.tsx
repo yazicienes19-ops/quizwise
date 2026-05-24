@@ -6,6 +6,7 @@ import { ExamQuestion, ProcessedDocument, Collection, ActiveTab } from '../types
 import { generateFullExam, evaluateExamAnswers, GenerationSource } from '../services/geminiService';
 import { GeneratedImage } from './GeneratedImage';
 import { toast } from '../services/toast';
+import { saveExamToStorage } from '../services/savedExamsService';
 
 interface ExamSystemProps {
   documents: ProcessedDocument[];
@@ -15,15 +16,24 @@ interface ExamSystemProps {
   onComplete?: (result: { score: number; docName: string; passed: boolean; totalPoints: number; achievedPoints: number }) => void;
   onNavigate?: (tab: ActiveTab) => void;
   initialDoc?: ProcessedDocument;
+  initialQuestions?: ExamQuestion[];
 }
 
-export const ExamSystem: React.FC<ExamSystemProps> = ({ documents, collections, getDocumentSource, onSaveToLibrary, onComplete, onNavigate, initialDoc }) => {
-  const [questions, setQuestions]         = useState<ExamQuestion[] | null>(null);
+export const ExamSystem: React.FC<ExamSystemProps> = ({ documents, collections, getDocumentSource, onSaveToLibrary, onComplete, onNavigate, initialDoc, initialQuestions }) => {
+  const [questions, setQuestions]         = useState<ExamQuestion[] | null>(initialQuestions ?? null);
   const [isLoading, setIsLoading]         = useState(false);
-  const [mode, setMode]                   = useState<'edit' | 'solve' | 'result'>('edit');
+  const [mode, setMode]                   = useState<'edit' | 'solve' | 'result'>(() =>
+    initialQuestions?.some(q => q.userAnswer !== undefined) ? 'solve' : 'edit'
+  );
   const [examDocName, setExamDocName]     = useState('Klausur');
   const [examDuration, setExamDuration]   = useState<number | undefined>(undefined);
   const [showCancelConfirm, setShowCancelConfirm] = useState(false);
+  const [currentAnswers, setCurrentAnswers] = useState<Record<string, any>>(() => {
+    if (!initialQuestions) return {};
+    return Object.fromEntries(
+      initialQuestions.filter(q => q.userAnswer !== undefined).map(q => [q.id, q.userAnswer])
+    );
+  });
 
   const resetExam = () => { setQuestions(null); setMode('edit'); setShowCancelConfirm(false); setExamDuration(undefined); };
 
@@ -87,6 +97,24 @@ export const ExamSystem: React.FC<ExamSystemProps> = ({ documents, collections, 
       const hits = correct.filter((b, i) => (user[i] || '').trim().toLowerCase() === b.toLowerCase()).length;
       const pts  = correct.length ? Math.round((hits / correct.length) * q.points) : 0;
       return { ...q, achievedPoints: pts, feedback: `${hits} von ${correct.length} Lücken korrekt.` };
+    }
+
+    if (q.type === 'ranking') {
+      const user: string[] = q.userAnswer || [];
+      const correct: string[] = q.rankingItems || [];
+      const hits = correct.filter((item, i) => item === user[i]).length;
+      const pts  = correct.length ? Math.round((hits / correct.length) * q.points) : 0;
+      return { ...q, achievedPoints: pts, feedback: hits === correct.length ? 'Reihenfolge vollständig korrekt.' : `${hits} von ${correct.length} Positionen korrekt. Korrekte Reihenfolge: ${correct.join(' → ')}` };
+    }
+
+    if (q.type === 'numeric') {
+      const user = parseFloat(q.userAnswer);
+      const correct = q.numericAnswer ?? 0;
+      const tolerance = q.numericTolerance ?? 0;
+      if (!isNaN(user) && Math.abs(user - correct) <= tolerance) {
+        return { ...q, achievedPoints: q.points, feedback: `Korrekt: ${user}` };
+      }
+      return { ...q, achievedPoints: 0, feedback: `Falsch. Korrekte Antwort: ${correct}${tolerance > 0 ? ` (±${tolerance})` : ''}` };
     }
 
     return q;
@@ -194,6 +222,18 @@ export const ExamSystem: React.FC<ExamSystemProps> = ({ documents, collections, 
         examDuration={examDuration}
         onNewExam={resetExam}
         onNavigate={onNavigate}
+        initialAnswers={currentAnswers}
+        onAnswersChange={setCurrentAnswers}
+        onSaveProgress={(name) => {
+          const withAnswers = questions.map(q => ({ ...q, userAnswer: currentAnswers[q.id] }));
+          saveExamToStorage({ name, docName: examDocName, questions: withAnswers });
+          toast.success('Klausur gespeichert!');
+        }}
+        onSaveExam={(name) => {
+          const clean = questions.map(q => ({ ...q, userAnswer: undefined, feedback: undefined, achievedPoints: undefined }));
+          saveExamToStorage({ name, docName: examDocName, questions: clean });
+          toast.success('Klausur gespeichert!');
+        }}
       />
     </div>
   );

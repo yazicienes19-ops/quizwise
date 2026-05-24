@@ -19,17 +19,34 @@ const resolveStorageRef = async (part, userId) => {
   return { inlineData: { data: buffer.toString('base64'), mimeType } };
 };
 
+// Wählt das passende Gemini-Modell basierend auf User-Plan und Aufgaben-Komplexität.
+// free  → immer flash-lite
+// pro   → flash-lite bei leichten, flash bei schweren Aufgaben
+const selectModel = (plan, complexity) => {
+  if (plan === 'pro' && complexity === 'heavy') return 'gemini-3.1-flash-lite';
+  return 'gemini-2.5-flash-lite';
+};
+
 // POST /api/gemini/generate
-// Frontend schickt: { model, parts, systemInstruction, config, tools }
+// Frontend schickt: { parts, systemInstruction, config, tools, complexity }
 // Wir antworten mit: { text }
 router.post('/generate', async (req, res, next) => {
   try {
-    const { model, parts, systemInstruction, config, tools } = req.body;
+    const { parts, systemInstruction, config, tools, complexity } = req.body;
     const userId = req.user.id;
 
     if (!parts || !Array.isArray(parts) || parts.length === 0) {
       return res.status(400).json({ error: 'parts[] erforderlich' });
     }
+
+    // User-Plan aus Supabase lesen
+    const { data: profile } = await supabase
+      .from('profiles')
+      .select('plan')
+      .eq('id', userId)
+      .single();
+    const userPlan = profile?.plan || 'free';
+    const selectedModel = selectModel(userPlan, complexity || 'light');
 
     // storageRef-Parts durch echte inlineData ersetzen (PDFs/Bilder direkt von Supabase laden)
     const resolvedParts = await Promise.all(parts.map(part => resolveStorageRef(part, userId)));
@@ -43,7 +60,7 @@ router.post('/generate', async (req, res, next) => {
     if (systemInstruction)        generationConfig.systemInstruction = systemInstruction;
 
     const request = {
-      model: 'gemini-2.5-flash',
+      model: selectedModel,
       contents: [{ role: 'user', parts: resolvedParts }],
       config: generationConfig,
     };

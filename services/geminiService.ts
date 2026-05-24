@@ -4,6 +4,7 @@ import {
   Flashcard,
   SearchResult,
   PaperOutlineSection,
+  PaperFramework,
   AcademicSource,
   CitationStyle,
   StudyEntry,
@@ -35,6 +36,7 @@ const callBackend = async (payload: {
   model?: string;
   parts: any[];
   systemInstruction?: string;
+  complexity?: 'light' | 'heavy';
   config?: {
     responseMimeType?: string;
     responseSchema?: any;
@@ -121,7 +123,7 @@ Liefere:
 - conceptContext: 4-6 Sätze was eine vollständige Antwort laut Dokument enthalten muss — Kernaussagen, Zusammenhänge, Beispiele aus dem Material` });
 
   const text = await callBackend({
-    model: 'gemini-2.5-flash',
+    complexity: 'heavy',
     parts,
     config: {
       temperature: 0.5,
@@ -159,7 +161,7 @@ strengths: Spezifisch was verstanden wurde.
 suggestedReview: Welches Teilkonzept wiederholen und warum.` });
 
   const text = await callBackend({
-    model: 'gemini-2.5-flash',
+    complexity: 'heavy',
     parts,
     config: {
       temperature: 0.3,
@@ -194,7 +196,7 @@ export const orchestrateLearningFlow = async (
   };
 
   const text = await callBackend({
-    model: 'gemini-2.5-flash',
+    complexity: 'heavy',
     parts: [{ text: `Analysiere folgende Lernaktivität und erzeuge den 'Next Best Actions'-Plan:
   ${JSON.stringify(context)}
   FORMATREGELN: max. 3 next_actions. Falls Lücken vorhanden (>30% Fehler), schlage einen Kalenderblock vor.` }],
@@ -297,7 +299,6 @@ export const generateSmartStudyPlan = async (metrics: TopicMetric[], decks: Flas
   };
 
   const text = await callBackend({
-    model: 'gemini-2.5-flash',
     parts: [{ text: `Erstelle einen intelligenten Wochen-Lernplan (Montag bis Sonntag) basierend auf diesen Daten:
   ${JSON.stringify(context)}
   ANFORDERUNGEN:
@@ -335,7 +336,7 @@ export const generateQuizFromDocument = async (
     customCount?: number;
     customDifficulty?: string;
     customFocus?: string;
-    questionType?: 'mc' | 'truefalse' | 'open' | 'mixed';
+    questionType?: 'mc' | 'truefalse' | 'open' | 'mixed' | 'matching' | 'cloze' | 'ranking';
     excludeTopics?: string[];
   }
 ): Promise<QuizQuestion[]> => {
@@ -359,14 +360,32 @@ export const generateQuizFromDocument = async (
 
   const qt = options?.questionType ?? 'mixed';
   let typeInstruction: string;
+
   if (qt === 'mc') {
-    typeInstruction = 'FRAGETYP: Erstelle AUSSCHLIESSLICH Multiple-Choice-Fragen (isMultipleChoice: true, 2-3 korrekte Antworten aus 4 Optionen).';
+    typeInstruction = 'FRAGETYP: Erstelle AUSSCHLIESSLICH Multiple-Choice-Fragen. questionType: "mc". isMultipleChoice: true. 2-3 korrekte Antworten aus 4 Optionen. options[]: genau 4 Antworten. Alle anderen Felder (matchPairs, clozeText usw.) als leer/null lassen.';
   } else if (qt === 'truefalse') {
-    typeInstruction = 'FRAGETYP: Erstelle NUR Wahr/Falsch-Fragen. options MUSS genau ["Wahr", "Falsch"] sein. isMultipleChoice: false. correctAnswerIndices: [0] für wahr, [1] für falsch. questionType: "truefalse".';
+    typeInstruction = 'FRAGETYP: Erstelle NUR Wahr/Falsch-Fragen. questionType: "truefalse". options: ["Wahr","Falsch"]. isMultipleChoice: false. correctAnswerIndices: [0] für wahr, [1] für falsch.';
   } else if (qt === 'open') {
-    typeInstruction = 'FRAGETYP: Erstelle AUSSCHLIESSLICH offene Fragen. options: [] (leeres Array). correctAnswerIndices: []. isMultipleChoice: false. Die vollständige Musterantwort steht in explanation. questionType: "open".';
+    typeInstruction = 'FRAGETYP: Erstelle AUSSCHLIESSLICH offene Fragen. questionType: "open". options: []. correctAnswerIndices: []. isMultipleChoice: false. explanation = vollständige Musterantwort.';
+  } else if (qt === 'matching') {
+    typeInstruction = 'FRAGETYP: Erstelle AUSSCHLIESSLICH Zuordnungsfragen. questionType: "matching". matchPairs: 4 korrekte {left, right}-Paare. options: []. correctAnswerIndices: []. isMultipleChoice: false.';
+  } else if (qt === 'cloze') {
+    typeInstruction = 'FRAGETYP: Erstelle AUSSCHLIESSLICH Lückentexte. questionType: "cloze". clozeText: Satz mit "__LÜCKE__" als Platzhalter (max 3 Lücken pro Frage). clozeAnswers: korrekte Wörter in gleicher Reihenfolge. options: []. correctAnswerIndices: []. isMultipleChoice: false.';
+  } else if (qt === 'ranking') {
+    typeInstruction = 'FRAGETYP: Erstelle AUSSCHLIESSLICH Sortieraufgaben. questionType: "ranking". rankingItems: 4-5 Elemente in KORREKTER Reihenfolge. options: []. correctAnswerIndices: []. isMultipleChoice: false.';
   } else {
-    typeInstruction = 'FRAGETYP: Gemischt — ca. 60% Multiple-Choice (mehrere korrekte Antworten), 25% Single-Choice, 15% Wahr/Falsch.';
+    // mixed — vollständige Palette inkl. aller neuen Typen
+    typeInstruction = `FRAGETYPEN-MIX (wähle basierend auf dem Inhalt des Materials):
+- "mc": Multiple-Choice (isMultipleChoice: true, 2-3 korrekte aus 4) ODER Single-Choice (isMultipleChoice: false, 1 korrekt). options[4]. ~30% der Fragen.
+- "truefalse": Wahr/Falsch. options: ["Wahr","Falsch"]. correctAnswerIndices: [0] wahr / [1] falsch. ~10% der Fragen.
+- "open": Offene Kurzantwort/Essay. options: []. correctAnswerIndices: []. explanation = Musterantwort. ~15% der Fragen.
+- "matching": Zuordnung (z.B. Begriff ↔ Definition, Forscher ↔ Theorie). matchPairs: 4 {left,right}-Paare. options: []. correctAnswerIndices: []. ~15% der Fragen.
+- "cloze": Lückentext. clozeText mit "__LÜCKE__" (max 3 Lücken). clozeAnswers: korrekte Füllwörter. options: []. correctAnswerIndices: []. ~15% der Fragen.
+- "ranking": Schritte/Phasen/Konzepte in richtige Reihenfolge bringen. rankingItems: 4-5 Elemente in KORREKTER Reihenfolge. options: []. correctAnswerIndices: []. ~10% der Fragen.
+- "numeric": Zahlenangabe. numericAnswer: korrekte Zahl. numericTolerance: akzeptabler Spielraum (z.B. 0.5). options: []. correctAnswerIndices: []. NUR wenn das Material konkrete Zahlen enthält. ~5% wenn relevant.
+- "scenario": Fallbeispiel + MC. scenarioText: 2-4 Sätze Fallbeschreibung. options[4]. correctAnswerIndices. NUR wenn das Material echte Fallbeispiele, Kasuistiken, klinische Szenarien oder Anwendungsfälle enthält (z.B. Klinische Psychologie, Jura, Medizin). Bei rein theoretischen/statistischen/Grundlagenmaterialien: NICHT verwenden. ~5% wenn relevant.
+
+WICHTIG: questionType MUSS exakt einem der Werte oben entsprechen. Nur für den jeweiligen Typ relevante Felder befüllen — alle anderen Felder (Options, matchPairs usw.) als leer/null lassen.`;
   }
 
   const quizSchema = {
@@ -374,18 +393,37 @@ export const generateQuizFromDocument = async (
     items: {
       type: Type.OBJECT,
       properties: {
-        question: { type: Type.STRING },
-        options: { type: Type.ARRAY, items: { type: Type.STRING } },
-        correctAnswerIndices: { type: Type.ARRAY, items: { type: Type.INTEGER } },
-        isMultipleChoice: { type: Type.BOOLEAN },
-        explanation: { type: Type.STRING },
-        distractorExplanations: { type: Type.ARRAY, items: { type: Type.STRING } },
-        sourceReference: { type: Type.STRING },
-        topic: { type: Type.STRING },
-        difficulty: { type: Type.STRING },
-        questionType: { type: Type.STRING }
+        question:              { type: Type.STRING },
+        questionType:          { type: Type.STRING },
+        options:               { type: Type.ARRAY, items: { type: Type.STRING } },
+        correctAnswerIndices:  { type: Type.ARRAY, items: { type: Type.INTEGER } },
+        isMultipleChoice:      { type: Type.BOOLEAN },
+        explanation:           { type: Type.STRING },
+        distractorExplanations:{ type: Type.ARRAY, items: { type: Type.STRING } },
+        sourceReference:       { type: Type.STRING },
+        topic:                 { type: Type.STRING },
+        difficulty:            { type: Type.STRING },
+        // Szenario
+        scenarioText:          { type: Type.STRING },
+        // Matching
+        matchPairs: {
+          type: Type.ARRAY,
+          items: {
+            type: Type.OBJECT,
+            properties: { left: { type: Type.STRING }, right: { type: Type.STRING } },
+            required: ['left', 'right']
+          }
+        },
+        // Cloze
+        clozeText:             { type: Type.STRING },
+        clozeAnswers:          { type: Type.ARRAY, items: { type: Type.STRING } },
+        // Ranking
+        rankingItems:          { type: Type.ARRAY, items: { type: Type.STRING } },
+        // Numerisch
+        numericAnswer:         { type: Type.NUMBER },
+        numericTolerance:      { type: Type.NUMBER },
       },
-      required: ['question', 'options', 'correctAnswerIndices', 'isMultipleChoice', 'explanation', 'sourceReference']
+      required: ['question', 'questionType', 'explanation', 'sourceReference']
     }
   };
 
@@ -411,14 +449,14 @@ STRENGE DIVERSITÄTS-REGELN (zwingend einhalten):
 4. Wechsle die kognitive Ebene pro Frage: Wissen → Verstehen → Anwenden → Analysieren → Bewerten → wieder von vorne
 5. Fragen die logisch ähnlich oder Umformulierungen voneinander sind, sind verboten
 
-ANTWORTOPTIONEN-REGELN (zwingend einhalten):
+ANTWORTOPTIONEN-REGELN für MC/Single/TF/Szenario (zwingend einhalten):
 6. Alle 4 Antwortoptionen MÜSSEN gleich lang sein — gleiche Anzahl Wörter (±3 Wörter Toleranz)
 7. Die richtige Antwort darf sich nicht durch Länge, Stil oder Formulierungsmuster von den falschen unterscheiden
 8. Keine offensichtlich falschen Distraktoren — alle Optionen müssen plausibel klingen
 
-Zu jeder Frage: korrekte Antwort-Indices (Array), Boolean ob Multiple-Choice, Erklärung, Textbezug, Thema und Schwierigkeitsgrad.` });
+Zu jeder Frage: Erklärung (explanation), Textbezug (sourceReference), Thema (topic) und Schwierigkeitsgrad (difficulty) IMMER befüllen.` });
     return callBackend({
-      model: 'gemini-2.5-flash',
+      complexity: 'heavy',
       parts: batchParts,
       config: { temperature: 1.0, thinkingConfig: { thinkingBudget: 0 }, responseMimeType: 'application/json', responseSchema: quizSchema }
     });
@@ -456,7 +494,7 @@ STRENGE DIVERSITÄTS-REGELN:
 5. Vermeide Karten die dasselbe Thema nur anders formulieren` });
 
   const text = await callBackend({
-    model: 'gemini-2.5-flash',
+    complexity: 'heavy',
     parts,
     config: {
       thinkingConfig: { thinkingBudget: 0 },
@@ -481,7 +519,6 @@ export const generateQuizFromFlashcards = async (deck: FlashcardDeck): Promise<Q
   const cardsJson = JSON.stringify(deck.cards.map(c => ({ q: c.front, a: c.back })));
 
   const text = await callBackend({
-    model: 'gemini-2.5-flash',
     parts: [{ text: `Erstelle ein Quiz aus diesen Karteikarten: ${cardsJson}` }],
     config: {
       thinkingConfig: { thinkingBudget: 0 },
@@ -506,36 +543,87 @@ export const generateQuizFromFlashcards = async (deck: FlashcardDeck): Promise<Q
   return JSON.parse(text || '[]');
 };
 
-export const generatePaperOutline = async (topic: string, focus: string, sources: GenerationSource[]): Promise<PaperOutlineSection[]> => {
+export const generatePaperFramework = async (
+  topic: string,
+  focus: string,
+  pageCount: number,
+  sources: GenerationSource[]
+): Promise<PaperFramework> => {
   const parts: any[] = [];
   sources.forEach(s => parts.push(sourceTopart(s)));
-  parts.push({ text: `Erstelle eine wissenschaftliche Gliederung für eine Hausarbeit zum Thema: "${topic}". Fokus: "${focus}". Basierend auf den bereitgestellten Quellen.` });
+  const wordCount = pageCount * 350;
+  parts.push({ text: `Erstelle ein vollständiges Hausarbeit-Framework auf Deutsch.
+Thema: "${topic}"
+Fragestellung/Fokus: "${focus || 'noch offen — schlage eine sinnvolle Fragestellung vor'}"
+Umfang: ${pageCount} Seiten (ca. ${wordCount} Wörter)
+${sources.length > 0 ? 'Berücksichtige die bereitgestellten Quellen/Dokumente für die Gliederung.' : ''}
+
+Liefere:
+1. fragestellung: Eine präzise akademische Forschungsfrage (1 Satz, beginnt mit "Inwiefern...", "Welche...", "Wie..." oder "Warum...")
+2. thesis: Einen vorläufigen Themensatz der die Kernaussage der Arbeit formuliert (1-2 Sätze, beginnt mit "Die vorliegende Arbeit argumentiert...")
+3. outline: Eine vollständige nummerierte Gliederung mit:
+   - Einleitung (number: "1")
+   - 2-4 Hauptkapitel mit je 2-3 Unterkapiteln (number: "2", "2.1", "2.2" usw.)
+   - Fazit/Schluss (letztes Kapitel)
+   Für jedes Kapitel und Unterkapitel:
+   - number: Gliederungsnummer ("1", "2", "2.1" usw.)
+   - title: Präziser akademischer Titel
+   - description: Was dieser Abschnitt leisten soll (2-3 Sätze)
+   - wordCount: Empfohlene Wortzahl für diesen Abschnitt (Summe aller = ${wordCount})
+   - keyPoints: 2-4 konkrete Punkte die in diesem Abschnitt behandelt werden müssen
+   - subsections: Unterkapitel (nur für Hauptkapitel, leer für Einleitung/Fazit/Unterkapitel)` });
+
+  const subsectionSchema = {
+    type: Type.OBJECT,
+    properties: {
+      number: { type: Type.STRING },
+      title: { type: Type.STRING },
+      description: { type: Type.STRING },
+    },
+    required: ['number', 'title', 'description']
+  };
+
+  const sectionSchema = {
+    type: Type.OBJECT,
+    properties: {
+      number:      { type: Type.STRING },
+      title:       { type: Type.STRING },
+      description: { type: Type.STRING },
+      wordCount:   { type: Type.NUMBER },
+      keyPoints:   { type: Type.ARRAY, items: { type: Type.STRING } },
+      subsections: { type: Type.ARRAY, items: subsectionSchema },
+    },
+    required: ['number', 'title', 'description', 'wordCount']
+  };
 
   const text = await callBackend({
-    model: 'gemini-2.5-flash',
+    complexity: 'heavy',
     parts,
     config: {
+      temperature: 0.7,
       thinkingConfig: { thinkingBudget: 0 },
       responseMimeType: 'application/json',
       responseSchema: {
-        type: Type.ARRAY,
-        items: {
-          type: Type.OBJECT,
-          properties: {
-            title: { type: Type.STRING },
-            description: { type: Type.STRING }
-          },
-          required: ['title', 'description']
-        }
+        type: Type.OBJECT,
+        properties: {
+          fragestellung: { type: Type.STRING },
+          thesis:        { type: Type.STRING },
+          outline:       { type: Type.ARRAY, items: sectionSchema },
+        },
+        required: ['fragestellung', 'thesis', 'outline']
       }
     }
   });
-  return JSON.parse(text || '[]');
+  return JSON.parse(text || '{}');
+};
+
+export const generatePaperOutline = async (topic: string, focus: string, sources: GenerationSource[]): Promise<PaperOutlineSection[]> => {
+  const fw = await generatePaperFramework(topic, focus, 10, sources);
+  return fw.outline || [];
 };
 
 export const formatCitation = async (source: AcademicSource, style: CitationStyle): Promise<string> => {
   const text = await callBackend({
-    model: 'gemini-2.5-flash',
     parts: [{ text: `Formatiere folgende Quelle im ${style}-Stil:
   Titel: ${source.title}, Autoren: ${source.authors}, Jahr: ${source.year}, Journal: ${source.journal}, URL/DOI: ${source.url}
   Gib ausschließlich den formatierten Zitations-String zurück.` }]
@@ -543,9 +631,53 @@ export const formatCitation = async (source: AcademicSource, style: CitationStyl
   return text;
 };
 
+export const formatCitationFull = async (source: AcademicSource): Promise<MultiStyleCitation> => {
+  const sourceText = [
+    `Autoren: ${source.authors}`,
+    `Titel: ${source.title}`,
+    `Jahr: ${source.year}`,
+    source.journal ? `Journal/Verlag: ${source.journal}` : '',
+    source.url ? `URL/DOI: ${source.url}` : '',
+  ].filter(Boolean).join('\n');
+
+  const text = await callBackend({
+    parts: [{ text: `Erstelle vollständige Zitierformen für folgende Quelle:\n\n${sourceText}\n\nHalte dich exakt an APA 7th, MLA 9th, Harvard, Chicago 17th. Gib für jeden Stil den Literaturverzeichnis-Eintrag UND alle Kurzbelege für den Fließtext zurück.` }],
+    config: {
+      thinkingConfig: { thinkingBudget: 0 },
+      responseMimeType: 'application/json',
+      responseSchema: {
+        type: Type.OBJECT,
+        properties: {
+          apa: {
+            type: Type.OBJECT,
+            properties: { entry: { type: Type.STRING }, inTextKlammer: { type: Type.STRING }, inTextNarrativ: { type: Type.STRING } },
+            required: ['entry', 'inTextKlammer', 'inTextNarrativ']
+          },
+          mla: {
+            type: Type.OBJECT,
+            properties: { entry: { type: Type.STRING }, inText: { type: Type.STRING } },
+            required: ['entry', 'inText']
+          },
+          harvard: {
+            type: Type.OBJECT,
+            properties: { entry: { type: Type.STRING }, inText: { type: Type.STRING }, direct: { type: Type.STRING } },
+            required: ['entry', 'inText', 'direct']
+          },
+          chicago: {
+            type: Type.OBJECT,
+            properties: { fullNote: { type: Type.STRING }, shortNote: { type: Type.STRING }, bibliography: { type: Type.STRING } },
+            required: ['fullNote', 'shortNote', 'bibliography']
+          }
+        },
+        required: ['apa', 'mla', 'harvard', 'chicago']
+      }
+    }
+  });
+  return JSON.parse(text || '{}');
+};
+
 export const magicFormatCitation = async (input: string): Promise<MultiStyleCitation> => {
   const text = await callBackend({
-    model: 'gemini-2.5-flash',
     parts: [{ text: `Extrahiere bibliographische Informationen aus diesem Textfragment und erstelle Zitationen in verschiedenen Stilen: "${input}"` }],
     config: {
       thinkingConfig: { thinkingBudget: 0 },
@@ -603,7 +735,7 @@ export const analyzeLearningProgress = async (
     : '';
 
   const text = await callBackend({
-    model: 'gemini-2.5-flash',
+    complexity: 'heavy',
     parts: [{ text: `Analysiere den Lernfortschritt eines Studenten auf Deutsch.\n\nThemen-Konfidenz: ${metricsText}${wrongText}\n\nIdentifiziere konkrete Fehlermuster aus den echten Fragen (z.B. "Begriffsverwechslungen", "Konzeptuelle Lücken"), gib gezielte Lernempfehlungen und eine psychologische Gesamteinschätzung.` }],
     config: {
       thinkingConfig: { thinkingBudget: 0 },
@@ -670,7 +802,7 @@ Strukturiere in 3 Stufen: Grundlagen, Vertiefung und Kontext. Antworte auf Deuts
   }
 
   return callBackend({
-    model: 'gemini-2.5-flash',
+    complexity: 'heavy',
     parts,
     config: { temperature: 0.4, thinkingConfig: { thinkingBudget: 0 } },
   });
@@ -687,11 +819,13 @@ export const generateFullExam = async (content: GenerationSource, style?: Genera
   const count      = options?.count || 10;
   const difficulty = options?.difficulty || 'mittel';
 
-  const mcCount      = Math.max(1, Math.round(count * 0.30));
-  const matchCount   = Math.max(1, Math.round(count * 0.20));
-  const tfCount      = Math.max(1, Math.round(count * 0.20));
+  const mcCount      = Math.max(1, Math.round(count * 0.25));
+  const matchCount   = Math.max(1, Math.round(count * 0.15));
+  const tfCount      = Math.max(1, Math.round(count * 0.15));
   const fillCount    = Math.max(0, Math.round(count * 0.10));
-  const openCount    = Math.max(1, count - mcCount - matchCount - tfCount - fillCount);
+  const rankCount    = Math.max(0, Math.round(count * 0.10));
+  const numCount     = Math.max(0, Math.round(count * 0.05));
+  const openCount    = Math.max(1, count - mcCount - matchCount - tfCount - fillCount - rankCount - numCount);
 
   const seed = Math.random().toString(36).slice(2, 8);
 
@@ -699,20 +833,22 @@ export const generateFullExam = async (content: GenerationSource, style?: Genera
 Zufalls-Seed: ${seed}
 
 FRAGETYPEN-VERTEILUNG (zwingend einhalten, Summe = ${count}):
-- ${mcCount} MC / Szenario-MC (type "mc"): Entweder klassische Faktenabfrage ODER Fallbeispiel im Fragetext (Situation beschreiben, dann Frage). options[]: genau 4 Antworten. correctIndices[]: Indizes der richtigen Antworten (1-3 korrekte). solution: kurze Begründung. Punkte: 2-4.
-- ${matchCount} Zuordnung (type "matching"): matchLeft[] + matchRight[] je 4 Einträge (Paare). matchCorrect[]: Für jedes matchLeft[i] der Index in matchRight (0-3). Beispiel Psychologie: Konzepte ↔ Definitionen, Forscher ↔ Theorien. options[]: leer. solution: korrekte Zuordnungen als Text. Punkte: 4-6.
-- ${tfCount} Wahr/Falsch (type "truefalse"): tfCorrect: true oder false. tfReasonOptions[]: genau 3 Antwortoptionen warum die Aussage wahr/falsch ist. tfCorrectReasonIndex: Index (0-2) der richtigen Begründung. options[]: leer. solution: Erklärung. Punkte: 2-3.
-- ${fillCount} Lückentext (type "fillblank"): blankText: Satz/Formel mit [LÜCKE] als Platzhalter (max. 4 Lücken). blanks[]: korrekte Füllwörter in gleicher Reihenfolge. options[]: leer. solution: kompletter Text. Punkte: 3-5.
+- ${mcCount} MC (type "mc"): Klassische Faktenabfrage ODER — NUR wenn das Material Fälle/Kasuistiken/Szenarien enthält — Fallbeispiel im Feld scenarioText (2-4 Sätze), danach Frage. options[]: genau 4 Antworten. correctIndices[]: Indizes der richtigen (1-3 korrekte). solution: kurze Begründung. Punkte: 2-4.
+- ${matchCount} Zuordnung (type "matching"): matchLeft[] + matchRight[] je 4 Einträge (Paare). matchCorrect[]: für jedes matchLeft[i] der Index in matchRight (0-3). options[]: leer. solution: korrekte Zuordnungen als Text. Punkte: 4-6.
+- ${tfCount} Wahr/Falsch (type "truefalse"): tfCorrect: true oder false. tfReasonOptions[]: genau 3 Begründungsoptionen. tfCorrectReasonIndex: Index (0-2) der richtigen. options[]: leer. solution: Erklärung. Punkte: 2-3.
+- ${fillCount} Lückentext (type "fillblank"): blankText: Satz mit [LÜCKE] als Platzhalter (max. 4 Lücken). blanks[]: korrekte Füllwörter in gleicher Reihenfolge. options[]: leer. solution: kompletter Text. Punkte: 3-5.
+- ${rankCount} Sortierung (type "ranking"): rankingItems[]: 4-5 Konzepte/Schritte/Phasen in KORREKTER Reihenfolge. options[]: leer. solution: Begründung der Reihenfolge. Punkte: 3-5. NUR wenn das Material Prozesse, Phasen oder geordnete Abläufe enthält.
+- ${numCount} Numerisch (type "numeric"): numericAnswer: korrekte Zahl. numericTolerance: akzeptabler Spielraum. options[]: leer. solution: Erklärung. Punkte: 2-3. NUR wenn das Material konkrete Zahlen/Formeln/Statistiken enthält. Wenn nicht: als "open" ersetzen.
 - ${openCount} Freitext/Kurzantwort (type "open"): Transfer oder 2-3-Satz-Erklärung unter Zeitdruck. options[]: leer. solution: Musterantwort mit Kernbegriffen. Punkte: 5-10.
 
 ALLGEMEINE REGELN:
 - Jede Aufgabe deckt einen ANDEREN Aspekt des Materials ab
 - id: fortlaufend "q1", "q2", ...
 - Alle Arrays die nicht für den Typ relevant sind: als leeres Array [] angeben
-- Nicht relevante Felder (z.B. tfCorrect bei MC): weglassen oder 0/false als Default` });
+- Nicht relevante Felder weglassen oder mit 0/false/null als Default` });
 
   const text = await callBackend({
-    model: 'gemini-2.5-flash',
+    complexity: 'heavy',
     parts,
     config: {
       temperature: 1.0,
@@ -728,6 +864,7 @@ ALLGEMEINE REGELN:
             type:                 { type: Type.STRING },
             options:              { type: Type.ARRAY, items: { type: Type.STRING } },
             correctIndices:       { type: Type.ARRAY, items: { type: Type.NUMBER } },
+            scenarioText:         { type: Type.STRING },
             tfCorrect:            { type: Type.BOOLEAN },
             tfReasonOptions:      { type: Type.ARRAY, items: { type: Type.STRING } },
             tfCorrectReasonIndex: { type: Type.NUMBER },
@@ -736,6 +873,9 @@ ALLGEMEINE REGELN:
             matchCorrect:         { type: Type.ARRAY, items: { type: Type.NUMBER } },
             blankText:            { type: Type.STRING },
             blanks:               { type: Type.ARRAY, items: { type: Type.STRING } },
+            rankingItems:         { type: Type.ARRAY, items: { type: Type.STRING } },
+            numericAnswer:        { type: Type.NUMBER },
+            numericTolerance:     { type: Type.NUMBER },
             solution:             { type: Type.STRING },
             points:               { type: Type.NUMBER },
           },
@@ -750,7 +890,7 @@ ALLGEMEINE REGELN:
 // Nur für type="open" — alle anderen werden clientseitig ausgewertet
 export const evaluateExamAnswers = async (questions: ExamQuestion[]): Promise<ExamQuestion[]> => {
   const text = await callBackend({
-    model: 'gemini-2.5-flash',
+    complexity: 'heavy',
     parts: [{ text: `Bewerte die folgenden Klausurantworten als fairer Hochschulprüfer.
 
 BEWERTUNGSREGELN — STRENGER HOCHSCHULMASSSTAB:

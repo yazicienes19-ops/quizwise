@@ -25,6 +25,8 @@ import { ActiveTab, ProcessedDocument, QuizQuestion, UserAnswer, TopicMetric, Se
 
 import { generateQuizFromDocument, searchScholar, searchWeb, generateQuizFromFlashcards, orchestrateLearningFlow } from './services/geminiService';
 import { saveQuizResult, getDocStats, getAllResults } from './services/quizHistoryService';
+import { getSavedQuizzes, saveQuizToStorage, deleteSavedQuiz, SavedQuiz } from './services/savedQuizzesService';
+import { getSavedExams, deleteSavedExam, SavedExam } from './services/savedExamsService';
 import { saveRecallResult } from './services/recallHistoryService';
 import { saveExamResult } from './services/examHistoryService';
 import { saveMeta, getMeta } from './services/libraryService';
@@ -66,6 +68,61 @@ const App: React.FC = () => {
   const [pendingActionDoc, setPendingActionDoc] = useState<ProcessedDocument | null>(null);
   const [pendingTopic, setPendingTopic] = useState<string | null>(null);
   const [activeQuizMeta, setActiveQuizMeta] = useState<{ docId: string; docName: string } | null>(null);
+  const [quizInitialAnswers, setQuizInitialAnswers] = useState<UserAnswer[] | undefined>(undefined);
+  const [savedQuizzes, setSavedQuizzes] = useState<SavedQuiz[]>(() => getSavedQuizzes());
+  const [savedExams, setSavedExams]     = useState<SavedExam[]>(() => getSavedExams());
+  const [examInitialQuestions, setExamInitialQuestions] = useState<SavedExam | null>(null);
+
+  const PROGRESS_KEY = 'quizwise_quiz_progress';
+
+  const saveQuizProgress = (qs: QuizQuestion[], ans: UserAnswer[], meta: { docId: string; docName: string } | null) => {
+    localStorage.setItem(PROGRESS_KEY, JSON.stringify({ questions: qs, answers: ans, meta, timestamp: Date.now() }));
+  };
+
+  const clearQuizProgress = () => localStorage.removeItem(PROGRESS_KEY);
+
+  const handleSaveQuiz = (name: string) => {
+    saveQuizToStorage({ name, docName: activeQuizMeta?.docName || 'Quiz', questions });
+    setSavedQuizzes(getSavedQuizzes());
+    toast.success('Quiz gespeichert!');
+  };
+
+  const handleLoadSavedQuiz = (quiz: SavedQuiz) => {
+    clearQuizProgress();
+    setAnswers([]);
+    setQuestions(quiz.questions);
+    setActiveQuizMeta({ docId: `saved-${quiz.id}`, docName: quiz.name });
+    setPendingActionDoc(null);
+    setQuizInitialAnswers(quiz.resumeAnswers?.length ? quiz.resumeAnswers : undefined);
+    setActiveTab(ActiveTab.QUIZ);
+  };
+
+  const handleDeleteSavedQuiz = (id: string) => {
+    deleteSavedQuiz(id);
+    setSavedQuizzes(getSavedQuizzes());
+  };
+
+  const handleLoadSavedExam = (exam: SavedExam) => {
+    setExamInitialQuestions(exam);
+    setActiveTab(ActiveTab.EXAM);
+  };
+
+  const handleDeleteSavedExam = (id: string) => {
+    deleteSavedExam(id);
+    setSavedExams(getSavedExams());
+  };
+
+  const loadQuizProgress = () => {
+    try {
+      const raw = localStorage.getItem(PROGRESS_KEY);
+      if (!raw) return null;
+      const p = JSON.parse(raw);
+      const age = Date.now() - (p.timestamp ?? 0);
+      if (age > 7 * 24 * 60 * 60 * 1000) { clearQuizProgress(); return null; } // älter als 7 Tage → verwerfen
+      if (!p.questions?.length || p.answers?.length >= p.questions?.length) { clearQuizProgress(); return null; }
+      return p as { questions: QuizQuestion[]; answers: UserAnswer[]; meta: { docId: string; docName: string } | null };
+    } catch { return null; }
+  };
 
   const toggleTheme = () => {
     const next = !isDark;
@@ -129,6 +186,17 @@ const App: React.FC = () => {
     if (savedDecks) setDecks(JSON.parse(savedDecks));
     const savedExams = localStorage.getItem('quizwise_exam_terms');
     if (savedExams) setExamTerms(JSON.parse(savedExams));
+
+    // Unterbrochenes Quiz wiederherstellen
+    const progress = loadQuizProgress();
+    if (progress && progress.questions.length > 0) {
+      setQuestions(progress.questions);
+      if (progress.answers.length > 0) setQuizInitialAnswers(progress.answers);
+      if (progress.meta) setActiveQuizMeta(progress.meta);
+      setActiveTab(ActiveTab.QUIZ);
+      setTimeout(() => toast.info(`Quiz fortgesetzt – Frage ${progress.answers.length + 1} von ${progress.questions.length}`), 500);
+    }
+
     return () => {
       window.removeEventListener('online', handleStatus);
       window.removeEventListener('offline', handleStatus);
@@ -336,6 +404,8 @@ const App: React.FC = () => {
   };
 
   const onQuizComplete = async (ans: UserAnswer[]) => {
+    clearQuizProgress();
+    setQuizInitialAnswers(undefined);
     setAnswers(ans);
     localStorage.removeItem('quizwise_current_quiz');
     const correct = ans.filter(a => a.isCorrect).length;
@@ -386,9 +456,12 @@ const App: React.FC = () => {
       const source = getDocumentSource(doc);
       const excludeTopics = getUsedTopics(doc.id);
       const quiz = await generateQuizFromDocument(source, quizType, { ...options, excludeTopics });
+      const meta = { docId: doc.id, docName: doc.name.replace(/\.[^/.]+$/, '') };
       setQuestions(quiz);
+      setQuizInitialAnswers(undefined);
       saveUsedTopics(doc.id, quiz);
-      setActiveQuizMeta({ docId: doc.id, docName: doc.name.replace(/\.[^/.]+$/, '') });
+      setActiveQuizMeta(meta);
+      saveQuizProgress(quiz, [], meta);
       localStorage.setItem('quizwise_current_quiz', JSON.stringify(quiz));
     } catch (e: any) {
       const msg = e?.message?.includes('nicht verfügbar')
@@ -421,8 +494,11 @@ const App: React.FC = () => {
         questionType: config.questionType,
         excludeTopics,
       });
+      const meta = { docId: pendingActionDoc.id, docName: pendingActionDoc.name.replace(/\.[^/.]+$/, '') };
       setQuestions(quiz);
+      setQuizInitialAnswers(undefined);
       saveUsedTopics(pendingActionDoc.id, quiz);
+      saveQuizProgress(quiz, [], meta);
       localStorage.setItem('quizwise_current_quiz', JSON.stringify(quiz));
     } catch (e) { handleApiError(e); } finally { setIsLoading(false); }
   };
@@ -552,8 +628,17 @@ const App: React.FC = () => {
             questions={questions}
             sourceName={activeQuizMeta?.docName}
             examMode={false}
+            initialAnswers={quizInitialAnswers}
+            onProgress={(ans) => saveQuizProgress(questions, ans, activeQuizMeta)}
             onComplete={onQuizComplete}
+            onSave={(name, currentAnswers) => {
+              saveQuizToStorage({ name, docName: activeQuizMeta?.docName || 'Quiz', questions, resumeAnswers: currentAnswers });
+              setSavedQuizzes(getSavedQuizzes());
+              toast.success('Quiz gespeichert!');
+            }}
             onCancel={() => {
+              clearQuizProgress();
+              setQuizInitialAnswers(undefined);
               setQuestions([]);
               setAnswers([]);
               setPendingActionDoc(null);
@@ -565,13 +650,48 @@ const App: React.FC = () => {
             answers={answers}
             questions={questions}
             docName={activeQuizMeta?.docName}
-            onRestart={() => { setQuestions([]); setAnswers([]); }}
-            onRetryWrong={(wrongQs) => { setQuestions(wrongQs); setAnswers([]); }}
+            onRestart={() => { clearQuizProgress(); setQuizInitialAnswers(undefined); setQuestions([]); setAnswers([]); }}
+            onRetryWrong={(wrongQs) => { clearQuizProgress(); setQuizInitialAnswers(undefined); setQuestions(wrongQs); setAnswers([]); }}
             onGoToSource={() => { setPendingActionDoc(null); setQuestions([]); setAnswers([]); setActiveTab(ActiveTab.LIBRARY); }}
             onCreateFlashcards={pendingActionDoc ? handleCreateFlashcardsFromMistakes : undefined}
+            onSaveQuiz={handleSaveQuiz}
           />;
         }
-        return <FileUploader
+        return (
+          <div>
+            {savedQuizzes.length > 0 && (
+              <div className="max-w-3xl mx-auto px-4 pt-6 pb-2 space-y-3">
+                <p className="text-[9px] font-black uppercase tracking-[0.3em] text-slate-400">Gespeicherte Quizze</p>
+                <div className="space-y-2">
+                  {savedQuizzes.map(sq => (
+                    <div key={sq.id} className="flex items-center gap-3 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-[20px] px-5 py-4 shadow-sm">
+                      <div className="flex-1 min-w-0">
+                        <p className="text-sm font-black dark:text-white truncate">{sq.name}</p>
+                        <p className="text-[9px] text-slate-400 font-medium mt-0.5">
+                          {sq.questions.length} Fragen · {new Date(sq.savedAt).toLocaleDateString('de-DE', { day: '2-digit', month: 'short', year: '2-digit' })}
+                        </p>
+                      </div>
+                      <button
+                        onClick={() => handleLoadSavedQuiz(sq)}
+                        className="flex items-center gap-1.5 px-4 py-2 bg-indigo-600 text-white rounded-[14px] text-[10px] font-black uppercase tracking-widest hover:scale-105 active:scale-95 transition-all shrink-0"
+                      >
+                        <svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round"><polygon points="5 3 19 12 5 21 5 3"/></svg>
+                        Starten
+                      </button>
+                      <button
+                        onClick={() => handleDeleteSavedQuiz(sq.id)}
+                        className="w-8 h-8 rounded-[12px] flex items-center justify-center text-slate-400 hover:text-rose-500 hover:bg-rose-50 dark:hover:bg-rose-950/20 transition-all shrink-0"
+                        title="Löschen"
+                      >
+                        <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14H6L5 6"/><path d="M10 11v6"/><path d="M14 11v6"/><path d="M9 6V4h6v2"/></svg>
+                      </button>
+                    </div>
+                  ))}
+                </div>
+                <div className="h-px bg-slate-100 dark:bg-slate-800 my-2" />
+              </div>
+            )}
+            <FileUploader
           documents={documents}
           collections={collections}
           onDocumentSelect={(doc, type, opts) => handleStartQuizFromDoc(doc, type, opts)}
@@ -585,11 +705,24 @@ const App: React.FC = () => {
               localStorage.setItem('quizwise_current_quiz', JSON.stringify(q));
             } catch (e) { handleApiError(e); } finally { setIsLoading(false); }
           }}
-          onDeckSelect={async (deck) => { setIsLoading(true); try { const q = await generateQuizFromFlashcards(deck); setQuestions(q); } catch (e) { handleApiError(e); } finally { setIsLoading(false); } }}
+          onDeckSelect={async (deck) => {
+            setIsLoading(true);
+            try {
+              const q = await generateQuizFromFlashcards(deck);
+              const meta = { docId: deck.id, docName: deck.title };
+              setQuestions(q);
+              setQuizInitialAnswers(undefined);
+              setActiveQuizMeta(meta);
+              saveQuizProgress(q, [], meta);
+            } catch (e) { handleApiError(e); }
+            finally { setIsLoading(false); }
+          }}
           onSaveToLibrary={file => handleFileUpload(file)}
           availableDecks={decks}
           isLoading={isLoading}
-        />;
+            />
+          </div>
+        );
       case ActiveTab.RECALL:
         return <ActiveRecall
           key={pendingActionDoc ? `recall-${pendingActionDoc.id}` : 'recall'}
@@ -603,19 +736,57 @@ const App: React.FC = () => {
           }}
           initialDoc={pendingActionDoc ?? undefined}
         />;
-      case ActiveTab.EXAM: return <ExamSystem
-          key={pendingActionDoc ? `exam-${pendingActionDoc.id}` : 'exam'}
-          documents={documents}
-          collections={collections}
-          getDocumentSource={getDocumentSource}
-          onSaveToLibrary={file => handleFileUpload(file)}
-          initialDoc={pendingActionDoc ?? undefined}
-          onComplete={({ score, docName, passed, totalPoints, achievedPoints }) => {
-            saveExamResult({ docName, timestamp: Date.now(), score, passed, totalPoints, achievedPoints, weakTopics: [] });
-            updateMetricsAfterSession(score, docName, 'exam');
-          }}
-          onNavigate={setActiveTab}
-        />;
+      case ActiveTab.EXAM: return (
+        <div>
+          {savedExams.length > 0 && !examInitialQuestions && !pendingActionDoc && (
+            <div className="max-w-3xl mx-auto px-4 pt-6 pb-2 space-y-3">
+              <p className="text-[9px] font-black uppercase tracking-[0.3em] text-slate-400">Gespeicherte Klausuren</p>
+              <div className="space-y-2">
+                {savedExams.map(se => (
+                  <div key={se.id} className="flex items-center gap-3 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-[20px] px-5 py-4 shadow-sm">
+                    <div className="flex-1 min-w-0">
+                      <p className="text-sm font-black dark:text-white truncate">{se.name}</p>
+                      <p className="text-[9px] text-slate-400 font-medium mt-0.5">
+                        {se.questions.length} Fragen · {new Date(se.savedAt).toLocaleDateString('de-DE', { day: '2-digit', month: 'short', year: '2-digit' })}
+                      </p>
+                    </div>
+                    <button
+                      onClick={() => handleLoadSavedExam(se)}
+                      className="flex items-center gap-1.5 px-4 py-2 bg-indigo-600 text-white rounded-[14px] text-[10px] font-black uppercase tracking-widest hover:scale-105 active:scale-95 transition-all shrink-0"
+                    >
+                      <svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round"><polygon points="5 3 19 12 5 21 5 3"/></svg>
+                      Starten
+                    </button>
+                    <button
+                      onClick={() => handleDeleteSavedExam(se.id)}
+                      className="w-8 h-8 rounded-[12px] flex items-center justify-center text-slate-400 hover:text-rose-500 hover:bg-rose-50 dark:hover:bg-rose-950/20 transition-all shrink-0"
+                    >
+                      <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14H6L5 6"/><path d="M10 11v6"/><path d="M14 11v6"/><path d="M9 6V4h6v2"/></svg>
+                    </button>
+                  </div>
+                ))}
+              </div>
+              <div className="h-px bg-slate-100 dark:bg-slate-800 my-2" />
+            </div>
+          )}
+          <ExamSystem
+            key={examInitialQuestions ? `exam-saved-${examInitialQuestions.id}` : pendingActionDoc ? `exam-${pendingActionDoc.id}` : 'exam'}
+            documents={documents}
+            collections={collections}
+            getDocumentSource={getDocumentSource}
+            onSaveToLibrary={file => handleFileUpload(file)}
+            initialDoc={pendingActionDoc ?? undefined}
+            initialQuestions={examInitialQuestions?.questions}
+            onComplete={({ score, docName, passed, totalPoints, achievedPoints }) => {
+              saveExamResult({ docName, timestamp: Date.now(), score, passed, totalPoints, achievedPoints, weakTopics: [] });
+              updateMetricsAfterSession(score, docName, 'exam');
+              setExamInitialQuestions(null);
+              setSavedExams(getSavedExams());
+            }}
+            onNavigate={setActiveTab}
+          />
+        </div>
+      );
       case ActiveTab.RADAR: return <GapRadar
           metrics={metrics}
           onNavigate={setActiveTab}
@@ -643,7 +814,7 @@ const App: React.FC = () => {
           initialDoc={pendingActionDoc ?? undefined}
         />;
       case ActiveTab.PAPER: return <TermPaperSystem availableDocuments={documents} onUploadNew={handleFileUpload} initialSources={savedSources} getDocumentSource={getDocumentSource} />;
-      case ActiveTab.SEARCH: return <ScholarSearch results={searchResults} onSearch={async (q) => { setIsSearching(true); const { results } = await searchScholar(q); setSearchResults(results); setIsSearching(false); }} onSearchWeb={async (q) => { setIsSearching(true); const { results } = await searchWeb(q); setSearchResults(results); setIsSearching(false); }} isSearching={isSearching} onGenerateQuiz={(res) => handleStartQuizFromDoc({ id: `search-${Date.now()}`, name: res.title, content: res.abstract || res.snippet, type: 'text', uploadDate: Date.now() })} onSaveToPaper={(s) => setSavedSources([...savedSources, s])} savedResults={savedSources} />;
+      case ActiveTab.SEARCH: return <ScholarSearch results={searchResults} onSearch={async (q) => { setIsSearching(true); const { results } = await searchScholar(q); setSearchResults(results); setIsSearching(false); }} onSearchWeb={async (q) => { setIsSearching(true); const { results } = await searchWeb(q); setSearchResults(results); setIsSearching(false); }} isSearching={isSearching} onGenerateQuiz={(res) => handleStartQuizFromDoc({ id: `search-${Date.now()}`, name: res.title, content: res.abstract || res.snippet, type: 'text', uploadDate: Date.now() })} onSaveToPaper={(s) => { if (!savedSources.some(x => x.url === s.url)) setSavedSources(prev => [...prev, s]); }} onGoToPaper={() => setActiveTab(ActiveTab.PAPER)} savedResults={savedSources} />;
       case ActiveTab.PLANNER: return <StudyPlanner metrics={metrics} decks={decks} examTerms={examTerms} onUpdateExams={saveExamTerms} />;
       case ActiveTab.CARDS: return <FlashcardSystem
           key={pendingActionDoc ? `cards-${pendingActionDoc.id}` : 'cards'}
@@ -652,7 +823,20 @@ const App: React.FC = () => {
           onDeleteDoc={deleteDoc}
           onSaveToLibrary={file => handleFileUpload(file)}
           getDocumentSource={getDocumentSource}
-          onGenerateQuizFromDeck={async (deck) => { setIsLoading(true); const q = await generateQuizFromFlashcards(deck); setQuestions(q); setIsLoading(false); setActiveTab(ActiveTab.QUIZ); }}
+          userId={user?.id}
+          onGenerateQuizFromDeck={async (deck) => {
+            setIsLoading(true);
+            try {
+              const q = await generateQuizFromFlashcards(deck);
+              const meta = { docId: deck.id, docName: deck.title };
+              setQuestions(q);
+              setQuizInitialAnswers(undefined);
+              setActiveQuizMeta(meta);
+              saveQuizProgress(q, [], meta);
+              setActiveTab(ActiveTab.QUIZ);
+            } catch (e) { handleApiError(e); }
+            finally { setIsLoading(false); }
+          }}
           initialDoc={pendingActionDoc ?? undefined}
         />;
       default: return <Dashboard onTabChange={setActiveTab} flowResult={flowResult} onAcceptFlow={saveFlowResult} />;

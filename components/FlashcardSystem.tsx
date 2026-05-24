@@ -7,6 +7,7 @@ import { generateFlashcardsFromDocument } from '../services/geminiService';
 import { toast } from '../services/toast';
 import { FlashcardPlayer } from './FlashcardPlayer';
 import { SourceSelector } from './SourceSelector';
+import { loadDecksFromSupabase, saveDeckToSupabase, deleteDeckFromSupabase, uploadAllDecksToSupabase } from '../services/flashcardService';
 
 interface FlashcardSystemProps {
   availableDocuments: ProcessedDocument[];
@@ -17,6 +18,7 @@ interface FlashcardSystemProps {
   getDocumentSource?: (doc: ProcessedDocument) => GenerationSource;
   isQuizLoading?: boolean;
   initialDoc?: ProcessedDocument;
+  userId?: string;
 }
 
 export const FlashcardSystem: React.FC<FlashcardSystemProps> = ({
@@ -28,6 +30,7 @@ export const FlashcardSystem: React.FC<FlashcardSystemProps> = ({
   getDocumentSource,
   isQuizLoading = false,
   initialDoc,
+  userId,
 }) => {
   const [decks, setDecks] = useState<FlashcardDeck[]>([]);
   const [activeDeckId, setActiveDeckId] = useState<string | null>(null);
@@ -47,11 +50,37 @@ export const FlashcardSystem: React.FC<FlashcardSystemProps> = ({
   const importInputRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
-    const saved = localStorage.getItem('flashcard_decks');
-    if (saved) {
-      try { setDecks(JSON.parse(saved)); } catch (e) { console.error(e); }
-    }
-  }, []);
+    const loadDecks = async () => {
+      if (userId) {
+        try {
+          const cloudDecks = await loadDecksFromSupabase(userId);
+          if (cloudDecks.length > 0) {
+            setDecks(cloudDecks);
+            localStorage.setItem('flashcard_decks', JSON.stringify(cloudDecks));
+            return;
+          }
+          // Keine Cloud-Decks: localStorage-Daten hochladen (Migration)
+          const local = localStorage.getItem('flashcard_decks');
+          if (local) {
+            const localDecks: FlashcardDeck[] = JSON.parse(local);
+            if (localDecks.length > 0) {
+              await uploadAllDecksToSupabase(localDecks, userId);
+              setDecks(localDecks);
+              return;
+            }
+          }
+        } catch {
+          // Offline oder Fehler → localStorage-Fallback
+          const saved = localStorage.getItem('flashcard_decks');
+          if (saved) try { setDecks(JSON.parse(saved)); } catch {}
+        }
+      } else {
+        const saved = localStorage.getItem('flashcard_decks');
+        if (saved) try { setDecks(JSON.parse(saved)); } catch {}
+      }
+    };
+    loadDecks();
+  }, [userId]);
 
   // Auto-generate cards when navigated from Library source detail
   useEffect(() => {
@@ -62,9 +91,12 @@ export const FlashcardSystem: React.FC<FlashcardSystemProps> = ({
     } catch (_) {}
   }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
-  const saveDecks = (newDecks: FlashcardDeck[]) => {
+  const saveDecks = (newDecks: FlashcardDeck[], changedDeck?: FlashcardDeck) => {
     setDecks(newDecks);
     localStorage.setItem('flashcard_decks', JSON.stringify(newDecks));
+    if (userId && changedDeck) {
+      saveDeckToSupabase(changedDeck, userId).catch(() => {});
+    }
   };
 
   const handleCreateEmptyDeck = (e: React.FormEvent) => {
@@ -77,10 +109,10 @@ export const FlashcardSystem: React.FC<FlashcardSystemProps> = ({
       cards: []
     };
     
-    saveDecks([...decks, newDeck]);
+    saveDecks([...decks, newDeck], newDeck);
     setManualDeckTitle('');
     setShowManualDeckDialog(false);
-    setEditingDeckId(newDeck.id); // Direkt in den Editor springen
+    setEditingDeckId(newDeck.id);
   };
 
   const handleAddManualCard = (e: React.FormEvent) => {
@@ -96,20 +128,21 @@ export const FlashcardSystem: React.FC<FlashcardSystemProps> = ({
       lastInterval: 0
     };
 
-    const updatedDecks = decks.map(d => 
+    const updatedDecks = decks.map(d =>
       d.id === editingDeckId ? { ...d, cards: [newCard, ...d.cards] } : d
     );
-
-    saveDecks(updatedDecks);
+    const changed = updatedDecks.find(d => d.id === editingDeckId);
+    saveDecks(updatedDecks, changed);
     setNewCardFront('');
     setNewCardBack('');
   };
 
   const handleDeleteCard = (deckId: string, cardId: string) => {
-    const updated = decks.map(d => 
+    const updated = decks.map(d =>
       d.id === deckId ? { ...d, cards: d.cards.filter(c => c.id !== cardId) } : d
     );
-    saveDecks(updated);
+    const changed = updated.find(d => d.id === deckId);
+    saveDecks(updated, changed);
   };
 
   const handleGenerateFromSource = async (source: GenerationSource, name: string, docId?: string) => {
@@ -129,7 +162,7 @@ export const FlashcardSystem: React.FC<FlashcardSystemProps> = ({
           lastInterval: 0
         }))
       };
-      saveDecks([...decks, newDeck]);
+      saveDecks([...decks, newDeck], newDeck);
     } catch (e) {
       console.error(e);
       toast.error('Fehler bei der Generierung.');
@@ -201,7 +234,8 @@ export const FlashcardSystem: React.FC<FlashcardSystemProps> = ({
         })
       };
     });
-    saveDecks(newDecks);
+    const changedDeck = newDecks.find(d => d.id === activeDeckId);
+    saveDecks(newDecks, changedDeck);
   };
 
   const handleExportDeck = (deck: FlashcardDeck) => {
@@ -278,7 +312,10 @@ export const FlashcardSystem: React.FC<FlashcardSystemProps> = ({
           return;
         }
 
-        saveDecks([...decks, ...imported]);
+        const merged = [...decks, ...imported];
+        setDecks(merged);
+        localStorage.setItem('flashcard_decks', JSON.stringify(merged));
+        if (userId) uploadAllDecksToSupabase(imported, userId).catch(() => {});
         toast.success(`${imported.length} Deck${imported.length !== 1 ? 's' : ''} mit ${imported.reduce((sum, d) => sum + d.cards.length, 0)} Karten importiert.`);
       } catch {
         toast.error('Fehler beim Lesen der Datei. Ist es eine gültige JSON-Datei?');
@@ -584,8 +621,13 @@ export const FlashcardSystem: React.FC<FlashcardSystemProps> = ({
                         >
                           {isQuizLoading ? '...' : <span>Quiz <EmojiImage emoji="🎯" size={12} /></span>}
                         </button>
-                        <button 
-                          onClick={() => saveDecks(decks.filter(d => d.id !== deck.id))}
+                        <button
+                          onClick={() => {
+                            const filtered = decks.filter(d => d.id !== deck.id);
+                            setDecks(filtered);
+                            localStorage.setItem('flashcard_decks', JSON.stringify(filtered));
+                            if (userId) deleteDeckFromSupabase(deck.id, userId).catch(() => {});
+                          }}
                           className="p-3 text-slate-200 hover:text-rose-500 transition-all opacity-100 lg:opacity-0 lg:group-hover:opacity-100"
                         >
                           <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round"><polyline points="3 6 5 6 21 6"></polyline><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path></svg>

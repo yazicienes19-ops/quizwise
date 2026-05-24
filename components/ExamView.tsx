@@ -12,6 +12,10 @@ interface ExamViewProps {
   examDuration?: number;
   onNewExam?: () => void;
   onNavigate?: (tab: ActiveTab) => void;
+  onSaveExam?: (name: string) => void;
+  initialAnswers?: Record<string, any>;
+  onAnswersChange?: (answers: Record<string, any>) => void;
+  onSaveProgress?: (name: string) => void;
 }
 
 const formatTime = (s: number) =>
@@ -22,15 +26,23 @@ const TYPE_LABELS: Record<string, string> = {
   truefalse: 'Wahr / Falsch',
   matching: 'Zuordnung',
   fillblank: 'Lückentext',
+  ranking: 'Sortierung',
+  numeric: 'Numerisch',
   open: 'Freitext',
 };
 
 export const ExamView: React.FC<ExamViewProps> = ({
   questions, mode, onSave, onSubmit, isEvaluating,
-  examDuration, onNewExam, onNavigate,
+  examDuration, onNewExam, onNavigate, onSaveExam,
+  initialAnswers, onAnswersChange, onSaveProgress,
 }) => {
-  const [answers, setAnswers]           = useState<Record<string, any>>({});
+  const [answers, setAnswers]           = useState<Record<string, any>>(initialAnswers ?? {});
   const [editingId, setEditingId]       = useState<string | null>(null);
+  const [showSaveInput, setShowSaveInput] = useState(false);
+  const [saveName, setSaveName]         = useState('Meine Klausur');
+  const [examSaved, setExamSaved]       = useState(false);
+  const [showProgressInput, setShowProgressInput] = useState(false);
+  const [progressName, setProgressName] = useState('Meine Klausur');
   const [tempQuestion, setTempQuestion] = useState<ExamQuestion | null>(null);
   const [timeLeft, setTimeLeft]         = useState<number | null>(null);
   const [timerExpired, setTimerExpired] = useState(false);
@@ -65,7 +77,11 @@ export const ExamView: React.FC<ExamViewProps> = ({
   }, [timerExpired]);
 
   const setAnswer = (id: string, val: any) =>
-    setAnswers(prev => ({ ...prev, [id]: val }));
+    setAnswers(prev => {
+      const next = { ...prev, [id]: val };
+      onAnswersChange?.(next);
+      return next;
+    });
 
   const handleSubmit = () => {
     const finalQs = questions.map(q => ({ ...q, userAnswer: answers[q.id] }));
@@ -104,7 +120,15 @@ export const ExamView: React.FC<ExamViewProps> = ({
 
     /* ── MC / Szenario-MC ── */
     if (q.type === 'mc' && q.options) {
+      const scenarioBlock = q.scenarioText ? (
+        <div className="pl-4 lg:pl-10 mb-4 p-5 bg-amber-50 dark:bg-amber-900/20 rounded-[20px] border border-amber-200 dark:border-amber-800">
+          <p className="text-[8px] font-black uppercase tracking-widest text-amber-600 dark:text-amber-400 mb-2">Fallbeispiel</p>
+          <p className="text-sm text-slate-700 dark:text-slate-300 leading-relaxed">{q.scenarioText}</p>
+        </div>
+      ) : null;
       return (
+        <div>
+          {scenarioBlock}
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 pl-4 lg:pl-10">
           {q.options.map((opt, oi) => {
             const selected  = ((ans as number[]) || []).includes(oi);
@@ -133,6 +157,84 @@ export const ExamView: React.FC<ExamViewProps> = ({
               </button>
             );
           })}
+        </div>
+        </div>
+      );
+    }
+
+    /* ── Ranking / Sortierung ── */
+    if (q.type === 'ranking' && q.rankingItems) {
+      const userOrder: string[] = (ans as string[]) || [...q.rankingItems].sort(() => Math.random() - 0.5);
+      if (mode === 'solve') {
+        return (
+          <div className="pl-4 lg:pl-10 space-y-2">
+            <p className="text-[9px] font-black uppercase tracking-widest text-slate-400 mb-3">Bringe die Elemente in die richtige Reihenfolge</p>
+            {userOrder.map((item, i) => (
+              <div key={item} className="flex items-center gap-3">
+                <span className="w-7 h-7 rounded-lg bg-indigo-100 dark:bg-indigo-900/30 text-indigo-600 text-[11px] font-black flex items-center justify-center shrink-0">{i + 1}</span>
+                <div className="flex-1 p-3 rounded-2xl border-2 border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-sm font-medium dark:text-white">{item}</div>
+                <div className="flex flex-col gap-1">
+                  <button disabled={i === 0} onClick={() => {
+                    const next = [...userOrder];
+                    [next[i - 1], next[i]] = [next[i], next[i - 1]];
+                    setAnswer(q.id, next);
+                  }} className="w-7 h-7 rounded-lg bg-slate-100 dark:bg-slate-700 text-slate-500 text-xs flex items-center justify-center hover:bg-indigo-100 disabled:opacity-30 transition-colors">▲</button>
+                  <button disabled={i === userOrder.length - 1} onClick={() => {
+                    const next = [...userOrder];
+                    [next[i], next[i + 1]] = [next[i + 1], next[i]];
+                    setAnswer(q.id, next);
+                  }} className="w-7 h-7 rounded-lg bg-slate-100 dark:bg-slate-700 text-slate-500 text-xs flex items-center justify-center hover:bg-indigo-100 disabled:opacity-30 transition-colors">▼</button>
+                </div>
+              </div>
+            ))}
+          </div>
+        );
+      }
+      const correct = q.rankingItems;
+      const user: string[] = (q.userAnswer as string[]) || [];
+      return (
+        <div className="pl-4 lg:pl-10 space-y-2">
+          {correct.map((item, i) => {
+            const ok = user[i] === item;
+            return (
+              <div key={item} className="flex items-center gap-3">
+                <span className="w-7 h-7 rounded-lg bg-slate-100 dark:bg-slate-800 text-slate-500 text-[11px] font-black flex items-center justify-center shrink-0">{i + 1}</span>
+                <div className={`flex-1 p-3 rounded-2xl border-2 text-sm font-medium ${ok ? 'border-emerald-400 bg-emerald-50 dark:bg-emerald-950/20 text-emerald-700 dark:text-emerald-300' : 'border-rose-300 bg-rose-50 dark:bg-rose-950/20 text-rose-700 dark:text-rose-300'}`}>
+                  {user[i] || '—'}{!ok && <span className="text-emerald-600 dark:text-emerald-400 text-[11px] font-black ml-2">→ {item}</span>}
+                </div>
+              </div>
+            );
+          })}
+        </div>
+      );
+    }
+
+    /* ── Numerisch ── */
+    if (q.type === 'numeric') {
+      if (mode === 'solve') {
+        return (
+          <div className="pl-4 lg:pl-10">
+            <div className="flex items-center gap-3 max-w-xs">
+              <input
+                type="number"
+                value={(ans as string) || ''}
+                onChange={e => setAnswer(q.id, e.target.value)}
+                placeholder="Zahl eingeben..."
+                className="flex-1 p-4 bg-slate-50 dark:bg-slate-800 rounded-[20px] border-2 border-transparent focus:border-indigo-500 outline-none transition-all dark:text-white font-black text-xl text-center"
+              />
+              {q.numericTolerance ? <span className="text-[10px] text-slate-400 font-black">±{q.numericTolerance}</span> : null}
+            </div>
+          </div>
+        );
+      }
+      const user = parseFloat(q.userAnswer);
+      const correct = q.numericAnswer ?? 0;
+      const ok = !isNaN(user) && Math.abs(user - correct) <= (q.numericTolerance ?? 0);
+      return (
+        <div className="pl-4 lg:pl-10 flex items-center gap-4">
+          <span className={`text-2xl font-black ${ok ? 'text-emerald-600' : 'text-rose-600'}`}>{isNaN(user) ? '—' : user}</span>
+          {!ok && <span className="text-sm text-slate-500 dark:text-slate-400">Korrekt: <strong className="text-emerald-600">{correct}</strong>{q.numericTolerance ? ` ±${q.numericTolerance}` : ''}</span>}
+          {ok && <span className="text-sm text-emerald-600 font-black">✓ Korrekt</span>}
         </div>
       );
     }
@@ -385,6 +487,32 @@ export const ExamView: React.FC<ExamViewProps> = ({
                percentage >= 50 ? 'Bestanden. Es sind jedoch noch Lücken in der Tiefe vorhanden.' :
                'Leider hat es diesmal nicht gereicht. Nutzen Sie die KI-Fehleranalyse für die Nachbereitung.'}
             </p>
+            {onSaveExam && (
+              <div className="pt-2 border-t border-slate-200 dark:border-slate-700">
+                {examSaved ? (
+                  <p className="text-emerald-600 text-[10px] font-black uppercase tracking-widest flex items-center gap-1.5">
+                    <svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round"><polyline points="20 6 9 17 4 12"/></svg>
+                    Klausur gespeichert — offline abrufbar
+                  </p>
+                ) : showSaveInput ? (
+                  <div className="flex gap-2 mb-2">
+                    <input autoFocus value={saveName} onChange={e => setSaveName(e.target.value)}
+                      className="flex-1 px-4 py-2 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-[14px] text-sm font-medium dark:text-white outline-none focus:border-indigo-500 transition-colors"
+                      placeholder="Klausur-Name..." />
+                    <button onClick={() => { onSaveExam(saveName.trim() || 'Meine Klausur'); setExamSaved(true); setShowSaveInput(false); }}
+                      className="px-4 py-2 bg-indigo-600 text-white rounded-[14px] text-[10px] font-black uppercase tracking-widest hover:scale-105 active:scale-95 transition-all shrink-0">
+                      Speichern
+                    </button>
+                  </div>
+                ) : (
+                  <button onClick={() => setShowSaveInput(true)}
+                    className="flex items-center gap-2 px-4 py-2 bg-slate-100 dark:bg-slate-800 rounded-[14px] text-[10px] font-black uppercase tracking-widest text-slate-600 dark:text-slate-300 hover:bg-slate-200 dark:hover:bg-slate-700 transition-all mb-2">
+                    <svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+                    Klausur offline speichern ({questions.length} Fragen)
+                  </button>
+                )}
+              </div>
+            )}
             <div className="flex flex-wrap gap-2 pt-2 border-t border-slate-200 dark:border-slate-700">
               {onNewExam && (
                 <button onClick={onNewExam} className="bg-indigo-600 text-white px-5 py-2.5 rounded-[16px] font-black uppercase text-[9px] tracking-widest hover:scale-[1.02] transition-all shadow-lg">
@@ -481,11 +609,50 @@ export const ExamView: React.FC<ExamViewProps> = ({
       {/* Sticky Submit + Timer */}
       {mode === 'solve' && (
         <div className="fixed bottom-10 left-1/2 -translate-x-1/2 z-[50] flex flex-col items-center gap-3">
-          <button onClick={handleSubmit} disabled={isEvaluating}
-            className="bg-indigo-600 text-white px-16 py-6 rounded-[32px] font-black uppercase tracking-[0.3em] text-[11px] shadow-3d-deep hover:scale-110 active:scale-95 transition-all flex items-center gap-4"
-          >
-            {isEvaluating ? 'Korrektur läuft...' : <span>Klausur abgeben <EmojiImage emoji="📝" size={16} /></span>}
-          </button>
+          {/* Speichern-Panel */}
+          {showProgressInput && onSaveProgress && (
+            <div className="bg-white dark:bg-slate-900 rounded-[20px] border border-indigo-200 dark:border-indigo-800 shadow-xl p-4 w-80 animate-in slide-in-from-bottom-4 duration-300">
+              <p className="text-[9px] font-black uppercase tracking-widest text-slate-400 mb-3">Klausur speichern</p>
+              <div className="flex gap-2">
+                <input
+                  autoFocus
+                  value={progressName}
+                  onChange={e => setProgressName(e.target.value)}
+                  onKeyDown={e => {
+                    if (e.key === 'Enter') { onSaveProgress(progressName.trim() || 'Meine Klausur'); setShowProgressInput(false); }
+                    if (e.key === 'Escape') setShowProgressInput(false);
+                  }}
+                  placeholder="Klausur-Name..."
+                  className="flex-1 px-3 py-2 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-[12px] text-sm font-medium dark:text-white outline-none focus:border-indigo-500 transition-colors"
+                />
+                <button
+                  onClick={() => { onSaveProgress(progressName.trim() || 'Meine Klausur'); setShowProgressInput(false); }}
+                  className="px-3 py-2 bg-indigo-600 text-white rounded-[12px] text-[10px] font-black uppercase tracking-widest hover:scale-105 active:scale-95 transition-all shrink-0"
+                >
+                  OK
+                </button>
+                <button onClick={() => setShowProgressInput(false)} className="px-2 py-2 text-slate-400 hover:text-slate-600 text-lg leading-none">×</button>
+              </div>
+            </div>
+          )}
+
+          <div className="flex items-center gap-3">
+            {onSaveProgress && (
+              <button
+                onClick={() => { setProgressName('Meine Klausur'); setShowProgressInput(v => !v); }}
+                className="bg-white/90 dark:bg-slate-900/90 backdrop-blur-sm border border-slate-200 dark:border-slate-700 text-slate-600 dark:text-slate-300 px-5 py-4 rounded-[24px] font-black uppercase tracking-widest text-[10px] shadow-lg hover:scale-105 active:scale-95 transition-all flex items-center gap-2"
+              >
+                <svg xmlns="http://www.w3.org/2000/svg" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z"/><polyline points="17 21 17 13 7 13 7 21"/><polyline points="7 3 7 8 15 8"/></svg>
+                Speichern
+              </button>
+            )}
+            <button onClick={handleSubmit} disabled={isEvaluating}
+              className="bg-indigo-600 text-white px-10 py-6 rounded-[32px] font-black uppercase tracking-[0.3em] text-[11px] shadow-3d-deep hover:scale-110 active:scale-95 transition-all flex items-center gap-4"
+            >
+              {isEvaluating ? 'Korrektur läuft...' : <span>Klausur abgeben <EmojiImage emoji="📝" size={16} /></span>}
+            </button>
+          </div>
+
           {timeLeft !== null ? (
             <p className={`px-6 py-2 rounded-full text-[10px] font-black uppercase tracking-widest shadow-lg backdrop-blur-sm transition-all ${
               isTimeLow ? 'bg-rose-500 text-white animate-pulse' : 'bg-white/80 dark:bg-slate-900/80 text-slate-500 dark:text-slate-400'
