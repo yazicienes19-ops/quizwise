@@ -42,7 +42,11 @@ export const SourceSelector: React.FC<SourceSelectorProps> = ({
   const [pastedText, setPastedText] = useState('');
   const [saveToLib, setSaveToLib] = useState(true);
   const [isProcessing, setIsProcessing] = useState(false);
+  const [uploadError, setUploadError] = useState<string | null>(null);
+  const [uploadWarning, setUploadWarning] = useState<string | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
+
+  const MAX_FILE_SIZE = 50 * 1024 * 1024;
 
   const filtered = useMemo(() => {
     return documents.filter(d => {
@@ -61,6 +65,20 @@ export const SourceSelector: React.FC<SourceSelectorProps> = ({
     });
 
   const handleFileSelected = async (file: File) => {
+    setUploadError(null);
+    setUploadWarning(null);
+
+    if (file.size > MAX_FILE_SIZE) {
+      setUploadError(`Datei zu groß (${(file.size / 1024 / 1024).toFixed(1)} MB). Maximum ist 50 MB.`);
+      if (fileInputRef.current) fileInputRef.current.value = '';
+      return;
+    }
+
+    const isDuplicate = documents.some(d => d.name === file.name);
+    if (isDuplicate) {
+      setUploadWarning(`"${file.name}" ist bereits in deiner Bibliothek — wird trotzdem verarbeitet.`);
+    }
+
     setIsProcessing(true);
     try {
       const ext = file.name.split('.').pop()?.toLowerCase();
@@ -235,6 +253,19 @@ export const SourceSelector: React.FC<SourceSelectorProps> = ({
               accept=".pdf,.docx,.txt,.md,.png,.jpg,.jpeg,.webp,.heic,.heif"
               onChange={e => { if (e.target.files?.[0]) handleFileSelected(e.target.files[0]); }}
             />
+
+            {uploadError && (
+              <div className="flex items-start gap-3 px-4 py-3 rounded-2xl bg-rose-50 dark:bg-rose-950/20 border border-rose-200 dark:border-rose-800 animate-in slide-in-from-top-2 duration-200">
+                <span className="text-rose-500 shrink-0 mt-0.5">✕</span>
+                <p className="text-[11px] font-bold text-rose-700 dark:text-rose-400">{uploadError}</p>
+              </div>
+            )}
+            {uploadWarning && !uploadError && (
+              <div className="flex items-start gap-3 px-4 py-3 rounded-2xl bg-amber-50 dark:bg-amber-950/20 border border-amber-200 dark:border-amber-800 animate-in slide-in-from-top-2 duration-200">
+                <span className="text-amber-500 shrink-0 mt-0.5">⚠</span>
+                <p className="text-[11px] font-bold text-amber-700 dark:text-amber-400">{uploadWarning}</p>
+              </div>
+            )}
 
             {/* Option: In Bibliothek speichern */}
             {onSaveToLibrary && (

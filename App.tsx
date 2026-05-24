@@ -319,6 +319,18 @@ const App: React.FC = () => {
       toast.error('Hochladen ist im Offline-Modus nicht möglich.');
       return null;
     }
+
+    const MAX_FILE_SIZE = 50 * 1024 * 1024;
+    if (file.size > MAX_FILE_SIZE) {
+      toast.error(`Datei zu groß (${(file.size / 1024 / 1024).toFixed(1)} MB). Maximum ist 50 MB.`);
+      return null;
+    }
+
+    const isDuplicate = documents.some(d => d.name === file.name);
+    if (isDuplicate) {
+      toast.info(`"${file.name}" ist bereits in deiner Bibliothek.`);
+    }
+
     setIsLoading(true);
     try {
       const ext = file.name.split('.').pop()?.toLowerCase();
