@@ -16,6 +16,7 @@ interface SourceSelectorProps {
   isLoading?: boolean;
   /** Anzeige-Text über dem Selektor, z. B. "Quiz-Quelle wählen" */
   label?: string;
+  userPlan?: 'free' | 'pro';
 }
 
 type Tab = 'library' | 'upload' | 'text';
@@ -35,6 +36,7 @@ export const SourceSelector: React.FC<SourceSelectorProps> = ({
   onSaveToLibrary,
   isLoading,
   label,
+  userPlan = 'free',
 }) => {
   const [tab, setTab] = useState<Tab>(documents.length > 0 ? 'library' : 'upload');
   const [search, setSearch] = useState('');
@@ -232,9 +234,27 @@ export const SourceSelector: React.FC<SourceSelectorProps> = ({
         {/* ── Tab: Neue Datei ─────────────────────────────────────────── */}
         {tab === 'upload' && (
           <div className="space-y-4">
+            {/* Free-Plan Limit Banner */}
+            {userPlan === 'free' && saveToLib && (
+              <div className={`flex items-center justify-between px-4 py-3 rounded-2xl ${documents.length >= 5 ? 'bg-rose-50 dark:bg-rose-950/20 border border-rose-200 dark:border-rose-800' : 'bg-slate-50 dark:bg-slate-800/40 border border-slate-200 dark:border-slate-700'}`}>
+                <div>
+                  <p className={`text-[11px] font-black ${documents.length >= 5 ? 'text-rose-700 dark:text-rose-400' : 'text-slate-600 dark:text-slate-300'}`}>
+                    {documents.length >= 5 ? 'Dokumenten-Limit erreicht' : `${documents.length} / 5 Dokumente`}
+                  </p>
+                  <p className="text-[10px] text-slate-400 mt-0.5">
+                    {documents.length >= 5 ? 'Pro-Plan für unbegrenzte Bibliothek' : 'Free-Plan · 5 Dokumente inkl.'}
+                  </p>
+                </div>
+                <div className="flex items-center gap-1.5">
+                  {[0, 1, 2, 3, 4].map(i => (
+                    <div key={i} className={`w-2 h-2 rounded-full transition-all ${i < documents.length ? (documents.length >= 5 ? 'bg-rose-400' : 'bg-indigo-500') : 'bg-slate-200 dark:bg-slate-700'}`} />
+                  ))}
+                </div>
+              </div>
+            )}
             <button
               onClick={() => fileInputRef.current?.click()}
-              disabled={isProcessing || isLoading}
+              disabled={isProcessing || isLoading || (userPlan === 'free' && saveToLib && documents.length >= 5)}
               className="w-full py-12 rounded-[24px] border-2 border-dashed transition-all flex flex-col items-center gap-4 hover:border-indigo-500 group disabled:opacity-50"
               style={{ borderColor: 'var(--border-color)', background: 'color-mix(in srgb, var(--border-color) 15%, var(--bg-main))' }}
             >

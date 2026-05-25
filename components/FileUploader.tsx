@@ -14,6 +14,7 @@ interface FileUploaderProps {
   documents: ProcessedDocument[];
   collections: Collection[];
   onSaveToLibrary?: (file: File) => void;
+  userPlan?: 'free' | 'pro';
 }
 
 export const FileUploader: React.FC<FileUploaderProps> = ({
@@ -25,6 +26,7 @@ export const FileUploader: React.FC<FileUploaderProps> = ({
   documents,
   collections,
   onSaveToLibrary,
+  userPlan = 'free',
 }) => {
   const [mode, setMode] = useState<'source' | 'deck'>('source');
   const [selectedQuizType, setSelectedQuizType] = useState<QuizType>(QuizType.FAST);
@@ -131,6 +133,7 @@ export const FileUploader: React.FC<FileUploaderProps> = ({
           onSelectSource={(source, name) => onSourceSelect(source, name, selectedQuizType, getOptions())}
           onSaveToLibrary={onSaveToLibrary}
           isLoading={isLoading}
+          userPlan={userPlan}
         />
       )}
 

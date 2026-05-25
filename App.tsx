@@ -23,7 +23,7 @@ import { GeneratedImage } from './components/GeneratedImage';
 import { ToastContainer } from './components/Toast';
 import { ActiveTab, ProcessedDocument, QuizQuestion, UserAnswer, TopicMetric, SearchResult, QuizType, FlashcardDeck, Flashcard, Collection, ExamTerm, LearningFlowResult, QuizConfig } from './types';
 
-import { generateQuizFromDocument, searchScholar, searchWeb, generateQuizFromFlashcards, orchestrateLearningFlow } from './services/geminiService';
+import { generateQuizFromDocument, searchScholar, searchWeb, generateQuizFromFlashcards, orchestrateLearningFlow, fetchUserProfile } from './services/geminiService';
 import { saveQuizResult, getDocStats, getAllResults } from './services/quizHistoryService';
 import { getSavedQuizzes, saveQuizToStorage, deleteSavedQuiz, SavedQuiz } from './services/savedQuizzesService';
 import { getSavedExams, deleteSavedExam, SavedExam } from './services/savedExamsService';
@@ -72,6 +72,7 @@ const App: React.FC = () => {
   const [savedQuizzes, setSavedQuizzes] = useState<SavedQuiz[]>(() => getSavedQuizzes());
   const [savedExams, setSavedExams]     = useState<SavedExam[]>(() => getSavedExams());
   const [examInitialQuestions, setExamInitialQuestions] = useState<SavedExam | null>(null);
+  const [userPlan, setUserPlan] = useState<'free' | 'pro'>('free');
 
   const PROGRESS_KEY = 'quizwise_quiz_progress';
 
@@ -154,9 +155,9 @@ const App: React.FC = () => {
     return () => subscription.unsubscribe();
   }, []);
 
-  // Beim Login: Dokumente und Sammlungen aus Supabase laden (Supabase ist Quelle der Wahrheit)
+  // Beim Login: Dokumente, Sammlungen und Plan aus Supabase laden
   useEffect(() => {
-    if (!user) return;
+    if (!user) { setUserPlan('free'); return; }
     loadDocumentsFromSupabase()
       .then(docs => {
         setDocuments(docs);
@@ -168,6 +169,9 @@ const App: React.FC = () => {
         setCollections(cols);
         localStorage.setItem('quizwise_collections', JSON.stringify(cols));
       })
+      .catch(() => {});
+    fetchUserProfile()
+      .then(profile => setUserPlan(profile.plan === 'pro' ? 'pro' : 'free'))
       .catch(() => {});
   }, [user]);
 
@@ -317,6 +321,13 @@ const App: React.FC = () => {
     let file = fileInput;
     if (isOffline) {
       toast.error('Hochladen ist im Offline-Modus nicht möglich.');
+      return null;
+    }
+
+    const FREE_DOC_LIMIT = 5;
+    if (userPlan === 'free' && documents.length >= FREE_DOC_LIMIT) {
+      toast.error(`Free-Plan: Maximal ${FREE_DOC_LIMIT} Dokumente. Upgrade auf Pro für unbegrenzte Bibliothek.`);
+      setShowUpgradeModal(true);
       return null;
     }
 
@@ -732,6 +743,7 @@ const App: React.FC = () => {
           onSaveToLibrary={file => handleFileUpload(file)}
           availableDecks={decks}
           isLoading={isLoading}
+          userPlan={userPlan}
             />
           </div>
         );
