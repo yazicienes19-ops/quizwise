@@ -219,6 +219,123 @@
         .focus\:ring-indigo-500\/30:focus { --tw-ring-color: color-mix(in srgb, var(--primary) 30%, transparent) !important; }
         .shadow-indigo-200                { --tw-shadow-color: var(--p200) !important; }
         .shadow-indigo-900                { --tw-shadow-color: var(--p900) !important; }
+
+        /* ── Dark-mode fallbacks (Tailwind CDN lazy-render workaround) ── */
+        /* CDN scannt nur das initiale DOM; lazily gerenderte Tab-Komponenten
+           bekommen via MutationObserver nicht zuverlässig alle dark:-Regeln. */
+
+        /* Slate backgrounds */
+        .dark .dark\:bg-slate-600   { background-color: #475C7A; }
+        .dark .dark\:bg-slate-700   { background-color: #2E4060; }
+        .dark .dark\:bg-slate-800   { background-color: #1A2D4F; }
+        .dark .dark\:bg-slate-900   { background-color: #0F1E3A; }
+        .dark .dark\:bg-slate-800\/40 { background-color: color-mix(in srgb, #1A2D4F 40%, transparent); }
+        .dark .dark\:bg-slate-800\/50 { background-color: color-mix(in srgb, #1A2D4F 50%, transparent); }
+        .dark .dark\:bg-slate-800\/60 { background-color: color-mix(in srgb, #1A2D4F 60%, transparent); }
+        .dark .dark\:bg-slate-900\/40 { background-color: color-mix(in srgb, #0F1E3A 40%, transparent); }
+        .dark .dark\:bg-slate-900\/50 { background-color: color-mix(in srgb, #0F1E3A 50%, transparent); }
+        .dark .dark\:bg-slate-900\/80 { background-color: color-mix(in srgb, #0F1E3A 80%, transparent); }
+        .dark .dark\:bg-slate-900\/90 { background-color: color-mix(in srgb, #0F1E3A 90%, transparent); }
+        .dark .dark\:bg-slate-900\/95 { background-color: color-mix(in srgb, #0F1E3A 95%, transparent); }
+
+        /* Colored backgrounds */
+        .dark .dark\:bg-indigo-900\/30   { background-color: color-mix(in srgb, var(--primary) 18%, transparent); }
+        .dark .dark\:bg-violet-900\/20   { background-color: color-mix(in srgb, #4c1d95 20%, transparent); }
+        .dark .dark\:bg-violet-900\/30   { background-color: color-mix(in srgb, #4c1d95 30%, transparent); }
+        .dark .dark\:bg-blue-900\/20     { background-color: color-mix(in srgb, #1e3a8a 20%, transparent); }
+        .dark .dark\:bg-blue-900\/30     { background-color: color-mix(in srgb, #1e3a8a 30%, transparent); }
+        .dark .dark\:bg-blue-900\/50     { background-color: color-mix(in srgb, #1e3a8a 50%, transparent); }
+        .dark .dark\:bg-emerald-900\/20  { background-color: color-mix(in srgb, #064e3b 20%, transparent); }
+        .dark .dark\:bg-emerald-900\/30  { background-color: color-mix(in srgb, #064e3b 30%, transparent); }
+        .dark .dark\:bg-emerald-950\/20  { background-color: color-mix(in srgb, #022c22 20%, transparent); }
+        .dark .dark\:bg-emerald-950\/30  { background-color: color-mix(in srgb, #022c22 30%, transparent); }
+        .dark .dark\:bg-amber-900\/20    { background-color: color-mix(in srgb, #78350f 20%, transparent); }
+        .dark .dark\:bg-amber-900\/30    { background-color: color-mix(in srgb, #78350f 30%, transparent); }
+        .dark .dark\:bg-amber-950\/20    { background-color: color-mix(in srgb, #451a03 20%, transparent); }
+        .dark .dark\:bg-amber-950\/30    { background-color: color-mix(in srgb, #451a03 30%, transparent); }
+        .dark .dark\:bg-rose-900\/20     { background-color: color-mix(in srgb, #881337 20%, transparent); }
+        .dark .dark\:bg-rose-900\/30     { background-color: color-mix(in srgb, #881337 30%, transparent); }
+        .dark .dark\:bg-rose-900\/50     { background-color: color-mix(in srgb, #881337 50%, transparent); }
+        .dark .dark\:bg-rose-950\/20     { background-color: color-mix(in srgb, #4c0519 20%, transparent); }
+        .dark .dark\:bg-rose-950\/30     { background-color: color-mix(in srgb, #4c0519 30%, transparent); }
+
+        /* Slate text */
+        .dark .dark\:text-white     { color: #ffffff; }
+        .dark .dark\:text-slate-100 { color: #F1F5FF; }
+        .dark .dark\:text-slate-200 { color: #E2E9F8; }
+        .dark .dark\:text-slate-300 { color: #C8D5EE; }
+        .dark .dark\:text-slate-400 { color: #8FA3C4; }
+        .dark .dark\:text-slate-500 { color: #607494; }
+        .dark .dark\:text-slate-600 { color: #475C7A; }
+        .dark .dark\:text-slate-700 { color: #2E4060; }
+        .dark .dark\:text-slate-800 { color: #1A2D4F; }
+
+        /* Colored text */
+        .dark .dark\:text-indigo-100  { color: color-mix(in srgb, var(--primary) 15%, white); }
+        .dark .dark\:text-indigo-200  { color: color-mix(in srgb, var(--primary) 28%, white); }
+        .dark .dark\:text-violet-100  { color: #ede9fe; }
+        .dark .dark\:text-violet-300  { color: #c4b5fd; }
+        .dark .dark\:text-blue-300    { color: #93c5fd; }
+        .dark .dark\:text-blue-400    { color: #60a5fa; }
+        .dark .dark\:text-emerald-300 { color: #6ee7b7; }
+        .dark .dark\:text-emerald-400 { color: #34d399; }
+        .dark .dark\:text-amber-300   { color: #fcd34d; }
+        .dark .dark\:text-amber-400   { color: #fbbf24; }
+        .dark .dark\:text-rose-300    { color: #fda4af; }
+        .dark .dark\:text-rose-400    { color: #fb7185; }
+
+        /* Slate borders */
+        .dark .dark\:border-slate-100    { border-color: #F1F5FF; }
+        .dark .dark\:border-slate-600    { border-color: #475C7A; }
+        .dark .dark\:border-slate-700    { border-color: #2E4060; }
+        .dark .dark\:border-slate-800    { border-color: #1A2D4F; }
+        .dark .dark\:border-slate-800\/50 { border-color: color-mix(in srgb, #1A2D4F 50%, transparent); }
+
+        /* Colored borders */
+        .dark .dark\:border-indigo-600      { border-color: var(--primary); }
+        .dark .dark\:border-indigo-800      { border-color: color-mix(in srgb, var(--primary) 60%, black); }
+        .dark .dark\:border-violet-800      { border-color: #5b21b6; }
+        .dark .dark\:border-blue-800        { border-color: #1e40af; }
+        .dark .dark\:border-emerald-800     { border-color: #065f46; }
+        .dark .dark\:border-emerald-900\/30 { border-color: color-mix(in srgb, #064e3b 30%, transparent); }
+        .dark .dark\:border-amber-800       { border-color: #92400e; }
+        .dark .dark\:border-amber-900\/30   { border-color: color-mix(in srgb, #78350f 30%, transparent); }
+        .dark .dark\:border-rose-800        { border-color: #9f1239; }
+        .dark .dark\:border-rose-900\/30    { border-color: color-mix(in srgb, #881337 30%, transparent); }
+        .dark .dark\:border-rose-900\/40    { border-color: color-mix(in srgb, #881337 40%, transparent); }
+
+        /* Divide */
+        .dark .dark\:divide-slate-800 > :not([hidden]) ~ :not([hidden]) { border-color: #1A2D4F; }
+
+        /* Hover */
+        .dark .dark\:hover\:bg-slate-700:hover       { background-color: #2E4060; }
+        .dark .dark\:hover\:bg-slate-800:hover        { background-color: #1A2D4F; }
+        .dark .dark\:hover\:bg-slate-800\/30:hover    { background-color: color-mix(in srgb, #1A2D4F 30%, transparent); }
+        .dark .dark\:hover\:bg-slate-800\/50:hover    { background-color: color-mix(in srgb, #1A2D4F 50%, transparent); }
+        .dark .dark\:hover\:bg-slate-900:hover        { background-color: #0F1E3A; }
+        .dark .dark\:hover\:bg-slate-900\/50:hover    { background-color: color-mix(in srgb, #0F1E3A 50%, transparent); }
+        .dark .dark\:hover\:bg-amber-950\/20:hover    { background-color: color-mix(in srgb, #451a03 20%, transparent); }
+        .dark .dark\:hover\:bg-rose-900\/20:hover     { background-color: color-mix(in srgb, #881337 20%, transparent); }
+        .dark .dark\:hover\:bg-rose-950\/20:hover     { background-color: color-mix(in srgb, #4c0519 20%, transparent); }
+        .dark .dark\:hover\:text-slate-200:hover      { color: #E2E9F8; }
+        .dark .dark\:hover\:text-slate-300:hover      { color: #C8D5EE; }
+        .dark .dark\:hover\:text-white:hover          { color: #ffffff; }
+
+        /* Group-hover */
+        .dark .group:hover .dark\:group-hover\:text-white { color: #ffffff; }
+
+        /* Gradients */
+        .dark .dark\:from-slate-950 {
+            --tw-gradient-from: #080F20;
+            --tw-gradient-stops: var(--tw-gradient-from), var(--tw-gradient-to, rgb(8 15 32 / 0));
+        }
+        .dark .dark\:from-indigo-900\/20 {
+            --tw-gradient-from: color-mix(in srgb, var(--p900) 20%, transparent);
+            --tw-gradient-stops: var(--tw-gradient-from), var(--tw-gradient-to, transparent);
+        }
+        .dark .dark\:to-violet-900\/20 {
+            --tw-gradient-to: color-mix(in srgb, #4c1d95 20%, transparent);
+        }
     </style>
 </head>
 <body>

@@ -118,6 +118,20 @@ export enum QuizType {
   CUSTOM = 'CUSTOM'
 }
 
+export type AgentType = 'lernCoach' | 'studyFlow' | 'erklaerer' | 'uxHelper';
+
+export interface AgentMessage {
+  role: 'user' | 'assistant';
+  content: string;
+  timestamp: number;
+}
+
+export interface AgentContext {
+  metrics?: TopicMetric[];
+  examTerms?: ExamTerm[];
+  currentTab?: string;
+}
+
 export interface UserAnswer {
   questionIndex: number;
   selectedOptionIndices: number[];

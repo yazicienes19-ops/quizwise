@@ -1,0 +1,54 @@
+const { supabase } = require('./auth');
+
+const AGENT_LIMITS = { free: 50, pro: null }; // null = unlimitiert
+
+const checkAgentLimit = async (req, res, next) => {
+  try {
+    const userId = req.user.id;
+    const today = new Date().toISOString().split('T')[0];
+
+    const { data: profile } = await supabase
+      .from('profiles')
+      .select('plan')
+      .eq('id', userId)
+      .single();
+    const plan = profile?.plan || 'free';
+
+    const limit = AGENT_LIMITS[plan] ?? AGENT_LIMITS.free;
+    if (limit === null) return next();
+
+    // Heutigen Zähler abfragen
+    const { data: existing } = await supabase
+      .from('agent_usage')
+      .select('count')
+      .eq('user_id', userId)
+      .eq('date', today)
+      .maybeSingle();
+
+    const currentCount = existing?.count || 0;
+
+    if (currentCount >= limit) {
+      return res.status(429).json({
+        error: `Agent-Limit erreicht (${limit} Nachrichten/Tag). Upgrade auf Pro für mehr Nutzung.`,
+        upgradeRequired: plan === 'free',
+        limit,
+        used: currentCount,
+      });
+    }
+
+    // Zähler erhöhen (upsert)
+    await supabase
+      .from('agent_usage')
+      .upsert(
+        { user_id: userId, date: today, count: currentCount + 1 },
+        { onConflict: 'user_id,date' }
+      );
+
+    next();
+  } catch (err) {
+    console.error('Agent-Limit Fehler:', err.message);
+    next(); // Bei Fehler: durchlassen, nicht blocken
+  }
+};
+
+module.exports = { checkAgentLimit };

@@ -3,9 +3,172 @@ import React, { useState, useEffect } from 'react';
 import { ProcessedDocument, Collection } from '../types';
 import type { GenerationSource } from '../services/geminiService';
 import { EmojiImage } from './EmojiImage';
+import { AgentChat } from './AgentChat';
 import { generateExplanation } from '../services/geminiService';
 import { SourceSelector } from './SourceSelector';
 import { toast } from '../services/toast';
+import { Bot } from 'lucide-react';
+
+// ─── Lightweight Markdown Renderer ───────────────────────────────────────────
+
+function parseInline(text: string, baseKey: string): React.ReactNode[] {
+  const parts: React.ReactNode[] = [];
+  // matches **bold**, *italic*, `code`
+  const regex = /(\*\*[^*]+\*\*|\*[^*\n]+\*|`[^`]+`)/g;
+  let last = 0;
+  let match: RegExpExecArray | null;
+  while ((match = regex.exec(text)) !== null) {
+    if (match.index > last) parts.push(text.slice(last, match.index));
+    const token = match[0];
+    const k = `${baseKey}-${match.index}`;
+    if (token.startsWith('**')) {
+      parts.push(<strong key={k} className="font-black text-slate-900 dark:text-white">{token.slice(2, -2)}</strong>);
+    } else if (token.startsWith('*')) {
+      parts.push(<em key={k} className="italic text-slate-600 dark:text-slate-300">{token.slice(1, -1)}</em>);
+    } else {
+      parts.push(<code key={k} className="px-1.5 py-0.5 rounded-md text-[0.85em] font-mono bg-slate-100 dark:bg-slate-800 text-indigo-600 dark:text-indigo-300">{token.slice(1, -1)}</code>);
+    }
+    last = match.index + token.length;
+  }
+  if (last < text.length) parts.push(text.slice(last));
+  return parts;
+}
+
+function renderMarkdown(text: string): React.ReactNode {
+  const lines = text.split('\n');
+  const blocks: React.ReactNode[] = [];
+  let i = 0;
+  let key = 0;
+
+  while (i < lines.length) {
+    const line = lines[i];
+
+    // Empty line — skip
+    if (!line.trim()) { i++; continue; }
+
+    // H1
+    if (line.startsWith('# ')) {
+      blocks.push(
+        <h2 key={key++} className="text-2xl lg:text-3xl font-black text-slate-900 dark:text-white tracking-tight mt-2">
+          {parseInline(line.slice(2), String(key))}
+        </h2>
+      );
+      i++; continue;
+    }
+
+    // H2
+    if (line.startsWith('## ')) {
+      blocks.push(
+        <h3 key={key++} className="text-xl lg:text-2xl font-black text-slate-900 dark:text-white tracking-tight mt-1">
+          {parseInline(line.slice(3), String(key))}
+        </h3>
+      );
+      i++; continue;
+    }
+
+    // H3
+    if (line.startsWith('### ')) {
+      blocks.push(
+        <h4 key={key++} className="text-base lg:text-lg font-black text-slate-700 dark:text-slate-200 uppercase tracking-wider mt-1">
+          {parseInline(line.slice(4), String(key))}
+        </h4>
+      );
+      i++; continue;
+    }
+
+    // Heading-like words without # (Grundlagen, Vertiefung, Kontext, Stufe, Phase)
+    if (line.match(/^(Grundlagen|Vertiefung|Kontext|Stufe\s*\d*|Phase\s*\d*)[\s:]/i)) {
+      blocks.push(
+        <h3 key={key++} className="text-xl lg:text-2xl font-black text-slate-900 dark:text-white tracking-tight mt-1">
+          {parseInline(line, String(key))}
+        </h3>
+      );
+      i++; continue;
+    }
+
+    // "Allgemeinwissen:" block
+    if (line.startsWith('Allgemeinwissen:')) {
+      const content: string[] = [line.replace('Allgemeinwissen:', '').trim()];
+      i++;
+      while (i < lines.length && lines[i].trim() && !lines[i].startsWith('#') && !lines[i].match(/^[-*•]\s/) && !lines[i].match(/^\d+\.\s/)) {
+        content.push(lines[i]);
+        i++;
+      }
+      blocks.push(
+        <div key={key++} className="px-5 py-4 rounded-2xl" style={{ background: 'color-mix(in srgb, var(--primary) 8%, transparent)', border: '1px solid color-mix(in srgb, var(--primary) 20%, transparent)' }}>
+          <p className="text-[9px] font-black uppercase tracking-widest mb-2" style={{ color: 'var(--primary)' }}>Externes Wissen</p>
+          <p className="text-base font-medium text-slate-700 dark:text-slate-300 leading-relaxed">
+            {parseInline(content.join(' '), String(key))}
+          </p>
+        </div>
+      );
+      continue;
+    }
+
+    // Bullet list (- or * or •)
+    if (line.match(/^[-*•]\s/)) {
+      const items: string[] = [];
+      while (i < lines.length && lines[i].match(/^[-*•]\s/)) {
+        items.push(lines[i].replace(/^[-*•]\s/, ''));
+        i++;
+      }
+      blocks.push(
+        <ul key={key++} className="space-y-2 pl-1">
+          {items.map((item, idx) => (
+            <li key={idx} className="flex gap-2.5 items-start text-base lg:text-lg font-medium text-slate-700 dark:text-slate-300 leading-relaxed">
+              <span className="mt-2 w-1.5 h-1.5 rounded-full shrink-0" style={{ background: 'var(--primary)' }} />
+              <span>{parseInline(item, `${key}-${idx}`)}</span>
+            </li>
+          ))}
+        </ul>
+      );
+      continue;
+    }
+
+    // Numbered list
+    if (line.match(/^\d+\.\s/)) {
+      const items: string[] = [];
+      while (i < lines.length && lines[i].match(/^\d+\.\s/)) {
+        items.push(lines[i].replace(/^\d+\.\s/, ''));
+        i++;
+      }
+      blocks.push(
+        <ol key={key++} className="space-y-2 pl-1">
+          {items.map((item, idx) => (
+            <li key={idx} className="flex gap-3 items-start text-base lg:text-lg font-medium text-slate-700 dark:text-slate-300 leading-relaxed">
+              <span className="font-black shrink-0 w-6 text-right" style={{ color: 'var(--primary)' }}>{idx + 1}.</span>
+              <span>{parseInline(item, `${key}-${idx}`)}</span>
+            </li>
+          ))}
+        </ol>
+      );
+      continue;
+    }
+
+    // Paragraph — collect non-empty, non-special lines
+    const paraLines: string[] = [line];
+    i++;
+    while (
+      i < lines.length &&
+      lines[i].trim() &&
+      !lines[i].startsWith('#') &&
+      !lines[i].match(/^[-*•]\s/) &&
+      !lines[i].match(/^\d+\.\s/) &&
+      !lines[i].startsWith('Allgemeinwissen:') &&
+      !lines[i].match(/^(Grundlagen|Vertiefung|Kontext|Stufe\s*\d*|Phase\s*\d*)[\s:]/i)
+    ) {
+      paraLines.push(lines[i]);
+      i++;
+    }
+    blocks.push(
+      <p key={key++} className="text-base lg:text-lg font-medium text-slate-700 dark:text-slate-300 leading-relaxed">
+        {parseInline(paraLines.join(' '), String(key))}
+      </p>
+    );
+  }
+
+  return <div className="space-y-5">{blocks}</div>;
+}
 
 interface ExplainerSystemProps {
   availableDocuments: ProcessedDocument[];
@@ -28,6 +191,7 @@ export const ExplainerSystem: React.FC<ExplainerSystemProps> = ({
   const [explanation, setExplanation] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(false);
   const [useExternalKnowledge, setUseExternalKnowledge] = useState(false);
+  const [erklaererOpen, setErklaererOpen] = useState(false);
 
   useEffect(() => {
     if (!initialDoc || !getDocumentSource) return;
@@ -239,25 +403,8 @@ export const ExplainerSystem: React.FC<ExplainerSystemProps> = ({
           </div>
 
           {/* Erklärungstext */}
-          <div className="space-y-8">
-            {explanation.split('\n\n').map((para, i) => {
-              if (para.match(/^(Stufe|Phase|Grundlagen|Vertiefung|Kontext|#)/i)) {
-                return (
-                  <h3 key={i} className="text-xl lg:text-2xl font-black text-slate-900 dark:text-white mt-4 first:mt-0">
-                    {para.replace(/^#+\s*/, '')}
-                  </h3>
-                );
-              }
-              if (para.startsWith('Allgemeinwissen:')) {
-                return (
-                  <div key={i} className="px-5 py-4 rounded-2xl" style={{ background: 'color-mix(in srgb, var(--primary) 8%, transparent)', border: '1px solid color-mix(in srgb, var(--primary) 20%, transparent)' }}>
-                    <p className="text-[9px] font-black uppercase tracking-widest mb-1" style={{ color: 'var(--primary)' }}>Externes Wissen</p>
-                    <p className="text-base font-medium text-slate-700 dark:text-slate-300 leading-relaxed">{para.replace('Allgemeinwissen:', '').trim()}</p>
-                  </div>
-                );
-              }
-              return <p key={i} className="text-base lg:text-lg font-medium text-slate-700 dark:text-slate-300 leading-relaxed">{para}</p>;
-            })}
+          <div>
+            {renderMarkdown(explanation)}
           </div>
 
           {/* Footer */}
@@ -268,12 +415,22 @@ export const ExplainerSystem: React.FC<ExplainerSystemProps> = ({
                 : activeSource ? `Primärquelle: ${activeSourceName} + Allgemeinwissen` : 'Quelle: Allgemeinwissen'
               }
             </p>
-            <button
-              onClick={handleReset}
-              className="text-[10px] font-black uppercase tracking-widest transition-colors text-slate-400 hover:text-indigo-500"
-            >
-              Anderen Begriff erklären →
-            </button>
+            <div className="flex items-center gap-3">
+              <button
+                onClick={() => setErklaererOpen(true)}
+                className="inline-flex items-center gap-1.5 text-[10px] font-black uppercase tracking-widest transition-colors px-3 py-1.5 rounded-xl"
+                style={{ background: 'color-mix(in srgb, var(--primary) 10%, var(--bg-sidebar))', color: 'var(--primary)', border: '1px solid color-mix(in srgb, var(--primary) 20%, transparent)' }}
+              >
+                <Bot size={12} />
+                Nachfragen
+              </button>
+              <button
+                onClick={handleReset}
+                className="text-[10px] font-black uppercase tracking-widest transition-colors text-slate-400 hover:text-indigo-500"
+              >
+                Anderen Begriff →
+              </button>
+            </div>
           </div>
         </div>
       )}
@@ -285,6 +442,14 @@ export const ExplainerSystem: React.FC<ExplainerSystemProps> = ({
           <p className="text-sm font-black uppercase tracking-widest text-slate-400">Begriff eingeben und los</p>
         </div>
       )}
+
+      <AgentChat
+        agentType="erklaerer"
+        context={{ currentTab: 'EXPLAINER' }}
+        initialMessage={concept ? `Ich habe gerade eine Erklärung zu "${concept}" gelesen${activeSourceName ? ` aus dem Dokument "${activeSourceName}"` : ''}. Ich habe noch Fragen dazu.` : undefined}
+        isOpen={erklaererOpen}
+        onClose={() => setErklaererOpen(false)}
+      />
     </div>
   );
 };

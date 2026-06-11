@@ -46,6 +46,13 @@ export const FlashcardSystem: React.FC<FlashcardSystemProps> = ({
   const [newCardFront, setNewCardFront] = useState('');
   const [newCardBack, setNewCardBack] = useState('');
 
+  // States for card editing + deck renaming
+  const [editingCardId, setEditingCardId] = useState<string | null>(null);
+  const [editCardFront, setEditCardFront] = useState('');
+  const [editCardBack, setEditCardBack] = useState('');
+  const [isRenamingDeck, setIsRenamingDeck] = useState(false);
+  const [renameTitle, setRenameTitle] = useState('');
+
   const cardCounts = [5, 10, 15, 20, 30];
   const importInputRef = useRef<HTMLInputElement>(null);
 
@@ -143,6 +150,34 @@ export const FlashcardSystem: React.FC<FlashcardSystemProps> = ({
     );
     const changed = updated.find(d => d.id === deckId);
     saveDecks(updated, changed);
+  };
+
+  const startEditCard = (card: Flashcard) => {
+    setEditingCardId(card.id);
+    setEditCardFront(card.front);
+    setEditCardBack(card.back);
+  };
+
+  const handleSaveCardEdit = (e: React.FormEvent, deckId: string) => {
+    e.preventDefault();
+    if (!editCardFront.trim() || !editCardBack.trim()) return;
+    const updated = decks.map(d =>
+      d.id === deckId
+        ? { ...d, cards: d.cards.map(c => c.id === editingCardId ? { ...c, front: editCardFront.trim(), back: editCardBack.trim() } : c) }
+        : d
+    );
+    const changed = updated.find(d => d.id === deckId);
+    saveDecks(updated, changed);
+    setEditingCardId(null);
+  };
+
+  const handleRenameDeck = (e: React.FormEvent, deckId: string) => {
+    e.preventDefault();
+    if (!renameTitle.trim()) return;
+    const updated = decks.map(d => d.id === deckId ? { ...d, title: renameTitle.trim() } : d);
+    const changed = updated.find(d => d.id === deckId);
+    saveDecks(updated, changed);
+    setIsRenamingDeck(false);
   };
 
   const handleGenerateFromSource = async (source: GenerationSource, name: string, docId?: string) => {
@@ -363,26 +398,55 @@ export const FlashcardSystem: React.FC<FlashcardSystemProps> = ({
 
     return (
       <div className="max-w-4xl mx-auto space-y-10 lg:space-y-16 animate-in slide-in-from-right-12 duration-700 py-6 lg:py-10">
-        <div className="flex justify-between items-center px-4">
-          <div className="space-y-1">
-            <h2 className="text-3xl font-black dark:text-white truncate max-w-md">{deck.title} bearbeiten</h2>
+
+        {/* Header */}
+        <div className="flex justify-between items-start px-4 gap-4">
+          <div className="space-y-2 flex-1 min-w-0">
+            {isRenamingDeck ? (
+              <form onSubmit={e => handleRenameDeck(e, deck.id)} className="flex gap-2 items-center animate-in zoom-in-95 duration-200">
+                <input
+                  autoFocus
+                  value={renameTitle}
+                  onChange={e => setRenameTitle(e.target.value)}
+                  className="flex-1 text-2xl font-black bg-transparent border-b-2 border-indigo-500 outline-none dark:text-white pb-1"
+                  onKeyDown={e => e.key === 'Escape' && setIsRenamingDeck(false)}
+                />
+                <button type="submit" className="px-4 py-1.5 bg-indigo-600 text-white rounded-xl text-[10px] font-black uppercase tracking-widest shrink-0">
+                  Speichern
+                </button>
+                <button type="button" onClick={() => setIsRenamingDeck(false)} className="px-3 py-1.5 bg-slate-100 dark:bg-slate-800 text-slate-400 rounded-xl text-[10px] font-black uppercase shrink-0">
+                  ✕
+                </button>
+              </form>
+            ) : (
+              <div className="flex items-center gap-3">
+                <h2 className="text-3xl font-black dark:text-white truncate">{deck.title}</h2>
+                <button
+                  onClick={() => { setRenameTitle(deck.title); setIsRenamingDeck(true); }}
+                  className="p-2 rounded-xl text-slate-300 hover:text-indigo-500 hover:bg-indigo-50 dark:hover:bg-indigo-950/30 transition-all shrink-0"
+                  title="Deck umbenennen"
+                >
+                  <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>
+                </button>
+              </div>
+            )}
             <p className="text-[10px] font-black uppercase text-slate-400 tracking-widest">{deck.cards.length} Karten im Stapel</p>
           </div>
-          <button 
-            onClick={() => setEditingDeckId(null)}
-            className="px-6 py-2 bg-slate-100 dark:bg-slate-800 text-slate-500 rounded-xl text-[10px] font-black uppercase tracking-widest hover:text-indigo-600 transition-colors"
+          <button
+            onClick={() => { setEditingDeckId(null); setEditingCardId(null); setIsRenamingDeck(false); }}
+            className="px-6 py-2 bg-slate-100 dark:bg-slate-800 text-slate-500 rounded-xl text-[10px] font-black uppercase tracking-widest hover:text-indigo-600 transition-colors shrink-0"
           >
             Fertig & Schließen
           </button>
         </div>
 
-        {/* Form to add manual card */}
+        {/* Form to add new card */}
         <form onSubmit={handleAddManualCard} className="bg-white dark:bg-slate-900 p-8 rounded-[32px] border border-slate-200 dark:border-slate-800 shadow-3d-raised space-y-6">
           <h3 className="text-[10px] font-black uppercase tracking-widest text-indigo-600">Neue Karte hinzufügen</h3>
           <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
             <div className="space-y-2">
               <label className="text-[9px] font-black text-slate-400 uppercase ml-2">Vorderseite (Frage/Begriff)</label>
-              <textarea 
+              <textarea
                 value={newCardFront}
                 onChange={e => setNewCardFront(e.target.value)}
                 placeholder="z.B. Was ist der Turing-Test?"
@@ -391,7 +455,7 @@ export const FlashcardSystem: React.FC<FlashcardSystemProps> = ({
             </div>
             <div className="space-y-2">
               <label className="text-[9px] font-black text-slate-400 uppercase ml-2">Rückseite (Antwort/Definition)</label>
-              <textarea 
+              <textarea
                 value={newCardBack}
                 onChange={e => setNewCardBack(e.target.value)}
                 placeholder="z.B. Ein Test zur Unterscheidung von menschlicher und künstlicher Intelligenz."
@@ -399,7 +463,7 @@ export const FlashcardSystem: React.FC<FlashcardSystemProps> = ({
               />
             </div>
           </div>
-          <button 
+          <button
             type="submit"
             disabled={!newCardFront.trim() || !newCardBack.trim()}
             className="w-full bg-indigo-600 text-white font-black py-4 rounded-2xl uppercase tracking-widest text-[11px] shadow-lg hover:scale-[1.02] transition-all disabled:opacity-50"
@@ -408,22 +472,77 @@ export const FlashcardSystem: React.FC<FlashcardSystemProps> = ({
           </button>
         </form>
 
-        {/* List of cards in the deck */}
+        {/* Card list */}
         <div className="space-y-4">
-          <h3 className="text-[10px] font-black uppercase tracking-widest text-slate-400 px-4">Bestehende Karten</h3>
-          <div className="grid grid-cols-1 gap-4">
+          <h3 className="text-[10px] font-black uppercase tracking-widest text-slate-400 px-4">Bestehende Karten ({deck.cards.length})</h3>
+          <div className="space-y-3">
             {deck.cards.map(card => (
-              <div key={card.id} className="bg-white dark:bg-slate-900 p-6 rounded-2xl border border-slate-100 dark:border-slate-800 flex justify-between items-center group shadow-sm">
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4 flex-grow pr-8">
-                  <p className="text-sm font-bold dark:text-white border-r border-slate-50 dark:border-slate-800 pr-4">{card.front}</p>
-                  <p className="text-sm text-slate-500 italic">{card.back}</p>
-                </div>
-                <button 
-                  onClick={() => handleDeleteCard(deck.id, card.id)}
-                  className="text-slate-200 hover:text-rose-500 transition-colors p-2"
-                >
-                  <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round"><polyline points="3 6 5 6 21 6"></polyline><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path></svg>
-                </button>
+              <div key={card.id} className="bg-white dark:bg-slate-900 rounded-2xl border border-slate-100 dark:border-slate-800 shadow-sm overflow-hidden">
+                {editingCardId === card.id ? (
+                  /* ── Inline Edit Form ── */
+                  <form onSubmit={e => handleSaveCardEdit(e, deck.id)} className="p-5 space-y-4 animate-in fade-in duration-200">
+                    <p className="text-[9px] font-black uppercase tracking-widest text-indigo-600">Karte bearbeiten</p>
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                      <div className="space-y-1.5">
+                        <label className="text-[9px] font-black text-slate-400 uppercase ml-1">Vorderseite</label>
+                        <textarea
+                          autoFocus
+                          value={editCardFront}
+                          onChange={e => setEditCardFront(e.target.value)}
+                          className="w-full p-3 bg-slate-50 dark:bg-slate-800 rounded-xl border-2 border-indigo-500 outline-none dark:text-white font-medium resize-none h-20 text-sm"
+                        />
+                      </div>
+                      <div className="space-y-1.5">
+                        <label className="text-[9px] font-black text-slate-400 uppercase ml-1">Rückseite</label>
+                        <textarea
+                          value={editCardBack}
+                          onChange={e => setEditCardBack(e.target.value)}
+                          className="w-full p-3 bg-slate-50 dark:bg-slate-800 rounded-xl border-2 border-slate-200 dark:border-slate-700 focus:border-indigo-500 outline-none dark:text-white font-medium resize-none h-20 text-sm"
+                        />
+                      </div>
+                    </div>
+                    <div className="flex gap-2">
+                      <button
+                        type="submit"
+                        disabled={!editCardFront.trim() || !editCardBack.trim()}
+                        className="flex-1 py-2.5 bg-indigo-600 text-white rounded-xl text-[10px] font-black uppercase tracking-widest disabled:opacity-50 hover:scale-[1.01] transition-all"
+                      >
+                        Speichern
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => setEditingCardId(null)}
+                        className="px-4 py-2.5 bg-slate-100 dark:bg-slate-800 text-slate-400 rounded-xl text-[10px] font-black uppercase tracking-widest hover:text-slate-600 transition-colors"
+                      >
+                        Abbrechen
+                      </button>
+                    </div>
+                  </form>
+                ) : (
+                  /* ── Card Display Row ── */
+                  <div className="flex items-center gap-4 p-5 group">
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-3 flex-1 min-w-0">
+                      <p className="text-sm font-bold dark:text-white md:border-r md:border-slate-100 md:dark:border-slate-800 md:pr-3 leading-snug">{card.front}</p>
+                      <p className="text-sm text-slate-500 dark:text-slate-400 italic leading-snug">{card.back}</p>
+                    </div>
+                    <div className="flex gap-1 shrink-0 opacity-0 group-hover:opacity-100 transition-opacity">
+                      <button
+                        onClick={() => startEditCard(card)}
+                        className="p-2 rounded-xl text-slate-300 hover:text-indigo-500 hover:bg-indigo-50 dark:hover:bg-indigo-950/30 transition-all"
+                        title="Bearbeiten"
+                      >
+                        <svg xmlns="http://www.w3.org/2000/svg" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>
+                      </button>
+                      <button
+                        onClick={() => handleDeleteCard(deck.id, card.id)}
+                        className="p-2 rounded-xl text-slate-300 hover:text-rose-500 hover:bg-rose-50 dark:hover:bg-rose-950/20 transition-all"
+                        title="Löschen"
+                      >
+                        <svg xmlns="http://www.w3.org/2000/svg" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/></svg>
+                      </button>
+                    </div>
+                  </div>
+                )}
               </div>
             ))}
             {deck.cards.length === 0 && (

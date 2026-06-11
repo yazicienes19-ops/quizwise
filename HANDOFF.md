@@ -405,6 +405,55 @@ LibrarySystem.tsx(74): Property 'module' does not exist on type 'unknown'
 
 ---
 
+## 🍪 Cookie-Banner — Implementierungsplan (Session 25+)
+
+### Was ist ein Cookie-Banner?
+Ein Cookie-Banner informiert Nutzer beim ersten Seitenbesuch über gespeicherte Daten. In Deutschland gesetzlich Pflicht (DSGVO Art. 13). Ohne Banner → Launch in DE illegal.
+
+### Was QuizWise speichert (Analyse-Ergebnis)
+
+| Technologie | Was wird gespeichert | Kategorie |
+|---|---|---|
+| Supabase Auth | Session-Token | Technisch notwendig |
+| localStorage | Theme, Schriftart, Quiz-Fortschritt, Docs-Cache | Technisch notwendig |
+| Stripe | Payment-Session beim Checkout | Technisch notwendig |
+| Analytics/Tracking | — | Nichts |
+
+**Kein externes Tracking vorhanden** → Kein Accept/Reject-Toggle nötig. Nur ein "Verstanden"-Button reicht (reine Informationspflicht).
+
+### Implementierungsplan
+
+**Neue Datei:** `components/CookieBanner.tsx`
+
+```tsx
+// Zeigt sich einmalig beim ersten Besuch (cookie_consent nicht in localStorage)
+// Zeigt: kurze Info-Text + Link zu Datenschutzerklärung + "Verstanden"-Button
+// Beim Klick: localStorage.setItem('cookie_consent', 'accepted') → Banner verschwindet
+// Position: fixed bottom, volle Breite, Editorial-A-Design
+```
+
+**Integration:** `App.tsx` — Banner als letztes Element in der Render-Ausgabe einbauen:
+```tsx
+{!cookieConsent && <CookieBanner onAccept={() => setCookieConsent(true)} />}
+```
+
+**State in App.tsx:**
+```tsx
+const [cookieConsent, setCookieConsent] = useState(
+  () => localStorage.getItem('cookie_consent') === 'accepted'
+);
+```
+
+### Design-Vorgabe
+- Editorial-A-Stil: `var(--bg-sidebar)`, `var(--border-color)`, `var(--primary)`
+- Dark-Mode-kompatibel (`dark:` Varianten)
+- Kompakter Bottom-Banner (nicht Fullscreen-Modal)
+- Text: "Wir nutzen technisch notwendige Cookies für Authentifizierung und App-Funktionalität. Keine Tracking- oder Werbe-Cookies."
+- Link: öffnet LegalModal auf Datenschutz-Tab
+- Button: "Verstanden" → schließt Banner permanent
+
+---
+
 ## Session-Verlauf
 
 | Session | Datum | Schwerpunkte |

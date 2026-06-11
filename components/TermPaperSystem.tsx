@@ -8,7 +8,7 @@ interface TermPaperSystemProps {
   availableDocuments: ProcessedDocument[];
   onUploadNew: (file: File) => void;
   initialSources?: SearchResult[];
-  getDocumentSource?: (doc: ProcessedDocument) => GenerationSource;
+  getDocumentSource: (doc: ProcessedDocument) => GenerationSource;
 }
 
 type Tab = 'guide' | 'outline' | 'phrases' | 'citations' | 'magic' | 'paraphrase' | 'checklist';
@@ -372,14 +372,21 @@ export const TermPaperSystem: React.FC<TermPaperSystemProps> = ({
     setIsGenerating(true);
     try {
       const docs = availableDocuments.filter(d => selectedDocIds.includes(d.id));
-      const genSources: GenerationSource[] = getDocumentSource
-        ? docs.map(d => getDocumentSource(d))
-        : docs.map(d => ({ text: d.content }));
+      const genSources: GenerationSource[] = [];
+      for (const doc of docs) {
+        try {
+          genSources.push(getDocumentSource(doc));
+        } catch {
+          toast.error(`"${doc.name}" konnte nicht geladen werden — wird übersprungen.`);
+        }
+      }
       const fw = await generatePaperFramework(topic, focus, pageCount, genSources);
       setFramework(fw);
       setTab('outline');
-    } catch (e) {
-      toast.error('Gliederung konnte nicht generiert werden.');
+    } catch (e: any) {
+      toast.error(e?.message?.includes('LIMIT_REACHED')
+        ? 'Tageslimit erreicht. Bitte morgen erneut versuchen.'
+        : 'Gliederung konnte nicht generiert werden. Versuche es erneut.');
     } finally {
       setIsGenerating(false);
     }
@@ -571,6 +578,11 @@ export const TermPaperSystem: React.FC<TermPaperSystemProps> = ({
                   </div>
                 )}
               </div>
+              {selectedDocIds.length > 0 && (
+                <p className="text-[10px] font-black uppercase tracking-widest text-indigo-500 text-center">
+                  {selectedDocIds.length} {selectedDocIds.length === 1 ? 'Dokument' : 'Dokumente'} als Basis ausgewählt
+                </p>
+              )}
               <button onClick={handleGenerateOutline} disabled={isGenerating || !topic.trim()}
                 className="w-full bg-indigo-600 text-white font-black py-4 rounded-2xl text-[11px] uppercase tracking-[0.3em] shadow-lg hover:scale-[1.01] active:scale-[0.99] transition-all disabled:opacity-50"
               >

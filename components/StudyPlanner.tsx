@@ -2,9 +2,10 @@
 import React, { useState, useEffect, useRef, useMemo } from 'react';
 import { StudyEntry, TopicMetric, FlashcardDeck, ExamTerm } from '../types';
 import { GeneratedImage } from './GeneratedImage';
+import { AgentChat } from './AgentChat';
 import { generateSmartStudyPlan } from '../services/geminiService';
 import { toast } from '../services/toast';
-import { ChevronLeft, ChevronRight, X, Plus } from 'lucide-react';
+import { ChevronLeft, ChevronRight, X, Plus, Bot } from 'lucide-react';
 
 type ViewMode = 'monat' | 'woche' | 'liste';
 
@@ -91,6 +92,7 @@ export const StudyPlanner: React.FC<StudyPlannerProps> = ({ metrics, decks, exam
   const today = useMemo(() => new Date(), []);
   const todayStr = useMemo(() => toDateStr(today), [today]);
 
+  const [studyFlowOpen, setStudyFlowOpen] = useState(false);
   const [viewMode, setViewMode] = useState<ViewMode>('monat');
   const [calMonth, setCalMonth] = useState(today.getMonth());
   const [calYear, setCalYear] = useState(today.getFullYear());
@@ -114,6 +116,14 @@ export const StudyPlanner: React.FC<StudyPlannerProps> = ({ metrics, decks, exam
   const [newEventDate, setNewEventDate] = useState('');
   const [newEventType, setNewEventType] = useState<'study' | 'reminder'>('study');
   const [newEventDesc, setNewEventDesc] = useState('');
+
+  // Mobile quick-add
+  const [showQuickAdd, setShowQuickAdd] = useState(false);
+  const [qaSubject, setQaSubject] = useState('');
+  const [qaTopic, setQaTopic] = useState('');
+  const [qaStart, setQaStart] = useState('08:00');
+  const [qaEnd, setQaEnd] = useState('09:30');
+  const [qaColor, setQaColor] = useState('indigo');
 
   // Resize
   const [resizingId, setResizingId] = useState<string | null>(null);
@@ -243,6 +253,14 @@ export const StudyPlanner: React.FC<StudyPlannerProps> = ({ metrics, decks, exam
             style={{ background: 'var(--bg-sidebar)', color: 'var(--text-main)', border: '2px solid var(--border-color)' }}
           >
             + Termin
+          </button>
+          <button
+            onClick={() => setStudyFlowOpen(true)}
+            className="px-6 py-4 rounded-3xl font-black uppercase tracking-[0.2em] text-[11px] transition-all flex items-center gap-2"
+            style={{ background: 'color-mix(in srgb, var(--primary) 12%, var(--bg-sidebar))', color: 'var(--primary)', border: '2px solid color-mix(in srgb, var(--primary) 30%, transparent)' }}
+          >
+            <Bot size={14} />
+            KI-Berater
           </button>
         </div>
       </div>
@@ -492,122 +510,250 @@ export const StudyPlanner: React.FC<StudyPlannerProps> = ({ metrics, decks, exam
       {/* ── WOCHE VIEW ── */}
       {viewMode === 'woche' && (
         <div className="max-w-5xl mx-auto space-y-6">
-          {/* Templates */}
-          <div className="flex flex-col items-center gap-4 py-2">
-            <p className="text-[9px] font-black uppercase tracking-[0.3em] text-slate-400">Vorlagen zum Reinziehen</p>
-            <div className="flex flex-wrap justify-center gap-3">
-              {templates.map(t => (
-                <div
-                  key={t.id}
-                  draggable
-                  onDragStart={e => { e.dataTransfer.setData('type', 'template'); e.dataTransfer.setData('data', JSON.stringify(t)); }}
-                  className={`px-6 py-3 bg-white dark:bg-slate-900 border-2 rounded-2xl cursor-grab shadow-sm hover:scale-105 active:cursor-grabbing transition-all ${COLORS.find(c => c.id === t.color)?.border} border-opacity-30`}
-                >
-                  <p className="text-[10px] font-black dark:text-white uppercase tracking-wider">{t.subject}</p>
-                </div>
-              ))}
-              {showTplInput ? (
-                <form onSubmit={e => {
-                  e.preventDefault();
-                  if (!tplInputValue.trim()) return;
-                  const saved = localStorage.getItem('study_templates');
-                  const existing = saved ? JSON.parse(saved) : [];
-                  const updated = [...existing, { id: Math.random().toString(36).substr(2, 9), subject: tplInputValue.trim(), topic: 'Study', color: COLORS[Math.floor(Math.random() * COLORS.length)].id }];
-                  setTemplates(updated);
-                  localStorage.setItem('study_templates', JSON.stringify(updated));
-                  setTplInputValue('');
-                  setShowTplInput(false);
-                }} className="flex items-center gap-2">
-                  <input autoFocus value={tplInputValue} onChange={e => setTplInputValue(e.target.value)} placeholder="Fachname..." className="px-4 py-2 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-2xl text-sm font-bold dark:text-white outline-none focus:ring-2 ring-indigo-500/30 w-36" />
-                  <button type="submit" className="w-8 h-8 flex items-center justify-center bg-indigo-600 text-white rounded-full font-black text-sm">✓</button>
-                  <button type="button" onClick={() => setShowTplInput(false)} className="w-8 h-8 flex items-center justify-center bg-slate-100 dark:bg-slate-800 rounded-full text-slate-400">✕</button>
-                </form>
-              ) : (
-                <button onClick={() => setShowTplInput(true)} className="w-10 h-10 flex items-center justify-center bg-slate-100 dark:bg-slate-800 rounded-full text-slate-400 hover:text-indigo-600 transition-colors text-xl font-black">
-                  <Plus size={16} />
-                </button>
-              )}
-            </div>
-          </div>
 
-          {/* Day Nav */}
-          <div className="flex justify-center flex-wrap gap-2">
-            {DAYS.map(day => (
+          {/* Day Nav — short names on mobile, full on desktop */}
+          <div className="flex gap-2 overflow-x-auto pb-1 scrollbar-none -mx-4 px-4 md:flex-wrap md:justify-center md:overflow-visible md:mx-0 md:px-0">
+            {DAYS.map((day, i) => (
               <button
                 key={day}
                 onClick={() => setSelectedDay(day)}
-                className={`px-5 py-3 rounded-2xl text-[10px] font-black uppercase tracking-widest transition-all ${selectedDay === day ? 'bg-indigo-600 text-white shadow-lg' : 'text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800'}`}
+                className={`shrink-0 px-4 md:px-5 py-3 rounded-2xl text-[10px] font-black uppercase tracking-widest transition-all ${selectedDay === day ? 'bg-indigo-600 text-white shadow-lg' : 'text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800'}`}
               >
-                {day}
+                <span className="md:hidden">{WEEK_DAYS_SHORT[i]}</span>
+                <span className="hidden md:inline">{day}</span>
               </button>
             ))}
           </div>
 
-          {/* Time Grid */}
-          <div className="bg-white dark:bg-slate-900 rounded-[32px] border border-slate-100 dark:border-slate-800 shadow-3d-raised overflow-hidden">
-            <div className="flex">
-              <div className="w-16 shrink-0 pt-0 border-r border-slate-100 dark:border-slate-800">
-                {HOURS.map(h => (
-                  <div key={h} style={{ height: HOUR_HEIGHT }} className="flex justify-center pt-2 border-b border-slate-50 dark:border-slate-800/50">
-                    <span className="text-[9px] font-mono font-black text-slate-300 dark:text-slate-700">{h}:00</span>
-                  </div>
-                ))}
+          {/* ── MOBILE: Liste + Schnell-Hinzufügen ── */}
+          <div className="md:hidden space-y-4">
+            {/* Entries for selected day */}
+            {entries.filter(e => e.day === selectedDay).length === 0 ? (
+              <div className="py-10 text-center text-slate-400 rounded-[24px] border border-dashed border-slate-200 dark:border-slate-700">
+                <p className="text-[10px] font-black uppercase tracking-widest">Keine Blöcke für {selectedDay}</p>
               </div>
-              <div className="flex-grow">
-                <div
-                  onDragOver={e => e.preventDefault()}
-                  onDrop={e => onDrop(e, selectedDay)}
-                  className="relative select-none"
-                  style={{ minHeight: HOUR_HEIGHT * HOURS.length }}
-                >
-                  {HOURS.map(h => (
-                    <div key={h} style={{ height: HOUR_HEIGHT }} className="border-b border-slate-50 dark:border-slate-800/50 w-full" />
-                  ))}
-                  {entries.filter(e => e.day === selectedDay).map(entry => {
-                    const { top, height } = calculatePosition(entry.startTime, entry.endTime);
+            ) : (
+              <div className="space-y-3">
+                {entries
+                  .filter(e => e.day === selectedDay)
+                  .sort((a, b) => a.startTime.localeCompare(b.startTime))
+                  .map(entry => {
                     const c = COLORS.find(x => x.id === entry.color) || COLORS[0];
-                    const isResizing = resizingId === entry.id;
                     return (
-                      <div
-                        key={entry.id}
-                        style={{ top: `${top}px`, height: `${height}px`, left: '12px', right: '12px' }}
-                        className={`absolute rounded-[24px] border-2 p-4 transition-all duration-300 cursor-pointer group/item ${entry.completed ? 'opacity-30 grayscale blur-[0.5px]' : `bg-white dark:bg-slate-900 ${c.border} border-opacity-40 hover:border-opacity-100 shadow-3d-raised hover:shadow-3d-deep`} ${isResizing ? 'ring-4 ring-indigo-500/20 z-50' : 'z-10'}`}
-                      >
-                        <div className="flex flex-col h-full gap-1.5">
-                          <div className="flex justify-between items-start">
-                            <div className="flex items-center gap-2">
-                              <span className={`w-2 h-2 rounded-full ${c.bg}`} />
-                              <span className="text-[9px] font-black uppercase text-slate-400 tracking-widest">{entry.subject}</span>
-                            </div>
-                            <button onClick={e => { e.stopPropagation(); savePlan(entries.filter(x => x.id !== entry.id)); }} className="text-slate-300 hover:text-rose-500 opacity-0 group-hover/item:opacity-100 transition-opacity">
-                              <X size={12} />
-                            </button>
-                          </div>
-                          <p className="text-sm font-black dark:text-white truncate leading-tight">{entry.topic}</p>
-                          <div className="mt-auto flex justify-between items-end">
-                            <span className="text-[9px] font-mono font-black text-slate-400">{entry.startTime} – {entry.endTime}</span>
-                            <button
-                              onClick={e => { e.stopPropagation(); savePlan(entries.map(x => x.id === entry.id ? { ...x, completed: !x.completed } : x)); }}
-                              className={`w-7 h-7 rounded-lg border-2 flex items-center justify-center transition-all text-xs ${entry.completed ? 'bg-emerald-500 border-emerald-500 text-white' : 'border-slate-100 dark:border-slate-800 bg-slate-50 dark:bg-slate-800 hover:border-indigo-500'}`}
-                            >
-                              {entry.completed ? '✓' : ''}
-                            </button>
-                          </div>
+                      <div key={entry.id} className={`flex items-center gap-4 px-5 py-4 bg-white dark:bg-slate-900 rounded-[20px] border-2 shadow-sm ${entry.completed ? 'opacity-40' : c.border} border-opacity-40`}>
+                        <span className={`w-2.5 h-2.5 rounded-full shrink-0 ${c.bg}`} />
+                        <div className="flex-1 min-w-0">
+                          <p className="text-[9px] font-black uppercase tracking-widest text-slate-400">{entry.subject}</p>
+                          <p className="text-sm font-black dark:text-white truncate">{entry.topic}</p>
+                          <p className="text-[10px] font-mono text-slate-400 mt-0.5">{entry.startTime} – {entry.endTime}</p>
                         </div>
-                        {!entry.completed && (
-                          <div onMouseDown={e => handleResizeStart(e, entry)} className="absolute bottom-0 left-0 right-0 h-5 cursor-ns-resize flex items-end justify-center pb-1.5 opacity-0 group-hover/item:opacity-100 transition-opacity">
-                            <div className="w-10 h-1 bg-slate-200 dark:bg-slate-700 rounded-full" />
-                          </div>
-                        )}
+                        <button
+                          onClick={() => savePlan(entries.map(x => x.id === entry.id ? { ...x, completed: !x.completed } : x))}
+                          className={`w-8 h-8 rounded-xl border-2 flex items-center justify-center shrink-0 transition-all text-xs font-black ${entry.completed ? 'bg-emerald-500 border-emerald-500 text-white' : 'border-slate-200 dark:border-slate-700'}`}
+                        >
+                          {entry.completed ? '✓' : ''}
+                        </button>
+                        <button
+                          onClick={() => savePlan(entries.filter(x => x.id !== entry.id))}
+                          className="text-slate-300 hover:text-rose-500 transition-colors shrink-0"
+                        >
+                          <X size={14} />
+                        </button>
                       </div>
                     );
-                  })}
+                  })
+                }
+              </div>
+            )}
+
+            {/* Quick-add form */}
+            {showQuickAdd ? (
+              <form
+                onSubmit={e => {
+                  e.preventDefault();
+                  if (!qaSubject.trim()) return;
+                  savePlan([...entries, {
+                    id: Math.random().toString(36).substr(2, 9),
+                    day: selectedDay,
+                    subject: qaSubject.trim(),
+                    topic: qaTopic.trim() || qaSubject.trim(),
+                    color: qaColor,
+                    startTime: qaStart,
+                    endTime: qaEnd,
+                    completed: false,
+                  }]);
+                  setQaSubject(''); setQaTopic(''); setQaStart('08:00'); setQaEnd('09:30');
+                  setShowQuickAdd(false);
+                }}
+                className="bg-white dark:bg-slate-900 rounded-[24px] border border-slate-100 dark:border-slate-800 p-5 space-y-4 animate-in zoom-in-95 duration-200"
+              >
+                <p className="text-[9px] font-black uppercase tracking-widest text-indigo-600">Lernblock hinzufügen · {selectedDay}</p>
+                <div className="grid grid-cols-2 gap-3">
+                  <input
+                    autoFocus
+                    value={qaSubject}
+                    onChange={e => setQaSubject(e.target.value)}
+                    placeholder="Fach *"
+                    className="col-span-2 p-3 bg-slate-50 dark:bg-slate-800 rounded-xl border-2 border-transparent focus:border-indigo-500 outline-none dark:text-white text-sm font-bold transition-colors"
+                  />
+                  <input
+                    value={qaTopic}
+                    onChange={e => setQaTopic(e.target.value)}
+                    placeholder="Thema"
+                    className="col-span-2 p-3 bg-slate-50 dark:bg-slate-800 rounded-xl border-2 border-transparent focus:border-indigo-500 outline-none dark:text-white text-sm transition-colors"
+                  />
+                  <div className="space-y-1">
+                    <label className="text-[9px] font-black text-slate-400 uppercase ml-1">Von</label>
+                    <input type="time" value={qaStart} onChange={e => setQaStart(e.target.value)} className="w-full p-3 bg-slate-50 dark:bg-slate-800 rounded-xl border-2 border-transparent focus:border-indigo-500 outline-none dark:text-white text-sm font-bold" />
+                  </div>
+                  <div className="space-y-1">
+                    <label className="text-[9px] font-black text-slate-400 uppercase ml-1">Bis</label>
+                    <input type="time" value={qaEnd} onChange={e => setQaEnd(e.target.value)} className="w-full p-3 bg-slate-50 dark:bg-slate-800 rounded-xl border-2 border-transparent focus:border-indigo-500 outline-none dark:text-white text-sm font-bold" />
+                  </div>
+                </div>
+                {/* Color picker */}
+                <div className="flex gap-2">
+                  {COLORS.map(c => (
+                    <button
+                      key={c.id}
+                      type="button"
+                      onClick={() => setQaColor(c.id)}
+                      className={`w-8 h-8 rounded-full ${c.bg} transition-all ${qaColor === c.id ? 'ring-2 ring-offset-2 ring-indigo-500 scale-110' : 'opacity-50 hover:opacity-100'}`}
+                    />
+                  ))}
+                </div>
+                <div className="flex gap-2">
+                  <button type="submit" disabled={!qaSubject.trim()} className="flex-1 py-3 bg-indigo-600 text-white rounded-xl text-[10px] font-black uppercase tracking-widest disabled:opacity-50 transition-all">
+                    Hinzufügen
+                  </button>
+                  <button type="button" onClick={() => setShowQuickAdd(false)} className="px-4 py-3 bg-slate-100 dark:bg-slate-800 text-slate-400 rounded-xl text-[10px] font-black uppercase">
+                    Abbrechen
+                  </button>
+                </div>
+              </form>
+            ) : (
+              <button
+                onClick={() => setShowQuickAdd(true)}
+                className="w-full py-4 rounded-[20px] border-2 border-dashed border-slate-200 dark:border-slate-700 text-slate-400 hover:border-indigo-400 hover:text-indigo-500 transition-all flex items-center justify-center gap-2 font-black text-[10px] uppercase tracking-widest"
+              >
+                <Plus size={14} /> Lernblock hinzufügen
+              </button>
+            )}
+          </div>
+
+          {/* ── DESKTOP: Templates + Zeitgitter ── */}
+          <div className="hidden md:block space-y-6">
+            {/* Templates */}
+            <div className="flex flex-col items-center gap-4 py-2">
+              <p className="text-[9px] font-black uppercase tracking-[0.3em] text-slate-400">Vorlagen zum Reinziehen</p>
+              <div className="flex flex-wrap justify-center gap-3">
+                {templates.map(t => (
+                  <div
+                    key={t.id}
+                    draggable
+                    onDragStart={e => { e.dataTransfer.setData('type', 'template'); e.dataTransfer.setData('data', JSON.stringify(t)); }}
+                    className={`px-6 py-3 bg-white dark:bg-slate-900 border-2 rounded-2xl cursor-grab shadow-sm hover:scale-105 active:cursor-grabbing transition-all ${COLORS.find(c => c.id === t.color)?.border} border-opacity-30`}
+                  >
+                    <p className="text-[10px] font-black dark:text-white uppercase tracking-wider">{t.subject}</p>
+                  </div>
+                ))}
+                {showTplInput ? (
+                  <form onSubmit={e => {
+                    e.preventDefault();
+                    if (!tplInputValue.trim()) return;
+                    const saved = localStorage.getItem('study_templates');
+                    const existing = saved ? JSON.parse(saved) : [];
+                    const updated = [...existing, { id: Math.random().toString(36).substr(2, 9), subject: tplInputValue.trim(), topic: 'Study', color: COLORS[Math.floor(Math.random() * COLORS.length)].id }];
+                    setTemplates(updated);
+                    localStorage.setItem('study_templates', JSON.stringify(updated));
+                    setTplInputValue('');
+                    setShowTplInput(false);
+                  }} className="flex items-center gap-2">
+                    <input autoFocus value={tplInputValue} onChange={e => setTplInputValue(e.target.value)} placeholder="Fachname..." className="px-4 py-2 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-2xl text-sm font-bold dark:text-white outline-none focus:ring-2 ring-indigo-500/30 w-36" />
+                    <button type="submit" className="w-8 h-8 flex items-center justify-center bg-indigo-600 text-white rounded-full font-black text-sm">✓</button>
+                    <button type="button" onClick={() => setShowTplInput(false)} className="w-8 h-8 flex items-center justify-center bg-slate-100 dark:bg-slate-800 rounded-full text-slate-400">✕</button>
+                  </form>
+                ) : (
+                  <button onClick={() => setShowTplInput(true)} className="w-10 h-10 flex items-center justify-center bg-slate-100 dark:bg-slate-800 rounded-full text-slate-400 hover:text-indigo-600 transition-colors text-xl font-black">
+                    <Plus size={16} />
+                  </button>
+                )}
+              </div>
+            </div>
+
+            {/* Time Grid */}
+            <div className="bg-white dark:bg-slate-900 rounded-[32px] border border-slate-100 dark:border-slate-800 shadow-3d-raised overflow-hidden">
+              <div className="flex">
+                <div className="w-16 shrink-0 border-r border-slate-100 dark:border-slate-800">
+                  {HOURS.map(h => (
+                    <div key={h} style={{ height: HOUR_HEIGHT }} className="flex justify-center pt-2 border-b border-slate-50 dark:border-slate-800/50">
+                      <span className="text-[9px] font-mono font-black text-slate-300 dark:text-slate-700">{h}:00</span>
+                    </div>
+                  ))}
+                </div>
+                <div className="flex-grow">
+                  <div
+                    onDragOver={e => e.preventDefault()}
+                    onDrop={e => onDrop(e, selectedDay)}
+                    className="relative select-none"
+                    style={{ minHeight: HOUR_HEIGHT * HOURS.length }}
+                  >
+                    {HOURS.map(h => (
+                      <div key={h} style={{ height: HOUR_HEIGHT }} className="border-b border-slate-50 dark:border-slate-800/50 w-full" />
+                    ))}
+                    {entries.filter(e => e.day === selectedDay).map(entry => {
+                      const { top, height } = calculatePosition(entry.startTime, entry.endTime);
+                      const c = COLORS.find(x => x.id === entry.color) || COLORS[0];
+                      const isResizing = resizingId === entry.id;
+                      return (
+                        <div
+                          key={entry.id}
+                          style={{ top: `${top}px`, height: `${height}px`, left: '12px', right: '12px' }}
+                          className={`absolute rounded-[24px] border-2 p-4 transition-all duration-300 cursor-pointer group/item ${entry.completed ? 'opacity-30 grayscale blur-[0.5px]' : `bg-white dark:bg-slate-900 ${c.border} border-opacity-40 hover:border-opacity-100 shadow-3d-raised hover:shadow-3d-deep`} ${isResizing ? 'ring-4 ring-indigo-500/20 z-50' : 'z-10'}`}
+                        >
+                          <div className="flex flex-col h-full gap-1.5">
+                            <div className="flex justify-between items-start">
+                              <div className="flex items-center gap-2">
+                                <span className={`w-2 h-2 rounded-full ${c.bg}`} />
+                                <span className="text-[9px] font-black uppercase text-slate-400 tracking-widest">{entry.subject}</span>
+                              </div>
+                              <button onClick={e => { e.stopPropagation(); savePlan(entries.filter(x => x.id !== entry.id)); }} className="text-slate-300 hover:text-rose-500 opacity-0 group-hover/item:opacity-100 transition-opacity">
+                                <X size={12} />
+                              </button>
+                            </div>
+                            <p className="text-sm font-black dark:text-white truncate leading-tight">{entry.topic}</p>
+                            <div className="mt-auto flex justify-between items-end">
+                              <span className="text-[9px] font-mono font-black text-slate-400">{entry.startTime} – {entry.endTime}</span>
+                              <button
+                                onClick={e => { e.stopPropagation(); savePlan(entries.map(x => x.id === entry.id ? { ...x, completed: !x.completed } : x)); }}
+                                className={`w-7 h-7 rounded-lg border-2 flex items-center justify-center transition-all text-xs ${entry.completed ? 'bg-emerald-500 border-emerald-500 text-white' : 'border-slate-100 dark:border-slate-800 bg-slate-50 dark:bg-slate-800 hover:border-indigo-500'}`}
+                              >
+                                {entry.completed ? '✓' : ''}
+                              </button>
+                            </div>
+                          </div>
+                          {!entry.completed && (
+                            <div onMouseDown={e => handleResizeStart(e, entry)} className="absolute bottom-0 left-0 right-0 h-5 cursor-ns-resize flex items-end justify-center pb-1.5 opacity-0 group-hover/item:opacity-100 transition-opacity">
+                              <div className="w-10 h-1 bg-slate-200 dark:bg-slate-700 rounded-full" />
+                            </div>
+                          )}
+                        </div>
+                      );
+                    })}
+                  </div>
                 </div>
               </div>
             </div>
           </div>
         </div>
       )}
+
+      <AgentChat
+        agentType="studyFlow"
+        context={{ metrics, examTerms, currentTab: 'PLANNER' }}
+        isOpen={studyFlowOpen}
+        onClose={() => setStudyFlowOpen(false)}
+      />
     </div>
   );
 };

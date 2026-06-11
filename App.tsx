@@ -64,7 +64,11 @@ const App: React.FC = () => {
   const [showUpgradeHint, setShowUpgradeHint] = useState(false);
   const [showUpgradeModal, setShowUpgradeModal] = useState(false);
   const [showSettings, setShowSettings] = useState(false);
-  const [isDark, setIsDark] = useState(() => localStorage.getItem('theme') === 'dark');
+  const [isDark, setIsDark] = useState(() => {
+    const saved = localStorage.getItem('theme');
+    if (saved) return saved === 'dark';
+    return document.documentElement.classList.contains('dark');
+  });
   const [pendingActionDoc, setPendingActionDoc] = useState<ProcessedDocument | null>(null);
   const [pendingTopic, setPendingTopic] = useState<string | null>(null);
   const [activeQuizMeta, setActiveQuizMeta] = useState<{ docId: string; docName: string } | null>(null);
@@ -890,7 +894,7 @@ const App: React.FC = () => {
         onClose={() => setShowSettings(false)}
       />
     )}
-    <Layout activeTab={activeTab} onTabChange={(tab) => { setPendingActionDoc(null); setPendingTopic(null); setActiveTab(tab); }} user={user} onLoginClick={() => setShowAuthModal(true)} onLogout={() => supabase.auth.signOut()} onUpgradeClick={() => setShowUpgradeModal(true)} onSettingsClick={() => setShowSettings(true)}>
+    <Layout activeTab={activeTab} onTabChange={(tab) => { setPendingActionDoc(null); setPendingTopic(null); setActiveTab(tab); }} user={user} onLoginClick={() => setShowAuthModal(true)} onLogout={() => supabase.auth.signOut()} onUpgradeClick={() => setShowUpgradeModal(true)} onSettingsClick={() => setShowSettings(true)} isDark={isDark} onToggleTheme={toggleTheme}>
       {isOffline && (
         <div className="mb-4 p-3 bg-amber-500/10 border border-amber-500/30 rounded-2xl flex items-center justify-center gap-2">
           <p className="text-[10px] font-bold text-amber-600 dark:text-amber-400 uppercase tracking-widest">Offline-Modus aktiv</p>

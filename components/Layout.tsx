@@ -4,12 +4,13 @@ import { ActiveTab } from '../types';
 import {
   Home, BookOpen, HelpCircle, Calendar, Brain, GraduationCap,
   Layers, Lightbulb, BarChart2, Search, FileText, Moon, Sun,
-  X, Menu, KeyRound, LogIn, LogOut, Zap, Settings, type LucideIcon
+  X, Menu, KeyRound, LogIn, LogOut, Zap, Settings, Bot, type LucideIcon
 } from 'lucide-react';
 import type { User } from '@supabase/supabase-js';
 import { ColorPicker } from './ColorPicker';
 import { ApiKeySettings } from './ApiKeySettings';
 import { LegalModal } from './LegalModal';
+import { AgentChat } from './AgentChat';
 import { hasApiKey } from '../services/geminiService';
 
 interface LayoutProps {
@@ -21,6 +22,8 @@ interface LayoutProps {
   onLogout?: () => void;
   onUpgradeClick?: () => void;
   onSettingsClick?: () => void;
+  isDark: boolean;
+  onToggleTheme: () => void;
 }
 
 interface NavItem {
@@ -32,17 +35,22 @@ interface NavItem {
 
 export const Layout: React.FC<LayoutProps> = ({
   children, activeTab, onTabChange, user,
-  onLoginClick, onLogout, onUpgradeClick, onSettingsClick
+  onLoginClick, onLogout, onUpgradeClick, onSettingsClick,
+  isDark, onToggleTheme
 }) => {
-  const [isDark, setIsDark] = useState(() => {
-    const saved = localStorage.getItem('theme');
-    if (saved) return saved === 'dark';
-    return document.documentElement.classList.contains('dark');
-  });
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
   const [showApiSettings, setShowApiSettings] = useState(false);
   const [apiKeySet, setApiKeySet] = useState(hasApiKey);
   const [legalPage, setLegalPage] = useState<'impressum' | 'datenschutz' | 'agb' | null>(null);
+  const [uxHelperOpen, setUxHelperOpen] = useState(false);
+
+  useEffect(() => {
+    const handler = (e: CustomEvent<{ agentType: string }>) => {
+      if (e.detail.agentType !== 'uxHelper') setUxHelperOpen(false);
+    };
+    window.addEventListener('quizwise-agent-opened', handler as EventListener);
+    return () => window.removeEventListener('quizwise-agent-opened', handler as EventListener);
+  }, []);
 
   useEffect(() => {
     const check = () => setApiKeySet(hasApiKey());
@@ -50,17 +58,6 @@ export const Layout: React.FC<LayoutProps> = ({
     return () => window.removeEventListener('storage', check);
   }, []);
 
-  useEffect(() => {
-    if (isDark) {
-      document.documentElement.classList.add('dark');
-      localStorage.setItem('theme', 'dark');
-    } else {
-      document.documentElement.classList.remove('dark');
-      localStorage.setItem('theme', 'light');
-    }
-  }, [isDark]);
-
-  const toggleTheme = () => setIsDark(d => !d);
 
   const mainNavItems: NavItem[] = [
     { id: ActiveTab.DASHBOARD, label: 'Home',  shortLabel: 'Home', icon: Home },
@@ -388,7 +385,7 @@ export const Layout: React.FC<LayoutProps> = ({
 
               {/* Theme toggle */}
               <button
-                onClick={toggleTheme}
+                onClick={onToggleTheme}
                 className="w-full flex items-center justify-between px-5 py-4 rounded-2xl border transition-all active:scale-95"
                 style={{ background: 'color-mix(in srgb, var(--border-color) 40%, var(--bg-sidebar))', borderColor: 'var(--border-color)' }}
               >
@@ -449,6 +446,25 @@ export const Layout: React.FC<LayoutProps> = ({
       {legalPage && (
         <LegalModal page={legalPage} onClose={() => setLegalPage(null)} />
       )}
+
+      {/* ── UX-HELPER FLOATING BUTTON ── */}
+      {user && !uxHelperOpen && (
+        <button
+          onClick={() => setUxHelperOpen(true)}
+          title="App-Assistent"
+          className="fixed bottom-24 right-4 md:bottom-6 md:right-6 z-40 w-12 h-12 rounded-2xl flex items-center justify-center shadow-lg transition-all hover:scale-105 active:scale-95"
+          style={{ background: 'var(--primary)', color: 'var(--primary-text)' }}
+        >
+          <Bot size={20} style={{ color: 'var(--primary-text)' }} />
+        </button>
+      )}
+
+      <AgentChat
+        agentType="uxHelper"
+        context={{ currentTab: activeTab }}
+        isOpen={uxHelperOpen}
+        onClose={() => setUxHelperOpen(false)}
+      />
     </div>
   );
 };
