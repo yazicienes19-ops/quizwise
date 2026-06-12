@@ -4,8 +4,9 @@ import { ActiveTab, LearningFlowResult, StudyEntry, FlashcardDeck } from '../typ
 import { GeneratedImage } from './GeneratedImage';
 import { AgentChat } from './AgentChat';
 import { toast } from '../services/toast';
-import { Bot, Layers } from 'lucide-react';
+import { Bot, Layers, Flame } from 'lucide-react';
 import { countDueCards, migrateLegacyCard } from '../services/spacedRepetition';
+import { getStreak } from '../services/streakService';
 
 const USAGE_KEY = 'quizwise_feature_usage';
 
@@ -59,6 +60,8 @@ export const Dashboard: React.FC<DashboardProps> = ({ onTabChange, flowResult })
       return countDueCards(allCards);
     } catch { return 0; }
   }, []);
+
+  const streak = useMemo(() => getStreak(), []);
 
   const coachContext = useMemo(() => {
     try {
@@ -220,6 +223,40 @@ export const Dashboard: React.FC<DashboardProps> = ({ onTabChange, flowResult })
               {dueCardsCount} fällig
             </span>
           </button>
+        </div>
+      )}
+
+      {/* Streak-Karte */}
+      {(streak.current > 0 || streak.best > 0) && (
+        <div className="max-w-6xl mx-auto w-full">
+          <div
+            className="flex items-center justify-between px-6 py-4 rounded-2xl border"
+            style={{ background: 'var(--bg-sidebar)', borderColor: 'var(--border-color)' }}
+          >
+            <div className="flex items-center gap-3">
+              <div
+                className="w-9 h-9 rounded-xl flex items-center justify-center shrink-0"
+                style={{ background: streak.todayDone ? 'color-mix(in srgb, var(--primary) 15%, transparent)' : 'var(--bg-main)' }}
+              >
+                <Flame
+                  className="w-5 h-5"
+                  style={{ color: streak.todayDone ? 'var(--primary)' : '#94a3b8' }}
+                  fill={streak.todayDone ? 'var(--primary)' : 'none'}
+                  strokeWidth={2}
+                />
+              </div>
+              <div>
+                <p className="text-[11px] font-black uppercase tracking-widest" style={{ color: streak.todayDone ? 'var(--primary)' : undefined }}>
+                  {streak.current} Tag{streak.current !== 1 ? 'e' : ''} Streak · Rekord: {streak.best}
+                </p>
+                <p className="text-[9px] text-slate-400 mt-0.5">
+                  {streak.todayDone
+                    ? 'Heute schon gelernt — weiter so!'
+                    : 'Heute noch nichts gelernt — Quiz, Karten oder Recall starten'}
+                </p>
+              </div>
+            </div>
+          </div>
         </div>
       )}
 

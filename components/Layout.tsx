@@ -2,10 +2,11 @@
 import React, { useState, useEffect, useMemo } from 'react';
 import { ActiveTab, FlashcardDeck } from '../types';
 import { countDueCards, migrateLegacyCard } from '../services/spacedRepetition';
+import { getStreak } from '../services/streakService';
 import {
   Home, BookOpen, HelpCircle, Calendar, Brain, GraduationCap,
   Layers, Lightbulb, BarChart2, Search, FileText, Moon, Sun,
-  X, Menu, KeyRound, LogIn, LogOut, Zap, Settings, Bot, type LucideIcon
+  X, Menu, KeyRound, LogIn, LogOut, Zap, Settings, Bot, Flame, type LucideIcon
 } from 'lucide-react';
 import type { User } from '@supabase/supabase-js';
 import { ColorPicker } from './ColorPicker';
@@ -78,6 +79,8 @@ export const Layout: React.FC<LayoutProps> = ({
     } catch { return 0; }
   }, []);
 
+  const streak = useMemo(() => getStreak(), []);
+
   const EXTRA_LABELS: Partial<Record<ActiveTab, string>> = {
     [ActiveTab.EXPLAINER]: 'KI-Erklärer',
     [ActiveTab.SEARCH]:    'Recherche',
@@ -121,10 +124,23 @@ export const Layout: React.FC<LayoutProps> = ({
         <div className="p-10 flex flex-col h-full">
           <div className="flex items-center gap-4 mb-12">
             <div
-              className="w-10 h-10 bg-indigo-600 rounded-xl flex items-center justify-center font-black transform rotate-3 shrink-0"
-              style={{ color: 'var(--primary-text)', boxShadow: '0 4px 12px color-mix(in srgb, var(--primary) 40%, transparent)' }}
+              className="w-10 h-10 rounded-xl flex items-center justify-center font-black transform rotate-3 shrink-0"
+              style={{ background: 'var(--primary)', color: 'var(--primary-text)', boxShadow: '0 4px 12px color-mix(in srgb, var(--primary) 40%, transparent)' }}
             >QW</div>
-            <span className="text-xl font-black tracking-tighter text-slate-900 dark:text-white uppercase truncate">QuizWise</span>
+            <span className="text-xl font-black tracking-tighter text-slate-900 dark:text-white uppercase truncate flex-1">QuizWise</span>
+            {streak.current > 0 && (
+              <div className="flex items-center gap-1 shrink-0" title={`${streak.current} Tage Streak`}>
+                <Flame
+                  className="w-4 h-4"
+                  style={{ color: streak.todayDone ? 'var(--primary)' : '#94a3b8' }}
+                  fill={streak.todayDone ? 'var(--primary)' : 'none'}
+                  strokeWidth={2}
+                />
+                <span className="text-[10px] font-black" style={{ color: streak.todayDone ? 'var(--primary)' : '#94a3b8' }}>
+                  {streak.current}
+                </span>
+              </div>
+            )}
           </div>
 
           <nav className="space-y-0.5 overflow-y-auto pr-1 scrollbar-hide flex-1">
@@ -319,6 +335,19 @@ export const Layout: React.FC<LayoutProps> = ({
         </span>
 
         <div className="flex items-center gap-1.5 shrink-0">
+          {streak.current > 0 && (
+            <div className="flex items-center gap-0.5 px-2">
+              <Flame
+                className="w-4 h-4"
+                style={{ color: streak.todayDone ? 'var(--primary)' : '#94a3b8' }}
+                fill={streak.todayDone ? 'var(--primary)' : 'none'}
+                strokeWidth={2}
+              />
+              <span className="text-[10px] font-black" style={{ color: streak.todayDone ? 'var(--primary)' : '#94a3b8' }}>
+                {streak.current}
+              </span>
+            </div>
+          )}
           <button
             onClick={onSettingsClick}
             className="w-9 h-9 flex items-center justify-center rounded-xl text-slate-500 hover:bg-slate-100 dark:hover:bg-slate-800 transition-all active:scale-90"

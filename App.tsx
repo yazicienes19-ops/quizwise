@@ -33,6 +33,7 @@ import { getSavedQuizzes, saveQuizToStorage, deleteSavedQuiz, SavedQuiz } from '
 import { getSavedExams, deleteSavedExam, SavedExam } from './services/savedExamsService';
 import { saveRecallResult } from './services/recallHistoryService';
 import { saveExamResult } from './services/examHistoryService';
+import { recordActivity } from './services/streakService';
 import { saveMeta, getMeta } from './services/libraryService';
 import {
   loadDocumentsFromSupabase,
@@ -466,6 +467,7 @@ const App: React.FC = () => {
     }
 
     await updateMetricsAfterSession(score, activeQuizMeta?.docName || 'Quiz Session', 'quiz');
+    recordActivity();
   };
 
   const getUsedTopics = (docId: string): string[] => {
@@ -765,6 +767,7 @@ const App: React.FC = () => {
           onComplete={(score, topic, missingPoints) => {
             saveRecallResult({ docName: topic, timestamp: Date.now(), score, topic, missingPoints });
             updateMetricsAfterSession(score, topic, 'recall');
+            recordActivity();
           }}
           initialDoc={pendingActionDoc ?? undefined}
         />;
@@ -814,6 +817,7 @@ const App: React.FC = () => {
               updateMetricsAfterSession(score, docName, 'exam');
               setExamInitialQuestions(null);
               setSavedExams(getSavedExams());
+              recordActivity();
             }}
             onNavigate={setActiveTab}
           />

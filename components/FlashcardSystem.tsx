@@ -9,6 +9,7 @@ import { FlashcardPlayer } from './FlashcardPlayer';
 import { SourceSelector } from './SourceSelector';
 import { loadDecksFromSupabase, saveDeckToSupabase, deleteDeckFromSupabase, uploadAllDecksToSupabase } from '../services/flashcardService';
 import { reviewCard, getDueCards, createSrsState, migrateLegacyCard, ReviewQuality, countDueCards } from '../services/spacedRepetition';
+import { recordActivity } from '../services/streakService';
 
 interface FlashcardSystemProps {
   availableDocuments: ProcessedDocument[];
@@ -35,6 +36,7 @@ export const FlashcardSystem: React.FC<FlashcardSystemProps> = ({
 }) => {
   const [decks, setDecks] = useState<FlashcardDeck[]>([]);
   const [activeDeckId, setActiveDeckId] = useState<string | null>(null);
+  const sessionReviewCount = React.useRef(0);
   const [editingDeckId, setEditingDeckId] = useState<string | null>(null);
   const [isGenerating, setIsGenerating] = useState<string | null>(null);
   const [selectedCount, setSelectedCount] = useState<number>(15);
@@ -259,6 +261,8 @@ export const FlashcardSystem: React.FC<FlashcardSystemProps> = ({
     });
     const changedDeck = newDecks.find(d => d.id === activeDeckId);
     saveDecks(newDecks, changedDeck);
+    sessionReviewCount.current += 1;
+    if (sessionReviewCount.current === 5) recordActivity();
   };
 
   const handleExportDeck = (deck: FlashcardDeck) => {
@@ -368,6 +372,7 @@ export const FlashcardSystem: React.FC<FlashcardSystemProps> = ({
       toast.success("Dieses Deck ist für heute erledigt! 🎉");
       return;
     }
+    sessionReviewCount.current = 0;
     setActiveDeckId(deckId);
   };
 
