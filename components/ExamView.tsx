@@ -1,7 +1,8 @@
 
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { ExamQuestion, ActiveTab } from '../types';
 import { EmojiImage } from './EmojiImage';
+import { jsPDF } from 'jspdf';
 
 interface ExamViewProps {
   questions: ExamQuestion[];
@@ -16,6 +17,7 @@ interface ExamViewProps {
   initialAnswers?: Record<string, any>;
   onAnswersChange?: (answers: Record<string, any>) => void;
   onSaveProgress?: (name: string) => void;
+  examTitle?: string;
 }
 
 const formatTime = (s: number) =>
@@ -34,7 +36,7 @@ const TYPE_LABELS: Record<string, string> = {
 export const ExamView: React.FC<ExamViewProps> = ({
   questions, mode, onSave, onSubmit, isEvaluating,
   examDuration, onNewExam, onNavigate, onSaveExam,
-  initialAnswers, onAnswersChange, onSaveProgress,
+  initialAnswers, onAnswersChange, onSaveProgress, examTitle,
 }) => {
   const [answers, setAnswers]           = useState<Record<string, any>>(initialAnswers ?? {});
   const [editingId, setEditingId]       = useState<string | null>(null);
@@ -112,6 +114,79 @@ export const ExamView: React.FC<ExamViewProps> = ({
     return        { grade: '5.0', label: 'Nicht Bestanden',       color: 'text-rose-600',    bg: 'bg-rose-50' };
   };
   const gradeInfo = getGrade(percentage);
+
+  const handleExportPdf = useCallback(() => {
+    const doc = new jsPDF({ unit: 'mm', format: 'a4' });
+    const W = 210, margin = 18, lw = W - 2 * margin;
+    let y = margin;
+
+    const addText = (text: string, size: number, bold: boolean, color: [number, number, number] = [0, 0, 0]) => {
+      doc.setFontSize(size);
+      doc.setFont('helvetica', bold ? 'bold' : 'normal');
+      doc.setTextColor(...color);
+      const lines = doc.splitTextToSize(text, lw) as string[];
+      lines.forEach(line => {
+        if (y > 275) { doc.addPage(); y = margin; }
+        doc.text(line, margin, y);
+        y += size * 0.4;
+      });
+      y += 2;
+    };
+
+    // Header
+    addText(examTitle || 'Klausur-Protokoll', 22, true);
+    addText(new Date().toLocaleDateString('de-DE', { day: '2-digit', month: 'long', year: 'numeric' }), 9, false, [120, 120, 120]);
+    y += 4;
+
+    // Grade box line
+    const gradeColor: [number, number, number] = percentage >= 50 ? [16, 185, 129] : [239, 68, 68];
+    doc.setDrawColor(...gradeColor);
+    doc.setLineWidth(0.8);
+    doc.roundedRect(margin, y, lw, 20, 3, 3, 'S');
+    doc.setFontSize(18);
+    doc.setFont('helvetica', 'bold');
+    doc.setTextColor(...gradeColor);
+    doc.text(`Note ${gradeInfo.grade} — ${gradeInfo.label}`, margin + 6, y + 8);
+    doc.setFontSize(9);
+    doc.setFont('helvetica', 'normal');
+    doc.setTextColor(80, 80, 80);
+    doc.text(`${Math.round(percentage)}%  ·  ${achievedTotal}/${totalPoints} Punkte  ·  ${percentage >= 50 ? 'Bestanden' : 'Nicht Bestanden'}`, margin + 6, y + 15);
+    y += 27;
+
+    // Questions
+    questions.forEach((q, i) => {
+      if (y > 260) { doc.addPage(); y = margin; }
+      addText(`${i + 1}. ${q.question}`, 10, true);
+
+      const userAns = q.userAnswer;
+      let userText = '';
+      let correctText = '';
+      if (q.type === 'mc') {
+        userText = (userAns as number[] || []).map((idx: number) => q.options?.[idx] ?? `Option ${idx + 1}`).join(', ') || '—';
+        correctText = (q.correctIndices || []).map((idx: number) => q.options?.[idx] ?? `Option ${idx + 1}`).join(', ');
+      } else if (q.type === 'truefalse') {
+        const ans = userAns as { tf?: boolean; reason?: number } || {};
+        userText = ans.tf === undefined ? '—' : (ans.tf ? 'Richtig' : 'Falsch');
+        correctText = q.tfCorrect ? 'Richtig' : 'Falsch';
+      } else if (q.type === 'open') {
+        userText = String(userAns || '—');
+        correctText = q.solution || '';
+      } else {
+        userText = String(userAns ?? '—');
+        correctText = q.solution || '';
+      }
+
+      const isCorrect = (q.achievedPoints ?? 0) === q.points;
+      const pts = q.achievedPoints ?? 0;
+      addText(`Deine Antwort: ${userText}`, 9, false, isCorrect ? [16, 185, 129] : [239, 68, 68]);
+      if (!isCorrect && correctText) addText(`Korrekt: ${correctText}`, 9, false, [80, 80, 80]);
+      if (q.feedback) addText(`Feedback: ${q.feedback}`, 8, false, [120, 120, 120]);
+      addText(`Punkte: ${pts} / ${q.points}`, 8, false, [120, 120, 120]);
+      y += 2;
+    });
+
+    doc.save(`QuizWise_Klausur_${new Date().toISOString().slice(0, 10)}.pdf`);
+  }, [questions, percentage, gradeInfo, achievedTotal, totalPoints, examTitle]);
 
   // ─── Question Body ─────────────────────────────────────────────────────────
 
@@ -515,10 +590,19 @@ export const ExamView: React.FC<ExamViewProps> = ({
             )}
             <div className="flex flex-wrap gap-2 pt-2 border-t border-slate-200 dark:border-slate-700">
               {onNewExam && (
-                <button onClick={onNewExam} className="bg-indigo-600 text-white px-5 py-2.5 rounded-[16px] font-black uppercase text-[9px] tracking-widest hover:scale-[1.02] transition-all shadow-lg">
+                <button onClick={onNewExam} className="text-white px-5 py-2.5 rounded-[16px] font-black uppercase text-[9px] tracking-widest hover:scale-[1.02] transition-all shadow-lg" style={{ background: 'var(--primary)' }}>
                   Neue Klausur
                 </button>
               )}
+              <button
+                onClick={handleExportPdf}
+                className="flex items-center gap-2 px-5 py-2.5 rounded-[16px] border-2 border-slate-200 dark:border-slate-700 font-black uppercase text-[9px] tracking-widest text-slate-600 dark:text-slate-300 hover:border-rose-400 hover:text-rose-600 transition-all"
+              >
+                <svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round">
+                  <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/>
+                </svg>
+                PDF exportieren
+              </button>
               {onNavigate && (
                 <>
                   <button onClick={() => onNavigate(ActiveTab.RADAR)} className="px-5 py-2.5 rounded-[16px] border-2 border-slate-200 dark:border-slate-700 font-black uppercase text-[9px] tracking-widest text-slate-600 dark:text-slate-300 hover:border-indigo-400 hover:text-indigo-600 transition-all">

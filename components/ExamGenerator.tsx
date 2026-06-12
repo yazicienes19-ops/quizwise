@@ -4,6 +4,7 @@ import { ProcessedDocument, Collection } from '../types';
 import { GenerationSource } from '../services/geminiService';
 import { GeneratedImage } from './GeneratedImage';
 import { SourceSelector } from './SourceSelector';
+import { getAllMeta } from '../services/libraryService';
 
 interface ExamGeneratorProps {
   onGenerate: (content: GenerationSource, style?: GenerationSource, options?: { count: number, difficulty: string }, docName?: string, totalMinutes?: number) => void;
@@ -40,6 +41,12 @@ export const ExamGenerator: React.FC<ExamGeneratorProps> = ({
     } catch (_) {}
   }, []); // eslint-disable-line react-hooks/exhaustive-deps
   const [styleFile, setStyleFile] = useState<File | null>(null);
+  const [styleLibDocId, setStyleLibDocId] = useState<string | null>(null);
+
+  const altklausurDocs = useMemo(() => {
+    const meta = getAllMeta();
+    return documents.filter(d => meta[d.id]?.isAltklausur);
+  }, [documents]);
   const [questionCount, setQuestionCount] = useState(10);
   const [difficulty, setDifficulty] = useState<'leicht' | 'mittel' | 'schwer'>('mittel');
 
@@ -76,7 +83,19 @@ export const ExamGenerator: React.FC<ExamGeneratorProps> = ({
   const handleStart = async () => {
     if (!contentSource) return;
     try {
-      const styleSource = styleFile ? await processStyleFile(styleFile) : undefined;
+      let styleSource: GenerationSource | undefined;
+      if (styleFile) {
+        styleSource = await processStyleFile(styleFile);
+      } else if (styleLibDocId) {
+        const doc = documents.find(d => d.id === styleLibDocId);
+        if (doc) {
+          styleSource = getDocumentSource
+            ? getDocumentSource(doc)
+            : doc.type === 'pdf'
+              ? { file: { data: doc.content, mimeType: 'application/pdf' } }
+              : { text: doc.content };
+        }
+      }
       const baseTimePerQuestion = difficulty === 'leicht' ? 4 : difficulty === 'mittel' ? 6 : 9;
       const totalMinutes = questionCount * baseTimePerQuestion + 5;
       onGenerate(contentSource, styleSource, { count: questionCount, difficulty }, contentName, totalMinutes);
@@ -138,7 +157,7 @@ export const ExamGenerator: React.FC<ExamGeneratorProps> = ({
           </div>
 
           {/* Altklausur (optional, Stil-Referenz) */}
-          <div className={`p-8 rounded-[32px] border-2 transition-all flex flex-col gap-6 shadow-3d-raised ${styleFile ? 'border-rose-500 ring-4 ring-rose-500/10' : 'border-dashed border-slate-200 dark:border-slate-700'}`}
+          <div className={`p-8 rounded-[32px] border-2 transition-all flex flex-col gap-5 shadow-3d-raised ${(styleFile || styleLibDocId) ? 'border-rose-500 ring-4 ring-rose-500/10' : 'border-dashed border-slate-200 dark:border-slate-700'}`}
             style={{ background: 'var(--bg-sidebar)' }}>
             <div className="flex items-center gap-4">
               <div className="w-16 h-16 bg-rose-100 dark:bg-rose-900/30 text-rose-600 dark:text-rose-400 rounded-2xl flex items-center justify-center overflow-hidden shrink-0">
@@ -146,30 +165,70 @@ export const ExamGenerator: React.FC<ExamGeneratorProps> = ({
               </div>
               <div>
                 <h3 className="text-xl font-black dark:text-white uppercase tracking-tight">Altklausur</h3>
-                <p className="text-[10px] text-rose-500 uppercase font-black tracking-widest">Optional (Stil-Kopie)</p>
+                <p className="text-[10px] text-rose-500 uppercase font-black tracking-widest">Optional — Stil übernehmen</p>
               </div>
             </div>
+
+            {/* Library Altklausur docs */}
+            {altklausurDocs.length > 0 && (
+              <div className="space-y-2">
+                <p className="text-[9px] font-black uppercase tracking-widest text-slate-400">Aus Bibliothek</p>
+                {altklausurDocs.map(d => (
+                  <button
+                    key={d.id}
+                    type="button"
+                    onClick={() => { setStyleLibDocId(prev => prev === d.id ? null : d.id); setStyleFile(null); }}
+                    className="w-full flex items-center gap-3 px-4 py-3 rounded-[18px] border-2 transition-all text-left"
+                    style={styleLibDocId === d.id
+                      ? { borderColor: '#f43f5e', background: 'rgba(244,63,94,0.08)' }
+                      : { borderColor: 'var(--border-color)', background: 'transparent' }
+                    }
+                  >
+                    <div
+                      className="w-4 h-4 rounded flex items-center justify-center shrink-0 border-2 transition-all"
+                      style={styleLibDocId === d.id
+                        ? { background: '#f43f5e', borderColor: '#f43f5e' }
+                        : { borderColor: '#94a3b8' }
+                      }
+                    >
+                      {styleLibDocId === d.id && (
+                        <svg width="8" height="8" viewBox="0 0 10 10" fill="none">
+                          <polyline points="1.5,5 4,7.5 8.5,2.5" stroke="white" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
+                        </svg>
+                      )}
+                    </div>
+                    <span className="text-[10px] font-black truncate dark:text-white">{d.name.replace(/\.[^/.]+$/, '')}</span>
+                  </button>
+                ))}
+                <div className="flex items-center gap-3 my-1">
+                  <div className="flex-1 h-px bg-slate-200 dark:bg-slate-700" />
+                  <p className="text-[8px] font-black uppercase tracking-widest text-slate-400">oder</p>
+                  <div className="flex-1 h-px bg-slate-200 dark:bg-slate-700" />
+                </div>
+              </div>
+            )}
+
             <input
               type="file"
               id="style-input"
               className="hidden"
               accept=".pdf,.docx,.txt,.md"
-              onChange={(e) => setStyleFile(e.target.files?.[0] || null)}
+              onChange={(e) => { setStyleFile(e.target.files?.[0] || null); setStyleLibDocId(null); }}
             />
             <label
               htmlFor="style-input"
-              className="w-full py-4 bg-slate-100 dark:bg-slate-800 text-slate-500 dark:text-slate-400 rounded-2xl text-[11px] font-black uppercase tracking-widest hover:bg-indigo-600 hover:text-white transition-all text-center cursor-pointer shadow-sm"
+              className="w-full py-4 bg-slate-100 dark:bg-slate-800 text-slate-500 dark:text-slate-400 rounded-2xl text-[11px] font-black uppercase tracking-widest hover:bg-rose-600 hover:text-white transition-all text-center cursor-pointer shadow-sm"
             >
-              {styleFile ? 'Datei ändern' : 'Datei wählen'}
+              {styleFile ? 'Datei ändern' : 'Datei hochladen'}
             </label>
             {styleFile ? (
               <div className="p-3 bg-emerald-50 dark:bg-emerald-950/20 rounded-xl flex items-center gap-3">
-                <GeneratedImage prompt="Checkmark icon, minimalist" className="w-4 h-4 rounded-full" />
                 <p className="text-[10px] text-emerald-600 dark:text-emerald-400 font-black truncate">{styleFile.name}</p>
+                <button type="button" onClick={() => setStyleFile(null)} className="ml-auto text-slate-400 hover:text-rose-500 text-xs font-black">✕</button>
               </div>
-            ) : (
+            ) : !styleLibDocId ? (
               <p className="text-[10px] text-slate-400 italic text-center">Standard-Stil verwenden</p>
-            )}
+            ) : null}
           </div>
         </div>
 

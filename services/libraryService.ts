@@ -8,6 +8,7 @@ export interface SourceMeta {
   tags?: string[];
   examDate?: string;
   notes?: string;
+  isAltklausur?: boolean;
   status?: SourceStatus;
   lastOpenedAt?: number;
   quizCount?: number;

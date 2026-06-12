@@ -830,8 +830,12 @@ export const generateFullExam = async (content: GenerationSource, style?: Genera
   const parts: any[] = [sourceTopart(content)];
 
   if (style) {
-    if (style.text) parts.push({ text: `Nutze diesen STIL für die Prüfung: ${style.text}` });
-    else parts.push(sourceTopart(style));
+    if (style.text) {
+      parts.push({ text: `ALTKLAUSUR-STILVORLAGE:\n${style.text}\n\nAnalysiere zunächst den Fragestil, die Schwierigkeit und die Aufgabentypen dieser Altklausur. Generiere dann NEUE Fragen zum obigen Lernmaterial in EXAKT diesem Stil (gleiche Formulierungsweise, gleicher Detailgrad, gleiche Aufgabentypen-Verteilung).` });
+    } else {
+      parts.push({ text: 'ALTKLAUSUR-STILVORLAGE (Datei folgt): Analysiere zunächst den Fragestil, die Schwierigkeit und die Aufgabentypen dieser Altklausur. Generiere dann NEUE Fragen zum obigen Lernmaterial in EXAKT diesem Stil.' });
+      parts.push(sourceTopart(style));
+    }
   }
 
   const count      = options?.count || 10;

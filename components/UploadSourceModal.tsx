@@ -50,6 +50,7 @@ export const UploadSourceModal: React.FC<Props> = ({ onClose, onUpload }) => {
   const [tags, setTags]             = useState('');
   const [examDate, setExamDate]     = useState('');
   const [notes, setNotes]           = useState('');
+  const [isAltklausur, setIsAltklausur] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   const pickFile = useCallback((picked: File) => {
@@ -82,6 +83,7 @@ export const UploadSourceModal: React.FC<Props> = ({ onClose, onUpload }) => {
         tags:         tags.trim() ? tags.split(',').map(t => t.trim()).filter(Boolean) : undefined,
         examDate:     examDate || undefined,
         notes:        notes.trim() || undefined,
+        isAltklausur: isAltklausur || undefined,
         status:       'ready',
       };
       await onUpload(file, meta);
@@ -175,6 +177,29 @@ export const UploadSourceModal: React.FC<Props> = ({ onClose, onUpload }) => {
               <Field label="Prüfungstermin"  value={examDate} onChange={setExamDate} type="date" />
             </div>
             <Field label="Notiz (optional)"  value={notes}    onChange={setNotes}    placeholder="z.B. Klausurrelevant laut Prof." textarea />
+            <button
+              type="button"
+              onClick={() => setIsAltklausur(v => !v)}
+              className={`w-full flex items-center justify-between px-4 py-3 rounded-2xl border-2 transition-all text-left ${
+                isAltklausur
+                  ? 'border-rose-400 bg-rose-50 dark:bg-rose-950/20'
+                  : 'border-slate-200 dark:border-slate-700 hover:border-rose-300'
+              }`}
+            >
+              <div>
+                <p className={`text-[11px] font-black ${isAltklausur ? 'text-rose-600 dark:text-rose-400' : 'dark:text-white'}`}>Das ist eine Altklausur</p>
+                <p className="text-[9px] text-slate-400 mt-0.5">Wird als Stil-Vorlage im Klausur-Simulator angeboten</p>
+              </div>
+              <div className={`w-5 h-5 rounded flex items-center justify-center shrink-0 border-2 transition-all ${
+                isAltklausur ? 'bg-rose-500 border-rose-500' : 'border-slate-300 dark:border-slate-600'
+              }`}>
+                {isAltklausur && (
+                  <svg width="10" height="10" viewBox="0 0 10 10" fill="none">
+                    <polyline points="1.5,5 4,7.5 8.5,2.5" stroke="white" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
+                  </svg>
+                )}
+              </div>
+            </button>
           </fieldset>
 
           <button

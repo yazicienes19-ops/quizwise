@@ -224,6 +224,7 @@ export const ExamSystem: React.FC<ExamSystemProps> = ({ documents, collections, 
         onNavigate={onNavigate}
         initialAnswers={currentAnswers}
         onAnswersChange={setCurrentAnswers}
+        examTitle={examDocName}
         onSaveProgress={(name) => {
           const withAnswers = questions.map(q => ({ ...q, userAnswer: currentAnswers[q.id] }));
           saveExamToStorage({ name, docName: examDocName, questions: withAnswers });
