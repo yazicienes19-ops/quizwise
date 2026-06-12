@@ -1,5 +1,5 @@
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { ProcessedDocument, Collection, RecallChallenge, RecallEvaluation } from '../types';
 import type { GenerationSource } from '../services/geminiService';
 import { generateRecallChallenge, evaluateRecallResponse } from '../services/geminiService';
@@ -31,6 +31,14 @@ export const ActiveRecall: React.FC<ActiveRecallProps> = ({
   const [evaluation, setEvaluation] = useState<RecallEvaluation | null>(null);
   const [isLoading, setIsLoading] = useState(false);
   const [isEvaluating, setIsEvaluating] = useState(false);
+  const [showFeynmanIntro, setShowFeynmanIntro] = useState(() =>
+    !localStorage.getItem('quizwise_feynman_intro_done')
+  );
+  const [isListening, setIsListening] = useState(false);
+  const speechRef = useRef<any>(null);
+  const hasSpeechApi = typeof window !== 'undefined' && !!(
+    (window as any).SpeechRecognition || (window as any).webkitSpeechRecognition
+  );
 
   useEffect(() => {
     if (!initialDoc || !getDocumentSource) return;
@@ -56,6 +64,37 @@ export const ActiveRecall: React.FC<ActiveRecallProps> = ({
     setEvaluation(null);
     setUserAnswer('');
   };
+
+  const dismissFeynmanIntro = () => {
+    localStorage.setItem('quizwise_feynman_intro_done', '1');
+    setShowFeynmanIntro(false);
+  };
+
+  const toggleListening = useCallback(() => {
+    if (!hasSpeechApi) return;
+    if (isListening) {
+      speechRef.current?.stop();
+      setIsListening(false);
+      return;
+    }
+    const SR = (window as any).SpeechRecognition || (window as any).webkitSpeechRecognition;
+    const rec = new SR();
+    rec.lang = 'de-DE';
+    rec.continuous = true;
+    rec.interimResults = false;
+    rec.onresult = (e: any) => {
+      const transcript = Array.from(e.results as SpeechRecognitionResultList)
+        .slice(e.resultIndex)
+        .map((r: any) => r[0].transcript)
+        .join('');
+      setUserAnswer(prev => prev ? prev + ' ' + transcript : transcript);
+    };
+    rec.onerror = () => setIsListening(false);
+    rec.onend = () => setIsListening(false);
+    speechRef.current = rec;
+    rec.start();
+    setIsListening(true);
+  }, [hasSpeechApi, isListening]);
 
   const startNewChallenge = async () => {
     if (!activeSource) return;
@@ -91,6 +130,31 @@ export const ActiveRecall: React.FC<ActiveRecallProps> = ({
 
   return (
     <div className="max-w-4xl mx-auto py-6 lg:py-10 px-4 space-y-8 lg:space-y-10 animate-in fade-in duration-700 pb-32">
+
+      {/* Feynman First-Visit-Intro */}
+      {showFeynmanIntro && (
+        <div className="relative rounded-[24px] p-6 animate-in slide-in-from-top-4 duration-500" style={{ background: 'color-mix(in srgb, var(--primary) 10%, var(--bg-sidebar))', border: '1px solid color-mix(in srgb, var(--primary) 30%, transparent)' }}>
+          <button
+            onClick={dismissFeynmanIntro}
+            className="absolute top-4 right-4 text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 transition-colors font-black text-lg leading-none"
+            aria-label="Schließen"
+          >×</button>
+          <p className="text-[9px] font-black uppercase tracking-widest mb-2" style={{ color: 'var(--primary)' }}>Feynman-Methode</p>
+          <p className="text-sm font-medium dark:text-white leading-relaxed">
+            Du lernst am besten, wenn du erklärst: Die Feynman-Methode besagt, dass du ein Thema erst wirklich verstanden hast, wenn du es einfach erklären kannst.
+          </p>
+          <p className="text-[11px] font-black mt-3 italic" style={{ color: 'var(--primary)' }}>
+            Erkläre es so, dass es ein Zwölfjähriger versteht.
+          </p>
+          <button
+            onClick={dismissFeynmanIntro}
+            className="mt-4 px-4 py-2 rounded-[14px] text-[10px] font-black uppercase tracking-widest transition-all hover:scale-105"
+            style={{ background: 'var(--primary)', color: 'var(--primary-text)' }}
+          >
+            Verstanden — loslegen
+          </button>
+        </div>
+      )}
 
       {/* Header */}
       <div className="text-center space-y-3">
@@ -179,15 +243,51 @@ export const ActiveRecall: React.FC<ActiveRecallProps> = ({
 
           {/* Antwort-Textarea */}
           <div className="space-y-4">
-            <textarea
-              autoFocus
-              value={userAnswer}
-              onChange={e => setUserAnswer(e.target.value)}
-              placeholder="Formuliere deine Erklärung hier..."
-              disabled={isEvaluating}
-              className="w-full h-64 lg:h-72 p-6 lg:p-10 rounded-[32px] lg:rounded-[40px] shadow-3d-raised outline-none focus:border-indigo-400 transition-all text-sm lg:text-base font-medium leading-relaxed disabled:opacity-60"
-              style={{ background: 'var(--bg-sidebar)', border: '1px solid var(--border-color)', color: 'var(--text-main)' }}
-            />
+            <div className="relative">
+              <textarea
+                autoFocus
+                value={userAnswer}
+                onChange={e => setUserAnswer(e.target.value)}
+                placeholder="Formuliere deine Erklärung hier... oder diktiere mit dem Mikrofon →"
+                disabled={isEvaluating}
+                className="w-full h-64 lg:h-72 p-6 lg:p-10 rounded-[32px] lg:rounded-[40px] shadow-3d-raised outline-none focus:border-indigo-400 transition-all text-sm lg:text-base font-medium leading-relaxed disabled:opacity-60"
+                style={{ background: 'var(--bg-sidebar)', border: isListening ? '2px solid var(--primary)' : '1px solid var(--border-color)', color: 'var(--text-main)' }}
+              />
+              {hasSpeechApi ? (
+                <button
+                  type="button"
+                  onClick={toggleListening}
+                  disabled={isEvaluating}
+                  title={isListening ? 'Aufnahme stoppen' : 'Diktat starten (Deutsch)'}
+                  className={`absolute bottom-4 right-4 w-10 h-10 rounded-full flex items-center justify-center transition-all shadow-lg ${
+                    isListening
+                      ? 'bg-rose-500 text-white animate-pulse'
+                      : 'bg-slate-100 dark:bg-slate-800 text-slate-500 hover:bg-slate-200 dark:hover:bg-slate-700'
+                  }`}
+                >
+                  {isListening ? (
+                    <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="currentColor">
+                      <rect x="6" y="6" width="12" height="12" rx="2"/>
+                    </svg>
+                  ) : (
+                    <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                      <path d="M12 1a3 3 0 0 0-3 3v8a3 3 0 0 0 6 0V4a3 3 0 0 0-3-3z"/><path d="M19 10v2a7 7 0 0 1-14 0v-2"/><line x1="12" y1="19" x2="12" y2="23"/><line x1="8" y1="23" x2="16" y2="23"/>
+                    </svg>
+                  )}
+                </button>
+              ) : (
+                <div className="absolute bottom-4 right-4 w-10 h-10 rounded-full flex items-center justify-center bg-slate-100 dark:bg-slate-800 opacity-40" title="Diktat wird von deinem Browser nicht unterstützt">
+                  <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                    <line x1="1" y1="1" x2="23" y2="23"/><path d="M9 9v3a3 3 0 0 0 5.12 2.12M15 9.34V4a3 3 0 0 0-5.94-.6"/><path d="M17 16.95A7 7 0 0 1 5 12v-2m14 0v2a7 7 0 0 1-.11 1.23"/><line x1="12" y1="19" x2="12" y2="23"/><line x1="8" y1="23" x2="16" y2="23"/>
+                  </svg>
+                </div>
+              )}
+            </div>
+            {isListening && (
+              <p className="text-[10px] font-black uppercase tracking-widest text-center animate-pulse" style={{ color: 'var(--primary)' }}>
+                Aufnahme läuft — sprich jetzt auf Deutsch
+              </p>
+            )}
             <div className="flex flex-col sm:flex-row justify-between items-center gap-4 px-4 lg:px-6">
               <span className="text-[9px] font-black uppercase text-slate-400 tracking-widest order-2 sm:order-1">
                 {userAnswer.trim().split(/\s+/).filter(x => x).length} Wörter
