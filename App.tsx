@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { supabase } from './services/supabaseClient';
 import type { User } from '@supabase/supabase-js';
 import { AuthModal } from './components/AuthModal';
@@ -21,6 +21,10 @@ import { ExamSystem } from './components/ExamSystem';
 import { ActiveRecall } from './components/ActiveRecall';
 import { GeneratedImage } from './components/GeneratedImage';
 import { ToastContainer } from './components/Toast';
+import { SplashScreen } from './components/SplashScreen';
+import { AuthPage } from './components/AuthPage';
+import { Onboarding, isOnboardingDone } from './components/Onboarding';
+import { resolveErrorMessage } from './services/errorMessages';
 import { ActiveTab, ProcessedDocument, QuizQuestion, UserAnswer, TopicMetric, SearchResult, QuizType, FlashcardDeck, Flashcard, Collection, ExamTerm, LearningFlowResult, QuizConfig } from './types';
 
 import { generateQuizFromDocument, searchScholar, searchWeb, generateQuizFromFlashcards, orchestrateLearningFlow, fetchUserProfile } from './services/geminiService';
@@ -77,11 +81,16 @@ const App: React.FC = () => {
   const [savedExams, setSavedExams]     = useState<SavedExam[]>(() => getSavedExams());
   const [examInitialQuestions, setExamInitialQuestions] = useState<SavedExam | null>(null);
   const [userPlan, setUserPlan] = useState<'free' | 'pro'>('free');
+  const [showOnboarding, setShowOnboarding] = useState(() => !isOnboardingDone());
 
   const PROGRESS_KEY = 'quizwise_quiz_progress';
 
+  const progressTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const saveQuizProgress = (qs: QuizQuestion[], ans: UserAnswer[], meta: { docId: string; docName: string } | null) => {
-    localStorage.setItem(PROGRESS_KEY, JSON.stringify({ questions: qs, answers: ans, meta, timestamp: Date.now() }));
+    if (progressTimer.current) clearTimeout(progressTimer.current);
+    progressTimer.current = setTimeout(() => {
+      localStorage.setItem(PROGRESS_KEY, JSON.stringify({ questions: qs, answers: ans, meta, timestamp: Date.now() }));
+    }, 250);
   };
 
   const clearQuizProgress = () => localStorage.removeItem(PROGRESS_KEY);
@@ -144,7 +153,7 @@ const App: React.FC = () => {
   });
 
   useEffect(() => {
-    const timeout = setTimeout(() => setAuthChecked(true), 3000);
+    const timeout = setTimeout(() => setAuthChecked(true), 1500);
     supabase.auth.getSession().then(({ data: { session } }) => {
       clearTimeout(timeout);
       setUser(session?.user ?? null);
@@ -313,12 +322,11 @@ const App: React.FC = () => {
   const handleApiError = (e: any) => {
     if (e?.message === 'LIMIT_REACHED') {
       setShowUpgradeHint(true);
-      toast.error('Tageslimit erreicht. Upgrade auf Pro für unlimitierten Zugriff.');
     } else if (e?.message?.includes('einloggen')) {
       setShowAuthModal(true);
-    } else {
-      toast.error(e?.message || 'Unbekannter Fehler.');
+      return;
     }
+    toast.error(resolveErrorMessage(e));
   };
 
   const handleFileUpload = async (fileInput: File, collectionId?: string): Promise<string | null> => {
@@ -434,7 +442,6 @@ const App: React.FC = () => {
     clearQuizProgress();
     setQuizInitialAnswers(undefined);
     setAnswers(ans);
-    localStorage.removeItem('quizwise_current_quiz');
     const correct = ans.filter(a => a.isCorrect).length;
     const score   = Math.round((correct / ans.length) * 100);
 
@@ -489,7 +496,6 @@ const App: React.FC = () => {
       saveUsedTopics(doc.id, quiz);
       setActiveQuizMeta(meta);
       saveQuizProgress(quiz, [], meta);
-      localStorage.setItem('quizwise_current_quiz', JSON.stringify(quiz));
     } catch (e: any) {
       const msg = e?.message?.includes('nicht verfügbar')
         ? 'Dokument nicht verfügbar. Bitte lade es neu hoch.'
@@ -526,7 +532,6 @@ const App: React.FC = () => {
       setQuizInitialAnswers(undefined);
       saveUsedTopics(pendingActionDoc.id, quiz);
       saveQuizProgress(quiz, [], meta);
-      localStorage.setItem('quizwise_current_quiz', JSON.stringify(quiz));
     } catch (e) { handleApiError(e); } finally { setIsLoading(false); }
   };
 
@@ -729,7 +734,6 @@ const App: React.FC = () => {
             try {
               const q = await generateQuizFromDocument(source, type, opts);
               setQuestions(q);
-              localStorage.setItem('quizwise_current_quiz', JSON.stringify(q));
             } catch (e) { handleApiError(e); } finally { setIsLoading(false); }
           }}
           onDeckSelect={async (deck) => {
@@ -871,11 +875,18 @@ const App: React.FC = () => {
     }
   };
 
-  if (!authChecked) return null; // kurz warten bis Session geprüft ist
+  if (!authChecked) return <SplashScreen />;
+  if (!user) return <AuthPage />;
 
   return (
     <>
     <ToastContainer />
+    {showOnboarding && (
+      <Onboarding
+        onComplete={() => setShowOnboarding(false)}
+        onStartUpload={() => setActiveTab(ActiveTab.LIBRARY)}
+      />
+    )}
     {showAuthModal && (
       <AuthModal
         onClose={() => setShowAuthModal(false)}

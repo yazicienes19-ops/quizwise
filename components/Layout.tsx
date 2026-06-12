@@ -12,6 +12,7 @@ import { ApiKeySettings } from './ApiKeySettings';
 import { LegalModal } from './LegalModal';
 import { AgentChat } from './AgentChat';
 import { hasApiKey } from '../services/geminiService';
+import { NAV_GROUPS } from './navConfig';
 
 interface LayoutProps {
   children: React.ReactNode;
@@ -26,12 +27,19 @@ interface LayoutProps {
   onToggleTheme: () => void;
 }
 
-interface NavItem {
-  id: ActiveTab;
-  label: string;
-  shortLabel: string;
-  icon: LucideIcon;
-}
+const ICONS: Partial<Record<ActiveTab, LucideIcon>> = {
+  [ActiveTab.DASHBOARD]: Home,
+  [ActiveTab.LIBRARY]:   BookOpen,
+  [ActiveTab.QUIZ]:      HelpCircle,
+  [ActiveTab.PLANNER]:   Calendar,
+  [ActiveTab.RECALL]:    Brain,
+  [ActiveTab.EXAM]:      GraduationCap,
+  [ActiveTab.CARDS]:     Layers,
+  [ActiveTab.EXPLAINER]: Lightbulb,
+  [ActiveTab.RADAR]:     BarChart2,
+  [ActiveTab.SEARCH]:    Search,
+  [ActiveTab.PAPER]:     FileText,
+};
 
 export const Layout: React.FC<LayoutProps> = ({
   children, activeTab, onTabChange, user,
@@ -59,25 +67,33 @@ export const Layout: React.FC<LayoutProps> = ({
   }, []);
 
 
-  const mainNavItems: NavItem[] = [
-    { id: ActiveTab.DASHBOARD, label: 'Home',  shortLabel: 'Home', icon: Home },
-    { id: ActiveTab.LIBRARY,   label: 'Bib',   shortLabel: 'Bib',  icon: BookOpen },
-    { id: ActiveTab.QUIZ,      label: 'Quiz',  shortLabel: 'Quiz', icon: HelpCircle },
-    { id: ActiveTab.PLANNER,   label: 'Plan',  shortLabel: 'Plan', icon: Calendar },
+  const allNavItems = NAV_GROUPS.flatMap(g => g.items);
+
+  const EXTRA_LABELS: Partial<Record<ActiveTab, string>> = {
+    [ActiveTab.EXPLAINER]: 'KI-Erklärer',
+    [ActiveTab.SEARCH]:    'Recherche',
+    [ActiveTab.PAPER]:     'Hausarbeit',
+  };
+  const currentPageLabel = allNavItems.find(i => i.tab === activeTab)?.label ?? EXTRA_LABELS[activeTab] ?? '';
+
+  // Mobile bottom bar: 4 wichtigste Tabs
+  const mobileBottomTabs = [
+    { tab: ActiveTab.DASHBOARD, short: 'Start' },
+    { tab: ActiveTab.QUIZ,      short: 'Quiz'  },
+    { tab: ActiveTab.LIBRARY,   short: 'Bib'   },
+    { tab: ActiveTab.PLANNER,   short: 'Plan'  },
   ];
 
-  const secondaryNavItems: NavItem[] = [
-    { id: ActiveTab.RECALL,    label: 'Recall Studio',  shortLabel: 'Recall',   icon: Brain },
-    { id: ActiveTab.EXAM,      label: 'Klausur-Modus',  shortLabel: 'Klausur',  icon: GraduationCap },
-    { id: ActiveTab.CARDS,     label: 'Karteikarten',   shortLabel: 'Karten',   icon: Layers },
-    { id: ActiveTab.EXPLAINER, label: 'KI-Erklärer',    shortLabel: 'Erklärer', icon: Lightbulb },
-    { id: ActiveTab.RADAR,     label: 'Lern-Analyse',   shortLabel: 'Analyse',  icon: BarChart2 },
-    { id: ActiveTab.SEARCH,    label: 'Recherche',      shortLabel: 'Suche',    icon: Search },
-    { id: ActiveTab.PAPER,     label: 'Hausarbeit',     shortLabel: 'Arbeit',   icon: FileText },
+  // Mobile "Mehr"-Sheet: alle anderen Tabs
+  const mobileSheetItems = [
+    { tab: ActiveTab.CARDS,     label: 'Karteikarten',   icon: Layers },
+    { tab: ActiveTab.RECALL,    label: 'Erklären üben',  icon: Brain },
+    { tab: ActiveTab.EXAM,      label: 'Klausur üben',   icon: GraduationCap },
+    { tab: ActiveTab.RADAR,     label: 'Meine Lücken',   icon: BarChart2 },
+    { tab: ActiveTab.EXPLAINER, label: 'KI-Erklärer',    icon: Lightbulb },
+    { tab: ActiveTab.SEARCH,    label: 'Recherche',      icon: Search },
+    { tab: ActiveTab.PAPER,     label: 'Hausarbeit',     icon: FileText },
   ];
-
-  const allNavItems = [...mainNavItems, ...secondaryNavItems];
-  const currentPageLabel = allNavItems.find(i => i.id === activeTab)?.label ?? '';
   const userInitial = (user?.user_metadata?.full_name || user?.email || 'U')[0].toUpperCase();
 
   const handleMobileTabChange = (tab: ActiveTab) => {
@@ -102,25 +118,42 @@ export const Layout: React.FC<LayoutProps> = ({
             <span className="text-xl font-black tracking-tighter text-slate-900 dark:text-white uppercase truncate">QuizWise</span>
           </div>
 
-          <nav className="space-y-1.5 overflow-y-auto pr-2 scrollbar-hide flex-1">
-            {allNavItems.map(item => {
-              const isActive = activeTab === item.id;
-              return (
-                <button
-                  key={item.id}
-                  onClick={() => onTabChange(item.id)}
-                  className={`w-full flex items-center gap-4 px-5 py-3 rounded-2xl text-[10px] font-black uppercase tracking-wider transition-all duration-300 ${
-                    isActive
-                      ? 'bg-indigo-600 scale-[1.02]'
-                      : 'text-slate-500 dark:text-slate-400 hover:bg-slate-50 dark:hover:bg-slate-800 hover:translate-x-1'
-                  }`}
-                  style={isActive ? { boxShadow: '0 8px 16px color-mix(in srgb, var(--primary) 35%, transparent)', color: 'var(--primary-text)', background: 'var(--primary)' } : {}}
-                >
-                  <item.icon className="w-5 h-5 shrink-0" strokeWidth={1.75} />
-                  <span className="truncate">{item.label}</span>
-                </button>
-              );
-            })}
+          <nav className="space-y-0.5 overflow-y-auto pr-1 scrollbar-hide flex-1">
+            {NAV_GROUPS.map((group, gi) => (
+              <div key={gi}>
+                {group.title && (
+                  <p className="px-3 pt-5 pb-1.5 text-[8px] font-black uppercase tracking-[0.3em] text-slate-400">
+                    {group.title}
+                  </p>
+                )}
+                {group.items.map(item => {
+                  const isActive = activeTab === item.tab;
+                  const Icon = ICONS[item.tab];
+                  return (
+                    <button
+                      key={item.tab}
+                      onClick={() => onTabChange(item.tab)}
+                      className={`w-full flex items-center gap-3 px-4 py-2.5 rounded-[14px] text-left transition-all duration-200 ${
+                        isActive
+                          ? ''
+                          : 'text-slate-500 dark:text-slate-400 hover:bg-slate-50 dark:hover:bg-slate-800/50 hover:translate-x-0.5'
+                      }`}
+                      style={isActive ? { background: 'var(--primary-soft)', color: 'var(--primary-soft-text)' } : {}}
+                    >
+                      {Icon && <Icon className="w-4 h-4 shrink-0" strokeWidth={1.75} />}
+                      <div className="flex-1 min-w-0">
+                        <span className="text-[11px] font-black uppercase tracking-widest block truncate">{item.label}</span>
+                        {item.hint && !isActive && (
+                          <span className="block text-[9px] font-medium text-slate-400 normal-case tracking-normal mt-0.5 truncate">
+                            {item.hint}
+                          </span>
+                        )}
+                      </div>
+                    </button>
+                  );
+                })}
+              </div>
+            ))}
           </nav>
 
           <div className="mt-6 space-y-2">
@@ -202,19 +235,20 @@ export const Layout: React.FC<LayoutProps> = ({
           >QW</div>
 
           {allNavItems.map(item => {
-            const isActive = activeTab === item.id;
+            const isActive = activeTab === item.tab;
+            const Icon = ICONS[item.tab];
             return (
               <button
-                key={item.id}
-                onClick={() => onTabChange(item.id)}
+                key={item.tab}
+                onClick={() => onTabChange(item.tab)}
                 title={item.label}
                 className={`w-12 h-12 flex flex-col items-center justify-center gap-[3px] rounded-xl transition-all duration-200 active:scale-90 shrink-0 ${
                   isActive ? '' : 'text-slate-500 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800'
                 }`}
                 style={isActive ? { background: 'var(--primary)', color: 'var(--primary-text)' } : {}}
               >
-                <item.icon className="w-[18px] h-[18px]" strokeWidth={1.75} />
-                <span className="text-[7px] font-black uppercase tracking-wide leading-none">{item.shortLabel}</span>
+                {Icon && <Icon className="w-[18px] h-[18px]" strokeWidth={1.75} />}
+                <span className="text-[7px] font-black uppercase tracking-wide leading-none">{item.label.slice(0, 6)}</span>
               </button>
             );
           })}
@@ -300,17 +334,18 @@ export const Layout: React.FC<LayoutProps> = ({
         className="md:hidden fixed bottom-0 inset-x-0 z-[60] flex justify-around items-center pt-2 pb-[max(0.5rem,env(safe-area-inset-bottom))] backdrop-blur-xl shadow-2xl"
         style={{ background: 'color-mix(in srgb, var(--bg-sidebar) 95%, transparent)', borderTop: '1px solid var(--border-color)' }}
       >
-        {mainNavItems.map(item => {
-          const isActive = activeTab === item.id;
+        {mobileBottomTabs.map(item => {
+          const isActive = activeTab === item.tab;
+          const Icon = ICONS[item.tab];
           return (
             <button
-              key={item.id}
-              onClick={() => handleMobileTabChange(item.id)}
+              key={item.tab}
+              onClick={() => handleMobileTabChange(item.tab)}
               className="flex flex-col items-center gap-1 min-w-[3rem] px-2 py-1 rounded-xl transition-all active:scale-90"
               style={isActive ? { color: 'var(--primary)' } : { color: 'rgb(148 163 184)' }}
             >
-              <item.icon className="w-6 h-6" strokeWidth={1.75} />
-              <span className="text-[8px] font-black uppercase tracking-widest">{item.shortLabel}</span>
+              {Icon && <Icon className="w-6 h-6" strokeWidth={1.75} />}
+              <span className="text-[8px] font-black uppercase tracking-widest">{item.short}</span>
             </button>
           );
         })}
@@ -344,12 +379,12 @@ export const Layout: React.FC<LayoutProps> = ({
             <div className="overflow-y-auto max-h-[68vh] px-5 pt-4 pb-[calc(env(safe-area-inset-bottom,0px)+1.25rem)] space-y-3">
               {/* Secondary nav grid */}
               <div className="grid grid-cols-2 gap-3">
-                {secondaryNavItems.map(item => {
-                  const isActive = activeTab === item.id;
+                {mobileSheetItems.map(item => {
+                  const isActive = activeTab === item.tab;
                   return (
                     <button
-                      key={item.id}
-                      onClick={() => handleMobileTabChange(item.id)}
+                      key={item.tab}
+                      onClick={() => handleMobileTabChange(item.tab)}
                       className="flex items-center gap-3 p-4 rounded-2xl border transition-all active:scale-95 text-left"
                       style={
                         isActive

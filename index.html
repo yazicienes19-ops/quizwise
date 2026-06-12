@@ -108,6 +108,8 @@
             --border-color:  #1A3055;
             --text-main:     #E2ECF8;
             --accent:        #E08465;
+            --primary-soft: color-mix(in srgb, var(--primary) 18%, transparent);
+            --primary-soft-text: color-mix(in srgb, var(--primary) 60%, white);
         }
         body {
             font-family: var(--font-app, 'Inter', sans-serif);
@@ -127,6 +129,8 @@
         :root {
             --primary:      #D97757;
             --primary-text: #ffffff; /* dark or light text on primary bg — computed at runtime */
+            --primary-soft: color-mix(in srgb, var(--primary) 12%, white);
+            --primary-soft-text: color-mix(in srgb, var(--primary) 85%, #2d0f06);
             --p50:  color-mix(in srgb, var(--primary)  8%, white);
             --p100: color-mix(in srgb, var(--primary) 15%, white);
             --p200: color-mix(in srgb, var(--primary) 28%, white);
