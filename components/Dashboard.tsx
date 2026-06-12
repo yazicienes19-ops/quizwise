@@ -1,6 +1,6 @@
 
 import React, { useState, useMemo } from 'react';
-import { ActiveTab, LearningFlowResult, StudyEntry, FlashcardDeck } from '../types';
+import { ActiveTab, LearningFlowResult, StudyEntry, FlashcardDeck, ProcessedDocument } from '../types';
 import { GeneratedImage } from './GeneratedImage';
 import { AgentChat } from './AgentChat';
 import { toast } from '../services/toast';
@@ -28,6 +28,7 @@ interface DashboardProps {
   onTabChange: (tab: ActiveTab) => void;
   flowResult: LearningFlowResult | null;
   onAcceptFlow: (res: LearningFlowResult) => void;
+  documents?: ProcessedDocument[];
 }
 
 interface ActionCard {
@@ -48,7 +49,7 @@ const BASE_CARDS: ActionCard[] = [
   { id: ActiveTab.RADAR, title: 'Lern-Analyse', desc: 'Identifiziere Lücken im Verständnis.', prompt: 'Data analysis radar chart, academic illustration', color: 'text-emerald-500' }
 ];
 
-export const Dashboard: React.FC<DashboardProps> = ({ onTabChange, flowResult }) => {
+export const Dashboard: React.FC<DashboardProps> = ({ onTabChange, flowResult, documents = [] }) => {
   const [hovered, setHovered] = useState<ActiveTab | null>(null);
   const [usageCounts, setUsageCounts] = useState<Record<string, number>>(getUsageCounts);
   const [coachOpen, setCoachOpen] = useState(false);
@@ -62,6 +63,41 @@ export const Dashboard: React.FC<DashboardProps> = ({ onTabChange, flowResult })
   }, []);
 
   const streak = useMemo(() => getStreak(), []);
+
+  const weiterlernCard = useMemo(() => {
+    // Last saved quiz progress
+    try {
+      const raw = localStorage.getItem('quizwise_quiz_progress');
+      if (raw) {
+        const { meta, timestamp } = JSON.parse(raw);
+        if (meta && timestamp && Date.now() - timestamp < 7 * 24 * 60 * 60 * 1000) {
+          return { type: 'quiz' as const, label: meta.docName || 'Quiz fortsetzen', tab: ActiveTab.QUIZ };
+        }
+      }
+    } catch {}
+    // Last used deck
+    try {
+      const decks: FlashcardDeck[] = JSON.parse(localStorage.getItem('flashcard_decks') || '[]');
+      if (decks.length > 0) {
+        const last = [...decks].sort((a, b) => (b.updatedAt ?? 0) - (a.updatedAt ?? 0))[0];
+        return { type: 'deck' as const, label: last.name, tab: ActiveTab.CARDS };
+      }
+    } catch {}
+    return null;
+  }, []);
+
+  const nextExam = useMemo(() => {
+    try {
+      const terms: Array<{ date: string; subject: string }> = JSON.parse(localStorage.getItem('quizwise_exam_terms') || '[]');
+      const future = terms
+        .map(t => ({ ...t, ms: new Date(t.date).getTime() }))
+        .filter(t => t.ms > Date.now())
+        .sort((a, b) => a.ms - b.ms);
+      if (!future.length) return null;
+      const days = Math.ceil((future[0].ms - Date.now()) / (1000 * 60 * 60 * 24));
+      return { subject: future[0].subject, days };
+    } catch { return null; }
+  }, []);
 
   const coachContext = useMemo(() => {
     try {
@@ -104,6 +140,41 @@ export const Dashboard: React.FC<DashboardProps> = ({ onTabChange, flowResult })
     onTabChange(ActiveTab.PLANNER);
   };
 
+  if (documents.length === 0) {
+    return (
+      <div className="flex flex-col items-center justify-center py-20 px-4 space-y-10 animate-in fade-in duration-700 min-h-[60vh]">
+        <div className="text-center space-y-4 max-w-md">
+          <div className="text-7xl mb-2">📚</div>
+          <h2 className="text-3xl font-black tracking-tighter dark:text-white">Willkommen bei QuizWise</h2>
+          <p className="text-slate-500 dark:text-slate-400 font-medium">Lade dein erstes Dokument hoch — in 3 Schritten zum personalisierten Lernkurs.</p>
+        </div>
+        <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 max-w-2xl w-full">
+          {[
+            { n: '1', label: 'Dokument hochladen', desc: 'PDF, Word oder Text aus deinem Studium' },
+            { n: '2', label: 'Quiz generieren', desc: 'KI erstellt sofort Fragen aus deinen Unterlagen' },
+            { n: '3', label: 'Klausur bestehen', desc: 'Lerne gezielt, erkenne Lücken, erziele bessere Noten' },
+          ].map(({ n, label, desc }) => (
+            <div key={n} className="p-5 rounded-[24px] space-y-2" style={{ background: 'var(--bg-sidebar)', border: '1px solid var(--border-color)' }}>
+              <p className="text-[9px] font-black uppercase tracking-widest" style={{ color: 'var(--primary)' }}>Schritt {n}</p>
+              <p className="text-sm font-black dark:text-white">{label}</p>
+              <p className="text-[10px] text-slate-400">{desc}</p>
+            </div>
+          ))}
+        </div>
+        <button
+          onClick={() => onTabChange(ActiveTab.LIBRARY)}
+          className="px-8 py-4 rounded-[20px] font-black uppercase text-[11px] tracking-widest shadow-3d-deep hover:scale-105 transition-all flex items-center gap-3"
+          style={{ background: 'var(--primary)', color: 'var(--primary-text)' }}
+        >
+          <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round">
+            <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/>
+          </svg>
+          Erste Quelle hochladen
+        </button>
+      </div>
+    );
+  }
+
   return (
     <div className="space-y-12 lg:space-y-24 py-12 px-4 animate-in fade-in duration-1000">
       {/* Hero Section */}
@@ -117,6 +188,81 @@ export const Dashboard: React.FC<DashboardProps> = ({ onTabChange, flowResult })
             </p>
         </div>
       </div>
+
+      {/* Top-Banner: Due + Streak + Exam Countdown */}
+      {(dueCardsCount > 0 || streak.current > 0 || nextExam) && (
+        <div className="max-w-6xl mx-auto w-full grid grid-cols-1 sm:grid-cols-3 gap-3">
+          {dueCardsCount > 0 && (
+            <button
+              onClick={() => onTabChange(ActiveTab.CARDS)}
+              className="flex items-center gap-3 px-5 py-4 rounded-[20px] transition-all hover:scale-[1.02] active:scale-[0.98] text-left"
+              style={{ background: 'color-mix(in srgb, var(--primary) 10%, var(--bg-sidebar))', border: '1px solid color-mix(in srgb, var(--primary) 25%, transparent)' }}
+            >
+              <div className="w-9 h-9 rounded-xl flex items-center justify-center shrink-0" style={{ background: 'var(--primary)' }}>
+                <Layers size={16} style={{ color: 'var(--primary-text)' }} />
+              </div>
+              <div>
+                <p className="text-[11px] font-black uppercase tracking-widest" style={{ color: 'var(--primary)' }}>{dueCardsCount} fällig heute</p>
+                <p className="text-[9px] text-slate-400">Karteikarten wiederholen</p>
+              </div>
+            </button>
+          )}
+          {streak.current > 0 && (
+            <div
+              className="flex items-center gap-3 px-5 py-4 rounded-[20px]"
+              style={{ background: 'var(--bg-sidebar)', border: '1px solid var(--border-color)' }}
+            >
+              <div className="w-9 h-9 rounded-xl flex items-center justify-center shrink-0" style={{ background: streak.todayDone ? 'color-mix(in srgb, var(--primary) 15%, transparent)' : 'var(--bg-main)' }}>
+                <Flame size={16} style={{ color: streak.todayDone ? 'var(--primary)' : '#94a3b8' }} fill={streak.todayDone ? 'var(--primary)' : 'none'} strokeWidth={2} />
+              </div>
+              <div>
+                <p className="text-[11px] font-black uppercase tracking-widest" style={{ color: streak.todayDone ? 'var(--primary)' : undefined }}>{streak.current} Tage Streak</p>
+                <p className="text-[9px] text-slate-400">Rekord: {streak.best} · {streak.todayDone ? 'Heute erledigt ✓' : 'Heute noch offen'}</p>
+              </div>
+            </div>
+          )}
+          {nextExam && (
+            <div
+              className="flex items-center gap-3 px-5 py-4 rounded-[20px]"
+              style={{ background: 'var(--bg-sidebar)', border: `1px solid ${nextExam.days <= 7 ? '#f43f5e' : nextExam.days <= 14 ? '#f59e0b' : 'var(--border-color)'}` }}
+            >
+              <div className="w-9 h-9 rounded-xl flex items-center justify-center shrink-0" style={{ background: nextExam.days <= 7 ? 'rgba(244,63,94,0.1)' : 'var(--bg-main)' }}>
+                <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke={nextExam.days <= 7 ? '#f43f5e' : '#94a3b8'} strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+                  <rect x="3" y="4" width="18" height="18" rx="2" ry="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/>
+                </svg>
+              </div>
+              <div>
+                <p className="text-[11px] font-black uppercase tracking-widest" style={{ color: nextExam.days <= 7 ? '#f43f5e' : undefined }}>Noch {nextExam.days} Tag{nextExam.days !== 1 ? 'e' : ''}</p>
+                <p className="text-[9px] text-slate-400 truncate max-w-[140px]">{nextExam.subject}</p>
+              </div>
+            </div>
+          )}
+        </div>
+      )}
+
+      {/* Weiterlernen */}
+      {weiterlernCard && (
+        <div className="max-w-6xl mx-auto w-full">
+          <button
+            onClick={() => onTabChange(weiterlernCard.tab)}
+            className="w-full flex items-center justify-between px-6 py-4 rounded-[20px] transition-all hover:scale-[1.01] active:scale-[0.99] text-left"
+            style={{ background: 'var(--bg-sidebar)', border: '1px solid var(--border-color)' }}
+          >
+            <div className="flex items-center gap-3">
+              <div className="w-9 h-9 rounded-xl flex items-center justify-center shrink-0" style={{ background: 'color-mix(in srgb, var(--primary) 12%, transparent)' }}>
+                <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" style={{ color: 'var(--primary)' }}>
+                  <polygon points="5 3 19 12 5 21 5 3"/>
+                </svg>
+              </div>
+              <div>
+                <p className="text-[11px] font-black uppercase tracking-widest" style={{ color: 'var(--primary)' }}>Weiterlernen</p>
+                <p className="text-xs text-slate-500 dark:text-slate-400 truncate max-w-[220px]">{weiterlernCard.label}</p>
+              </div>
+            </div>
+            <span className="text-[10px] font-black uppercase tracking-widest shrink-0" style={{ color: 'var(--primary)' }}>Fortsetzen →</span>
+          </button>
+        </div>
+      )}
 
       {/* Intelligence Insights */}
       {flowResult && (
@@ -195,70 +341,6 @@ export const Dashboard: React.FC<DashboardProps> = ({ onTabChange, flowResult })
         </button>
       </div>
 
-      {/* Fällige Karten Badge */}
-      {dueCardsCount > 0 && (
-        <div className="max-w-6xl mx-auto w-full">
-          <button
-            onClick={() => onTabChange(ActiveTab.CARDS)}
-            className="w-full flex items-center justify-between px-6 py-4 rounded-2xl border transition-all hover:scale-[1.01] active:scale-[0.99]"
-            style={{ background: 'color-mix(in srgb, var(--primary) 10%, var(--bg-sidebar))', borderColor: 'color-mix(in srgb, var(--primary) 30%, transparent)' }}
-          >
-            <div className="flex items-center gap-3">
-              <div className="w-9 h-9 rounded-xl flex items-center justify-center" style={{ background: 'var(--primary)' }}>
-                <Layers size={16} style={{ color: 'var(--primary-text)' }} />
-              </div>
-              <div className="text-left">
-                <p className="text-[11px] font-black uppercase tracking-widest" style={{ color: 'var(--primary)' }}>
-                  Karteikarten
-                </p>
-                <p className="text-xs text-slate-500 dark:text-slate-400">
-                  {dueCardsCount} Karte{dueCardsCount !== 1 ? 'n' : ''} heute fällig
-                </p>
-              </div>
-            </div>
-            <span
-              className="text-[11px] font-black uppercase tracking-widest px-3 py-1.5 rounded-full"
-              style={{ background: 'var(--primary)', color: 'var(--primary-text)' }}
-            >
-              {dueCardsCount} fällig
-            </span>
-          </button>
-        </div>
-      )}
-
-      {/* Streak-Karte */}
-      {(streak.current > 0 || streak.best > 0) && (
-        <div className="max-w-6xl mx-auto w-full">
-          <div
-            className="flex items-center justify-between px-6 py-4 rounded-2xl border"
-            style={{ background: 'var(--bg-sidebar)', borderColor: 'var(--border-color)' }}
-          >
-            <div className="flex items-center gap-3">
-              <div
-                className="w-9 h-9 rounded-xl flex items-center justify-center shrink-0"
-                style={{ background: streak.todayDone ? 'color-mix(in srgb, var(--primary) 15%, transparent)' : 'var(--bg-main)' }}
-              >
-                <Flame
-                  className="w-5 h-5"
-                  style={{ color: streak.todayDone ? 'var(--primary)' : '#94a3b8' }}
-                  fill={streak.todayDone ? 'var(--primary)' : 'none'}
-                  strokeWidth={2}
-                />
-              </div>
-              <div>
-                <p className="text-[11px] font-black uppercase tracking-widest" style={{ color: streak.todayDone ? 'var(--primary)' : undefined }}>
-                  {streak.current} Tag{streak.current !== 1 ? 'e' : ''} Streak · Rekord: {streak.best}
-                </p>
-                <p className="text-[9px] text-slate-400 mt-0.5">
-                  {streak.todayDone
-                    ? 'Heute schon gelernt — weiter so!'
-                    : 'Heute noch nichts gelernt — Quiz, Karten oder Recall starten'}
-                </p>
-              </div>
-            </div>
-          </div>
-        </div>
-      )}
 
       {/* Standard Navigation Grid */}
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6 lg:gap-8 max-w-6xl mx-auto w-full">

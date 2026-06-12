@@ -622,7 +622,7 @@ const App: React.FC = () => {
 
     switch (activeTab) {
       case ActiveTab.DASHBOARD:
-        return <Dashboard onTabChange={setActiveTab} flowResult={flowResult} onAcceptFlow={saveFlowResult} />;
+        return <Dashboard onTabChange={setActiveTab} flowResult={flowResult} onAcceptFlow={saveFlowResult} documents={documents} />;
       case ActiveTab.LIBRARY:
         return <LibrarySystem
           documents={documents}
@@ -893,7 +893,7 @@ const App: React.FC = () => {
           }}
           initialDoc={pendingActionDoc ?? undefined}
         />;
-      default: return <Dashboard onTabChange={setActiveTab} flowResult={flowResult} onAcceptFlow={saveFlowResult} />;
+      default: return <Dashboard onTabChange={setActiveTab} flowResult={flowResult} onAcceptFlow={saveFlowResult} documents={documents} />;
     }
   };
 
