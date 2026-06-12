@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useMemo } from 'react';
+import React, { useState, useEffect, useMemo, useCallback } from 'react';
 import { QuizQuestion, UserAnswer } from '../types';
 import { EmojiImage } from './EmojiImage';
 
@@ -72,6 +72,27 @@ export const QuizPlayer: React.FC<QuizPlayerProps> = ({
     setRankingOrder(shuffledRanking);
   }, [currentIndex]);
 
+  // Keyboard: 1–4 select option, Enter confirm/next
+  useEffect(() => {
+    const onKey = (e: KeyboardEvent) => {
+      if (e.target instanceof HTMLInputElement || e.target instanceof HTMLTextAreaElement || e.target instanceof HTMLSelectElement) return;
+      if (showResult) {
+        if (e.key === 'Enter') { e.preventDefault(); handleNext(); }
+        return;
+      }
+      if (isMcLike || isScenario) {
+        const n = parseInt(e.key);
+        if (n >= 1 && n <= (currentQuestion.options?.length ?? 0)) {
+          e.preventDefault();
+          handleOptionSelect(n - 1);
+        }
+      }
+      if (e.key === 'Enter' && canConfirm && !isOpen) { e.preventDefault(); handleConfirm(); }
+    };
+    window.addEventListener('keydown', onKey);
+    return () => window.removeEventListener('keydown', onKey);
+  }, [showResult, isMcLike, isScenario, isOpen, canConfirm, currentQuestion, handleNext]);
+
   useEffect(() => {
     if (shuffledRanking.length > 0 && rankingOrder.length === 0) {
       setRankingOrder(shuffledRanking);
@@ -122,23 +143,23 @@ export const QuizPlayer: React.FC<QuizPlayerProps> = ({
     return false;
   })();
 
-  const handleOptionSelect = (idx: number) => {
+  const handleOptionSelect = useCallback((idx: number) => {
     if (showResult) return;
     setSelectedOptions(prev => prev.includes(idx) ? prev.filter(i => i !== idx) : [...prev, idx]);
-  };
+  }, [showResult]);
 
-  const handleConfirm = () => {
+  const handleConfirm = useCallback(() => {
     if (!canConfirm || isOpen) return;
     setShowResult(true);
-    if (!examMode) setShowExplanation(true);
-  };
+    setShowExplanation(true);
+  }, [canConfirm, isOpen]);
 
   const handleSelfAssess = (correct: boolean) => {
     setSelfAssessCorrect(correct);
     setShowResult(true);
   };
 
-  const handleNext = () => {
+  const handleNext = useCallback(() => {
     const isCorrect = checkCorrectness();
     const newAnswer: UserAnswer = {
       questionIndex: currentIndex,
@@ -158,7 +179,8 @@ export const QuizPlayer: React.FC<QuizPlayerProps> = ({
     } else {
       onComplete(newAnswers);
     }
-  };
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [currentIndex, questions.length, answers, selectedOptions, isOpen, isMatching, isCloze, isNumeric, isRanking, matchAnswer, clozeAnswer, numericInput, rankingOrder, onComplete]);
 
   // ─── Question type badge ─────────────────────────────────────────────────
   const TYPE_BADGE: Record<string, string> = {
@@ -213,12 +235,18 @@ export const QuizPlayer: React.FC<QuizPlayerProps> = ({
               }
               return (
                 <button key={idx} onClick={() => handleOptionSelect(idx)} disabled={showResult}
-                  className={`w-full text-left px-5 py-4 rounded-[20px] border-2 transition-all duration-300 font-semibold flex items-center gap-4 ${cls}`}
+                  className={`w-full text-left px-5 py-4 rounded-[20px] border-2 transition-all duration-300 font-semibold flex items-center gap-4 min-h-[52px] ${cls}`}
                 >
-                  <span className={`w-8 h-8 rounded-xl flex items-center justify-center text-[11px] font-black shrink-0 transition-all ${isSelected && !showResult ? 'bg-indigo-600 text-white' : 'bg-white dark:bg-slate-800 text-slate-400 shadow-inner'}`}>
+                  <span
+                    className={`w-8 h-8 rounded-xl flex items-center justify-center text-[11px] font-black shrink-0 transition-all ${isSelected && !showResult ? '' : 'bg-white dark:bg-slate-800 text-slate-400 shadow-inner'}`}
+                    style={isSelected && !showResult ? { background: 'var(--primary)', color: 'var(--primary-text)' } : undefined}
+                  >
                     {String.fromCharCode(65 + idx)}
                   </span>
-                  <span className="text-sm sm:text-base leading-snug">{option}</span>
+                  <span className="text-sm sm:text-base leading-snug flex-1">{option}</span>
+                  {!showResult && idx < 4 && (
+                    <span className="text-[8px] font-black text-slate-300 shrink-0">{idx + 1}</span>
+                  )}
                   {showResult && isCorrect && <EmojiImage emoji="✨" size={16} className="ml-auto shrink-0" />}
                 </button>
               );
@@ -455,7 +483,7 @@ export const QuizPlayer: React.FC<QuizPlayerProps> = ({
           </div>
         </div>
         <div className="w-full h-2 bg-slate-200 dark:bg-slate-800 rounded-full overflow-hidden">
-          <div className="h-full bg-indigo-600 transition-all duration-700 ease-out" style={{ width: `${progress}%` }} />
+          <div className="h-full transition-all duration-700 ease-out" style={{ width: `${progress}%`, background: 'var(--primary)' }} />
         </div>
         {currentQuestion.topic && (
           <p className="text-[9px] font-black uppercase tracking-widest text-slate-400 truncate">Thema: {currentQuestion.topic}</p>
@@ -509,26 +537,24 @@ export const QuizPlayer: React.FC<QuizPlayerProps> = ({
 
         {renderResultFeedback()}
 
-        {/* Erklärung (nach Antwort, nicht im Klausurmodus, nur für MC-artige Typen) */}
-        {showResult && !isOpen && !examMode && (
+        {/* Erklärung — immer sichtbar nach Antwort (außer Klausurmodus) */}
+        {showResult && !isOpen && !examMode && currentQuestion.explanation && (
           <div className="mx-4 mb-4 animate-in slide-in-from-bottom-4 duration-500">
-            <button
-              onClick={() => setShowExplanation(v => !v)}
-              className="w-full flex items-center justify-between px-5 py-3 bg-slate-50 dark:bg-slate-800 rounded-[20px] text-[9px] font-black uppercase tracking-widest text-slate-500 dark:text-slate-400"
+            <div
+              className="px-5 py-4 rounded-[20px] border"
+              style={!checkCorrectness()
+                ? { background: 'color-mix(in srgb, var(--primary) 8%, white)', borderColor: 'color-mix(in srgb, var(--primary) 25%, transparent)' }
+                : { background: 'var(--bg-sidebar)', borderColor: 'var(--border-color)' }
+              }
             >
-              <span>Erklärung</span>
-              <svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round" className={`transition-transform ${showExplanation ? 'rotate-180' : ''}`}>
-                <polyline points="6 9 12 15 18 9"/>
-              </svg>
-            </button>
-            {showExplanation && (
-              <div className="mt-2 px-5 py-4 bg-indigo-50 dark:bg-indigo-900/20 rounded-[20px] border border-indigo-100 dark:border-indigo-900/30 animate-in slide-in-from-top-2 duration-300">
-                <p className="text-sm text-slate-700 dark:text-slate-300 leading-relaxed">{currentQuestion.explanation}</p>
-                {currentQuestion.sourceReference && (
-                  <p className="mt-2 text-[9px] text-slate-400 font-black uppercase tracking-widest">{currentQuestion.sourceReference}</p>
-                )}
-              </div>
-            )}
+              <p className="text-[8px] font-black uppercase tracking-widest mb-1.5"
+                style={{ color: !checkCorrectness() ? 'var(--primary)' : '#94a3b8' }}
+              >Erklärung</p>
+              <p className="text-sm text-slate-700 dark:text-slate-300 leading-relaxed">{currentQuestion.explanation}</p>
+              {currentQuestion.sourceReference && (
+                <p className="mt-2 text-[9px] text-slate-400 font-black uppercase tracking-widest">{currentQuestion.sourceReference}</p>
+              )}
+            </div>
           </div>
         )}
       </div>
@@ -546,13 +572,12 @@ export const QuizPlayer: React.FC<QuizPlayerProps> = ({
             {/* Confirm button — für alle Typen außer Open */}
             {!showResult && !isOpen && (
               <button onClick={handleConfirm} disabled={!canConfirm}
-                className={`flex-1 py-4 rounded-[20px] font-black uppercase tracking-widest text-[10px] transition-all ${
-                  canConfirm
-                    ? 'bg-indigo-600 text-white shadow-3d-raised hover:scale-[1.02] active:scale-[0.98]'
-                    : 'bg-slate-100 dark:bg-slate-800 text-slate-400 cursor-not-allowed'
+                className={`flex-1 py-4 rounded-[20px] font-black uppercase tracking-widest text-[10px] transition-all min-h-[52px] ${
+                  canConfirm ? 'shadow-3d-raised hover:scale-[1.02] active:scale-[0.98]' : 'bg-slate-100 dark:bg-slate-800 text-slate-400 cursor-not-allowed'
                 }`}
+                style={canConfirm ? { background: 'var(--primary)', color: 'var(--primary-text)' } : undefined}
               >
-                Antwort prüfen
+                Antwort prüfen <span className="opacity-50 text-[8px] ml-1">↵</span>
               </button>
             )}
 
@@ -566,7 +591,8 @@ export const QuizPlayer: React.FC<QuizPlayerProps> = ({
             {/* Next / Finish button */}
             {(showResult || (isOpen && selfAssessCorrect !== null)) && (
               <button onClick={handleNext}
-                className="flex-1 bg-indigo-600 text-white py-4 rounded-[20px] font-black uppercase tracking-widest text-[10px] shadow-3d-raised hover:scale-[1.02] active:scale-[0.98] transition-all flex items-center justify-center gap-2"
+                className="flex-1 py-4 rounded-[20px] font-black uppercase tracking-widest text-[10px] shadow-3d-raised hover:scale-[1.02] active:scale-[0.98] transition-all flex items-center justify-center gap-2 min-h-[52px]"
+                style={{ background: 'var(--primary)', color: 'var(--primary-text)' }}
               >
                 {currentIndex < questions.length - 1 ? 'Nächste Frage' : 'Ergebnisse anzeigen'}
                 <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round">

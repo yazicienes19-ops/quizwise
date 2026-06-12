@@ -4,7 +4,8 @@ import { getDocStats } from '../services/quizHistoryService';
 
 interface QuizSetupProps {
   doc: ProcessedDocument;
-  onStart: (config: QuizConfig) => void;
+  availableDocs?: ProcessedDocument[];
+  onStart: (config: QuizConfig, docIds: string[]) => void;
   onBack: () => void;
   initialFocus?: QuizConfig['focus'];
 }
@@ -45,7 +46,7 @@ const Chip: React.FC<{ selected: boolean; onClick: () => void; label: string; de
   </button>
 );
 
-export const QuizSetup: React.FC<QuizSetupProps> = ({ doc, onStart, onBack, initialFocus }) => {
+export const QuizSetup: React.FC<QuizSetupProps> = ({ doc, availableDocs, onStart, onBack, initialFocus }) => {
   const [questionType, setQuestionType] = useState<QuizConfig['questionType']>('mixed');
   const [difficulty, setDifficulty]     = useState<QuizConfig['difficulty']>('mittel');
   const [questionCount, setQuestionCount] = useState(10);
@@ -53,6 +54,15 @@ export const QuizSetup: React.FC<QuizSetupProps> = ({ doc, onStart, onBack, init
   const [showCustom, setShowCustom]     = useState(false);
   const [examMode, setExamMode]         = useState(false);
   const [focus, setFocus]               = useState<QuizConfig['focus']>(initialFocus ?? 'all');
+  const [selectedDocIds, setSelectedDocIds] = useState<string[]>([doc.id]);
+
+  const toggleDoc = (id: string) => {
+    setSelectedDocIds(prev =>
+      prev.includes(id) ? (prev.length > 1 ? prev.filter(d => d !== id) : prev) : [...prev, id]
+    );
+  };
+
+  const otherDocs = availableDocs?.filter(d => d.id !== doc.id) ?? [];
 
   const stats = useMemo(() => getDocStats(doc.id), [doc.id]);
   const docTitle = doc.name.replace(/\.[^/.]+$/, '');
@@ -72,7 +82,7 @@ export const QuizSetup: React.FC<QuizSetupProps> = ({ doc, onStart, onBack, init
       </button>
 
       {/* Source header */}
-      <div className="bg-indigo-600 text-white rounded-[28px] p-6 shadow-3d-deep">
+      <div className="rounded-[28px] p-6 shadow-3d-deep" style={{ background: 'var(--primary)', color: 'var(--primary-text)' }}>
         <p className="text-[9px] font-black uppercase tracking-[0.3em] opacity-60 mb-1">Quiz aus</p>
         <p className="text-xl font-black leading-tight">{docTitle}</p>
         {stats.count > 0 && (
@@ -94,6 +104,40 @@ export const QuizSetup: React.FC<QuizSetupProps> = ({ doc, onStart, onBack, init
           </div>
         )}
       </div>
+
+      {/* Multi-Dokument Auswahl */}
+      {otherDocs.length > 0 && (
+        <div className="space-y-2">
+          <p className="text-[9px] font-black uppercase tracking-widest text-slate-400">Dokumente einschließen</p>
+          {[doc, ...otherDocs].map(d => (
+            <button
+              key={d.id}
+              onClick={() => toggleDoc(d.id)}
+              className="w-full flex items-center gap-3 px-4 py-3 rounded-[18px] border-2 transition-all text-left"
+              style={selectedDocIds.includes(d.id)
+                ? { borderColor: 'var(--primary)', background: 'color-mix(in srgb, var(--primary) 8%, var(--bg-sidebar))' }
+                : { borderColor: 'var(--border-color)', background: 'var(--bg-sidebar)' }
+              }
+            >
+              <div
+                className="w-4 h-4 rounded flex items-center justify-center shrink-0 border-2 transition-all"
+                style={selectedDocIds.includes(d.id)
+                  ? { background: 'var(--primary)', borderColor: 'var(--primary)' }
+                  : { borderColor: '#94a3b8' }
+                }
+              >
+                {selectedDocIds.includes(d.id) && (
+                  <svg width="8" height="8" viewBox="0 0 10 10" fill="none">
+                    <polyline points="1.5,5 4,7.5 8.5,2.5" stroke="white" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
+                  </svg>
+                )}
+              </div>
+              <span className="text-[10px] font-black truncate dark:text-white">{d.name.replace(/\.[^/.]+$/, '')}</span>
+              {d.id === doc.id && <span className="text-[8px] font-black text-slate-400 shrink-0">Primär</span>}
+            </button>
+          ))}
+        </div>
+      )}
 
       {/* Question type */}
       <div className="space-y-3">
@@ -158,7 +202,8 @@ export const QuizSetup: React.FC<QuizSetupProps> = ({ doc, onStart, onBack, init
         <button
           onClick={() => setExamMode(v => !v)}
           aria-label="Prüfungsmodus umschalten"
-          className={`relative w-12 h-6 rounded-full transition-colors ${examMode ? 'bg-indigo-600' : 'bg-slate-200 dark:bg-slate-700'}`}
+          className={`relative w-12 h-6 rounded-full transition-colors ${examMode ? '' : 'bg-slate-200 dark:bg-slate-700'}`}
+          style={examMode ? { background: 'var(--primary)' } : undefined}
         >
           <span className={`absolute top-0.5 left-0.5 w-5 h-5 bg-white rounded-full shadow transition-transform ${examMode ? 'translate-x-6' : 'translate-x-0'}`} />
         </button>
@@ -166,8 +211,9 @@ export const QuizSetup: React.FC<QuizSetupProps> = ({ doc, onStart, onBack, init
 
       {/* CTA */}
       <button
-        onClick={() => onStart({ questionType, difficulty, questionCount: effectiveCount, focus, examMode })}
-        className="w-full bg-indigo-600 text-white py-5 rounded-[24px] font-black uppercase tracking-widest text-[11px] shadow-3d-deep hover:scale-[1.02] active:scale-[0.98] transition-all flex items-center justify-center gap-3"
+        onClick={() => onStart({ questionType, difficulty, questionCount: effectiveCount, focus, examMode }, selectedDocIds)}
+        className="w-full py-5 rounded-[24px] font-black uppercase tracking-widest text-[11px] shadow-3d-deep hover:scale-[1.02] active:scale-[0.98] transition-all flex items-center justify-center gap-3"
+        style={{ background: 'var(--primary)', color: 'var(--primary-text)' }}
       >
         <span>{effectiveCount} Fragen generieren</span>
         <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round">

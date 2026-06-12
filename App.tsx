@@ -508,15 +508,32 @@ const App: React.FC = () => {
     } finally { setIsLoading(false); }
   };
 
-  const handleStartQuizFromSetup = async (config: QuizConfig) => {
+  const handleStartQuizFromSetup = async (config: QuizConfig, docIds: string[] = []) => {
     if (!pendingActionDoc) return;
     setPendingTopic(null);
     setIsLoading(true);
     setQuestions([]);
     setAnswers([]);
     try {
-      const source = getDocumentSource(pendingActionDoc);
-      setActiveQuizMeta({ docId: pendingActionDoc.id, docName: pendingActionDoc.name.replace(/\.[^/.]+$/, '') });
+      const selectedDocs = docIds.length > 1
+        ? documents.filter(d => docIds.includes(d.id))
+        : [pendingActionDoc];
+
+      let source: import('./services/geminiService').GenerationSource;
+      let metaName: string;
+      if (selectedDocs.length > 1) {
+        const combined = selectedDocs.map(d => {
+          const txt = d.digestText || (d.type === 'text' ? d.content : '');
+          return `[Quelle: ${d.name.replace(/\.[^/.]+$/, '')}]\n${txt}`;
+        }).join('\n\n---\n\n');
+        source = { text: combined };
+        metaName = `${selectedDocs.length} Dokumente`;
+      } else {
+        source = getDocumentSource(pendingActionDoc);
+        metaName = pendingActionDoc.name.replace(/\.[^/.]+$/, '');
+      }
+
+      setActiveQuizMeta({ docId: pendingActionDoc.id, docName: metaName });
       const stats = getDocStats(pendingActionDoc.id);
       const customFocus = config.focus === 'weak' && stats.weakTopics.length > 0
         ? `Fokus auf schwache Themen: ${stats.weakTopics.join(', ')}`
@@ -529,7 +546,7 @@ const App: React.FC = () => {
         questionType: config.questionType,
         excludeTopics,
       });
-      const meta = { docId: pendingActionDoc.id, docName: pendingActionDoc.name.replace(/\.[^/.]+$/, '') };
+      const meta = { docId: pendingActionDoc.id, docName: metaName };
       setQuestions(quiz);
       setQuizInitialAnswers(undefined);
       saveUsedTopics(pendingActionDoc.id, quiz);
@@ -648,6 +665,7 @@ const App: React.FC = () => {
           const fromRadar = !!pendingTopic;
           return <QuizSetup
             doc={pendingActionDoc}
+            availableDocs={documents}
             onStart={handleStartQuizFromSetup}
             onBack={() => {
               setPendingActionDoc(null);
