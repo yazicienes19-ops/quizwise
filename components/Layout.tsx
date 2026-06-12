@@ -1,6 +1,7 @@
 
-import React, { useState, useEffect } from 'react';
-import { ActiveTab } from '../types';
+import React, { useState, useEffect, useMemo } from 'react';
+import { ActiveTab, FlashcardDeck } from '../types';
+import { countDueCards, migrateLegacyCard } from '../services/spacedRepetition';
 import {
   Home, BookOpen, HelpCircle, Calendar, Brain, GraduationCap,
   Layers, Lightbulb, BarChart2, Search, FileText, Moon, Sun,
@@ -68,6 +69,14 @@ export const Layout: React.FC<LayoutProps> = ({
 
 
   const allNavItems = NAV_GROUPS.flatMap(g => g.items);
+
+  const dueCardsCount = useMemo(() => {
+    try {
+      const decks: FlashcardDeck[] = JSON.parse(localStorage.getItem('flashcard_decks') || '[]');
+      const allCards = decks.flatMap(d => d.cards.map(c => c.srs ? c : { ...c, srs: migrateLegacyCard(c) }));
+      return countDueCards(allCards);
+    } catch { return 0; }
+  }, []);
 
   const EXTRA_LABELS: Partial<Record<ActiveTab, string>> = {
     [ActiveTab.EXPLAINER]: 'KI-Erklärer',
@@ -149,6 +158,12 @@ export const Layout: React.FC<LayoutProps> = ({
                           </span>
                         )}
                       </div>
+                      {item.tab === ActiveTab.CARDS && dueCardsCount > 0 && (
+                        <span
+                          className="text-[8px] font-black rounded-full px-1.5 py-0.5 shrink-0"
+                          style={{ background: 'var(--primary)', color: 'var(--primary-text)' }}
+                        >{dueCardsCount}</span>
+                      )}
                     </button>
                   );
                 })}

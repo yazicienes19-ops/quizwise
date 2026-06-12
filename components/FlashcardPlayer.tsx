@@ -1,6 +1,7 @@
 
 import React, { useState, useEffect, useCallback, useMemo } from 'react';
 import { Flashcard } from '../types';
+import { reviewCard, migrateLegacyCard, ReviewQuality, countDueCards } from '../services/spacedRepetition';
 
 interface FlashcardPlayerProps {
   cards: Flashcard[];
@@ -48,18 +49,31 @@ export const FlashcardPlayer: React.FC<FlashcardPlayerProps> = ({ cards, onRevie
 
   const stats = useMemo(() => {
     const remaining = cards.length - currentIndex;
-    const newCount = cards.slice(currentIndex).filter(c => c.level === 0).length;
-    const learnCount = cards.slice(currentIndex).filter(c => c.level > 0 && c.level < 3).length;
-    const reviewCount = cards.slice(currentIndex).filter(c => c.level >= 3).length;
+    const remaining_cards = cards.slice(currentIndex);
+    const newCount = remaining_cards.filter(c => !c.srs?.lastReview).length;
+    const learnCount = remaining_cards.filter(c => c.srs?.lastReview && c.srs.interval < 7).length;
+    const reviewCount = remaining_cards.filter(c => c.srs?.lastReview && c.srs.interval >= 7).length;
     return { newCount, learnCount, reviewCount, remaining };
   }, [currentIndex, cards]);
 
-  const getIntervalLabel = (diff: string, level: number) => {
+  const QUALITY_MAP: Record<string, ReviewQuality> = {
+    again: ReviewQuality.BLACKOUT,
+    hard:  ReviewQuality.HARD,
+    good:  ReviewQuality.GOOD,
+    easy:  ReviewQuality.EASY,
+  };
+
+  const getIntervalLabel = (diff: string, card: Flashcard): string => {
     if (diff === 'again') return '< 1m';
-    if (diff === 'hard') return '1d';
-    if (diff === 'good') return level === 0 ? '1d' : `${Math.round(Math.pow(2.5, level))}d`;
-    if (diff === 'easy') return level === 0 ? '4d' : `${Math.round(Math.pow(4, level))}d`;
-    return '';
+    const srs = card.srs ?? migrateLegacyCard(card);
+    const next = reviewCard(srs, QUALITY_MAP[diff] ?? ReviewQuality.GOOD);
+    const days = next.interval;
+    if (days < 1) return '< 1d';
+    if (days === 1) return '1d';
+    if (days < 30) return `${days}d`;
+    const weeks = Math.round(days / 7);
+    if (weeks < 8) return `${weeks}w`;
+    return `${Math.round(days / 30)}mo`;
   };
 
   const progress = (currentIndex / cards.length) * 100;
@@ -107,7 +121,7 @@ export const FlashcardPlayer: React.FC<FlashcardPlayerProps> = ({ cards, onRevie
           {showAnswer && (
             <div className="space-y-16 animate-in fade-in zoom-in-95 duration-300 border-t border-slate-100 dark:border-slate-800 pt-16 px-8">
               <div className="text-center">
-                <p className="text-3xl md:text-4xl font-bold text-indigo-600 dark:text-indigo-400 leading-relaxed">
+                <p className="text-3xl md:text-4xl font-bold leading-relaxed" style={{ color: 'var(--primary)' }}>
                   {currentCard.back}
                 </p>
               </div>
@@ -130,10 +144,10 @@ export const FlashcardPlayer: React.FC<FlashcardPlayerProps> = ({ cards, onRevie
           ) : (
             <div className="grid grid-cols-4 gap-4 w-full">
               {[
-                { id: 'again', label: 'Nochmal', color: 'bg-rose-500', key: '1', interval: getIntervalLabel('again', currentCard.level) },
-                { id: 'hard', label: 'Schwer', color: 'bg-amber-500', key: '2', interval: getIntervalLabel('hard', currentCard.level) },
-                { id: 'good', label: 'Gut', color: 'bg-emerald-500', key: '3', interval: getIntervalLabel('good', currentCard.level) },
-                { id: 'easy', label: 'Einfach', color: 'bg-blue-500', key: '4', interval: getIntervalLabel('easy', currentCard.level) }
+                { id: 'again', label: 'Nochmal', color: 'bg-rose-500', key: '1', interval: getIntervalLabel('again', currentCard) },
+                { id: 'hard', label: 'Schwer', color: 'bg-amber-500', key: '2', interval: getIntervalLabel('hard', currentCard) },
+                { id: 'good', label: 'Gut', color: 'bg-emerald-500', key: '3', interval: getIntervalLabel('good', currentCard) },
+                { id: 'easy', label: 'Einfach', color: 'bg-blue-500', key: '4', interval: getIntervalLabel('easy', currentCard) }
               ].map(btn => (
                 <button 
                   key={btn.id}
@@ -153,8 +167,8 @@ export const FlashcardPlayer: React.FC<FlashcardPlayerProps> = ({ cards, onRevie
           {/* Bottom Progress Bar */}
           <div className="w-full h-1.5 bg-slate-100 dark:bg-slate-800 rounded-full overflow-hidden">
             <div 
-              className="h-full bg-indigo-600 transition-all duration-500"
-              style={{ width: `${progress}%` }}
+              className="h-full transition-all duration-500"
+              style={{ width: `${progress}%`, background: 'var(--primary)' }}
             />
           </div>
         </div>

@@ -1,10 +1,11 @@
 
 import React, { useState, useMemo } from 'react';
-import { ActiveTab, LearningFlowResult, StudyEntry } from '../types';
+import { ActiveTab, LearningFlowResult, StudyEntry, FlashcardDeck } from '../types';
 import { GeneratedImage } from './GeneratedImage';
 import { AgentChat } from './AgentChat';
 import { toast } from '../services/toast';
-import { Bot } from 'lucide-react';
+import { Bot, Layers } from 'lucide-react';
+import { countDueCards, migrateLegacyCard } from '../services/spacedRepetition';
 
 const USAGE_KEY = 'quizwise_feature_usage';
 
@@ -50,6 +51,14 @@ export const Dashboard: React.FC<DashboardProps> = ({ onTabChange, flowResult })
   const [hovered, setHovered] = useState<ActiveTab | null>(null);
   const [usageCounts, setUsageCounts] = useState<Record<string, number>>(getUsageCounts);
   const [coachOpen, setCoachOpen] = useState(false);
+
+  const dueCardsCount = useMemo(() => {
+    try {
+      const decks: FlashcardDeck[] = JSON.parse(localStorage.getItem('flashcard_decks') || '[]');
+      const allCards = decks.flatMap(d => d.cards.map(c => c.srs ? c : { ...c, srs: migrateLegacyCard(c) }));
+      return countDueCards(allCards);
+    } catch { return 0; }
+  }, []);
 
   const coachContext = useMemo(() => {
     try {
@@ -182,6 +191,37 @@ export const Dashboard: React.FC<DashboardProps> = ({ onTabChange, flowResult })
           <span className="text-[10px] font-black uppercase tracking-widest" style={{ color: 'var(--primary)' }}>Fragen →</span>
         </button>
       </div>
+
+      {/* Fällige Karten Badge */}
+      {dueCardsCount > 0 && (
+        <div className="max-w-6xl mx-auto w-full">
+          <button
+            onClick={() => onTabChange(ActiveTab.CARDS)}
+            className="w-full flex items-center justify-between px-6 py-4 rounded-2xl border transition-all hover:scale-[1.01] active:scale-[0.99]"
+            style={{ background: 'color-mix(in srgb, var(--primary) 10%, var(--bg-sidebar))', borderColor: 'color-mix(in srgb, var(--primary) 30%, transparent)' }}
+          >
+            <div className="flex items-center gap-3">
+              <div className="w-9 h-9 rounded-xl flex items-center justify-center" style={{ background: 'var(--primary)' }}>
+                <Layers size={16} style={{ color: 'var(--primary-text)' }} />
+              </div>
+              <div className="text-left">
+                <p className="text-[11px] font-black uppercase tracking-widest" style={{ color: 'var(--primary)' }}>
+                  Karteikarten
+                </p>
+                <p className="text-xs text-slate-500 dark:text-slate-400">
+                  {dueCardsCount} Karte{dueCardsCount !== 1 ? 'n' : ''} heute fällig
+                </p>
+              </div>
+            </div>
+            <span
+              className="text-[11px] font-black uppercase tracking-widest px-3 py-1.5 rounded-full"
+              style={{ background: 'var(--primary)', color: 'var(--primary-text)' }}
+            >
+              {dueCardsCount} fällig
+            </span>
+          </button>
+        </div>
+      )}
 
       {/* Standard Navigation Grid */}
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6 lg:gap-8 max-w-6xl mx-auto w-full">

@@ -66,6 +66,7 @@ export interface Flashcard {
   level: number;
   nextReview: number;
   lastInterval?: number;
+  srs?: import('./services/spacedRepetition').SrsState;
 }
 
 export interface FlashcardDeck {

@@ -8,6 +8,7 @@ import { toast } from '../services/toast';
 import { FlashcardPlayer } from './FlashcardPlayer';
 import { SourceSelector } from './SourceSelector';
 import { loadDecksFromSupabase, saveDeckToSupabase, deleteDeckFromSupabase, uploadAllDecksToSupabase } from '../services/flashcardService';
+import { reviewCard, getDueCards, createSrsState, migrateLegacyCard, ReviewQuality, countDueCards } from '../services/spacedRepetition';
 
 interface FlashcardSystemProps {
   availableDocuments: ProcessedDocument[];
@@ -132,7 +133,8 @@ export const FlashcardSystem: React.FC<FlashcardSystemProps> = ({
       back: newCardBack,
       level: 0,
       nextReview: Date.now(),
-      lastInterval: 0
+      lastInterval: 0,
+      srs: createSrsState(),
     };
 
     const updatedDecks = decks.map(d =>
@@ -194,7 +196,8 @@ export const FlashcardSystem: React.FC<FlashcardSystemProps> = ({
           back: c.back || '',
           level: 0,
           nextReview: Date.now(),
-          lastInterval: 0
+          lastInterval: 0,
+          srs: createSrsState(),
         }))
       };
       saveDecks([...decks, newDeck], newDeck);
@@ -216,19 +219,25 @@ export const FlashcardSystem: React.FC<FlashcardSystemProps> = ({
   };
 
   const deckStats = useMemo(() => {
-    const now = Date.now();
     return decks.map(deck => {
-      const newCards = deck.cards.filter(c => c.level === 0).length;
-      const learnCards = deck.cards.filter(c => c.level > 0 && c.level < 3).length;
-      const reviewCards = deck.cards.filter(c => c.level >= 3 && c.nextReview <= now).length;
-      return { id: deck.id, newCards, learnCards, reviewCards };
+      const migratedCards = deck.cards.map(c => c.srs ? c : { ...c, srs: migrateLegacyCard(c) });
+      const dueCount = countDueCards(migratedCards);
+      const newCards = migratedCards.filter(c => !c.srs?.lastReview).length;
+      const reviewCards = migratedCards.filter(c => c.srs?.lastReview && c.srs.nextReview <= Date.now()).length;
+      return { id: deck.id, newCards, learnCards: 0, reviewCards, dueCount };
     });
   }, [decks]);
 
+  const QUALITY_MAP: Record<'again' | 'hard' | 'good' | 'easy', ReviewQuality> = {
+    again: ReviewQuality.BLACKOUT,
+    hard:  ReviewQuality.HARD,
+    good:  ReviewQuality.GOOD,
+    easy:  ReviewQuality.EASY,
+  };
+
   const handleReview = (cardId: string, difficulty: 'again' | 'hard' | 'good' | 'easy') => {
     if (!activeDeckId) return;
-    const now = Date.now();
-    const dayMs = 24 * 60 * 60 * 1000;
+    const quality = QUALITY_MAP[difficulty];
 
     const newDecks = decks.map(deck => {
       if (deck.id !== activeDeckId) return deck;
@@ -236,37 +245,16 @@ export const FlashcardSystem: React.FC<FlashcardSystemProps> = ({
         ...deck,
         cards: deck.cards.map(card => {
           if (card.id !== cardId) return card;
-          
-          let nextInterval = 0;
-          let nextLevel = card.level;
-
-          switch(difficulty) {
-            case 'again': 
-              nextLevel = Math.max(0, card.level - 1); 
-              nextInterval = 0;
-              break;
-            case 'hard': 
-              nextLevel = card.level; 
-              nextInterval = (card.lastInterval || 1) * 1.2; 
-              break;
-            case 'good': 
-              nextLevel = card.level + 1; 
-              nextInterval = (card.lastInterval || 1) * 2.5; 
-              break;
-            case 'easy': 
-              nextLevel = card.level + 2; 
-              nextInterval = (card.lastInterval || 1) * 4; 
-              break;
-          }
-          if (nextLevel < 1 && (difficulty === 'good' || difficulty === 'easy')) nextLevel = 1;
-
+          const currentSrs = card.srs ?? migrateLegacyCard(card);
+          const nextSrs = reviewCard(currentSrs, quality);
           return {
             ...card,
-            level: nextLevel,
-            lastInterval: nextInterval,
-            nextReview: now + (nextInterval * dayMs)
+            srs: nextSrs,
+            level: nextSrs.repetitions,
+            nextReview: nextSrs.nextReview,
+            lastInterval: nextSrs.interval,
           };
-        })
+        }),
       };
     });
     const changedDeck = newDecks.find(d => d.id === activeDeckId);
@@ -325,7 +313,8 @@ export const FlashcardSystem: React.FC<FlashcardSystemProps> = ({
               back: c.back,
               level: 0,
               nextReview: Date.now(),
-              lastInterval: 0
+              lastInterval: 0,
+              srs: createSrsState(),
             }))
           }));
         } else if (json.title && Array.isArray(json.cards)) {
@@ -339,7 +328,8 @@ export const FlashcardSystem: React.FC<FlashcardSystemProps> = ({
               back: c.back,
               level: 0,
               nextReview: Date.now(),
-              lastInterval: 0
+              lastInterval: 0,
+              srs: createSrsState(),
             }))
           }];
         } else {
@@ -365,17 +355,17 @@ export const FlashcardSystem: React.FC<FlashcardSystemProps> = ({
     if (!activeDeckId) return [];
     const deck = decks.find(d => d.id === activeDeckId);
     if (!deck) return [];
-    const now = Date.now();
-    return deck.cards.filter(c => c.nextReview <= now || c.level === 0);
+    const migratedCards = deck.cards.map(c => c.srs ? c : { ...c, srs: migrateLegacyCard(c) });
+    return getDueCards(migratedCards);
   };
 
   const handleOpenDeck = (deckId: string) => {
     const deck = decks.find(d => d.id === deckId);
     if (!deck) return;
-    const now = Date.now();
-    const due = deck.cards.filter(c => c.nextReview <= now || c.level === 0);
+    const migratedCards = deck.cards.map(c => c.srs ? c : { ...c, srs: migrateLegacyCard(c) });
+    const due = getDueCards(migratedCards);
     if (due.length === 0) {
-      toast.success("Dieses Deck ist für heute erledigt!");
+      toast.success("Dieses Deck ist für heute erledigt! 🎉");
       return;
     }
     setActiveDeckId(deckId);
