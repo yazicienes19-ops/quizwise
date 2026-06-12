@@ -79,8 +79,7 @@ export const Dashboard: React.FC<DashboardProps> = ({ onTabChange, flowResult, d
     try {
       const decks: FlashcardDeck[] = JSON.parse(localStorage.getItem('flashcard_decks') || '[]');
       if (decks.length > 0) {
-        const last = [...decks].sort((a, b) => (b.updatedAt ?? 0) - (a.updatedAt ?? 0))[0];
-        return { type: 'deck' as const, label: last.name, tab: ActiveTab.CARDS };
+        return { type: 'deck' as const, label: decks[decks.length - 1].title, tab: ActiveTab.CARDS };
       }
     } catch {}
     return null;

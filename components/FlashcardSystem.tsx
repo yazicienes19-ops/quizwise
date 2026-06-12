@@ -10,6 +10,7 @@ import { SourceSelector } from './SourceSelector';
 import { loadDecksFromSupabase, saveDeckToSupabase, deleteDeckFromSupabase, uploadAllDecksToSupabase } from '../services/flashcardService';
 import { reviewCard, getDueCards, createSrsState, migrateLegacyCard, ReviewQuality, countDueCards } from '../services/spacedRepetition';
 import { recordActivity } from '../services/streakService';
+import { AnkiImportModal } from './AnkiImportModal';
 
 interface FlashcardSystemProps {
   availableDocuments: ProcessedDocument[];
@@ -43,6 +44,7 @@ export const FlashcardSystem: React.FC<FlashcardSystemProps> = ({
   
   // States for manual deck creation
   const [showManualDeckDialog, setShowManualDeckDialog] = useState(false);
+  const [showAnkiImport, setShowAnkiImport] = useState(false);
   const [manualDeckTitle, setManualDeckTitle] = useState('');
 
   // States for manual card addition
@@ -355,6 +357,28 @@ export const FlashcardSystem: React.FC<FlashcardSystemProps> = ({
     reader.readAsText(file);
   };
 
+  const handleAnkiImport = (cards: Flashcard[], targetDeckId: string | null, newDeckName?: string) => {
+    let updatedDecks: FlashcardDeck[];
+    if (targetDeckId) {
+      updatedDecks = decks.map(d =>
+        d.id === targetDeckId ? { ...d, cards: [...d.cards, ...cards] } : d
+      );
+      const count = cards.length;
+      toast.success(`${count} Karte${count !== 1 ? 'n' : ''} zu "${decks.find(d => d.id === targetDeckId)?.title}" hinzugefügt.`);
+    } else {
+      const newDeck: FlashcardDeck = {
+        id: Math.random().toString(36).substr(2, 9),
+        title: newDeckName || 'Importiertes Deck',
+        cards,
+      };
+      updatedDecks = [...decks, newDeck];
+      toast.success(`${cards.length} Karte${cards.length !== 1 ? 'n' : ''} in "${newDeck.title}" importiert.`);
+    }
+    setDecks(updatedDecks);
+    localStorage.setItem('flashcard_decks', JSON.stringify(updatedDecks));
+    if (userId) uploadAllDecksToSupabase(updatedDecks.filter(d => !decks.some(od => od.id === d.id)), userId).catch(() => {});
+  };
+
   const getActiveDeckCards = () => {
     if (!activeDeckId) return [];
     const deck = decks.find(d => d.id === activeDeckId);
@@ -551,6 +575,13 @@ export const FlashcardSystem: React.FC<FlashcardSystemProps> = ({
 
   return (
     <div className="max-w-6xl mx-auto space-y-10 lg:space-y-16 animate-in fade-in duration-700 py-6 lg:py-10 px-2 sm:px-4">
+      {showAnkiImport && (
+        <AnkiImportModal
+          decks={decks}
+          onClose={() => setShowAnkiImport(false)}
+          onImport={handleAnkiImport}
+        />
+      )}
       <div className="text-center space-y-4 px-4">
         <h1 className="text-5xl lg:text-7xl font-black text-slate-900 dark:text-white tracking-tighter">
           Anki <span className="text-indigo-600">Decks</span> <EmojiImage emoji="🎓" size={48} />
@@ -643,9 +674,9 @@ export const FlashcardSystem: React.FC<FlashcardSystemProps> = ({
                 onChange={handleImport}
               />
               <button
-                onClick={() => importInputRef.current?.click()}
+                onClick={() => setShowAnkiImport(true)}
                 className="flex items-center gap-2 px-4 py-2 bg-slate-100 dark:bg-slate-800 text-slate-500 hover:text-indigo-600 rounded-xl text-[9px] font-black uppercase tracking-widest transition-colors"
-                title="Decks aus JSON importieren"
+                title="Karten importieren (CSV/TSV/Text)"
               >
                 <svg xmlns="http://www.w3.org/2000/svg" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
                 Importieren
