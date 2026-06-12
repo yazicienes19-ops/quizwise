@@ -11,6 +11,7 @@ import { loadDecksFromSupabase, saveDeckToSupabase, deleteDeckFromSupabase, uplo
 import { reviewCard, getDueCards, createSrsState, migrateLegacyCard, ReviewQuality, countDueCards } from '../services/spacedRepetition';
 import { recordActivity } from '../services/streakService';
 import { AnkiImportModal } from './AnkiImportModal';
+import { shareDeck } from '../services/sharedDecksService';
 
 interface FlashcardSystemProps {
   availableDocuments: ProcessedDocument[];
@@ -355,6 +356,27 @@ export const FlashcardSystem: React.FC<FlashcardSystemProps> = ({
       }
     };
     reader.readAsText(file);
+  };
+
+  const handleShareDeck = async (deck: FlashcardDeck) => {
+    if (!userId) {
+      toast.error('Bitte zuerst einloggen, um Decks zu teilen.');
+      return;
+    }
+    try {
+      const id = await shareDeck(deck.id, deck.title, deck.cards, userId);
+      const url = `${window.location.origin}/shared/${id}`;
+      await navigator.clipboard.writeText(url);
+      toast.success('Link kopiert! Teile ihn mit deinen Kommilitonen.');
+    } catch (e: any) {
+      if (e?.code === '23505') {
+        const url = `${window.location.origin}/shared/${deck.id}`;
+        await navigator.clipboard.writeText(url).catch(() => {});
+        toast.success('Link kopiert (Deck bereits geteilt)!');
+      } else {
+        toast.error('Teilen fehlgeschlagen. Bitte versuche es erneut.');
+      }
+    }
   };
 
   const handleAnkiImport = (cards: Flashcard[], targetDeckId: string | null, newDeckName?: string) => {
@@ -758,6 +780,13 @@ export const FlashcardSystem: React.FC<FlashcardSystemProps> = ({
                           title="Als JSON exportieren"
                         >
                           <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+                        </button>
+                        <button
+                          onClick={() => handleShareDeck(deck)}
+                          className="p-3 bg-slate-50 dark:bg-slate-800 text-slate-400 hover:text-indigo-600 rounded-xl transition-all"
+                          title="Deck teilen — Link kopieren"
+                        >
+                          <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><circle cx="18" cy="5" r="3"/><circle cx="6" cy="12" r="3"/><circle cx="18" cy="19" r="3"/><line x1="8.59" y1="13.51" x2="15.42" y2="17.49"/><line x1="15.41" y1="6.51" x2="8.59" y2="10.49"/></svg>
                         </button>
                         <button
                           onClick={() => onGenerateQuizFromDeck(deck)}

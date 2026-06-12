@@ -24,6 +24,7 @@ import { ToastContainer } from './components/Toast';
 import { SplashScreen } from './components/SplashScreen';
 import { AuthPage } from './components/AuthPage';
 import { Onboarding, isOnboardingDone } from './components/Onboarding';
+import { SharedDeckPage } from './components/SharedDeckPage';
 import { resolveErrorMessage } from './services/errorMessages';
 import { ActiveTab, ProcessedDocument, QuizQuestion, UserAnswer, TopicMetric, SearchResult, QuizType, FlashcardDeck, Flashcard, Collection, ExamTerm, LearningFlowResult, QuizConfig } from './types';
 
@@ -896,6 +897,27 @@ const App: React.FC = () => {
       default: return <Dashboard onTabChange={setActiveTab} flowResult={flowResult} onAcceptFlow={saveFlowResult} documents={documents} />;
     }
   };
+
+  const sharedDeckMatch = window.location.pathname.match(/^\/shared\/([a-z0-9]+)$/i);
+  if (sharedDeckMatch) {
+    return (
+      <>
+        <ToastContainer />
+        <SharedDeckPage
+          deckId={sharedDeckMatch[1]}
+          userId={user?.id}
+          onLoginRequired={() => setShowAuthModal(true)}
+          onAccepted={(deck) => {
+            const stored: FlashcardDeck[] = (() => { try { return JSON.parse(localStorage.getItem('flashcard_decks') || '[]'); } catch { return []; } })();
+            const updated = [...stored, deck];
+            localStorage.setItem('flashcard_decks', JSON.stringify(updated));
+            window.location.href = '/';
+          }}
+        />
+        {showAuthModal && <AuthModal onClose={() => setShowAuthModal(false)} />}
+      </>
+    );
+  }
 
   if (!authChecked) return <SplashScreen />;
   if (!user) return <AuthPage />;
