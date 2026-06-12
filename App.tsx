@@ -1,279 +1,62 @@
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect } from 'react';
 import { supabase } from './services/supabaseClient';
-import type { User } from '@supabase/supabase-js';
 import { AuthModal } from './components/AuthModal';
 import { UpgradeModal } from './components/UpgradeModal';
 import { SettingsModal } from './components/SettingsModal';
 import { Layout } from './components/Layout';
-import { Dashboard } from './components/Dashboard';
-import { QuizPlayer } from './components/QuizPlayer';
-import { QuizSetup } from './components/QuizSetup';
-import { ResultView } from './components/ResultView';
-import { FileUploader } from './components/FileUploader';
-import { ScholarSearch } from './components/ScholarSearch';
-import { StudyPlanner } from './components/StudyPlanner';
-import { FlashcardSystem } from './components/FlashcardSystem';
-import { TermPaperSystem } from './components/TermPaperSystem';
-import { GapRadar } from './components/GapRadar';
-import { ExplainerSystem } from './components/ExplainerSystem';
-import { LibrarySystem } from './components/LibrarySystem';
-import { ExamSystem } from './components/ExamSystem';
-import { ActiveRecall } from './components/ActiveRecall';
-import { GeneratedImage } from './components/GeneratedImage';
 import { ToastContainer } from './components/Toast';
 import { SplashScreen } from './components/SplashScreen';
 import { AuthPage } from './components/AuthPage';
 import { Onboarding, isOnboardingDone } from './components/Onboarding';
 import { SharedDeckPage } from './components/SharedDeckPage';
 import { resolveErrorMessage } from './services/errorMessages';
-import { ActiveTab, ProcessedDocument, QuizQuestion, UserAnswer, TopicMetric, SearchResult, QuizType, FlashcardDeck, Flashcard, Collection, ExamTerm, LearningFlowResult, QuizConfig } from './types';
-
-import { generateQuizFromDocument, searchScholar, searchWeb, generateQuizFromFlashcards, orchestrateLearningFlow, fetchUserProfile } from './services/geminiService';
-import { saveQuizResult, getDocStats, getAllResults } from './services/quizHistoryService';
-import { getSavedQuizzes, saveQuizToStorage, deleteSavedQuiz, SavedQuiz } from './services/savedQuizzesService';
-import { getSavedExams, deleteSavedExam, SavedExam } from './services/savedExamsService';
-import { saveRecallResult } from './services/recallHistoryService';
-import { saveExamResult } from './services/examHistoryService';
-import { recordActivity } from './services/streakService';
-import { saveMeta, getMeta } from './services/libraryService';
-import {
-  loadDocumentsFromSupabase,
-  loadCollectionsFromSupabase,
-  saveDocumentToSupabase,
-  deleteDocumentFromSupabase,
-  saveCollectionToSupabase,
-  deleteCollectionFromSupabase,
-  updateDocumentCollectionInSupabase,
-  downloadPdfAsBase64,
-  triggerDocumentAnalysis,
-} from './services/documentService';
-import type { GenerationSource } from './services/geminiService';
+import { orchestrateLearningFlow } from './services/geminiService';
 import { toast } from './services/toast';
-import mammoth from 'mammoth';
-import heic2any from 'heic2any';
+import { ActiveTab, TopicMetric, SearchResult, FlashcardDeck, ExamTerm, LearningFlowResult } from './types';
+import { useAuth } from './hooks/useAuth';
+import { useDocuments } from './hooks/useDocuments';
+import { useQuizState } from './hooks/useQuizState';
+import { AppContent } from './components/AppContent';
 
 const App: React.FC = () => {
-  const [user, setUser] = useState<User | null>(null);
-  const [authChecked, setAuthChecked] = useState(false);
-  const [showAuthModal, setShowAuthModal] = useState(false);
+  const auth = useAuth();
   const [activeTab, setActiveTab] = useState<ActiveTab>(ActiveTab.DASHBOARD);
-  const [documents, setDocuments] = useState<ProcessedDocument[]>([]);
-  const [collections, setCollections] = useState<Collection[]>([]);
-  const [questions, setQuestions] = useState<QuizQuestion[]>([]);
-  const [answers, setAnswers] = useState<UserAnswer[]>([]);
-  const [searchResults, setSearchResults] = useState<SearchResult[]>([]);
-  const [savedSources, setSavedSources] = useState<SearchResult[]>([]);
+  const [pendingActionDoc, setPendingActionDoc] = useState<import('./types').ProcessedDocument | null>(null);
+  const [pendingTopic, setPendingTopic] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(false);
-  const [isSearching, setIsSearching] = useState(false);
-  const [metrics, setMetrics] = useState<TopicMetric[]>([]);
   const [isOffline, setIsOffline] = useState(!navigator.onLine);
   const [showUpgradeHint, setShowUpgradeHint] = useState(false);
   const [showUpgradeModal, setShowUpgradeModal] = useState(false);
   const [showSettings, setShowSettings] = useState(false);
-  const [isDark, setIsDark] = useState(() => {
-    const saved = localStorage.getItem('theme');
-    if (saved) return saved === 'dark';
-    return document.documentElement.classList.contains('dark');
-  });
-  const [pendingActionDoc, setPendingActionDoc] = useState<ProcessedDocument | null>(null);
-  const [pendingTopic, setPendingTopic] = useState<string | null>(null);
-  const [activeQuizMeta, setActiveQuizMeta] = useState<{ docId: string; docName: string } | null>(null);
-  const [quizInitialAnswers, setQuizInitialAnswers] = useState<UserAnswer[] | undefined>(undefined);
-  const [savedQuizzes, setSavedQuizzes] = useState<SavedQuiz[]>(() => getSavedQuizzes());
-  const [savedExams, setSavedExams]     = useState<SavedExam[]>(() => getSavedExams());
-  const [examInitialQuestions, setExamInitialQuestions] = useState<SavedExam | null>(null);
-  const [userPlan, setUserPlan] = useState<'free' | 'pro'>('free');
   const [showOnboarding, setShowOnboarding] = useState(() => !isOnboardingDone());
-
-  const PROGRESS_KEY = 'quizwise_quiz_progress';
-
-  const progressTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
-  const saveQuizProgress = (qs: QuizQuestion[], ans: UserAnswer[], meta: { docId: string; docName: string } | null) => {
-    if (progressTimer.current) clearTimeout(progressTimer.current);
-    progressTimer.current = setTimeout(() => {
-      localStorage.setItem(PROGRESS_KEY, JSON.stringify({ questions: qs, answers: ans, meta, timestamp: Date.now() }));
-    }, 250);
-  };
-
-  const clearQuizProgress = () => localStorage.removeItem(PROGRESS_KEY);
-
-  const handleSaveQuiz = (name: string) => {
-    saveQuizToStorage({ name, docName: activeQuizMeta?.docName || 'Quiz', questions });
-    setSavedQuizzes(getSavedQuizzes());
-    toast.success('Quiz gespeichert!');
-  };
-
-  const handleLoadSavedQuiz = (quiz: SavedQuiz) => {
-    clearQuizProgress();
-    setAnswers([]);
-    setQuestions(quiz.questions);
-    setActiveQuizMeta({ docId: `saved-${quiz.id}`, docName: quiz.name });
-    setPendingActionDoc(null);
-    setQuizInitialAnswers(quiz.resumeAnswers?.length ? quiz.resumeAnswers : undefined);
-    setActiveTab(ActiveTab.QUIZ);
-  };
-
-  const handleDeleteSavedQuiz = (id: string) => {
-    deleteSavedQuiz(id);
-    setSavedQuizzes(getSavedQuizzes());
-  };
-
-  const handleLoadSavedExam = (exam: SavedExam) => {
-    setExamInitialQuestions(exam);
-    setActiveTab(ActiveTab.EXAM);
-  };
-
-  const handleDeleteSavedExam = (id: string) => {
-    deleteSavedExam(id);
-    setSavedExams(getSavedExams());
-  };
-
-  const loadQuizProgress = () => {
-    try {
-      const raw = localStorage.getItem(PROGRESS_KEY);
-      if (!raw) return null;
-      const p = JSON.parse(raw);
-      const age = Date.now() - (p.timestamp ?? 0);
-      if (age > 7 * 24 * 60 * 60 * 1000) { clearQuizProgress(); return null; } // älter als 7 Tage → verwerfen
-      if (!p.questions?.length || p.answers?.length >= p.questions?.length) { clearQuizProgress(); return null; }
-      return p as { questions: QuizQuestion[]; answers: UserAnswer[]; meta: { docId: string; docName: string } | null };
-    } catch { return null; }
-  };
-
-  const toggleTheme = () => {
-    const next = !isDark;
-    setIsDark(next);
-    document.documentElement.classList.toggle('dark', next);
-    localStorage.setItem('theme', next ? 'dark' : 'light');
-  };
   const [decks, setDecks] = useState<FlashcardDeck[]>([]);
   const [examTerms, setExamTerms] = useState<ExamTerm[]>([]);
-  
   const [flowResult, setFlowResult] = useState<LearningFlowResult | null>(() => {
     const saved = localStorage.getItem('quizwise_flow_result');
     return saved ? JSON.parse(saved) : null;
   });
-
-  useEffect(() => {
-    const timeout = setTimeout(() => setAuthChecked(true), 1500);
-    supabase.auth.getSession().then(({ data: { session } }) => {
-      clearTimeout(timeout);
-      setUser(session?.user ?? null);
-      setAuthChecked(true);
-    }).catch(() => {
-      clearTimeout(timeout);
-      setAuthChecked(true);
-    });
-    const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
-      setUser(session?.user ?? null);
-    });
-    return () => subscription.unsubscribe();
-  }, []);
-
-  // Beim Login: Dokumente, Sammlungen und Plan aus Supabase laden
-  useEffect(() => {
-    if (!user) { setUserPlan('free'); return; }
-    loadDocumentsFromSupabase()
-      .then(docs => {
-        setDocuments(docs);
-        localStorage.setItem('quizwise_docs', JSON.stringify(docs));
-      })
-      .catch(() => toast.error('Dokumente konnten nicht aus der Cloud geladen werden.'));
-    loadCollectionsFromSupabase()
-      .then(cols => {
-        setCollections(cols);
-        localStorage.setItem('quizwise_collections', JSON.stringify(cols));
-      })
-      .catch(() => {});
-    fetchUserProfile()
-      .then(profile => setUserPlan(profile.plan === 'pro' ? 'pro' : 'free'))
-      .catch(() => {});
-  }, [user]);
+  const [metrics, setMetrics] = useState<TopicMetric[]>([]);
+  const [searchResults, setSearchResults] = useState<SearchResult[]>([]);
+  const [savedSources, setSavedSources] = useState<SearchResult[]>([]);
+  const [isSearching, setIsSearching] = useState(false);
 
   useEffect(() => {
     const handleStatus = () => setIsOffline(!navigator.onLine);
     window.addEventListener('online', handleStatus);
     window.addEventListener('offline', handleStatus);
-
-    const saved = localStorage.getItem('quizwise_docs');
-    if (saved) setDocuments(JSON.parse(saved));
-    const savedCollections = localStorage.getItem('quizwise_collections');
-    if (savedCollections) setCollections(JSON.parse(savedCollections));
     const savedMetrics = localStorage.getItem('quizwise_metrics');
     if (savedMetrics) setMetrics(JSON.parse(savedMetrics));
     const savedDecks = localStorage.getItem('flashcard_decks');
     if (savedDecks) setDecks(JSON.parse(savedDecks));
-    const savedExams = localStorage.getItem('quizwise_exam_terms');
-    if (savedExams) setExamTerms(JSON.parse(savedExams));
-
-    // Unterbrochenes Quiz wiederherstellen
-    const progress = loadQuizProgress();
-    if (progress && progress.questions.length > 0) {
-      setQuestions(progress.questions);
-      if (progress.answers.length > 0) setQuizInitialAnswers(progress.answers);
-      if (progress.meta) setActiveQuizMeta(progress.meta);
-      setActiveTab(ActiveTab.QUIZ);
-      setTimeout(() => toast.info(`Quiz fortgesetzt – Frage ${progress.answers.length + 1} von ${progress.questions.length}`), 500);
-    }
-
-    return () => {
-      window.removeEventListener('online', handleStatus);
-      window.removeEventListener('offline', handleStatus);
-    };
+    const savedExamTerms = localStorage.getItem('quizwise_exam_terms');
+    if (savedExamTerms) setExamTerms(JSON.parse(savedExamTerms));
+    return () => { window.removeEventListener('online', handleStatus); window.removeEventListener('offline', handleStatus); };
   }, []);
 
-  const saveDocs = (docs: ProcessedDocument[]) => {
-    setDocuments(docs);
-    localStorage.setItem('quizwise_docs', JSON.stringify(docs));
-  };
-
-  const saveCollections = (cols: Collection[]) => {
-    setCollections(cols);
-    localStorage.setItem('quizwise_collections', JSON.stringify(cols));
-  };
-
-  const addCollection = (col: Collection) => {
-    saveCollections([...collections, col]);
-    if (user) saveCollectionToSupabase(col).catch(() => {});
-  };
-
-  const removeCollection = (id: string) => {
-    saveCollections(collections.filter(c => c.id !== id));
-    if (user) deleteCollectionFromSupabase(id).catch(() => {});
-  };
-
-  const deleteDoc = (id: string) => {
-    const doc = documents.find(d => d.id === id);
-    saveDocs(documents.filter(d => d.id !== id));
-    if (user && doc) deleteDocumentFromSupabase(doc).catch(() => {});
-  };
-
-  const moveDoc = (docId: string, collectionId: string | undefined) => {
-    const updated = documents.map(d => d.id === docId ? { ...d, collectionId } : d);
-    saveDocs(updated);
-    if (user) updateDocumentCollectionInSupabase(docId, collectionId).catch(() => {});
-  };
-
-  // Gibt den KI-tauglichen Inhalt eines Dokuments zurück.
-  const getDocumentSource = (doc: ProcessedDocument): GenerationSource => {
-    // Digest vorhanden → schnellster Pfad (kein Storage-Download, kleinere Payload)
-    if (doc.digestText && doc.digestStatus === 'ready') return { text: doc.digestText };
-    if (doc.type === 'text' || doc.type === 'docx') return { text: doc.content };
-    if (doc.type === 'image') {
-      const mime = doc.mimeType || 'image/jpeg';
-      if (doc.storagePath) return { storagePath: doc.storagePath, mimeType: mime };
-      if (doc.content) return { file: { data: doc.content, mimeType: mime } };
-      throw new Error('Bild-Inhalt nicht verfügbar.');
-    }
-    // PDF ohne Digest → Storage-Pfad
-    if (doc.storagePath) return { storagePath: doc.storagePath, mimeType: 'application/pdf' };
-    if (doc.content) return { file: { data: doc.content, mimeType: 'application/pdf' } };
-    throw new Error('PDF-Inhalt nicht verfügbar.');
-  };
-
-  const saveExamTerms = (terms: ExamTerm[]) => {
-    setExamTerms(terms);
-    localStorage.setItem('quizwise_exam_terms', JSON.stringify(terms));
+  const handleApiError = (e: any) => {
+    if (e?.message === 'LIMIT_REACHED') { setShowUpgradeHint(true); return; }
+    if (e?.message?.includes('einloggen')) { auth.setShowAuthModal(true); return; }
+    toast.error(resolveErrorMessage(e));
   };
 
   const saveFlowResult = (res: LearningFlowResult) => {
@@ -281,622 +64,46 @@ const App: React.FC = () => {
     localStorage.setItem('quizwise_flow_result', JSON.stringify(res));
   };
 
+  const saveExamTerms = (terms: ExamTerm[]) => {
+    setExamTerms(terms);
+    localStorage.setItem('quizwise_exam_terms', JSON.stringify(terms));
+  };
+
   const updateMetricsAfterSession = async (score: number, topicName: string, type: 'quiz' | 'exam' | 'recall' | 'cards') => {
-    let updatedMetrics: TopicMetric[] = [];
     const prev = [...metrics];
-    const existingIdx = prev.findIndex(m => m.topic === topicName);
-    
-    if (existingIdx >= 0) {
-      const existing = prev[existingIdx];
-      updatedMetrics = prev;
-      updatedMetrics[existingIdx] = {
-        ...existing,
-        confidence: Math.round((existing.confidence + score) / 2),
-        lastReviewed: Date.now(),
-        totalAttempts: existing.totalAttempts + 1,
-        correctAttempts: existing.correctAttempts + (score >= 70 ? 1 : 0)
-      };
+    const idx = prev.findIndex(m => m.topic === topicName);
+    let updated: TopicMetric[];
+    if (idx >= 0) {
+      updated = prev;
+      updated[idx] = { ...updated[idx], confidence: Math.round((updated[idx].confidence + score) / 2), lastReviewed: Date.now(), totalAttempts: updated[idx].totalAttempts + 1, correctAttempts: updated[idx].correctAttempts + (score >= 70 ? 1 : 0) };
     } else {
-      const newMetric: TopicMetric = {
-        id: Math.random().toString(36).substr(2, 5),
-        topic: topicName,
-        confidence: score,
-        lastReviewed: Date.now(),
-        totalAttempts: 1,
-        correctAttempts: score >= 70 ? 1 : 0
-      };
-      updatedMetrics = [newMetric, ...prev];
+      updated = [{ id: Math.random().toString(36).substr(2, 5), topic: topicName, confidence: score, lastReviewed: Date.now(), totalAttempts: 1, correctAttempts: score >= 70 ? 1 : 0 }, ...prev];
     }
-    setMetrics(updatedMetrics);
-    localStorage.setItem('quizwise_metrics', JSON.stringify(updatedMetrics));
-
-    // Orchestrate Flow
+    setMetrics(updated);
+    localStorage.setItem('quizwise_metrics', JSON.stringify(updated));
     try {
-      const flow = await orchestrateLearningFlow(
-        { type, result: { score } },
-        updatedMetrics,
-        { entries: JSON.parse(localStorage.getItem('study_plan') || '[]'), exams: examTerms }
-      );
+      const flow = await orchestrateLearningFlow({ type, result: { score } }, updated, { entries: JSON.parse(localStorage.getItem('study_plan') || '[]'), exams: examTerms });
       saveFlowResult(flow);
-    } catch (e) { console.error("Flow error", e); }
+    } catch (e) { console.error('Flow error', e); }
   };
 
-  const handleApiError = (e: any) => {
-    if (e?.message === 'LIMIT_REACHED') {
-      setShowUpgradeHint(true);
-    } else if (e?.message?.includes('einloggen')) {
-      setShowAuthModal(true);
-      return;
-    }
-    toast.error(resolveErrorMessage(e));
-  };
+  const { saveDocs: _saveDocs, ...docs } = useDocuments({ user: auth.user, userPlan: auth.userPlan, isOffline, setIsLoading, setShowUpgradeModal });
 
-  const handleFileUpload = async (fileInput: File, collectionId?: string): Promise<string | null> => {
-    let file = fileInput;
-    if (isOffline) {
-      toast.error('Hochladen ist im Offline-Modus nicht möglich.');
-      return null;
-    }
-
-    const FREE_DOC_LIMIT = 5;
-    if (userPlan === 'free' && documents.length >= FREE_DOC_LIMIT) {
-      toast.error(`Free-Plan: Maximal ${FREE_DOC_LIMIT} Dokumente. Upgrade auf Pro für unbegrenzte Bibliothek.`);
-      setShowUpgradeModal(true);
-      return null;
-    }
-
-    const MAX_FILE_SIZE = 50 * 1024 * 1024;
-    if (file.size > MAX_FILE_SIZE) {
-      toast.error(`Datei zu groß (${(file.size / 1024 / 1024).toFixed(1)} MB). Maximum ist 50 MB.`);
-      return null;
-    }
-
-    const isDuplicate = documents.some(d => d.name === file.name);
-    if (isDuplicate) {
-      toast.info(`"${file.name}" ist bereits in deiner Bibliothek.`);
-    }
-
-    setIsLoading(true);
-    try {
-      const ext = file.name.split('.').pop()?.toLowerCase();
-      let content = '';
-      let docType: 'pdf' | 'docx' | 'text' | 'image' = 'text';
-      let imageMimeType: string | undefined;
-
-      const IMAGE_MIME: Record<string, string> = {
-        png: 'image/png', jpg: 'image/jpeg', jpeg: 'image/jpeg', webp: 'image/webp',
-        heic: 'image/jpeg', heif: 'image/jpeg',
-      };
-
-      // HEIC/HEIF → JPEG konvertieren (iPhone Kamera-Format)
-      if (ext === 'heic' || ext === 'heif') {
-        try {
-          const converted = await heic2any({ blob: file, toType: 'image/jpeg', quality: 0.92 }) as Blob;
-          file = new File([converted], file.name.replace(/\.(heic|heif)$/i, '.jpg'), { type: 'image/jpeg' });
-        } catch {
-          toast.error('HEIC-Konvertierung fehlgeschlagen. Bitte als JPEG exportieren.');
-          return null;
-        }
-      }
-
-      if (ext === 'pdf') {
-        docType = 'pdf';
-        if (!user) {
-          toast.error('Zum Speichern von PDFs bitte zuerst anmelden.');
-          return null;
-        }
-      } else if (ext && IMAGE_MIME[ext]) {
-        docType = 'image';
-        imageMimeType = IMAGE_MIME[ext];
-        content = await new Promise<string>((resolve, reject) => {
-          const reader = new FileReader();
-          reader.onload = () => resolve((reader.result as string).split(',')[1]);
-          reader.onerror = reject;
-          reader.readAsDataURL(file);
-        });
-      } else if (ext === 'docx') {
-        const arrayBuffer = await file.arrayBuffer();
-        const result = await mammoth.extractRawText({ arrayBuffer });
-        content = result.value;
-        docType = 'docx';
-      } else {
-        content = await file.text();
-        docType = 'text';
-      }
-
-      if ((docType === 'text' || docType === 'docx') && content.length > 900_000) {
-        toast.error('Dokument sehr groß — nur der erste Teil wird verarbeitet. Für beste Ergebnisse empfehlen wir PDF.');
-      }
-
-      const newDoc: ProcessedDocument = {
-        id: Math.random().toString(36).substr(2, 9),
-        name: file.name,
-        content,
-        type: docType,
-        ...(imageMimeType ? { mimeType: imageMimeType } : {}),
-        uploadDate: Date.now(),
-        collectionId,
-      };
-
-      if (docType === 'pdf' || docType === 'image') {
-        const storagePath = await saveDocumentToSupabase(newDoc, file);
-        const savedDoc = { ...newDoc, storagePath: storagePath ?? undefined };
-        saveDocs([...documents, savedDoc]);
-        if (user && storagePath) triggerDocumentAnalysis(newDoc.id);
-      } else {
-        saveDocs([...documents, newDoc]);
-        if (user) {
-          saveDocumentToSupabase(newDoc)
-            .then(() => triggerDocumentAnalysis(newDoc.id))
-            .catch(() => toast.error('Cloud-Sync fehlgeschlagen. Dokument nur lokal gespeichert.'));
-        }
-      }
-      return newDoc.id;
-    } catch (e) {
-      toast.error('Dokument konnte nicht verarbeitet werden.');
-      return null;
-    } finally {
-      setIsLoading(false);
-    }
-  };
-
-  const onQuizComplete = async (ans: UserAnswer[]) => {
-    clearQuizProgress();
-    setQuizInitialAnswers(undefined);
-    setAnswers(ans);
-    const correct = ans.filter(a => a.isCorrect).length;
-    const score   = Math.round((correct / ans.length) * 100);
-
-    const wrongQs    = questions.filter((_, i) => !ans[i]?.isCorrect);
-    const weakTopics = [...new Set(wrongQs.map(q => q.topic).filter((t): t is string => Boolean(t)))];
-
-    if (activeQuizMeta) {
-      saveQuizResult({
-        docId: activeQuizMeta.docId,
-        docName: activeQuizMeta.docName,
-        timestamp: Date.now(),
-        score, correctCount: correct, totalCount: ans.length,
-        weakTopics, questions, answers: ans,
-      });
-      const stats = getDocStats(activeQuizMeta.docId);
-      saveMeta(activeQuizMeta.docId, {
-        quizCount: stats.count,
-        lastQuizAt: Date.now(),
-        avgQuizAccuracy: stats.avgAccuracy ?? score,
-        weakTopics: stats.weakTopics,
-      });
-    }
-
-    await updateMetricsAfterSession(score, activeQuizMeta?.docName || 'Quiz Session', 'quiz');
-    recordActivity();
-  };
-
-  const getUsedTopics = (docId: string): string[] => {
-    try { return JSON.parse(localStorage.getItem(`quizwise_topics_${docId}`) || '[]'); }
-    catch { return []; }
-  };
-
-  const saveUsedTopics = (docId: string, questions: QuizQuestion[]) => {
-    const newTopics = questions.map(q => q.topic).filter(Boolean) as string[];
-    if (newTopics.length === 0) return;
-    const existing = getUsedTopics(docId);
-    const merged = [...existing, ...newTopics].slice(-60);
-    localStorage.setItem(`quizwise_topics_${docId}`, JSON.stringify(merged));
-  };
-
-  const handleStartQuizFromDoc = async (doc: ProcessedDocument, quizType: QuizType = QuizType.FAST, options?: any) => {
-    setIsLoading(true);
-    setActiveTab(ActiveTab.QUIZ);
-    setAnswers([]);
-    setQuestions([]);
-    try {
-      const source = getDocumentSource(doc);
-      const excludeTopics = getUsedTopics(doc.id);
-      const quiz = await generateQuizFromDocument(source, quizType, { ...options, excludeTopics });
-      const meta = { docId: doc.id, docName: doc.name.replace(/\.[^/.]+$/, '') };
-      setQuestions(quiz);
-      setQuizInitialAnswers(undefined);
-      saveUsedTopics(doc.id, quiz);
-      setActiveQuizMeta(meta);
-      saveQuizProgress(quiz, [], meta);
-    } catch (e: any) {
-      const msg = e?.message?.includes('nicht verfügbar')
-        ? 'Dokument nicht verfügbar. Bitte lade es neu hoch.'
-        : e?.message?.includes('LIMIT_REACHED')
-        ? 'Tageslimit erreicht. Bitte versuche es morgen wieder.'
-        : `Quiz-Generierung fehlgeschlagen: ${e?.message || 'Unbekannter Fehler'}`;
-      toast.error(msg);
-    } finally { setIsLoading(false); }
-  };
-
-  const handleStartQuizFromSetup = async (config: QuizConfig, docIds: string[] = []) => {
-    if (!pendingActionDoc) return;
-    setPendingTopic(null);
-    setIsLoading(true);
-    setQuestions([]);
-    setAnswers([]);
-    try {
-      const selectedDocs = docIds.length > 1
-        ? documents.filter(d => docIds.includes(d.id))
-        : [pendingActionDoc];
-
-      let source: import('./services/geminiService').GenerationSource;
-      let metaName: string;
-      if (selectedDocs.length > 1) {
-        const combined = selectedDocs.map(d => {
-          const txt = d.digestText || (d.type === 'text' ? d.content : '');
-          return `[Quelle: ${d.name.replace(/\.[^/.]+$/, '')}]\n${txt}`;
-        }).join('\n\n---\n\n');
-        source = { text: combined };
-        metaName = `${selectedDocs.length} Dokumente`;
-      } else {
-        source = getDocumentSource(pendingActionDoc);
-        metaName = pendingActionDoc.name.replace(/\.[^/.]+$/, '');
-      }
-
-      setActiveQuizMeta({ docId: pendingActionDoc.id, docName: metaName });
-      const stats = getDocStats(pendingActionDoc.id);
-      const customFocus = config.focus === 'weak' && stats.weakTopics.length > 0
-        ? `Fokus auf schwache Themen: ${stats.weakTopics.join(', ')}`
-        : undefined;
-      const excludeTopics = getUsedTopics(pendingActionDoc.id);
-      const quiz = await generateQuizFromDocument(source, QuizType.CUSTOM, {
-        customCount: config.questionCount,
-        customDifficulty: config.difficulty,
-        customFocus,
-        questionType: config.questionType,
-        excludeTopics,
-      });
-      const meta = { docId: pendingActionDoc.id, docName: metaName };
-      setQuestions(quiz);
-      setQuizInitialAnswers(undefined);
-      saveUsedTopics(pendingActionDoc.id, quiz);
-      saveQuizProgress(quiz, [], meta);
-    } catch (e) { handleApiError(e); } finally { setIsLoading(false); }
-  };
-
-  const handleCreateFlashcardsFromMistakes = (wrongQuestions: QuizQuestion[]) => {
-    if (!wrongQuestions.length) return;
-
-    const cards: Flashcard[] = wrongQuestions.map(q => {
-      const correctAnswerText = q.options.length > 0
-        ? q.correctAnswerIndices.map(i => q.options[i]).filter(Boolean).join(' / ')
-        : '';
-      const back = correctAnswerText
-        ? correctAnswerText + (q.explanation ? `\n\n${q.explanation}` : '')
-        : q.explanation || '';
-
-      return {
-        id: Math.random().toString(36).slice(2, 9),
-        front: q.question,
-        back,
-        level: 0,
-        nextReview: Date.now(),
-      };
-    });
-
-    const deckTitle = `Fehler: ${activeQuizMeta?.docName || 'Quiz'}`;
-    const newDeck: FlashcardDeck = {
-      id: Math.random().toString(36).slice(2, 9),
-      title: deckTitle,
-      cards,
-      sourceDocumentId: activeQuizMeta?.docId,
-    };
-
-    const updatedDecks = [...decks, newDeck];
-    setDecks(updatedDecks);
-    localStorage.setItem('flashcard_decks', JSON.stringify(updatedDecks));
-
-    if (activeQuizMeta?.docId) {
-      const current = getMeta(activeQuizMeta.docId);
-      saveMeta(activeQuizMeta.docId, {
-        flashcardCount: (current.flashcardCount ?? 0) + cards.length,
-      });
-    }
-
-    toast.success(`${cards.length} Karteikarten aus Fehlern erstellt`);
-    setPendingActionDoc(null);
-    setActiveTab(ActiveTab.CARDS);
-  };
-
-  const fileToBase64 = (file: File): Promise<string> => {
-    return new Promise((resolve, reject) => {
-      const reader = new FileReader();
-      reader.readAsDataURL(file);
-      reader.onload = () => resolve((reader.result as string).split(',')[1]);
-      reader.onerror = reject;
-    });
-  };
-
-  const renderContent = () => {
-    if (isLoading && activeTab !== ActiveTab.EXAM && activeTab !== ActiveTab.QUIZ && activeTab !== ActiveTab.PLANNER && activeTab !== ActiveTab.RECALL) {
-      return (
-        <div className="flex flex-col items-center justify-center py-20 lg:py-32 space-y-8 animate-in fade-in zoom-in-95 duration-500 px-4">
-          <div className="relative">
-            <div className="w-20 h-20 lg:w-24 lg:h-24 border-8 border-indigo-100 dark:border-indigo-900/30 rounded-full"></div>
-            <div className="w-20 h-20 lg:w-24 lg:h-24 border-8 border-indigo-600 border-t-transparent rounded-full animate-spin absolute top-0 left-0"></div>
-          </div>
-          <p className="text-2xl font-black uppercase tracking-tighter text-slate-900 dark:text-white">KI am Werk...</p>
-        </div>
-      );
-    }
-
-    switch (activeTab) {
-      case ActiveTab.DASHBOARD:
-        return <Dashboard onTabChange={setActiveTab} flowResult={flowResult} onAcceptFlow={saveFlowResult} documents={documents} />;
-      case ActiveTab.LIBRARY:
-        return <LibrarySystem
-          documents={documents}
-          collections={collections}
-          onUpload={handleFileUpload}
-          onDelete={deleteDoc}
-          onAction={(tab, doc) => {
-            if (tab === ActiveTab.QUIZ) {
-              setPendingActionDoc(doc);
-              setQuestions([]);
-              setAnswers([]);
-              setActiveTab(ActiveTab.QUIZ);
-            } else if (tab === ActiveTab.EXPLAINER || tab === ActiveTab.CARDS || tab === ActiveTab.RECALL || tab === ActiveTab.EXAM) {
-              setPendingActionDoc(doc);
-              setActiveTab(tab);
-            } else {
-              setPendingActionDoc(null);
-              setActiveTab(tab);
-            }
-          }}
-          onAddCollection={addCollection}
-          onDeleteCollection={removeCollection}
-          onMoveDocument={moveDoc}
-          isLoading={isLoading}
-        />;
-      case ActiveTab.QUIZ:
-        if (isLoading) return (
-          <div className="flex flex-col items-center justify-center py-32 space-y-6 animate-in fade-in duration-500 px-4">
-            <div className="relative w-20 h-20">
-              <div className="w-20 h-20 border-8 border-indigo-100 dark:border-indigo-900/30 rounded-full" />
-              <div className="w-20 h-20 border-8 border-indigo-600 border-t-transparent rounded-full animate-spin absolute top-0 left-0" />
-            </div>
-            <div className="text-center space-y-1">
-              <p className="text-lg font-black uppercase tracking-tighter dark:text-white">Quiz wird generiert</p>
-              <p className="text-sm text-slate-500 dark:text-slate-400">KI liest deine Quelle...</p>
-            </div>
-          </div>
-        );
-        if (pendingActionDoc && questions.length === 0 && answers.length === 0) {
-          const fromRadar = !!pendingTopic;
-          return <QuizSetup
-            doc={pendingActionDoc}
-            availableDocs={documents}
-            onStart={handleStartQuizFromSetup}
-            onBack={() => {
-              setPendingActionDoc(null);
-              setPendingTopic(null);
-              setActiveTab(fromRadar ? ActiveTab.RADAR : ActiveTab.LIBRARY);
-            }}
-            initialFocus={pendingTopic ? 'weak' : 'all'}
-          />;
-        }
-        if (questions.length > 0 && answers.length === 0) {
-          return <QuizPlayer
-            questions={questions}
-            sourceName={activeQuizMeta?.docName}
-            examMode={false}
-            initialAnswers={quizInitialAnswers}
-            onProgress={(ans) => saveQuizProgress(questions, ans, activeQuizMeta)}
-            onComplete={onQuizComplete}
-            onSave={(name, currentAnswers) => {
-              saveQuizToStorage({ name, docName: activeQuizMeta?.docName || 'Quiz', questions, resumeAnswers: currentAnswers });
-              setSavedQuizzes(getSavedQuizzes());
-              toast.success('Quiz gespeichert!');
-            }}
-            onCancel={() => {
-              clearQuizProgress();
-              setQuizInitialAnswers(undefined);
-              setQuestions([]);
-              setAnswers([]);
-              setPendingActionDoc(null);
-            }}
-          />;
-        }
-        if (answers.length > 0) {
-          return <ResultView
-            answers={answers}
-            questions={questions}
-            docName={activeQuizMeta?.docName}
-            onRestart={() => { clearQuizProgress(); setQuizInitialAnswers(undefined); setQuestions([]); setAnswers([]); }}
-            onRetryWrong={(wrongQs) => { clearQuizProgress(); setQuizInitialAnswers(undefined); setQuestions(wrongQs); setAnswers([]); }}
-            onGoToSource={() => { setPendingActionDoc(null); setQuestions([]); setAnswers([]); setActiveTab(ActiveTab.LIBRARY); }}
-            onCreateFlashcards={pendingActionDoc ? handleCreateFlashcardsFromMistakes : undefined}
-            onSaveQuiz={handleSaveQuiz}
-          />;
-        }
-        return (
-          <div>
-            {savedQuizzes.length > 0 && (
-              <div className="max-w-3xl mx-auto px-4 pt-6 pb-2 space-y-3">
-                <p className="text-[9px] font-black uppercase tracking-[0.3em] text-slate-400">Gespeicherte Quizze</p>
-                <div className="space-y-2">
-                  {savedQuizzes.map(sq => (
-                    <div key={sq.id} className="flex items-center gap-3 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-[20px] px-5 py-4 shadow-sm">
-                      <div className="flex-1 min-w-0">
-                        <p className="text-sm font-black dark:text-white truncate">{sq.name}</p>
-                        <p className="text-[9px] text-slate-400 font-medium mt-0.5">
-                          {sq.questions.length} Fragen · {new Date(sq.savedAt).toLocaleDateString('de-DE', { day: '2-digit', month: 'short', year: '2-digit' })}
-                        </p>
-                      </div>
-                      <button
-                        onClick={() => handleLoadSavedQuiz(sq)}
-                        className="flex items-center gap-1.5 px-4 py-2 bg-indigo-600 text-white rounded-[14px] text-[10px] font-black uppercase tracking-widest hover:scale-105 active:scale-95 transition-all shrink-0"
-                      >
-                        <svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round"><polygon points="5 3 19 12 5 21 5 3"/></svg>
-                        Starten
-                      </button>
-                      <button
-                        onClick={() => handleDeleteSavedQuiz(sq.id)}
-                        className="w-8 h-8 rounded-[12px] flex items-center justify-center text-slate-400 hover:text-rose-500 hover:bg-rose-50 dark:hover:bg-rose-950/20 transition-all shrink-0"
-                        title="Löschen"
-                      >
-                        <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14H6L5 6"/><path d="M10 11v6"/><path d="M14 11v6"/><path d="M9 6V4h6v2"/></svg>
-                      </button>
-                    </div>
-                  ))}
-                </div>
-                <div className="h-px bg-slate-100 dark:bg-slate-800 my-2" />
-              </div>
-            )}
-            <FileUploader
-          documents={documents}
-          collections={collections}
-          onDocumentSelect={(doc, type, opts) => handleStartQuizFromDoc(doc, type, opts)}
-          onSourceSelect={async (source, _name, type, opts) => {
-            setIsLoading(true);
-            setAnswers([]);
-            setQuestions([]);
-            try {
-              const q = await generateQuizFromDocument(source, type, opts);
-              setQuestions(q);
-            } catch (e) { handleApiError(e); } finally { setIsLoading(false); }
-          }}
-          onDeckSelect={async (deck) => {
-            setIsLoading(true);
-            try {
-              const q = await generateQuizFromFlashcards(deck);
-              const meta = { docId: deck.id, docName: deck.title };
-              setQuestions(q);
-              setQuizInitialAnswers(undefined);
-              setActiveQuizMeta(meta);
-              saveQuizProgress(q, [], meta);
-            } catch (e) { handleApiError(e); }
-            finally { setIsLoading(false); }
-          }}
-          onSaveToLibrary={file => handleFileUpload(file)}
-          availableDecks={decks}
-          isLoading={isLoading}
-          userPlan={userPlan}
-            />
-          </div>
-        );
-      case ActiveTab.RECALL:
-        return <ActiveRecall
-          key={pendingActionDoc ? `recall-${pendingActionDoc.id}` : 'recall'}
-          availableDocuments={documents}
-          collections={collections}
-          getDocumentSource={getDocumentSource}
-          onSaveToLibrary={file => handleFileUpload(file)}
-          onComplete={(score, topic, missingPoints) => {
-            saveRecallResult({ docName: topic, timestamp: Date.now(), score, topic, missingPoints });
-            updateMetricsAfterSession(score, topic, 'recall');
-            recordActivity();
-          }}
-          initialDoc={pendingActionDoc ?? undefined}
-        />;
-      case ActiveTab.EXAM: return (
-        <div>
-          {savedExams.length > 0 && !examInitialQuestions && !pendingActionDoc && (
-            <div className="max-w-3xl mx-auto px-4 pt-6 pb-2 space-y-3">
-              <p className="text-[9px] font-black uppercase tracking-[0.3em] text-slate-400">Gespeicherte Klausuren</p>
-              <div className="space-y-2">
-                {savedExams.map(se => (
-                  <div key={se.id} className="flex items-center gap-3 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-[20px] px-5 py-4 shadow-sm">
-                    <div className="flex-1 min-w-0">
-                      <p className="text-sm font-black dark:text-white truncate">{se.name}</p>
-                      <p className="text-[9px] text-slate-400 font-medium mt-0.5">
-                        {se.questions.length} Fragen · {new Date(se.savedAt).toLocaleDateString('de-DE', { day: '2-digit', month: 'short', year: '2-digit' })}
-                      </p>
-                    </div>
-                    <button
-                      onClick={() => handleLoadSavedExam(se)}
-                      className="flex items-center gap-1.5 px-4 py-2 bg-indigo-600 text-white rounded-[14px] text-[10px] font-black uppercase tracking-widest hover:scale-105 active:scale-95 transition-all shrink-0"
-                    >
-                      <svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round"><polygon points="5 3 19 12 5 21 5 3"/></svg>
-                      Starten
-                    </button>
-                    <button
-                      onClick={() => handleDeleteSavedExam(se.id)}
-                      className="w-8 h-8 rounded-[12px] flex items-center justify-center text-slate-400 hover:text-rose-500 hover:bg-rose-50 dark:hover:bg-rose-950/20 transition-all shrink-0"
-                    >
-                      <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14H6L5 6"/><path d="M10 11v6"/><path d="M14 11v6"/><path d="M9 6V4h6v2"/></svg>
-                    </button>
-                  </div>
-                ))}
-              </div>
-              <div className="h-px bg-slate-100 dark:bg-slate-800 my-2" />
-            </div>
-          )}
-          <ExamSystem
-            key={examInitialQuestions ? `exam-saved-${examInitialQuestions.id}` : pendingActionDoc ? `exam-${pendingActionDoc.id}` : 'exam'}
-            documents={documents}
-            collections={collections}
-            getDocumentSource={getDocumentSource}
-            onSaveToLibrary={file => handleFileUpload(file)}
-            initialDoc={pendingActionDoc ?? undefined}
-            initialQuestions={examInitialQuestions?.questions}
-            onComplete={({ score, docName, passed, totalPoints, achievedPoints }) => {
-              saveExamResult({ docName, timestamp: Date.now(), score, passed, totalPoints, achievedPoints, weakTopics: [] });
-              updateMetricsAfterSession(score, docName, 'exam');
-              setExamInitialQuestions(null);
-              setSavedExams(getSavedExams());
-              recordActivity();
-            }}
-            onNavigate={setActiveTab}
-          />
-        </div>
-      );
-      case ActiveTab.RADAR: return <GapRadar
-          metrics={metrics}
-          onNavigate={setActiveTab}
-          onAction={(topic, mode) => {
-            if (mode === 'quiz') {
-              const match = getAllResults().find(r => r.weakTopics.includes(topic));
-              const doc = match ? documents.find(d => d.id === match.docId) ?? null : null;
-              setPendingActionDoc(doc);
-              setPendingTopic(doc ? topic : null);
-              setQuestions([]);
-              setAnswers([]);
-              setActiveTab(ActiveTab.QUIZ);
-            } else {
-              const tabMap = { cards: ActiveTab.CARDS, recall: ActiveTab.RECALL, quiz: ActiveTab.QUIZ } as const;
-              setActiveTab(tabMap[mode]);
-            }
-          }}
-        />;
-      case ActiveTab.EXPLAINER: return <ExplainerSystem
-          key={pendingActionDoc ? `explainer-${pendingActionDoc.id}` : 'explainer'}
-          availableDocuments={documents}
-          collections={collections}
-          getDocumentSource={getDocumentSource}
-          onSaveToLibrary={file => handleFileUpload(file)}
-          initialDoc={pendingActionDoc ?? undefined}
-        />;
-      case ActiveTab.PAPER: return <TermPaperSystem availableDocuments={documents} onUploadNew={handleFileUpload} initialSources={savedSources} getDocumentSource={getDocumentSource} />;
-      case ActiveTab.SEARCH: return <ScholarSearch results={searchResults} onSearch={async (q) => { setIsSearching(true); const { results } = await searchScholar(q); setSearchResults(results); setIsSearching(false); }} onSearchWeb={async (q) => { setIsSearching(true); const { results } = await searchWeb(q); setSearchResults(results); setIsSearching(false); }} isSearching={isSearching} onGenerateQuiz={(res) => handleStartQuizFromDoc({ id: `search-${Date.now()}`, name: res.title, content: res.abstract || res.snippet, type: 'text', uploadDate: Date.now() })} onSaveToPaper={(s) => { if (!savedSources.some(x => x.url === s.url)) setSavedSources(prev => [...prev, s]); }} onGoToPaper={() => setActiveTab(ActiveTab.PAPER)} savedResults={savedSources} />;
-      case ActiveTab.PLANNER: return <StudyPlanner metrics={metrics} decks={decks} examTerms={examTerms} onUpdateExams={saveExamTerms} />;
-      case ActiveTab.CARDS: return <FlashcardSystem
-          key={pendingActionDoc ? `cards-${pendingActionDoc.id}` : 'cards'}
-          availableDocuments={documents}
-          collections={collections}
-          onDeleteDoc={deleteDoc}
-          onSaveToLibrary={file => handleFileUpload(file)}
-          getDocumentSource={getDocumentSource}
-          userId={user?.id}
-          onGenerateQuizFromDeck={async (deck) => {
-            setIsLoading(true);
-            try {
-              const q = await generateQuizFromFlashcards(deck);
-              const meta = { docId: deck.id, docName: deck.title };
-              setQuestions(q);
-              setQuizInitialAnswers(undefined);
-              setActiveQuizMeta(meta);
-              saveQuizProgress(q, [], meta);
-              setActiveTab(ActiveTab.QUIZ);
-            } catch (e) { handleApiError(e); }
-            finally { setIsLoading(false); }
-          }}
-          initialDoc={pendingActionDoc ?? undefined}
-        />;
-      default: return <Dashboard onTabChange={setActiveTab} flowResult={flowResult} onAcceptFlow={saveFlowResult} documents={documents} />;
-    }
-  };
+  const quiz = useQuizState({
+    documents: docs.documents,
+    decks,
+    metrics,
+    examTerms,
+    pendingActionDoc,
+    getDocumentSource: docs.getDocumentSource,
+    setActiveTab,
+    setPendingActionDoc,
+    setPendingTopic,
+    setDecks,
+    setIsLoading,
+    handleApiError,
+    updateMetricsAfterSession,
+  });
 
   const sharedDeckMatch = window.location.pathname.match(/^\/shared\/([a-z0-9]+)$/i);
   if (sharedDeckMatch) {
@@ -905,72 +112,70 @@ const App: React.FC = () => {
         <ToastContainer />
         <SharedDeckPage
           deckId={sharedDeckMatch[1]}
-          userId={user?.id}
-          onLoginRequired={() => setShowAuthModal(true)}
+          userId={auth.user?.id}
+          onLoginRequired={() => auth.setShowAuthModal(true)}
           onAccepted={(deck) => {
             const stored: FlashcardDeck[] = (() => { try { return JSON.parse(localStorage.getItem('flashcard_decks') || '[]'); } catch { return []; } })();
-            const updated = [...stored, deck];
-            localStorage.setItem('flashcard_decks', JSON.stringify(updated));
+            localStorage.setItem('flashcard_decks', JSON.stringify([...stored, deck]));
             window.location.href = '/';
           }}
         />
-        {showAuthModal && <AuthModal onClose={() => setShowAuthModal(false)} />}
+        {auth.showAuthModal && <AuthModal onClose={() => auth.setShowAuthModal(false)} />}
       </>
     );
   }
 
-  if (!authChecked) return <SplashScreen />;
-  if (!user) return <AuthPage />;
+  if (!auth.authChecked) return <SplashScreen />;
+  if (!auth.user) return <AuthPage />;
 
   return (
     <>
-    <ToastContainer />
-    {showOnboarding && (
-      <Onboarding
-        onComplete={() => setShowOnboarding(false)}
-        onStartUpload={() => setActiveTab(ActiveTab.LIBRARY)}
-      />
-    )}
-    {showAuthModal && (
-      <AuthModal
-        onClose={() => setShowAuthModal(false)}
-        onSuccess={() => setShowAuthModal(false)}
-      />
-    )}
-    {showUpgradeModal && (
-      <UpgradeModal onClose={() => setShowUpgradeModal(false)} />
-    )}
-    {showSettings && (
-      <SettingsModal
-        user={user}
-        isDark={isDark}
-        onToggleTheme={toggleTheme}
+      <ToastContainer />
+      {showOnboarding && <Onboarding onComplete={() => setShowOnboarding(false)} onStartUpload={() => setActiveTab(ActiveTab.LIBRARY)} />}
+      {auth.showAuthModal && <AuthModal onClose={() => auth.setShowAuthModal(false)} onSuccess={() => auth.setShowAuthModal(false)} />}
+      {showUpgradeModal && <UpgradeModal onClose={() => setShowUpgradeModal(false)} />}
+      {showSettings && <SettingsModal user={auth.user} isDark={auth.isDark} onToggleTheme={auth.toggleTheme} onLogout={() => supabase.auth.signOut()} onClose={() => setShowSettings(false)} />}
+      <Layout
+        activeTab={activeTab}
+        onTabChange={(tab) => { setPendingActionDoc(null); setPendingTopic(null); setActiveTab(tab); }}
+        user={auth.user} onLoginClick={() => auth.setShowAuthModal(true)}
         onLogout={() => supabase.auth.signOut()}
-        onClose={() => setShowSettings(false)}
-      />
-    )}
-    <Layout activeTab={activeTab} onTabChange={(tab) => { setPendingActionDoc(null); setPendingTopic(null); setActiveTab(tab); }} user={user} onLoginClick={() => setShowAuthModal(true)} onLogout={() => supabase.auth.signOut()} onUpgradeClick={() => setShowUpgradeModal(true)} onSettingsClick={() => setShowSettings(true)} isDark={isDark} onToggleTheme={toggleTheme}>
-      {isOffline && (
-        <div className="mb-4 p-3 bg-amber-500/10 border border-amber-500/30 rounded-2xl flex items-center justify-center gap-2">
-          <p className="text-[10px] font-bold text-amber-600 dark:text-amber-400 uppercase tracking-widest">Offline-Modus aktiv</p>
-        </div>
-      )}
-      {showUpgradeHint && (
-        <div className="mb-4 p-4 bg-indigo-50 dark:bg-indigo-950/30 border border-indigo-200 dark:border-indigo-800 rounded-2xl flex items-center justify-between gap-4">
-          <p className="text-[11px] font-bold text-indigo-700 dark:text-indigo-300">
-            Tageslimit (20 Anfragen) erreicht. Mit <strong>Pro</strong> unlimitiert lernen.
-          </p>
-          <button
-            onClick={() => { setShowUpgradeHint(false); setShowUpgradeModal(true); }}
-            className="text-[10px] font-black uppercase tracking-widest px-4 py-2 rounded-xl text-white shrink-0"
-            style={{ background: 'var(--primary)' }}
-          >
-            Upgrade zu Pro
-          </button>
-        </div>
-      )}
-      {renderContent()}
-    </Layout>
+        onUpgradeClick={() => setShowUpgradeModal(true)}
+        onSettingsClick={() => setShowSettings(true)}
+        isDark={auth.isDark} onToggleTheme={auth.toggleTheme}
+      >
+        {isOffline && (
+          <div className="mb-4 p-3 bg-amber-500/10 border border-amber-500/30 rounded-2xl flex items-center justify-center gap-2">
+            <p className="text-[10px] font-bold text-amber-600 dark:text-amber-400 uppercase tracking-widest">Offline-Modus aktiv</p>
+          </div>
+        )}
+        {showUpgradeHint && (
+          <div className="mb-4 p-4 bg-indigo-50 dark:bg-indigo-950/30 border border-indigo-200 dark:border-indigo-800 rounded-2xl flex items-center justify-between gap-4">
+            <p className="text-[11px] font-bold text-indigo-700 dark:text-indigo-300">Tageslimit (20 Anfragen) erreicht. Mit <strong>Pro</strong> unlimitiert lernen.</p>
+            <button onClick={() => { setShowUpgradeHint(false); setShowUpgradeModal(true); }} className="text-[10px] font-black uppercase tracking-widest px-4 py-2 rounded-xl text-white shrink-0" style={{ background: 'var(--primary)' }}>Upgrade zu Pro</button>
+          </div>
+        )}
+        <React.Suspense fallback={<div className="flex items-center justify-center py-20"><div className="w-8 h-8 border-4 border-slate-200 dark:border-slate-700 border-t-indigo-600 rounded-full animate-spin" /></div>}>
+          <AppContent
+            activeTab={activeTab} setActiveTab={setActiveTab}
+            isLoading={isLoading} setIsLoading={setIsLoading}
+            user={auth.user} userPlan={auth.userPlan}
+            {...docs}
+            {...quiz}
+            pendingActionDoc={pendingActionDoc} setPendingActionDoc={setPendingActionDoc}
+            pendingTopic={pendingTopic} setPendingTopic={setPendingTopic}
+            decks={decks} setDecks={setDecks}
+            examTerms={examTerms} saveExamTerms={saveExamTerms}
+            flowResult={flowResult} saveFlowResult={saveFlowResult}
+            metrics={metrics}
+            searchResults={searchResults} setSearchResults={setSearchResults}
+            savedSources={savedSources} setSavedSources={setSavedSources}
+            isSearching={isSearching} setIsSearching={setIsSearching}
+            handleApiError={handleApiError}
+            updateMetricsAfterSession={updateMetricsAfterSession}
+          />
+        </React.Suspense>
+      </Layout>
     </>
   );
 };

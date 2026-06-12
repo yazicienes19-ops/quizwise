@@ -22,6 +22,16 @@ export interface NavGroup {
   items: NavItem[];
 }
 
+/** Labor-Gruppe: nur für Admins (isAdmin(userId) === true) */
+export const LABOR_GROUP: NavGroup = {
+  title: 'Labor',
+  items: [
+    { tab: ActiveTab.EXPLAINER, label: 'KI-Erklärer', hint: 'Konzepte verstehen' },
+    { tab: ActiveTab.PAPER, label: 'Hausarbeit', hint: 'Mit Quellen schreiben' },
+    { tab: ActiveTab.SEARCH, label: 'Recherche', hint: 'Paper & Web suchen' },
+  ],
+};
+
 export const NAV_GROUPS: NavGroup[] = [
   {
     title: null,

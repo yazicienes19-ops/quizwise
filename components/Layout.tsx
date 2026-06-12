@@ -14,7 +14,8 @@ import { ApiKeySettings } from './ApiKeySettings';
 import { LegalModal } from './LegalModal';
 import { AgentChat } from './AgentChat';
 import { hasApiKey } from '../services/geminiService';
-import { NAV_GROUPS } from './navConfig';
+import { NAV_GROUPS, LABOR_GROUP } from './navConfig';
+import { isAdmin } from '../config/admin';
 
 interface LayoutProps {
   children: React.ReactNode;
@@ -69,7 +70,8 @@ export const Layout: React.FC<LayoutProps> = ({
   }, []);
 
 
-  const allNavItems = NAV_GROUPS.flatMap(g => g.items);
+  const visibleGroups = isAdmin(user?.id) ? [...NAV_GROUPS, LABOR_GROUP] : NAV_GROUPS;
+  const allNavItems = visibleGroups.flatMap(g => g.items);
 
   const dueCardsCount = useMemo(() => {
     try {
@@ -144,7 +146,7 @@ export const Layout: React.FC<LayoutProps> = ({
           </div>
 
           <nav className="space-y-0.5 overflow-y-auto pr-1 scrollbar-hide flex-1">
-            {NAV_GROUPS.map((group, gi) => (
+            {visibleGroups.map((group, gi) => (
               <div key={gi}>
                 {group.title && (
                   <p className="px-3 pt-5 pb-1.5 text-[8px] font-black uppercase tracking-[0.3em] text-slate-400">
