@@ -328,6 +328,16 @@
         /* Group-hover */
         .dark .group:hover .dark\:group-hover\:text-white { color: #ffffff; }
 
+        /* ── Animation keyframe fallbacks (CDN doesn't reliably generate these for dynamic elements) ── */
+        @keyframes spin  { to { transform: rotate(360deg); } }
+        @keyframes pulse { 0%, 100% { opacity: 1; } 50% { opacity: .5; } }
+        @keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
+        @keyframes slideUp { from { opacity: 0; transform: translateY(12px); } to { opacity: 1; transform: translateY(0); } }
+
+        .animate-spin  { animation: spin  1s linear infinite; }
+        .animate-pulse { animation: pulse 2s cubic-bezier(0.4,0,0.6,1) infinite; }
+        .animate-fade-in { animation: fadeIn 0.5s ease both; }
+
         /* Gradients */
         .dark .dark\:from-slate-950 {
             --tw-gradient-from: #080F20;
