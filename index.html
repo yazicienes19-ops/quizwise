@@ -5,7 +5,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>QuizWise - AI Document Quizzer</title>
-    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdn.tailwindcss.com" defer></script>
     <script>
         // Theme
         if (localStorage.getItem('theme') === 'light') {
@@ -43,7 +43,9 @@
             }
         }
 
-        tailwind.config = {
+        // Tailwind config — gesetzt sobald CDN fertig geladen ist
+        window.addEventListener('load', function() {
+          if (window.tailwind) tailwind.config = {
             darkMode: 'class',
             theme: {
                 extend: {
@@ -87,7 +89,8 @@
                     },
                 },
             },
-        }
+          };
+        });
     </script>
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
