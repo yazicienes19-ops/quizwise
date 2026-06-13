@@ -31,6 +31,7 @@ export default defineConfig(() => {
             skipWaiting: true,
             clientsClaim: true,
             cleanupOutdatedCaches: true,
+            navigateFallback: null,
             maximumFileSizeToCacheInBytes: 5 * 1024 * 1024,
             runtimeCaching: [
               {
