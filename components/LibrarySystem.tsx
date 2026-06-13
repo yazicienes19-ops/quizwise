@@ -1,3 +1,4 @@
+
 import React, { useState, useMemo, useCallback } from 'react';
 import { ProcessedDocument, ActiveTab, Collection } from '../types';
 import { getAllMeta, saveMeta, deleteMeta } from '../services/libraryService';
@@ -19,13 +20,14 @@ interface LibrarySystemProps {
   isLoading: boolean;
 }
 
-type SortKey  = 'recent' | 'name' | 'type';
-type ViewMode = 'grid' | 'list';
+type SortKey   = 'recent' | 'name' | 'type';
+type ViewMode  = 'grid' | 'list';
 type FilterType = 'all' | 'pdf' | 'docx' | 'text';
 
 const IconGrid = () => (
   <svg xmlns="http://www.w3.org/2000/svg" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
-    <rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/><rect x="14" y="14" width="7" height="7"/>
+    <rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/>
+    <rect x="3" y="14" width="7" height="7"/><rect x="14" y="14" width="7" height="7"/>
   </svg>
 );
 
@@ -45,15 +47,8 @@ const IconUpload = () => (
 );
 
 export const LibrarySystem: React.FC<LibrarySystemProps> = ({
-  documents,
-  collections,
-  onUpload,
-  onDelete,
-  onAction,
-  onAddCollection,
-  onDeleteCollection,
-  onMoveDocument,
-  isLoading,
+  documents, collections, onUpload, onDelete, onAction,
+  onAddCollection, onDeleteCollection, onMoveDocument, isLoading,
 }) => {
   const [allMeta, setAllMeta]           = useState<Record<string, SourceMeta>>(() => getAllMeta());
   const [viewDocId, setViewDocId]       = useState<string | null>(null);
@@ -77,12 +72,8 @@ export const LibrarySystem: React.FC<LibrarySystemProps> = ({
 
   const filtered = useMemo(() => {
     let list = [...documents];
-
-    // Collection filter
     if (activeColId === 'uncategorized') list = list.filter(d => !d.collectionId);
     else if (activeColId !== 'all') list = list.filter(d => d.collectionId === activeColId);
-
-    // Search
     if (search.trim()) {
       const q = search.toLowerCase();
       list = list.filter(d => {
@@ -95,14 +86,8 @@ export const LibrarySystem: React.FC<LibrarySystemProps> = ({
         );
       });
     }
-
-    // Type filter
     if (filterType !== 'all') list = list.filter(d => d.type === filterType);
-
-    // Module filter
     if (filterModule) list = list.filter(d => allMeta[d.id]?.module === filterModule);
-
-    // Sort
     list.sort((a, b) => {
       if (sortBy === 'recent') return b.uploadDate - a.uploadDate;
       if (sortBy === 'type')   return a.type.localeCompare(b.type);
@@ -110,17 +95,13 @@ export const LibrarySystem: React.FC<LibrarySystemProps> = ({
       const tb = (allMeta[b.id]?.displayTitle || b.name).toLowerCase();
       return ta.localeCompare(tb);
     });
-
     return list;
   }, [documents, allMeta, search, filterType, filterModule, sortBy, activeColId]);
 
   const handleUpload = async (file: File, meta: Partial<SourceMeta>) => {
     const targetCol = activeColId !== 'all' && activeColId !== 'uncategorized' ? activeColId : undefined;
     const docId = await onUpload(file, targetCol);
-    if (docId) {
-      saveMeta(docId, meta);
-      refreshMeta();
-    }
+    if (docId) { saveMeta(docId, meta); refreshMeta(); }
   };
 
   const handleOpen = (doc: ProcessedDocument) => {
@@ -153,7 +134,6 @@ export const LibrarySystem: React.FC<LibrarySystemProps> = ({
     setActiveColId(newId);
   };
 
-  // — Detail view —
   const viewDoc = viewDocId ? documents.find(d => d.id === viewDocId) : null;
   if (viewDoc) {
     return (
@@ -169,41 +149,45 @@ export const LibrarySystem: React.FC<LibrarySystemProps> = ({
     );
   }
 
-  const colBtn = (id: string | 'all' | 'uncategorized', emoji: string, label: string, count: number) => (
-    <button
-      onClick={() => setActiveColId(id)}
-      className={`w-full flex justify-between items-center px-4 py-3 rounded-2xl text-[11px] font-black uppercase tracking-widest transition-all ${
-        activeColId === id
-          ? 'bg-indigo-600 shadow-lg'
-          : 'text-slate-500 dark:text-slate-400 hover:bg-slate-50 dark:hover:bg-slate-800'
-      }`}
-      style={activeColId === id ? { color: 'var(--primary-text)' } : {}}
-    >
-      <span className="flex items-center gap-2 truncate pr-2"><EmojiImage emoji={emoji} size={14} />{label}</span>
-      <span className={activeColId === id ? 'opacity-70' : 'opacity-40'}>{count}</span>
-    </button>
-  );
+  const colBtn = (id: string | 'all' | 'uncategorized', emoji: string, label: string, count: number) => {
+    const isActive = activeColId === id;
+    return (
+      <button
+        onClick={() => setActiveColId(id)}
+        className={`w-full flex justify-between items-center px-3 py-2.5 rounded-xl text-[11px] font-black uppercase tracking-widest transition-all ${
+          isActive ? 'text-white' : 'text-slate-500 dark:text-slate-400 hover:bg-slate-50 dark:hover:bg-slate-800'
+        }`}
+        style={isActive ? { background: 'var(--accent)' } : {}}
+      >
+        <span className="flex items-center gap-2 truncate pr-2">
+          <EmojiImage emoji={emoji} size={14} />{label}
+        </span>
+        <span className={isActive ? 'opacity-70' : 'opacity-40'}>{count}</span>
+      </button>
+    );
+  };
 
   return (
     <>
       {showUpload && <UploadSourceModal onClose={() => setShowUpload(false)} onUpload={handleUpload} />}
 
-      <div className="space-y-8 lg:space-y-12 animate-in fade-in duration-700 py-6 lg:py-10">
+      <div className="max-w-[900px] mx-auto space-y-6 animate-in fade-in duration-700 py-6">
+
         {/* Page header */}
-        <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 px-4">
+        <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
           <div>
-            <h1 className="text-4xl lg:text-5xl font-black tracking-tighter" style={{ color: 'var(--text-main)' }}>
-              Bibliothek <EmojiImage emoji="📚" size={36} className="inline-block" />
+            <h1 className="text-[22px] font-extrabold tracking-tight text-slate-900 dark:text-white">
+              Bibliothek
             </h1>
-            <p className="text-sm text-slate-400 font-medium mt-1">
+            <p className="text-[13px] text-slate-400 mt-0.5">
               {documents.length} {documents.length === 1 ? 'Quelle' : 'Quellen'} · Dein persönliches Lernsystem
             </p>
           </div>
           <button
             onClick={() => !isLoading && setShowUpload(true)}
             disabled={isLoading}
-            className="flex items-center gap-2 px-6 py-3 bg-indigo-600 rounded-2xl text-[10px] font-black uppercase tracking-widest shadow-lg hover:scale-105 active:scale-95 transition-all shrink-0 disabled:opacity-60 disabled:scale-100"
-            style={{ color: 'var(--primary-text)' }}
+            className="flex items-center gap-2 text-white text-[10px] font-black uppercase tracking-widest rounded-[14px] transition-transform hover:scale-[1.02] active:scale-[0.98] disabled:opacity-60 disabled:scale-100 shrink-0"
+            style={{ background: 'var(--accent)', padding: '11px 20px' }}
           >
             {isLoading
               ? <><span className="w-3.5 h-3.5 border-2 border-white/30 border-t-white rounded-full animate-spin" /> Lädt…</>
@@ -212,16 +196,22 @@ export const LibrarySystem: React.FC<LibrarySystemProps> = ({
           </button>
         </div>
 
-        <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 lg:gap-10 px-4">
+        <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
           {/* Sidebar */}
-          <div className="lg:col-span-3 space-y-6">
-            <div className="rounded-[28px] shadow-3d-raised p-5 space-y-4" style={{ background: 'var(--bg-sidebar)', border: '1px solid var(--border-color)' }}>
+          <div className="lg:col-span-3 space-y-4">
+
+            {/* Sammlungen */}
+            <div className="rounded-[18px] border p-4 space-y-3"
+              style={{ background: 'var(--bg-sidebar)', borderColor: 'var(--border)' }}>
               <div className="flex justify-between items-center px-1">
-                <span className="text-[10px] font-black uppercase tracking-widest text-slate-400">Sammlungen</span>
+                <span className="text-[10px] font-black uppercase tracking-widest text-slate-400">
+                  Sammlungen
+                </span>
                 {!isAddingCol && (
                   <button
                     onClick={() => setIsAddingCol(true)}
-                    className="w-7 h-7 rounded-xl bg-indigo-50 dark:bg-indigo-950/30 text-indigo-600 flex items-center justify-center hover:scale-110 transition-transform text-sm font-black"
+                    className="w-6 h-6 rounded-lg flex items-center justify-center text-sm font-black transition-opacity hover:opacity-80"
+                    style={{ background: 'var(--accent-soft)', color: 'var(--accent)' }}
                   >+</button>
                 )}
               </div>
@@ -233,75 +223,104 @@ export const LibrarySystem: React.FC<LibrarySystemProps> = ({
                     value={newColName}
                     onChange={e => setNewColName(e.target.value)}
                     placeholder="z.B. Semester 1"
-                    className="w-full p-3 rounded-xl text-xs font-bold outline-none border-2 border-indigo-500"
-                    style={{ background: 'var(--bg-main)', color: 'var(--text-main)' }}
+                    className="w-full rounded-xl text-xs font-bold outline-none"
+                    style={{
+                      padding: '10px 12px',
+                      background: 'var(--bg-main)',
+                      color: 'var(--text-main)',
+                      border: '2px solid var(--accent)',
+                    }}
                   />
                   <div className="flex gap-2">
-                    <button type="submit" className="flex-1 bg-indigo-600 py-2 rounded-xl text-[9px] font-black uppercase tracking-widest" style={{ color: 'var(--primary-text)' }}>Erstellen</button>
-                    <button type="button" onClick={() => { setIsAddingCol(false); setNewColName(''); }} className="px-3 text-slate-400 py-2 rounded-xl text-[9px] font-black uppercase" style={{ background: 'var(--bg-main)' }}>✕</button>
+                    <button
+                      type="submit"
+                      className="flex-1 rounded-xl text-[9px] font-black uppercase tracking-widest text-white"
+                      style={{ padding: '8px', background: 'var(--accent)' }}
+                    >
+                      Erstellen
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => { setIsAddingCol(false); setNewColName(''); }}
+                      className="px-3 rounded-xl text-[9px] font-black uppercase text-slate-400"
+                      style={{ padding: '8px 12px', background: 'var(--bg-main)' }}
+                    >✕</button>
                   </div>
                 </form>
               )}
 
-              <nav className="space-y-1">
+              <nav className="space-y-0.5">
                 {colBtn('all',           '🌐', 'Alle',       documents.length)}
                 {colBtn('uncategorized', '📥', 'Unsortiert', documents.filter(d => !d.collectionId).length)}
-                {collections.length > 0 && <div className="pt-2 space-y-1" style={{ borderTop: '1px solid var(--border-color)' }}>
-                  {collections.map(col => (
-                    <div key={col.id} className="group relative">
-                      {colBtn(col.id, col.emoji, col.name, documents.filter(d => d.collectionId === col.id).length)}
-                      <button
-                        onClick={() => onDeleteCollection(col.id)}
-                        className="absolute right-[-8px] top-1/2 -translate-y-1/2 opacity-0 group-hover:opacity-100 bg-rose-500 text-white p-1 rounded-full shadow transition-all hover:scale-125 z-10"
-                      >
-                        <svg xmlns="http://www.w3.org/2000/svg" width="8" height="8" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="4" strokeLinecap="round" strokeLinejoin="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
-                      </button>
-                    </div>
-                  ))}
-                </div>}
+                {collections.length > 0 && (
+                  <div className="pt-2 space-y-0.5" style={{ borderTop: '1px solid var(--border)' }}>
+                    {collections.map(col => (
+                      <div key={col.id} className="group relative">
+                        {colBtn(col.id, col.emoji, col.name, documents.filter(d => d.collectionId === col.id).length)}
+                        <button
+                          onClick={() => onDeleteCollection(col.id)}
+                          className="absolute right-[-8px] top-1/2 -translate-y-1/2 opacity-0 group-hover:opacity-100 bg-rose-500 text-white p-1 rounded-full shadow transition-all hover:scale-125 z-10"
+                        >
+                          <svg xmlns="http://www.w3.org/2000/svg" width="8" height="8" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="4" strokeLinecap="round" strokeLinejoin="round">
+                            <line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/>
+                          </svg>
+                        </button>
+                      </div>
+                    ))}
+                  </div>
+                )}
               </nav>
             </div>
 
             {/* Module filter */}
             {modules.length > 0 && (
-              <div className="rounded-[28px] shadow-3d-raised p-5 space-y-3" style={{ background: 'var(--bg-sidebar)', border: '1px solid var(--border-color)' }}>
-                <span className="text-[10px] font-black uppercase tracking-widest text-slate-400 px-1 block">Module</span>
-                <div className="space-y-1">
-                  <button
-                    onClick={() => setFilterModule('')}
-                    className={`w-full text-left px-4 py-2.5 rounded-xl text-[11px] font-black uppercase tracking-widest transition-all ${!filterModule ? 'bg-indigo-600' : 'text-slate-500 hover:bg-slate-50 dark:hover:bg-slate-800'}`}
-                    style={!filterModule ? { color: 'var(--primary-text)' } : {}}
-                  >
-                    Alle Module
-                  </button>
-                  {modules.map(m => (
-                    <button
-                      key={m}
-                      onClick={() => setFilterModule(filterModule === m ? '' : m)}
-                      className={`w-full text-left px-4 py-2.5 rounded-xl text-[11px] font-black uppercase tracking-widest transition-all truncate ${filterModule === m ? 'bg-indigo-600' : 'text-slate-500 hover:bg-slate-50 dark:hover:bg-slate-800'}`}
-                      style={filterModule === m ? { color: 'var(--primary-text)' } : {}}
-                    >
-                      {m}
-                    </button>
-                  ))}
+              <div className="rounded-[18px] border p-4 space-y-2"
+                style={{ background: 'var(--bg-sidebar)', borderColor: 'var(--border)' }}>
+                <span className="text-[10px] font-black uppercase tracking-widest text-slate-400 px-1 block">
+                  Module
+                </span>
+                <div className="space-y-0.5">
+                  {[{ value: '', label: 'Alle Module' }, ...modules.map(m => ({ value: m, label: m }))].map(({ value, label }) => {
+                    const isActive = filterModule === value;
+                    return (
+                      <button
+                        key={value}
+                        onClick={() => setFilterModule(isActive && value !== '' ? '' : value)}
+                        className={`w-full text-left px-3 py-2.5 rounded-xl text-[11px] font-black uppercase tracking-widest transition-all truncate ${
+                          isActive ? 'text-white' : 'text-slate-500 dark:text-slate-400 hover:bg-slate-50 dark:hover:bg-slate-800'
+                        }`}
+                        style={isActive ? { background: 'var(--accent)' } : {}}
+                      >
+                        {label}
+                      </button>
+                    );
+                  })}
                 </div>
               </div>
             )}
           </div>
 
           {/* Main area */}
-          <div className="lg:col-span-9 space-y-5">
+          <div className="lg:col-span-9 space-y-4">
             {/* Toolbar */}
             <div className="space-y-2">
               {/* Search */}
               <div className="relative">
-                <svg className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-300 dark:text-slate-600" xmlns="http://www.w3.org/2000/svg" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+                <svg className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-300 dark:text-slate-600"
+                  xmlns="http://www.w3.org/2000/svg" width="15" height="15" viewBox="0 0 24 24"
+                  fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round">
+                  <circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/>
+                </svg>
                 <input
                   value={search}
                   onChange={e => setSearch(e.target.value)}
                   placeholder="Quelle suchen…"
-                  className="w-full pl-10 pr-4 py-3 rounded-2xl text-sm font-medium outline-none focus:border-indigo-500 shadow-3d-raised"
-                  style={{ background: 'var(--bg-sidebar)', border: '1px solid var(--border-color)', color: 'var(--text-main)' }}
+                  className="w-full pl-10 pr-4 py-3 rounded-[14px] text-sm font-medium outline-none"
+                  style={{
+                    background: 'var(--bg-sidebar)',
+                    border: '1px solid var(--border)',
+                    color: 'var(--text-main)',
+                  }}
                 />
               </div>
 
@@ -310,8 +329,12 @@ export const LibrarySystem: React.FC<LibrarySystemProps> = ({
                 <select
                   value={filterType}
                   onChange={e => setFilterType(e.target.value as FilterType)}
-                  className="flex-1 min-w-[100px] px-3 py-2.5 rounded-2xl text-[10px] font-black uppercase tracking-widest outline-none focus:border-indigo-500 shadow-3d-raised"
-                  style={{ background: 'var(--bg-sidebar)', border: '1px solid var(--border-color)', color: 'var(--text-main)' }}
+                  className="flex-1 min-w-[100px] px-3 py-2.5 rounded-[14px] text-[10px] font-black uppercase tracking-widest outline-none"
+                  style={{
+                    background: 'var(--bg-sidebar)',
+                    border: '1px solid var(--border)',
+                    color: 'var(--text-main)',
+                  }}
                 >
                   <option value="all">Alle Typen</option>
                   <option value="pdf">PDF</option>
@@ -322,30 +345,33 @@ export const LibrarySystem: React.FC<LibrarySystemProps> = ({
                 <select
                   value={sortBy}
                   onChange={e => setSortBy(e.target.value as SortKey)}
-                  className="flex-1 min-w-[100px] px-3 py-2.5 rounded-2xl text-[10px] font-black uppercase tracking-widest outline-none focus:border-indigo-500 shadow-3d-raised"
-                  style={{ background: 'var(--bg-sidebar)', border: '1px solid var(--border-color)', color: 'var(--text-main)' }}
+                  className="flex-1 min-w-[100px] px-3 py-2.5 rounded-[14px] text-[10px] font-black uppercase tracking-widest outline-none"
+                  style={{
+                    background: 'var(--bg-sidebar)',
+                    border: '1px solid var(--border)',
+                    color: 'var(--text-main)',
+                  }}
                 >
                   <option value="recent">Neueste</option>
                   <option value="name">Name</option>
                   <option value="type">Typ</option>
                 </select>
 
-                <div className="flex rounded-2xl p-1 shadow-3d-raised shrink-0" style={{ background: 'var(--bg-sidebar)', border: '1px solid var(--border-color)' }}>
-                  <button
-                    onClick={() => setViewMode('grid')}
-                    className={`p-2 rounded-xl transition-all ${viewMode === 'grid' ? 'bg-indigo-600' : 'text-slate-400 hover:text-slate-600'}`}
-                    style={viewMode === 'grid' ? { color: 'var(--primary-text)' } : {}}
-                  ><IconGrid /></button>
-                  <button
-                    onClick={() => setViewMode('list')}
-                    className={`p-2 rounded-xl transition-all ${viewMode === 'list' ? 'bg-indigo-600' : 'text-slate-400 hover:text-slate-600'}`}
-                    style={viewMode === 'list' ? { color: 'var(--primary-text)' } : {}}
-                  ><IconList /></button>
+                <div className="flex rounded-[14px] p-1 shrink-0"
+                  style={{ background: 'var(--bg-sidebar)', border: '1px solid var(--border)' }}>
+                  {([['grid', <IconGrid />], ['list', <IconList />]] as const).map(([mode, icon]) => (
+                    <button
+                      key={mode}
+                      onClick={() => setViewMode(mode as ViewMode)}
+                      className={`p-2 rounded-xl transition-all ${viewMode === mode ? 'text-white' : 'text-slate-400 hover:text-slate-600'}`}
+                      style={viewMode === mode ? { background: 'var(--accent)' } : {}}
+                    >{icon}</button>
+                  ))}
                 </div>
               </div>
             </div>
 
-            {/* Results info */}
+            {/* Results count + reset */}
             {(search || filterType !== 'all' || filterModule) && (
               <div className="flex items-center justify-between px-1">
                 <p className="text-[10px] font-black uppercase tracking-widest text-slate-400">
@@ -360,7 +386,7 @@ export const LibrarySystem: React.FC<LibrarySystemProps> = ({
               </div>
             )}
 
-            {/* Empty states */}
+            {/* Content */}
             {documents.length === 0 ? (
               <EmptyLibrary onUpload={() => setShowUpload(true)} />
             ) : filtered.length === 0 ? (
@@ -370,15 +396,11 @@ export const LibrarySystem: React.FC<LibrarySystemProps> = ({
                 <p className="text-xs text-slate-400">Versuche einen anderen Suchbegriff oder entferne Filter.</p>
               </div>
             ) : viewMode === 'grid' ? (
-              <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-5">
+              <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4">
                 {filtered.map(doc => (
                   <SourceCard
-                    key={doc.id}
-                    doc={doc}
-                    meta={allMeta[doc.id] ?? {}}
-                    view="grid"
-                    onOpen={() => handleOpen(doc)}
-                    onDelete={() => handleDelete(doc)}
+                    key={doc.id} doc={doc} meta={allMeta[doc.id] ?? {}} view="grid"
+                    onOpen={() => handleOpen(doc)} onDelete={() => handleDelete(doc)}
                   />
                 ))}
               </div>
@@ -386,12 +408,8 @@ export const LibrarySystem: React.FC<LibrarySystemProps> = ({
               <div className="space-y-2">
                 {filtered.map(doc => (
                   <SourceCard
-                    key={doc.id}
-                    doc={doc}
-                    meta={allMeta[doc.id] ?? {}}
-                    view="list"
-                    onOpen={() => handleOpen(doc)}
-                    onDelete={() => handleDelete(doc)}
+                    key={doc.id} doc={doc} meta={allMeta[doc.id] ?? {}} view="list"
+                    onOpen={() => handleOpen(doc)} onDelete={() => handleDelete(doc)}
                   />
                 ))}
               </div>
@@ -404,30 +422,36 @@ export const LibrarySystem: React.FC<LibrarySystemProps> = ({
 };
 
 const EmptyLibrary: React.FC<{ onUpload: () => void }> = ({ onUpload }) => (
-  <div className="flex flex-col items-center justify-center py-32 text-center space-y-6 animate-in fade-in duration-500">
-    <div className="w-24 h-24 bg-indigo-50 dark:bg-indigo-950/30 rounded-full flex items-center justify-center">
-      <EmojiImage emoji="📭" size={48} />
+  <div className="flex flex-col items-center justify-center py-24 text-center space-y-6 animate-in fade-in duration-500">
+    <div
+      className="w-[52px] h-[52px] rounded-[16px] flex items-center justify-center"
+      style={{ background: 'var(--icon-box)' }}
+    >
+      <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24"
+        fill="none" stroke="white" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+        <path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20"/>
+        <path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z"/>
+      </svg>
     </div>
-    <div className="space-y-3 max-w-sm">
-      <p className="text-lg font-black uppercase tracking-widest text-slate-700 dark:text-slate-200">
+    <div className="space-y-2 max-w-sm">
+      <p className="text-[17px] font-extrabold tracking-tight text-slate-900 dark:text-white">
         Noch keine Lernunterlagen
       </p>
-      <p className="text-sm text-slate-400 leading-relaxed">
-        Lade dein erstes Skript hoch. QuizWise erstellt daraus Quiz, Karteikarten, Erklärungen und Lernpläne — direkt aus deinen echten Unterlagen.
+      <p className="text-[13px] text-slate-400 leading-relaxed">
+        Lade dein erstes Skript hoch. QuizWise erstellt daraus Quiz, Karteikarten und Klausuren — direkt aus deinen echten Unterlagen.
       </p>
     </div>
     <button
       onClick={onUpload}
-      className="flex items-center gap-2 px-8 py-4 bg-indigo-600 rounded-2xl font-black uppercase text-[11px] tracking-widest shadow-lg hover:scale-105 active:scale-95 transition-all"
-      style={{ color: 'var(--primary-text)' }}
+      className="flex items-center gap-2 text-white text-[11px] font-black uppercase tracking-widest rounded-[14px] transition-transform hover:scale-[1.02] active:scale-[0.98]"
+      style={{ background: 'var(--accent)', padding: '12px 28px' }}
     >
       <IconUpload /> Erste Quelle hochladen
     </button>
-    <div className="flex gap-6 pt-4">
+    <div className="flex gap-5 pt-2">
       {['PDF', 'DOCX', 'TXT', 'MD'].map(f => (
         <span key={f} className="text-[9px] font-black uppercase tracking-widest text-slate-300 dark:text-slate-600">{f}</span>
       ))}
     </div>
   </div>
 );
-

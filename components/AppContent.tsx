@@ -126,7 +126,7 @@ export const AppContent: React.FC<AppContentProps> = (p) => {
 
   switch (activeTab) {
     case ActiveTab.DASHBOARD:
-      return <Dashboard onTabChange={setActiveTab} flowResult={flowResult} onAcceptFlow={saveFlowResult} documents={documents} />;
+      return <Dashboard onTabChange={setActiveTab} flowResult={flowResult} onAcceptFlow={saveFlowResult} documents={documents} user={user} />;
 
     case ActiveTab.LIBRARY:
       return <LibrarySystem
@@ -315,11 +315,11 @@ export const AppContent: React.FC<AppContentProps> = (p) => {
       />;
 
     case ActiveTab.PAPER:
-      if (!isAdmin(user?.id)) return <Dashboard onTabChange={setActiveTab} flowResult={flowResult} onAcceptFlow={saveFlowResult} documents={documents} />;
+      if (!isAdmin(user?.id)) return <Dashboard onTabChange={setActiveTab} flowResult={flowResult} onAcceptFlow={saveFlowResult} documents={documents} user={user} />;
       return <TermPaperSystem availableDocuments={documents} onUploadNew={handleFileUpload} initialSources={savedSources} getDocumentSource={getDocumentSource} />;
 
     case ActiveTab.SEARCH:
-      if (!isAdmin(user?.id)) return <Dashboard onTabChange={setActiveTab} flowResult={flowResult} onAcceptFlow={saveFlowResult} documents={documents} />;
+      if (!isAdmin(user?.id)) return <Dashboard onTabChange={setActiveTab} flowResult={flowResult} onAcceptFlow={saveFlowResult} documents={documents} user={user} />;
       return <ScholarSearch
         results={searchResults}
         onSearch={async (q) => { setIsSearching(true); const { results } = await searchScholar(q); setSearchResults(results); setIsSearching(false); }}
@@ -354,6 +354,6 @@ export const AppContent: React.FC<AppContentProps> = (p) => {
       />;
 
     default:
-      return <Dashboard onTabChange={setActiveTab} flowResult={flowResult} onAcceptFlow={saveFlowResult} documents={documents} />;
+      return <Dashboard onTabChange={setActiveTab} flowResult={flowResult} onAcceptFlow={saveFlowResult} documents={documents} user={user} />;
   }
 };

@@ -119,7 +119,7 @@ export const SourceSelector: React.FC<SourceSelectorProps> = ({
   ];
 
   return (
-    <div className="rounded-[32px] overflow-hidden" style={{ background: 'var(--bg-sidebar)', border: '1px solid var(--border-color)' }}>
+    <div className="rounded-[18px] overflow-hidden" style={{ background: 'var(--surface)', border: '1px solid var(--border)' }}>
 
       {/* Header */}
       {label && (
@@ -130,14 +130,15 @@ export const SourceSelector: React.FC<SourceSelectorProps> = ({
 
       {/* Tab-Leiste */}
       <div className="px-6 pt-5 pb-0">
-        <div className="flex p-1 rounded-2xl gap-1" style={{ background: 'color-mix(in srgb, var(--border-color) 40%, var(--bg-main))' }}>
+        <div className="flex p-1 rounded-[14px] gap-1" style={{ background: 'color-mix(in srgb, var(--border) 40%, var(--surface))' }}>
           {tabs.map(t => (
             <button
               key={t.id}
               onClick={() => setTab(t.id)}
               className={`flex-1 flex items-center justify-center gap-2 py-2.5 rounded-xl text-[10px] font-black uppercase tracking-wider transition-all whitespace-nowrap ${
-                tab === t.id ? 'bg-indigo-600 text-white shadow-lg' : 'text-slate-400 hover:text-slate-600 dark:hover:text-slate-200'
+                tab === t.id ? 'text-white' : 'text-slate-400 hover:text-slate-600 dark:hover:text-slate-200'
               }`}
+              style={tab === t.id ? { background: 'var(--accent)' } : {}}
             >
               {t.icon}
               <span className="hidden sm:inline">{t.label}</span>
@@ -158,7 +159,8 @@ export const SourceSelector: React.FC<SourceSelectorProps> = ({
                 <p className="text-[11px] font-black uppercase tracking-widest dark:text-white">Bibliothek ist leer</p>
                 <button
                   onClick={() => setTab('upload')}
-                  className="text-[10px] font-black uppercase tracking-widest text-indigo-600 hover:underline"
+                  className="text-[10px] font-black uppercase tracking-widest hover:underline"
+                  style={{ color: 'var(--accent)' }}
                 >
                   Erste Datei hochladen →
                 </button>
@@ -173,8 +175,8 @@ export const SourceSelector: React.FC<SourceSelectorProps> = ({
                       value={search}
                       onChange={e => setSearch(e.target.value)}
                       placeholder="Dokument suchen..."
-                      className="w-full pl-10 pr-4 py-2.5 rounded-2xl text-sm dark:text-white placeholder-slate-400 outline-none"
-                      style={{ background: 'color-mix(in srgb, var(--border-color) 30%, var(--bg-main))', border: '1px solid var(--border-color)' }}
+                      className="w-full pl-10 pr-4 py-2.5 rounded-[14px] text-sm dark:text-white placeholder-slate-400 outline-none"
+                      style={{ background: 'color-mix(in srgb, var(--border) 30%, var(--surface))', border: '1px solid var(--border)' }}
                     />
                     {search && (
                       <button onClick={() => setSearch('')} className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600">
@@ -186,8 +188,8 @@ export const SourceSelector: React.FC<SourceSelectorProps> = ({
                     <select
                       value={filterCol}
                       onChange={e => setFilterCol(e.target.value)}
-                      className="px-3 py-2.5 rounded-2xl text-[11px] font-bold dark:text-white outline-none"
-                      style={{ background: 'color-mix(in srgb, var(--border-color) 30%, var(--bg-main))', border: '1px solid var(--border-color)' }}
+                      className="px-3 py-2.5 rounded-[14px] text-[11px] font-bold dark:text-white outline-none"
+                      style={{ background: 'color-mix(in srgb, var(--border) 30%, var(--surface))', border: '1px solid var(--border)' }}
                     >
                       <option value="all">Alle</option>
                       {collections.map(c => (
@@ -209,8 +211,8 @@ export const SourceSelector: React.FC<SourceSelectorProps> = ({
                           key={doc.id}
                           onClick={() => onSelectDocument(doc)}
                           disabled={isLoading}
-                          className="w-full flex items-center gap-4 px-5 py-4 rounded-2xl text-left transition-all hover:scale-[1.01] active:scale-[0.99] disabled:opacity-50 group"
-                          style={{ background: 'color-mix(in srgb, var(--border-color) 25%, var(--bg-main))', border: '1px solid var(--border-color)' }}
+                          className="w-full flex items-center gap-4 px-5 py-4 rounded-[14px] text-left transition-all hover:scale-[1.01] active:scale-[0.99] disabled:opacity-50 group"
+                          style={{ background: 'color-mix(in srgb, var(--border) 25%, var(--surface))', border: '1px solid var(--border)' }}
                         >
                           <DocIcon type={doc.type} />
                           <div className="flex-1 min-w-0">
@@ -220,7 +222,7 @@ export const SourceSelector: React.FC<SourceSelectorProps> = ({
                               {col && <> · <span>{col.emoji} {col.name}</span></>}
                             </p>
                           </div>
-                          <ChevronRight className="w-4 h-4 text-slate-300 group-hover:text-indigo-500 transition-colors shrink-0" strokeWidth={2} />
+                          <ChevronRight className="w-4 h-4 text-slate-300 group-hover:text-slate-500 transition-colors shrink-0" strokeWidth={2} />
                         </button>
                       );
                     })
@@ -236,7 +238,7 @@ export const SourceSelector: React.FC<SourceSelectorProps> = ({
           <div className="space-y-4">
             {/* Free-Plan Limit Banner */}
             {userPlan === 'free' && saveToLib && (
-              <div className={`flex items-center justify-between px-4 py-3 rounded-2xl ${documents.length >= 5 ? 'bg-rose-50 dark:bg-rose-950/20 border border-rose-200 dark:border-rose-800' : 'bg-slate-50 dark:bg-slate-800/40 border border-slate-200 dark:border-slate-700'}`}>
+              <div className={`flex items-center justify-between px-4 py-3 rounded-[14px] ${documents.length >= 5 ? 'bg-rose-50 dark:bg-rose-950/20 border border-rose-200 dark:border-rose-800' : 'bg-slate-50 dark:bg-slate-800/40 border border-slate-200 dark:border-slate-700'}`}>
                 <div>
                   <p className={`text-[11px] font-black ${documents.length >= 5 ? 'text-rose-700 dark:text-rose-400' : 'text-slate-600 dark:text-slate-300'}`}>
                     {documents.length >= 5 ? 'Dokumenten-Limit erreicht' : `${documents.length} / 5 Dokumente`}
@@ -247,7 +249,15 @@ export const SourceSelector: React.FC<SourceSelectorProps> = ({
                 </div>
                 <div className="flex items-center gap-1.5">
                   {[0, 1, 2, 3, 4].map(i => (
-                    <div key={i} className={`w-2 h-2 rounded-full transition-all ${i < documents.length ? (documents.length >= 5 ? 'bg-rose-400' : 'bg-indigo-500') : 'bg-slate-200 dark:bg-slate-700'}`} />
+                    <div
+                      key={i}
+                      className="w-2 h-2 rounded-full transition-all"
+                      style={{
+                        background: i < documents.length
+                          ? (documents.length >= 5 ? '#f43f5e' : 'var(--accent)')
+                          : '#e2e8f0'
+                      }}
+                    />
                   ))}
                 </div>
               </div>
@@ -255,12 +265,12 @@ export const SourceSelector: React.FC<SourceSelectorProps> = ({
             <button
               onClick={() => fileInputRef.current?.click()}
               disabled={isProcessing || isLoading || (userPlan === 'free' && saveToLib && documents.length >= 5)}
-              className="w-full py-12 rounded-[24px] border-2 border-dashed transition-all flex flex-col items-center gap-4 hover:border-indigo-500 group disabled:opacity-50"
-              style={{ borderColor: 'var(--border-color)', background: 'color-mix(in srgb, var(--border-color) 15%, var(--bg-main))' }}
+              className="w-full py-12 rounded-[18px] border-2 border-dashed transition-all flex flex-col items-center gap-4 group disabled:opacity-50 hover:opacity-80"
+              style={{ borderColor: 'var(--border)', background: 'color-mix(in srgb, var(--border) 15%, var(--surface))' }}
             >
               <span className="text-4xl">{isProcessing ? '⏳' : '📂'}</span>
               <div className="text-center space-y-1">
-                <p className="text-[11px] font-black uppercase tracking-widest dark:text-white group-hover:text-indigo-600 transition-colors">
+                <p className="text-[11px] font-black uppercase tracking-widest dark:text-white group-hover:text-slate-700 dark:group-hover:text-slate-200 transition-colors">
                   {isProcessing ? 'Wird verarbeitet...' : 'Datei auswählen'}
                 </p>
                 <p className="text-[10px] text-slate-400">PDF, DOCX oder TXT · max. 50 MB</p>
@@ -275,13 +285,13 @@ export const SourceSelector: React.FC<SourceSelectorProps> = ({
             />
 
             {uploadError && (
-              <div className="flex items-start gap-3 px-4 py-3 rounded-2xl bg-rose-50 dark:bg-rose-950/20 border border-rose-200 dark:border-rose-800 animate-in slide-in-from-top-2 duration-200">
+              <div className="flex items-start gap-3 px-4 py-3 rounded-[14px] bg-rose-50 dark:bg-rose-950/20 border border-rose-200 dark:border-rose-800 animate-in slide-in-from-top-2 duration-200">
                 <span className="text-rose-500 shrink-0 mt-0.5">✕</span>
                 <p className="text-[11px] font-bold text-rose-700 dark:text-rose-400">{uploadError}</p>
               </div>
             )}
             {uploadWarning && !uploadError && (
-              <div className="flex items-start gap-3 px-4 py-3 rounded-2xl bg-amber-50 dark:bg-amber-950/20 border border-amber-200 dark:border-amber-800 animate-in slide-in-from-top-2 duration-200">
+              <div className="flex items-start gap-3 px-4 py-3 rounded-[14px] bg-amber-50 dark:bg-amber-950/20 border border-amber-200 dark:border-amber-800 animate-in slide-in-from-top-2 duration-200">
                 <span className="text-amber-500 shrink-0 mt-0.5">⚠</span>
                 <p className="text-[11px] font-bold text-amber-700 dark:text-amber-400">{uploadWarning}</p>
               </div>
@@ -289,10 +299,11 @@ export const SourceSelector: React.FC<SourceSelectorProps> = ({
 
             {/* Option: In Bibliothek speichern */}
             {onSaveToLibrary && (
-              <label className="flex items-center gap-3 px-4 py-3 rounded-2xl cursor-pointer hover:opacity-80 transition-opacity" style={{ background: 'color-mix(in srgb, var(--border-color) 25%, var(--bg-main))' }}>
+              <label className="flex items-center gap-3 px-4 py-3 rounded-[14px] cursor-pointer hover:opacity-80 transition-opacity" style={{ background: 'color-mix(in srgb, var(--border) 25%, var(--surface))' }}>
                 <div
                   onClick={() => setSaveToLib(!saveToLib)}
-                  className={`w-10 h-5 rounded-full transition-all relative shrink-0 ${saveToLib ? 'bg-indigo-600' : 'bg-slate-300 dark:bg-slate-700'}`}
+                  className={`w-10 h-5 rounded-full transition-all relative shrink-0 ${!saveToLib ? 'bg-slate-300 dark:bg-slate-700' : ''}`}
+                  style={saveToLib ? { background: 'var(--accent)' } : {}}
                 >
                   <div className={`absolute top-0.5 w-4 h-4 bg-white rounded-full shadow transition-all ${saveToLib ? 'left-5' : 'left-0.5'}`} />
                 </div>
@@ -315,7 +326,7 @@ export const SourceSelector: React.FC<SourceSelectorProps> = ({
               placeholder="Füge hier deinen Lernstoff ein — Mitschrift, Zusammenfassung, Skript-Abschnitt..."
               rows={8}
               className="w-full p-5 rounded-[24px] text-sm dark:text-white placeholder-slate-400 outline-none resize-none leading-relaxed"
-              style={{ background: 'color-mix(in srgb, var(--border-color) 25%, var(--bg-main))', border: '1px solid var(--border-color)' }}
+              style={{ background: 'color-mix(in srgb, var(--border) 25%, var(--surface))', border: '1px solid var(--border)' }}
             />
             <div className="flex items-center justify-between px-1">
               <span className="text-[10px] text-slate-400">
@@ -324,8 +335,8 @@ export const SourceSelector: React.FC<SourceSelectorProps> = ({
               <button
                 onClick={handleTextSubmit}
                 disabled={pastedText.trim().length < 20 || isLoading}
-                className="px-6 py-3 rounded-2xl text-[11px] font-black uppercase tracking-widest text-white transition-all hover:scale-[1.02] active:scale-95 disabled:opacity-40"
-                style={{ background: 'var(--primary)' }}
+                className="px-6 py-3 rounded-[14px] text-[11px] font-black uppercase tracking-widest text-white transition-all hover:scale-[1.02] active:scale-95 disabled:opacity-40"
+                style={{ background: 'var(--accent)' }}
               >
                 Weiter →
               </button>

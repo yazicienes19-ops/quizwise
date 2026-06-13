@@ -48,11 +48,11 @@ export const SourceDetailPage: React.FC<Props> = ({ doc, meta, onBack, onAction 
   const quizStats = useMemo(() => getDocStats(doc.id), [doc.id]);
 
   return (
-    <div className="max-w-5xl mx-auto space-y-8 animate-in fade-in slide-in-from-right-8 duration-500 py-6 lg:py-10 px-4">
+    <div className="max-w-[860px] mx-auto space-y-5 animate-in fade-in duration-500 py-6 px-4">
       {/* Back */}
       <button
         onClick={onBack}
-        className="flex items-center gap-2 text-slate-400 hover:text-indigo-600 transition-colors text-[10px] font-black uppercase tracking-widest"
+        className="flex items-center gap-2 text-slate-400 hover:text-slate-700 dark:hover:text-slate-200 transition-colors text-[10px] font-black uppercase tracking-widest"
       >
         <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round">
           <polyline points="15 18 9 12 15 6"/>
@@ -61,9 +61,9 @@ export const SourceDetailPage: React.FC<Props> = ({ doc, meta, onBack, onAction 
       </button>
 
       {/* Source Header */}
-      <div className="bg-white dark:bg-slate-900 rounded-[32px] border border-slate-200 dark:border-slate-800 shadow-3d-raised p-8">
+      <div className="bg-white dark:bg-slate-900 rounded-[18px] border border-slate-200 dark:border-slate-800 p-6">
         <div className="flex flex-col sm:flex-row gap-6 items-start">
-          <div className="w-16 h-16 bg-indigo-50 dark:bg-indigo-900/20 rounded-2xl flex items-center justify-center shrink-0">
+          <div className="w-16 h-16 rounded-[14px] flex items-center justify-center shrink-0" style={{ background: 'var(--accent-soft)' }}>
             <EmojiImage emoji={emoji} size={40} />
           </div>
           <div className="flex-grow min-w-0 space-y-3">
@@ -76,7 +76,7 @@ export const SourceDetailPage: React.FC<Props> = ({ doc, meta, onBack, onAction 
               {meta.module && (
                 <div className="flex items-center gap-1.5">
                   <span className="text-[9px] font-black uppercase text-slate-400 tracking-widest">Modul</span>
-                  <span className="text-[10px] font-black text-indigo-600">{meta.module}</span>
+                  <span className="text-[10px] font-black" style={{ color: 'var(--accent)' }}>{meta.module}</span>
                 </div>
               )}
               {meta.semester && (
@@ -102,7 +102,7 @@ export const SourceDetailPage: React.FC<Props> = ({ doc, meta, onBack, onAction 
             {meta.tags?.length ? (
               <div className="flex gap-1.5 flex-wrap">
                 {meta.tags.map(t => (
-                  <span key={t} className="bg-indigo-50 dark:bg-indigo-900/20 text-indigo-600 dark:text-indigo-400 text-[8px] font-black px-2.5 py-1 rounded-full uppercase tracking-tight">
+                  <span key={t} className="text-[8px] font-black px-2.5 py-1 rounded-full uppercase tracking-tight" style={{ background: 'var(--accent-soft)', color: 'var(--accent)' }}>
                     {t}
                   </span>
                 ))}
@@ -110,7 +110,7 @@ export const SourceDetailPage: React.FC<Props> = ({ doc, meta, onBack, onAction 
             ) : null}
 
             {meta.notes && (
-              <p className="text-sm text-slate-500 dark:text-slate-400 italic border-l-2 border-indigo-200 pl-3">{meta.notes}</p>
+              <p className="text-sm text-slate-500 dark:text-slate-400 italic border-l-2 pl-3" style={{ borderColor: 'var(--border)' }}>{meta.notes}</p>
             )}
           </div>
 
@@ -127,12 +127,12 @@ export const SourceDetailPage: React.FC<Props> = ({ doc, meta, onBack, onAction 
 
       {/* Quiz progress card */}
       {quizStats.count > 0 && (
-        <div className="bg-white dark:bg-slate-900 rounded-[28px] border border-slate-200 dark:border-slate-800 shadow-3d-raised p-6 space-y-4">
+        <div className="bg-white dark:bg-slate-900 rounded-[18px] border border-slate-200 dark:border-slate-800 p-6 space-y-4">
           <div className="flex items-center justify-between">
             <p className="text-[9px] font-black uppercase tracking-[0.3em] text-slate-400">Lernfortschritt</p>
             <button
               onClick={() => onAction(ActiveTab.QUIZ, doc)}
-              className="text-[9px] font-black uppercase tracking-widest text-indigo-600 hover:text-indigo-700 transition-colors"
+              className="text-[9px] font-black uppercase tracking-widest hover:opacity-80 transition-opacity transition-colors"
             >
               Neues Quiz →
             </button>
@@ -218,26 +218,28 @@ const QuickStat: React.FC<{ label: string; value: number }> = ({ label, value })
 );
 
 const ActionCard: React.FC<{ action: Action; disabled: boolean; onAction: () => void }> = ({ action, disabled, onAction }) => {
-  const base = 'rounded-[24px] p-5 flex flex-col gap-3 border transition-all group cursor-pointer text-left';
+  const base = 'rounded-[18px] p-5 flex flex-col gap-3 border transition-all group cursor-pointer text-left';
 
-  let cardClass = 'bg-white dark:bg-slate-900 border-slate-200 dark:border-slate-800 hover:shadow-3d-raised';
-  if (action.accent) cardClass = 'bg-indigo-600 border-indigo-600 dark:border-indigo-600 hover:shadow-3d-deep';
-  if (action.danger) cardClass = 'bg-white dark:bg-slate-900 border-rose-200 dark:border-rose-900/40 hover:shadow-3d-raised';
+  const cardStyle: React.CSSProperties = action.accent ? { background: 'var(--card-primary)', borderColor: 'transparent' } : {};
+  let cardClass = 'bg-white dark:bg-slate-900 border-slate-200 dark:border-slate-800 hover:border-slate-300 dark:hover:border-slate-700';
+  if (action.accent) cardClass = '';
+  if (action.danger) cardClass = 'bg-white dark:bg-slate-900 border-rose-200 dark:border-rose-900/40';
 
-  let btnClass = 'mt-auto w-full py-2.5 rounded-xl text-[9px] font-black uppercase tracking-widest';
-  if (action.accent) btnClass += ' bg-white/20 hover:bg-white/30 transition-colors';
+  let btnClass = 'mt-auto w-full py-2.5 rounded-[12px] text-[9px] font-black uppercase tracking-widest';
+  if (action.accent) btnClass += ' bg-white/10 hover:bg-white/20 transition-colors text-white';
   else if (action.danger) btnClass += ' bg-rose-50 dark:bg-rose-900/20 text-rose-600 dark:text-rose-400';
-  else btnClass += ' bg-slate-50 dark:bg-slate-800 text-indigo-600 dark:text-indigo-400';
+  else btnClass += ' bg-slate-50 dark:bg-slate-800';
 
   const textColor = action.accent ? 'text-white' : 'text-slate-900 dark:text-white';
-  const subColor  = action.accent ? 'text-white/75' : 'text-slate-500 dark:text-slate-400';
-  const btnText   = action.accent ? 'text-white' : action.danger ? 'text-rose-600 dark:text-rose-400' : 'text-indigo-600 dark:text-indigo-400';
+  const subColor  = action.accent ? 'text-white/70' : 'text-slate-500 dark:text-slate-400';
+  const btnStyle: React.CSSProperties = (!action.accent && !action.danger) ? { color: 'var(--accent)' } : {};
 
   return (
     <button
       onClick={onAction}
       disabled={disabled}
       className={`${base} ${cardClass} ${disabled ? 'opacity-40 cursor-not-allowed' : 'hover:scale-[1.02] active:scale-[0.98]'}`}
+      style={cardStyle}
     >
       <div className="flex items-start justify-between">
         <EmojiImage emoji={action.emoji} size={28} className={action.accent ? 'text-white' : 'text-slate-700 dark:text-slate-300'} />
@@ -251,7 +253,7 @@ const ActionCard: React.FC<{ action: Action; disabled: boolean; onAction: () => 
         <p className={`text-sm font-black leading-snug ${textColor}`}>{action.title}</p>
         <p className={`text-[10px] mt-1 leading-relaxed ${subColor}`}>{action.desc}</p>
       </div>
-      <div className={`${btnClass} ${btnText}`}>{action.cta}</div>
+      <div className={btnClass} style={btnStyle}>{action.cta}</div>
     </button>
   );
 };

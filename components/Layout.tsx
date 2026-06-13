@@ -70,7 +70,8 @@ export const Layout: React.FC<LayoutProps> = ({
   }, []);
 
 
-  const visibleGroups = isAdmin(user?.id) ? [...NAV_GROUPS, LABOR_GROUP] : NAV_GROUPS;
+  const adminUser = isAdmin(user?.id);
+  const visibleGroups = adminUser ? [...NAV_GROUPS, LABOR_GROUP] : NAV_GROUPS;
   const allNavItems = visibleGroups.flatMap(g => g.items);
 
   const dueCardsCount = useMemo(() => {
@@ -105,8 +106,10 @@ export const Layout: React.FC<LayoutProps> = ({
     { tab: ActiveTab.EXAM,      label: 'Klausur üben',   icon: GraduationCap },
     { tab: ActiveTab.RADAR,     label: 'Meine Lücken',   icon: BarChart2 },
     { tab: ActiveTab.EXPLAINER, label: 'KI-Erklärer',    icon: Lightbulb },
-    { tab: ActiveTab.SEARCH,    label: 'Recherche',      icon: Search },
-    { tab: ActiveTab.PAPER,     label: 'Hausarbeit',     icon: FileText },
+    ...(adminUser ? [
+      { tab: ActiveTab.SEARCH,  label: 'Recherche',      icon: Search },
+      { tab: ActiveTab.PAPER,   label: 'Hausarbeit',     icon: FileText },
+    ] : []),
   ];
   const userInitial = (user?.user_metadata?.full_name || user?.email || 'U')[0].toUpperCase();
 
@@ -121,24 +124,24 @@ export const Layout: React.FC<LayoutProps> = ({
       {/* ── DESKTOP SIDEBAR (≥ 1024px) ── */}
       <aside
         className="w-72 hidden lg:flex flex-col h-screen sticky top-0 shadow-[4px_0_24px_rgba(0,0,0,0.05)] z-20"
-        style={{ background: 'var(--bg-sidebar)', borderRight: '1px solid var(--border-color)' }}
+        style={{ background: 'var(--surface)', borderRight: '1px solid var(--border)' }}
       >
         <div className="p-10 flex flex-col h-full">
           <div className="flex items-center gap-4 mb-12">
             <div
               className="w-10 h-10 rounded-xl flex items-center justify-center font-black transform rotate-3 shrink-0"
-              style={{ background: 'var(--primary)', color: 'var(--primary-text)', boxShadow: '0 4px 12px color-mix(in srgb, var(--primary) 40%, transparent)' }}
+              style={{ background: 'var(--accent)', color: '#ffffff', boxShadow: '0 4px 12px color-mix(in srgb, var(--accent) 40%, transparent)' }}
             >QW</div>
             <span className="text-xl font-black tracking-tighter text-slate-900 dark:text-white uppercase truncate flex-1">QuizWise</span>
             {streak.current > 0 && (
               <div className="flex items-center gap-1 shrink-0" title={`${streak.current} Tage Streak`}>
                 <Flame
                   className="w-4 h-4"
-                  style={{ color: streak.todayDone ? 'var(--primary)' : '#94a3b8' }}
-                  fill={streak.todayDone ? 'var(--primary)' : 'none'}
+                  style={{ color: streak.todayDone ? '#f59e0b' : '#94a3b8' }}
+                  fill={streak.todayDone ? '#f59e0b' : 'none'}
                   strokeWidth={2}
                 />
-                <span className="text-[10px] font-black" style={{ color: streak.todayDone ? 'var(--primary)' : '#94a3b8' }}>
+                <span className="text-[10px] font-black" style={{ color: streak.todayDone ? '#f59e0b' : '#94a3b8' }}>
                   {streak.current}
                 </span>
               </div>
@@ -165,7 +168,7 @@ export const Layout: React.FC<LayoutProps> = ({
                           ? ''
                           : 'text-slate-500 dark:text-slate-400 hover:bg-slate-50 dark:hover:bg-slate-800/50 hover:translate-x-0.5'
                       }`}
-                      style={isActive ? { background: 'var(--primary-soft)', color: 'var(--primary-soft-text)' } : {}}
+                      style={isActive ? { background: 'var(--accent-soft)', color: 'var(--accent)' } : {}}
                     >
                       {Icon && <Icon className="w-4 h-4 shrink-0" strokeWidth={1.75} />}
                       <div className="flex-1 min-w-0">
@@ -179,7 +182,7 @@ export const Layout: React.FC<LayoutProps> = ({
                       {item.tab === ActiveTab.CARDS && dueCardsCount > 0 && (
                         <span
                           className="text-[8px] font-black rounded-full px-1.5 py-0.5 shrink-0"
-                          style={{ background: 'var(--primary)', color: 'var(--primary-text)' }}
+                          style={{ background: 'var(--accent)', color: '#ffffff' }}
                         >{dueCardsCount}</span>
                       )}
                     </button>
@@ -194,11 +197,11 @@ export const Layout: React.FC<LayoutProps> = ({
               <>
                 <div
                   className="flex items-center gap-3 px-4 py-3 rounded-2xl"
-                  style={{ background: 'color-mix(in srgb, var(--border-color) 40%, var(--bg-sidebar))' }}
+                  style={{ background: 'color-mix(in srgb, var(--border) 40%, var(--surface))' }}
                 >
                   <div
-                    className="w-8 h-8 bg-indigo-600 rounded-xl flex items-center justify-center text-[10px] font-black shrink-0"
-                    style={{ color: 'var(--primary-text)', background: 'var(--primary)' }}
+                    className="w-8 h-8 rounded-xl flex items-center justify-center text-[10px] font-black shrink-0 text-white"
+                    style={{ background: 'var(--accent)' }}
                   >{userInitial}</div>
                   <div className="flex-1 min-w-0">
                     <p className="text-[10px] font-black dark:text-white truncate">{user.user_metadata?.full_name || 'Nutzer'}</p>
@@ -211,7 +214,7 @@ export const Layout: React.FC<LayoutProps> = ({
                 <button
                   onClick={onUpgradeClick}
                   className="w-full flex items-center justify-center gap-2 px-4 py-2.5 rounded-2xl text-[10px] font-black uppercase tracking-widest transition-all hover:scale-[1.02] active:scale-95"
-                  style={{ background: 'color-mix(in srgb, var(--primary) 15%, transparent)', color: 'var(--primary)', border: '1px solid color-mix(in srgb, var(--primary) 30%, transparent)' }}
+                  style={{ background: 'color-mix(in srgb, var(--accent) 15%, transparent)', color: 'var(--accent)', border: '1px solid color-mix(in srgb, var(--accent) 30%, transparent)' }}
                 >
                   <Zap className="w-3.5 h-3.5" strokeWidth={2} />
                   Upgrade zu Pro
@@ -221,7 +224,7 @@ export const Layout: React.FC<LayoutProps> = ({
               <button
                 onClick={onLoginClick}
                 className="w-full flex items-center justify-center gap-2 px-4 py-3 rounded-2xl text-[10px] font-black uppercase tracking-widest transition-all hover:scale-[1.02] active:scale-95"
-                style={{ background: 'var(--primary)', color: 'var(--primary-text)' }}
+                style={{ background: 'var(--accent)', color: '#ffffff' }}
               >
                 <LogIn className="w-4 h-4" strokeWidth={1.75} />
                 Einloggen / Registrieren
@@ -229,11 +232,11 @@ export const Layout: React.FC<LayoutProps> = ({
             )}
           </div>
 
-          <div className="mt-4 pt-6 space-y-2" style={{ borderTop: '1px solid var(--border-color)' }}>
+          <div className="mt-4 pt-6 space-y-2" style={{ borderTop: '1px solid var(--border)' }}>
             <button
               onClick={onSettingsClick}
-              className="w-full flex items-center px-4 py-3 rounded-xl text-[10px] font-black uppercase text-slate-500 dark:text-slate-400 hover:text-indigo-600 dark:hover:text-indigo-400 transition-all active:scale-95 group"
-              style={{ background: 'color-mix(in srgb, var(--border-color) 40%, var(--bg-sidebar))' }}
+              className="w-full flex items-center px-4 py-3 rounded-xl text-[10px] font-black uppercase text-slate-500 dark:text-slate-400 hover:text-slate-700 dark:hover:text-slate-200 transition-all active:scale-95 group"
+              style={{ background: 'color-mix(in srgb, var(--border) 40%, var(--surface))' }}
             >
               <span className="group-hover:translate-x-1 transition-transform flex items-center gap-2">
                 <Settings className="w-4 h-4" strokeWidth={1.75} />
@@ -258,13 +261,13 @@ export const Layout: React.FC<LayoutProps> = ({
       {/* ── TABLET SIDEBAR (768px – 1023px) ── */}
       <aside
         className="hidden md:flex lg:hidden flex-col w-[72px] h-screen sticky top-0 z-20"
-        style={{ background: 'var(--bg-sidebar)', borderRight: '1px solid var(--border-color)' }}
+        style={{ background: 'var(--surface)', borderRight: '1px solid var(--border)' }}
       >
         {/* Scrollable top: logo + all nav items */}
         <div className="flex-1 overflow-y-auto scrollbar-hide flex flex-col items-center gap-1 pt-4 pb-2">
           <div
             className="w-10 h-10 rounded-xl flex items-center justify-center font-black text-[10px] mb-5 shrink-0 transform rotate-3"
-            style={{ background: 'var(--primary)', color: 'var(--primary-text)', boxShadow: '0 4px 12px color-mix(in srgb, var(--primary) 40%, transparent)' }}
+            style={{ background: 'var(--accent)', color: '#ffffff', boxShadow: '0 4px 12px color-mix(in srgb, var(--accent) 40%, transparent)' }}
           >QW</div>
 
           {allNavItems.map(item => {
@@ -278,7 +281,7 @@ export const Layout: React.FC<LayoutProps> = ({
                 className={`w-12 h-12 flex flex-col items-center justify-center gap-[3px] rounded-xl transition-all duration-200 active:scale-90 shrink-0 ${
                   isActive ? '' : 'text-slate-500 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800'
                 }`}
-                style={isActive ? { background: 'var(--primary)', color: 'var(--primary-text)' } : {}}
+                style={isActive ? { background: 'var(--accent)', color: '#ffffff' } : {}}
               >
                 {Icon && <Icon className="w-[18px] h-[18px]" strokeWidth={1.75} />}
                 <span className="text-[7px] font-black uppercase tracking-wide leading-none">{item.label.slice(0, 6)}</span>
@@ -290,7 +293,7 @@ export const Layout: React.FC<LayoutProps> = ({
         {/* Fixed bottom: settings + user */}
         <div
           className="shrink-0 flex flex-col items-center gap-2 py-3"
-          style={{ borderTop: '1px solid var(--border-color)' }}
+          style={{ borderTop: '1px solid var(--border)' }}
         >
           <button
             onClick={onSettingsClick}
@@ -304,14 +307,14 @@ export const Layout: React.FC<LayoutProps> = ({
               title={`${user.email} – Abmelden`}
               onClick={onLogout}
               className="w-10 h-10 rounded-xl flex items-center justify-center text-[11px] font-black transition-all hover:scale-105 active:scale-90"
-              style={{ background: 'var(--primary)', color: 'var(--primary-text)' }}
+              style={{ background: 'var(--accent)', color: '#ffffff' }}
             >{userInitial}</button>
           ) : (
             <button
               onClick={onLoginClick}
               title="Einloggen"
               className="w-12 h-12 flex items-center justify-center rounded-xl transition-all active:scale-95"
-              style={{ background: 'var(--primary)', color: 'var(--primary-text)' }}
+              style={{ background: 'var(--accent)', color: '#ffffff' }}
             >
               <LogIn className="w-[18px] h-[18px]" strokeWidth={1.75} />
             </button>
@@ -322,12 +325,12 @@ export const Layout: React.FC<LayoutProps> = ({
       {/* ── MOBILE TOPBAR (< 768px) ── */}
       <header
         className="md:hidden fixed top-0 inset-x-0 z-30 h-14 flex items-center justify-between px-4 backdrop-blur-xl"
-        style={{ background: 'color-mix(in srgb, var(--bg-sidebar) 95%, transparent)', borderBottom: '1px solid var(--border-color)' }}
+        style={{ background: 'color-mix(in srgb, var(--surface) 95%, transparent)', borderBottom: '1px solid var(--border)' }}
       >
         <div className="flex items-center gap-2 shrink-0">
           <div
             className="w-8 h-8 rounded-xl flex items-center justify-center font-black text-[9px] transform rotate-3 shrink-0"
-            style={{ background: 'var(--primary)', color: 'var(--primary-text)' }}
+            style={{ background: 'var(--accent)', color: '#ffffff' }}
           >QW</div>
           <span className="text-[11px] font-black uppercase tracking-widest text-slate-900 dark:text-white">QuizWise</span>
         </div>
@@ -341,11 +344,11 @@ export const Layout: React.FC<LayoutProps> = ({
             <div className="flex items-center gap-0.5 px-2">
               <Flame
                 className="w-4 h-4"
-                style={{ color: streak.todayDone ? 'var(--primary)' : '#94a3b8' }}
-                fill={streak.todayDone ? 'var(--primary)' : 'none'}
+                style={{ color: streak.todayDone ? 'var(--accent)' : '#94a3b8' }}
+                fill={streak.todayDone ? 'var(--accent)' : 'none'}
                 strokeWidth={2}
               />
-              <span className="text-[10px] font-black" style={{ color: streak.todayDone ? 'var(--primary)' : '#94a3b8' }}>
+              <span className="text-[10px] font-black" style={{ color: streak.todayDone ? 'var(--accent)' : '#94a3b8' }}>
                 {streak.current}
               </span>
             </div>
@@ -360,13 +363,13 @@ export const Layout: React.FC<LayoutProps> = ({
             <button
               onClick={() => setIsMobileMenuOpen(true)}
               className="w-9 h-9 rounded-xl flex items-center justify-center text-[10px] font-black transition-all active:scale-90"
-              style={{ background: 'var(--primary)', color: 'var(--primary-text)' }}
+              style={{ background: 'var(--accent)', color: '#ffffff' }}
             >{userInitial}</button>
           ) : (
             <button
               onClick={onLoginClick}
               className="h-9 px-3 flex items-center gap-1.5 rounded-xl text-[9px] font-black uppercase tracking-widest transition-all active:scale-95"
-              style={{ background: 'var(--primary)', color: 'var(--primary-text)' }}
+              style={{ background: 'var(--accent)', color: '#ffffff' }}
             >
               <LogIn className="w-[14px] h-[14px]" strokeWidth={1.75} />
               Login
@@ -378,7 +381,7 @@ export const Layout: React.FC<LayoutProps> = ({
       {/* ── MOBILE BOTTOM NAV (< 768px) ── */}
       <nav
         className="md:hidden fixed bottom-0 inset-x-0 z-[60] flex justify-around items-center pt-2 pb-[max(0.5rem,env(safe-area-inset-bottom))] backdrop-blur-xl shadow-2xl"
-        style={{ background: 'color-mix(in srgb, var(--bg-sidebar) 95%, transparent)', borderTop: '1px solid var(--border-color)' }}
+        style={{ background: 'color-mix(in srgb, var(--surface) 95%, transparent)', borderTop: '1px solid var(--border)' }}
       >
         {mobileBottomTabs.map(item => {
           const isActive = activeTab === item.tab;
@@ -388,7 +391,7 @@ export const Layout: React.FC<LayoutProps> = ({
               key={item.tab}
               onClick={() => handleMobileTabChange(item.tab)}
               className="flex flex-col items-center gap-1 min-w-[3rem] px-2 py-1 rounded-xl transition-all active:scale-90"
-              style={isActive ? { color: 'var(--primary)' } : { color: 'rgb(148 163 184)' }}
+              style={isActive ? { color: 'var(--accent)' } : { color: 'rgb(148 163 184)' }}
             >
               {Icon && <Icon className="w-6 h-6" strokeWidth={1.75} />}
               <span className="text-[8px] font-black uppercase tracking-widest">{item.short}</span>
@@ -398,7 +401,7 @@ export const Layout: React.FC<LayoutProps> = ({
         <button
           onClick={() => setIsMobileMenuOpen(v => !v)}
           className="flex flex-col items-center gap-1 min-w-[3rem] px-2 py-1 rounded-xl transition-all active:scale-90"
-          style={isMobileMenuOpen ? { color: 'var(--primary)' } : { color: 'rgb(148 163 184)' }}
+          style={isMobileMenuOpen ? { color: 'var(--accent)' } : { color: 'rgb(148 163 184)' }}
         >
           {isMobileMenuOpen
             ? <X className="w-6 h-6" strokeWidth={1.75} />
@@ -415,7 +418,7 @@ export const Layout: React.FC<LayoutProps> = ({
         >
           <div
             className="absolute bottom-[max(4.5rem,calc(env(safe-area-inset-bottom)+4rem))] inset-x-0 rounded-t-[28px] shadow-2xl"
-            style={{ background: 'var(--bg-sidebar)', border: '1px solid var(--border-color)' }}
+            style={{ background: 'var(--surface)', border: '1px solid var(--border)' }}
             onClick={e => e.stopPropagation()}
           >
             <div className="pt-3 flex justify-center">
@@ -434,8 +437,8 @@ export const Layout: React.FC<LayoutProps> = ({
                       className="flex items-center gap-3 p-4 rounded-2xl border transition-all active:scale-95 text-left"
                       style={
                         isActive
-                          ? { background: 'var(--primary)', color: 'var(--primary-text)', borderColor: 'var(--primary)' }
-                          : { background: 'color-mix(in srgb, var(--border-color) 40%, var(--bg-sidebar))', borderColor: 'var(--border-color)' }
+                          ? { background: 'var(--accent)', color: '#ffffff', borderColor: 'var(--accent)' }
+                          : { background: 'color-mix(in srgb, var(--border) 40%, var(--surface))', borderColor: 'var(--border)' }
                       }
                     >
                       <item.icon className="w-5 h-5 shrink-0" strokeWidth={1.75} />
@@ -445,15 +448,15 @@ export const Layout: React.FC<LayoutProps> = ({
                 })}
               </div>
 
-              <div className="h-px" style={{ background: 'var(--border-color)' }} />
+              <div className="h-px" style={{ background: 'var(--border)' }} />
 
               {/* API Key */}
               <button
                 onClick={() => { setIsMobileMenuOpen(false); setShowApiSettings(true); }}
                 className="w-full flex items-center justify-between px-5 py-4 rounded-2xl border transition-all active:scale-95"
                 style={{
-                  borderColor: apiKeySet ? 'var(--border-color)' : '#f59e0b',
-                  background: apiKeySet ? 'color-mix(in srgb, var(--border-color) 40%, var(--bg-sidebar))' : 'rgba(245,158,11,0.08)',
+                  borderColor: apiKeySet ? 'var(--border)' : '#f59e0b',
+                  background: apiKeySet ? 'color-mix(in srgb, var(--border) 40%, var(--surface))' : 'rgba(245,158,11,0.08)',
                   color: apiKeySet ? 'inherit' : '#f59e0b',
                 }}
               >
@@ -468,7 +471,7 @@ export const Layout: React.FC<LayoutProps> = ({
               <button
                 onClick={onToggleTheme}
                 className="w-full flex items-center justify-between px-5 py-4 rounded-2xl border transition-all active:scale-95"
-                style={{ background: 'color-mix(in srgb, var(--border-color) 40%, var(--bg-sidebar))', borderColor: 'var(--border-color)' }}
+                style={{ background: 'color-mix(in srgb, var(--border) 40%, var(--surface))', borderColor: 'var(--border)' }}
               >
                 <span className="text-[10px] font-black uppercase tracking-wider">
                   {isDark ? 'Tagmodus' : 'Nachtmodus'}
@@ -483,7 +486,7 @@ export const Layout: React.FC<LayoutProps> = ({
                 <button
                   onClick={() => { onLogout?.(); setIsMobileMenuOpen(false); }}
                   className="w-full flex items-center justify-center gap-2 px-5 py-4 rounded-2xl text-[10px] font-black uppercase tracking-widest text-rose-500 transition-all active:scale-95"
-                  style={{ background: 'color-mix(in srgb, #f43f5e 8%, var(--bg-sidebar))', border: '1px solid color-mix(in srgb, #f43f5e 20%, transparent)' }}
+                  style={{ background: 'color-mix(in srgb, #f43f5e 8%, var(--surface))', border: '1px solid color-mix(in srgb, #f43f5e 20%, transparent)' }}
                 >
                   <LogOut className="w-4 h-4" strokeWidth={1.75} />
                   Abmelden
@@ -492,7 +495,7 @@ export const Layout: React.FC<LayoutProps> = ({
                 <button
                   onClick={() => { onLoginClick?.(); setIsMobileMenuOpen(false); }}
                   className="w-full flex items-center justify-center gap-2 px-5 py-4 rounded-2xl text-[10px] font-black uppercase tracking-widest transition-all active:scale-95"
-                  style={{ background: 'var(--primary)', color: 'var(--primary-text)' }}
+                  style={{ background: 'var(--accent)', color: '#ffffff' }}
                 >
                   <LogIn className="w-4 h-4" strokeWidth={1.75} />
                   Einloggen / Registrieren
@@ -517,8 +520,8 @@ export const Layout: React.FC<LayoutProps> = ({
       )}
 
       {/* ── MAIN CONTENT ── */}
-      <main className="flex-grow overflow-y-auto w-full relative pt-16 pb-24 px-4 sm:px-6 md:pt-8 md:pb-8 md:px-8 lg:pt-16 lg:pb-16 lg:px-16">
-        <div className="max-w-6xl mx-auto relative z-10">{children}</div>
+      <main className="flex-grow overflow-y-auto w-full relative pt-16 pb-24 md:pt-8 md:pb-8">
+        {children}
       </main>
 
       {showApiSettings && (
@@ -534,9 +537,9 @@ export const Layout: React.FC<LayoutProps> = ({
           onClick={() => setUxHelperOpen(true)}
           title="App-Assistent"
           className="fixed bottom-24 right-4 md:bottom-6 md:right-6 z-40 w-12 h-12 rounded-2xl flex items-center justify-center shadow-lg transition-all hover:scale-105 active:scale-95"
-          style={{ background: 'var(--primary)', color: 'var(--primary-text)' }}
+          style={{ background: 'var(--accent)', color: '#ffffff' }}
         >
-          <Bot size={20} style={{ color: 'var(--primary-text)' }} />
+          <Bot size={20} style={{ color: '#ffffff' }} />
         </button>
       )}
 

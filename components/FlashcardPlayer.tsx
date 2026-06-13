@@ -121,7 +121,7 @@ export const FlashcardPlayer: React.FC<FlashcardPlayerProps> = ({ cards, onRevie
           {showAnswer && (
             <div className="space-y-16 animate-in fade-in zoom-in-95 duration-300 border-t border-slate-100 dark:border-slate-800 pt-16 px-8">
               <div className="text-center">
-                <p className="text-3xl md:text-4xl font-bold leading-relaxed" style={{ color: 'var(--primary)' }}>
+                <p className="text-3xl md:text-4xl font-bold leading-relaxed" style={{ color: 'var(--accent)' }}>
                   {currentCard.back}
                 </p>
               </div>
@@ -137,7 +137,8 @@ export const FlashcardPlayer: React.FC<FlashcardPlayerProps> = ({ cards, onRevie
           {!showAnswer ? (
             <button
               onClick={() => setShowAnswer(true)}
-              className="bg-slate-900 dark:bg-slate-700 text-white px-20 py-6 rounded-2xl font-black uppercase tracking-[0.3em] text-sm shadow-2xl hover:scale-105 active:scale-95 transition-all w-full md:w-auto min-w-[350px]"
+              className="text-white px-20 py-6 rounded-[16px] font-black uppercase tracking-[0.3em] text-sm hover:scale-105 active:scale-95 transition-all w-full md:w-auto min-w-[350px]"
+            style={{ background: 'var(--card-primary)' }}
             >
               Antwort anzeigen
             </button>
@@ -168,7 +169,7 @@ export const FlashcardPlayer: React.FC<FlashcardPlayerProps> = ({ cards, onRevie
           <div className="w-full h-1.5 bg-slate-100 dark:bg-slate-800 rounded-full overflow-hidden">
             <div 
               className="h-full transition-all duration-500"
-              style={{ width: `${progress}%`, background: 'var(--primary)' }}
+              style={{ width: `${progress}%`, background: 'var(--accent)' }}
             />
           </div>
         </div>

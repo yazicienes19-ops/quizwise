@@ -3,7 +3,6 @@ import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { ProcessedDocument, Collection, RecallChallenge, RecallEvaluation } from '../types';
 import type { GenerationSource } from '../services/geminiService';
 import { generateRecallChallenge, evaluateRecallResponse } from '../services/geminiService';
-import { GeneratedImage } from './GeneratedImage';
 import { SourceSelector } from './SourceSelector';
 import { toast } from '../services/toast';
 
@@ -129,27 +128,27 @@ export const ActiveRecall: React.FC<ActiveRecallProps> = ({
   };
 
   return (
-    <div className="max-w-4xl mx-auto py-6 lg:py-10 px-4 space-y-8 lg:space-y-10 animate-in fade-in duration-700 pb-32">
+    <div className="max-w-[860px] mx-auto py-6 px-4 space-y-5 animate-in fade-in duration-500 pb-20">
 
       {/* Feynman First-Visit-Intro */}
       {showFeynmanIntro && (
-        <div className="relative rounded-[24px] p-6 animate-in slide-in-from-top-4 duration-500" style={{ background: 'color-mix(in srgb, var(--primary) 10%, var(--bg-sidebar))', border: '1px solid color-mix(in srgb, var(--primary) 30%, transparent)' }}>
+        <div className="relative rounded-[18px] p-6 animate-in slide-in-from-top-4 duration-500" style={{ background: 'var(--accent-soft)', border: '1px solid var(--accent)', borderLeftWidth: 4 }}>
           <button
             onClick={dismissFeynmanIntro}
             className="absolute top-4 right-4 text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 transition-colors font-black text-lg leading-none"
             aria-label="Schließen"
           >×</button>
-          <p className="text-[9px] font-black uppercase tracking-widest mb-2" style={{ color: 'var(--primary)' }}>Feynman-Methode</p>
+          <p className="text-[9px] font-black uppercase tracking-widest mb-2" style={{ color: 'var(--accent)' }}>Feynman-Methode</p>
           <p className="text-sm font-medium dark:text-white leading-relaxed">
             Du lernst am besten, wenn du erklärst: Die Feynman-Methode besagt, dass du ein Thema erst wirklich verstanden hast, wenn du es einfach erklären kannst.
           </p>
-          <p className="text-[11px] font-black mt-3 italic" style={{ color: 'var(--primary)' }}>
+          <p className="text-[11px] font-black mt-3 italic" style={{ color: 'var(--accent)' }}>
             Erkläre es so, dass es ein Zwölfjähriger versteht.
           </p>
           <button
             onClick={dismissFeynmanIntro}
-            className="mt-4 px-4 py-2 rounded-[14px] text-[10px] font-black uppercase tracking-widest transition-all hover:scale-105"
-            style={{ background: 'var(--primary)', color: 'var(--primary-text)' }}
+            className="mt-4 px-4 py-2 rounded-[14px] text-[10px] font-black uppercase tracking-widest text-white transition-opacity hover:opacity-90"
+            style={{ background: 'var(--accent)' }}
           >
             Verstanden — loslegen
           </button>
@@ -157,21 +156,18 @@ export const ActiveRecall: React.FC<ActiveRecallProps> = ({
       )}
 
       {/* Header */}
-      <div className="text-center space-y-3">
-        <h1 className="text-4xl lg:text-7xl font-black text-slate-900 dark:text-white tracking-tighter flex items-center justify-center gap-3">
-          Active <span className="text-indigo-600">Recall</span>
-          <GeneratedImage prompt="Human brain active recall, academic illustration" className="w-8 h-8 lg:w-12 lg:h-12 rounded-xl" />
-        </h1>
-        <p className="text-base text-slate-500 dark:text-slate-400 font-medium opacity-80">Erkläre komplexe Konzepte in eigenen Worten</p>
+      <div>
+        <h1 className="text-[22px] font-extrabold text-slate-900 dark:text-white">Active Recall</h1>
+        <p className="text-[10px] font-black uppercase tracking-widest text-slate-400 mt-0.5">Feynman-Methode · Erkläre komplexe Konzepte in eigenen Worten</p>
       </div>
 
       {/* ── Phase 1: Quellenauswahl + Start ── */}
       {!challenge ? (
         <div className="space-y-6">
           {activeSource ? (
-            <div className="rounded-[32px] p-6 flex items-center justify-between shadow-3d-raised" style={{ background: 'var(--bg-sidebar)', border: '1px solid var(--border-color)' }}>
+            <div className="rounded-[18px] p-5 flex items-center justify-between border" style={{ background: 'var(--surface)', borderColor: 'var(--border)' }}>
               <div className="flex items-center gap-3">
-                <div className="w-3 h-3 rounded-full bg-indigo-500 shrink-0" />
+                <div className="w-3 h-3 rounded-full shrink-0" style={{ background: 'var(--accent)' }} />
                 <div>
                   <p className="text-[9px] font-black uppercase text-slate-400 tracking-widest">Aktive Quelle</p>
                   <p className="text-sm font-black dark:text-white truncate max-w-xs">{activeSourceName}</p>
@@ -198,20 +194,15 @@ export const ActiveRecall: React.FC<ActiveRecallProps> = ({
             <button
               onClick={startNewChallenge}
               disabled={isLoading || !activeSource}
-              className="w-full sm:w-auto px-8 lg:px-10 py-4 lg:py-5 rounded-2xl lg:rounded-3xl font-black uppercase tracking-[0.2em] text-[10px] lg:text-[11px] shadow-3d-deep hover:scale-105 active:scale-95 transition-all disabled:opacity-50"
-              style={{ background: 'var(--primary)', color: 'var(--primary-text)' }}
+              className="w-full sm:w-auto px-10 py-4 rounded-[16px] font-black uppercase tracking-widest text-[11px] text-white transition-opacity hover:opacity-90 disabled:opacity-40 disabled:cursor-not-allowed"
+              style={{ background: 'var(--card-primary)' }}
             >
               {isLoading ? (
-                <div className="flex items-center justify-center gap-2">
-                  <div className="w-3.5 h-3.5 border-2 border-white/40 border-t-white rounded-full animate-spin"></div>
+                <span className="flex items-center justify-center gap-2">
+                  <span className="w-4 h-4 border-2 border-slate-400 border-t-white rounded-full animate-spin" />
                   Frage wird generiert...
-                </div>
-              ) : (
-                <span className="flex items-center gap-2">
-                  Drill starten
-                  <GeneratedImage prompt="Sparkles icon, minimalist" className="w-4 h-4 rounded-full" />
                 </span>
-              )}
+              ) : 'Drill starten →'}
             </button>
           </div>
         </div>
@@ -223,7 +214,7 @@ export const ActiveRecall: React.FC<ActiveRecallProps> = ({
           {/* Quelle + Abbrechen */}
           <div className="flex items-center justify-between px-1">
             <div className="flex items-center gap-2">
-              <div className="w-2 h-2 rounded-full bg-indigo-500" />
+              <div className="w-2 h-2 rounded-full" style={{ background: 'var(--accent)' }} />
               <span className="text-[10px] font-black uppercase text-slate-400 tracking-widest truncate max-w-[200px]">{activeSourceName}</span>
             </div>
             <button
@@ -235,10 +226,9 @@ export const ActiveRecall: React.FC<ActiveRecallProps> = ({
           </div>
 
           {/* Frage */}
-          <div className="bg-indigo-600 p-8 lg:p-12 rounded-[32px] lg:rounded-[40px] shadow-3d-deep relative overflow-hidden border border-indigo-500">
-            <div className="absolute top-0 right-0 w-32 h-32 bg-white/5 blur-3xl rounded-full translate-x-12 -translate-y-12" />
-            <h3 className="text-[9px] lg:text-[10px] font-black uppercase tracking-[0.3em] mb-4" style={{ color: 'var(--primary-text)', opacity: 0.6 }}>Deine Herausforderung</h3>
-            <p className="text-lg lg:text-2xl font-bold leading-snug tracking-tight" style={{ color: 'var(--primary-text)' }}>{challenge.question}</p>
+          <div className="p-8 rounded-[18px] border" style={{ background: 'var(--card-primary)', borderColor: 'rgba(255,255,255,0.08)' }}>
+            <h3 className="text-[9px] font-black uppercase tracking-[0.3em] mb-4 text-slate-400">Deine Herausforderung</h3>
+            <p className="text-lg lg:text-2xl font-bold leading-snug tracking-tight text-white">{challenge.question}</p>
           </div>
 
           {/* Antwort-Textarea */}
@@ -250,8 +240,8 @@ export const ActiveRecall: React.FC<ActiveRecallProps> = ({
                 onChange={e => setUserAnswer(e.target.value)}
                 placeholder="Formuliere deine Erklärung hier... oder diktiere mit dem Mikrofon →"
                 disabled={isEvaluating}
-                className="w-full h-64 lg:h-72 p-6 lg:p-10 rounded-[32px] lg:rounded-[40px] shadow-3d-raised outline-none focus:border-indigo-400 transition-all text-sm lg:text-base font-medium leading-relaxed disabled:opacity-60"
-                style={{ background: 'var(--bg-sidebar)', border: isListening ? '2px solid var(--primary)' : '1px solid var(--border-color)', color: 'var(--text-main)' }}
+                className="w-full h-64 lg:h-72 p-6 rounded-[18px] outline-none transition-all text-sm font-medium leading-relaxed disabled:opacity-60 dark:text-white"
+                style={{ background: 'var(--surface)', border: isListening ? `2px solid var(--accent)` : `1px solid var(--border)`, color: 'var(--ink)' }}
               />
               {hasSpeechApi ? (
                 <button
@@ -284,7 +274,7 @@ export const ActiveRecall: React.FC<ActiveRecallProps> = ({
               )}
             </div>
             {isListening && (
-              <p className="text-[10px] font-black uppercase tracking-widest text-center animate-pulse" style={{ color: 'var(--primary)' }}>
+              <p className="text-[10px] font-black uppercase tracking-widest text-center animate-pulse" style={{ color: 'var(--accent)' }}>
                 Aufnahme läuft — sprich jetzt auf Deutsch
               </p>
             )}
@@ -295,27 +285,22 @@ export const ActiveRecall: React.FC<ActiveRecallProps> = ({
               <button
                 onClick={handleEvaluate}
                 disabled={isEvaluating || userAnswer.trim().length < 10}
-                className="w-full sm:w-auto bg-indigo-600 px-8 lg:px-10 py-3.5 rounded-xl lg:rounded-2xl font-black uppercase text-[10px] tracking-widest shadow-lg hover:scale-105 active:scale-95 transition-all disabled:opacity-30 order-1 sm:order-2 flex items-center justify-center gap-2"
-                style={{ color: 'var(--primary-text)' }}
+                className="w-full sm:w-auto px-8 py-3.5 rounded-[16px] font-black uppercase text-[10px] tracking-widest text-white transition-opacity hover:opacity-90 disabled:opacity-30 disabled:cursor-not-allowed order-1 sm:order-2 flex items-center justify-center gap-2"
+                style={{ background: 'var(--accent)' }}
               >
                 {isEvaluating ? (
                   <>
-                    <div className="w-3.5 h-3.5 border-2 border-white/40 border-t-white rounded-full animate-spin" />
+                    <span className="w-3.5 h-3.5 border-2 border-white/40 border-t-white rounded-full animate-spin" />
                     KI analysiert...
                   </>
-                ) : (
-                  <>
-                    Antwort abgeben
-                    <GeneratedImage prompt="Checkmark icon, minimalist" className="w-4 h-4 rounded-full" />
-                  </>
-                )}
+                ) : 'Antwort abgeben →'}
               </button>
             </div>
           </div>
 
           {/* Lade-Overlay während Bewertung */}
           {isEvaluating && (
-            <div className="rounded-[32px] p-6 text-center animate-in fade-in duration-300" style={{ background: 'var(--bg-sidebar)', border: '1px solid var(--border-color)' }}>
+            <div className="rounded-[18px] p-6 text-center animate-in fade-in duration-300 border" style={{ background: 'var(--surface)', borderColor: 'var(--border)' }}>
               <p className="text-[10px] font-black uppercase text-slate-400 tracking-widest">KI liest dein Dokument und bewertet deine Antwort...</p>
             </div>
           )}
@@ -327,24 +312,24 @@ export const ActiveRecall: React.FC<ActiveRecallProps> = ({
 
           {/* Score + Feedback */}
           <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-            <div className="p-8 lg:p-10 rounded-[32px] lg:rounded-[40px] shadow-3d-raised flex flex-col items-center justify-center text-center" style={{ background: 'var(--bg-sidebar)', border: '1px solid var(--border-color)' }}>
+            <div className="p-8 rounded-[18px] border flex flex-col items-center justify-center text-center" style={{ background: 'var(--surface)', borderColor: 'var(--border)' }}>
               <span className="text-[9px] font-black uppercase text-slate-400 tracking-widest mb-2">Abruf-Qualität</span>
-              <span className={`text-5xl lg:text-6xl font-black ${evaluation.score >= 80 ? 'text-emerald-500' : evaluation.score >= 50 ? 'text-indigo-500' : 'text-rose-500'}`}>
+              <span className="text-5xl lg:text-6xl font-black" style={{ color: evaluation.score >= 80 ? '#10b981' : evaluation.score >= 50 ? 'var(--accent)' : '#f43f5e' }}>
                 {evaluation.score}%
               </span>
               <span className="text-[9px] font-black uppercase tracking-widest mt-2 text-slate-400">
                 {evaluation.score >= 86 ? 'Exzellent' : evaluation.score >= 61 ? 'Gut' : evaluation.score >= 31 ? 'Grundverständnis' : 'Wiederholen'}
               </span>
             </div>
-            <div className="md:col-span-2 bg-indigo-600 p-8 lg:p-10 rounded-[32px] lg:rounded-[40px] shadow-3d-deep flex flex-col justify-center border border-indigo-500">
-              <h3 className="text-[9px] font-black uppercase tracking-[0.3em] mb-3" style={{ color: 'var(--primary-text)', opacity: 0.6 }}>KI-Analyse</h3>
-              <p className="text-base lg:text-lg font-medium leading-relaxed italic" style={{ color: 'var(--primary-text)' }}>"{evaluation.feedback}"</p>
+            <div className="md:col-span-2 p-8 rounded-[18px] border flex flex-col justify-center" style={{ background: 'var(--card-primary)', borderColor: 'rgba(255,255,255,0.08)' }}>
+              <h3 className="text-[9px] font-black uppercase tracking-[0.3em] mb-3 text-slate-400">KI-Analyse</h3>
+              <p className="text-base lg:text-lg font-medium leading-relaxed italic text-white">"{evaluation.feedback}"</p>
             </div>
           </div>
 
           {/* Stärken + Lücken */}
           <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-            <div className="p-8 rounded-[32px]" style={{ background: 'var(--bg-sidebar)', border: '1px solid var(--border-color)' }}>
+            <div className="p-6 rounded-[18px] border" style={{ background: 'var(--surface)', borderColor: 'var(--border)' }}>
               <h4 className="text-[9px] font-black uppercase text-emerald-500 tracking-widest mb-4 flex items-center gap-2">
                 <span className="w-1.5 h-1.5 rounded-full bg-emerald-500" />
                 Gute Ansätze
@@ -362,7 +347,7 @@ export const ActiveRecall: React.FC<ActiveRecallProps> = ({
                 <p className="text-xs text-slate-400 italic">Noch keine klaren Stärken identifiziert — versuch es ausführlicher.</p>
               )}
             </div>
-            <div className="p-8 rounded-[32px]" style={{ background: 'var(--bg-sidebar)', border: '1px solid var(--border-color)' }}>
+            <div className="p-6 rounded-[18px] border" style={{ background: 'var(--surface)', borderColor: 'var(--border)' }}>
               <h4 className="text-[9px] font-black uppercase text-rose-500 tracking-widest mb-4 flex items-center gap-2">
                 <span className="w-1.5 h-1.5 rounded-full bg-rose-500" />
                 Lücken identifiziert
@@ -383,24 +368,23 @@ export const ActiveRecall: React.FC<ActiveRecallProps> = ({
           </div>
 
           {/* Lernempfehlung + Aktionen */}
-          <div className="p-8 lg:p-10 rounded-[32px] lg:rounded-[40px] space-y-6" style={{ background: 'var(--bg-sidebar)', border: '1px dashed var(--border-color)' }}>
+          <div className="p-6 rounded-[18px] space-y-6" style={{ background: 'var(--surface)', border: '1px dashed var(--border)' }}>
             <div className="space-y-1.5 text-center">
-              <h3 className="text-[9px] font-black uppercase text-indigo-500 tracking-[0.3em]">Lernempfehlung</h3>
+              <h3 className="text-[9px] font-black uppercase tracking-[0.3em]" style={{ color: 'var(--accent)' }}>Lernempfehlung</h3>
               <p className="text-sm lg:text-base font-bold dark:text-white leading-relaxed max-w-2xl mx-auto">{evaluation.suggestedReview}</p>
             </div>
             <div className="flex flex-col sm:flex-row gap-3 justify-center">
               <button
                 onClick={() => { setChallenge(null); setEvaluation(null); }}
-                className="bg-indigo-600 px-8 py-3 rounded-xl font-black uppercase text-[10px] tracking-widest shadow-lg hover:scale-105 transition-all flex items-center justify-center gap-2"
-                style={{ color: 'var(--primary-text)' }}
+                className="px-8 py-3 rounded-[14px] font-black uppercase text-[10px] tracking-widest text-white transition-opacity hover:opacity-90 flex items-center justify-center gap-2"
+                style={{ background: 'var(--accent)' }}
               >
-                Nächster Drill
-                <GeneratedImage prompt="Arrow right icon, minimalist" className="w-4 h-4 rounded-full" />
+                Nächster Drill →
               </button>
               <button
                 onClick={handleCancel}
-                className="px-8 py-3 rounded-xl font-black uppercase text-[10px] tracking-widest transition-all flex items-center justify-center gap-2 text-slate-500 hover:text-slate-700 dark:hover:text-slate-300"
-                style={{ border: '1px solid var(--border-color)' }}
+                className="px-8 py-3 rounded-[14px] font-black uppercase text-[10px] tracking-widest transition-colors text-slate-500 hover:text-slate-700 dark:hover:text-slate-300 flex items-center justify-center gap-2"
+                style={{ border: '1px solid var(--border)' }}
               >
                 Anderes Dokument
               </button>
