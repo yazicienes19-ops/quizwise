@@ -63,7 +63,7 @@ const ChartTooltip: React.FC<{ active?: boolean; payload?: any[]; label?: number
   return (
     <div style={{
       background: 'var(--card)',
-      border: '1px solid var(--border)',
+      border: '1px solid var(--border-color)',
       borderRadius: 14,
       padding: '10px 14px',
       boxShadow: '0 8px 32px rgba(0,0,0,0.14)',
@@ -118,9 +118,9 @@ const ProgressChart: React.FC<{
         height: 200, display: 'flex', flexDirection: 'column',
         alignItems: 'center', justifyContent: 'center',
         background: 'var(--bg-sidebar)', borderRadius: 16,
-        border: '1px solid var(--border)',
+        border: '1px solid var(--border-color)',
       }}>
-        <p style={{ fontSize: 36, fontWeight: 900, color: 'var(--accent)' }}>{ankiAvg}%</p>
+        <p style={{ fontSize: 36, fontWeight: 900, color: 'var(--primary)' }}>{ankiAvg}%</p>
         <p style={{ fontSize: 9, fontWeight: 800, textTransform: 'uppercase', letterSpacing: '0.12em', color: 'var(--mute)', marginTop: 4 }}>
           Anki Ø · Kein Zeitverlauf verfügbar
         </p>
@@ -133,11 +133,11 @@ const ProgressChart: React.FC<{
   return (
     <div style={{
       background: 'var(--bg-sidebar)', borderRadius: 16,
-      border: '1px solid var(--border)', padding: '16px 8px 8px 0',
+      border: '1px solid var(--border-color)', padding: '16px 8px 8px 0',
     }}>
       <ResponsiveContainer width="100%" height={210}>
         <LineChart data={data} margin={{ top: 4, right: 36, bottom: 4, left: -16 }}>
-          <CartesianGrid strokeDasharray="3 3" stroke="var(--border)" vertical={false} />
+          <CartesianGrid strokeDasharray="3 3" stroke="var(--border-color)" vertical={false} />
           <XAxis
             dataKey="ts"
             type="number"
@@ -158,14 +158,14 @@ const ProgressChart: React.FC<{
           />
           <Tooltip
             content={<ChartTooltip />}
-            cursor={{ stroke: 'var(--border)', strokeWidth: 1 }}
+            cursor={{ stroke: 'var(--border-color)', strokeWidth: 1 }}
           />
 
           {/* Anki als gestrichelte Referenzlinie (kein Zeitverlauf → horizontale Linie) */}
           {showAnkiRef && (
             <ReferenceLine
               y={ankiAvg!}
-              stroke="var(--accent)"
+              stroke="var(--primary)"
               strokeDasharray="5 3"
               strokeWidth={1.5}
               strokeOpacity={0.7}
@@ -173,7 +173,7 @@ const ProgressChart: React.FC<{
                 value: `Anki Ø ${ankiAvg}%`,
                 position: 'insideTopRight',
                 fontSize: 8, fontWeight: 800,
-                fill: 'var(--accent)', opacity: 0.8,
+                fill: 'var(--primary)', opacity: 0.8,
               }}
             />
           )}
@@ -534,30 +534,34 @@ export const GapRadar: React.FC<GapRadarProps> = ({ metrics, onNavigate, onActio
   }
 
   return (
-    <div className="max-w-[860px] mx-auto px-4 space-y-6 animate-in fade-in duration-500 pb-20">
+    <div className="space-y-10 lg:space-y-12 animate-in fade-in duration-700 pb-20">
 
       {/* ── Header ── */}
-      <div>
-        <h1 className="text-[22px] font-extrabold text-slate-900 dark:text-white">Meine Lücken</h1>
-        <p className="text-[10px] font-black uppercase tracking-widest text-slate-400 mt-0.5">Alle Lernmodi auf einen Blick — Quiz, Anki, Feynman & Klausur</p>
+      <div className="text-center space-y-3">
+        <h1 className="text-4xl lg:text-7xl font-black text-slate-900 dark:text-white tracking-tighter">
+          Lern <span className="text-indigo-600">Radar</span> <EmojiImage emoji="📡" size={36} />
+        </h1>
+        <p className="text-base text-slate-500 dark:text-slate-400 font-medium opacity-80">
+          Alle Lernmodi auf einen Blick — Quiz, Anki, Feynman & Klausur.
+        </p>
       </div>
 
       {/* ── Filter Bar ── */}
       <div className="flex flex-wrap items-center gap-3">
         {/* Mode pills */}
         <div
-          className="flex gap-1 p-1 rounded-[12px] bg-slate-100 dark:bg-slate-800"
-          style={{ border: '1px solid var(--border)' }}
+          className="flex gap-1 p-1 rounded-xl"
+          style={{ background: 'var(--bg-sidebar)', border: '1px solid var(--border-color)' }}
         >
           {(Object.keys(MODE_LABELS) as LearnMode[]).map(m => (
             <button
               key={m}
               onClick={() => setSelectedMode(m)}
-              className="px-3 py-1.5 rounded-[9px] text-[10px] font-black uppercase tracking-wider transition-all"
+              className="px-3 py-1.5 rounded-lg text-[10px] font-black uppercase tracking-wider transition-all"
               style={
                 selectedMode === m
-                  ? { background: 'var(--accent)', color: '#ffffff' }
-                  : { color: '#64748b' }
+                  ? { background: 'var(--primary)', color: 'var(--primary-text)' }
+                  : { color: 'var(--ink2)' }
               }
             >
               {MODE_LABELS[m]}
@@ -573,7 +577,7 @@ export const GapRadar: React.FC<GapRadarProps> = ({ metrics, onNavigate, onActio
             className="px-3 py-2 rounded-xl text-[10px] font-black uppercase tracking-wider border"
             style={{
               background: 'var(--bg-sidebar)',
-              borderColor: 'var(--border)',
+              borderColor: 'var(--border-color)',
               color: 'var(--ink)',
             }}
           >
@@ -595,12 +599,12 @@ export const GapRadar: React.FC<GapRadarProps> = ({ metrics, onNavigate, onActio
       </div>
 
       {/* ── Bento Grid ── */}
-      <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
+      <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 lg:gap-6">
 
         {/* Kachel 1: Gesamtfortschritt */}
         <div
-          className="bg-white dark:bg-slate-900 p-5 rounded-[18px] border flex flex-col"
-          style={{ borderColor: 'var(--border)' }}
+          className="bg-white dark:bg-slate-900 p-5 lg:p-8 rounded-[24px] lg:rounded-[32px] border border-slate-200 dark:border-slate-800 shadow-sm flex flex-col"
+          style={{ background: 'var(--card)' }}
         >
           <h3 className="text-[9px] font-black uppercase tracking-widest mb-4" style={{ color: 'var(--mute)' }}>
             Gesamtfortschritt
@@ -638,8 +642,8 @@ export const GapRadar: React.FC<GapRadarProps> = ({ metrics, onNavigate, onActio
 
         {/* Kachel 2: Größte Lücke */}
         <div
-          className="p-5 rounded-[18px] border border-l-4 border-l-rose-500"
-          style={{ borderColor: 'var(--border)', background: 'var(--surface)' }}
+          className="p-5 lg:p-8 rounded-[24px] lg:rounded-[32px] border border-l-4 border-l-rose-500 border-slate-200 dark:border-slate-800 shadow-sm"
+          style={{ background: 'var(--card)' }}
         >
           <h3 className="text-[9px] font-black uppercase tracking-widest text-rose-500 mb-3">Größte Lücke</h3>
           {biggestGap ? (
@@ -669,10 +673,10 @@ export const GapRadar: React.FC<GapRadarProps> = ({ metrics, onNavigate, onActio
 
         {/* Kachel 3: Heute lernen */}
         <div
-          className="p-5 rounded-[18px] border bg-white dark:bg-slate-900"
-          style={{ borderColor: 'var(--border)' }}
+          className="p-5 lg:p-8 rounded-[24px] lg:rounded-[32px] border border-slate-200 dark:border-slate-800 shadow-sm"
+          style={{ background: 'var(--card)' }}
         >
-          <h3 className="text-[9px] font-black uppercase tracking-widest mb-3" style={{ color: 'var(--accent)' }}>
+          <h3 className="text-[9px] font-black uppercase tracking-widest mb-3" style={{ color: 'var(--primary)' }}>
             Heute lernen
           </h3>
           <div className="space-y-2">
@@ -700,19 +704,19 @@ export const GapRadar: React.FC<GapRadarProps> = ({ metrics, onNavigate, onActio
 
         {/* Kachel 4: Nächste Session */}
         <div
-          className="p-5 rounded-[18px] text-white flex flex-col justify-between"
-          style={{ background: 'var(--card-primary)' }}
+          className="p-5 lg:p-8 rounded-[24px] lg:rounded-[32px] shadow-sm text-white flex flex-col justify-between"
+          style={{ background: 'var(--primary)' }}
         >
           <h3 className="text-[9px] font-black uppercase tracking-widest opacity-60 mb-3">
             Nächste Session
           </h3>
-          <p className="text-[11px] font-bold leading-snug mb-4 opacity-90">
+          <p className="text-[11px] font-bold leading-snug mb-4" style={{ color: 'var(--primary-text)' }}>
             {recommendation.text}
           </p>
           <button
             onClick={() => onNavigate(recommendation.tab)}
-            className="w-full py-2.5 rounded-[11px] text-[8px] font-black uppercase tracking-widest transition-opacity hover:opacity-80"
-            style={{ background: 'var(--accent)' }}
+            className="w-full py-2.5 rounded-xl text-[8px] font-black uppercase tracking-widest transition-all hover:opacity-80 active:scale-95"
+            style={{ background: 'rgba(255,255,255,0.2)', color: 'var(--primary-text)' }}
           >
             Jetzt starten →
           </button>
@@ -736,7 +740,7 @@ export const GapRadar: React.FC<GapRadarProps> = ({ metrics, onNavigate, onActio
             {chartExamPts.length > 0    && <LegendDot color="#f43f5e" label="Klausur" />}
             {ankiAvg !== null && (selectedMode === 'all' || selectedMode === 'anki') && (
               <div className="flex items-center gap-1.5">
-                <svg width="24" height="4"><line x1="0" y1="2" x2="24" y2="2" stroke="var(--accent)" strokeWidth="2" strokeDasharray="5,3" /></svg>
+                <svg width="24" height="4"><line x1="0" y1="2" x2="24" y2="2" stroke="var(--primary)" strokeWidth="2" strokeDasharray="5,3" /></svg>
                 <span className="text-[9px] font-black uppercase" style={{ color: 'var(--mute)' }}>Anki Ø</span>
               </div>
             )}
@@ -784,7 +788,7 @@ export const GapRadar: React.FC<GapRadarProps> = ({ metrics, onNavigate, onActio
                     className="absolute top-full left-0 mt-1.5 rounded-2xl overflow-hidden shadow-xl z-50 min-w-[200px]"
                     style={{
                       background: 'var(--card)',
-                      border: '1px solid var(--border)',
+                      border: '1px solid var(--border-color)',
                     }}
                   >
                     <p className="px-4 pt-3 pb-1 text-[8px] font-black uppercase tracking-widest" style={{ color: 'var(--mute)' }}>
@@ -837,8 +841,11 @@ export const GapRadar: React.FC<GapRadarProps> = ({ metrics, onNavigate, onActio
             {combinedHistory.map(entry => (
               <div
                 key={entry.id}
-                className="flex items-center gap-3 p-4 rounded-[14px] border bg-slate-50 dark:bg-slate-900"
-                style={{ borderColor: 'var(--border)' }}
+                className="flex items-center gap-3 p-4 rounded-2xl border"
+                style={{
+                  background: 'color-mix(in srgb, var(--border-color) 20%, var(--bg-sidebar))',
+                  borderColor: 'var(--border-color)',
+                }}
               >
                 {/* Mode badge */}
                 <span
@@ -861,7 +868,7 @@ export const GapRadar: React.FC<GapRadarProps> = ({ metrics, onNavigate, onActio
                 </div>
 
                 <div className="flex items-center gap-3 shrink-0">
-                  <div className="w-20 h-1.5 rounded-full overflow-hidden" style={{ background: 'var(--border)' }}>
+                  <div className="w-20 h-1.5 rounded-full overflow-hidden" style={{ background: 'var(--border-color)' }}>
                     <div
                       className="h-full rounded-full transition-all"
                       style={{ width: `${entry.score}%`, background: scoreColor(entry.score) }}
@@ -878,7 +885,7 @@ export const GapRadar: React.FC<GapRadarProps> = ({ metrics, onNavigate, onActio
       )}
 
       {/* ── KI Deep Analysis ── */}
-      <div className="pt-6 border-t space-y-5" style={{ borderColor: 'var(--border)' }}>
+      <div className="pt-8 border-t space-y-6" style={{ borderColor: 'var(--border-color)' }}>
         <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
           <div>
             <h3 className="text-xl font-black" style={{ color: 'var(--ink)' }}>KI Fehleranalyse</h3>
@@ -891,8 +898,8 @@ export const GapRadar: React.FC<GapRadarProps> = ({ metrics, onNavigate, onActio
           <button
             onClick={handleRunAnalysis}
             disabled={isAnalyzing || !hasAnyData}
-            className="w-full sm:w-auto px-6 py-3.5 rounded-[14px] font-black uppercase text-[10px] tracking-widest transition-opacity hover:opacity-90 disabled:opacity-40 shrink-0 text-white"
-            style={{ background: 'var(--card-primary)' }}
+            className="w-full sm:w-auto px-8 py-4 rounded-2xl font-black uppercase text-[10px] tracking-[0.2em] shadow-xl hover:scale-105 active:scale-95 transition-all disabled:opacity-40 shrink-0"
+            style={{ background: 'var(--ink)', color: 'var(--bg-main)' }}
           >
             {isAnalyzing ? 'KI analysiert...' : <>Tiefenanalyse <EmojiImage emoji="✨" size={13} /></>}
           </button>
@@ -901,8 +908,8 @@ export const GapRadar: React.FC<GapRadarProps> = ({ metrics, onNavigate, onActio
         {analysis && (
           <div className="space-y-10">
             <section
-              className="p-7 rounded-[18px] text-white"
-              style={{ background: 'var(--card-primary)' }}
+              className="p-8 lg:p-10 rounded-[32px] shadow-lg"
+              style={{ background: 'var(--ink)', color: 'var(--bg-main)' }}
             >
               <h2 className="text-[9px] font-black uppercase tracking-widest opacity-50 mb-3">
                 Psychologische Synthese
@@ -916,19 +923,19 @@ export const GapRadar: React.FC<GapRadarProps> = ({ metrics, onNavigate, onActio
               {analysis.errorPatterns.map((error, idx) => (
                 <div
                   key={idx}
-                  className="rounded-[18px] overflow-hidden border bg-white dark:bg-slate-900"
-                  style={{ borderColor: 'var(--border)' }}
+                  className="rounded-[32px] overflow-hidden shadow-sm border"
+                  style={{ background: 'var(--card)', borderColor: 'var(--border-color)' }}
                 >
                   <div
                     className="p-6 border-b flex flex-wrap justify-between items-center gap-3"
-                    style={{ background: 'color-mix(in srgb, var(--border) 30%, var(--card))', borderColor: 'var(--border)' }}
+                    style={{ background: 'color-mix(in srgb, var(--border-color) 30%, var(--card))', borderColor: 'var(--border-color)' }}
                   >
                     <h4 className="text-base lg:text-xl font-black" style={{ color: 'var(--ink)' }}>
                       {error.pattern}
                     </h4>
                     <span
                       className="text-[9px] font-black px-3 py-1.5 rounded-full uppercase tracking-widest"
-                      style={{ background: 'var(--icon-box)', color: '#ffffff' }}
+                      style={{ background: 'var(--primary)', color: 'var(--primary-text)' }}
                     >
                       {error.count}× aufgetreten
                     </span>
@@ -958,20 +965,20 @@ export const GapRadar: React.FC<GapRadarProps> = ({ metrics, onNavigate, onActio
                           <p className="text-[9px] font-black uppercase tracking-widest mb-1.5" style={{ color: 'var(--mute)' }}>
                             Vermutete Ursache
                           </p>
-                          <p className="text-[10px] font-bold" style={{ color: 'var(--accent)' }}>
+                          <p className="text-[10px] font-bold" style={{ color: 'var(--primary)' }}>
                             {error.probableCause}
                           </p>
                         </div>
                       </div>
                     </div>
                     <div
-                      className="p-5 rounded-[14px] border"
+                      className="p-6 rounded-[24px] border"
                       style={{
-                        background: 'var(--accent-soft)',
-                        borderColor: 'color-mix(in srgb, var(--accent) 25%, transparent)',
+                        background: 'color-mix(in srgb, var(--primary) 6%, var(--bg-sidebar))',
+                        borderColor: 'color-mix(in srgb, var(--primary) 20%, transparent)',
                       }}
                     >
-                      <p className="text-[9px] font-black uppercase mb-3 tracking-widest" style={{ color: 'var(--accent)' }}>
+                      <p className="text-[9px] font-black uppercase mb-3 tracking-widest" style={{ color: 'var(--primary)' }}>
                         Empfohlene Aktion
                       </p>
                       <h5 className="text-lg font-black mb-3 leading-tight" style={{ color: 'var(--ink)' }}>

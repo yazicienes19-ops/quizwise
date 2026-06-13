@@ -95,8 +95,8 @@ function renderMarkdown(text: string): React.ReactNode {
         i++;
       }
       blocks.push(
-        <div key={key++} className="px-5 py-4 rounded-2xl" style={{ background: 'color-mix(in srgb, var(--accent) 8%, transparent)', border: '1px solid color-mix(in srgb, var(--accent) 20%, transparent)' }}>
-          <p className="text-[9px] font-black uppercase tracking-widest mb-2" style={{ color: 'var(--accent)' }}>Externes Wissen</p>
+        <div key={key++} className="px-5 py-4 rounded-2xl" style={{ background: 'color-mix(in srgb, var(--primary) 8%, transparent)', border: '1px solid color-mix(in srgb, var(--primary) 20%, transparent)' }}>
+          <p className="text-[9px] font-black uppercase tracking-widest mb-2" style={{ color: 'var(--primary)' }}>Externes Wissen</p>
           <p className="text-base font-medium text-slate-700 dark:text-slate-300 leading-relaxed">
             {parseInline(content.join(' '), String(key))}
           </p>
@@ -116,7 +116,7 @@ function renderMarkdown(text: string): React.ReactNode {
         <ul key={key++} className="space-y-2 pl-1">
           {items.map((item, idx) => (
             <li key={idx} className="flex gap-2.5 items-start text-base lg:text-lg font-medium text-slate-700 dark:text-slate-300 leading-relaxed">
-              <span className="mt-2 w-1.5 h-1.5 rounded-full shrink-0" style={{ background: 'var(--accent)' }} />
+              <span className="mt-2 w-1.5 h-1.5 rounded-full shrink-0" style={{ background: 'var(--primary)' }} />
               <span>{parseInline(item, `${key}-${idx}`)}</span>
             </li>
           ))}
@@ -136,7 +136,7 @@ function renderMarkdown(text: string): React.ReactNode {
         <ol key={key++} className="space-y-2 pl-1">
           {items.map((item, idx) => (
             <li key={idx} className="flex gap-3 items-start text-base lg:text-lg font-medium text-slate-700 dark:text-slate-300 leading-relaxed">
-              <span className="font-black shrink-0 w-6 text-right" style={{ color: 'var(--accent)' }}>{idx + 1}.</span>
+              <span className="font-black shrink-0 w-6 text-right" style={{ color: 'var(--primary)' }}>{idx + 1}.</span>
               <span>{parseInline(item, `${key}-${idx}`)}</span>
             </li>
           ))}
@@ -236,16 +236,20 @@ export const ExplainerSystem: React.FC<ExplainerSystemProps> = ({
   };
 
   return (
-    <div className="max-w-[860px] mx-auto space-y-6 py-6 px-4 animate-in fade-in duration-500 pb-20">
+    <div className="max-w-5xl mx-auto space-y-10 py-6 lg:py-10 px-4 animate-in fade-in duration-700 pb-32">
 
       {/* Header */}
-      <div>
-        <h1 className="text-[22px] font-extrabold text-slate-900 dark:text-white">KI Erklärer</h1>
-        <p className="text-[10px] font-black uppercase tracking-widest text-slate-400 mt-0.5">Konzepte verstehen — aus deinen Unterlagen oder darüber hinaus</p>
+      <div className="text-center space-y-3">
+        <h1 className="text-4xl lg:text-7xl font-black text-slate-900 dark:text-white tracking-tighter">
+          KI <span className="text-indigo-600">Erklärer</span> <EmojiImage emoji="💡" size={44} />
+        </h1>
+        <p className="text-base text-slate-500 dark:text-slate-400 font-medium opacity-80">
+          Konzepte verstehen — aus deinen Unterlagen oder darüber hinaus
+        </p>
       </div>
 
       {/* Eingabe-Bereich */}
-      <div className="space-y-4">
+      <div className="space-y-4 max-w-3xl mx-auto">
 
         {/* Suchfeld */}
         <form onSubmit={handleExplain} className="relative">
@@ -254,17 +258,18 @@ export const ExplainerSystem: React.FC<ExplainerSystemProps> = ({
             value={concept}
             onChange={e => setConcept(e.target.value)}
             placeholder="Welchen Begriff möchtest du verstehen?"
-            className="w-full pl-6 pr-36 py-5 rounded-[18px] text-lg font-bold outline-none transition-all dark:text-white"
+            className="w-full pl-6 pr-36 py-5 lg:py-6 rounded-[28px] text-lg lg:text-xl font-bold outline-none focus:border-indigo-400 transition-all"
             style={{
-              background: 'var(--surface)',
-              border: '1px solid var(--border)',
+              background: 'var(--bg-sidebar)',
+              border: '1px solid var(--border-color)',
+              color: 'var(--text-main)',
             }}
           />
           <button
             type="submit"
             disabled={isLoading || !canSubmit}
-            className="absolute right-3 top-1/2 -translate-y-1/2 text-white px-6 py-2.5 rounded-[14px] font-black uppercase text-[10px] tracking-widest hover:opacity-90 active:scale-95 transition-all disabled:opacity-40 flex items-center gap-2"
-            style={{ background: 'var(--accent)' }}
+            className="absolute right-3 top-1/2 -translate-y-1/2 bg-indigo-600 px-6 py-2.5 rounded-2xl font-black uppercase text-[10px] tracking-widest hover:scale-105 active:scale-95 transition-all shadow-lg disabled:opacity-40 flex items-center gap-2"
+            style={{ color: 'var(--primary-text)' }}
           >
             {isLoading
               ? <div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" />
@@ -278,10 +283,10 @@ export const ExplainerSystem: React.FC<ExplainerSystemProps> = ({
 
           {/* Quelle */}
           {activeSource ? (
-            <div className="flex items-center justify-between px-5 py-3 rounded-[14px]" style={{ background: 'var(--surface)', border: '1px solid var(--border)' }}>
+            <div className="flex items-center justify-between px-5 py-3 rounded-2xl" style={{ background: 'var(--bg-sidebar)', border: '1px solid var(--border-color)' }}>
               <div className="flex items-center gap-2">
-                <div className="w-2 h-2 rounded-full shrink-0" style={{ background: 'var(--accent)' }} />
-                <span className="text-[11px] font-black truncate max-w-[240px]" style={{ color: 'var(--accent)' }}>{activeSourceName}</span>
+                <div className="w-2 h-2 rounded-full bg-indigo-500 shrink-0" />
+                <span className="text-[11px] font-black text-indigo-600 dark:text-indigo-400 truncate max-w-[240px]">{activeSourceName}</span>
               </div>
               <button
                 onClick={() => { setActiveSource(null); setActiveSourceName(''); }}
@@ -314,16 +319,16 @@ export const ExplainerSystem: React.FC<ExplainerSystemProps> = ({
           {/* Externes Wissen Toggle */}
           <button
             onClick={() => setUseExternalKnowledge(v => !v)}
-            className="w-full flex items-center justify-between px-5 py-3.5 rounded-[14px] transition-all"
+            className="w-full flex items-center justify-between px-5 py-3.5 rounded-2xl transition-all"
             style={useExternalKnowledge
-              ? { background: 'var(--accent-soft)', border: '1px solid var(--accent)' }
-              : { background: 'var(--surface)', border: '1px solid var(--border)' }
+              ? { background: 'color-mix(in srgb, var(--primary) 10%, transparent)', border: '1px solid var(--primary)' }
+              : { background: 'var(--bg-sidebar)', border: '1px solid var(--border-color)' }
             }
           >
             <div className="flex items-center gap-3">
               <span className="text-base"><EmojiImage emoji="🌐" size={16} /></span>
               <div className="text-left">
-                <p className="text-[11px] font-black uppercase tracking-widest" style={{ color: useExternalKnowledge ? 'var(--accent)' : undefined }}>
+                <p className="text-[11px] font-black uppercase tracking-widest" style={{ color: useExternalKnowledge ? 'var(--primary)' : undefined }}>
                   {useExternalKnowledge ? 'Externes Wissen aktiv' : 'Nur eigene Quellen'}
                 </p>
                 <p className="text-[10px] text-slate-400 font-medium">
@@ -336,7 +341,7 @@ export const ExplainerSystem: React.FC<ExplainerSystemProps> = ({
             {/* Toggle-Pill */}
             <div
               className="w-10 h-5 rounded-full transition-all relative shrink-0"
-              style={{ background: useExternalKnowledge ? 'var(--accent)' : 'var(--border)' }}
+              style={{ background: useExternalKnowledge ? 'var(--primary)' : 'var(--border-color)' }}
             >
               <div
                 className="absolute top-0.5 w-4 h-4 rounded-full bg-white shadow transition-all"
@@ -349,11 +354,11 @@ export const ExplainerSystem: React.FC<ExplainerSystemProps> = ({
 
       {/* Ladeanimation */}
       {isLoading && !explanation && (
-        <div className="fixed inset-0 z-[100] flex items-center justify-center bg-white/80 dark:bg-slate-950/80 backdrop-blur-sm">
-          <div className="flex flex-col items-center gap-5 text-center p-8 rounded-[18px] bg-white dark:bg-slate-900" style={{ border: '1px solid var(--border)' }}>
+        <div className="fixed inset-0 z-[100] flex items-center justify-center" style={{ background: 'color-mix(in srgb, var(--bg-main) 80%, transparent)', backdropFilter: 'blur(8px)' }}>
+          <div className="flex flex-col items-center gap-6 text-center p-10 rounded-[40px]" style={{ background: 'var(--bg-sidebar)', border: '1px solid var(--border-color)' }}>
             <div className="relative">
-              <div className="w-20 h-20 rounded-full" style={{ border: '6px solid var(--border)' }} />
-              <div className="w-20 h-20 rounded-full border-t-transparent animate-spin absolute top-0 left-0" style={{ border: '6px solid var(--accent)', borderTopColor: 'transparent' }} />
+              <div className="w-20 h-20 rounded-full" style={{ border: '6px solid var(--border-color)' }} />
+              <div className="w-20 h-20 rounded-full border-t-transparent animate-spin absolute top-0 left-0" style={{ border: '6px solid var(--primary)', borderTopColor: 'transparent' }} />
             </div>
             <div className="space-y-1">
               <p className="text-sm font-black uppercase tracking-widest text-slate-900 dark:text-white">KI erklärt...</p>
@@ -367,12 +372,12 @@ export const ExplainerSystem: React.FC<ExplainerSystemProps> = ({
 
       {/* Ergebnis */}
       {explanation && (
-        <div className="rounded-[18px] p-6 sm:p-10 space-y-8 animate-in slide-in-from-bottom-4 duration-500 bg-white dark:bg-slate-900" style={{ border: '1px solid var(--border)' }}>
+        <div className="max-w-4xl mx-auto rounded-[40px] p-8 sm:p-14 space-y-10 animate-in slide-in-from-bottom-8 duration-700 shadow-3d-deep" style={{ background: 'var(--bg-sidebar)', border: '1px solid var(--border-color)' }}>
 
           {/* Ergebnis-Header */}
-          <div className="flex flex-col sm:flex-row justify-between items-start gap-4 pb-8" style={{ borderBottom: '1px solid var(--border)' }}>
+          <div className="flex flex-col sm:flex-row justify-between items-start gap-4 pb-8" style={{ borderBottom: '1px solid var(--border-color)' }}>
             <div className="space-y-1">
-              <span className="text-[10px] font-black uppercase tracking-[0.3em]" style={{ color: 'var(--accent)' }}>
+              <span className="text-[10px] font-black uppercase text-indigo-500 tracking-[0.3em]">
                 {useExternalKnowledge ? (activeSource ? 'Dokument + Allgemeinwissen' : 'Allgemeinwissen') : 'Nur aus deinem Dokument'}
               </span>
               <h2 className="text-3xl lg:text-4xl font-black dark:text-white leading-tight">{concept}</h2>
@@ -380,14 +385,16 @@ export const ExplainerSystem: React.FC<ExplainerSystemProps> = ({
             <div className="flex gap-2 shrink-0">
               <button
                 onClick={() => { navigator.clipboard.writeText(explanation); toast.success('Erklärung kopiert!'); }}
-                className="p-3 rounded-[10px] transition-colors text-slate-400 hover:text-slate-600 bg-slate-50 dark:bg-slate-800"
+                className="p-3 rounded-xl transition-all text-slate-400 hover:text-indigo-500"
+                style={{ background: 'var(--bg-main)', border: '1px solid var(--border-color)' }}
                 title="Kopieren"
               >
                 <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><rect x="9" y="9" width="13" height="13" rx="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/></svg>
               </button>
               <button
                 onClick={handleReset}
-                className="p-3 rounded-[10px] transition-colors text-slate-400 hover:text-rose-500 bg-slate-50 dark:bg-slate-800"
+                className="p-3 rounded-xl transition-all text-slate-400 hover:text-rose-500"
+                style={{ background: 'var(--bg-main)', border: '1px solid var(--border-color)' }}
                 title="Schließen"
               >
                 <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
@@ -401,7 +408,7 @@ export const ExplainerSystem: React.FC<ExplainerSystemProps> = ({
           </div>
 
           {/* Footer */}
-          <div className="pt-8 flex flex-col sm:flex-row items-center justify-between gap-4" style={{ borderTop: '1px solid var(--border)' }}>
+          <div className="pt-8 flex flex-col sm:flex-row items-center justify-between gap-4" style={{ borderTop: '1px solid var(--border-color)' }}>
             <p className="text-[10px] font-black uppercase text-slate-400 tracking-widest">
               {!useExternalKnowledge
                 ? `Quelle: ${activeSourceName}`
@@ -411,15 +418,15 @@ export const ExplainerSystem: React.FC<ExplainerSystemProps> = ({
             <div className="flex items-center gap-3">
               <button
                 onClick={() => setErklaererOpen(true)}
-                className="inline-flex items-center gap-1.5 text-[10px] font-black uppercase tracking-widest transition-opacity hover:opacity-80 px-3 py-1.5 rounded-[10px]"
-                style={{ background: 'var(--accent-soft)', color: 'var(--accent)', border: '1px solid color-mix(in srgb, var(--accent) 25%, transparent)' }}
+                className="inline-flex items-center gap-1.5 text-[10px] font-black uppercase tracking-widest transition-colors px-3 py-1.5 rounded-xl"
+                style={{ background: 'color-mix(in srgb, var(--primary) 10%, var(--bg-sidebar))', color: 'var(--primary)', border: '1px solid color-mix(in srgb, var(--primary) 20%, transparent)' }}
               >
                 <Bot size={12} />
                 Nachfragen
               </button>
               <button
                 onClick={handleReset}
-                className="text-[10px] font-black uppercase tracking-widest transition-colors text-slate-400 hover:text-slate-700 dark:hover:text-white"
+                className="text-[10px] font-black uppercase tracking-widest transition-colors text-slate-400 hover:text-indigo-500"
               >
                 Anderen Begriff →
               </button>

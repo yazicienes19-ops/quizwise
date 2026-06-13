@@ -1,78 +1,93 @@
 
 import React, { useState, useMemo } from 'react';
-import type { User } from '@supabase/supabase-js';
 import { ActiveTab, LearningFlowResult, StudyEntry, FlashcardDeck, ProcessedDocument } from '../types';
+import { GeneratedImage } from './GeneratedImage';
 import { AgentChat } from './AgentChat';
 import { toast } from '../services/toast';
-import {
-  Bot, Layers, Flame, Brain, HelpCircle, GraduationCap,
-  Play, ArrowRight, Calendar,
-} from 'lucide-react';
+import { Bot, Layers, Flame } from 'lucide-react';
 import { countDueCards, migrateLegacyCard } from '../services/spacedRepetition';
 import { getStreak } from '../services/streakService';
+
+const USAGE_KEY = 'quizwise_feature_usage';
+
+function getUsageCounts(): Record<string, number> {
+  try {
+    return JSON.parse(localStorage.getItem(USAGE_KEY) || '{}');
+  } catch {
+    return {};
+  }
+}
+
+function trackUsage(id: ActiveTab) {
+  const counts = getUsageCounts();
+  counts[id] = (counts[id] || 0) + 1;
+  localStorage.setItem(USAGE_KEY, JSON.stringify(counts));
+}
 
 interface DashboardProps {
   onTabChange: (tab: ActiveTab) => void;
   flowResult: LearningFlowResult | null;
   onAcceptFlow: (res: LearningFlowResult) => void;
   documents?: ProcessedDocument[];
-  user?: User | null;
 }
 
-const MODES = [
-  { tab: ActiveTab.RECALL, label: 'Erklären üben', hint: 'Feynman-Methode',    Icon: Brain },
-  { tab: ActiveTab.QUIZ,   label: 'Quiz',           hint: 'Fragen aus Unterlagen', Icon: HelpCircle },
-  { tab: ActiveTab.EXAM,   label: 'Klausur üben',   hint: 'Prüfung simulieren', Icon: GraduationCap },
-] as const;
+interface ActionCard {
+  id: ActiveTab;
+  title: string;
+  desc: string;
+  prompt: string;
+  color: string;
+  badge?: string;
+}
 
-export const Dashboard: React.FC<DashboardProps> = ({
-  onTabChange, flowResult, documents = [], user,
-}) => {
+const BASE_CARDS: ActionCard[] = [
+  { id: ActiveTab.RECALL, title: 'Recall Studio', desc: 'Meistere Themen mit der Feynman-Methode.', prompt: 'Human brain active recall, academic illustration', color: 'text-indigo-600', badge: 'Active Recall' },
+  { id: ActiveTab.LIBRARY, title: 'Bibliothek', desc: 'Verwalte deine PDF-Sammlung und Quellen.', prompt: 'Academic library books, minimalist illustration', color: 'text-blue-500' },
+  { id: ActiveTab.QUIZ, title: 'Quiz Center', desc: 'KI-gestützte Tests für maximalen Erfolg.', prompt: 'Target bullseye icon, academic minimalist illustration', color: 'text-indigo-500', badge: 'KI-Powered' },
+  { id: ActiveTab.EXAM, title: 'Klausur-Modus', desc: 'Simuliere echte Prüfungen unter Zeitdruck.', prompt: 'Exam paper graduation cap, academic illustration', color: 'text-rose-500', badge: 'Advanced' },
+  { id: ActiveTab.CARDS, title: 'Karteikarten', desc: 'Training nach Anki-Standard.', prompt: 'Flashcards study deck, minimalist illustration', color: 'text-violet-500' },
+  { id: ActiveTab.RADAR, title: 'Lern-Analyse', desc: 'Identifiziere Lücken im Verständnis.', prompt: 'Data analysis radar chart, academic illustration', color: 'text-emerald-500' }
+];
+
+export const Dashboard: React.FC<DashboardProps> = ({ onTabChange, flowResult, documents = [] }) => {
+  const [hovered, setHovered] = useState<ActiveTab | null>(null);
+  const [usageCounts, setUsageCounts] = useState<Record<string, number>>(getUsageCounts);
   const [coachOpen, setCoachOpen] = useState(false);
-
-  const firstName = useMemo(() => {
-    const full = user?.user_metadata?.full_name as string | undefined;
-    if (full) return full.split(' ')[0];
-    const email = user?.email;
-    if (email) return email.split('@')[0];
-    return 'dich';
-  }, [user]);
 
   const dueCardsCount = useMemo(() => {
     try {
       const decks: FlashcardDeck[] = JSON.parse(localStorage.getItem('flashcard_decks') || '[]');
-      const allCards = decks.flatMap(d =>
-        d.cards.map(c => (c.srs ? c : { ...c, srs: migrateLegacyCard(c) }))
-      );
+      const allCards = decks.flatMap(d => d.cards.map(c => c.srs ? c : { ...c, srs: migrateLegacyCard(c) }));
       return countDueCards(allCards);
     } catch { return 0; }
   }, []);
 
   const streak = useMemo(() => getStreak(), []);
-  const estMinutes = Math.max(5, Math.ceil(dueCardsCount * 2.5));
 
   const weiterlernCard = useMemo(() => {
+    // Last saved quiz progress
     try {
       const raw = localStorage.getItem('quizwise_quiz_progress');
       if (raw) {
         const { meta, timestamp } = JSON.parse(raw);
         if (meta && timestamp && Date.now() - timestamp < 7 * 24 * 60 * 60 * 1000) {
-          return { label: meta.docName || 'Quiz fortsetzen', tab: ActiveTab.QUIZ };
+          return { type: 'quiz' as const, label: meta.docName || 'Quiz fortsetzen', tab: ActiveTab.QUIZ };
         }
       }
     } catch {}
+    // Last used deck
     try {
       const decks: FlashcardDeck[] = JSON.parse(localStorage.getItem('flashcard_decks') || '[]');
-      if (decks.length > 0) return { label: decks[decks.length - 1].title, tab: ActiveTab.CARDS };
+      if (decks.length > 0) {
+        return { type: 'deck' as const, label: decks[decks.length - 1].title, tab: ActiveTab.CARDS };
+      }
     } catch {}
     return null;
   }, []);
 
   const nextExam = useMemo(() => {
     try {
-      const terms: Array<{ date: string; subject: string }> = JSON.parse(
-        localStorage.getItem('quizwise_exam_terms') || '[]'
-      );
+      const terms: Array<{ date: string; subject: string }> = JSON.parse(localStorage.getItem('quizwise_exam_terms') || '[]');
       const future = terms
         .map(t => ({ ...t, ms: new Date(t.date).getTime() }))
         .filter(t => t.ms > Date.now())
@@ -93,6 +108,16 @@ export const Dashboard: React.FC<DashboardProps> = ({
     }
   }, [coachOpen]);
 
+  const cards = useMemo(() => {
+    return [...BASE_CARDS].sort((a, b) => (usageCounts[b.id] || 0) - (usageCounts[a.id] || 0));
+  }, [usageCounts]);
+
+  const handleCardClick = (id: ActiveTab) => {
+    trackUsage(id);
+    setUsageCounts(getUsageCounts());
+    onTabChange(id);
+  };
+
   const handleAcceptSuggestion = (suggestion: any) => {
     const plan = JSON.parse(localStorage.getItem('study_plan') || '[]');
     const [h, m] = (suggestion.start_time as string).split(':').map(Number);
@@ -107,62 +132,41 @@ export const Dashboard: React.FC<DashboardProps> = ({
       topic: suggestion.focus_topics.join(', '),
       completed: false,
       isAutoGenerated: true,
-      color: 'indigo',
+      color: 'indigo'
     };
     localStorage.setItem('study_plan', JSON.stringify([...plan, newEntry]));
     toast.success('Im Lernplan eingetragen!');
     onTabChange(ActiveTab.PLANNER);
   };
 
-  /* ── EMPTY STATE ── */
   if (documents.length === 0) {
     return (
-      <div className="max-w-[760px] mx-auto px-4 py-12 flex flex-col items-center gap-10 animate-in fade-in duration-700">
-        <div className="text-center max-w-md">
-          <div
-            className="w-[52px] h-[52px] rounded-[16px] flex items-center justify-center mx-auto mb-5"
-            style={{ background: 'var(--icon-box)' }}
-          >
-            <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24"
-              fill="none" stroke="white" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-              <path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20"/>
-              <path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z"/>
-            </svg>
-          </div>
-          <h2 className="text-[24px] font-extrabold tracking-tight text-slate-900 dark:text-white mb-2">
-            Willkommen bei QuizWise
-          </h2>
-          <p className="text-[14px] text-slate-500 dark:text-slate-400">
-            Lade dein erstes Dokument hoch — in 3 Schritten zum personalisierten Lernkurs.
-          </p>
+      <div className="flex flex-col items-center justify-center py-20 px-4 space-y-10 animate-in fade-in duration-700 min-h-[60vh]">
+        <div className="text-center space-y-4 max-w-md">
+          <div className="text-7xl mb-2">📚</div>
+          <h2 className="text-3xl font-black tracking-tighter dark:text-white">Willkommen bei QuizWise</h2>
+          <p className="text-slate-500 dark:text-slate-400 font-medium">Lade dein erstes Dokument hoch — in 3 Schritten zum personalisierten Lernkurs.</p>
         </div>
-
-        <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 w-full">
+        <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 max-w-2xl w-full">
           {[
             { n: '1', label: 'Dokument hochladen', desc: 'PDF, Word oder Text aus deinem Studium' },
             { n: '2', label: 'Quiz generieren', desc: 'KI erstellt sofort Fragen aus deinen Unterlagen' },
-            { n: '3', label: 'Klausur bestehen', desc: 'Lerne gezielt und erziele bessere Noten' },
+            { n: '3', label: 'Klausur bestehen', desc: 'Lerne gezielt, erkenne Lücken, erziele bessere Noten' },
           ].map(({ n, label, desc }) => (
-            <div key={n} className="rounded-[20px] border bg-white dark:bg-slate-900"
-              style={{ padding: '20px', borderColor: 'var(--border)' }}>
-              <p className="text-[9px] font-black uppercase tracking-widest mb-2"
-                style={{ color: 'var(--accent)' }}>Schritt {n}</p>
-              <p className="text-sm font-bold text-slate-900 dark:text-white mb-1">{label}</p>
-              <p className="text-[11px] text-slate-400">{desc}</p>
+            <div key={n} className="p-5 rounded-[24px] space-y-2" style={{ background: 'var(--bg-sidebar)', border: '1px solid var(--border-color)' }}>
+              <p className="text-[9px] font-black uppercase tracking-widest" style={{ color: 'var(--primary)' }}>Schritt {n}</p>
+              <p className="text-sm font-black dark:text-white">{label}</p>
+              <p className="text-[10px] text-slate-400">{desc}</p>
             </div>
           ))}
         </div>
-
         <button
           onClick={() => onTabChange(ActiveTab.LIBRARY)}
-          className="flex items-center gap-2 text-white font-black text-[11px] uppercase tracking-widest rounded-[16px] transition-transform hover:scale-[1.02] active:scale-[0.98]"
-          style={{ background: 'var(--accent)', padding: '14px 32px' }}
+          className="px-8 py-4 rounded-[20px] font-black uppercase text-[11px] tracking-widest shadow-3d-deep hover:scale-105 transition-all flex items-center gap-3"
+          style={{ background: 'var(--primary)', color: 'var(--primary-text)' }}
         >
-          <svg xmlns="http://www.w3.org/2000/svg" width="15" height="15" viewBox="0 0 24 24"
-            fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
-            <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/>
-            <polyline points="17 8 12 3 7 8"/>
-            <line x1="12" y1="3" x2="12" y2="15"/>
+          <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round">
+            <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/>
           </svg>
           Erste Quelle hochladen
         </button>
@@ -170,237 +174,234 @@ export const Dashboard: React.FC<DashboardProps> = ({
     );
   }
 
-  /* ── MAIN DASHBOARD ── */
   return (
-    <div className="max-w-[760px] mx-auto px-4 py-6 animate-in fade-in duration-700">
+    <div className="space-y-12 lg:space-y-24 py-12 px-4 animate-in fade-in duration-1000">
+      {/* Hero Section */}
+      <div className="text-center space-y-6">
+        <div className="space-y-2">
+            <h1 className="text-7xl sm:text-8xl lg:text-9xl font-light tracking-tighter leading-none" style={{ color: 'var(--text-main)' }}>
+                Quiz<span className="font-bold text-indigo-500">Wise</span>
+            </h1>
+            <p className="text-[10px] sm:text-xs font-black uppercase tracking-[1em] text-slate-400 dark:text-white/30 pl-4">
+                Advanced Academic Intelligence
+            </p>
+        </div>
+      </div>
 
-      {/* 1. Begrüßung */}
-      <div className="mb-6">
-        <div className="flex items-center gap-2 mb-1">
-          <p className="text-[13px] font-semibold text-slate-400">
-            Willkommen zurück, {firstName}
-          </p>
+      {/* Top-Banner: Due + Streak + Exam Countdown */}
+      {(dueCardsCount > 0 || streak.current > 0 || nextExam) && (
+        <div className="max-w-6xl mx-auto w-full grid grid-cols-1 sm:grid-cols-3 gap-3">
+          {dueCardsCount > 0 && (
+            <button
+              onClick={() => onTabChange(ActiveTab.CARDS)}
+              className="flex items-center gap-3 px-5 py-4 rounded-[20px] transition-all hover:scale-[1.02] active:scale-[0.98] text-left"
+              style={{ background: 'color-mix(in srgb, var(--primary) 10%, var(--bg-sidebar))', border: '1px solid color-mix(in srgb, var(--primary) 25%, transparent)' }}
+            >
+              <div className="w-9 h-9 rounded-xl flex items-center justify-center shrink-0" style={{ background: 'var(--primary)' }}>
+                <Layers size={16} style={{ color: 'var(--primary-text)' }} />
+              </div>
+              <div>
+                <p className="text-[11px] font-black uppercase tracking-widest" style={{ color: 'var(--primary)' }}>{dueCardsCount} fällig heute</p>
+                <p className="text-[9px] text-slate-400">Karteikarten wiederholen</p>
+              </div>
+            </button>
+          )}
           {streak.current > 0 && (
             <div
-              className="flex items-center gap-1 rounded-full"
-              style={{
-                padding: '2px 8px',
-                background: streak.todayDone
-                  ? 'color-mix(in srgb, var(--accent) 12%, transparent)'
-                  : 'color-mix(in srgb, #94a3b8 10%, transparent)',
-              }}
+              className="flex items-center gap-3 px-5 py-4 rounded-[20px]"
+              style={{ background: 'var(--bg-sidebar)', border: '1px solid var(--border-color)' }}
             >
-              <Flame
-                size={11}
-                style={{ color: streak.todayDone ? 'var(--accent)' : '#94a3b8' }}
-                fill={streak.todayDone ? 'var(--accent)' : 'none'}
-                strokeWidth={2}
-              />
-              <span className="text-[11px] font-black"
-                style={{ color: streak.todayDone ? 'var(--accent)' : '#94a3b8' }}>
-                {streak.current}
-              </span>
+              <div className="w-9 h-9 rounded-xl flex items-center justify-center shrink-0" style={{ background: streak.todayDone ? 'color-mix(in srgb, var(--primary) 15%, transparent)' : 'var(--bg-main)' }}>
+                <Flame size={16} style={{ color: streak.todayDone ? 'var(--primary)' : '#94a3b8' }} fill={streak.todayDone ? 'var(--primary)' : 'none'} strokeWidth={2} />
+              </div>
+              <div>
+                <p className="text-[11px] font-black uppercase tracking-widest" style={{ color: streak.todayDone ? 'var(--primary)' : undefined }}>{streak.current} Tage Streak</p>
+                <p className="text-[9px] text-slate-400">Rekord: {streak.best} · {streak.todayDone ? 'Heute erledigt ✓' : 'Heute noch offen'}</p>
+              </div>
             </div>
           )}
           {nextExam && (
             <div
-              className="flex items-center gap-1 rounded-full"
-              style={{
-                padding: '2px 8px',
-                background: nextExam.days <= 7 ? 'rgba(244,63,94,0.1)' : 'color-mix(in srgb, #94a3b8 10%, transparent)',
-              }}
+              className="flex items-center gap-3 px-5 py-4 rounded-[20px]"
+              style={{ background: 'var(--bg-sidebar)', border: `1px solid ${nextExam.days <= 7 ? '#f43f5e' : nextExam.days <= 14 ? '#f59e0b' : 'var(--border-color)'}` }}
             >
-              <Calendar size={11} style={{ color: nextExam.days <= 7 ? '#f43f5e' : '#94a3b8' }} />
-              <span className="text-[11px] font-black"
-                style={{ color: nextExam.days <= 7 ? '#f43f5e' : '#94a3b8' }}>
-                noch {nextExam.days}d
-              </span>
+              <div className="w-9 h-9 rounded-xl flex items-center justify-center shrink-0" style={{ background: nextExam.days <= 7 ? 'rgba(244,63,94,0.1)' : 'var(--bg-main)' }}>
+                <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke={nextExam.days <= 7 ? '#f43f5e' : '#94a3b8'} strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+                  <rect x="3" y="4" width="18" height="18" rx="2" ry="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/>
+                </svg>
+              </div>
+              <div>
+                <p className="text-[11px] font-black uppercase tracking-widest" style={{ color: nextExam.days <= 7 ? '#f43f5e' : undefined }}>Noch {nextExam.days} Tag{nextExam.days !== 1 ? 'e' : ''}</p>
+                <p className="text-[9px] text-slate-400 truncate max-w-[140px]">{nextExam.subject}</p>
+              </div>
             </div>
           )}
         </div>
-        <h1 className="text-[26px] font-extrabold tracking-tight text-slate-900 dark:text-white">
-          {dueCardsCount > 0
-            ? `Du hast heute ${dueCardsCount} Karte${dueCardsCount === 1 ? '' : 'n'} offen`
-            : 'Alles erledigt für heute — stark!'}
-        </h1>
-      </div>
-
-      {/* 2. PRIMARY: fällige Karten */}
-      {dueCardsCount > 0 && (
-        <button
-          onClick={() => onTabChange(ActiveTab.CARDS)}
-          className="w-full text-left rounded-[18px] flex items-center justify-between transition-transform hover:scale-[1.01] active:scale-[0.99]"
-          style={{ background: 'var(--card-primary)', padding: '24px', marginBottom: '12px' }}
-        >
-          <div className="flex items-center gap-4">
-            <div
-              className="w-[46px] h-[46px] rounded-[13px] flex items-center justify-center shrink-0"
-              style={{ background: 'var(--accent)' }}
-            >
-              <Layers size={22} className="text-white" />
-            </div>
-            <div>
-              <p className="text-base font-bold text-white mb-0.5">
-                {dueCardsCount} Karte{dueCardsCount === 1 ? '' : 'n'} fällig
-              </p>
-              <p className="text-[13px] text-slate-400">
-                Jetzt wiederholen · ca. {estMinutes} Min
-              </p>
-            </div>
-          </div>
-          <span
-            className="text-[11px] font-black uppercase tracking-widest text-white rounded-xl shrink-0"
-            style={{ background: 'var(--accent)', padding: '10px 16px' }}
-          >
-            Los geht's
-          </span>
-        </button>
       )}
 
-      {/* 3. SECONDARY: Weiterlernen */}
+      {/* Weiterlernen */}
       {weiterlernCard && (
-        <button
-          onClick={() => onTabChange(weiterlernCard.tab)}
-          className="w-full text-left rounded-[18px] flex items-center justify-between border bg-white dark:bg-slate-900 transition-colors"
-          style={{ borderColor: 'var(--border)', padding: '18px 24px', marginBottom: '28px' }}
-        >
-          <div className="flex items-center gap-4">
-            <div
-              className="w-[42px] h-[42px] rounded-xl flex items-center justify-center shrink-0"
-              style={{ background: 'var(--accent-soft)' }}
-            >
-              <Play size={18} style={{ color: 'var(--accent)' }} />
+        <div className="max-w-6xl mx-auto w-full">
+          <button
+            onClick={() => onTabChange(weiterlernCard.tab)}
+            className="w-full flex items-center justify-between px-6 py-4 rounded-[20px] transition-all hover:scale-[1.01] active:scale-[0.99] text-left"
+            style={{ background: 'var(--bg-sidebar)', border: '1px solid var(--border-color)' }}
+          >
+            <div className="flex items-center gap-3">
+              <div className="w-9 h-9 rounded-xl flex items-center justify-center shrink-0" style={{ background: 'color-mix(in srgb, var(--primary) 12%, transparent)' }}>
+                <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" style={{ color: 'var(--primary)' }}>
+                  <polygon points="5 3 19 12 5 21 5 3"/>
+                </svg>
+              </div>
+              <div>
+                <p className="text-[11px] font-black uppercase tracking-widest" style={{ color: 'var(--primary)' }}>Weiterlernen</p>
+                <p className="text-xs text-slate-500 dark:text-slate-400 truncate max-w-[220px]">{weiterlernCard.label}</p>
+              </div>
             </div>
-            <div>
-              <p className="text-[15px] font-bold text-slate-900 dark:text-white mb-0.5">
-                Weiterlernen
-              </p>
-              <p className="text-[13px] text-slate-500 dark:text-slate-400 truncate max-w-[220px]">
-                {weiterlernCard.label}
-              </p>
-            </div>
-          </div>
-          <ArrowRight size={18} className="text-slate-400 shrink-0" />
-        </button>
+            <span className="text-[10px] font-black uppercase tracking-widest shrink-0" style={{ color: 'var(--primary)' }}>Fortsetzen →</span>
+          </button>
+        </div>
       )}
 
-      {/* Fallback margin wenn weder primary noch secondary */}
-      {dueCardsCount === 0 && !weiterlernCard && <div style={{ height: '28px' }} />}
-
-      {/* 4. LERNMODUS-GRID */}
-      <p className="text-[11px] font-black uppercase tracking-[0.12em] text-slate-400 mb-3">
-        Lernmodus wählen
-      </p>
-      <div className="grid grid-cols-3 gap-3" style={{ marginBottom: '28px' }}>
-        {MODES.map(({ tab, label, hint, Icon }) => (
-          <button
-            key={tab}
-            onClick={() => onTabChange(tab)}
-            className="text-left rounded-2xl border bg-white dark:bg-slate-900 transition-colors"
-            style={{ borderColor: 'var(--border)', padding: '18px' }}
-          >
-            <div
-              className="w-[38px] h-[38px] rounded-[11px] flex items-center justify-center"
-              style={{ background: 'var(--icon-box)', marginBottom: '14px' }}
-            >
-              <Icon size={19} className="text-white" />
-            </div>
-            <p className="text-sm font-bold text-slate-900 dark:text-white mb-1">{label}</p>
-            <p className="text-xs text-slate-500 dark:text-slate-400 leading-snug">{hint}</p>
-          </button>
-        ))}
-      </div>
-
-      {/* 5. LERN-COACH */}
-      <button
-        onClick={() => setCoachOpen(true)}
-        className="w-full flex items-center justify-between rounded-[18px] border bg-white dark:bg-slate-900 transition-colors"
-        style={{ borderColor: 'var(--border)', padding: '18px 24px' }}
-      >
-        <div className="flex items-center gap-4">
-          <div
-            className="w-[42px] h-[42px] rounded-xl flex items-center justify-center shrink-0"
-            style={{ background: 'var(--icon-box)' }}
-          >
-            <Bot size={19} className="text-white" />
-          </div>
-          <div className="text-left">
-            <p className="text-[15px] font-bold text-slate-900 dark:text-white mb-0.5">
-              Lern-Coach
-            </p>
-            <p className="text-[13px] text-slate-500 dark:text-slate-400">
-              Persönliche Empfehlungen basierend auf deinem Fortschritt
-            </p>
-          </div>
-        </div>
-        <ArrowRight size={18} className="text-slate-400 shrink-0" />
-      </button>
-
-      {/* KI-Empfehlungen (flowResult) — dezent am Ende */}
+      {/* Intelligence Insights */}
       {flowResult && (
-        <div style={{ marginTop: '28px' }}>
-          <p className="text-[11px] font-black uppercase tracking-[0.12em] text-slate-400 mb-3">
-            KI-Empfehlung
-          </p>
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+        <div className="max-w-6xl mx-auto space-y-8 animate-in slide-in-from-bottom-8 duration-700">
+          <div className="flex justify-between items-center px-4">
+            <h2 className="text-[11px] font-black uppercase tracking-[0.4em] text-indigo-500 flex items-center gap-2">
+              Nächste Schritte (KI-Empfehlung)
+              <GeneratedImage prompt="Sparkles icon, academic minimalist" className="w-4 h-4 rounded-full" />
+            </h2>
+          </div>
+          
+          <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
             {flowResult.next_actions.map((action, i) => (
-              <button
+              <button 
                 key={i}
                 onClick={() => {
                   const moduleToTab: Record<string, ActiveTab> = {
-                    analyse: ActiveTab.RADAR, quiz: ActiveTab.QUIZ,
-                    cards: ActiveTab.CARDS, explain: ActiveTab.RECALL,
-                    calendar: ActiveTab.PLANNER, exam: ActiveTab.EXAM,
+                    analyse: ActiveTab.RADAR,
+                    quiz: ActiveTab.QUIZ,
+                    cards: ActiveTab.CARDS,
+                    explain: ActiveTab.EXPLAINER,
+                    calendar: ActiveTab.PLANNER,
+                    exam: ActiveTab.EXAM,
                   };
                   onTabChange(moduleToTab[action.module] ?? ActiveTab.QUIZ);
                 }}
-                className="text-left rounded-[18px] flex items-start gap-4 border bg-white dark:bg-slate-900 transition-colors"
-                style={{ borderColor: 'var(--border)', padding: '18px' }}
+                className="bg-indigo-600 p-8 rounded-[32px] text-white text-left shadow-3d-deep hover:scale-105 transition-all group overflow-hidden relative"
               >
-                <div
-                  className="w-[38px] h-[38px] rounded-[11px] flex items-center justify-center shrink-0"
-                  style={{ background: 'var(--accent)', marginTop: '2px' }}
-                >
-                  <HelpCircle size={18} className="text-white" />
-                </div>
-                <div className="flex-1 min-w-0">
-                  <p className="text-sm font-bold text-slate-900 dark:text-white mb-0.5">
-                    {action.title}
-                  </p>
-                  <p className="text-[11px] text-slate-500 dark:text-slate-400 leading-snug">
-                    {action.why}
-                  </p>
+                <div className="absolute top-0 right-0 w-24 h-24 bg-white/5 blur-2xl rounded-full translate-x-8 -translate-y-8"></div>
+                <div className="relative z-10 space-y-4">
+                  <div className="flex justify-between items-center">
+                    <span className="text-[9px] font-black uppercase tracking-widest opacity-60">{action.timebox_minutes} Min. Fokus</span>
+                    <span className="text-xs">➔</span>
+                  </div>
+                  <h3 className="text-xl font-black leading-tight">{action.title}</h3>
+                  <p className="text-[11px] font-medium opacity-80 italic">"{action.why}"</p>
                 </div>
               </button>
             ))}
 
-            {flowResult.calendar_suggestion?.should_schedule &&
-              flowResult.calendar_suggestion.suggested_blocks?.map((block, i) => (
-                <div key={i} className="rounded-[18px] flex flex-col gap-3 border bg-white dark:bg-slate-900"
-                  style={{ borderColor: 'var(--border)', padding: '18px' }}>
+            {flowResult.calendar_suggestion.should_schedule && flowResult.calendar_suggestion.suggested_blocks.map((block, i) => (
+               <div key={i} className="p-8 rounded-[32px] flex flex-col justify-between group border-2 border-dashed border-indigo-200 dark:border-indigo-900" style={{ background: 'var(--bg-sidebar)' }}>
                   <div>
-                    <p className="text-[9px] font-black uppercase tracking-widest mb-1"
-                      style={{ color: 'var(--accent)' }}>
-                      Lernplan-Vorschlag
-                    </p>
-                    <p className="text-sm font-bold text-slate-900 dark:text-white">
-                      {block.day}, {block.start_time} Uhr
-                    </p>
-                    <p className="text-[11px] text-slate-500 mt-0.5">{block.focus_topics.join(', ')}</p>
+                    <span className="text-[9px] font-black uppercase text-indigo-500 tracking-widest mb-2 block">Lernplan-Vorschlag</span>
+                    <h3 className="text-lg font-black dark:text-white">{block.day}, {block.start_time} Uhr</h3>
+                    <p className="text-[11px] text-slate-500 mt-1">{block.focus_topics.join(', ')}</p>
                   </div>
                   <button
                     onClick={() => handleAcceptSuggestion(block)}
-                    className="w-full rounded-xl text-[10px] font-black uppercase tracking-widest text-white transition-opacity hover:opacity-90"
-                    style={{ background: 'var(--accent)', padding: '10px' }}
-                  >
-                    In Kalender eintragen
-                  </button>
-                </div>
-              ))}
+                    className="mt-6 w-full py-3 text-[10px] font-black uppercase tracking-widest rounded-xl hover:bg-indigo-600 hover:text-white transition-all"
+                    style={{ background: 'var(--bg-main)', color: 'var(--text-secondary, #64748b)', border: '1px solid var(--border-color)' }}
+                  >In Kalender eintragen</button>
+               </div>
+            ))}
           </div>
         </div>
       )}
 
+      {/* Lern-Coach Banner */}
+      <div className="max-w-6xl mx-auto w-full">
+        <button
+          onClick={() => setCoachOpen(true)}
+          className="w-full flex items-center justify-between px-6 py-4 rounded-2xl border transition-all hover:scale-[1.01] active:scale-[0.99]"
+          style={{ background: 'color-mix(in srgb, var(--primary) 8%, var(--bg-sidebar))', borderColor: 'color-mix(in srgb, var(--primary) 25%, transparent)' }}
+        >
+          <div className="flex items-center gap-3">
+            <div className="w-9 h-9 rounded-xl flex items-center justify-center" style={{ background: 'var(--primary)' }}>
+              <Bot size={16} style={{ color: 'var(--primary-text)' }} />
+            </div>
+            <div className="text-left">
+              <p className="text-[11px] font-black uppercase tracking-widest" style={{ color: 'var(--primary)' }}>Lern-Coach</p>
+              <p className="text-xs text-slate-500 dark:text-slate-400">Persönliche Lernempfehlungen basierend auf deinem Fortschritt</p>
+            </div>
+          </div>
+          <span className="text-[10px] font-black uppercase tracking-widest" style={{ color: 'var(--primary)' }}>Fragen →</span>
+        </button>
+      </div>
+
+
+      {/* Standard Navigation Grid */}
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6 lg:gap-8 max-w-6xl mx-auto w-full">
+        {cards.map((card) => {
+          const isHovered = hovered === card.id;
+          return (
+            <button
+              key={card.id}
+              onClick={() => handleCardClick(card.id)}
+              onMouseEnter={() => setHovered(card.id)}
+              onMouseLeave={() => setHovered(null)}
+              className="group relative rounded-[32px] lg:rounded-[48px] p-8 lg:p-12 text-left shadow-3d-raised hover:shadow-3d-deep hover:-translate-y-2 transition-all duration-300 overflow-hidden active:scale-[0.98]"
+              style={isHovered
+                ? { background: 'var(--primary)', border: '1px solid var(--primary)', boxShadow: '0 20px 40px color-mix(in srgb, var(--primary) 35%, transparent)' }
+                : { background: 'var(--bg-sidebar)', border: '1px solid var(--border-color)' }
+              }
+            >
+              <div className="absolute top-0 right-0 w-40 h-40 rounded-full blur-3xl transition-opacity duration-300 pointer-events-none"
+                style={{ background: isHovered ? 'rgba(255,255,255,0.15)' : 'transparent', opacity: isHovered ? 1 : 0 }}
+              />
+              <div className="relative z-10 space-y-6">
+                <div className="flex justify-between items-start">
+                  <div
+                    className="w-12 h-12 lg:w-16 lg:h-16 rounded-2xl flex items-center justify-center group-hover:scale-110 transition-all duration-300"
+                    style={isHovered
+                      ? { background: 'rgba(255,255,255,0.2)', color: 'var(--primary-text)' }
+                      : { background: 'color-mix(in srgb, var(--primary) 12%, var(--bg-sidebar))', color: 'var(--primary)' }
+                    }
+                  >
+                    <GeneratedImage prompt={card.prompt} className="w-7 h-7 lg:w-9 lg:h-9" />
+                  </div>
+                  {card.badge && (
+                    <span
+                      className="text-[9px] font-black uppercase tracking-widest px-3 py-1.5 rounded-full transition-colors duration-300"
+                      style={isHovered
+                        ? { background: 'rgba(255,255,255,0.2)', color: 'var(--primary-text)', border: '1px solid rgba(255,255,255,0.3)' }
+                        : { background: 'var(--p50)', color: 'var(--primary)', border: '1px solid var(--p100)' }
+                      }
+                    >
+                      {card.badge}
+                    </span>
+                  )}
+                </div>
+                <div className="space-y-2">
+                  <h3
+                    className="text-2xl lg:text-3xl font-black tracking-tight transition-colors duration-300"
+                    style={{ color: isHovered ? 'var(--primary-text)' : undefined }}
+                  >
+                    {card.title}
+                  </h3>
+                  <p
+                    className="text-sm lg:text-base leading-relaxed font-medium transition-colors duration-300"
+                    style={{ color: isHovered ? 'color-mix(in srgb, var(--primary-text) 75%, transparent)' : undefined }}
+                  >
+                    {card.desc}
+                  </p>
+                </div>
+              </div>
+            </button>
+          );
+        })}
+      </div>
       <AgentChat
         agentType="lernCoach"
         context={coachContext}

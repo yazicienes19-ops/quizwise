@@ -208,28 +208,24 @@ export const ExamView: React.FC<ExamViewProps> = ({
           {q.options.map((opt, oi) => {
             const selected  = ((ans as number[]) || []).includes(oi);
             const isCorrect = q.correctIndices?.includes(oi);
-            const getOptStyle = (): React.CSSProperties => {
-              if (mode === 'solve' && selected) return { borderColor: 'var(--accent)', background: 'var(--accent-soft)', color: 'var(--accent)' };
-              if (mode === 'result') {
-                if (isCorrect) return { borderColor: '#10b981', background: '#ecfdf5', color: '#065f46' };
-                if (selected) return { borderColor: '#f43f5e', background: '#fff1f2', color: '#9f1239', opacity: 0.7 };
-                return { borderColor: '#f1f5f9', opacity: 0.3, color: '#94a3b8' };
-              }
-              return { borderColor: '#f1f5f9', background: '#f8fafc', color: '#475569' };
-            };
+            let cls = 'border-slate-100 dark:border-slate-800 dark:text-slate-400 hover:border-indigo-200';
+            if (mode === 'solve') cls = selected ? 'border-indigo-600 bg-indigo-50 dark:bg-indigo-950/20 dark:text-white' : cls;
+            if (mode === 'result') {
+              if (isCorrect) cls = 'border-emerald-500 bg-emerald-50 dark:bg-emerald-950/20 text-emerald-800 dark:text-emerald-300';
+              else if (selected) cls = 'border-rose-400 bg-rose-50 dark:bg-rose-950/20 text-rose-700 opacity-70';
+              else cls = 'border-slate-100 dark:border-slate-800 opacity-30 text-slate-400';
+            }
             return (
               <button key={oi} disabled={mode !== 'solve'}
                 onClick={() => {
                   const cur = (ans as number[]) || [];
                   setAnswer(q.id, cur.includes(oi) ? cur.filter(i => i !== oi) : [...cur, oi]);
                 }}
-                className="flex items-center gap-3 p-4 rounded-[14px] border-2 transition-all text-left"
-                style={getOptStyle()}
+                className={`flex items-center gap-3 p-4 rounded-2xl border-2 transition-all text-left ${cls}`}
               >
-                <div className="w-6 h-6 rounded-[8px] border-2 flex items-center justify-center shrink-0 text-[10px] font-black"
-                  style={mode === 'solve' && selected
-                    ? { background: 'var(--accent)', borderColor: 'var(--accent)', color: '#ffffff' }
-                    : { background: '#ffffff', borderColor: '#94a3b8', color: '#94a3b8' }}>
+                <div className={`w-6 h-6 rounded-lg border-2 flex items-center justify-center shrink-0 text-[10px] font-black ${
+                  mode === 'solve' && selected ? 'bg-indigo-600 border-indigo-600 text-white' : 'border-slate-300 dark:border-slate-600'
+                }`}>
                   {mode === 'solve' && selected ? '✓' : String.fromCharCode(65 + oi)}
                 </div>
                 <span className="text-sm font-medium">{opt}</span>
@@ -250,20 +246,19 @@ export const ExamView: React.FC<ExamViewProps> = ({
             <p className="text-[9px] font-black uppercase tracking-widest text-slate-400 mb-3">Bringe die Elemente in die richtige Reihenfolge</p>
             {userOrder.map((item, i) => (
               <div key={item} className="flex items-center gap-3">
-                <span className="w-7 h-7 rounded-[8px] text-[11px] font-black flex items-center justify-center shrink-0"
-                style={{ background: 'var(--accent-soft)', color: 'var(--accent)' }}>{i + 1}</span>
-                <div className="flex-1 p-3 rounded-[14px] border-2 border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-sm font-medium dark:text-white">{item}</div>
+                <span className="w-7 h-7 rounded-lg bg-indigo-100 dark:bg-indigo-900/30 text-indigo-600 text-[11px] font-black flex items-center justify-center shrink-0">{i + 1}</span>
+                <div className="flex-1 p-3 rounded-2xl border-2 border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-sm font-medium dark:text-white">{item}</div>
                 <div className="flex flex-col gap-1">
                   <button disabled={i === 0} onClick={() => {
                     const next = [...userOrder];
                     [next[i - 1], next[i]] = [next[i], next[i - 1]];
                     setAnswer(q.id, next);
-                  }} className="w-7 h-7 rounded-[8px] bg-slate-100 dark:bg-slate-700 text-slate-500 text-xs flex items-center justify-center hover:bg-slate-200 dark:hover:bg-slate-600 disabled:opacity-30 transition-colors">▲</button>
+                  }} className="w-7 h-7 rounded-lg bg-slate-100 dark:bg-slate-700 text-slate-500 text-xs flex items-center justify-center hover:bg-indigo-100 disabled:opacity-30 transition-colors">▲</button>
                   <button disabled={i === userOrder.length - 1} onClick={() => {
                     const next = [...userOrder];
                     [next[i], next[i + 1]] = [next[i + 1], next[i]];
                     setAnswer(q.id, next);
-                  }} className="w-7 h-7 rounded-[8px] bg-slate-100 dark:bg-slate-700 text-slate-500 text-xs flex items-center justify-center hover:bg-slate-200 dark:hover:bg-slate-600 disabled:opacity-30 transition-colors">▼</button>
+                  }} className="w-7 h-7 rounded-lg bg-slate-100 dark:bg-slate-700 text-slate-500 text-xs flex items-center justify-center hover:bg-indigo-100 disabled:opacity-30 transition-colors">▼</button>
                 </div>
               </div>
             ))}
@@ -355,7 +350,7 @@ export const ExamView: React.FC<ExamViewProps> = ({
                     className={`w-full text-left p-4 rounded-2xl border-2 transition-all text-sm font-medium ${
                       correct ? 'border-emerald-500 bg-emerald-50 dark:bg-emerald-950/20 text-emerald-700' :
                       wrong   ? 'border-rose-400 bg-rose-50 text-rose-700 opacity-70' :
-                      sel     ? 'border-slate-400 bg-slate-50 dark:bg-slate-800 text-slate-800 dark:text-slate-200' :
+                      sel     ? 'border-indigo-500 bg-indigo-50 dark:bg-indigo-950/20 text-indigo-800 dark:text-indigo-200' :
                       'border-slate-100 dark:border-slate-800 text-slate-500 dark:text-slate-400'
                     }`}
                   >
@@ -381,8 +376,7 @@ export const ExamView: React.FC<ExamViewProps> = ({
             const isWrong   = mode === 'result' && selected !== undefined && selected !== -1 && !isCorrect;
             return (
               <div key={li} className="flex items-center gap-3">
-                <div className="flex-1 min-w-0 p-3 rounded-[12px] text-sm font-bold truncate"
-                  style={{ background: 'var(--accent-soft)', color: 'var(--accent)', border: `1px solid color-mix(in srgb, var(--accent) 25%, transparent)` }}>
+                <div className="flex-1 min-w-0 p-3 rounded-2xl text-sm font-bold bg-indigo-50 dark:bg-indigo-900/20 text-indigo-800 dark:text-indigo-200 border border-indigo-200 dark:border-indigo-800 truncate">
                   {left}
                 </div>
                 <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" className="shrink-0 text-slate-400">
@@ -444,8 +438,7 @@ export const ExamView: React.FC<ExamViewProps> = ({
                       setAnswer(q.id, next);
                     }}
                     placeholder="..."
-                    className="mx-1 px-3 py-0.5 border-b-2 bg-transparent outline-none font-bold min-w-[80px] text-center"
-                    style={{ borderColor: 'var(--accent)', color: 'var(--accent)' }}
+                    className="mx-1 px-3 py-0.5 border-b-2 border-indigo-500 bg-transparent outline-none font-bold text-indigo-700 dark:text-indigo-300 min-w-[80px] text-center"
                   />
                 )}
               </React.Fragment>
@@ -515,7 +508,7 @@ export const ExamView: React.FC<ExamViewProps> = ({
   // ─── Render ────────────────────────────────────────────────────────────────
 
   return (
-    <div className="max-w-[860px] mx-auto space-y-10 animate-in fade-in duration-500 pb-32 px-4">
+    <div className="max-w-4xl mx-auto space-y-12 animate-in fade-in duration-700 pb-32">
 
       {/* Protokoll-Header */}
       <div className="flex justify-between items-end border-b-4 border-slate-900 dark:border-slate-100 pb-8">
@@ -544,7 +537,7 @@ export const ExamView: React.FC<ExamViewProps> = ({
 
       {/* Note + Ergebnis-Aktionen */}
       {mode === 'result' && (
-        <div className={`grid grid-cols-1 md:grid-cols-3 gap-8 ${gradeInfo.bg} dark:bg-slate-900/40 p-8 rounded-[18px] border-2 ${percentage >= 50 ? 'border-emerald-500' : 'border-rose-500'} animate-in zoom-in-95`}>
+        <div className={`grid grid-cols-1 md:grid-cols-3 gap-8 ${gradeInfo.bg} dark:bg-slate-900/40 p-10 rounded-[40px] border-2 ${percentage >= 50 ? 'border-emerald-500' : 'border-rose-500'} animate-in zoom-in-95`}>
           <div className="flex flex-col items-center justify-center border-b md:border-b-0 md:border-r border-slate-200 dark:border-slate-800 pb-6 md:pb-0">
             <span className="text-[10px] font-black uppercase tracking-widest text-slate-400 mb-2">Gesamtnote</span>
             <span className={`text-7xl font-black ${gradeInfo.color}`}>{gradeInfo.grade}</span>
@@ -582,8 +575,7 @@ export const ExamView: React.FC<ExamViewProps> = ({
                       className="flex-1 px-4 py-2 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-[14px] text-sm font-medium dark:text-white outline-none focus:border-indigo-500 transition-colors"
                       placeholder="Klausur-Name..." />
                     <button onClick={() => { onSaveExam(saveName.trim() || 'Meine Klausur'); setExamSaved(true); setShowSaveInput(false); }}
-                      className="px-4 py-2 text-white rounded-[14px] text-[10px] font-black uppercase tracking-widest transition-opacity hover:opacity-90 shrink-0"
-                      style={{ background: 'var(--accent)' }}>
+                      className="px-4 py-2 bg-indigo-600 text-white rounded-[14px] text-[10px] font-black uppercase tracking-widest hover:scale-105 active:scale-95 transition-all shrink-0">
                       Speichern
                     </button>
                   </div>
@@ -598,7 +590,7 @@ export const ExamView: React.FC<ExamViewProps> = ({
             )}
             <div className="flex flex-wrap gap-2 pt-2 border-t border-slate-200 dark:border-slate-700">
               {onNewExam && (
-                <button onClick={onNewExam} className="text-white px-5 py-2.5 rounded-[16px] font-black uppercase text-[9px] tracking-widest transition-opacity hover:opacity-90" style={{ background: 'var(--accent)' }}>
+                <button onClick={onNewExam} className="text-white px-5 py-2.5 rounded-[16px] font-black uppercase text-[9px] tracking-widest hover:scale-[1.02] transition-all shadow-lg" style={{ background: 'var(--primary)' }}>
                   Neue Klausur
                 </button>
               )}
@@ -642,7 +634,7 @@ export const ExamView: React.FC<ExamViewProps> = ({
               )}
 
               {isEditing && tempQuestion ? (
-                <div className="space-y-6 animate-in fade-in zoom-in-95 p-6 bg-white dark:bg-slate-800 rounded-[18px] border-2" style={{ borderColor: 'var(--accent)' }}>
+                <div className="space-y-6 animate-in fade-in zoom-in-95 p-8 bg-white dark:bg-slate-800 rounded-[32px] shadow-2xl ring-4 ring-indigo-500/20">
                   <div className="flex justify-between items-center">
                     <h3 className="text-xl font-black dark:text-white">Aufgabe {idx + 1} anpassen</h3>
                     <input type="number" value={tempQuestion.points} onChange={e => setTempQuestion({ ...tempQuestion, points: parseInt(e.target.value) })} className="w-16 p-2 bg-slate-50 dark:bg-slate-900 rounded-xl text-center font-black dark:text-white" />
@@ -650,7 +642,7 @@ export const ExamView: React.FC<ExamViewProps> = ({
                   <textarea value={tempQuestion.question} onChange={e => setTempQuestion({ ...tempQuestion, question: e.target.value })} className="w-full p-4 bg-slate-50 dark:bg-slate-900 rounded-2xl dark:text-white border-2 border-transparent focus:border-indigo-500 outline-none" />
                   <div className="flex justify-end gap-3">
                     <button onClick={() => setEditingId(null)} className="text-slate-400 font-black uppercase text-[10px]">Abbrechen</button>
-                    <button onClick={saveEdit} className="text-white px-6 py-2 rounded-[10px] font-black uppercase text-[10px]" style={{ background: 'var(--accent)' }}>Speichern</button>
+                    <button onClick={saveEdit} className="bg-indigo-600 text-white px-6 py-2 rounded-xl font-black uppercase text-[10px]">Speichern</button>
                   </div>
                 </div>
               ) : (
@@ -676,7 +668,7 @@ export const ExamView: React.FC<ExamViewProps> = ({
                   {/* KI-Korrektur */}
                   {mode === 'result' && (
                     <div className="mt-8 pl-4 lg:pl-10 animate-in slide-in-from-bottom-4">
-                      <div className={`p-5 rounded-[18px] border-l-4 ${(q.achievedPoints ?? 0) === q.points ? 'bg-emerald-50 dark:bg-emerald-950/20 border-emerald-500' : (q.achievedPoints ?? 0) > 0 ? 'bg-amber-50 dark:bg-amber-950/20 border-amber-500' : 'bg-rose-50 dark:bg-rose-950/20 border-rose-400'}`}>
+                      <div className={`p-6 rounded-[32px] border-l-8 ${(q.achievedPoints ?? 0) === q.points ? 'bg-emerald-50 dark:bg-emerald-950/20 border-emerald-500' : (q.achievedPoints ?? 0) > 0 ? 'bg-amber-50 dark:bg-amber-950/20 border-amber-500' : 'bg-rose-50 dark:bg-rose-950/20 border-rose-400'}`}>
                         <div className="flex justify-between items-center mb-3">
                           <h4 className="text-[10px] font-black uppercase tracking-widest text-slate-400">
                             {q.type === 'open' ? 'KI-Korrektur' : 'Auswertung'}
@@ -719,8 +711,7 @@ export const ExamView: React.FC<ExamViewProps> = ({
                 />
                 <button
                   onClick={() => { onSaveProgress(progressName.trim() || 'Meine Klausur'); setShowProgressInput(false); }}
-                  className="px-3 py-2 text-white rounded-[12px] text-[10px] font-black uppercase tracking-widest shrink-0"
-                  style={{ background: 'var(--accent)' }}
+                  className="px-3 py-2 bg-indigo-600 text-white rounded-[12px] text-[10px] font-black uppercase tracking-widest hover:scale-105 active:scale-95 transition-all shrink-0"
                 >
                   OK
                 </button>
@@ -740,8 +731,7 @@ export const ExamView: React.FC<ExamViewProps> = ({
               </button>
             )}
             <button onClick={handleSubmit} disabled={isEvaluating}
-              className="text-white px-10 py-5 rounded-[20px] font-black uppercase tracking-[0.3em] text-[11px] hover:scale-105 active:scale-95 transition-all flex items-center gap-4"
-              style={{ background: 'var(--accent)' }}
+              className="bg-indigo-600 text-white px-10 py-6 rounded-[32px] font-black uppercase tracking-[0.3em] text-[11px] shadow-3d-deep hover:scale-110 active:scale-95 transition-all flex items-center gap-4"
             >
               {isEvaluating ? 'Korrektur läuft...' : <span>Klausur abgeben <EmojiImage emoji="📝" size={16} /></span>}
             </button>

@@ -152,15 +152,14 @@ export const ExamSystem: React.FC<ExamSystemProps> = ({ documents, collections, 
 
   if (isLoading && !questions) {
     return (
-      <div className="flex flex-col items-center justify-center py-20 space-y-6 animate-in fade-in duration-500 px-4">
-        <div className="relative w-16 h-16">
-          <div className="w-16 h-16 border-4 border-slate-100 dark:border-slate-800 rounded-full" />
-          <div className="w-16 h-16 border-4 border-t-transparent rounded-full animate-spin absolute top-0 left-0"
-            style={{ borderColor: 'var(--accent)', borderTopColor: 'transparent' }} />
+      <div className="flex flex-col items-center justify-center py-20 lg:py-32 space-y-8 animate-in fade-in duration-500 px-4">
+        <div className="relative">
+          <div className="w-24 h-24 border-8 border-indigo-100 dark:border-indigo-900/30 rounded-full"></div>
+          <div className="w-24 h-24 border-8 border-indigo-600 border-t-transparent rounded-full animate-spin absolute top-0 left-0"></div>
         </div>
-        <div className="text-center space-y-1">
-          <p className="text-lg font-black text-slate-800 dark:text-white uppercase tracking-widest">Prüfung wird konzipiert...</p>
-          <p className="text-sm text-slate-400 italic">"Gute Lehre braucht Zeit — auch bei KIs"</p>
+        <div className="text-center space-y-2">
+          <p className="text-2xl font-black text-slate-800 dark:text-white uppercase tracking-tighter">Prüfung wird konzipiert...</p>
+          <p className="text-slate-500 dark:text-slate-400 font-medium italic">"Gute Lehre braucht Zeit - auch bei KIs"</p>
         </div>
       </div>
     );
@@ -179,22 +178,20 @@ export const ExamSystem: React.FC<ExamSystemProps> = ({ documents, collections, 
   }
 
   return (
-    <div className="max-w-[860px] mx-auto space-y-6 animate-in fade-in duration-500 px-4">
-      <div className="flex justify-between items-center bg-white dark:bg-slate-900 p-5 rounded-[18px] border" style={{ borderColor: 'var(--border)' }}>
+    <div className="space-y-10 animate-in fade-in duration-700">
+      <div className="flex justify-between items-center bg-white dark:bg-slate-900 p-6 rounded-[32px] border border-slate-200 dark:border-slate-800 shadow-3d-raised">
         <div>
-          <h2 className="text-[15px] font-extrabold dark:text-white">Klausur-Simulator</h2>
-          <p className="text-[9px] text-slate-400 font-black uppercase tracking-widest mt-0.5">
-            {mode === 'edit' ? 'Bearbeitung' : mode === 'solve' ? 'Simulation läuft' : 'Ergebnis'}
-          </p>
+          <h2 className="text-xl font-black dark:text-white">Klausur-Simulator</h2>
+          <p className="text-xs text-slate-400 font-bold uppercase tracking-widest">Status: {mode === 'edit' ? 'Bearbeitung' : mode === 'solve' ? 'Simulation' : 'Ergebnis'}</p>
         </div>
-        <div className="flex items-center gap-3">
+        <div className="flex items-center gap-4">
           {mode === 'edit' && (
             <button
               onClick={handleStartExam}
-              className="text-white px-6 py-2.5 rounded-[14px] font-black uppercase text-[10px] tracking-widest transition-opacity hover:opacity-90 flex items-center gap-2"
-              style={{ background: 'var(--accent)' }}
+              className="bg-indigo-600 text-white px-8 py-3 rounded-2xl font-black uppercase text-[10px] tracking-[0.2em] shadow-lg hover:scale-105 transition-all flex items-center gap-2"
             >
               Simulation starten
+              <GeneratedImage prompt="Rocket launch icon, minimalist" className="w-4 h-4 rounded-full" />
             </button>
           )}
 
