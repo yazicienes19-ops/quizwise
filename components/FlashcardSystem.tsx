@@ -8,10 +8,12 @@ import { toast } from '../services/toast';
 import { FlashcardPlayer } from './FlashcardPlayer';
 import { SourceSelector } from './SourceSelector';
 import { loadDecksFromSupabase, saveDeckToSupabase, deleteDeckFromSupabase, uploadAllDecksToSupabase } from '../services/flashcardService';
-import { reviewCard, getDueCards, createSrsState, migrateLegacyCard, ReviewQuality, countDueCards } from '../services/spacedRepetition';
+import { getDueCards, createSrsState, migrateLegacyCard, countDueCards, QUALITY_MAP, reviewCard } from '../services/spacedRepetition';
 import { recordActivity } from '../services/streakService';
 import { AnkiImportModal } from './AnkiImportModal';
-import { shareDeck } from '../services/sharedDecksService';
+import { ExportDeckModal } from './ExportDeckModal';
+import { EditCardModal } from './EditCardModal';
+import { DeckStatsModal } from './DeckStatsModal';
 
 interface FlashcardSystemProps {
   availableDocuments: ProcessedDocument[];
@@ -38,6 +40,7 @@ export const FlashcardSystem: React.FC<FlashcardSystemProps> = ({
 }) => {
   const [decks, setDecks] = useState<FlashcardDeck[]>([]);
   const [activeDeckId, setActiveDeckId] = useState<string | null>(null);
+  const [sessionCards, setSessionCards] = useState<Flashcard[]>([]);
   const sessionReviewCount = React.useRef(0);
   const [editingDeckId, setEditingDeckId] = useState<string | null>(null);
   const [isGenerating, setIsGenerating] = useState<string | null>(null);
@@ -46,16 +49,14 @@ export const FlashcardSystem: React.FC<FlashcardSystemProps> = ({
   // States for manual deck creation
   const [showManualDeckDialog, setShowManualDeckDialog] = useState(false);
   const [showAnkiImport, setShowAnkiImport] = useState(false);
+  const [exportingDeck, setExportingDeck] = useState<FlashcardDeck | null>(null);
+  const [statsDeck, setStatsDeck] = useState<FlashcardDeck | null>(null);
+  const [cardSearch, setCardSearch] = useState('');
   const [manualDeckTitle, setManualDeckTitle] = useState('');
 
-  // States for manual card addition
-  const [newCardFront, setNewCardFront] = useState('');
-  const [newCardBack, setNewCardBack] = useState('');
+  // null = closed, 'new' = add mode, Flashcard = edit mode
+  const [editingCard, setEditingCard] = useState<Flashcard | 'new' | null>(null);
 
-  // States for card editing + deck renaming
-  const [editingCardId, setEditingCardId] = useState<string | null>(null);
-  const [editCardFront, setEditCardFront] = useState('');
-  const [editCardBack, setEditCardBack] = useState('');
   const [isRenamingDeck, setIsRenamingDeck] = useState(false);
   const [renameTitle, setRenameTitle] = useState('');
 
@@ -128,27 +129,34 @@ export const FlashcardSystem: React.FC<FlashcardSystemProps> = ({
     setEditingDeckId(newDeck.id);
   };
 
-  const handleAddManualCard = (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!editingDeckId || !newCardFront.trim() || !newCardBack.trim()) return;
+  const handleSaveCard = (front: string, back: string) => {
+    if (!editingDeckId) return;
 
-    const newCard: Flashcard = {
-      id: Math.random().toString(36).substr(2, 9),
-      front: newCardFront,
-      back: newCardBack,
-      level: 0,
-      nextReview: Date.now(),
-      lastInterval: 0,
-      srs: createSrsState(),
-    };
+    if (editingCard === 'new') {
+      const newCard: Flashcard = {
+        id: Math.random().toString(36).substr(2, 9),
+        front, back,
+        level: 0,
+        nextReview: Date.now(),
+        lastInterval: 0,
+        srs: createSrsState(),
+      };
+      const updatedDecks = decks.map(d =>
+        d.id === editingDeckId ? { ...d, cards: [newCard, ...d.cards] } : d
+      );
+      const changed = updatedDecks.find(d => d.id === editingDeckId);
+      saveDecks(updatedDecks, changed);
+    } else if (editingCard) {
+      const updatedDecks = decks.map(d =>
+        d.id === editingDeckId
+          ? { ...d, cards: d.cards.map(c => c.id === (editingCard as Flashcard).id ? { ...c, front, back } : c) }
+          : d
+      );
+      const changed = updatedDecks.find(d => d.id === editingDeckId);
+      saveDecks(updatedDecks, changed);
+    }
 
-    const updatedDecks = decks.map(d =>
-      d.id === editingDeckId ? { ...d, cards: [newCard, ...d.cards] } : d
-    );
-    const changed = updatedDecks.find(d => d.id === editingDeckId);
-    saveDecks(updatedDecks, changed);
-    setNewCardFront('');
-    setNewCardBack('');
+    setEditingCard(null);
   };
 
   const handleDeleteCard = (deckId: string, cardId: string) => {
@@ -159,24 +167,6 @@ export const FlashcardSystem: React.FC<FlashcardSystemProps> = ({
     saveDecks(updated, changed);
   };
 
-  const startEditCard = (card: Flashcard) => {
-    setEditingCardId(card.id);
-    setEditCardFront(card.front);
-    setEditCardBack(card.back);
-  };
-
-  const handleSaveCardEdit = (e: React.FormEvent, deckId: string) => {
-    e.preventDefault();
-    if (!editCardFront.trim() || !editCardBack.trim()) return;
-    const updated = decks.map(d =>
-      d.id === deckId
-        ? { ...d, cards: d.cards.map(c => c.id === editingCardId ? { ...c, front: editCardFront.trim(), back: editCardBack.trim() } : c) }
-        : d
-    );
-    const changed = updated.find(d => d.id === deckId);
-    saveDecks(updated, changed);
-    setEditingCardId(null);
-  };
 
   const handleRenameDeck = (e: React.FormEvent, deckId: string) => {
     e.preventDefault();
@@ -224,21 +214,17 @@ export const FlashcardSystem: React.FC<FlashcardSystemProps> = ({
   };
 
   const deckStats = useMemo(() => {
+    const now = Date.now();
     return decks.map(deck => {
       const migratedCards = deck.cards.map(c => c.srs ? c : { ...c, srs: migrateLegacyCard(c) });
       const dueCount = countDueCards(migratedCards);
-      const newCards = migratedCards.filter(c => !c.srs?.lastReview).length;
-      const reviewCards = migratedCards.filter(c => c.srs?.lastReview && c.srs.nextReview <= Date.now()).length;
-      return { id: deck.id, newCards, learnCards: 0, reviewCards, dueCount };
+      const dueCards = migratedCards.filter(c => !c.srs || c.srs.nextReview <= now);
+      const newCards = dueCards.filter(c => !c.srs?.lastReview).length;
+      const learnCards = dueCards.filter(c => c.srs?.lastReview && c.srs.interval < 7).length;
+      const reviewCards = dueCards.filter(c => c.srs?.lastReview && c.srs.interval >= 7).length;
+      return { id: deck.id, newCards, learnCards, reviewCards, dueCount };
     });
   }, [decks]);
-
-  const QUALITY_MAP: Record<'again' | 'hard' | 'good' | 'easy', ReviewQuality> = {
-    again: ReviewQuality.BLACKOUT,
-    hard:  ReviewQuality.HARD,
-    good:  ReviewQuality.GOOD,
-    easy:  ReviewQuality.EASY,
-  };
 
   const handleReview = (cardId: string, difficulty: 'again' | 'hard' | 'good' | 'easy') => {
     if (!activeDeckId) return;
@@ -268,20 +254,6 @@ export const FlashcardSystem: React.FC<FlashcardSystemProps> = ({
     if (sessionReviewCount.current === 5) recordActivity();
   };
 
-  const handleExportDeck = (deck: FlashcardDeck) => {
-    const data = {
-      title: deck.title,
-      exportedAt: new Date().toISOString(),
-      cards: deck.cards.map(c => ({ front: c.front, back: c.back }))
-    };
-    const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' });
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement('a');
-    a.href = url;
-    a.download = `${deck.title.replace(/[^a-z0-9äöüß]/gi, '_')}.json`;
-    a.click();
-    URL.revokeObjectURL(url);
-  };
 
   const handleExportAll = () => {
     const data = {
@@ -358,33 +330,18 @@ export const FlashcardSystem: React.FC<FlashcardSystemProps> = ({
     reader.readAsText(file);
   };
 
-  const handleShareDeck = async (deck: FlashcardDeck) => {
-    if (!userId) {
-      toast.error('Bitte zuerst einloggen, um Decks zu teilen.');
-      return;
-    }
-    try {
-      const id = await shareDeck(deck.id, deck.title, deck.cards, userId);
-      const url = `${window.location.origin}/shared/${id}`;
-      await navigator.clipboard.writeText(url);
-      toast.success('Link kopiert! Teile ihn mit deinen Kommilitonen.');
-    } catch (e: any) {
-      if (e?.code === '23505') {
-        const url = `${window.location.origin}/shared/${deck.id}`;
-        await navigator.clipboard.writeText(url).catch(() => {});
-        toast.success('Link kopiert (Deck bereits geteilt)!');
-      } else {
-        toast.error('Teilen fehlgeschlagen. Bitte versuche es erneut.');
-      }
-    }
-  };
 
   const handleAnkiImport = (cards: Flashcard[], targetDeckId: string | null, newDeckName?: string) => {
     let updatedDecks: FlashcardDeck[];
+    let changedDeck: FlashcardDeck | undefined;
+
     if (targetDeckId) {
-      updatedDecks = decks.map(d =>
-        d.id === targetDeckId ? { ...d, cards: [...d.cards, ...cards] } : d
-      );
+      updatedDecks = decks.map(d => {
+        if (d.id !== targetDeckId) return d;
+        const updated = { ...d, cards: [...d.cards, ...cards] };
+        changedDeck = updated;
+        return updated;
+      });
       const count = cards.length;
       toast.success(`${count} Karte${count !== 1 ? 'n' : ''} zu "${decks.find(d => d.id === targetDeckId)?.title}" hinzugefügt.`);
     } else {
@@ -394,40 +351,37 @@ export const FlashcardSystem: React.FC<FlashcardSystemProps> = ({
         cards,
       };
       updatedDecks = [...decks, newDeck];
+      changedDeck = newDeck;
       toast.success(`${cards.length} Karte${cards.length !== 1 ? 'n' : ''} in "${newDeck.title}" importiert.`);
     }
-    setDecks(updatedDecks);
-    localStorage.setItem('flashcard_decks', JSON.stringify(updatedDecks));
-    if (userId) uploadAllDecksToSupabase(updatedDecks.filter(d => !decks.some(od => od.id === d.id)), userId).catch(() => {});
+    saveDecks(updatedDecks, changedDeck);
   };
 
-  const getActiveDeckCards = () => {
-    if (!activeDeckId) return [];
-    const deck = decks.find(d => d.id === activeDeckId);
-    if (!deck) return [];
-    const migratedCards = deck.cards.map(c => c.srs ? c : { ...c, srs: migrateLegacyCard(c) });
-    return getDueCards(migratedCards);
-  };
-
-  const handleOpenDeck = (deckId: string) => {
+  const handleOpenDeck = (deckId: string, mode: 'due' | 'all' = 'due') => {
     const deck = decks.find(d => d.id === deckId);
     if (!deck) return;
     const migratedCards = deck.cards.map(c => c.srs ? c : { ...c, srs: migrateLegacyCard(c) });
-    const due = getDueCards(migratedCards);
-    if (due.length === 0) {
-      toast.success("Dieses Deck ist für heute erledigt! 🎉");
-      return;
+
+    let cardsToLearn: Flashcard[];
+    if (mode === 'all') {
+      cardsToLearn = [...migratedCards].sort((a, b) => (a.srs?.nextReview ?? 0) - (b.srs?.nextReview ?? 0));
+      if (cardsToLearn.length === 0) { toast.error('Keine Karten in diesem Deck.'); return; }
+    } else {
+      cardsToLearn = getDueCards(migratedCards);
+      if (cardsToLearn.length === 0) { toast.success('Dieses Deck ist für heute erledigt! 🎉'); return; }
     }
+
     sessionReviewCount.current = 0;
+    setSessionCards(cardsToLearn);
     setActiveDeckId(deckId);
   };
 
   if (activeDeckId) {
     return (
       <FlashcardPlayer
-        cards={getActiveDeckCards()}
+        cards={sessionCards}
         onReview={handleReview}
-        onClose={() => setActiveDeckId(null)}
+        onClose={() => { setActiveDeckId(null); setSessionCards([]); }}
       />
     );
   }
@@ -438,7 +392,22 @@ export const FlashcardSystem: React.FC<FlashcardSystemProps> = ({
     if (!deck) { setEditingDeckId(null); return null; }
 
     return (
-      <div className="max-w-4xl mx-auto space-y-10 lg:space-y-16 animate-in slide-in-from-right-12 duration-700 py-6 lg:py-10">
+      <div className="max-w-4xl mx-auto space-y-8 animate-in slide-in-from-right-12 duration-700 py-6 lg:py-10">
+
+        {/* Edit Card Modal */}
+        {editingCard !== null && (
+          <EditCardModal
+            card={editingCard === 'new' ? undefined : editingCard}
+            cardIndex={editingCard === 'new' ? undefined : deck.cards.findIndex(c => c.id === (editingCard as Flashcard).id)}
+            totalCards={deck.cards.length}
+            onSave={handleSaveCard}
+            onDelete={editingCard !== 'new' ? () => {
+              handleDeleteCard(deck.id, (editingCard as Flashcard).id);
+              setEditingCard(null);
+            } : undefined}
+            onClose={() => setEditingCard(null)}
+          />
+        )}
 
         {/* Header */}
         <div className="flex justify-between items-start px-4 gap-4">
@@ -473,123 +442,95 @@ export const FlashcardSystem: React.FC<FlashcardSystemProps> = ({
             )}
             <p className="text-[10px] font-black uppercase text-slate-400 tracking-widest">{deck.cards.length} Karten im Stapel</p>
           </div>
-          <button
-            onClick={() => { setEditingDeckId(null); setEditingCardId(null); setIsRenamingDeck(false); }}
-            className="px-6 py-2 bg-slate-100 dark:bg-slate-800 text-slate-500 rounded-xl text-[10px] font-black uppercase tracking-widest hover:text-indigo-600 transition-colors shrink-0"
-          >
-            Fertig & Schließen
-          </button>
+          <div className="flex items-center gap-3 shrink-0">
+            <button
+              onClick={() => setEditingCard('new')}
+              className="flex items-center gap-2 px-5 py-2.5 rounded-xl text-[10px] font-black uppercase tracking-widest shadow-sm hover:scale-[1.02] transition-all"
+              style={{ background: 'var(--primary)', color: 'var(--primary-text, #fff)' }}
+            >
+              <svg xmlns="http://www.w3.org/2000/svg" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+              Neue Karte
+            </button>
+            <button
+              onClick={() => { setEditingDeckId(null); setIsRenamingDeck(false); setEditingCard(null); }}
+              className="px-5 py-2.5 bg-slate-100 dark:bg-slate-800 text-slate-500 rounded-xl text-[10px] font-black uppercase tracking-widest hover:text-indigo-600 transition-colors"
+            >
+              Fertig
+            </button>
+          </div>
         </div>
 
-        {/* Form to add new card */}
-        <form onSubmit={handleAddManualCard} className="bg-white dark:bg-slate-900 p-8 rounded-[32px] border border-slate-200 dark:border-slate-800 shadow-3d-raised space-y-6">
-          <h3 className="text-[10px] font-black uppercase tracking-widest text-indigo-600">Neue Karte hinzufügen</h3>
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-            <div className="space-y-2">
-              <label className="text-[9px] font-black text-slate-400 uppercase ml-2">Vorderseite (Frage/Begriff)</label>
-              <textarea
-                value={newCardFront}
-                onChange={e => setNewCardFront(e.target.value)}
-                placeholder="z.B. Was ist der Turing-Test?"
-                className="w-full p-4 bg-slate-50 dark:bg-slate-800 rounded-2xl border-2 border-transparent focus:border-indigo-500 outline-none dark:text-white font-medium resize-none h-24"
-              />
-            </div>
-            <div className="space-y-2">
-              <label className="text-[9px] font-black text-slate-400 uppercase ml-2">Rückseite (Antwort/Definition)</label>
-              <textarea
-                value={newCardBack}
-                onChange={e => setNewCardBack(e.target.value)}
-                placeholder="z.B. Ein Test zur Unterscheidung von menschlicher und künstlicher Intelligenz."
-                className="w-full p-4 bg-slate-50 dark:bg-slate-800 rounded-2xl border-2 border-transparent focus:border-indigo-500 outline-none dark:text-white font-medium resize-none h-24"
-              />
-            </div>
-          </div>
-          <button
-            type="submit"
-            disabled={!newCardFront.trim() || !newCardBack.trim()}
-            className="w-full bg-indigo-600 text-white font-black py-4 rounded-2xl uppercase tracking-widest text-[11px] shadow-lg hover:scale-[1.02] transition-all disabled:opacity-50"
-          >
-            Karte zum Stapel hinzufügen +
-          </button>
-        </form>
-
-        {/* Card list */}
-        <div className="space-y-4">
-          <h3 className="text-[10px] font-black uppercase tracking-widest text-slate-400 px-4">Bestehende Karten ({deck.cards.length})</h3>
-          <div className="space-y-3">
-            {deck.cards.map(card => (
-              <div key={card.id} className="bg-white dark:bg-slate-900 rounded-2xl border border-slate-100 dark:border-slate-800 shadow-sm overflow-hidden">
-                {editingCardId === card.id ? (
-                  /* ── Inline Edit Form ── */
-                  <form onSubmit={e => handleSaveCardEdit(e, deck.id)} className="p-5 space-y-4 animate-in fade-in duration-200">
-                    <p className="text-[9px] font-black uppercase tracking-widest text-indigo-600">Karte bearbeiten</p>
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                      <div className="space-y-1.5">
-                        <label className="text-[9px] font-black text-slate-400 uppercase ml-1">Vorderseite</label>
-                        <textarea
-                          autoFocus
-                          value={editCardFront}
-                          onChange={e => setEditCardFront(e.target.value)}
-                          className="w-full p-3 bg-slate-50 dark:bg-slate-800 rounded-xl border-2 border-indigo-500 outline-none dark:text-white font-medium resize-none h-20 text-sm"
-                        />
-                      </div>
-                      <div className="space-y-1.5">
-                        <label className="text-[9px] font-black text-slate-400 uppercase ml-1">Rückseite</label>
-                        <textarea
-                          value={editCardBack}
-                          onChange={e => setEditCardBack(e.target.value)}
-                          className="w-full p-3 bg-slate-50 dark:bg-slate-800 rounded-xl border-2 border-slate-200 dark:border-slate-700 focus:border-indigo-500 outline-none dark:text-white font-medium resize-none h-20 text-sm"
-                        />
-                      </div>
-                    </div>
-                    <div className="flex gap-2">
-                      <button
-                        type="submit"
-                        disabled={!editCardFront.trim() || !editCardBack.trim()}
-                        className="flex-1 py-2.5 bg-indigo-600 text-white rounded-xl text-[10px] font-black uppercase tracking-widest disabled:opacity-50 hover:scale-[1.01] transition-all"
-                      >
-                        Speichern
-                      </button>
-                      <button
-                        type="button"
-                        onClick={() => setEditingCardId(null)}
-                        className="px-4 py-2.5 bg-slate-100 dark:bg-slate-800 text-slate-400 rounded-xl text-[10px] font-black uppercase tracking-widest hover:text-slate-600 transition-colors"
-                      >
-                        Abbrechen
-                      </button>
-                    </div>
-                  </form>
-                ) : (
-                  /* ── Card Display Row ── */
-                  <div className="flex items-center gap-4 p-5 group">
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-3 flex-1 min-w-0">
-                      <p className="text-sm font-bold dark:text-white md:border-r md:border-slate-100 md:dark:border-slate-800 md:pr-3 leading-snug">{card.front}</p>
-                      <p className="text-sm text-slate-500 dark:text-slate-400 italic leading-snug">{card.back}</p>
-                    </div>
-                    <div className="flex gap-1 shrink-0 opacity-0 group-hover:opacity-100 transition-opacity">
-                      <button
-                        onClick={() => startEditCard(card)}
-                        className="p-2 rounded-xl text-slate-300 hover:text-indigo-500 hover:bg-indigo-50 dark:hover:bg-indigo-950/30 transition-all"
-                        title="Bearbeiten"
-                      >
-                        <svg xmlns="http://www.w3.org/2000/svg" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>
-                      </button>
-                      <button
-                        onClick={() => handleDeleteCard(deck.id, card.id)}
-                        className="p-2 rounded-xl text-slate-300 hover:text-rose-500 hover:bg-rose-50 dark:hover:bg-rose-950/20 transition-all"
-                        title="Löschen"
-                      >
-                        <svg xmlns="http://www.w3.org/2000/svg" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/></svg>
-                      </button>
-                    </div>
-                  </div>
+        {/* Search + Card list */}
+        <div className="bg-white dark:bg-slate-900 rounded-[28px] border border-slate-200 dark:border-slate-800 shadow-3d-raised overflow-hidden">
+          {deck.cards.length > 0 && (
+            <div className="px-6 py-4 border-b border-slate-50 dark:border-slate-800">
+              <div className="relative">
+                <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-300">
+                  <circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/>
+                </svg>
+                <input
+                  type="text"
+                  value={cardSearch}
+                  onChange={e => setCardSearch(e.target.value)}
+                  placeholder={`${deck.cards.length} Karten durchsuchen…`}
+                  className="w-full pl-10 pr-4 py-2.5 bg-slate-50 dark:bg-slate-800 rounded-xl text-sm outline-none border-2 border-transparent focus:border-indigo-400 dark:text-white transition-colors"
+                />
+                {cardSearch && (
+                  <button onClick={() => setCardSearch('')} className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-300 hover:text-slate-500">
+                    <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+                  </button>
                 )}
               </div>
-            ))}
-            {deck.cards.length === 0 && (
-              <div className="py-12 text-center opacity-30 italic text-sm">Noch keine Karten in diesem Stapel.</div>
-            )}
-          </div>
+            </div>
+          )}
+
+          {(() => {
+            const filtered = cardSearch.trim()
+              ? deck.cards.filter(c =>
+                  c.front.toLowerCase().includes(cardSearch.toLowerCase()) ||
+                  c.back.toLowerCase().includes(cardSearch.toLowerCase())
+                )
+              : deck.cards;
+
+            if (deck.cards.length === 0) return (
+              <div className="py-20 text-center space-y-4 opacity-30 px-6">
+                <p className="text-[10px] font-black uppercase tracking-widest">Noch keine Karten</p>
+                <p className="text-xs">Klicke „Neue Karte" um loszulegen.</p>
+              </div>
+            );
+
+            if (filtered.length === 0) return (
+              <div className="py-12 text-center opacity-40 text-sm">Keine Karten für „{cardSearch}"</div>
+            );
+
+            return (
+              <>
+                {cardSearch && (
+                  <p className="px-6 pt-3 text-[9px] font-black uppercase tracking-widest text-slate-400">
+                    {filtered.length} von {deck.cards.length} Karten
+                  </p>
+                )}
+                <div className="divide-y divide-slate-50 dark:divide-slate-800">
+                  {filtered.map((card, idx) => (
+                    <div
+                      key={card.id}
+                      className="flex items-center gap-4 px-6 py-4 hover:bg-slate-50 dark:hover:bg-slate-800/40 transition-colors group cursor-pointer"
+                      onClick={() => setEditingCard(card)}
+                    >
+                      <span className="text-[10px] font-black text-slate-300 dark:text-slate-600 w-6 shrink-0 text-right">{idx + 1}</span>
+                      <div className="grid grid-cols-1 md:grid-cols-2 gap-2 flex-1 min-w-0">
+                        <p className="text-sm font-bold dark:text-white md:border-r md:border-slate-100 md:dark:border-slate-800 md:pr-4 leading-snug truncate">{card.front}</p>
+                        <p className="text-sm text-slate-400 dark:text-slate-500 leading-snug truncate">{card.back}</p>
+                      </div>
+                      <span className="shrink-0 p-2 rounded-xl text-slate-200 dark:text-slate-700 group-hover:text-indigo-500 group-hover:bg-indigo-50 dark:group-hover:bg-indigo-950/30 transition-all">
+                        <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>
+                      </span>
+                    </div>
+                  ))}
+                </div>
+              </>
+            );
+          })()}
         </div>
       </div>
     );
@@ -602,6 +543,19 @@ export const FlashcardSystem: React.FC<FlashcardSystemProps> = ({
           decks={decks}
           onClose={() => setShowAnkiImport(false)}
           onImport={handleAnkiImport}
+        />
+      )}
+      {exportingDeck && (
+        <ExportDeckModal
+          deck={exportingDeck}
+          userId={userId}
+          onClose={() => setExportingDeck(null)}
+        />
+      )}
+      {statsDeck && (
+        <DeckStatsModal
+          deck={statsDeck}
+          onClose={() => setStatsDeck(null)}
         />
       )}
       <div className="text-center space-y-4 px-4">
@@ -768,6 +722,20 @@ export const FlashcardSystem: React.FC<FlashcardSystemProps> = ({
                           Lernen
                         </button>
                         <button
+                          onClick={() => handleOpenDeck(deck.id, 'all')}
+                          className="flex-none border-2 border-slate-200 dark:border-slate-700 text-slate-500 dark:text-slate-400 px-3 py-3 rounded-xl lg:rounded-2xl text-[9px] font-black uppercase tracking-widest hover:border-indigo-400 hover:text-indigo-600 transition-all"
+                          title="Alle Karten lernen (SRS überspringen)"
+                        >
+                          Alle
+                        </button>
+                        <button
+                          onClick={() => setStatsDeck(deck)}
+                          className="p-3 bg-slate-50 dark:bg-slate-800 text-slate-400 hover:text-indigo-600 rounded-xl transition-all"
+                          title="Statistiken"
+                        >
+                          <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round"><line x1="18" y1="20" x2="18" y2="10"/><line x1="12" y1="20" x2="12" y2="4"/><line x1="6" y1="20" x2="6" y2="14"/></svg>
+                        </button>
+                        <button
                           onClick={() => setEditingDeckId(deck.id)}
                           className="p-3 bg-slate-50 dark:bg-slate-800 text-slate-400 hover:text-indigo-600 rounded-xl transition-all"
                           title="Bearbeiten"
@@ -775,16 +743,9 @@ export const FlashcardSystem: React.FC<FlashcardSystemProps> = ({
                           <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"></path><path d="M18.5 2.5a2.121 2.121 0 1 1 3 3L12 15l-4 1 1-4 9.5-9.5z"></path></svg>
                         </button>
                         <button
-                          onClick={() => handleExportDeck(deck)}
+                          onClick={() => setExportingDeck(deck)}
                           className="p-3 bg-slate-50 dark:bg-slate-800 text-slate-400 hover:text-indigo-600 rounded-xl transition-all"
-                          title="Als JSON exportieren"
-                        >
-                          <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
-                        </button>
-                        <button
-                          onClick={() => handleShareDeck(deck)}
-                          className="p-3 bg-slate-50 dark:bg-slate-800 text-slate-400 hover:text-indigo-600 rounded-xl transition-all"
-                          title="Deck teilen — Link kopieren"
+                          title="Exportieren & Teilen"
                         >
                           <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><circle cx="18" cy="5" r="3"/><circle cx="6" cy="12" r="3"/><circle cx="18" cy="19" r="3"/><line x1="8.59" y1="13.51" x2="15.42" y2="17.49"/><line x1="15.41" y1="6.51" x2="8.59" y2="10.49"/></svg>
                         </button>

@@ -5,6 +5,8 @@ import type { SourceMeta } from '../services/libraryService';
 import { SourceCard } from './SourceCard';
 import { SourceDetailPage } from './SourceDetailPage';
 import { UploadSourceModal } from './UploadSourceModal';
+import { EditSourceModal } from './EditSourceModal';
+import { DocumentViewerModal } from './DocumentViewerModal';
 import { EmojiImage } from './EmojiImage';
 
 interface LibrarySystemProps {
@@ -15,6 +17,7 @@ interface LibrarySystemProps {
   onAction: (tab: ActiveTab, doc: ProcessedDocument) => void;
   onAddCollection: (collection: Collection) => void;
   onDeleteCollection: (id: string) => void;
+  onUpdateCollection: (collection: Collection) => void;
   onMoveDocument: (docId: string, collectionId: string | undefined) => void;
   isLoading: boolean;
 }
@@ -52,11 +55,14 @@ export const LibrarySystem: React.FC<LibrarySystemProps> = ({
   onAction,
   onAddCollection,
   onDeleteCollection,
+  onUpdateCollection,
   onMoveDocument,
   isLoading,
 }) => {
   const [allMeta, setAllMeta]           = useState<Record<string, SourceMeta>>(() => getAllMeta());
   const [viewDocId, setViewDocId]       = useState<string | null>(null);
+  const [editDocId, setEditDocId]       = useState<string | null>(null);
+  const [viewerDocId, setViewerDocId]   = useState<string | null>(null);
   const [showUpload, setShowUpload]     = useState(false);
   const [search, setSearch]             = useState('');
   const [filterType, setFilterType]     = useState<FilterType>('all');
@@ -66,12 +72,16 @@ export const LibrarySystem: React.FC<LibrarySystemProps> = ({
   const [activeColId, setActiveColId]   = useState<string | 'all' | 'uncategorized'>('all');
   const [isAddingCol, setIsAddingCol]   = useState(false);
   const [newColName, setNewColName]     = useState('');
+  const [showFolderView, setShowFolderView] = useState(true);
+  const [editColId, setEditColId]           = useState<string | null>(null);
+  const [editColName, setEditColName]       = useState('');
+  const [editColEmoji, setEditColEmoji]     = useState('');
 
   const refreshMeta = useCallback(() => setAllMeta(getAllMeta()), []);
 
   const modules = useMemo(() => {
     const set = new Set<string>();
-    Object.values(allMeta).forEach(m => { if (m.module) set.add(m.module); });
+    Object.values(allMeta).forEach((m: SourceMeta) => { if (m.module) set.add(m.module); });
     return Array.from(set).sort();
   }, [allMeta]);
 
@@ -153,18 +163,252 @@ export const LibrarySystem: React.FC<LibrarySystemProps> = ({
     setActiveColId(newId);
   };
 
+  const editDoc = editDocId ? documents.find(d => d.id === editDocId) : null;
+  const viewerDoc = viewerDocId ? documents.find(d => d.id === viewerDocId) : null;
+
   // — Detail view —
   const viewDoc = viewDocId ? documents.find(d => d.id === viewDocId) : null;
   if (viewDoc) {
     return (
       <>
         {showUpload && <UploadSourceModal onClose={() => setShowUpload(false)} onUpload={handleUpload} />}
+        {editDoc && (
+          <EditSourceModal
+            doc={editDoc}
+            meta={allMeta[editDoc.id] ?? {}}
+            onClose={() => setEditDocId(null)}
+            onSaved={refreshMeta}
+          />
+        )}
+        {viewerDoc && <DocumentViewerModal doc={viewerDoc} onClose={() => setViewerDocId(null)} />}
         <SourceDetailPage
           doc={viewDoc}
           meta={allMeta[viewDoc.id] ?? {}}
           onBack={() => setViewDocId(null)}
           onAction={onAction}
+          onViewDocument={(d) => setViewerDocId(d.id)}
         />
+      </>
+    );
+  }
+
+  const openFolder = (id: string | 'all' | 'uncategorized') => {
+    setActiveColId(id);
+    setShowFolderView(false);
+    setSearch('');
+    setFilterType('all');
+  };
+
+  // — Folder view —
+  const uncategorizedCount = documents.filter(d => !d.collectionId).length;
+  if (collections.length > 0 && showFolderView && !viewDocId) {
+    return (
+      <>
+        {showUpload && <UploadSourceModal onClose={() => setShowUpload(false)} onUpload={handleUpload} />}
+        {editDoc && (
+          <EditSourceModal
+            doc={editDoc}
+            meta={allMeta[editDoc.id] ?? {}}
+            onClose={() => setEditDocId(null)}
+            onSaved={refreshMeta}
+          />
+        )}
+        <div className="space-y-8 py-6 lg:py-10 px-4 animate-in fade-in duration-500">
+          <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
+            <div>
+              <h1 className="text-4xl lg:text-5xl font-black tracking-tighter" style={{ color: 'var(--text-main)' }}>
+                Bibliothek <EmojiImage emoji="📚" size={36} className="inline-block" />
+              </h1>
+              <p className="text-sm text-slate-400 font-medium mt-1">
+                {collections.length} {collections.length === 1 ? 'Ordner' : 'Ordner'} · {documents.length} {documents.length === 1 ? 'Dokument' : 'Dokumente'}
+              </p>
+            </div>
+            <button
+              onClick={() => !isLoading && setShowUpload(true)}
+              disabled={isLoading}
+              className="flex items-center gap-2 px-6 py-3 bg-indigo-600 rounded-2xl text-[10px] font-black uppercase tracking-widest shadow-lg hover:scale-105 active:scale-95 transition-all shrink-0 disabled:opacity-60 disabled:scale-100"
+              style={{ color: 'var(--primary-text)' }}
+            >
+              {isLoading
+                ? <><span className="w-3.5 h-3.5 border-2 border-white/30 border-t-white rounded-full animate-spin" /> Lädt…</>
+                : <><IconUpload /> Quelle hinzufügen</>
+              }
+            </button>
+          </div>
+
+          {/* Folder grid */}
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-5">
+            {collections.map(col => {
+              const count = documents.filter(d => d.collectionId === col.id).length;
+              const recentDoc = documents
+                .filter(d => d.collectionId === col.id)
+                .sort((a, b) => b.uploadDate - a.uploadDate)[0];
+              const isEditing = editColId === col.id;
+              return (
+                <div
+                  key={col.id}
+                  className="group relative rounded-[28px] shadow-3d-raised hover:shadow-3d-deep transition-all flex flex-col"
+                  style={{ background: 'var(--bg-sidebar)', border: '1px solid var(--border-color)' }}
+                >
+                  {/* Edit / Delete buttons — appear on hover */}
+                  {!isEditing && (
+                    <div className="absolute top-4 right-4 flex gap-1 opacity-0 group-hover:opacity-100 transition-opacity z-10">
+                      <button
+                        onClick={e => { e.stopPropagation(); setEditColId(col.id); setEditColName(col.name); setEditColEmoji(col.emoji); }}
+                        className="w-8 h-8 rounded-xl flex items-center justify-center bg-white dark:bg-slate-800 shadow text-slate-400 hover:text-indigo-500 transition-colors"
+                        title="Ordner bearbeiten"
+                      >
+                        <svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round">
+                          <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/>
+                          <path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/>
+                        </svg>
+                      </button>
+                      <button
+                        onClick={e => {
+                          e.stopPropagation();
+                          if (window.confirm(`Ordner „${col.name}" löschen? Die Dokumente bleiben erhalten (werden unsortiert).`)) {
+                            onDeleteCollection(col.id);
+                          }
+                        }}
+                        className="w-8 h-8 rounded-xl flex items-center justify-center bg-white dark:bg-slate-800 shadow text-slate-400 hover:text-rose-500 transition-colors"
+                        title="Ordner löschen"
+                      >
+                        <svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round">
+                          <polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/>
+                        </svg>
+                      </button>
+                    </div>
+                  )}
+
+                  {isEditing ? (
+                    /* Inline edit form */
+                    <form
+                      onSubmit={e => {
+                        e.preventDefault();
+                        if (editColName.trim()) {
+                          onUpdateCollection({ ...col, name: editColName.trim(), emoji: editColEmoji || col.emoji });
+                        }
+                        setEditColId(null);
+                      }}
+                      className="p-6 flex flex-col gap-4"
+                    >
+                      <div className="flex gap-3">
+                        <input
+                          value={editColEmoji}
+                          onChange={e => setEditColEmoji(e.target.value)}
+                          placeholder="Emoji"
+                          maxLength={4}
+                          className="w-14 text-center px-2 py-2 rounded-xl text-xl border-2 border-indigo-500 outline-none"
+                          style={{ background: 'var(--bg-main)' }}
+                        />
+                        <input
+                          autoFocus
+                          value={editColName}
+                          onChange={e => setEditColName(e.target.value)}
+                          placeholder="Ordner-Name"
+                          className="flex-1 px-3 py-2 rounded-xl text-sm font-bold border-2 border-indigo-500 outline-none"
+                          style={{ background: 'var(--bg-main)', color: 'var(--text-main)' }}
+                        />
+                      </div>
+                      <div className="flex gap-2">
+                        <button
+                          type="submit"
+                          className="flex-1 py-2.5 rounded-xl text-[9px] font-black uppercase tracking-widest"
+                          style={{ background: 'var(--primary)', color: 'var(--primary-text)' }}
+                        >Speichern</button>
+                        <button
+                          type="button"
+                          onClick={() => setEditColId(null)}
+                          className="px-4 py-2.5 rounded-xl text-[9px] font-black uppercase tracking-widest text-slate-400 border border-slate-200 dark:border-slate-700"
+                        >✕</button>
+                      </div>
+                    </form>
+                  ) : (
+                    /* Normal clickable content */
+                    <button
+                      onClick={() => openFolder(col.id)}
+                      className="text-left p-6 flex flex-col gap-4 flex-1 hover:scale-[1.02] active:scale-[0.98] transition-transform rounded-[28px]"
+                    >
+                      <div className="flex justify-between items-start">
+                        <div
+                          className="w-14 h-14 rounded-2xl flex items-center justify-center text-2xl shadow-md"
+                          style={{ background: 'color-mix(in srgb, var(--primary) 12%, white)' }}
+                        >
+                          <EmojiImage emoji={col.emoji} size={28} />
+                        </div>
+                        <span className="text-[10px] font-black uppercase tracking-widest text-slate-400 bg-slate-100 dark:bg-slate-800 px-2.5 py-1 rounded-full">
+                          {count}
+                        </span>
+                      </div>
+                      <div>
+                        <h3 className="font-black text-base leading-snug" style={{ color: 'var(--text-main)' }}>{col.name}</h3>
+                        {recentDoc && (
+                          <p className="text-[10px] text-slate-400 mt-1 truncate">
+                            Zuletzt: {recentDoc.name.replace(/\.[^/.]+$/, '')}
+                          </p>
+                        )}
+                        {count === 0 && (
+                          <p className="text-[10px] text-slate-300 dark:text-slate-600 mt-1">Noch leer</p>
+                        )}
+                      </div>
+                      <div className="flex items-center gap-1 text-[10px] font-black uppercase tracking-widest mt-auto" style={{ color: 'var(--primary)' }}>
+                        Öffnen
+                        <svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round">
+                          <line x1="5" y1="12" x2="19" y2="12"/><polyline points="12 5 19 12 12 19"/>
+                        </svg>
+                      </div>
+                    </button>
+                  )}
+                </div>
+              );
+            })}
+
+            {/* Alle Dokumente card */}
+            <button
+              onClick={() => openFolder('all')}
+              className="group text-left rounded-[28px] p-6 border-2 border-dashed hover:border-indigo-400 dark:hover:border-indigo-600 transition-all flex flex-col gap-4 hover:scale-[1.02] active:scale-[0.98]"
+              style={{ borderColor: 'var(--border-color)' }}
+            >
+              <div className="w-14 h-14 rounded-2xl flex items-center justify-center text-2xl bg-slate-100 dark:bg-slate-800">
+                <EmojiImage emoji="🌐" size={28} />
+              </div>
+              <div>
+                <h3 className="font-black text-base" style={{ color: 'var(--text-main)' }}>Alle Dokumente</h3>
+                <p className="text-[10px] text-slate-400 mt-1">{documents.length} gesamt</p>
+              </div>
+              <div className="flex items-center gap-1 text-[10px] font-black uppercase tracking-widest mt-auto text-slate-400">
+                Alle anzeigen
+                <svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round">
+                  <line x1="5" y1="12" x2="19" y2="12"/><polyline points="12 5 19 12 12 19"/>
+                </svg>
+              </div>
+            </button>
+          </div>
+
+          {/* Manage collections */}
+          <div className="flex items-center gap-3 pt-2">
+            <button
+              onClick={() => setIsAddingCol(true)}
+              className="flex items-center gap-2 px-4 py-2.5 rounded-2xl text-[10px] font-black uppercase tracking-widest text-slate-400 hover:text-indigo-600 border border-slate-200 dark:border-slate-700 hover:border-indigo-400 transition-all"
+            >
+              + Neuer Ordner
+            </button>
+            {isAddingCol && (
+              <form onSubmit={handleCreateCol} className="flex items-center gap-2">
+                <input
+                  autoFocus
+                  value={newColName}
+                  onChange={e => setNewColName(e.target.value)}
+                  placeholder="Ordner-Name…"
+                  className="px-4 py-2.5 rounded-2xl text-xs font-bold outline-none border-2 border-indigo-500"
+                  style={{ background: 'var(--bg-main)', color: 'var(--text-main)' }}
+                />
+                <button type="submit" className="px-4 py-2.5 bg-indigo-600 rounded-2xl text-[9px] font-black uppercase tracking-widest" style={{ color: 'var(--primary-text)' }}>Erstellen</button>
+                <button type="button" onClick={() => { setIsAddingCol(false); setNewColName(''); }} className="px-3 py-2.5 text-slate-400 text-[9px] font-black uppercase">✕</button>
+              </form>
+            )}
+          </div>
+        </div>
       </>
     );
   }
@@ -187,16 +431,44 @@ export const LibrarySystem: React.FC<LibrarySystemProps> = ({
   return (
     <>
       {showUpload && <UploadSourceModal onClose={() => setShowUpload(false)} onUpload={handleUpload} />}
+      {viewerDoc && <DocumentViewerModal doc={viewerDoc} onClose={() => setViewerDocId(null)} />}
+      {editDoc && (
+        <EditSourceModal
+          doc={editDoc}
+          meta={allMeta[editDoc.id] ?? {}}
+          onClose={() => setEditDocId(null)}
+          onSaved={refreshMeta}
+        />
+      )}
 
       <div className="space-y-8 lg:space-y-12 animate-in fade-in duration-700 py-6 lg:py-10">
         {/* Page header */}
         <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 px-4">
           <div>
+            {collections.length > 0 && (
+              <button
+                onClick={() => setShowFolderView(true)}
+                className="flex items-center gap-1.5 text-[10px] font-black uppercase tracking-widest text-slate-400 hover:text-indigo-500 transition-colors mb-3"
+              >
+                <svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round">
+                  <line x1="19" y1="12" x2="5" y2="12"/><polyline points="12 19 5 12 12 5"/>
+                </svg>
+                Ordner
+                {activeColId !== 'all' && activeColId !== 'uncategorized' && (() => {
+                  const col = collections.find(c => c.id === activeColId);
+                  return col ? <><span className="text-slate-300 dark:text-slate-600 mx-0.5">/</span><span style={{ color: 'var(--primary)' }}>{col.name}</span></> : null;
+                })()}
+              </button>
+            )}
             <h1 className="text-4xl lg:text-5xl font-black tracking-tighter" style={{ color: 'var(--text-main)' }}>
-              Bibliothek <EmojiImage emoji="📚" size={36} className="inline-block" />
+              {activeColId !== 'all' && activeColId !== 'uncategorized'
+                ? (collections.find(c => c.id === activeColId)?.name ?? 'Bibliothek')
+                : 'Bibliothek'
+              } <EmojiImage emoji={activeColId !== 'all' && activeColId !== 'uncategorized' ? (collections.find(c => c.id === activeColId)?.emoji ?? '📚') : '📚'} size={36} className="inline-block" />
             </h1>
             <p className="text-sm text-slate-400 font-medium mt-1">
-              {documents.length} {documents.length === 1 ? 'Quelle' : 'Quellen'} · Dein persönliches Lernsystem
+              {filtered.length} {filtered.length === 1 ? 'Dokument' : 'Dokumente'}
+              {activeColId === 'all' ? ' · Dein persönliches Lernsystem' : ''}
             </p>
           </div>
           <button
@@ -250,12 +522,29 @@ export const LibrarySystem: React.FC<LibrarySystemProps> = ({
                   {collections.map(col => (
                     <div key={col.id} className="group relative">
                       {colBtn(col.id, col.emoji, col.name, documents.filter(d => d.collectionId === col.id).length)}
-                      <button
-                        onClick={() => onDeleteCollection(col.id)}
-                        className="absolute right-[-8px] top-1/2 -translate-y-1/2 opacity-0 group-hover:opacity-100 bg-rose-500 text-white p-1 rounded-full shadow transition-all hover:scale-125 z-10"
-                      >
-                        <svg xmlns="http://www.w3.org/2000/svg" width="8" height="8" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="4" strokeLinecap="round" strokeLinejoin="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
-                      </button>
+                      <div className="absolute right-1 top-1/2 -translate-y-1/2 flex gap-0.5 opacity-0 group-hover:opacity-100 transition-opacity z-10">
+                        <button
+                          onClick={() => { setShowFolderView(true); setEditColId(col.id); setEditColName(col.name); setEditColEmoji(col.emoji); }}
+                          className="w-6 h-6 rounded-lg flex items-center justify-center bg-white dark:bg-slate-700 shadow text-slate-400 hover:text-indigo-500 transition-colors"
+                          title="Bearbeiten"
+                        >
+                          <svg xmlns="http://www.w3.org/2000/svg" width="8" height="8" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round">
+                            <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/>
+                            <path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/>
+                          </svg>
+                        </button>
+                        <button
+                          onClick={() => {
+                            if (window.confirm(`Ordner „${col.name}" löschen? Dokumente bleiben erhalten.`)) {
+                              onDeleteCollection(col.id);
+                            }
+                          }}
+                          className="w-6 h-6 rounded-lg flex items-center justify-center bg-rose-500 text-white shadow transition-all hover:scale-110"
+                          title="Löschen"
+                        >
+                          <svg xmlns="http://www.w3.org/2000/svg" width="8" height="8" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="4" strokeLinecap="round" strokeLinejoin="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+                        </button>
+                      </div>
                     </div>
                   ))}
                 </div>}
@@ -378,7 +667,9 @@ export const LibrarySystem: React.FC<LibrarySystemProps> = ({
                     meta={allMeta[doc.id] ?? {}}
                     view="grid"
                     onOpen={() => handleOpen(doc)}
+                    onView={() => setViewerDocId(doc.id)}
                     onDelete={() => handleDelete(doc)}
+                    onEdit={() => setEditDocId(doc.id)}
                   />
                 ))}
               </div>
@@ -391,7 +682,9 @@ export const LibrarySystem: React.FC<LibrarySystemProps> = ({
                     meta={allMeta[doc.id] ?? {}}
                     view="list"
                     onOpen={() => handleOpen(doc)}
+                    onView={() => setViewerDocId(doc.id)}
                     onDelete={() => handleDelete(doc)}
+                    onEdit={() => setEditDocId(doc.id)}
                   />
                 ))}
               </div>

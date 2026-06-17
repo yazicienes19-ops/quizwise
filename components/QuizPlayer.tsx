@@ -72,39 +72,15 @@ export const QuizPlayer: React.FC<QuizPlayerProps> = ({
     setRankingOrder(shuffledRanking);
   }, [currentIndex]);
 
-  // Keyboard: 1–4 select option, Enter confirm/next
-  useEffect(() => {
-    const onKey = (e: KeyboardEvent) => {
-      if (e.target instanceof HTMLInputElement || e.target instanceof HTMLTextAreaElement || e.target instanceof HTMLSelectElement) return;
-      if (showResult) {
-        if (e.key === 'Enter') { e.preventDefault(); handleNext(); }
-        return;
-      }
-      if (isMcLike || isScenario) {
-        const n = parseInt(e.key);
-        if (n >= 1 && n <= (currentQuestion.options?.length ?? 0)) {
-          e.preventDefault();
-          handleOptionSelect(n - 1);
-        }
-      }
-      if (e.key === 'Enter' && canConfirm && !isOpen) { e.preventDefault(); handleConfirm(); }
-    };
-    window.addEventListener('keydown', onKey);
-    return () => window.removeEventListener('keydown', onKey);
-  }, [showResult, isMcLike, isScenario, isOpen, canConfirm, currentQuestion, handleNext]);
-
   useEffect(() => {
     if (shuffledRanking.length > 0 && rankingOrder.length === 0) {
       setRankingOrder(shuffledRanking);
     }
   }, [shuffledRanking]);
 
-  if (!currentQuestion) return null;
-
-  const progress = ((currentIndex + 1) / questions.length) * 100;
-
   // ─── Correctness check ───────────────────────────────────────────────────
   const checkCorrectness = (): boolean => {
+    if (!currentQuestion) return false;
     if (isOpen) return selfAssessCorrect ?? false;
     if (isScenario || isMcLike) {
       const ss = [...selectedOptions].sort();
@@ -133,6 +109,7 @@ export const QuizPlayer: React.FC<QuizPlayerProps> = ({
 
   // ─── canConfirm ──────────────────────────────────────────────────────────
   const canConfirm = (() => {
+    if (!currentQuestion) return false;
     if (isOpen)     return selfAssessCorrect !== null;
     if (isMcLike || isScenario) return selectedOptions.length > 0;
     if (isMatching) return Object.keys(matchAnswer).length === (currentQuestion.matchPairs?.length ?? 0);
@@ -181,6 +158,31 @@ export const QuizPlayer: React.FC<QuizPlayerProps> = ({
     }
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [currentIndex, questions.length, answers, selectedOptions, isOpen, isMatching, isCloze, isNumeric, isRanking, matchAnswer, clozeAnswer, numericInput, rankingOrder, onComplete]);
+
+  // Keyboard: 1–4 select option, Enter confirm/next
+  useEffect(() => {
+    const onKey = (e: KeyboardEvent) => {
+      if (e.target instanceof HTMLInputElement || e.target instanceof HTMLTextAreaElement || e.target instanceof HTMLSelectElement) return;
+      if (showResult) {
+        if (e.key === 'Enter') { e.preventDefault(); handleNext(); }
+        return;
+      }
+      if (isMcLike || isScenario) {
+        const n = parseInt(e.key);
+        if (n >= 1 && n <= (currentQuestion?.options?.length ?? 0)) {
+          e.preventDefault();
+          handleOptionSelect(n - 1);
+        }
+      }
+      if (e.key === 'Enter' && canConfirm && !isOpen) { e.preventDefault(); handleConfirm(); }
+    };
+    window.addEventListener('keydown', onKey);
+    return () => window.removeEventListener('keydown', onKey);
+  }, [showResult, isMcLike, isScenario, isOpen, canConfirm, currentQuestion, handleNext, handleOptionSelect, handleConfirm]);
+
+  if (!currentQuestion) return null;
+
+  const progress = ((currentIndex + 1) / questions.length) * 100;
 
   // ─── Question type badge ─────────────────────────────────────────────────
   const TYPE_BADGE: Record<string, string> = {

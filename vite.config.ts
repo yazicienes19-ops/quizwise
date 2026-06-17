@@ -28,8 +28,6 @@ export default defineConfig(() => {
             ],
           },
           workbox: {
-            skipWaiting: true,
-            clientsClaim: true,
             cleanupOutdatedCaches: true,
             navigateFallback: null,
             maximumFileSizeToCacheInBytes: 5 * 1024 * 1024,
@@ -47,6 +45,16 @@ export default defineConfig(() => {
           },
         }),
       ],
+      build: {
+        rollupOptions: {
+          output: {
+            manualChunks: {
+              'recharts': ['recharts'],
+              'framer-motion': ['framer-motion'],
+            },
+          },
+        },
+      },
       resolve: {
         alias: {
           '@': path.resolve(__dirname, '.'),

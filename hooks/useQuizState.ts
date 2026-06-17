@@ -180,7 +180,8 @@ export const useQuizState = (params: UseQuizStateParams) => {
     const correct = ans.filter(a => a.isCorrect).length;
     const score = Math.round((correct / ans.length) * 100);
     const wrongQs = questions.filter((_, i) => !ans[i]?.isCorrect);
-    const weakTopics = [...new Set(wrongQs.map(q => q.topic).filter((t): t is string => Boolean(t)))];
+    const allTopics = wrongQs.map(q => q.topic).filter((t): t is string => Boolean(t));
+    const weakTopics = allTopics.filter((t, i) => allTopics.indexOf(t) === i);
 
     if (activeQuizMeta) {
       saveQuizResult({ docId: activeQuizMeta.docId, docName: activeQuizMeta.docName, timestamp: Date.now(), score, correctCount: correct, totalCount: ans.length, weakTopics, questions, answers: ans });

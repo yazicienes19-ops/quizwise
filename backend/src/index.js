@@ -1,6 +1,8 @@
 require('dotenv').config();
 const express = require('express');
 const cors = require('cors');
+const helmet = require('helmet');
+const rateLimit = require('express-rate-limit');
 
 const geminiRoutes = require('./routes/gemini');
 const agentRoutes = require('./routes/agents');
@@ -14,6 +16,8 @@ const { checkAgentLimit } = require('./middleware/agentLimits');
 
 const app = express();
 const PORT = process.env.PORT || 4000;
+
+app.use(helmet());
 
 const allowedOrigins = [
   'http://localhost:3000',
@@ -31,11 +35,16 @@ app.use(cors({
   },
 }));
 
+const globalLimiter = rateLimit({ windowMs: 60 * 1000, max: 60, standardHeaders: true, legacyHeaders: false, message: { error: 'Zu viele Anfragen. Bitte warte eine Minute.' } });
+const geminiLimiter = rateLimit({ windowMs: 60 * 1000, max: 30, standardHeaders: true, legacyHeaders: false, message: { error: 'Zu viele KI-Anfragen. Bitte warte eine Minute.' } });
+const stripeLimiter = rateLimit({ windowMs: 60 * 1000, max: 5, standardHeaders: true, legacyHeaders: false, message: { error: 'Zu viele Checkout-Anfragen. Bitte warte eine Minute.' } });
+
+app.use('/api/', globalLimiter);
+
 // Stripe Webhook muss VOR express.json eingebunden werden
-// (Stripe braucht den raw/unverarbeiteten Request-Body für die Signatur)
 app.use('/api/stripe/webhook', express.raw({ type: 'application/json' }));
 
-app.use(express.json({ limit: '50mb' }));
+app.use(express.json({ limit: '10mb' }));
 
 // Öffentlich
 app.get('/health', (req, res) => {
@@ -43,14 +52,14 @@ app.get('/health', (req, res) => {
 });
 
 // Stripe: Webhook öffentlich, Checkout geschützt
-app.use('/api/stripe', stripeRoutes);
+app.use('/api/stripe', stripeLimiter, stripeRoutes);
 
 // Geschützt: Login erforderlich
 app.use('/api/user', requireAuth, userRoutes);
 
-// Geschützt: Login + Nutzungslimit
-app.use('/api/gemini', requireAuth, checkUsageLimit, geminiRoutes);
-app.use('/api/agents', requireAuth, checkAgentLimit, agentRoutes);
+// Geschützt: Login + Nutzungslimit + Rate-Limit
+app.use('/api/gemini', geminiLimiter, requireAuth, checkUsageLimit, geminiRoutes);
+app.use('/api/agents', geminiLimiter, requireAuth, checkAgentLimit, agentRoutes);
 
 // Geschützt: Login (kein Gemini-Limit, ruft externe API auf)
 app.use('/api/search', requireAuth, searchRoutes);
