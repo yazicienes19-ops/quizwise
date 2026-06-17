@@ -1,13 +1,12 @@
-const { supabase } = require('./auth');
-
-const AGENT_LIMITS = { free: 50, pro: null }; // null = unlimitiert
+const AGENT_LIMITS = { free: 50, pro: null };
 
 const checkAgentLimit = async (req, res, next) => {
   try {
+    const sb = req.supabase;
     const userId = req.user.id;
     const today = new Date().toISOString().split('T')[0];
 
-    const { data: profile } = await supabase
+    const { data: profile } = await sb
       .from('profiles')
       .select('plan')
       .eq('id', userId)
@@ -17,8 +16,7 @@ const checkAgentLimit = async (req, res, next) => {
     const limit = AGENT_LIMITS[plan] ?? AGENT_LIMITS.free;
     if (limit === null) return next();
 
-    // Heutigen Zähler abfragen
-    const { data: existing } = await supabase
+    const { data: existing } = await sb
       .from('agent_usage')
       .select('count')
       .eq('user_id', userId)
@@ -36,8 +34,7 @@ const checkAgentLimit = async (req, res, next) => {
       });
     }
 
-    // Zähler erhöhen (upsert)
-    await supabase
+    await sb
       .from('agent_usage')
       .upsert(
         { user_id: userId, date: today, count: currentCount + 1 },

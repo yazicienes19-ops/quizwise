@@ -1,13 +1,12 @@
 const express = require('express');
 const { GoogleGenAI } = require('@google/genai');
-const { supabase } = require('../middleware/auth');
 
 const router = express.Router();
 const ai = new GoogleGenAI({ apiKey: process.env.GEMINI_API_KEY });
 
 // ─── Tool-Ausführung ──────────────────────────────────────────────────────────
 
-const executeToolCall = async (name, args, context, userId) => {
+const executeToolCall = async (name, args, context, userId, sb) => {
   switch (name) {
     case 'get_learning_stats': {
       const metrics = context.metrics || [];
@@ -41,7 +40,7 @@ const executeToolCall = async (name, args, context, userId) => {
       return { upcomingExams: upcoming };
     }
     case 'get_user_documents': {
-      const { data } = await supabase
+      const { data } = await sb
         .from('documents')
         .select('id, name, type')
         .eq('user_id', userId)
@@ -49,7 +48,7 @@ const executeToolCall = async (name, args, context, userId) => {
       return { documents: data || [] };
     }
     case 'get_flashcard_decks': {
-      const { data } = await supabase
+      const { data } = await sb
         .from('flashcard_decks')
         .select('id, title')
         .eq('user_id', userId)
@@ -240,8 +239,11 @@ router.post('/chat', async (req, res, next) => {
     if (!agentType || !AGENTS[agentType]) {
       return res.status(400).json({ error: `Unbekannter Agent-Typ: ${agentType}` });
     }
-    if (!userMessage?.trim()) {
+    if (!userMessage || typeof userMessage !== 'string' || !userMessage.trim()) {
       return res.status(400).json({ error: 'userMessage erforderlich' });
+    }
+    if (userMessage.length > 5000) {
+      return res.status(400).json({ error: 'Nachricht zu lang (max. 5000 Zeichen).' });
     }
 
     const agent = AGENTS[agentType];
@@ -284,7 +286,7 @@ router.post('/chat', async (req, res, next) => {
 
       if (functionCallPart) {
         const fc = functionCallPart.functionCall;
-        const toolResult = await executeToolCall(fc.name, fc.args || {}, context, userId);
+        const toolResult = await executeToolCall(fc.name, fc.args || {}, context, userId, req.supabase);
 
         const fnResponse = { name: fc.name, response: toolResult };
         if (fc.id) fnResponse.id = fc.id;

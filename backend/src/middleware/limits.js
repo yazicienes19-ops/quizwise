@@ -1,10 +1,9 @@
-const { supabase } = require('./auth');
-
 const checkUsageLimit = async (req, res, next) => {
+  const sb = req.supabase;
   const userId = req.user.id;
   const today  = new Date().toISOString().split('T')[0];
 
-  const { data, error } = await supabase.rpc('check_and_increment_api_calls', {
+  const { data, error } = await sb.rpc('check_and_increment_api_calls', {
     p_user_id: userId,
     p_today:   today,
   });

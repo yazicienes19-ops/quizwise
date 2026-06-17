@@ -1,7 +1,6 @@
 const express = require('express');
 const Stripe = require('stripe');
-const { supabase } = require('../middleware/auth');
-const { requireAuth } = require('../middleware/auth');
+const { supabaseAdmin, requireAuth } = require('../middleware/auth');
 
 const router = express.Router();
 const stripe = new Stripe(process.env.STRIPE_SECRET_KEY);
@@ -92,7 +91,7 @@ router.post('/webhook', express.raw({ type: 'application/json' }), async (req, r
     const session = event.data.object;
     const userId = session.metadata?.userId;
     if (userId) {
-      await supabase.from('profiles').update({ plan: 'pro' }).eq('id', userId);
+      await supabaseAdmin.from('profiles').update({ plan: 'pro' }).eq('id', userId);
       if (session.customer) {
         await stripe.customers.update(session.customer, { metadata: { userId } }).catch(() => {});
       }
@@ -105,7 +104,7 @@ router.post('/webhook', express.raw({ type: 'application/json' }), async (req, r
     const customer = await stripe.customers.retrieve(sub.customer);
     const userId = customer?.metadata?.userId;
     if (userId) {
-      await supabase.from('profiles').update({ plan: 'free' }).eq('id', userId);
+      await supabaseAdmin.from('profiles').update({ plan: 'free' }).eq('id', userId);
       console.log(`⬇️ User ${userId} zurück auf Free`);
     }
   }

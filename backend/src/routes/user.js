@@ -1,12 +1,12 @@
 const express = require('express');
-const { supabase } = require('../middleware/auth');
+const { supabaseAdmin } = require('../middleware/auth');
 const router = express.Router();
 
 // GET /api/user/profile
 router.get('/profile', async (req, res, next) => {
   try {
     const today = new Date().toISOString().split('T')[0];
-    const { data: profile, error } = await supabase
+    const { data: profile, error } = await req.supabase
       .from('profiles')
       .select('full_name, plan, api_calls_today, api_calls_reset_at, created_at')
       .eq('id', req.user.id)
@@ -29,11 +29,12 @@ router.get('/export', async (req, res, next) => {
   try {
     const userId = req.user.id;
 
+    const sb = req.supabase;
     const [profileRes, metricsRes, decksRes, planRes] = await Promise.all([
-      supabase.from('profiles').select('*').eq('id', userId).single(),
-      supabase.from('metrics').select('*').eq('user_id', userId),
-      supabase.from('flashcard_decks').select('*').eq('user_id', userId),
-      supabase.from('study_plan').select('*').eq('user_id', userId).single(),
+      sb.from('profiles').select('*').eq('id', userId).single(),
+      sb.from('metrics').select('*').eq('user_id', userId),
+      sb.from('flashcard_decks').select('*').eq('user_id', userId),
+      sb.from('study_plan').select('*').eq('user_id', userId).single(),
     ]);
 
     const exportData = {
@@ -58,7 +59,7 @@ router.delete('/account', async (req, res, next) => {
 
     // Supabase Admin API: löscht User aus auth.users
     // Dank CASCADE werden auch profiles, metrics, decks etc. gelöscht
-    const { error } = await supabase.auth.admin.deleteUser(userId);
+    const { error } = await supabaseAdmin.auth.admin.deleteUser(userId);
     if (error) throw error;
 
     res.json({ success: true });

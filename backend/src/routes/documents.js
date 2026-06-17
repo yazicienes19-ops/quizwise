@@ -1,9 +1,10 @@
 const express = require('express');
 const { GoogleGenAI } = require('@google/genai');
-const { supabase } = require('../middleware/auth');
 
 const router = express.Router();
 const ai = new GoogleGenAI({ apiKey: process.env.GEMINI_API_KEY });
+
+const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 
 const DIGEST_PROMPT = `Analysiere dieses Dokument und erstelle einen vollständigen Lerndigest auf Deutsch.
 
@@ -21,9 +22,12 @@ Dieser Digest ersetzt das Originaldokument für alle zukünftigen KI-Aufrufe (Qu
 // Antwortet sofort, analysiert im Hintergrund
 router.post('/:id/analyze', async (req, res) => {
   const { id } = req.params;
+  if (!UUID_RE.test(id)) return res.status(400).json({ error: 'Ungültige Dokument-ID.' });
+
+  const sb = req.supabase;
   const userId = req.user.id;
 
-  const { data: doc, error: docErr } = await supabase
+  const { data: doc, error: docErr } = await sb
     .from('documents')
     .select('*')
     .eq('id', id)
@@ -38,11 +42,11 @@ router.post('/:id/analyze', async (req, res) => {
   // Hintergrund-Analyse
   (async () => {
     try {
-      await supabase.from('documents').update({ digest_status: 'pending' }).eq('id', id);
+      await sb.from('documents').update({ digest_status: 'pending' }).eq('id', id);
 
       let part;
       if (doc.storage_path) {
-        const { data: fileData, error: fileErr } = await supabase.storage
+        const { data: fileData, error: fileErr } = await sb.storage
           .from('document-files')
           .download(doc.storage_path);
         if (fileErr) throw fileErr;
@@ -63,10 +67,10 @@ router.post('/:id/analyze', async (req, res) => {
       });
 
       const digestText = response.candidates?.[0]?.content?.parts?.[0]?.text || '';
-      await supabase.from('documents').update({ digest_text: digestText, digest_status: 'ready' }).eq('id', id);
+      await sb.from('documents').update({ digest_text: digestText, digest_status: 'ready' }).eq('id', id);
     } catch (err) {
       console.error('Digest-Fehler:', err.message);
-      await supabase.from('documents').update({ digest_status: 'error' }).eq('id', id).catch(() => {});
+      await sb.from('documents').update({ digest_status: 'error' }).eq('id', id).catch(() => {});
     }
   })();
 });
