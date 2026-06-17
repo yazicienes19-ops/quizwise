@@ -45,3 +45,19 @@ CREATE POLICY "Eigene gespeicherte Inhalte aktualisieren" ON public.user_saved_c
 -- 3. Preferences-Spalte in profiles (Theme, Akzentfarbe, Font, Onboarding-Flags)
 ALTER TABLE public.profiles
   ADD COLUMN IF NOT EXISTS preferences jsonb NOT NULL DEFAULT '{}';
+
+-- 4. Shared Decks (Paket 8 — Deck-Teilen / viraler Loop)
+CREATE TABLE IF NOT EXISTS public.shared_decks (
+  id         uuid PRIMARY KEY,
+  owner_id   uuid REFERENCES auth.users(id),
+  name       text,
+  cards      jsonb,
+  created_at timestamptz DEFAULT now()
+);
+
+ALTER TABLE public.shared_decks ENABLE ROW LEVEL SECURITY;
+
+CREATE POLICY "Geteilte Decks öffentlich lesbar" ON public.shared_decks
+  FOR SELECT USING (true);
+CREATE POLICY "Eigene Decks teilen" ON public.shared_decks
+  FOR INSERT WITH CHECK (auth.uid() = owner_id);

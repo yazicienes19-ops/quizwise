@@ -11,6 +11,8 @@ import { Onboarding, isOnboardingDone } from './components/Onboarding';
 import { SharedDeckPage } from './components/SharedDeckPage';
 import { LandingPage } from './components/LandingPage';
 import { ErrorBoundary } from './components/ErrorBoundary';
+import { CookieBanner } from './components/CookieBanner';
+import { LegalModal } from './components/LegalModal';
 import { resolveErrorMessage } from './services/errorMessages';
 import { getStreak } from './services/streakService';
 import { orchestrateLearningFlow } from './services/geminiService';
@@ -44,6 +46,8 @@ const App: React.FC = () => {
   const [savedSources, setSavedSources] = useState<SearchResult[]>([]);
   const [isSearching, setIsSearching] = useState(false);
   const [streakDismissed, setStreakDismissed] = useState(false);
+  const [cookieConsent, setCookieConsent] = useState(() => localStorage.getItem('cookie_consent') === 'accepted');
+  const [legalPage, setLegalPage] = useState<'impressum' | 'datenschutz' | 'agb' | null>(null);
 
   useEffect(() => {
     const handleStatus = () => setIsOffline(!navigator.onLine);
@@ -165,6 +169,8 @@ const App: React.FC = () => {
       <ToastContainer />
       <LandingPage onAuthClick={() => auth.setShowAuthModal(true)} />
       {auth.showAuthModal && <AuthModal onClose={() => auth.setShowAuthModal(false)} />}
+      {!cookieConsent && <CookieBanner onAccept={() => { setCookieConsent(true); localStorage.setItem('cookie_consent', 'accepted'); }} onShowPrivacy={() => setLegalPage('datenschutz')} />}
+      {legalPage && <LegalModal page={legalPage} onClose={() => setLegalPage(null)} />}
     </>
   );
 
@@ -241,6 +247,8 @@ const App: React.FC = () => {
         </React.Suspense>
         </ErrorBoundary>
       </Layout>
+      {!cookieConsent && <CookieBanner onAccept={() => { setCookieConsent(true); localStorage.setItem('cookie_consent', 'accepted'); }} onShowPrivacy={() => setLegalPage('datenschutz')} />}
+      {legalPage && <LegalModal page={legalPage} onClose={() => setLegalPage(null)} />}
     </>
   );
 };
