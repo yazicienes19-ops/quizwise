@@ -16,14 +16,16 @@ export const getSavedExams = (): SavedExam[] => {
   catch { return []; }
 };
 
-export const saveExamToStorage = (exam: Omit<SavedExam, 'id' | 'savedAt'>): void => {
+export const saveExamToStorage = (exam: Omit<SavedExam, 'id' | 'savedAt'>, userId?: string | null): void => {
   const exams = getSavedExams();
   const entry: SavedExam = { ...exam, id: `se-${Date.now()}`, savedAt: Date.now() };
   const updated = [entry, ...exams].slice(0, MAX_SAVED);
   localStorage.setItem(KEY, JSON.stringify(updated));
+  if (userId) import('./syncService').then(({ syncSavedField }) => syncSavedField(userId, 'saved_exams', updated)).catch(() => {});
 };
 
-export const deleteSavedExam = (id: string): void => {
+export const deleteSavedExam = (id: string, userId?: string | null): void => {
   const updated = getSavedExams().filter(e => e.id !== id);
   localStorage.setItem(KEY, JSON.stringify(updated));
+  if (userId) import('./syncService').then(({ syncSavedField }) => syncSavedField(userId, 'saved_exams', updated)).catch(() => {});
 };

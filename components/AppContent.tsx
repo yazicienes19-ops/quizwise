@@ -47,6 +47,7 @@ interface AppContentProps {
   deleteDoc: (id: string) => void;
   addCollection: (col: Collection) => void;
   removeCollection: (id: string) => void;
+  updateCollection: (col: Collection) => void;
   moveDoc: (docId: string, collectionId: string | undefined) => void;
   getDocumentSource: (doc: ProcessedDocument) => GenerationSource;
   questions: QuizQuestion[];
@@ -98,7 +99,7 @@ interface AppContentProps {
 export const AppContent: React.FC<AppContentProps> = (p) => {
   const {
     activeTab, setActiveTab, isLoading, setIsLoading, user, userPlan,
-    documents, collections, handleFileUpload, deleteDoc, addCollection, removeCollection, moveDoc, getDocumentSource,
+    documents, collections, handleFileUpload, deleteDoc, addCollection, removeCollection, updateCollection, moveDoc, getDocumentSource,
     questions, setQuestions, answers, setAnswers, activeQuizMeta, setActiveQuizMeta,
     quizInitialAnswers, setQuizInitialAnswers, savedQuizzes, setSavedQuizzes,
     savedExams, setSavedExams, examInitialQuestions, setExamInitialQuestions,
@@ -138,6 +139,7 @@ export const AppContent: React.FC<AppContentProps> = (p) => {
           else { setPendingActionDoc(null); setActiveTab(tab); }
         }}
         onAddCollection={addCollection} onDeleteCollection={removeCollection}
+        onUpdateCollection={updateCollection}
         onMoveDocument={moveDoc} isLoading={isLoading}
       />;
 
@@ -239,9 +241,9 @@ export const AppContent: React.FC<AppContentProps> = (p) => {
         getDocumentSource={getDocumentSource}
         onSaveToLibrary={file => handleFileUpload(file)}
         onComplete={(score, topic, missingPoints) => {
-          saveRecallResult({ docName: topic, timestamp: Date.now(), score, topic, missingPoints });
+          saveRecallResult({ docName: topic, timestamp: Date.now(), score, topic, missingPoints }, user?.id);
           updateMetricsAfterSession(score, topic, 'recall');
-          recordActivity();
+          recordActivity(user?.id);
         }}
         initialDoc={pendingActionDoc ?? undefined}
       />;
@@ -279,11 +281,11 @@ export const AppContent: React.FC<AppContentProps> = (p) => {
           initialDoc={pendingActionDoc ?? undefined}
           initialQuestions={examInitialQuestions?.questions}
           onComplete={({ score, docName, passed, totalPoints, achievedPoints }) => {
-            saveExamResult({ docName, timestamp: Date.now(), score, passed, totalPoints, achievedPoints, weakTopics: [] });
+            saveExamResult({ docName, timestamp: Date.now(), score, passed, totalPoints, achievedPoints, weakTopics: [] }, user?.id);
             updateMetricsAfterSession(score, docName, 'exam');
             setExamInitialQuestions(null);
             setSavedExams(getSavedExams());
-            recordActivity();
+            recordActivity(user?.id);
           }}
           onNavigate={setActiveTab}
         />

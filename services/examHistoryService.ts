@@ -16,10 +16,14 @@ const readAll = (): ExamResult[] => {
   try { return JSON.parse(localStorage.getItem(STORAGE_KEY) || '[]'); } catch { return []; }
 };
 
-export const saveExamResult = (data: Omit<ExamResult, 'id'>): ExamResult => {
+export const saveExamResult = (data: Omit<ExamResult, 'id'>, userId?: string | null): ExamResult => {
   const all = readAll();
   const entry: ExamResult = { ...data, id: Math.random().toString(36).slice(2, 9) };
-  localStorage.setItem(STORAGE_KEY, JSON.stringify([entry, ...all].slice(0, 200)));
+  const updated = [entry, ...all].slice(0, 200);
+  localStorage.setItem(STORAGE_KEY, JSON.stringify(updated));
+  if (userId) {
+    import('./syncService').then(({ syncLearningField }) => syncLearningField(userId, 'exam_history', updated)).catch(() => {});
+  }
   return entry;
 };
 

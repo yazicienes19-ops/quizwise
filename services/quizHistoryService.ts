@@ -19,10 +19,14 @@ const readAll = (): QuizResult[] => {
   try { return JSON.parse(localStorage.getItem(STORAGE_KEY) || '[]'); } catch { return []; }
 };
 
-export const saveQuizResult = (data: Omit<QuizResult, 'id'>): QuizResult => {
+export const saveQuizResult = (data: Omit<QuizResult, 'id'>, userId?: string | null): QuizResult => {
   const all = readAll();
   const entry: QuizResult = { ...data, id: Math.random().toString(36).slice(2, 9) };
-  localStorage.setItem(STORAGE_KEY, JSON.stringify([entry, ...all].slice(0, 500)));
+  const updated = [entry, ...all].slice(0, 500);
+  localStorage.setItem(STORAGE_KEY, JSON.stringify(updated));
+  if (userId) {
+    import('./syncService').then(({ syncLearningField }) => syncLearningField(userId, 'quiz_history', updated)).catch(() => {});
+  }
   return entry;
 };
 

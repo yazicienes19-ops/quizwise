@@ -8,7 +8,7 @@ router.get('/profile', async (req, res, next) => {
     const today = new Date().toISOString().split('T')[0];
     const { data: profile, error } = await req.supabase
       .from('profiles')
-      .select('full_name, plan, api_calls_today, api_calls_reset_at, created_at')
+      .select('full_name, plan, api_calls_today, api_calls_reset_at, created_at, preferences')
       .eq('id', req.user.id)
       .single();
     if (error) throw error;
@@ -19,6 +19,7 @@ router.get('/profile', async (req, res, next) => {
       email: req.user.email,
       plan: profile.plan,
       usage: { used, limit, remaining: limit ? limit - used : null },
+      preferences: profile.preferences || {},
     });
   } catch (err) { next(err); }
 });

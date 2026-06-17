@@ -10,6 +10,7 @@ import { recordActivity } from '../services/streakService';
 import { toast } from '../services/toast';
 
 interface UseQuizStateParams {
+  userId?: string | null;
   documents: ProcessedDocument[];
   decks: FlashcardDeck[];
   metrics: TopicMetric[];
@@ -184,13 +185,13 @@ export const useQuizState = (params: UseQuizStateParams) => {
     const weakTopics = allTopics.filter((t, i) => allTopics.indexOf(t) === i);
 
     if (activeQuizMeta) {
-      saveQuizResult({ docId: activeQuizMeta.docId, docName: activeQuizMeta.docName, timestamp: Date.now(), score, correctCount: correct, totalCount: ans.length, weakTopics, questions, answers: ans });
+      saveQuizResult({ docId: activeQuizMeta.docId, docName: activeQuizMeta.docName, timestamp: Date.now(), score, correctCount: correct, totalCount: ans.length, weakTopics, questions, answers: ans }, params.userId);
       const stats = getDocStats(activeQuizMeta.docId);
       saveMeta(activeQuizMeta.docId, { quizCount: stats.count, lastQuizAt: Date.now(), avgQuizAccuracy: stats.avgAccuracy ?? score, weakTopics: stats.weakTopics });
     }
 
     await params.updateMetricsAfterSession(score, activeQuizMeta?.docName || 'Quiz Session', 'quiz');
-    recordActivity();
+    recordActivity(params.userId);
   };
 
   const handleCreateFlashcardsFromMistakes = (wrongQuestions: QuizQuestion[]) => {

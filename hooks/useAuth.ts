@@ -33,7 +33,16 @@ export const useAuth = () => {
   useEffect(() => {
     if (!user) { setUserPlan('free'); return; }
     fetchUserProfile()
-      .then(p => setUserPlan(p.plan === 'pro' ? 'pro' : 'free'))
+      .then(p => {
+        setUserPlan(p.plan === 'pro' ? 'pro' : 'free');
+        if (p.preferences) {
+          const pr = p.preferences;
+          if (pr.theme) { const dark = pr.theme === 'dark'; setIsDark(dark); document.documentElement.classList.toggle('dark', dark); localStorage.setItem('theme', pr.theme); }
+          if (pr.accent_color) { document.documentElement.style.setProperty('--primary', pr.accent_color); localStorage.setItem('accent_color', pr.accent_color); }
+          if (pr.font_choice) localStorage.setItem('font_choice', pr.font_choice);
+          if (pr.line_height) localStorage.setItem('line_height', pr.line_height);
+        }
+      })
       .catch(() => {});
   }, [user]);
 
@@ -42,6 +51,7 @@ export const useAuth = () => {
     setIsDark(next);
     document.documentElement.classList.toggle('dark', next);
     localStorage.setItem('theme', next ? 'dark' : 'light');
+    if (user) import('../services/syncService').then(({ syncPreferences }) => syncPreferences(user.id, { theme: next ? 'dark' : 'light' })).catch(() => {});
   };
 
   return { user, authChecked, userPlan, showAuthModal, setShowAuthModal, isDark, toggleTheme };

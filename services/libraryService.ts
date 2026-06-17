@@ -30,16 +30,18 @@ export const getAllMeta = (): Record<string, SourceMeta> => readAll();
 
 export const getMeta = (docId: string): SourceMeta => readAll()[docId] ?? {};
 
-export const saveMeta = (docId: string, patch: Partial<SourceMeta>): void => {
+export const saveMeta = (docId: string, patch: Partial<SourceMeta>, userId?: string | null): void => {
   const all = readAll();
   all[docId] = { ...all[docId], ...patch };
   localStorage.setItem(STORAGE_KEY, JSON.stringify(all));
+  if (userId) import('./syncService').then(({ syncSavedField }) => syncSavedField(userId, 'lib_meta', all)).catch(() => {});
 };
 
-export const deleteMeta = (docId: string): void => {
+export const deleteMeta = (docId: string, userId?: string | null): void => {
   const all = readAll();
   delete all[docId];
   localStorage.setItem(STORAGE_KEY, JSON.stringify(all));
+  if (userId) import('./syncService').then(({ syncSavedField }) => syncSavedField(userId, 'lib_meta', all)).catch(() => {});
 };
 
 export const incrementStat = (

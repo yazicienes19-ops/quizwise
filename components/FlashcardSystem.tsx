@@ -251,7 +251,7 @@ export const FlashcardSystem: React.FC<FlashcardSystemProps> = ({
     const changedDeck = newDecks.find(d => d.id === activeDeckId);
     saveDecks(newDecks, changedDeck);
     sessionReviewCount.current += 1;
-    if (sessionReviewCount.current === 5) recordActivity();
+    if (sessionReviewCount.current === 5) recordActivity(userId);
   };
 
 

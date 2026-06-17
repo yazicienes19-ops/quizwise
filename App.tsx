@@ -20,6 +20,7 @@ import { useAuth } from './hooks/useAuth';
 import { useDocuments } from './hooks/useDocuments';
 import { useQuizState } from './hooks/useQuizState';
 import { AppContent } from './components/AppContent';
+import { loadAllCloudData, syncLearningField, syncMetrics, migrateLocalToCloud } from './services/syncService';
 
 const App: React.FC = () => {
   const auth = useAuth();
@@ -57,6 +58,31 @@ const App: React.FC = () => {
     return () => { window.removeEventListener('online', handleStatus); window.removeEventListener('offline', handleStatus); };
   }, []);
 
+  useEffect(() => {
+    if (!auth.user || isOffline) return;
+    loadAllCloudData(auth.user.id).then(cloud => {
+      if (cloud.learning) {
+        if (cloud.learning.exam_terms.length) { setExamTerms(cloud.learning.exam_terms); localStorage.setItem('quizwise_exam_terms', JSON.stringify(cloud.learning.exam_terms)); }
+        if (cloud.learning.streak.lastDay) localStorage.setItem('quizwise_streak', JSON.stringify(cloud.learning.streak));
+        if (cloud.learning.quiz_history.length) localStorage.setItem('quizwise_quiz_history', JSON.stringify(cloud.learning.quiz_history));
+        if (cloud.learning.exam_history.length) localStorage.setItem('quizwise_exam_history', JSON.stringify(cloud.learning.exam_history));
+        if (cloud.learning.recall_history.length) localStorage.setItem('quizwise_recall_history', JSON.stringify(cloud.learning.recall_history));
+      }
+      if (cloud.metrics.length) { setMetrics(cloud.metrics); localStorage.setItem('quizwise_metrics', JSON.stringify(cloud.metrics)); }
+      if (cloud.saved) {
+        if (cloud.saved.saved_quizzes.length) localStorage.setItem('quizwise_saved_quizzes', JSON.stringify(cloud.saved.saved_quizzes));
+        if (cloud.saved.saved_exams.length) localStorage.setItem('quizwise_saved_exams', JSON.stringify(cloud.saved.saved_exams));
+        if (Object.keys(cloud.saved.lib_meta).length) localStorage.setItem('quizwise_lib_meta', JSON.stringify(cloud.saved.lib_meta));
+        if (cloud.saved.study_events.length) localStorage.setItem('study_events', JSON.stringify(cloud.saved.study_events));
+        if (cloud.saved.study_templates.length) localStorage.setItem('study_templates', JSON.stringify(cloud.saved.study_templates));
+      }
+      if (!cloud.learning && !cloud.metrics.length) {
+        const hasLocal = localStorage.getItem('quizwise_metrics') || localStorage.getItem('quizwise_streak') || localStorage.getItem('quizwise_quiz_history');
+        if (hasLocal) migrateLocalToCloud(auth.user!.id).catch(() => {});
+      }
+    }).catch(() => {});
+  }, [auth.user, isOffline]);
+
   const handleApiError = (e: any) => {
     if (e?.message === 'LIMIT_REACHED') { setShowUpgradeHint(true); return; }
     if (e?.message?.includes('einloggen')) { auth.setShowAuthModal(true); return; }
@@ -71,6 +97,7 @@ const App: React.FC = () => {
   const saveExamTerms = (terms: ExamTerm[]) => {
     setExamTerms(terms);
     localStorage.setItem('quizwise_exam_terms', JSON.stringify(terms));
+    if (auth.user) syncLearningField(auth.user.id, 'exam_terms', terms);
   };
 
   const updateMetricsAfterSession = async (score: number, topicName: string, type: 'quiz' | 'exam' | 'recall' | 'cards') => {
@@ -85,6 +112,7 @@ const App: React.FC = () => {
     }
     setMetrics(updated);
     localStorage.setItem('quizwise_metrics', JSON.stringify(updated));
+    if (auth.user) syncMetrics(auth.user.id, updated);
     try {
       const flow = await orchestrateLearningFlow({ type, result: { score } }, updated, { entries: JSON.parse(localStorage.getItem('study_plan') || '[]'), exams: examTerms });
       saveFlowResult(flow);
@@ -94,6 +122,7 @@ const App: React.FC = () => {
   const { saveDocs: _saveDocs, ...docs } = useDocuments({ user: auth.user, userPlan: auth.userPlan, isOffline, setIsLoading, setShowUpgradeModal });
 
   const quiz = useQuizState({
+    userId: auth.user?.id,
     documents: docs.documents,
     decks,
     metrics,

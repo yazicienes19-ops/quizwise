@@ -37,16 +37,18 @@ const SPACING_OPTIONS = [
   { id: '1.9', label: 'Weit'    },
 ];
 
-function applyFont(fontId: string) {
+function applyFont(fontId: string, userId?: string | null) {
   const font = FONTS.find(f => f.id === fontId);
   if (!font) return;
   document.documentElement.style.setProperty('--font-app', font.stack);
   localStorage.setItem('font_choice', fontId);
+  if (userId) import('../services/syncService').then(({ syncPreferences }) => syncPreferences(userId, { font_choice: fontId })).catch(() => {});
 }
 
-function applyLineHeight(lh: string) {
+function applyLineHeight(lh: string, userId?: string | null) {
   document.documentElement.style.setProperty('--line-height-app', lh);
   localStorage.setItem('line_height', lh);
+  if (userId) import('../services/syncService').then(({ syncPreferences }) => syncPreferences(userId, { line_height: lh })).catch(() => {});
 }
 
 type Tab = 'profil' | 'abo' | 'design' | 'datenschutz' | 'api';
@@ -153,7 +155,11 @@ export const SettingsModal: React.FC<Props> = ({ user, isDark, onToggleTheme, on
     } catch (e: any) { toast.error(e.message); setIsDeletingAccount(false); }
   };
 
-  const handleAccentColor = (color: string) => { setAccentColor(color); applyAccentColor(color); };
+  const handleAccentColor = (color: string) => {
+    setAccentColor(color);
+    applyAccentColor(color);
+    if (user) import('../services/syncService').then(({ syncPreferences }) => syncPreferences(user.id, { accent_color: color })).catch(() => {});
+  };
 
   const handleSaveApiKey = () => {
     const trimmed = apiKey.trim();
@@ -396,7 +402,7 @@ export const SettingsModal: React.FC<Props> = ({ user, isDark, onToggleTheme, on
                     return (
                       <button
                         key={f.id}
-                        onClick={() => { setFontChoice(f.id); applyFont(f.id); }}
+                        onClick={() => { setFontChoice(f.id); applyFont(f.id, user?.id); }}
                         className="p-4 rounded-2xl text-left transition-all active:scale-95 hover:scale-[1.02]"
                         style={{
                           background: isSelected
@@ -426,7 +432,7 @@ export const SettingsModal: React.FC<Props> = ({ user, isDark, onToggleTheme, on
                   {SPACING_OPTIONS.map(s => (
                     <button
                       key={s.id}
-                      onClick={() => { setLineHeight(s.id); applyLineHeight(s.id); }}
+                      onClick={() => { setLineHeight(s.id); applyLineHeight(s.id, user?.id); }}
                       className={`flex-1 py-2.5 rounded-xl text-[11px] font-black uppercase tracking-wide transition-all ${lineHeight === s.id ? '' : 'text-slate-400 hover:text-slate-600 dark:hover:text-slate-200'}`}
                       style={lineHeight === s.id ? { background: 'var(--bg-sidebar)', color: 'var(--primary)', boxShadow: '0 1px 4px rgba(0,0,0,0.08)' } : {}}
                     >

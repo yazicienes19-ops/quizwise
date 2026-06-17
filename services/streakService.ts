@@ -45,7 +45,7 @@ const save = (data: StreakData) => {
 };
 
 /** Nach jeder Lernaktivität aufrufen. Idempotent pro Tag. */
-export const recordActivity = (): StreakData => {
+export const recordActivity = (userId?: string | null): StreakData => {
   const data = load();
   const today = todayStr();
 
@@ -60,6 +60,9 @@ export const recordActivity = (): StreakData => {
   if (data.current > data.best) data.best = data.current;
 
   save(data);
+  if (userId) {
+    import('./syncService').then(({ syncLearningField }) => syncLearningField(userId, 'streak', data)).catch(() => {});
+  }
   return data;
 };
 
