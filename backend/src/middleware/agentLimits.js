@@ -47,7 +47,7 @@ const checkAgentLimit = async (req, res, next) => {
     next();
   } catch (err) {
     console.error('Agent-Limit Fehler:', err.message);
-    next(); // Bei Fehler: durchlassen, nicht blocken
+    res.status(503).json({ error: 'Limit-Prüfung fehlgeschlagen. Bitte erneut versuchen.' });
   }
 };
 

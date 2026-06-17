@@ -9,7 +9,10 @@ import { SplashScreen } from './components/SplashScreen';
 import { AuthPage } from './components/AuthPage';
 import { Onboarding, isOnboardingDone } from './components/Onboarding';
 import { SharedDeckPage } from './components/SharedDeckPage';
+import { LandingPage } from './components/LandingPage';
+import { ErrorBoundary } from './components/ErrorBoundary';
 import { resolveErrorMessage } from './services/errorMessages';
+import { getStreak } from './services/streakService';
 import { orchestrateLearningFlow } from './services/geminiService';
 import { toast } from './services/toast';
 import { ActiveTab, TopicMetric, SearchResult, FlashcardDeck, ExamTerm, LearningFlowResult } from './types';
@@ -39,6 +42,7 @@ const App: React.FC = () => {
   const [searchResults, setSearchResults] = useState<SearchResult[]>([]);
   const [savedSources, setSavedSources] = useState<SearchResult[]>([]);
   const [isSearching, setIsSearching] = useState(false);
+  const [streakDismissed, setStreakDismissed] = useState(false);
 
   useEffect(() => {
     const handleStatus = () => setIsOffline(!navigator.onLine);
@@ -126,7 +130,21 @@ const App: React.FC = () => {
   }
 
   if (!auth.authChecked) return <SplashScreen />;
-  if (!auth.user) return <AuthPage />;
+
+  if (!auth.user) return (
+    <>
+      <ToastContainer />
+      <LandingPage onAuthClick={() => auth.setShowAuthModal(true)} />
+      {auth.showAuthModal && <AuthModal onClose={() => auth.setShowAuthModal(false)} />}
+    </>
+  );
+
+  const streak = getStreak();
+  const totalDueCards = decks.reduce((sum, d) => {
+    const now = Date.now();
+    return sum + d.cards.filter(c => !c.srs || (c.srs as any).nextReview <= now).length;
+  }, 0);
+  const showStreakWarning = !streakDismissed && streak.current >= 2 && !streak.todayDone && totalDueCards > 0;
 
   return (
     <>
@@ -144,6 +162,22 @@ const App: React.FC = () => {
         onSettingsClick={() => setShowSettings(true)}
         isDark={auth.isDark} onToggleTheme={auth.toggleTheme}
       >
+        {showStreakWarning && (
+          <div className="mb-4 p-4 bg-amber-50 dark:bg-amber-950/30 border border-amber-300 dark:border-amber-700 rounded-2xl flex items-center justify-between gap-4 animate-in slide-in-from-top-2 duration-300">
+            <div className="flex items-center gap-3">
+              <span className="text-xl">🔥</span>
+              <p className="text-[11px] font-bold text-amber-800 dark:text-amber-300">
+                Deine <strong>{streak.current}-Tage-Streak</strong> endet heute — noch {totalDueCards} Karte{totalDueCards !== 1 ? 'n' : ''} fällig!
+              </p>
+            </div>
+            <button
+              onClick={() => setStreakDismissed(true)}
+              className="text-amber-400 hover:text-amber-600 transition-colors shrink-0"
+            >
+              <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+            </button>
+          </div>
+        )}
         {isOffline && (
           <div className="mb-4 p-3 bg-amber-500/10 border border-amber-500/30 rounded-2xl flex items-center justify-center gap-2">
             <p className="text-[10px] font-bold text-amber-600 dark:text-amber-400 uppercase tracking-widest">Offline-Modus aktiv</p>
@@ -155,6 +189,7 @@ const App: React.FC = () => {
             <button onClick={() => { setShowUpgradeHint(false); setShowUpgradeModal(true); }} className="text-[10px] font-black uppercase tracking-widest px-4 py-2 rounded-xl text-white shrink-0" style={{ background: 'var(--primary)' }}>Upgrade zu Pro</button>
           </div>
         )}
+        <ErrorBoundary>
         <React.Suspense fallback={<div className="flex items-center justify-center py-20"><div className="w-8 h-8 border-4 border-slate-200 dark:border-slate-700 border-t-indigo-600 rounded-full animate-spin" /></div>}>
           <AppContent
             activeTab={activeTab} setActiveTab={setActiveTab}
@@ -175,6 +210,7 @@ const App: React.FC = () => {
             updateMetricsAfterSession={updateMetricsAfterSession}
           />
         </React.Suspense>
+        </ErrorBoundary>
       </Layout>
     </>
   );

@@ -16,10 +16,20 @@ const findCustomer = async (email) => {
 // POST /api/stripe/create-checkout
 router.post('/create-checkout', requireAuth, async (req, res, next) => {
   try {
+    let customer = await findCustomer(req.user.email);
+    if (!customer) {
+      customer = await stripe.customers.create({
+        email: req.user.email,
+        metadata: { userId: req.user.id },
+      });
+    } else if (!customer.metadata?.userId) {
+      await stripe.customers.update(customer.id, { metadata: { userId: req.user.id } });
+    }
+
     const session = await stripe.checkout.sessions.create({
       mode: 'subscription',
       payment_method_types: ['card'],
-      customer_email: req.user.email,
+      customer: customer.id,
       line_items: [{ price: PRO_PRICE_ID, quantity: 1 }],
       success_url: `${process.env.FRONTEND_URL}?upgrade=success`,
       cancel_url: `${process.env.FRONTEND_URL}?upgrade=cancelled`,
@@ -83,14 +93,17 @@ router.post('/webhook', express.raw({ type: 'application/json' }), async (req, r
     const userId = session.metadata?.userId;
     if (userId) {
       await supabase.from('profiles').update({ plan: 'pro' }).eq('id', userId);
+      if (session.customer) {
+        await stripe.customers.update(session.customer, { metadata: { userId } }).catch(() => {});
+      }
       console.log(`✅ User ${userId} auf Pro upgraded`);
     }
   }
 
   if (event.type === 'customer.subscription.deleted') {
     const sub = event.data.object;
-    const sessions = await stripe.checkout.sessions.list({ customer: sub.customer, limit: 1 });
-    const userId = sessions.data[0]?.metadata?.userId;
+    const customer = await stripe.customers.retrieve(sub.customer);
+    const userId = customer?.metadata?.userId;
     if (userId) {
       await supabase.from('profiles').update({ plan: 'free' }).eq('id', userId);
       console.log(`⬇️ User ${userId} zurück auf Free`);
