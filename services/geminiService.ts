@@ -17,7 +17,10 @@ import {
   ExamTerm,
   LearningFlowResult,
   RecallChallenge,
-  RecallEvaluation
+  RecallEvaluation,
+  ScoringProfile,
+  ExamAnalysis,
+  ExplanationEvaluation,
 } from "../types";
 
 // ─── Backend-Verbindung ──────────────────────────────────────────────────────
@@ -75,8 +78,6 @@ export const fetchUserProfile = async () => {
 };
 
 // ─── Hilfsfunktionen ─────────────────────────────────────────────────────────
-export const getApiKey = (): string => localStorage.getItem('gemini_api_key') || '';
-export const hasApiKey = (): boolean => true; // Key lebt jetzt auf dem Server
 
 export interface GenerationSource {
   text?: string;
@@ -944,4 +945,225 @@ Daten: ${JSON.stringify(questions)}` }],
     }
   });
   return JSON.parse(text || '[]');
+};
+
+// ─── Rubrik-basierte Bewertung (Hauptfunktion) ────────────────────────────────
+export const evaluateWithRubric = async (
+  questions: ExamQuestion[],
+  scoringProfile: ScoringProfile,
+  feedbackContexts: Record<string, string> = {}
+): Promise<ExamQuestion[]> => {
+  const modeInstructions: Record<string, string> = {
+    strict:   'STRENG: Fachbegriffe müssen exakt stimmen. Kernaussage ohne Fachbegriff gibt höchstens 50% Punkte. Sehr wenig Spielraum.',
+    standard: 'STANDARD: Vergib Teilpunkte wenn die Kernaussage richtig ist, auch bei leicht ungenauen Fachbegriffen. Realistischer Klausurmaßstab.',
+    lenient:  'LERNMODUS: Belohne Verständnis über exakte Formulierung. Großzügige Teilpunkte. Ziel ist Lernen, nicht Benotung.',
+  };
+
+  const emphasisInstructions = scoringProfile.emphases.map(e => {
+    if (e === 'terms')        return 'Fachbegriffe sind BESONDERS wichtig — richtiger Begriff gibt Bonuspunkte, falscher = mehr Abzug';
+    if (e === 'understanding') return 'Konzeptverständnis wichtiger als Fachvokabular — wer es erklärt kann, auch mit eigenen Worten, bekommt volle Punkte';
+    if (e === 'examples')     return 'Beispiele sind PFLICHT — eine Antwort ohne Beispiel verliert mind. 30% der Punkte';
+    if (e === 'definitions')  return 'Definitionen müssen vollständig und präzise sein — unvollständige Definition gibt max. 50%';
+    return '';
+  }).filter(Boolean);
+
+  const questionsJson = JSON.stringify(
+    questions.map(q => ({
+      id: q.id,
+      question: q.question,
+      solution: q.solution,
+      points: q.points,
+      userAnswer: q.userAnswer ?? '',
+      feedbackContext: feedbackContexts[q.id] ?? '',
+    }))
+  );
+
+  const text = await callBackend({
+    complexity: 'heavy',
+    parts: [{
+      text: `Du bist ein fairer Hochschulprüfer der eine Klausur korrigiert.
+
+BEWERTUNGSMODUS: ${modeInstructions[scoringProfile.mode]}
+${emphasisInstructions.length ? `\nSPEZIELLE GEWICHTUNG:\n${emphasisInstructions.map(e => `- ${e}`).join('\n')}` : ''}
+
+REGELN:
+- Bewerte AUSSCHLIESSLICH auf Basis der angegebenen Musterlösung — kein externes Wissen.
+- Erstelle für jede Frage 2–4 Bewertungskriterien basierend auf der Musterlösung.
+- Vergib Punkte granular: nicht nur 0 oder voll, sondern auch Teilpunkte.
+- achievedPoints: nie negativ, nie größer als points.
+- evaluationConfidence: 0–100 (wie sicher bist du dir bei dieser Bewertung?).
+- feedback: 1–3 Sätze. Direkt, konkret, lehrreich.
+- criterionScores: Je Kriterium Name, max. Punkte, tatsächliche Punkte, Erklärung (1 Satz), Status (full/partial/none).
+- Wenn userAnswer leer: achievedPoints=0, confidence=100, feedback="Keine Antwort gegeben.", criterionScores=[{criterionId:"c0",criterionName:"Antwort",pointsAwarded:0,maxPoints:points,explanation:"Keine Antwort.",status:"none"}].
+
+Fragen: ${questionsJson}`
+    }],
+    config: {
+      temperature: 0,
+      thinkingConfig: { thinkingBudget: 0 },
+      responseMimeType: 'application/json',
+      responseSchema: {
+        type: Type.ARRAY,
+        items: {
+          type: Type.OBJECT,
+          properties: {
+            id:                   { type: Type.STRING },
+            achievedPoints:       { type: Type.NUMBER },
+            feedback:             { type: Type.STRING },
+            evaluationConfidence: { type: Type.NUMBER },
+            criterionScores: {
+              type: Type.ARRAY,
+              items: {
+                type: Type.OBJECT,
+                properties: {
+                  criterionId:   { type: Type.STRING },
+                  criterionName: { type: Type.STRING },
+                  pointsAwarded: { type: Type.NUMBER },
+                  maxPoints:     { type: Type.NUMBER },
+                  explanation:   { type: Type.STRING },
+                  status:        { type: Type.STRING },
+                },
+                required: ['criterionId', 'criterionName', 'pointsAwarded', 'maxPoints', 'explanation', 'status'],
+              },
+            },
+          },
+          required: ['id', 'achievedPoints', 'feedback', 'evaluationConfidence', 'criterionScores'],
+        },
+      },
+    },
+  });
+
+  const results: Array<{
+    id: string;
+    achievedPoints: number;
+    feedback: string;
+    evaluationConfidence: number;
+    criterionScores: ExamQuestion['criterionScores'];
+  }> = JSON.parse(text || '[]');
+
+  return questions.map(q => {
+    const r = results.find(r => r.id === q.id);
+    if (!r) return q;
+    return {
+      ...q,
+      achievedPoints:       Math.min(Math.max(0, r.achievedPoints), q.points),
+      feedback:             r.feedback,
+      evaluationConfidence: r.evaluationConfidence,
+      criterionScores:      r.criterionScores,
+    };
+  });
+};
+
+// ─── Klausur-Analyse ─────────────────────────────────────────────────────────
+export const analyzeExamResults = async (questions: ExamQuestion[]): Promise<ExamAnalysis> => {
+  const summary = questions.map(q => ({
+    question: q.question,
+    type:     q.type,
+    points:   q.points,
+    achieved: q.achievedPoints ?? 0,
+    feedback: q.feedback ?? '',
+  }));
+
+  const text = await callBackend({
+    complexity: 'light',
+    parts: [{
+      text: `Analysiere diese Klausurergebnisse und erstelle eine Lernanalyse auf Deutsch.
+
+Ergebnisse: ${JSON.stringify(summary)}
+
+Erstelle:
+- strengths: 2–3 konkrete Stärken des Studierenden (Was wurde gut beherrscht?)
+- weaknesses: 2–4 konkrete Schwächen (Was wurde schlecht beherrscht?)
+- recommendations: 2–4 konkrete Lernempfehlungen (Was sollte als nächstes gelernt werden?)
+- topicPerformance: 2–5 Themengebiete mit Prozent-Score (0–100)
+
+Sei konkret und lernorientiert. Keine allgemeinen Phrasen.`
+    }],
+    config: {
+      temperature: 0.3,
+      thinkingConfig: { thinkingBudget: 0 },
+      responseMimeType: 'application/json',
+      responseSchema: {
+        type: Type.OBJECT,
+        properties: {
+          strengths:        { type: Type.ARRAY, items: { type: Type.STRING } },
+          weaknesses:       { type: Type.ARRAY, items: { type: Type.STRING } },
+          recommendations:  { type: Type.ARRAY, items: { type: Type.STRING } },
+          topicPerformance: {
+            type: Type.ARRAY,
+            items: {
+              type: Type.OBJECT,
+              properties: {
+                topic: { type: Type.STRING },
+                score: { type: Type.NUMBER },
+              },
+              required: ['topic', 'score'],
+            },
+          },
+        },
+        required: ['strengths', 'weaknesses', 'recommendations', 'topicPerformance'],
+      },
+    },
+  });
+
+  return JSON.parse(text || '{"strengths":[],"weaknesses":[],"recommendations":[],"topicPerformance":[]}');
+};
+
+// ─── Feynman-Bewertung ────────────────────────────────────────────────────────
+export const evaluateStudentExplanation = async (
+  source: GenerationSource | null,
+  concept: string,
+  studentText: string
+): Promise<ExplanationEvaluation> => {
+  const parts: any[] = [];
+  if (source) parts.push(sourceTopart(source));
+
+  const safeConcept = sanitizeUserInput(concept, 200);
+  const safeText    = sanitizeUserInput(studentText, 2000);
+
+  parts.push({ text: `Du bist ein Lerncoach der Feynman-Methode.
+
+EIN STUDENT SOLL DIESES KONZEPT ERKLÄREN: "${safeConcept}"
+${source ? 'Das Referenzdokument oben enthält die korrekten Informationen dazu.' : 'Bewerte anhand von allgemeinem Fachwissen.'}
+
+DIE ERKLÄRUNG DES STUDENTEN:
+"${safeText}"
+
+BEWERTUNGSAUFGABE:
+Bewerte die Erklärung ${source ? 'AUSSCHLIESSLICH anhand des Referenzdokuments' : 'anhand von Fachwissen'}.
+Sei fair und lernorientiert — nicht entmutigend, aber präzise.
+
+Gib zurück:
+- score: 0–100 (wie viel Prozent des Konzepts wurde korrekt und vollständig erklärt?)
+- correct: Liste mit max. 3 Dingen die der Student richtig erklärt hat (konkret, 1 Satz je Punkt)
+- missing: Liste mit max. 4 wichtigen Aspekten die gefehlt haben (konkret, 1 Satz je Punkt)
+- wrong: Liste mit max. 2 Dingen die falsch oder ungenau waren (konkret, 1 Satz je Punkt) — leer wenn nichts falsch war
+- feedback: 2–3 Sätze Gesamtfeedback auf Deutsch (was gut war, wo der Student ansetzen sollte)
+- nextSteps: 1 konkreter Satz was der Student als nächstes lernen oder wiederholen sollte
+
+Wichtig: Wenn die Erklärung leer oder sehr kurz ist, gib score=0 und erkläre warum.` });
+
+  const text = await callBackend({
+    complexity: 'light',
+    parts,
+    config: {
+      temperature: 0.2,
+      thinkingConfig: { thinkingBudget: 0 },
+      responseMimeType: 'application/json',
+      responseSchema: {
+        type: Type.OBJECT,
+        properties: {
+          score:     { type: Type.NUMBER },
+          correct:   { type: Type.ARRAY, items: { type: Type.STRING } },
+          missing:   { type: Type.ARRAY, items: { type: Type.STRING } },
+          wrong:     { type: Type.ARRAY, items: { type: Type.STRING } },
+          feedback:  { type: Type.STRING },
+          nextSteps: { type: Type.STRING },
+        },
+        required: ['score', 'correct', 'missing', 'wrong', 'feedback', 'nextSteps'],
+      },
+    },
+  });
+
+  return JSON.parse(text || '{"score":0,"correct":[],"missing":[],"wrong":[],"feedback":"Bewertung fehlgeschlagen.","nextSteps":""}');
 };

@@ -1,8 +1,9 @@
 
 import React, { useState, useEffect, useRef, useCallback } from 'react';
-import { ExamQuestion, ActiveTab } from '../types';
+import { ExamQuestion, ActiveTab, ScoringProfile, ExamAnalysis, QuestionFeedbackType } from '../types';
+import { saveQuestionFeedback } from '../services/examFeedbackService';
 import { EmojiImage } from './EmojiImage';
-import { jsPDF } from 'jspdf';
+import type { jsPDF as JsPDFType } from 'jspdf';
 
 interface ExamViewProps {
   questions: ExamQuestion[];
@@ -18,6 +19,8 @@ interface ExamViewProps {
   onAnswersChange?: (answers: Record<string, any>) => void;
   onSaveProgress?: (name: string) => void;
   examTitle?: string;
+  scoringProfile?: ScoringProfile;
+  analysis?: ExamAnalysis | null;
 }
 
 const formatTime = (s: number) =>
@@ -37,6 +40,7 @@ export const ExamView: React.FC<ExamViewProps> = ({
   questions, mode, onSave, onSubmit, isEvaluating,
   examDuration, onNewExam, onNavigate, onSaveExam,
   initialAnswers, onAnswersChange, onSaveProgress, examTitle,
+  scoringProfile, analysis,
 }) => {
   const [answers, setAnswers]           = useState<Record<string, any>>(initialAnswers ?? {});
   const [editingId, setEditingId]       = useState<string | null>(null);
@@ -48,6 +52,7 @@ export const ExamView: React.FC<ExamViewProps> = ({
   const [tempQuestion, setTempQuestion] = useState<ExamQuestion | null>(null);
   const [timeLeft, setTimeLeft]         = useState<number | null>(null);
   const [timerExpired, setTimerExpired] = useState(false);
+  const [questionFeedback, setQuestionFeedback] = useState<Record<string, QuestionFeedbackType>>({});
 
   const timerRef   = useRef<ReturnType<typeof setInterval> | null>(null);
   const answersRef = useRef(answers);
@@ -115,8 +120,9 @@ export const ExamView: React.FC<ExamViewProps> = ({
   };
   const gradeInfo = getGrade(percentage);
 
-  const handleExportPdf = useCallback(() => {
-    const doc = new jsPDF({ unit: 'mm', format: 'a4' });
+  const handleExportPdf = useCallback(async () => {
+    const { jsPDF } = await import('jspdf');
+    const doc: JsPDFType = new jsPDF({ unit: 'mm', format: 'a4' });
     const W = 210, margin = 18, lw = W - 2 * margin;
     let y = margin;
 
@@ -618,6 +624,99 @@ export const ExamView: React.FC<ExamViewProps> = ({
         </div>
       )}
 
+      {/* Scoring-Profil-Badge (result) */}
+      {mode === 'result' && scoringProfile && (
+        <div className="flex items-center gap-2 flex-wrap px-1">
+          <span className="text-[9px] font-black uppercase tracking-widest text-slate-400">Bewertungsprofil:</span>
+          <span className={`text-[9px] font-black uppercase tracking-widest px-2.5 py-1 rounded-full ${scoringProfile.mode === 'strict' ? 'bg-rose-100 dark:bg-rose-950/20 text-rose-600' : scoringProfile.mode === 'lenient' ? 'bg-emerald-100 dark:bg-emerald-950/20 text-emerald-600' : 'bg-indigo-100 dark:bg-indigo-950/20 text-indigo-600'}`}>
+            {scoringProfile.mode === 'strict' ? 'Streng' : scoringProfile.mode === 'lenient' ? 'Lernmodus' : 'Standard'}
+          </span>
+          {scoringProfile.emphases.map(e => (
+            <span key={e} className="text-[9px] font-black uppercase tracking-widest px-2.5 py-1 rounded-full bg-slate-100 dark:bg-slate-800 text-slate-500">
+              {e === 'terms' ? 'Fachbegriffe' : e === 'understanding' ? 'Verständnis' : e === 'examples' ? 'Beispiele' : 'Definitionen'}
+            </span>
+          ))}
+        </div>
+      )}
+
+      {/* Lernanalyse */}
+      {mode === 'result' && analysis && (
+        <div className="rounded-[32px] p-8 space-y-6 animate-in fade-in duration-700" style={{ background: 'var(--bg-sidebar)', border: '1px solid var(--border-color)' }}>
+          <div>
+            <h3 className="text-lg font-black dark:text-white">Lernanalyse</h3>
+            <p className="text-[10px] font-black uppercase tracking-widest text-slate-400">Basierend auf deinen Antworten</p>
+          </div>
+
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+            {analysis.strengths.length > 0 && (
+              <div className="space-y-3">
+                <p className="text-[10px] font-black uppercase tracking-widest text-emerald-600">Stärken</p>
+                <ul className="space-y-2">
+                  {analysis.strengths.map((s, i) => (
+                    <li key={i} className="flex items-start gap-2 text-sm text-slate-700 dark:text-slate-300">
+                      <span className="text-emerald-500 shrink-0 mt-0.5 font-black">✓</span>{s}
+                    </li>
+                  ))}
+                </ul>
+              </div>
+            )}
+            {analysis.weaknesses.length > 0 && (
+              <div className="space-y-3">
+                <p className="text-[10px] font-black uppercase tracking-widest text-rose-600">Wissenslücken</p>
+                <ul className="space-y-2">
+                  {analysis.weaknesses.map((w, i) => (
+                    <li key={i} className="flex items-start gap-2 text-sm text-slate-700 dark:text-slate-300">
+                      <span className="text-rose-400 shrink-0 mt-0.5 font-black">✗</span>{w}
+                    </li>
+                  ))}
+                </ul>
+              </div>
+            )}
+          </div>
+
+          {analysis.recommendations.length > 0 && (
+            <div className="pt-4 border-t" style={{ borderColor: 'var(--border-color)' }}>
+              <p className="text-[10px] font-black uppercase tracking-widest text-indigo-600 mb-3">Empfehlungen</p>
+              <div className="flex flex-wrap gap-2">
+                {analysis.recommendations.map((r, i) => (
+                  <span key={i} className="px-3 py-1.5 rounded-xl text-xs font-bold bg-indigo-50 dark:bg-indigo-950/20 text-indigo-700 dark:text-indigo-300 border border-indigo-200 dark:border-indigo-800">
+                    → {r}
+                  </span>
+                ))}
+              </div>
+            </div>
+          )}
+
+          {analysis.topicPerformance.length > 0 && (
+            <div className="pt-4 border-t space-y-3" style={{ borderColor: 'var(--border-color)' }}>
+              <p className="text-[10px] font-black uppercase tracking-widest text-slate-400">Themen-Performance</p>
+              {analysis.topicPerformance.map((tp, i) => (
+                <div key={i} className="space-y-1">
+                  <div className="flex justify-between items-center text-[11px] font-bold dark:text-slate-300">
+                    <span>{tp.topic}</span>
+                    <span className={tp.score >= 70 ? 'text-emerald-600' : tp.score >= 50 ? 'text-amber-600' : 'text-rose-600'}>{tp.score}%</span>
+                  </div>
+                  <div className="h-2 bg-slate-100 dark:bg-slate-800 rounded-full overflow-hidden">
+                    <div
+                      className={`h-full rounded-full transition-all duration-1000 ${tp.score >= 70 ? 'bg-emerald-500' : tp.score >= 50 ? 'bg-amber-400' : 'bg-rose-500'}`}
+                      style={{ width: `${tp.score}%` }}
+                    />
+                  </div>
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
+      )}
+
+      {/* Analyse lädt noch */}
+      {mode === 'result' && !analysis && (
+        <div className="flex items-center gap-3 px-1 text-slate-400">
+          <div className="w-4 h-4 border-2 border-slate-300 border-t-indigo-500 rounded-full animate-spin shrink-0" />
+          <span className="text-[10px] font-black uppercase tracking-widest">Lernanalyse wird erstellt…</span>
+        </div>
+      )}
+
       {/* Fragen */}
       <div className="space-y-16">
         {questions.map((q, idx) => {
@@ -665,22 +764,82 @@ export const ExamView: React.FC<ExamViewProps> = ({
 
                   {renderQuestionBody(q)}
 
-                  {/* KI-Korrektur */}
+                  {/* Auswertung */}
                   {mode === 'result' && (
-                    <div className="mt-8 pl-4 lg:pl-10 animate-in slide-in-from-bottom-4">
+                    <div className="mt-8 pl-4 lg:pl-10 animate-in slide-in-from-bottom-4 space-y-3">
+                      {/* Haupt-Box */}
                       <div className={`p-6 rounded-[32px] border-l-8 ${(q.achievedPoints ?? 0) === q.points ? 'bg-emerald-50 dark:bg-emerald-950/20 border-emerald-500' : (q.achievedPoints ?? 0) > 0 ? 'bg-amber-50 dark:bg-amber-950/20 border-amber-500' : 'bg-rose-50 dark:bg-rose-950/20 border-rose-400'}`}>
-                        <div className="flex justify-between items-center mb-3">
-                          <h4 className="text-[10px] font-black uppercase tracking-widest text-slate-400">
-                            {q.type === 'open' ? 'KI-Korrektur' : 'Auswertung'}
-                          </h4>
+                        <div className="flex justify-between items-center mb-4">
+                          <div className="flex items-center gap-2">
+                            <h4 className="text-[10px] font-black uppercase tracking-widest text-slate-400">
+                              {q.type === 'open' ? 'KI-Korrektur' : 'Auswertung'}
+                            </h4>
+                            {q.evaluationConfidence !== undefined && (
+                              <span className={`text-[8px] font-black uppercase tracking-widest px-2 py-0.5 rounded-full ${q.evaluationConfidence >= 80 ? 'bg-emerald-100 dark:bg-emerald-900/30 text-emerald-600' : q.evaluationConfidence >= 60 ? 'bg-amber-100 dark:bg-amber-900/30 text-amber-600' : 'bg-rose-100 dark:bg-rose-900/30 text-rose-600'}`}>
+                                {q.evaluationConfidence >= 80 ? 'Sicher' : q.evaluationConfidence >= 60 ? 'Mittel' : 'Unsicher'}
+                              </span>
+                            )}
+                          </div>
                           <span className="text-sm font-black dark:text-white">{q.achievedPoints ?? 0} / {q.points} Pkt.</span>
                         </div>
-                        {q.feedback && <p className="text-sm font-bold dark:text-slate-200 mb-4">{q.feedback}</p>}
+
+                        {/* Rubrik-Kriterien (nur für open) */}
+                        {q.criterionScores && q.criterionScores.length > 0 && (
+                          <div className="space-y-2 mb-4">
+                            {q.criterionScores.map(cs => (
+                              <div key={cs.criterionId} className="flex items-start gap-3 text-sm">
+                                <span className={`shrink-0 mt-0.5 w-5 h-5 rounded-lg flex items-center justify-center text-[10px] font-black ${cs.status === 'full' ? 'bg-emerald-500 text-white' : cs.status === 'partial' ? 'bg-amber-400 text-white' : 'bg-slate-300 dark:bg-slate-600 text-white'}`}>
+                                  {cs.status === 'full' ? '✓' : cs.status === 'partial' ? '~' : '✗'}
+                                </span>
+                                <div className="flex-1 min-w-0">
+                                  <div className="flex justify-between items-center gap-2">
+                                    <span className="font-black text-[11px] dark:text-white">{cs.criterionName}</span>
+                                    <span className={`text-[10px] font-black shrink-0 ${cs.status === 'full' ? 'text-emerald-600' : cs.status === 'partial' ? 'text-amber-600' : 'text-slate-400'}`}>
+                                      {cs.status === 'full' ? '+' : cs.status === 'none' ? '' : '+'}{cs.pointsAwarded} / {cs.maxPoints} Pkt.
+                                    </span>
+                                  </div>
+                                  <p className="text-[10px] text-slate-500 dark:text-slate-400 mt-0.5">{cs.explanation}</p>
+                                </div>
+                              </div>
+                            ))}
+                          </div>
+                        )}
+
+                        {/* Gesamtfeedback */}
+                        {q.feedback && <p className="text-sm font-bold dark:text-slate-200 mb-4 pt-3 border-t border-black/10 dark:border-white/10">{q.feedback}</p>}
+
                         <div className="pt-4 border-t border-slate-200 dark:border-slate-700">
                           <p className="text-[9px] font-black uppercase text-slate-400 mb-2">Musterlösung</p>
                           <p className="text-xs italic text-slate-500 dark:text-slate-400 leading-relaxed">{q.solution}</p>
                         </div>
                       </div>
+
+                      {/* Feedback-Widget */}
+                      {!questionFeedback[q.id] ? (
+                        <div className="flex flex-wrap items-center gap-2 pt-1">
+                          <span className="text-[9px] font-black uppercase tracking-widest text-slate-300 dark:text-slate-600">Bewertung fair?</span>
+                          {([
+                            { type: 'correct'             as QuestionFeedbackType, label: 'Ja',           cls: 'hover:border-emerald-400 hover:text-emerald-600' },
+                            { type: 'too_strict'          as QuestionFeedbackType, label: 'Zu streng',    cls: 'hover:border-amber-400 hover:text-amber-600' },
+                            { type: 'too_lenient'         as QuestionFeedbackType, label: 'Zu locker',    cls: 'hover:border-amber-400 hover:text-amber-600' },
+                            { type: 'incomplete_solution' as QuestionFeedbackType, label: 'Lösung fehlt', cls: 'hover:border-rose-400 hover:text-rose-600' },
+                            { type: 'unrealistic'         as QuestionFeedbackType, label: 'Unrealistisch', cls: 'hover:border-rose-400 hover:text-rose-600' },
+                          ]).map(fb => (
+                            <button
+                              key={fb.type}
+                              onClick={() => {
+                                saveQuestionFeedback(q.question, fb.type);
+                                setQuestionFeedback(prev => ({ ...prev, [q.id]: fb.type }));
+                              }}
+                              className={`px-3 py-1.5 rounded-xl text-[9px] font-black uppercase tracking-widest border-2 border-slate-200 dark:border-slate-700 text-slate-400 transition-all ${fb.cls}`}
+                            >{fb.label}</button>
+                          ))}
+                        </div>
+                      ) : (
+                        <p className="text-[9px] font-black uppercase tracking-widest text-slate-300 dark:text-slate-600 pl-1">
+                          Feedback gespeichert — danke!
+                        </p>
+                      )}
                     </div>
                   )}
                 </div>

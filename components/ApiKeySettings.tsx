@@ -1,7 +1,6 @@
 
 import React, { useState, useEffect } from 'react';
 import { X, Key, Check, AlertTriangle } from 'lucide-react';
-import { hasApiKey } from '../services/geminiService';
 
 interface ApiKeySettingsProps {
   onClose: () => void;
@@ -10,7 +9,7 @@ interface ApiKeySettingsProps {
 export const ApiKeySettings: React.FC<ApiKeySettingsProps> = ({ onClose }) => {
   const [inputKey, setInputKey] = useState('');
   const [saved, setSaved] = useState(false);
-  const hasCurrent = hasApiKey();
+  const hasCurrent = true;
 
   useEffect(() => {
     const existing = localStorage.getItem('gemini_api_key') || '';

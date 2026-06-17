@@ -13,7 +13,6 @@ import { ColorPicker } from './ColorPicker';
 import { ApiKeySettings } from './ApiKeySettings';
 import { LegalModal } from './LegalModal';
 import { AgentChat } from './AgentChat';
-import { hasApiKey } from '../services/geminiService';
 import { NAV_GROUPS, LABOR_GROUP } from './navConfig';
 import { isAdmin } from '../config/admin';
 
@@ -51,7 +50,6 @@ export const Layout: React.FC<LayoutProps> = ({
 }) => {
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
   const [showApiSettings, setShowApiSettings] = useState(false);
-  const [apiKeySet, setApiKeySet] = useState(hasApiKey);
   const [legalPage, setLegalPage] = useState<'impressum' | 'datenschutz' | 'agb' | null>(null);
   const [uxHelperOpen, setUxHelperOpen] = useState(false);
 
@@ -63,11 +61,6 @@ export const Layout: React.FC<LayoutProps> = ({
     return () => window.removeEventListener('quizwise-agent-opened', handler as EventListener);
   }, []);
 
-  useEffect(() => {
-    const check = () => setApiKeySet(hasApiKey());
-    window.addEventListener('storage', check);
-    return () => window.removeEventListener('storage', check);
-  }, []);
 
 
   const visibleGroups = isAdmin(user?.id) ? [...NAV_GROUPS, LABOR_GROUP] : NAV_GROUPS;
@@ -452,16 +445,15 @@ export const Layout: React.FC<LayoutProps> = ({
                 onClick={() => { setIsMobileMenuOpen(false); setShowApiSettings(true); }}
                 className="w-full flex items-center justify-between px-5 py-4 rounded-2xl border transition-all active:scale-95"
                 style={{
-                  borderColor: apiKeySet ? 'var(--border-color)' : '#f59e0b',
-                  background: apiKeySet ? 'color-mix(in srgb, var(--border-color) 40%, var(--bg-sidebar))' : 'rgba(245,158,11,0.08)',
-                  color: apiKeySet ? 'inherit' : '#f59e0b',
+                  borderColor: 'var(--border-color)',
+                  background: 'color-mix(in srgb, var(--border-color) 40%, var(--bg-sidebar))',
                 }}
               >
                 <span className="text-[10px] font-black uppercase tracking-wider flex items-center gap-2">
                   <KeyRound className="w-4 h-4" strokeWidth={1.75} />
-                  {apiKeySet ? 'API-Schlüssel' : 'API-Key fehlt!'}
+                  API-Schlüssel
                 </span>
-                <span className={`w-2 h-2 rounded-full shrink-0 ${apiKeySet ? 'bg-emerald-500' : 'bg-amber-400 animate-pulse'}`} />
+                <span className="w-2 h-2 rounded-full shrink-0 bg-emerald-500" />
               </button>
 
               {/* Theme toggle */}
@@ -522,7 +514,7 @@ export const Layout: React.FC<LayoutProps> = ({
       </main>
 
       {showApiSettings && (
-        <ApiKeySettings onClose={() => { setShowApiSettings(false); setApiKeySet(hasApiKey()); }} />
+        <ApiKeySettings onClose={() => setShowApiSettings(false)} />
       )}
       {legalPage && (
         <LegalModal page={legalPage} onClose={() => setLegalPage(null)} />

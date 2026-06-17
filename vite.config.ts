@@ -5,6 +5,10 @@ import { VitePWA } from 'vite-plugin-pwa';
 
 export default defineConfig(() => {
     return {
+      test: {
+        environment: 'jsdom',
+        include: ['**/*.test.{ts,tsx}'],
+      },
       server: {
         port: 3000,
         host: '0.0.0.0',
