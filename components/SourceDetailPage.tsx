@@ -34,9 +34,10 @@ interface Props {
   meta: SourceMeta;
   onBack: () => void;
   onAction: (tab: ActiveTab, doc: ProcessedDocument) => void;
+  onViewDocument: (doc: ProcessedDocument) => void;
 }
 
-export const SourceDetailPage: React.FC<Props> = ({ doc, meta, onBack, onAction }) => {
+export const SourceDetailPage: React.FC<Props> = ({ doc, meta, onBack, onAction, onViewDocument }) => {
   const title     = meta.displayTitle || doc.name.replace(/\.[^/.]+$/, '');
   const status    = meta.status ?? 'ready';
   const emoji     = FILE_EMOJI[doc.type] ?? '📄';
@@ -70,6 +71,15 @@ export const SourceDetailPage: React.FC<Props> = ({ doc, meta, onBack, onAction 
             <div className="flex flex-wrap items-center gap-3">
               <h1 className="text-2xl lg:text-3xl font-black text-slate-900 dark:text-white leading-tight">{title}</h1>
               <SourceStatusBadge status={status} />
+              <button
+                onClick={() => onViewDocument(doc)}
+                className="flex items-center gap-1.5 px-3 py-1.5 bg-indigo-50 dark:bg-indigo-950/30 text-indigo-600 dark:text-indigo-400 rounded-xl text-[9px] font-black uppercase tracking-widest hover:bg-indigo-100 dark:hover:bg-indigo-900/40 transition-colors"
+              >
+                <svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+                  <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/>
+                </svg>
+                Dokument ansehen
+              </button>
             </div>
 
             <div className="flex flex-wrap gap-x-6 gap-y-1">

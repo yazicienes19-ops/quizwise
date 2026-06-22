@@ -1,13 +1,13 @@
 
 import React, { useState, useMemo, useEffect } from 'react';
-import { ProcessedDocument, Collection } from '../types';
+import { ProcessedDocument, Collection, ScoringProfile, ScoringMode } from '../types';
 import { GenerationSource } from '../services/geminiService';
 import { GeneratedImage } from './GeneratedImage';
 import { SourceSelector } from './SourceSelector';
-import { getAllMeta } from '../services/libraryService';
+import { getAllMeta, documentDisplayName } from '../services/libraryService';
 
 interface ExamGeneratorProps {
-  onGenerate: (content: GenerationSource, style?: GenerationSource, options?: { count: number, difficulty: string }, docName?: string, totalMinutes?: number) => void;
+  onGenerate: (content: GenerationSource, style?: GenerationSource, options?: { count: number, difficulty: string }, docName?: string, totalMinutes?: number, scoringProfile?: ScoringProfile) => void;
   isLoading: boolean;
   documents: ProcessedDocument[];
   collections: Collection[];
@@ -49,6 +49,8 @@ export const ExamGenerator: React.FC<ExamGeneratorProps> = ({
   }, [documents]);
   const [questionCount, setQuestionCount] = useState(10);
   const [difficulty, setDifficulty] = useState<'leicht' | 'mittel' | 'schwer'>('mittel');
+  const [scoringMode, setScoringMode] = useState<ScoringMode>('standard');
+  const [emphases, setEmphases] = useState<ScoringProfile['emphases']>([]);
 
   const fileToBase64 = (file: File): Promise<string> =>
     new Promise((resolve, reject) => {
@@ -98,7 +100,8 @@ export const ExamGenerator: React.FC<ExamGeneratorProps> = ({
       }
       const baseTimePerQuestion = difficulty === 'leicht' ? 4 : difficulty === 'mittel' ? 6 : 9;
       const totalMinutes = questionCount * baseTimePerQuestion + 5;
-      onGenerate(contentSource, styleSource, { count: questionCount, difficulty }, contentName, totalMinutes);
+      const scoringProfile: ScoringProfile = { mode: scoringMode, emphases };
+      onGenerate(contentSource, styleSource, { count: questionCount, difficulty }, contentName, totalMinutes, scoringProfile);
     } catch (e) {
       console.error(e);
       throw e;
@@ -112,13 +115,13 @@ export const ExamGenerator: React.FC<ExamGeneratorProps> = ({
   }, [questionCount, difficulty]);
 
   return (
-    <div className="max-w-4xl mx-auto space-y-10 lg:space-y-16 animate-in fade-in slide-in-from-bottom-4 duration-700 py-10 px-4">
-      <div className="text-center space-y-4">
-        <h1 className="text-5xl lg:text-7xl font-black text-slate-900 dark:text-white tracking-tighter flex items-center justify-center gap-4">
+    <div className="max-w-4xl mx-auto space-y-10 lg:space-y-16 animate-in fade-in slide-in-from-bottom-4 duration-700 py-8 sm:py-10 px-4">
+      <div className="text-center space-y-3 sm:space-y-4">
+        <h1 className="text-3xl sm:text-4xl lg:text-7xl font-black text-slate-900 dark:text-white tracking-tighter flex flex-wrap items-center justify-center gap-2 sm:gap-3 lg:gap-4">
           Klausur <span className="text-indigo-600 dark:text-indigo-400">Simulator</span>
-          <GeneratedImage prompt="Graduation cap, academic illustration" className="w-12 h-12 lg:w-16 lg:h-16 rounded-2xl" />
+          <GeneratedImage prompt="Graduation cap, academic illustration" className="w-9 h-9 sm:w-12 sm:h-12 lg:w-16 lg:h-16 rounded-2xl" />
         </h1>
-        <p className="text-lg lg:text-xl text-slate-500 dark:text-slate-400 font-medium">
+        <p className="text-base sm:text-lg lg:text-xl text-slate-500 dark:text-slate-400 font-medium">
           Erstelle neue Prüfungen basierend auf deinen Unterlagen.
         </p>
       </div>
@@ -130,7 +133,7 @@ export const ExamGenerator: React.FC<ExamGeneratorProps> = ({
           {/* Lernmaterial via SourceSelector */}
           <div className={`rounded-[32px] border-2 transition-all overflow-hidden ${contentSource ? 'border-indigo-500 ring-4 ring-indigo-500/10' : 'border-slate-100 dark:border-slate-800'}`}
             style={{ background: 'var(--bg-sidebar)' }}>
-            <div className="flex items-center gap-4 px-8 pt-7 pb-4">
+            <div className="flex items-center gap-3 sm:gap-4 px-5 sm:px-8 pt-6 sm:pt-7 pb-4">
               <div className="w-12 h-12 bg-indigo-100 dark:bg-indigo-900/30 rounded-2xl flex items-center justify-center overflow-hidden shrink-0">
                 <GeneratedImage prompt="Academic books, minimalist illustration" className="w-full h-full object-cover" />
               </div>
@@ -157,7 +160,7 @@ export const ExamGenerator: React.FC<ExamGeneratorProps> = ({
           </div>
 
           {/* Altklausur (optional, Stil-Referenz) */}
-          <div className={`p-8 rounded-[32px] border-2 transition-all flex flex-col gap-5 shadow-3d-raised ${(styleFile || styleLibDocId) ? 'border-rose-500 ring-4 ring-rose-500/10' : 'border-dashed border-slate-200 dark:border-slate-700'}`}
+          <div className={`p-5 sm:p-8 rounded-[24px] sm:rounded-[32px] border-2 transition-all flex flex-col gap-5 shadow-3d-raised ${(styleFile || styleLibDocId) ? 'border-rose-500 ring-4 ring-rose-500/10' : 'border-dashed border-slate-200 dark:border-slate-700'}`}
             style={{ background: 'var(--bg-sidebar)' }}>
             <div className="flex items-center gap-4">
               <div className="w-16 h-16 bg-rose-100 dark:bg-rose-900/30 text-rose-600 dark:text-rose-400 rounded-2xl flex items-center justify-center overflow-hidden shrink-0">
@@ -197,7 +200,7 @@ export const ExamGenerator: React.FC<ExamGeneratorProps> = ({
                         </svg>
                       )}
                     </div>
-                    <span className="text-[10px] font-black truncate dark:text-white">{d.name.replace(/\.[^/.]+$/, '')}</span>
+                    <span className="text-[10px] font-black truncate dark:text-white">{documentDisplayName(d)}</span>
                   </button>
                 ))}
                 <div className="flex items-center gap-3 my-1">
@@ -234,7 +237,7 @@ export const ExamGenerator: React.FC<ExamGeneratorProps> = ({
 
         {/* Config Column */}
         <div className="lg:col-span-5 space-y-6">
-          <div className="bg-white dark:bg-slate-900 rounded-[32px] border border-slate-200 dark:border-slate-800 shadow-3d-deep p-8 space-y-10">
+          <div className="bg-white dark:bg-slate-900 rounded-[24px] sm:rounded-[32px] border border-slate-200 dark:border-slate-800 shadow-3d-deep p-5 sm:p-8 space-y-8 sm:space-y-10">
             <h3 className="text-[11px] font-black uppercase tracking-[0.4em] text-indigo-500">Prüfungs-Setup</h3>
 
             <div className="space-y-6">
@@ -275,14 +278,52 @@ export const ExamGenerator: React.FC<ExamGeneratorProps> = ({
               </div>
             </div>
 
-            <div className="pt-8 border-t border-slate-50 dark:border-slate-800 grid grid-cols-2 gap-8">
+            {/* Bewertungsprofil */}
+            <div className="space-y-4">
+              <div className="text-[10px] font-black uppercase tracking-widest text-slate-400">Bewertungsprofil</div>
+              <div className="flex bg-slate-50 dark:bg-slate-800 p-1 rounded-2xl border shadow-inner">
+                {([
+                  { id: 'strict',   label: 'Streng' },
+                  { id: 'standard', label: 'Standard' },
+                  { id: 'lenient',  label: 'Lernmodus' },
+                ] as { id: ScoringMode; label: string }[]).map(m => (
+                  <button
+                    key={m.id}
+                    onClick={() => setScoringMode(m.id)}
+                    className={`flex-1 py-3 rounded-xl text-[10px] font-black transition-all uppercase tracking-widest ${scoringMode === m.id ? 'bg-indigo-600 text-white shadow-lg' : 'text-slate-400 hover:text-slate-600'}`}
+                  >{m.label}</button>
+                ))}
+              </div>
+              <div className="flex flex-wrap gap-2">
+                {([
+                  { id: 'terms',        label: 'Fachbegriffe' },
+                  { id: 'understanding', label: 'Verständnis' },
+                  { id: 'examples',     label: 'Beispiele' },
+                  { id: 'definitions',  label: 'Definitionen' },
+                ] as { id: ScoringProfile['emphases'][number]; label: string }[]).map(e => {
+                  const active = emphases.includes(e.id);
+                  return (
+                    <button
+                      key={e.id}
+                      onClick={() => setEmphases(prev => active ? prev.filter(x => x !== e.id) : [...prev, e.id])}
+                      className={`px-3 py-1.5 rounded-xl text-[9px] font-black uppercase tracking-widest border-2 transition-all ${active ? 'border-indigo-500 bg-indigo-50 dark:bg-indigo-950/20 text-indigo-600' : 'border-slate-200 dark:border-slate-700 text-slate-400 hover:border-indigo-300'}`}
+                    >
+                      {active ? '✓ ' : ''}{e.label}
+                    </button>
+                  );
+                })}
+              </div>
+              <p className="text-[9px] text-slate-400 italic">
+                {scoringMode === 'strict'   ? 'Strenge Bewertung — Fachbegriffe und exakte Formulierungen zählen.' : ''}
+                {scoringMode === 'standard' ? 'Realistischer Hochschulmaßstab — Kernaussage ist entscheidend.' : ''}
+                {scoringMode === 'lenient'  ? 'Lernmodus — Verständnis wird belohnt, Formulierungen sind zweitrangig.' : ''}
+              </p>
+            </div>
+
+            <div className="pt-8 border-t border-slate-50 dark:border-slate-800">
               <div className="space-y-1">
                 <p className="text-[10px] font-black uppercase text-slate-400 tracking-widest">Geschätzte Dauer</p>
                 <p className="text-xl font-black dark:text-white">{estimatedDuration}</p>
-              </div>
-              <div className="space-y-1">
-                <p className="text-[10px] font-black uppercase text-slate-400 tracking-widest">Zertifikat-Status</p>
-                <p className="text-xl font-black text-emerald-500 uppercase">Akkreditiert</p>
               </div>
             </div>
 

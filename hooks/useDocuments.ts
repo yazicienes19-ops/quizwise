@@ -65,6 +65,11 @@ export const useDocuments = ({ user, userPlan, isOffline, setIsLoading, setShowU
     if (user) deleteCollectionFromSupabase(id).catch(() => {});
   };
 
+  const updateCollection = (updated: Collection) => {
+    saveCollections(collections.map(c => c.id === updated.id ? updated : c));
+    if (user) saveCollectionToSupabase(updated).catch(() => {});
+  };
+
   const deleteDoc = (id: string) => {
     const doc = documents.find(d => d.id === id);
     saveDocs(documents.filter(d => d.id !== id));
@@ -191,5 +196,5 @@ export const useDocuments = ({ user, userPlan, isOffline, setIsLoading, setShowU
     }
   };
 
-  return { documents, collections, saveDocs, addCollection, removeCollection, deleteDoc, moveDoc, getDocumentSource, handleFileUpload };
+  return { documents, collections, saveDocs, addCollection, removeCollection, updateCollection, deleteDoc, moveDoc, getDocumentSource, handleFileUpload };
 };

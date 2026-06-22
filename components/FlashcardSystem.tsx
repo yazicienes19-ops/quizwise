@@ -567,10 +567,10 @@ export const FlashcardSystem: React.FC<FlashcardSystemProps> = ({
         </p>
       </div>
 
-      <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 lg:gap-12">
-        
-        <div className="lg:col-span-4 space-y-6 lg:space-y-8 order-2 lg:order-1">
-          <div className="bg-white dark:bg-slate-900 rounded-[30px] lg:rounded-[40px] border border-slate-200 dark:border-slate-800 shadow-3d-raised p-6 lg:p-10 space-y-8">
+      <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 lg:gap-10">
+
+        <div className="lg:col-span-5 space-y-6 lg:space-y-8 order-2 lg:order-1">
+          <div className="bg-white dark:bg-slate-900 rounded-[30px] lg:rounded-[40px] border border-slate-200 dark:border-slate-800 shadow-3d-raised p-5 lg:p-7 space-y-8">
             
             <div className="space-y-4">
               <h3 className="text-[10px] font-black uppercase tracking-[0.4em] text-indigo-600">Manuelles Deck</h3>
@@ -638,10 +638,10 @@ export const FlashcardSystem: React.FC<FlashcardSystemProps> = ({
           </div>
         </div>
 
-        <div className="lg:col-span-8 bg-white dark:bg-slate-900 rounded-[30px] lg:rounded-[48px] border border-slate-200 dark:border-slate-800 shadow-3d-deep overflow-hidden order-1 lg:order-2">
-          <div className="p-6 lg:p-10 border-b border-slate-50 dark:border-slate-800 flex flex-col sm:flex-row justify-between items-center gap-4 lg:gap-0">
+        <div className="lg:col-span-7 bg-white dark:bg-slate-900 rounded-[30px] lg:rounded-[48px] border border-slate-200 dark:border-slate-800 shadow-3d-deep overflow-hidden order-1 lg:order-2">
+          <div className="p-5 sm:p-6 lg:p-10 border-b border-slate-50 dark:border-slate-800 flex flex-col sm:flex-row justify-between items-center gap-4 lg:gap-0">
             <h3 className="text-[10px] lg:text-[11px] font-black uppercase tracking-[0.3em] lg:tracking-[0.4em] text-slate-400">Deine Stapel ({decks.length})</h3>
-            <div className="flex gap-4 items-center">
+            <div className="flex gap-3 sm:gap-4 items-center flex-wrap justify-center sm:justify-end">
               <input
                 ref={importInputRef}
                 type="file"
@@ -714,7 +714,7 @@ export const FlashcardSystem: React.FC<FlashcardSystemProps> = ({
                         <span className="text-sm font-black text-emerald-500">{stats?.reviewCards || 0}</span>
                       </div>
                       
-                      <div className="flex gap-2 w-full sm:w-auto items-center">
+                      <div className="flex flex-wrap gap-2 w-full sm:w-auto items-center justify-center sm:justify-end">
                         <button
                           onClick={() => handleOpenDeck(deck.id)}
                           className="flex-1 sm:flex-none bg-indigo-600 hover:bg-indigo-700 text-white px-5 lg:px-6 py-3 rounded-xl lg:rounded-2xl text-[9px] font-black uppercase tracking-widest shadow-lg hover:scale-105 active:scale-95 transition-all"

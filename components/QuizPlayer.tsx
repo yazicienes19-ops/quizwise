@@ -13,7 +13,15 @@ interface QuizPlayerProps {
   initialAnswers?: UserAnswer[];
 }
 
-const shuffle = <T,>(arr: T[]): T[] => [...arr].sort(() => Math.random() - 0.5);
+// Fisher-Yates: gleichmäßig verteiltes Mischen (sort(()=>Math.random()-0.5) ist verzerrt)
+const shuffle = <T,>(arr: T[]): T[] => {
+  const a = [...arr];
+  for (let i = a.length - 1; i > 0; i--) {
+    const j = Math.floor(Math.random() * (i + 1));
+    [a[i], a[j]] = [a[j], a[i]];
+  }
+  return a;
+};
 
 export const QuizPlayer: React.FC<QuizPlayerProps> = ({
   questions, onComplete, onCancel, onProgress, onSave, sourceName, examMode, initialAnswers,
@@ -227,7 +235,7 @@ export const QuizPlayer: React.FC<QuizPlayerProps> = ({
           <div className="px-4 pb-4 space-y-2">
             {currentQuestion.options.map((option, idx) => {
               const isSelected = selectedOptions.includes(idx);
-              const isCorrect  = currentQuestion.correctAnswerIndices.includes(idx);
+              const isCorrect  = (currentQuestion.correctAnswerIndices || []).includes(idx);
               let cls = 'border-slate-100 dark:border-slate-800 bg-slate-50 dark:bg-slate-800/40 text-slate-700 dark:text-slate-300 hover:border-indigo-300';
               if (isSelected && !showResult) cls = 'border-indigo-600 bg-indigo-50 dark:bg-indigo-900/20 ring-2 ring-indigo-600/30 text-indigo-900 dark:text-indigo-200';
               if (showResult) {
@@ -462,7 +470,7 @@ export const QuizPlayer: React.FC<QuizPlayerProps> = ({
   };
 
   return (
-    <div className="max-w-2xl mx-auto animate-in fade-in duration-700 pb-36">
+    <div className="max-w-2xl mx-auto animate-in fade-in duration-700 pb-48 md:pb-36">
       {/* Header */}
       <div className="px-4 pt-6 lg:pt-10 space-y-3 mb-6">
         {sourceName && (
@@ -561,9 +569,9 @@ export const QuizPlayer: React.FC<QuizPlayerProps> = ({
         )}
       </div>
 
-      {/* Sticky bottom CTA */}
-      <div className="fixed bottom-0 left-0 right-0 z-20 pointer-events-none">
-        <div className="max-w-2xl mx-auto px-4 pb-6 pt-8 bg-gradient-to-t from-slate-50 dark:from-slate-950 from-60% pointer-events-auto">
+      {/* Sticky bottom CTA — auf Mobile über der unteren Tab-Navigation, ab md am Rand */}
+      <div className="fixed bottom-[calc(3.75rem+env(safe-area-inset-bottom))] md:bottom-0 left-0 right-0 z-20 pointer-events-none">
+        <div className="max-w-2xl mx-auto px-4 pb-4 md:pb-6 pt-8 bg-gradient-to-t from-slate-50 dark:from-slate-950 from-60% pointer-events-auto">
           <div className="flex gap-3">
             {onCancel && (
               <button onClick={onCancel} className="text-[9px] font-black uppercase tracking-widest text-slate-400 hover:text-rose-500 transition-colors px-4 py-4 shrink-0">

@@ -66,8 +66,16 @@ app.use('/api/search', requireAuth, searchRoutes);
 app.use('/api/documents', requireAuth, documentRoutes);
 
 app.use((err, req, res, next) => {
-  console.error(err.message);
-  res.status(500).json({ error: err.message || 'Interner Serverfehler' });
+  // Vollständigen Fehler serverseitig loggen (Stacktrace fürs Debugging)
+  console.error(err.stack || err.message);
+  const status = err.statusCode || 500;
+  // Nur als sicher markierte (err.expose) oder Client-Fehler (4xx) zeigen ihre
+  // Nachricht. Interne 5xx-Fehler bekommen eine generische Meldung — keine
+  // Supabase-Pfade, Stacktraces oder SDK-Interna leaken nach außen.
+  const expose = err.expose === true || status < 500;
+  res.status(status).json({
+    error: expose ? err.message : 'Interner Serverfehler. Bitte versuche es erneut.',
+  });
 });
 
 app.listen(PORT, () => {

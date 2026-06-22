@@ -1,10 +1,11 @@
 import { useState, useRef, useEffect } from 'react';
+import { flushSync } from 'react-dom';
 import { ProcessedDocument, QuizQuestion, UserAnswer, FlashcardDeck, Flashcard, ActiveTab, QuizType, TopicMetric, ExamTerm, QuizConfig } from '../types';
 import type { GenerationSource } from '../services/geminiService';
 import { generateQuizFromDocument } from '../services/geminiService';
 import { getSavedQuizzes, saveQuizToStorage, deleteSavedQuiz, SavedQuiz } from '../services/savedQuizzesService';
 import { getSavedExams, deleteSavedExam, SavedExam } from '../services/savedExamsService';
-import { getMeta, saveMeta } from '../services/libraryService';
+import { getMeta, saveMeta, documentDisplayName } from '../services/libraryService';
 import { saveQuizResult, getDocStats } from '../services/quizHistoryService';
 import { recordActivity } from '../services/streakService';
 import { toast } from '../services/toast';
@@ -106,15 +107,18 @@ export const useQuizState = (params: UseQuizStateParams) => {
   };
 
   const handleStartQuizFromDoc = async (doc: ProcessedDocument, quizType: QuizType = QuizType.FAST, options?: any) => {
-    params.setIsLoading(true);
-    params.setActiveTab(ActiveTab.QUIZ);
-    setAnswers([]);
-    setQuestions([]);
+    flushSync(() => {
+      params.setIsLoading(true);
+      params.setActiveTab(ActiveTab.QUIZ);
+      setAnswers([]);
+      setQuestions([]);
+    });
     try {
       const source = params.getDocumentSource(doc);
       const excludeTopics = getUsedTopics(doc.id);
       const quiz = await generateQuizFromDocument(source, quizType, { ...options, excludeTopics });
-      const meta = { docId: doc.id, docName: doc.name.replace(/\.[^/.]+$/, '') };
+      if (!quiz.length) throw new Error('Die KI konnte keine verwertbaren Fragen erstellen. Bitte versuche es noch einmal.');
+      const meta = { docId: doc.id, docName: documentDisplayName(doc) };
       setQuestions(quiz);
       setQuizInitialAnswers(undefined);
       saveUsedTopics(doc.id, quiz);
@@ -133,9 +137,11 @@ export const useQuizState = (params: UseQuizStateParams) => {
   const handleStartQuizFromSetup = async (config: QuizConfig, docIds: string[] = []) => {
     if (!params.pendingActionDoc) return;
     params.setPendingTopic(null);
-    params.setIsLoading(true);
-    setQuestions([]);
-    setAnswers([]);
+    flushSync(() => {
+      params.setIsLoading(true);
+      setQuestions([]);
+      setAnswers([]);
+    });
     try {
       const selectedDocs = docIds.length > 1
         ? params.documents.filter(d => docIds.includes(d.id))
@@ -152,7 +158,7 @@ export const useQuizState = (params: UseQuizStateParams) => {
         metaName = `${selectedDocs.length} Dokumente`;
       } else {
         source = params.getDocumentSource(params.pendingActionDoc!);
-        metaName = params.pendingActionDoc!.name.replace(/\.[^/.]+$/, '');
+        metaName = documentDisplayName(params.pendingActionDoc!);
       }
 
       setActiveQuizMeta({ docId: params.pendingActionDoc!.id, docName: metaName });
@@ -167,6 +173,7 @@ export const useQuizState = (params: UseQuizStateParams) => {
         questionType: config.questionType,
         excludeTopics,
       });
+      if (!quiz.length) throw new Error('Die KI konnte keine verwertbaren Fragen erstellen. Bitte versuche es noch einmal.');
       setQuestions(quiz);
       setQuizInitialAnswers(undefined);
       saveUsedTopics(params.pendingActionDoc!.id, quiz);
@@ -197,7 +204,7 @@ export const useQuizState = (params: UseQuizStateParams) => {
   const handleCreateFlashcardsFromMistakes = (wrongQuestions: QuizQuestion[]) => {
     if (!wrongQuestions.length) return;
     const cards: Flashcard[] = wrongQuestions.map(q => {
-      const correctAnswerText = q.options.length > 0 ? q.correctAnswerIndices.map(i => q.options[i]).filter(Boolean).join(' / ') : '';
+      const correctAnswerText = q.options.length > 0 ? (q.correctAnswerIndices || []).map(i => q.options[i]).filter(Boolean).join(' / ') : '';
       const back = correctAnswerText ? correctAnswerText + (q.explanation ? `\n\n${q.explanation}` : '') : q.explanation || '';
       return { id: Math.random().toString(36).slice(2, 9), front: q.question, back, level: 0, nextReview: Date.now() };
     });

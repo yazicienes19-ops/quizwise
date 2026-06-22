@@ -2,6 +2,7 @@ import React, { useState, useRef, useMemo } from 'react';
 import { BookOpen, Upload, FileText, Search, ChevronRight, X, File, Image } from 'lucide-react';
 import { ProcessedDocument, Collection } from '../types';
 import type { GenerationSource } from '../services/geminiService';
+import { documentDisplayName as docTitle } from '../services/libraryService';
 import mammoth from 'mammoth';
 
 interface SourceSelectorProps {
@@ -52,7 +53,8 @@ export const SourceSelector: React.FC<SourceSelectorProps> = ({
 
   const filtered = useMemo(() => {
     return documents.filter(d => {
-      const matchesSearch = d.name.toLowerCase().includes(search.toLowerCase());
+      const q = search.toLowerCase();
+      const matchesSearch = d.name.toLowerCase().includes(q) || docTitle(d).toLowerCase().includes(q);
       const matchesCol = filterCol === 'all' || d.collectionId === filterCol;
       return matchesSearch && matchesCol;
     });
@@ -130,17 +132,18 @@ export const SourceSelector: React.FC<SourceSelectorProps> = ({
 
       {/* Tab-Leiste */}
       <div className="px-6 pt-5 pb-0">
-        <div className="flex p-1 rounded-2xl gap-1" style={{ background: 'color-mix(in srgb, var(--border-color) 40%, var(--bg-main))' }}>
+        <div className="flex p-1 rounded-2xl gap-1 min-w-0" style={{ background: 'color-mix(in srgb, var(--border-color) 40%, var(--bg-main))' }}>
           {tabs.map(t => (
             <button
               key={t.id}
               onClick={() => setTab(t.id)}
-              className={`flex-1 flex items-center justify-center gap-2 py-2.5 rounded-xl text-[10px] font-black uppercase tracking-wider transition-all whitespace-nowrap ${
+              title={t.label}
+              className={`flex-1 min-w-0 flex items-center justify-center gap-2 py-2.5 rounded-xl text-[10px] font-black uppercase tracking-wider transition-all ${
                 tab === t.id ? 'bg-indigo-600 text-white shadow-lg' : 'text-slate-400 hover:text-slate-600 dark:hover:text-slate-200'
               }`}
             >
-              {t.icon}
-              <span className="hidden sm:inline">{t.label}</span>
+              <span className="shrink-0">{t.icon}</span>
+              <span className="hidden sm:inline truncate">{t.label}</span>
             </button>
           ))}
         </div>
@@ -214,10 +217,10 @@ export const SourceSelector: React.FC<SourceSelectorProps> = ({
                         >
                           <DocIcon type={doc.type} />
                           <div className="flex-1 min-w-0">
-                            <p className="text-[12px] font-black dark:text-white truncate">{doc.name}</p>
-                            <p className="text-[10px] text-slate-400 uppercase tracking-widest mt-0.5">
+                            <p className="text-[12px] font-black dark:text-white truncate">{docTitle(doc)}</p>
+                            <p className="text-[10px] text-slate-400 uppercase tracking-widest mt-0.5 truncate">
                               {doc.type.toUpperCase()}
-                              {col && <> · <span>{col.emoji} {col.name}</span></>}
+                              {col && <> · {col.emoji} {col.name}</>}
                             </p>
                           </div>
                           <ChevronRight className="w-4 h-4 text-slate-300 group-hover:text-indigo-500 transition-colors shrink-0" strokeWidth={2} />

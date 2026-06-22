@@ -12,12 +12,20 @@ const IconTrash = () => (
   </svg>
 );
 
+const IconEye = () => (
+  <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+    <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/>
+  </svg>
+);
+
 interface Props {
   doc: ProcessedDocument;
   meta: SourceMeta;
   view: 'grid' | 'list';
   onOpen: () => void;
+  onView: () => void;
   onDelete: () => void;
+  onEdit: () => void;
 }
 
 const Stat: React.FC<{ label: string; value: number }> = ({ label, value }) => (
@@ -33,7 +41,14 @@ const confirmDelete = (onDelete: () => void, title: string) => {
   }
 };
 
-export const SourceCard: React.FC<Props> = ({ doc, meta, view, onOpen, onDelete }) => {
+const IconEdit = () => (
+  <svg xmlns="http://www.w3.org/2000/svg" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round">
+    <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/>
+    <path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/>
+  </svg>
+);
+
+export const SourceCard: React.FC<Props> = ({ doc, meta, view, onOpen, onView, onDelete, onEdit }) => {
   const title = meta.displayTitle || doc.name.replace(/\.[^/.]+$/, '');
   const status = meta.status ?? 'ready';
   const emoji = FILE_EMOJI[doc.type] ?? '📄';
@@ -64,12 +79,19 @@ export const SourceCard: React.FC<Props> = ({ doc, meta, view, onOpen, onDelete 
         <div className="flex items-center gap-2 shrink-0">
           {meta.quizCount      ? <span className="text-[9px] font-bold text-slate-400 hidden sm:block">{meta.quizCount} Quiz</span> : null}
           {meta.flashcardCount ? <span className="text-[9px] font-bold text-slate-400 hidden sm:block">{meta.flashcardCount} Karten</span> : null}
+          {meta.isAltklausur && <span className="hidden sm:block text-[8px] font-black uppercase tracking-widest px-2 py-0.5 rounded-full bg-rose-50 dark:bg-rose-950/20 text-rose-500">Altklausur</span>}
           <button
             onClick={onOpen}
             className="px-4 py-2 bg-indigo-600 text-white rounded-xl text-[9px] font-black uppercase tracking-widest hover:scale-105 transition-all"
             style={{ color: 'var(--primary-text)' }}
           >
             Öffnen
+          </button>
+          <button onClick={onView} className="p-2 text-slate-300 hover:text-indigo-500 transition-colors" title="Dokument ansehen">
+            <IconEye />
+          </button>
+          <button onClick={onEdit} className="p-2 text-slate-300 hover:text-indigo-500 transition-colors" title="Bearbeiten">
+            <IconEdit />
           </button>
           <button onClick={() => confirmDelete(onDelete, title)} className="p-2 text-slate-300 hover:text-rose-500 transition-colors">
             <IconTrash />
@@ -83,19 +105,26 @@ export const SourceCard: React.FC<Props> = ({ doc, meta, view, onOpen, onDelete 
     <div className="rounded-[28px] p-6 shadow-3d-raised hover:shadow-3d-deep transition-all flex flex-col group" style={{ background: 'var(--bg-sidebar)', border: '1px solid var(--border-color)' }}>
       <div className="flex justify-between items-start mb-4">
         <div className="flex gap-1 flex-wrap flex-grow min-w-0 mr-2">
-          {meta.tags?.slice(0, 3).map(t => (
+          {meta.isAltklausur && (
+            <span className="text-[8px] font-black uppercase tracking-widest px-2 py-0.5 rounded-full bg-rose-50 dark:bg-rose-950/20 text-rose-500">Altklausur</span>
+          )}
+          {meta.tags?.slice(0, 2).map(t => (
             <span key={t} className="bg-indigo-50 dark:bg-indigo-900/20 text-indigo-600 dark:text-indigo-400 text-[8px] font-black px-2 py-0.5 rounded-full uppercase tracking-tight">
               {t}
             </span>
           ))}
         </div>
-        <button
-          onClick={() => confirmDelete(onDelete, title)}
-          className="p-2 text-slate-300 hover:text-rose-500 transition-colors shrink-0 opacity-40 sm:opacity-0 sm:group-hover:opacity-100"
-          title="Löschen"
-        >
-          <IconTrash />
-        </button>
+        <div className="flex gap-1 shrink-0 opacity-40 sm:opacity-0 sm:group-hover:opacity-100">
+          <button onClick={onView} className="p-2 text-slate-300 hover:text-indigo-500 transition-colors" title="Dokument ansehen">
+            <IconEye />
+          </button>
+          <button onClick={onEdit} className="p-2 text-slate-300 hover:text-indigo-500 transition-colors" title="Bearbeiten">
+            <IconEdit />
+          </button>
+          <button onClick={() => confirmDelete(onDelete, title)} className="p-2 text-slate-300 hover:text-rose-500 transition-colors" title="Löschen">
+            <IconTrash />
+          </button>
+        </div>
       </div>
       <div className="mb-4">
         <EmojiImage emoji={emoji} size={36} />

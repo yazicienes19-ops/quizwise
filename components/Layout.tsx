@@ -6,13 +6,12 @@ import { getStreak } from '../services/streakService';
 import {
   Home, BookOpen, HelpCircle, Calendar, Brain, GraduationCap,
   Layers, Lightbulb, BarChart2, Search, FileText, Moon, Sun,
-  X, Menu, KeyRound, LogIn, LogOut, Zap, Settings, Bot, Flame, type LucideIcon
+  X, Menu, KeyRound, LogIn, LogOut, Zap, Settings, Flame, type LucideIcon
 } from 'lucide-react';
 import type { User } from '@supabase/supabase-js';
 import { ColorPicker } from './ColorPicker';
 import { ApiKeySettings } from './ApiKeySettings';
 import { LegalModal } from './LegalModal';
-import { AgentChat } from './AgentChat';
 import { NAV_GROUPS, LABOR_GROUP } from './navConfig';
 import { isAdmin } from '../config/admin';
 
@@ -51,15 +50,6 @@ export const Layout: React.FC<LayoutProps> = ({
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
   const [showApiSettings, setShowApiSettings] = useState(false);
   const [legalPage, setLegalPage] = useState<'impressum' | 'datenschutz' | 'agb' | null>(null);
-  const [uxHelperOpen, setUxHelperOpen] = useState(false);
-
-  useEffect(() => {
-    const handler = (e: CustomEvent<{ agentType: string }>) => {
-      if (e.detail.agentType !== 'uxHelper') setUxHelperOpen(false);
-    };
-    window.addEventListener('quizwise-agent-opened', handler as EventListener);
-    return () => window.removeEventListener('quizwise-agent-opened', handler as EventListener);
-  }, []);
 
 
 
@@ -520,24 +510,6 @@ export const Layout: React.FC<LayoutProps> = ({
         <LegalModal page={legalPage} onClose={() => setLegalPage(null)} />
       )}
 
-      {/* ── UX-HELPER FLOATING BUTTON ── */}
-      {user && !uxHelperOpen && (
-        <button
-          onClick={() => setUxHelperOpen(true)}
-          title="App-Assistent"
-          className="fixed bottom-24 right-4 md:bottom-6 md:right-6 z-40 w-12 h-12 rounded-2xl flex items-center justify-center shadow-lg transition-all hover:scale-105 active:scale-95"
-          style={{ background: 'var(--primary)', color: 'var(--primary-text)' }}
-        >
-          <Bot size={20} style={{ color: 'var(--primary-text)' }} />
-        </button>
-      )}
-
-      <AgentChat
-        agentType="uxHelper"
-        context={{ currentTab: activeTab }}
-        isOpen={uxHelperOpen}
-        onClose={() => setUxHelperOpen(false)}
-      />
     </div>
   );
 };

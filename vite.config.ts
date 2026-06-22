@@ -16,7 +16,8 @@ export default defineConfig(() => {
       plugins: [
         react(),
         VitePWA({
-          registerType: 'autoUpdate',
+          registerType: 'prompt',
+          injectRegister: false,
           includeAssets: ['icon-192.svg', 'icon-512.svg'],
           manifest: {
             name: 'QuizWise — KI-Lern-App',

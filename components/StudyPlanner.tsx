@@ -2,10 +2,9 @@
 import React, { useState, useEffect, useRef, useMemo } from 'react';
 import { StudyEntry, TopicMetric, FlashcardDeck, ExamTerm } from '../types';
 import { GeneratedImage } from './GeneratedImage';
-import { AgentChat } from './AgentChat';
 import { generateSmartStudyPlan } from '../services/geminiService';
 import { toast } from '../services/toast';
-import { ChevronLeft, ChevronRight, X, Plus, Bot } from 'lucide-react';
+import { ChevronLeft, ChevronRight, X, Plus } from 'lucide-react';
 
 type ViewMode = 'monat' | 'woche' | 'liste';
 
@@ -92,7 +91,6 @@ export const StudyPlanner: React.FC<StudyPlannerProps> = ({ metrics, decks, exam
   const today = useMemo(() => new Date(), []);
   const todayStr = useMemo(() => toDateStr(today), [today]);
 
-  const [studyFlowOpen, setStudyFlowOpen] = useState(false);
   const [viewMode, setViewMode] = useState<ViewMode>('monat');
   const [calMonth, setCalMonth] = useState(today.getMonth());
   const [calYear, setCalYear] = useState(today.getFullYear());
@@ -253,14 +251,6 @@ export const StudyPlanner: React.FC<StudyPlannerProps> = ({ metrics, decks, exam
             style={{ background: 'var(--bg-sidebar)', color: 'var(--text-main)', border: '2px solid var(--border-color)' }}
           >
             + Termin
-          </button>
-          <button
-            onClick={() => setStudyFlowOpen(true)}
-            className="px-6 py-4 rounded-3xl font-black uppercase tracking-[0.2em] text-[11px] transition-all flex items-center gap-2"
-            style={{ background: 'color-mix(in srgb, var(--primary) 12%, var(--bg-sidebar))', color: 'var(--primary)', border: '2px solid color-mix(in srgb, var(--primary) 30%, transparent)' }}
-          >
-            <Bot size={14} />
-            KI-Berater
           </button>
         </div>
       </div>
@@ -747,13 +737,6 @@ export const StudyPlanner: React.FC<StudyPlannerProps> = ({ metrics, decks, exam
           </div>
         </div>
       )}
-
-      <AgentChat
-        agentType="studyFlow"
-        context={{ metrics, examTerms, currentTab: 'PLANNER' }}
-        isOpen={studyFlowOpen}
-        onClose={() => setStudyFlowOpen(false)}
-      />
     </div>
   );
 };

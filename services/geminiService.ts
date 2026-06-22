@@ -25,6 +25,7 @@ import {
 
 // ─── Backend-Verbindung ──────────────────────────────────────────────────────
 import { supabase } from './supabaseClient';
+import { parseQuizQuestions } from './quizNormalize';
 
 const BACKEND_URL = import.meta.env.VITE_BACKEND_URL || 'http://localhost:4000';
 
@@ -488,13 +489,11 @@ Zu jeder Frage: Erklärung (explanation), Textbezug (sourceReference), Thema (to
       buildRequest(9, seed1, 'Fokus: erste Hälfte und Grundlagen des Materials.'),
       buildRequest(8, seed2, 'Fokus: zweite Hälfte und Vertiefungsthemen des Materials.'),
     ]);
-    const q1: QuizQuestion[] = JSON.parse(text1 || '[]');
-    const q2: QuizQuestion[] = JSON.parse(text2 || '[]');
-    return [...q1, ...q2];
+    return [...parseQuizQuestions(text1), ...parseQuizQuestions(text2)];
   }
 
   const text = await buildRequest(count, Math.random().toString(36).slice(2, 8), '');
-  return JSON.parse(text || '[]');
+  return parseQuizQuestions(text);
 };
 
 export const generateFlashcardsFromDocument = async (source: GenerationSource, count: number = 15, excludeTerms: string[] = []): Promise<Partial<Flashcard>[]> => {
@@ -558,7 +557,7 @@ export const generateQuizFromFlashcards = async (deck: FlashcardDeck): Promise<Q
       }
     }
   });
-  return JSON.parse(text || '[]');
+  return parseQuizQuestions(text);
 };
 
 export const generatePaperFramework = async (

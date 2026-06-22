@@ -2,8 +2,9 @@
 import React, { useState } from 'react';
 import { ExamGenerator } from './ExamGenerator';
 import { ExamView } from './ExamView';
-import { ExamQuestion, ProcessedDocument, Collection, ActiveTab } from '../types';
-import { generateFullExam, evaluateExamAnswers, GenerationSource } from '../services/geminiService';
+import { ExamQuestion, ProcessedDocument, Collection, ActiveTab, ScoringProfile, ExamAnalysis } from '../types';
+import { generateFullExam, evaluateWithRubric, analyzeExamResults, GenerationSource } from '../services/geminiService';
+import { formatFeedbackContext } from '../services/examFeedbackService';
 import { GeneratedImage } from './GeneratedImage';
 import { toast } from '../services/toast';
 import { saveExamToStorage } from '../services/savedExamsService';
@@ -18,6 +19,8 @@ interface ExamSystemProps {
   initialDoc?: ProcessedDocument;
   initialQuestions?: ExamQuestion[];
 }
+
+const DEFAULT_SCORING_PROFILE: ScoringProfile = { mode: 'standard', emphases: [] };
 
 export const ExamSystem: React.FC<ExamSystemProps> = ({ documents, collections, getDocumentSource, onSaveToLibrary, onComplete, onNavigate, initialDoc, initialQuestions }) => {
   const [questions, setQuestions]         = useState<ExamQuestion[] | null>(initialQuestions ?? null);
@@ -34,12 +37,15 @@ export const ExamSystem: React.FC<ExamSystemProps> = ({ documents, collections, 
       initialQuestions.filter(q => q.userAnswer !== undefined).map(q => [q.id, q.userAnswer])
     );
   });
+  const [scoringProfile, setScoringProfile] = useState<ScoringProfile>(DEFAULT_SCORING_PROFILE);
+  const [examAnalysis, setExamAnalysis]     = useState<ExamAnalysis | null>(null);
 
-  const resetExam = () => { setQuestions(null); setMode('edit'); setShowCancelConfirm(false); setExamDuration(undefined); };
+  const resetExam = () => { setQuestions(null); setMode('edit'); setShowCancelConfirm(false); setExamDuration(undefined); setExamAnalysis(null); };
 
-  const handleGenerate = async (content: GenerationSource, style?: GenerationSource, options?: { count: number, difficulty: string }, docName?: string, totalMinutes?: number) => {
+  const handleGenerate = async (content: GenerationSource, style?: GenerationSource, options?: { count: number, difficulty: string }, docName?: string, totalMinutes?: number, profile?: ScoringProfile) => {
     if (docName) setExamDocName(docName.replace(/\.[^/.]+$/, ''));
     if (totalMinutes) setExamDuration(totalMinutes);
+    if (profile) setScoringProfile(profile);
     setIsLoading(true);
     try {
       const exam = await generateFullExam(content, style, options);
@@ -123,14 +129,19 @@ export const ExamSystem: React.FC<ExamSystemProps> = ({ documents, collections, 
   const handleSubmitExam = async (finalQuestions: ExamQuestion[]) => {
     setIsLoading(true);
     try {
-      // Auto-Auswertung für alle nicht-open Typen
+      // Automatische Auswertung für alle nicht-open Typen
       const preEvaluated = finalQuestions.map(q => q.type === 'open' ? q : autoEvaluate(q));
 
-      // KI nur für offene Fragen
+      // Rubrik-basierte KI-Bewertung für offene Fragen
       const openQs = preEvaluated.filter(q => q.type === 'open');
       let evaluated = preEvaluated;
       if (openQs.length > 0) {
-        const aiResults = await evaluateExamAnswers(openQs);
+        const feedbackContexts: Record<string, string> = {};
+        openQs.forEach(q => {
+          const ctx = formatFeedbackContext(q.question);
+          if (ctx) feedbackContexts[q.id] = ctx;
+        });
+        const aiResults = await evaluateWithRubric(openQs, scoringProfile, feedbackContexts);
         evaluated = preEvaluated.map(q => {
           if (q.type !== 'open') return q;
           return aiResults.find(r => r.id === q.id) ?? q;
@@ -143,6 +154,11 @@ export const ExamSystem: React.FC<ExamSystemProps> = ({ documents, collections, 
       const achievedPoints = evaluated.reduce((s, q) => s + (q.achievedPoints ?? 0), 0);
       const score = totalPoints > 0 ? Math.round((achievedPoints / totalPoints) * 100) : 0;
       onComplete?.({ score, docName: examDocName, passed: score >= 50, totalPoints, achievedPoints });
+
+      // Analyse asynchron im Hintergrund (kein Blocker)
+      analyzeExamResults(evaluated)
+        .then(setExamAnalysis)
+        .catch(() => {});
     } catch (e) {
       toast.error('Bewertung fehlgeschlagen. Bitte versuche es erneut.');
     } finally {
@@ -225,6 +241,8 @@ export const ExamSystem: React.FC<ExamSystemProps> = ({ documents, collections, 
         initialAnswers={currentAnswers}
         onAnswersChange={setCurrentAnswers}
         examTitle={examDocName}
+        scoringProfile={scoringProfile}
+        analysis={examAnalysis}
         onSaveProgress={(name) => {
           const withAnswers = questions.map(q => ({ ...q, userAnswer: currentAnswers[q.id] }));
           saveExamToStorage({ name, docName: examDocName, questions: withAnswers });

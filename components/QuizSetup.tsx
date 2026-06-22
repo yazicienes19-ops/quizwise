@@ -1,6 +1,8 @@
 import React, { useState, useMemo } from 'react';
 import type { ProcessedDocument, QuizConfig } from '../types';
 import { getDocStats } from '../services/quizHistoryService';
+import { detectChapters, extractChapterText, getTextForChapterDetection, Chapter } from '../services/chapterService';
+import { documentDisplayName } from '../services/libraryService';
 
 interface QuizSetupProps {
   doc: ProcessedDocument;
@@ -55,6 +57,24 @@ export const QuizSetup: React.FC<QuizSetupProps> = ({ doc, availableDocs, onStar
   const [examMode, setExamMode]         = useState(false);
   const [focus, setFocus]               = useState<QuizConfig['focus']>(initialFocus ?? 'all');
   const [selectedDocIds, setSelectedDocIds] = useState<string[]>([doc.id]);
+  const [selectedChapterIndices, setSelectedChapterIndices] = useState<Set<number> | null>(null); // null = all
+
+  const chapters = useMemo(() => {
+    if (selectedDocIds.length > 1) return []; // chapter selection disabled for multi-doc
+    return detectChapters(getTextForChapterDetection(doc));
+  }, [doc, selectedDocIds.length]);
+
+  const toggleChapter = (idx: number) =>
+    setSelectedChapterIndices(prev => {
+      const base = prev ?? new Set(chapters.map(c => c.index));
+      const next = new Set(base);
+      next.has(idx) ? next.delete(idx) : next.add(idx);
+      return next;
+    });
+
+  const chapterSelectionActive = chapters.length >= 2;
+  const effectiveChapterIndices = selectedChapterIndices ?? new Set(chapters.map(c => c.index));
+  const selectedChapters = chapters.filter(c => effectiveChapterIndices.has(c.index));
 
   const toggleDoc = (id: string) => {
     setSelectedDocIds(prev =>
@@ -65,7 +85,7 @@ export const QuizSetup: React.FC<QuizSetupProps> = ({ doc, availableDocs, onStar
   const otherDocs = availableDocs?.filter(d => d.id !== doc.id) ?? [];
 
   const stats = useMemo(() => getDocStats(doc.id), [doc.id]);
-  const docTitle = doc.name.replace(/\.[^/.]+$/, '');
+  const docTitle = documentDisplayName(doc);
   const effectiveCount = showCustom ? Math.min(50, Math.max(3, parseInt(customCount) || 10)) : questionCount;
 
   return (
@@ -132,7 +152,7 @@ export const QuizSetup: React.FC<QuizSetupProps> = ({ doc, availableDocs, onStar
                   </svg>
                 )}
               </div>
-              <span className="text-[10px] font-black truncate dark:text-white">{d.name.replace(/\.[^/.]+$/, '')}</span>
+              <span className="text-[10px] font-black truncate dark:text-white">{documentDisplayName(d)}</span>
               {d.id === doc.id && <span className="text-[8px] font-black text-slate-400 shrink-0">Primär</span>}
             </button>
           ))}

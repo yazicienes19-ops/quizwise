@@ -30,6 +30,14 @@ export const getAllMeta = (): Record<string, SourceMeta> => readAll();
 
 export const getMeta = (docId: string): SourceMeta => readAll()[docId] ?? {};
 
+/**
+ * Anzeigename eines Dokuments: gespeicherter Titel (displayTitle), sonst der
+ * Dateiname ohne Endung. Überall verwenden, wo Dokumente gelistet werden, damit
+ * Nutzer ihre vergebenen Namen sehen statt roher Datei-Namen.
+ */
+export const documentDisplayName = (doc: { id: string; name: string }): string =>
+  readAll()[doc.id]?.displayTitle || doc.name.replace(/\.[^/.]+$/, '');
+
 export const saveMeta = (docId: string, patch: Partial<SourceMeta>, userId?: string | null): void => {
   const all = readAll();
   all[docId] = { ...all[docId], ...patch };

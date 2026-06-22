@@ -102,3 +102,10 @@ export const migrateLegacyCard = (legacy: { level?: number; nextReview?: number 
   nextReview: legacy.nextReview ?? Date.now(),
   lastReview: null,
 });
+
+export const QUALITY_MAP: Record<'again' | 'hard' | 'good' | 'easy', ReviewQuality> = {
+  again: ReviewQuality.BLACKOUT,
+  hard:  ReviewQuality.HARD,
+  good:  ReviewQuality.GOOD,
+  easy:  ReviewQuality.EASY,
+};

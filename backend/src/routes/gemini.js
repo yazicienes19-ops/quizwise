@@ -83,6 +83,20 @@ router.post('/generate', async (req, res, next) => {
 
   } catch (err) {
     console.error('Gemini Fehler:', err.message);
+    // Bekannte KI-Fehlerklassen mit sicheren, schlüsselwort-tragenden Meldungen
+    // durchreichen (Frontend übersetzt anhand der Keywords). KEIN 429 verwenden —
+    // das interpretiert das Frontend als Tageslimit. Alles andere bleibt intern (500).
+    const m = String(err?.message || '');
+    if (/quota|RESOURCE_EXHAUSTED|rate limit|overloaded|UNAVAILABLE|\b503\b/i.test(m)) {
+      err.statusCode = 503; err.expose = true;
+      err.message = 'Die KI ist gerade ausgelastet (quota). Bitte in einer Minute erneut versuchen.';
+    } else if (/SAFETY|blocked|PROHIBITED/i.test(m)) {
+      err.statusCode = 400; err.expose = true;
+      err.message = 'SAFETY: Die KI konnte diesen Inhalt nicht verarbeiten. Versuche einen anderen Abschnitt.';
+    } else if (/timeout|DEADLINE|ETIMEDOUT/i.test(m)) {
+      err.statusCode = 504; err.expose = true;
+      err.message = 'timeout: Die KI-Anfrage hat zu lange gedauert. Bitte erneut versuchen.';
+    }
     next(err);
   }
 });

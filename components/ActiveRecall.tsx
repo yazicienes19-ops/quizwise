@@ -6,6 +6,7 @@ import { generateRecallChallenge, evaluateRecallResponse } from '../services/gem
 import { GeneratedImage } from './GeneratedImage';
 import { SourceSelector } from './SourceSelector';
 import { toast } from '../services/toast';
+import { documentDisplayName } from '../services/libraryService';
 
 interface ActiveRecallProps {
   availableDocuments: ProcessedDocument[];
@@ -45,9 +46,12 @@ export const ActiveRecall: React.FC<ActiveRecallProps> = ({
     try {
       const source = getDocumentSource(initialDoc);
       setActiveSource(source);
-      setActiveSourceName(initialDoc.name.replace(/\.[^/.]+$/, ''));
+      setActiveSourceName(documentDisplayName(initialDoc));
     } catch (_) {}
   }, []); // eslint-disable-line react-hooks/exhaustive-deps
+
+  // Spracherkennung beim Verlassen stoppen — sonst läuft das Mikrofon weiter
+  useEffect(() => () => { try { speechRef.current?.stop(); } catch {} }, []);
 
   const handleSelectDocument = async (doc: ProcessedDocument) => {
     const source = getDocumentSource
@@ -56,7 +60,7 @@ export const ActiveRecall: React.FC<ActiveRecallProps> = ({
         ? { file: { data: doc.content, mimeType: 'application/pdf' } }
         : { text: doc.content };
     setActiveSource(source);
-    setActiveSourceName(doc.name);
+    setActiveSourceName(documentDisplayName(doc));
   };
 
   const handleCancel = () => {

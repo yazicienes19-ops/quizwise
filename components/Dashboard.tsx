@@ -2,9 +2,8 @@
 import React, { useState, useMemo } from 'react';
 import { ActiveTab, LearningFlowResult, StudyEntry, FlashcardDeck, ProcessedDocument } from '../types';
 import { GeneratedImage } from './GeneratedImage';
-import { AgentChat } from './AgentChat';
 import { toast } from '../services/toast';
-import { Bot, Layers, Flame } from 'lucide-react';
+import { Layers, Flame } from 'lucide-react';
 import { countDueCards, migrateLegacyCard } from '../services/spacedRepetition';
 import { getStreak } from '../services/streakService';
 
@@ -52,7 +51,6 @@ const BASE_CARDS: ActionCard[] = [
 export const Dashboard: React.FC<DashboardProps> = ({ onTabChange, flowResult, documents = [] }) => {
   const [hovered, setHovered] = useState<ActiveTab | null>(null);
   const [usageCounts, setUsageCounts] = useState<Record<string, number>>(getUsageCounts);
-  const [coachOpen, setCoachOpen] = useState(false);
 
   const dueCardsCount = useMemo(() => {
     try {
@@ -98,15 +96,6 @@ export const Dashboard: React.FC<DashboardProps> = ({ onTabChange, flowResult, d
     } catch { return null; }
   }, []);
 
-  const coachContext = useMemo(() => {
-    try {
-      const metrics = JSON.parse(localStorage.getItem('quizwise_metrics') || '[]');
-      const examTerms = JSON.parse(localStorage.getItem('quizwise_exam_terms') || '[]');
-      return { metrics, examTerms, currentTab: 'DASHBOARD' };
-    } catch {
-      return { currentTab: 'DASHBOARD' };
-    }
-  }, [coachOpen]);
 
   const cards = useMemo(() => {
     return [...BASE_CARDS].sort((a, b) => (usageCounts[b.id] || 0) - (usageCounts[a.id] || 0));
@@ -179,10 +168,10 @@ export const Dashboard: React.FC<DashboardProps> = ({ onTabChange, flowResult, d
       {/* Hero Section */}
       <div className="text-center space-y-6">
         <div className="space-y-2">
-            <h1 className="text-7xl sm:text-8xl lg:text-9xl font-light tracking-tighter leading-none" style={{ color: 'var(--text-main)' }}>
+            <h1 className="text-5xl sm:text-7xl lg:text-9xl font-light tracking-tighter leading-none" style={{ color: 'var(--text-main)' }}>
                 Quiz<span className="font-bold text-indigo-500">Wise</span>
             </h1>
-            <p className="text-[10px] sm:text-xs font-black uppercase tracking-[1em] text-slate-400 dark:text-white/30 pl-4">
+            <p className="text-[9px] sm:text-xs font-black uppercase tracking-[0.3em] sm:tracking-[1em] text-slate-400 dark:text-white/30 sm:pl-4 text-center break-words">
                 Advanced Academic Intelligence
             </p>
         </div>
@@ -288,7 +277,7 @@ export const Dashboard: React.FC<DashboardProps> = ({ onTabChange, flowResult, d
                   };
                   onTabChange(moduleToTab[action.module] ?? ActiveTab.QUIZ);
                 }}
-                className="bg-indigo-600 p-8 rounded-[32px] text-white text-left shadow-3d-deep hover:scale-105 transition-all group overflow-hidden relative"
+                className="bg-indigo-600 p-6 sm:p-8 rounded-[24px] sm:rounded-[32px] text-white text-left shadow-3d-deep hover:scale-105 transition-all group overflow-hidden relative"
               >
                 <div className="absolute top-0 right-0 w-24 h-24 bg-white/5 blur-2xl rounded-full translate-x-8 -translate-y-8"></div>
                 <div className="relative z-10 space-y-4">
@@ -320,27 +309,6 @@ export const Dashboard: React.FC<DashboardProps> = ({ onTabChange, flowResult, d
         </div>
       )}
 
-      {/* Lern-Coach Banner */}
-      <div className="max-w-6xl mx-auto w-full">
-        <button
-          onClick={() => setCoachOpen(true)}
-          className="w-full flex items-center justify-between px-6 py-4 rounded-2xl border transition-all hover:scale-[1.01] active:scale-[0.99]"
-          style={{ background: 'color-mix(in srgb, var(--primary) 8%, var(--bg-sidebar))', borderColor: 'color-mix(in srgb, var(--primary) 25%, transparent)' }}
-        >
-          <div className="flex items-center gap-3">
-            <div className="w-9 h-9 rounded-xl flex items-center justify-center" style={{ background: 'var(--primary)' }}>
-              <Bot size={16} style={{ color: 'var(--primary-text)' }} />
-            </div>
-            <div className="text-left">
-              <p className="text-[11px] font-black uppercase tracking-widest" style={{ color: 'var(--primary)' }}>Lern-Coach</p>
-              <p className="text-xs text-slate-500 dark:text-slate-400">Persönliche Lernempfehlungen basierend auf deinem Fortschritt</p>
-            </div>
-          </div>
-          <span className="text-[10px] font-black uppercase tracking-widest" style={{ color: 'var(--primary)' }}>Fragen →</span>
-        </button>
-      </div>
-
-
       {/* Standard Navigation Grid */}
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6 lg:gap-8 max-w-6xl mx-auto w-full">
         {cards.map((card) => {
@@ -351,7 +319,7 @@ export const Dashboard: React.FC<DashboardProps> = ({ onTabChange, flowResult, d
               onClick={() => handleCardClick(card.id)}
               onMouseEnter={() => setHovered(card.id)}
               onMouseLeave={() => setHovered(null)}
-              className="group relative rounded-[32px] lg:rounded-[48px] p-8 lg:p-12 text-left shadow-3d-raised hover:shadow-3d-deep hover:-translate-y-2 transition-all duration-300 overflow-hidden active:scale-[0.98]"
+              className="group relative rounded-[28px] lg:rounded-[48px] p-6 sm:p-8 lg:p-12 text-left shadow-3d-raised hover:shadow-3d-deep hover:-translate-y-2 transition-all duration-300 overflow-hidden active:scale-[0.98]"
               style={isHovered
                 ? { background: 'var(--primary)', border: '1px solid var(--primary)', boxShadow: '0 20px 40px color-mix(in srgb, var(--primary) 35%, transparent)' }
                 : { background: 'var(--bg-sidebar)', border: '1px solid var(--border-color)' }
@@ -402,12 +370,6 @@ export const Dashboard: React.FC<DashboardProps> = ({ onTabChange, flowResult, d
           );
         })}
       </div>
-      <AgentChat
-        agentType="lernCoach"
-        context={coachContext}
-        isOpen={coachOpen}
-        onClose={() => setCoachOpen(false)}
-      />
     </div>
   );
 };

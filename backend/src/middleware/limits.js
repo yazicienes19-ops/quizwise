@@ -14,7 +14,8 @@ const checkUsageLimit = async (req, res, next) => {
   }
 
   if (data?.error) {
-    return res.status(500).json({ error: data.error });
+    console.error('Usage-Limit RPC liefert Fehler:', data.error);
+    return res.status(500).json({ error: 'Serverfehler beim Limit-Check.' });
   }
 
   if (!data?.allowed) {

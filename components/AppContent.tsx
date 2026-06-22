@@ -1,4 +1,5 @@
 import React from 'react';
+import { flushSync } from 'react-dom';
 import type { User } from '@supabase/supabase-js';
 import { Dashboard } from './Dashboard';
 import { LibrarySystem } from './LibrarySystem';
@@ -214,14 +215,15 @@ export const AppContent: React.FC<AppContentProps> = (p) => {
             documents={documents} collections={collections}
             onDocumentSelect={(doc, type, opts) => handleStartQuizFromDoc(doc, type, opts)}
             onSourceSelect={async (source, _name, type, opts) => {
-              setIsLoading(true); setAnswers([]); setQuestions([]);
+              flushSync(() => { setIsLoading(true); setAnswers([]); setQuestions([]); });
               try { const q = await generateQuizFromDocument(source, type, opts); setQuestions(q); }
               catch (e) { handleApiError(e); } finally { setIsLoading(false); }
             }}
             onDeckSelect={async (deck) => {
-              setIsLoading(true);
+              flushSync(() => setIsLoading(true));
               try {
                 const q = await generateQuizFromFlashcards(deck);
+                if (!q.length) throw new Error('Die KI konnte aus diesem Stapel kein Quiz erstellen. Bitte versuche es noch einmal.');
                 const meta = { docId: deck.id, docName: deck.title };
                 setQuestions(q); setQuizInitialAnswers(undefined); setActiveQuizMeta(meta);
                 saveQuizProgress(q, [], meta);
@@ -347,6 +349,7 @@ export const AppContent: React.FC<AppContentProps> = (p) => {
           setIsLoading(true);
           try {
             const q = await generateQuizFromFlashcards(deck);
+            if (!q.length) throw new Error('Die KI konnte aus diesem Stapel kein Quiz erstellen. Bitte versuche es noch einmal.');
             const meta = { docId: deck.id, docName: deck.title };
             setQuestions(q); setQuizInitialAnswers(undefined); setActiveQuizMeta(meta);
             saveQuizProgress(q, [], meta); setActiveTab(ActiveTab.QUIZ);

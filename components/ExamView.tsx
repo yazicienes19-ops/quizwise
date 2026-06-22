@@ -519,7 +519,7 @@ export const ExamView: React.FC<ExamViewProps> = ({
       {/* Protokoll-Header */}
       <div className="flex justify-between items-end border-b-4 border-slate-900 dark:border-slate-100 pb-8">
         <div>
-          <h2 className="text-4xl font-black uppercase tracking-tighter dark:text-white">Klausurprotokoll</h2>
+          <h2 className="text-2xl sm:text-4xl font-black uppercase tracking-tighter dark:text-white">Klausurprotokoll</h2>
           <p className="text-[11px] font-mono opacity-60 uppercase tracking-[0.3em] dark:text-slate-400 mt-2">
             Prüfungseinrichtung: QuizWise AI Academic Center
           </p>
@@ -543,10 +543,10 @@ export const ExamView: React.FC<ExamViewProps> = ({
 
       {/* Note + Ergebnis-Aktionen */}
       {mode === 'result' && (
-        <div className={`grid grid-cols-1 md:grid-cols-3 gap-8 ${gradeInfo.bg} dark:bg-slate-900/40 p-10 rounded-[40px] border-2 ${percentage >= 50 ? 'border-emerald-500' : 'border-rose-500'} animate-in zoom-in-95`}>
+        <div className={`grid grid-cols-1 md:grid-cols-3 gap-6 sm:gap-8 ${gradeInfo.bg} dark:bg-slate-900/40 p-5 sm:p-10 rounded-[28px] sm:rounded-[40px] border-2 ${percentage >= 50 ? 'border-emerald-500' : 'border-rose-500'} animate-in zoom-in-95`}>
           <div className="flex flex-col items-center justify-center border-b md:border-b-0 md:border-r border-slate-200 dark:border-slate-800 pb-6 md:pb-0">
             <span className="text-[10px] font-black uppercase tracking-widest text-slate-400 mb-2">Gesamtnote</span>
-            <span className={`text-7xl font-black ${gradeInfo.color}`}>{gradeInfo.grade}</span>
+            <span className={`text-6xl sm:text-7xl font-black ${gradeInfo.color}`}>{gradeInfo.grade}</span>
             <span className={`text-xs font-black uppercase mt-2 tracking-widest ${gradeInfo.color}`}>{gradeInfo.label}</span>
           </div>
           <div className="md:col-span-2 space-y-4 flex flex-col justify-center">
@@ -641,7 +641,7 @@ export const ExamView: React.FC<ExamViewProps> = ({
 
       {/* Lernanalyse */}
       {mode === 'result' && analysis && (
-        <div className="rounded-[32px] p-8 space-y-6 animate-in fade-in duration-700" style={{ background: 'var(--bg-sidebar)', border: '1px solid var(--border-color)' }}>
+        <div className="rounded-[24px] sm:rounded-[32px] p-5 sm:p-8 space-y-6 animate-in fade-in duration-700" style={{ background: 'var(--bg-sidebar)', border: '1px solid var(--border-color)' }}>
           <div>
             <h3 className="text-lg font-black dark:text-white">Lernanalyse</h3>
             <p className="text-[10px] font-black uppercase tracking-widest text-slate-400">Basierend auf deinen Antworten</p>
@@ -733,7 +733,7 @@ export const ExamView: React.FC<ExamViewProps> = ({
               )}
 
               {isEditing && tempQuestion ? (
-                <div className="space-y-6 animate-in fade-in zoom-in-95 p-8 bg-white dark:bg-slate-800 rounded-[32px] shadow-2xl ring-4 ring-indigo-500/20">
+                <div className="space-y-6 animate-in fade-in zoom-in-95 p-5 sm:p-8 bg-white dark:bg-slate-800 rounded-[24px] sm:rounded-[32px] shadow-2xl ring-4 ring-indigo-500/20">
                   <div className="flex justify-between items-center">
                     <h3 className="text-xl font-black dark:text-white">Aufgabe {idx + 1} anpassen</h3>
                     <input type="number" value={tempQuestion.points} onChange={e => setTempQuestion({ ...tempQuestion, points: parseInt(e.target.value) })} className="w-16 p-2 bg-slate-50 dark:bg-slate-900 rounded-xl text-center font-black dark:text-white" />
@@ -851,7 +851,7 @@ export const ExamView: React.FC<ExamViewProps> = ({
 
       {/* Sticky Submit + Timer */}
       {mode === 'solve' && (
-        <div className="fixed bottom-10 left-1/2 -translate-x-1/2 z-[50] flex flex-col items-center gap-3">
+        <div className="fixed bottom-[calc(4.5rem+env(safe-area-inset-bottom))] md:bottom-10 left-1/2 -translate-x-1/2 z-[50] flex flex-col items-center gap-3">
           {/* Speichern-Panel */}
           {showProgressInput && onSaveProgress && (
             <div className="bg-white dark:bg-slate-900 rounded-[20px] border border-indigo-200 dark:border-indigo-800 shadow-xl p-4 w-80 animate-in slide-in-from-bottom-4 duration-300">
@@ -890,7 +890,7 @@ export const ExamView: React.FC<ExamViewProps> = ({
               </button>
             )}
             <button onClick={handleSubmit} disabled={isEvaluating}
-              className="bg-indigo-600 text-white px-10 py-6 rounded-[32px] font-black uppercase tracking-[0.3em] text-[11px] shadow-3d-deep hover:scale-110 active:scale-95 transition-all flex items-center gap-4"
+              className="bg-indigo-600 text-white px-6 sm:px-10 py-5 sm:py-6 rounded-[24px] sm:rounded-[32px] font-black uppercase tracking-[0.2em] sm:tracking-[0.3em] text-[11px] shadow-3d-deep hover:scale-110 active:scale-95 transition-all flex items-center gap-3 sm:gap-4"
             >
               {isEvaluating ? 'Korrektur läuft...' : <span>Klausur abgeben <EmojiImage emoji="📝" size={16} /></span>}
             </button>

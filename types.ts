@@ -57,6 +57,8 @@ export interface QuizConfig {
   questionCount: number;
   focus: 'all' | 'weak';
   examMode: boolean;
+  chapterContent?: string;  // pre-filtered chapter text; if set, overrides full-doc source
+  chapterLabel?: string;    // display label for the selected chapters
 }
 
 export interface Flashcard {
@@ -243,6 +245,45 @@ export interface ExamQuestion {
   userAnswer?: any;
   feedback?: string;
   achievedPoints?: number;
+
+  // Rubrik-Bewertung (für type="open")
+  criterionScores?: CriterionScore[];
+  evaluationConfidence?: number;     // 0–100
+  questionFeedback?: QuestionFeedbackType;
+}
+
+// --- Rubrik & Bewertungsprofil ---
+
+export interface CriterionScore {
+  criterionId: string;
+  criterionName: string;
+  pointsAwarded: number;
+  maxPoints: number;
+  explanation: string;
+  status: 'full' | 'partial' | 'none';
+}
+
+export type ScoringMode = 'strict' | 'standard' | 'lenient';
+
+export interface ScoringProfile {
+  mode: ScoringMode;
+  emphases: ('terms' | 'understanding' | 'examples' | 'definitions')[];
+}
+
+export type QuestionFeedbackType =
+  | 'correct'
+  | 'too_strict'
+  | 'too_lenient'
+  | 'incomplete_solution'
+  | 'unrealistic'
+  | 'too_easy'
+  | 'too_hard';
+
+export interface ExamAnalysis {
+  strengths: string[];
+  weaknesses: string[];
+  recommendations: string[];
+  topicPerformance: { topic: string; score: number }[];
 }
 
 // --- Recall Types ---
@@ -250,6 +291,15 @@ export interface RecallChallenge {
   question: string;
   expectedKeywords: string[];
   conceptContext: string;
+}
+
+export interface ExplanationEvaluation {
+  score: number;       // 0–100
+  correct: string[];   // Was richtig erklärt wurde
+  missing: string[];   // Was gefehlt hat
+  wrong: string[];     // Was falsch war
+  feedback: string;    // Gesamtfeedback (2–3 Sätze)
+  nextSteps: string;   // Empfehlung was als nächstes gelernt werden sollte
 }
 
 export interface RecallEvaluation {
