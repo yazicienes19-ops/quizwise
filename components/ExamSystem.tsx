@@ -25,6 +25,7 @@ const DEFAULT_SCORING_PROFILE: ScoringProfile = { mode: 'standard', emphases: []
 export const ExamSystem: React.FC<ExamSystemProps> = ({ documents, collections, getDocumentSource, onSaveToLibrary, onComplete, onNavigate, initialDoc, initialQuestions }) => {
   const [questions, setQuestions]         = useState<ExamQuestion[] | null>(initialQuestions ?? null);
   const [isLoading, setIsLoading]         = useState(false);
+  const [loadingHint, setLoadingHint]     = useState('');
   const [mode, setMode]                   = useState<'edit' | 'solve' | 'result'>(() =>
     initialQuestions?.some(q => q.userAnswer !== undefined) ? 'solve' : 'edit'
   );
@@ -42,19 +43,41 @@ export const ExamSystem: React.FC<ExamSystemProps> = ({ documents, collections, 
 
   const resetExam = () => { setQuestions(null); setMode('edit'); setShowCancelConfirm(false); setExamDuration(undefined); setExamAnalysis(null); };
 
+  // Vorübergehende KI-Überlastung: clientseitig erneut versuchen. Das Backend
+  // wiederholt selbst schon kurz — hier fangen wir längere Aussetzer ab und
+  // halten den Nutzer mit einem Status-Hinweis auf dem Laufenden.
+  const isTransientError = (msg: string) =>
+    /ausgelast|überlast|quota|\b503\b|RESOURCE_EXHAUSTED|rate limit|\b429\b|timeout|erneut versuchen/i.test(msg);
+
   const handleGenerate = async (content: GenerationSource, style?: GenerationSource, options?: { count: number, difficulty: string }, docName?: string, totalMinutes?: number, profile?: ScoringProfile) => {
     if (docName) setExamDocName(docName.replace(/\.[^/.]+$/, ''));
     if (totalMinutes) setExamDuration(totalMinutes);
     if (profile) setScoringProfile(profile);
     setIsLoading(true);
+    setLoadingHint('');
+
+    const maxAttempts = 3;
     try {
-      const exam = await generateFullExam(content, style, options);
-      setQuestions(exam);
-      setMode('edit');
-    } catch (e: any) {
-      toast.error(`Klausur-Generierung fehlgeschlagen: ${e?.message || 'Unbekannter Fehler'}`);
+      for (let attempt = 1; attempt <= maxAttempts; attempt++) {
+        try {
+          const exam = await generateFullExam(content, style, options);
+          setQuestions(exam);
+          setMode('edit');
+          return;
+        } catch (e: any) {
+          const msg = e?.message || 'Unbekannter Fehler';
+          if (attempt < maxAttempts && isTransientError(msg)) {
+            setLoadingHint(`KI gerade ausgelastet – neuer Versuch (${attempt + 1}/${maxAttempts})…`);
+            await new Promise(r => setTimeout(r, 2000 * attempt)); // 2s, 4s
+            continue;
+          }
+          toast.error(`Klausur-Generierung fehlgeschlagen: ${msg}`);
+          return;
+        }
+      }
     } finally {
       setIsLoading(false);
+      setLoadingHint('');
     }
   };
 
@@ -176,6 +199,11 @@ export const ExamSystem: React.FC<ExamSystemProps> = ({ documents, collections, 
         <div className="text-center space-y-2">
           <p className="text-2xl font-black text-slate-800 dark:text-white uppercase tracking-tighter">Prüfung wird konzipiert...</p>
           <p className="text-slate-500 dark:text-slate-400 font-medium italic">"Gute Lehre braucht Zeit - auch bei KIs"</p>
+          {loadingHint && (
+            <p className="text-[11px] font-black uppercase tracking-widest text-amber-600 dark:text-amber-400 pt-2 animate-pulse">
+              {loadingHint}
+            </p>
+          )}
         </div>
       </div>
     );
