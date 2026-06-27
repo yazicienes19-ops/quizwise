@@ -57,6 +57,13 @@ export const QuizPlayer: React.FC<QuizPlayerProps> = ({
   const isScenario = qt === 'scenario';
   const isMcLike   = !isOpen && !isMatching && !isCloze && !isRanking && !isNumeric;
 
+  // Anzahl tatsächlich gerenderter Lücken — aus clozeText, nicht aus clozeAnswers.
+  // Verhindert, dass eine fehlerhaft generierte Frage (Lücken/Antworten passen nicht
+  // zusammen) den „Antwort prüfen"-Button dauerhaft sperrt.
+  const clozeBlankCount = isCloze && currentQuestion?.clozeText
+    ? currentQuestion.clozeText.split('__LÜCKE__').length - 1
+    : 0;
+
   // Shuffled versions — stable per question index
   const shuffledRight = useMemo(() => {
     if (!currentQuestion?.matchPairs) return [];
@@ -99,8 +106,10 @@ export const QuizPlayer: React.FC<QuizPlayerProps> = ({
       return (currentQuestion.matchPairs || []).every((pair, i) => matchAnswer[i] === pair.right);
     }
     if (isCloze) {
-      return (currentQuestion.clozeAnswers || []).every(
-        (a, i) => (clozeAnswer[i] || '').trim().toLowerCase() === a.toLowerCase()
+      const ca = currentQuestion.clozeAnswers || [];
+      if (ca.length === 0) return false;
+      return ca.every(
+        (a, i) => (clozeAnswer[i] || '').trim().toLowerCase() === (a || '').toLowerCase()
       );
     }
     if (isRanking) {
@@ -121,8 +130,9 @@ export const QuizPlayer: React.FC<QuizPlayerProps> = ({
     if (isOpen)     return selfAssessCorrect !== null;
     if (isMcLike || isScenario) return selectedOptions.length > 0;
     if (isMatching) return Object.keys(matchAnswer).length === (currentQuestion.matchPairs?.length ?? 0);
-    if (isCloze)    return (currentQuestion.clozeAnswers?.length ?? 0) > 0 &&
-                           clozeAnswer.filter(a => a.trim()).length === (currentQuestion.clozeAnswers?.length ?? 0);
+    if (isCloze)    return clozeBlankCount === 0 ||  // defekte Frage nicht blockieren
+                           Array.from({ length: clozeBlankCount })
+                                .every((_, i) => (clozeAnswer[i] || '').trim() !== '');
     if (isRanking)  return rankingOrder.length > 0;
     if (isNumeric)  return numericInput.trim() !== '';
     return false;
