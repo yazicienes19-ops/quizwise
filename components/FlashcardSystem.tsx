@@ -41,6 +41,7 @@ export const FlashcardSystem: React.FC<FlashcardSystemProps> = ({
   const [decks, setDecks] = useState<FlashcardDeck[]>([]);
   const [activeDeckId, setActiveDeckId] = useState<string | null>(null);
   const [sessionCards, setSessionCards] = useState<Flashcard[]>([]);
+  const [isPracticeSession, setIsPracticeSession] = useState(false);
   const sessionReviewCount = React.useRef(0);
   const [editingDeckId, setEditingDeckId] = useState<string | null>(null);
   const [isGenerating, setIsGenerating] = useState<string | null>(null);
@@ -357,21 +358,40 @@ export const FlashcardSystem: React.FC<FlashcardSystemProps> = ({
     saveDecks(updatedDecks, changedDeck);
   };
 
-  const handleOpenDeck = (deckId: string, mode: 'due' | 'all' = 'due') => {
+  // Streak-Aktivität auch im freien Üben gutschreiben — aber OHNE die SRS-Planung
+  // anzufassen, damit man beliebig oft am Tag wiederholen kann.
+  const handlePracticed = () => {
+    sessionReviewCount.current += 1;
+    if (sessionReviewCount.current === 5) recordActivity(userId);
+  };
+
+  const handleOpenDeck = (deckId: string, mode: 'due' | 'all' | 'free' = 'due') => {
     const deck = decks.find(d => d.id === deckId);
     if (!deck) return;
     const migratedCards = deck.cards.map(c => c.srs ? c : { ...c, srs: migrateLegacyCard(c) });
 
     let cardsToLearn: Flashcard[];
-    if (mode === 'all') {
+    if (mode === 'free') {
+      // Frei lernen: ALLE Karten, zufällig gemischt, SRS bleibt unberührt.
+      if (migratedCards.length === 0) { toast.error('Keine Karten in diesem Deck.'); return; }
+      cardsToLearn = [...migratedCards];
+      for (let i = cardsToLearn.length - 1; i > 0; i--) {
+        const j = Math.floor(Math.random() * (i + 1));
+        [cardsToLearn[i], cardsToLearn[j]] = [cardsToLearn[j], cardsToLearn[i]];
+      }
+    } else if (mode === 'all') {
       cardsToLearn = [...migratedCards].sort((a, b) => (a.srs?.nextReview ?? 0) - (b.srs?.nextReview ?? 0));
       if (cardsToLearn.length === 0) { toast.error('Keine Karten in diesem Deck.'); return; }
     } else {
       cardsToLearn = getDueCards(migratedCards);
-      if (cardsToLearn.length === 0) { toast.success('Dieses Deck ist für heute erledigt! 🎉'); return; }
+      if (cardsToLearn.length === 0) {
+        toast.success('Dieses Deck ist für heute erledigt! 🎉 Tipp: "Üben" lernt jederzeit weiter.');
+        return;
+      }
     }
 
     sessionReviewCount.current = 0;
+    setIsPracticeSession(mode === 'free');
     setSessionCards(cardsToLearn);
     setActiveDeckId(deckId);
   };
@@ -380,8 +400,10 @@ export const FlashcardSystem: React.FC<FlashcardSystemProps> = ({
     return (
       <FlashcardPlayer
         cards={sessionCards}
+        practiceMode={isPracticeSession}
         onReview={handleReview}
-        onClose={() => { setActiveDeckId(null); setSessionCards([]); }}
+        onPracticed={handlePracticed}
+        onClose={() => { setActiveDeckId(null); setSessionCards([]); setIsPracticeSession(false); }}
       />
     );
   }
@@ -722,9 +744,17 @@ export const FlashcardSystem: React.FC<FlashcardSystemProps> = ({
                           Lernen
                         </button>
                         <button
+                          onClick={() => handleOpenDeck(deck.id, 'free')}
+                          className="flex-none flex items-center gap-1.5 border-2 border-slate-200 dark:border-slate-700 text-slate-500 dark:text-slate-400 px-3 py-3 rounded-xl lg:rounded-2xl text-[9px] font-black uppercase tracking-widest hover:border-emerald-400 hover:text-emerald-600 transition-all"
+                          title="Frei üben — alle Karten, beliebig oft, ohne den Fälligkeitsplan zu verändern"
+                        >
+                          <svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round"><polyline points="23 4 23 10 17 10"/><polyline points="1 20 1 14 7 14"/><path d="M3.51 9a9 9 0 0 1 14.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0 0 20.49 15"/></svg>
+                          Üben
+                        </button>
+                        <button
                           onClick={() => handleOpenDeck(deck.id, 'all')}
                           className="flex-none border-2 border-slate-200 dark:border-slate-700 text-slate-500 dark:text-slate-400 px-3 py-3 rounded-xl lg:rounded-2xl text-[9px] font-black uppercase tracking-widest hover:border-indigo-400 hover:text-indigo-600 transition-all"
-                          title="Alle Karten lernen (SRS überspringen)"
+                          title="Alle Karten der Reihe nach lernen (verändert den SRS-Plan)"
                         >
                           Alle
                         </button>

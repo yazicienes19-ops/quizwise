@@ -1,5 +1,6 @@
 
 import React, { useState, useEffect, useCallback, useMemo } from 'react';
+import { createPortal } from 'react-dom';
 import { Flashcard } from '../types';
 import { reviewCard, migrateLegacyCard, ReviewQuality, QUALITY_MAP } from '../services/spacedRepetition';
 
@@ -7,9 +8,12 @@ interface FlashcardPlayerProps {
   cards: Flashcard[];
   onReview: (cardId: string, difficulty: 'again' | 'hard' | 'good' | 'easy') => void;
   onClose: () => void;
+  // Freies Üben: alle Karten beliebig oft, OHNE die SRS-Planung zu verändern.
+  practiceMode?: boolean;
+  onPracticed?: () => void;
 }
 
-export const FlashcardPlayer: React.FC<FlashcardPlayerProps> = ({ cards, onReview, onClose }) => {
+export const FlashcardPlayer: React.FC<FlashcardPlayerProps> = ({ cards, onReview, onClose, practiceMode = false, onPracticed }) => {
   const [remainingCards, setRemainingCards] = useState<Flashcard[]>(() => [...cards]);
   const [completed, setCompleted] = useState(0);
   const [showAnswer, setShowAnswer] = useState(false);
@@ -19,13 +23,19 @@ export const FlashcardPlayer: React.FC<FlashcardPlayerProps> = ({ cards, onRevie
   const handleDifficulty = useCallback((diff: 'again' | 'hard' | 'good' | 'easy') => {
     if (!showAnswer || !currentCard) return;
 
-    onReview(currentCard.id, diff);
+    if (practiceMode) {
+      onPracticed?.();           // nur Streak, KEINE SRS-Änderung
+    } else {
+      onReview(currentCard.id, diff);
+    }
     setShowAnswer(false);
 
     if (diff === 'again') {
-      // Re-queue at end with updated srs so interval preview stays accurate
+      // Re-queue at end. Im Übungsmodus ohne SRS-Änderung, sonst mit aktualisiertem
+      // srs, damit die Intervall-Vorschau stimmt.
       setRemainingCards(r => {
         const card = r[0];
+        if (practiceMode) return [...r.slice(1), card];
         const currentSrs = card.srs ?? migrateLegacyCard(card);
         const nextSrs = reviewCard(currentSrs, ReviewQuality.BLACKOUT);
         return [...r.slice(1), { ...card, srs: nextSrs }];
@@ -38,7 +48,7 @@ export const FlashcardPlayer: React.FC<FlashcardPlayerProps> = ({ cards, onRevie
         setCompleted(c => c + 1);
       }
     }
-  }, [showAnswer, currentCard, remainingCards, onReview, onClose]);
+  }, [showAnswer, currentCard, remainingCards, onReview, onClose, practiceMode, onPracticed]);
 
   // Keyboard Support
   useEffect(() => {
@@ -84,10 +94,19 @@ export const FlashcardPlayer: React.FC<FlashcardPlayerProps> = ({ cards, onRevie
 
   if (!currentCard) return null;
 
-  return (
+  return createPortal(
     <div className="fixed inset-0 z-[100] bg-[#f8fafc] dark:bg-[#020617] flex flex-col animate-in fade-in duration-300">
       {/* Anki Header */}
       <div className="p-4 md:p-6 px-4 md:px-12 flex justify-between items-center bg-white dark:bg-slate-900 border-b border-slate-200 dark:border-slate-800 shadow-sm">
+        {practiceMode ? (
+          <div className="flex items-center gap-3">
+            <span className="inline-flex items-center gap-1.5 bg-emerald-50 dark:bg-emerald-900/20 text-emerald-600 dark:text-emerald-400 text-[9px] font-black uppercase tracking-widest px-3 py-1.5 rounded-full">
+              <svg xmlns="http://www.w3.org/2000/svg" width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round"><polyline points="23 4 23 10 17 10"/><path d="M3.51 9a9 9 0 0 1 14.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0 0 20.49 15"/></svg>
+              Frei üben
+            </span>
+            <span className="text-[8px] font-bold text-slate-400 uppercase tracking-widest hidden sm:inline">Zählt nicht für den Fälligkeitsplan · {stats.remaining} übrig</span>
+          </div>
+        ) : (
         <div className="flex gap-4 md:gap-8">
           <div className="flex items-center gap-2">
             <span className="text-[11px] font-black text-blue-500 uppercase tracking-widest">{stats.newCount}</span>
@@ -102,6 +121,7 @@ export const FlashcardPlayer: React.FC<FlashcardPlayerProps> = ({ cards, onRevie
             <span className="text-[8px] font-bold text-slate-300 uppercase tracking-widest">Fällig</span>
           </div>
         </div>
+        )}
         <button
           onClick={onClose}
           className="text-slate-400 hover:text-rose-500 transition-colors p-2"
@@ -145,6 +165,27 @@ export const FlashcardPlayer: React.FC<FlashcardPlayerProps> = ({ cards, onRevie
             >
               Antwort anzeigen
             </button>
+          ) : practiceMode ? (
+            <div className="grid grid-cols-2 gap-3 sm:gap-4 w-full max-w-xl">
+              <button
+                onClick={() => handleDifficulty('again')}
+                className="group flex flex-col items-center gap-2"
+              >
+                <div className="w-full bg-rose-500 text-white py-4 md:py-5 rounded-xl md:rounded-2xl font-black uppercase text-[10px] md:text-xs tracking-widest shadow-lg hover:brightness-110 active:scale-95 transition-all">
+                  Nochmal
+                </div>
+                <span className="text-[8px] md:text-[9px] font-bold text-slate-300 opacity-60">Taste 1</span>
+              </button>
+              <button
+                onClick={() => handleDifficulty('good')}
+                className="group flex flex-col items-center gap-2"
+              >
+                <div className="w-full bg-emerald-500 text-white py-4 md:py-5 rounded-xl md:rounded-2xl font-black uppercase text-[10px] md:text-xs tracking-widest shadow-lg hover:brightness-110 active:scale-95 transition-all">
+                  Gewusst
+                </div>
+                <span className="text-[8px] md:text-[9px] font-bold text-slate-300 opacity-60">Taste 3 / Space</span>
+              </button>
+            </div>
           ) : (
             <div className="grid grid-cols-4 gap-2 sm:gap-4 w-full">
               {[
@@ -180,6 +221,7 @@ export const FlashcardPlayer: React.FC<FlashcardPlayerProps> = ({ cards, onRevie
           </div>
         </div>
       </div>
-    </div>
+    </div>,
+    document.body
   );
 };
