@@ -4,7 +4,8 @@ import { supabase } from '../services/supabaseClient';
 
 interface AuthModalProps {
   onClose: () => void;
-  onSuccess: () => void;
+  /** Optional, da AuthModal an mehreren Stellen ohne Erfolgs-Callback gemountet wird (z.B. Landing-/Shared-Deck-Seite) */
+  onSuccess?: () => void;
 }
 
 export const AuthModal: React.FC<AuthModalProps> = ({ onClose, onSuccess }) => {
@@ -34,7 +35,7 @@ export const AuthModal: React.FC<AuthModalProps> = ({ onClose, onSuccess }) => {
       } else {
         const { error } = await supabase.auth.signInWithPassword({ email, password });
         if (error) throw error;
-        onSuccess();
+        onSuccess?.();
         onClose();
       }
     } catch (err: any) {
