@@ -1,10 +1,15 @@
 
-import React, { useState, useEffect, useRef, useCallback } from 'react';
-import { ProcessedDocument, Collection, ExplanationEvaluation } from '../types';
+import React, { useState, useEffect, useRef, useCallback, useMemo } from 'react';
+import { ProcessedDocument, Collection, ExplanationEvaluation, TopicMetric, FlashcardDeck } from '../types';
 import type { GenerationSource } from '../services/geminiService';
 import { generateExplanation, evaluateStudentExplanation } from '../services/geminiService';
 import { SourceSelector } from './SourceSelector';
 import { toast } from '../services/toast';
+import { buildLearningProfile } from '../services/learningProfileService';
+import { getAllResults } from '../services/quizHistoryService';
+import { getAllRecallResults } from '../services/recallHistoryService';
+import { getAllExamResults } from '../services/examHistoryService';
+import { getStreak } from '../services/streakService';
 
 const INTRO_KEY = 'quizwise_feynman_intro_v1';
 
@@ -77,6 +82,8 @@ interface ExplainerSystemProps {
   initialDoc?: ProcessedDocument;
   /** Wird nach jeder erfolgreichen KI-Bewertung aufgerufen — persistiert das Ergebnis. */
   onComplete?: (score: number, topic: string, missingPoints: string[]) => void;
+  metrics: TopicMetric[];
+  decks: FlashcardDeck[];
 }
 
 // ─── First-Visit Intro ────────────────────────────────────────────────────────
@@ -142,7 +149,7 @@ const ScoreRing: React.FC<{ score: number }> = ({ score }) => {
 // ─── Hauptkomponente ──────────────────────────────────────────────────────────
 
 export const ExplainerSystem: React.FC<ExplainerSystemProps> = ({
-  availableDocuments, collections, getDocumentSource, onSaveToLibrary, initialDoc, onComplete,
+  availableDocuments, collections, getDocumentSource, onSaveToLibrary, initialDoc, onComplete, metrics, decks,
 }) => {
   const [showIntro, setShowIntro]         = useState(() => !localStorage.getItem(INTRO_KEY));
   const [step, setStep]                   = useState<Step>('setup');
@@ -159,6 +166,26 @@ export const ExplainerSystem: React.FC<ExplainerSystemProps> = ({
   const [speechSupported, setSpeechSupported] = useState(true);
 
   const recognitionRef = useRef<any>(null);
+
+  // ── Lernprofil (für Vorschläge) + Erklärer-Verlauf ──
+  const profile = useMemo(() => buildLearningProfile({
+    metrics, decks,
+    quizResults: getAllResults(),
+    recallResults: getAllRecallResults(),
+    examResults: getAllExamResults(),
+    streak: getStreak(),
+  }), [metrics, decks]);
+  const suggestions = useMemo(() =>
+    profile.topicMastery.filter(t => t.security !== 'sicher').slice(0, 5),
+  [profile.topicMastery]);
+  const explainerHistory = useMemo(() =>
+    getAllRecallResults().filter(r => r.method === 'explainer').slice(0, 5),
+  []);
+  const lastAttemptForConcept = useMemo(() => {
+    const trimmed = concept.trim().toLowerCase();
+    if (!trimmed) return null;
+    return explainerHistory.find(r => r.topic.trim().toLowerCase() === trimmed) ?? null;
+  }, [concept, explainerHistory]);
 
   useEffect(() => {
     const SR = (window as any).SpeechRecognition || (window as any).webkitSpeechRecognition;
@@ -314,6 +341,29 @@ export const ExplainerSystem: React.FC<ExplainerSystemProps> = ({
             </div>
           )}
 
+          {/* Vorschläge aus dem Lernprofil */}
+          {suggestions.length > 0 && (
+            <div className="space-y-2">
+              <p className="text-[10px] font-black uppercase tracking-widest text-slate-400">Vorschläge aus deinem Lernprofil</p>
+              <div className="flex flex-wrap gap-2">
+                {suggestions.map(s => (
+                  <button
+                    key={s.topic}
+                    onClick={() => setConcept(s.topic)}
+                    className="px-3 py-2 rounded-xl text-[9px] font-black uppercase tracking-wider transition-all hover:opacity-80"
+                    style={{
+                      background: `color-mix(in srgb, ${s.security === 'kritisch' ? '#f43f5e' : '#f59e0b'} 10%, var(--bg-sidebar))`,
+                      color: s.security === 'kritisch' ? '#f43f5e' : '#f59e0b',
+                      border: `1px solid color-mix(in srgb, ${s.security === 'kritisch' ? '#f43f5e' : '#f59e0b'} 25%, transparent)`,
+                    }}
+                  >
+                    {s.topic} · {s.security}
+                  </button>
+                ))}
+              </div>
+            </div>
+          )}
+
           {/* Konzept */}
           <div className="space-y-2">
             <p className="text-[10px] font-black uppercase tracking-widest text-slate-400">Welches Konzept möchtest du erklären?</p>
@@ -327,6 +377,12 @@ export const ExplainerSystem: React.FC<ExplainerSystemProps> = ({
               style={{ background: 'var(--bg-sidebar)', border: '1px solid var(--border-color)', color: 'var(--text-main)' }}
               autoFocus
             />
+            {lastAttemptForConcept && (
+              <p className="text-[10px] font-bold" style={{ color: 'var(--mute)' }}>
+                Letzter Versuch: <strong style={{ color: lastAttemptForConcept.score >= 70 ? '#22c55e' : lastAttemptForConcept.score >= 40 ? '#f59e0b' : '#f43f5e' }}>{lastAttemptForConcept.score}%</strong>
+                {' · '}{new Date(lastAttemptForConcept.timestamp).toLocaleDateString('de-DE', { day: '2-digit', month: 'short' })}
+              </p>
+            )}
           </div>
 
           <button
@@ -343,6 +399,31 @@ export const ExplainerSystem: React.FC<ExplainerSystemProps> = ({
             <p className="text-center text-[10px] text-slate-400 font-medium">
               Dokument erforderlich damit die KI deine Erklärung mit dem Lernstoff vergleichen kann.
             </p>
+          )}
+
+          {/* Verlauf */}
+          {explainerHistory.length > 0 && (
+            <div className="pt-4 space-y-3 border-t" style={{ borderColor: 'var(--border-color)' }}>
+              <p className="text-[10px] font-black uppercase tracking-widest text-slate-400">Letzte Erklär-Sessions</p>
+              <div className="space-y-1.5">
+                {explainerHistory.map(r => (
+                  <button
+                    key={r.id}
+                    onClick={() => setConcept(r.topic)}
+                    className="w-full flex items-center justify-between px-4 py-2.5 rounded-xl text-left transition-all hover:opacity-80"
+                    style={{ background: 'var(--bg-sidebar)', border: '1px solid var(--border-color)' }}
+                  >
+                    <span className="text-xs font-bold truncate dark:text-white">{r.topic}</span>
+                    <span className="flex items-center gap-2 shrink-0 ml-3">
+                      <span className="text-[10px] font-black" style={{ color: r.score >= 70 ? '#22c55e' : r.score >= 40 ? '#f59e0b' : '#f43f5e' }}>{r.score}%</span>
+                      <span className="text-[9px] font-medium text-slate-400">
+                        {new Date(r.timestamp).toLocaleDateString('de-DE', { day: '2-digit', month: 'short' })}
+                      </span>
+                    </span>
+                  </button>
+                ))}
+              </div>
+            </div>
           )}
         </div>
       )}

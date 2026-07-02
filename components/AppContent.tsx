@@ -319,6 +319,7 @@ export const AppContent: React.FC<AppContentProps> = (p) => {
         getDocumentSource={getDocumentSource}
         onSaveToLibrary={file => handleFileUpload(file)}
         initialDoc={pendingActionDoc ?? undefined}
+        metrics={metrics} decks={decks}
         onComplete={(score, topic, missingPoints) => {
           saveRecallResult({ docName: topic, timestamp: Date.now(), score, topic, missingPoints, method: 'explainer' }, user?.id);
           updateMetricsAfterSession(score, topic, 'recall');
