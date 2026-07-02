@@ -75,6 +75,8 @@ interface ExplainerSystemProps {
   getDocumentSource?: (doc: ProcessedDocument) => GenerationSource;
   onSaveToLibrary?: (file: File) => void;
   initialDoc?: ProcessedDocument;
+  /** Wird nach jeder erfolgreichen KI-Bewertung aufgerufen — persistiert das Ergebnis. */
+  onComplete?: (score: number, topic: string, missingPoints: string[]) => void;
 }
 
 // ─── First-Visit Intro ────────────────────────────────────────────────────────
@@ -140,7 +142,7 @@ const ScoreRing: React.FC<{ score: number }> = ({ score }) => {
 // ─── Hauptkomponente ──────────────────────────────────────────────────────────
 
 export const ExplainerSystem: React.FC<ExplainerSystemProps> = ({
-  availableDocuments, collections, getDocumentSource, onSaveToLibrary, initialDoc,
+  availableDocuments, collections, getDocumentSource, onSaveToLibrary, initialDoc, onComplete,
 }) => {
   const [showIntro, setShowIntro]         = useState(() => !localStorage.getItem(INTRO_KEY));
   const [step, setStep]                   = useState<Step>('setup');
@@ -231,6 +233,7 @@ export const ExplainerSystem: React.FC<ExplainerSystemProps> = ({
       const result = await evaluateStudentExplanation(activeSource, concept.trim(), text);
       setEvaluation(result);
       setStep('result');
+      onComplete?.(result.score, concept.trim(), result.missing);
     } catch {
       toast.error('Bewertung fehlgeschlagen. Bitte erneut versuchen.');
       setStep('input');

@@ -63,7 +63,7 @@ export const NAV_GROUPS: NavGroup[] = [
   {
     title: 'Fortschritt',
     items: [
-      { tab: ActiveTab.RADAR, label: 'Meine Lücken', hint: 'Was du üben solltest' },
+      { tab: ActiveTab.RADAR, label: 'Lern-Coach', hint: 'Was du üben solltest' },
       { tab: ActiveTab.PLANNER, label: 'Lernplan' },
     ],
   },

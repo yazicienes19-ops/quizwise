@@ -25,6 +25,67 @@ export interface LearningAnalysis {
   overallHealth: string;
 }
 
+// ─── Lern-Coach (Phase 1) ──────────────────────────────────────────────────────
+// Deterministisch berechnetes Lernprofil (services/learningProfileService.ts)
+// + KI-Synthese (generateCoachInsights).
+
+export type LearnMethod = 'anki' | 'quiz' | 'feynman' | 'explainer' | 'exam';
+
+export interface MethodStat {
+  method: LearnMethod;
+  avgScore: number;                       // 0–100
+  sessions: number;
+  trend: 'up' | 'down' | 'stable';
+}
+
+export interface TopicSecurity {
+  topic: string;
+  confidence: number;                     // 0–100
+  security: 'sicher' | 'unsicher' | 'kritisch';
+  weakCount: number;                      // wie oft als Schwachstelle aufgetaucht
+}
+
+export interface ForgettingItem {
+  topic: string;
+  dueInDays: number;                      // negativ = überfällig
+  cardCount: number;
+}
+
+export interface TimeOfDayStat {
+  part: 'Morgen' | 'Mittag' | 'Abend' | 'Nacht';
+  avgScore: number;
+  sessions: number;
+}
+
+export interface ExamPrognosis {
+  grade: string;                          // deutsche Note, z.B. "2.3"
+  passProbability: number;                // 0–100
+  basis: number;                          // Anzahl Klausuren als Grundlage
+}
+
+export interface LearningProfile {
+  perMethod: MethodStat[];
+  topicMastery: TopicSecurity[];
+  forgetting: ForgettingItem[];
+  timeOfDay: { bestPart: TimeOfDayStat['part'] | null; byPart: TimeOfDayStat[] };
+  examPrognosis: ExamPrognosis | null;
+  volume: { streakCurrent: number; streakBest: number; sessionsPerWeek: number; totalSessions: number };
+}
+
+export interface CoachInsights {
+  synthesis: string[];
+  connections: { a: string; b: string; reasoning: string }[];
+  prognosis: { grade: string; passProbability: number; reasoning: string };
+  forwardPrediction: string;
+  methodInsight: string;
+  recommendations: {
+    action: string;
+    tab: 'QUIZ' | 'CARDS' | 'RECALL' | 'EXAM' | 'EXPLAINER';
+    reasoning: string;
+    priority: 'hoch' | 'mittel' | 'niedrig';
+  }[];
+}
+
 export interface QuizQuestion {
   question: string;
   options: string[];
@@ -242,6 +303,8 @@ export interface ExamQuestion {
 
   solution: string;
   points: number;
+  /** Fachliches Thema der Aufgabe (1-3 Worte) — Grundlage für weakTopics & spätere adaptive Klausur */
+  topic?: string;
   userAnswer?: any;
   feedback?: string;
   achievedPoints?: number;

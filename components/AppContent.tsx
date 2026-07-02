@@ -8,7 +8,7 @@ import { QuizSetup } from './QuizSetup';
 import { ResultView } from './ResultView';
 import { FileUploader } from './FileUploader';
 import { ActiveRecall } from './ActiveRecall';
-import { GapRadar } from './GapRadar';
+import { LearningCoach } from './LearningCoach';
 import { ExplainerSystem } from './ExplainerSystem';
 import { StudyPlanner } from './StudyPlanner';
 import { FlashcardSystem } from './FlashcardSystem';
@@ -282,8 +282,8 @@ export const AppContent: React.FC<AppContentProps> = (p) => {
           onSaveToLibrary={file => handleFileUpload(file)}
           initialDoc={pendingActionDoc ?? undefined}
           initialQuestions={examInitialQuestions?.questions}
-          onComplete={({ score, docName, passed, totalPoints, achievedPoints }) => {
-            saveExamResult({ docName, timestamp: Date.now(), score, passed, totalPoints, achievedPoints, weakTopics: [] }, user?.id);
+          onComplete={({ score, docName, passed, totalPoints, achievedPoints, weakTopics }) => {
+            saveExamResult({ docName, timestamp: Date.now(), score, passed, totalPoints, achievedPoints, weakTopics }, user?.id);
             updateMetricsAfterSession(score, docName, 'exam');
             setExamInitialQuestions(null);
             setSavedExams(getSavedExams());
@@ -295,7 +295,7 @@ export const AppContent: React.FC<AppContentProps> = (p) => {
     );
 
     case ActiveTab.RADAR:
-      return <GapRadar metrics={metrics} onNavigate={setActiveTab}
+      return <LearningCoach metrics={metrics} decks={decks} onNavigate={setActiveTab}
         onAction={(topic, mode) => {
           if (mode === 'quiz') {
             const match = getAllResults().find(r => r.weakTopics.includes(topic));
@@ -316,6 +316,11 @@ export const AppContent: React.FC<AppContentProps> = (p) => {
         getDocumentSource={getDocumentSource}
         onSaveToLibrary={file => handleFileUpload(file)}
         initialDoc={pendingActionDoc ?? undefined}
+        onComplete={(score, topic, missingPoints) => {
+          saveRecallResult({ docName: topic, timestamp: Date.now(), score, topic, missingPoints, method: 'explainer' }, user?.id);
+          updateMetricsAfterSession(score, topic, 'recall');
+          recordActivity(user?.id);
+        }}
       />;
 
     case ActiveTab.PAPER:

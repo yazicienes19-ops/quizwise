@@ -8,6 +8,9 @@ export interface RecallResult {
   score: number;
   topic: string;
   missingPoints: string[];
+  /** Lernmethode. Fehlt bei Altdaten → als 'recall' (Feynman „Erklären üben") behandeln.
+   *  'explainer' = KI-Erklärer (ExplainerSystem). */
+  method?: 'recall' | 'explainer';
 }
 
 const readAll = (): RecallResult[] => {

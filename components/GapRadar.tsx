@@ -223,9 +223,11 @@ interface GapRadarProps {
   metrics: TopicMetric[];
   onNavigate: (tab: ActiveTab) => void;
   onAction?: (topic: string, mode: 'cards' | 'recall' | 'quiz') => void;
+  /** Header ausblenden, wenn GapRadar unterhalb eines eigenen Titels eingebettet wird (z.B. LearningCoach). */
+  hideHeader?: boolean;
 }
 
-export const GapRadar: React.FC<GapRadarProps> = ({ metrics, onNavigate, onAction }) => {
+export const GapRadar: React.FC<GapRadarProps> = ({ metrics, onNavigate, onAction, hideHeader }) => {
   const [selectedMode, setSelectedMode] = useState<LearnMode>('all');
   const [selectedDoc, setSelectedDoc] = useState('');
   const [analysis, setAnalysis] = useState<LearningAnalysis | null>(null);
@@ -537,14 +539,16 @@ export const GapRadar: React.FC<GapRadarProps> = ({ metrics, onNavigate, onActio
     <div className="space-y-10 lg:space-y-12 animate-in fade-in duration-700 pb-20">
 
       {/* ── Header ── */}
-      <div className="text-center space-y-3">
-        <h1 className="text-4xl lg:text-7xl font-black text-slate-900 dark:text-white tracking-tighter">
-          Lern <span className="text-indigo-600">Radar</span> <EmojiImage emoji="📡" size={36} />
-        </h1>
-        <p className="text-base text-slate-500 dark:text-slate-400 font-medium opacity-80">
-          Alle Lernmodi auf einen Blick — Quiz, Anki, Feynman & Klausur.
-        </p>
-      </div>
+      {!hideHeader && (
+        <div className="text-center space-y-3">
+          <h1 className="text-4xl lg:text-7xl font-black text-slate-900 dark:text-white tracking-tighter">
+            Lern <span className="text-indigo-600">Radar</span> <EmojiImage emoji="📡" size={36} />
+          </h1>
+          <p className="text-base text-slate-500 dark:text-slate-400 font-medium opacity-80">
+            Alle Lernmodi auf einen Blick — Quiz, Anki, Feynman & Klausur.
+          </p>
+        </div>
+      )}
 
       {/* ── Filter Bar ── */}
       <div className="flex flex-wrap items-center gap-3">

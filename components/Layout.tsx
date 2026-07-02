@@ -86,7 +86,7 @@ export const Layout: React.FC<LayoutProps> = ({
     { tab: ActiveTab.CARDS,     label: 'Karteikarten',   icon: Layers },
     { tab: ActiveTab.RECALL,    label: 'Erklären üben',  icon: Brain },
     { tab: ActiveTab.EXAM,      label: 'Klausur üben',   icon: GraduationCap },
-    { tab: ActiveTab.RADAR,     label: 'Meine Lücken',   icon: BarChart2 },
+    { tab: ActiveTab.RADAR,     label: 'Lern-Coach',     icon: BarChart2 },
     { tab: ActiveTab.EXPLAINER, label: 'KI-Erklärer',    icon: Lightbulb },
     { tab: ActiveTab.SEARCH,    label: 'Recherche',      icon: Search },
     { tab: ActiveTab.PAPER,     label: 'Hausarbeit',     icon: FileText },

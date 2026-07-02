@@ -21,6 +21,8 @@ import {
   ScoringProfile,
   ExamAnalysis,
   ExplanationEvaluation,
+  LearningProfile,
+  CoachInsights,
 } from "../types";
 
 // ─── Backend-Verbindung ──────────────────────────────────────────────────────
@@ -866,6 +868,7 @@ FRAGETYPEN-VERTEILUNG (zwingend einhalten, Summe = ${count}):
 ALLGEMEINE REGELN:
 - Jede Aufgabe deckt einen ANDEREN Aspekt des Materials ab
 - id: fortlaufend "q1", "q2", ...
+- topic: das fachliche Thema der Aufgabe in 1-3 Worten (z.B. "Kognitive Dissonanz"), konsistent benannt wenn mehrere Aufgaben dasselbe Thema betreffen
 - Alle Arrays die nicht für den Typ relevant sind: als leeres Array [] angeben
 - Nicht relevante Felder weglassen oder mit 0/false/null als Default` });
 
@@ -900,8 +903,9 @@ ALLGEMEINE REGELN:
             numericTolerance:     { type: Type.NUMBER },
             solution:             { type: Type.STRING },
             points:               { type: Type.NUMBER },
+            topic:                { type: Type.STRING },
           },
-          required: ['id', 'question', 'type', 'solution', 'points']
+          required: ['id', 'question', 'type', 'solution', 'points', 'topic']
         }
       }
     }
@@ -1165,4 +1169,83 @@ Wichtig: Wenn die Erklärung leer oder sehr kurz ist, gib score=0 und erkläre w
   });
 
   return JSON.parse(text || '{"score":0,"correct":[],"missing":[],"wrong":[],"feedback":"Bewertung fehlgeschlagen.","nextSteps":""}');
+};
+
+// ─── Lern-Coach-Synthese ────────────────────────────────────────────────────────
+// Reasoniert über das bereits deterministisch berechnete LearningProfile
+// (services/learningProfileService.ts) statt über Rohdaten — kompakt und verlässlich.
+export const generateCoachInsights = async (
+  profile: LearningProfile,
+  wrongAnswers: WrongAnswerContext[] = []
+): Promise<CoachInsights> => {
+  const wrongText = wrongAnswers.length > 0
+    ? `\n\nEchte Fehlantworten (${wrongAnswers.length} Stück):\n` +
+      wrongAnswers.map((w, i) => `${i + 1}. [${w.topic || 'Allgemein'}] "${w.question}"\n   Richtige Erklärung: ${w.explanation}`).join('\n\n')
+    : '';
+
+  const text = await callBackend({
+    complexity: 'heavy',
+    parts: [{
+      text: `Du bist der persönliche Lerncoach von QuizWise. Analysiere das folgende, bereits berechnete Lernprofil eines Studenten auf Deutsch.
+
+WICHTIGSTE REGEL: Behaupte NUR, was die Daten unten wirklich hergeben. Erfinde keine Muster, Zusammenhänge oder Zahlen, die sich nicht aus dem Profil ableiten lassen. Wenn eine Kategorie zu wenig Daten hat, sage das statt zu spekulieren.
+
+LERNPROFIL (JSON):
+${JSON.stringify(profile)}
+${wrongText}
+
+Erstelle:
+- synthesis: 2–4 kurze, konkrete Beobachtungen über das Lernverhalten (Fakten aus den Daten, keine Plattitüden)
+- connections: 0–3 plausible Verbindungen zwischen schwachen Themen (nur wenn topicMastery das wirklich hergibt; sonst leeres Array)
+- prognosis: geschätzte Klausurnote (deutsche Skala, übernimm examPrognosis.grade wenn vorhanden, sonst schätze konservativ) + Bestehenswahrscheinlichkeit (0-100) + 1 Satz Begründung
+- forwardPrediction: 1 vorausschauender Satz nach dem Muster "Wenn du heute [konkrete Aktion] machst, verbessert sich [konkrete Metrik]" — nur wenn die Datenlage das stützt, sonst ein ehrlicher Hinweis dass noch zu wenig Daten vorliegen
+- methodInsight: 1 Satz Vergleich der Lernmethoden (perMethod) — welche wirkt aktuell am besten
+- recommendations: 2–4 konkrete, priorisierte nächste Schritte mit Ziel-Tab (QUIZ, CARDS, RECALL, EXAM oder EXPLAINER)` }],
+    config: {
+      temperature: 0,
+      thinkingConfig: { thinkingBudget: 0 },
+      responseMimeType: 'application/json',
+      responseSchema: {
+        type: Type.OBJECT,
+        properties: {
+          synthesis: { type: Type.ARRAY, items: { type: Type.STRING } },
+          connections: {
+            type: Type.ARRAY,
+            items: {
+              type: Type.OBJECT,
+              properties: { a: { type: Type.STRING }, b: { type: Type.STRING }, reasoning: { type: Type.STRING } },
+              required: ['a', 'b', 'reasoning'],
+            },
+          },
+          prognosis: {
+            type: Type.OBJECT,
+            properties: {
+              grade: { type: Type.STRING },
+              passProbability: { type: Type.NUMBER },
+              reasoning: { type: Type.STRING },
+            },
+            required: ['grade', 'passProbability', 'reasoning'],
+          },
+          forwardPrediction: { type: Type.STRING },
+          methodInsight: { type: Type.STRING },
+          recommendations: {
+            type: Type.ARRAY,
+            items: {
+              type: Type.OBJECT,
+              properties: {
+                action: { type: Type.STRING },
+                tab: { type: Type.STRING },
+                reasoning: { type: Type.STRING },
+                priority: { type: Type.STRING },
+              },
+              required: ['action', 'tab', 'reasoning', 'priority'],
+            },
+          },
+        },
+        required: ['synthesis', 'connections', 'prognosis', 'forwardPrediction', 'methodInsight', 'recommendations'],
+      },
+    },
+  });
+
+  return JSON.parse(text || '{"synthesis":[],"connections":[],"prognosis":{"grade":"—","passProbability":0,"reasoning":""},"forwardPrediction":"","methodInsight":"","recommendations":[]}');
 };

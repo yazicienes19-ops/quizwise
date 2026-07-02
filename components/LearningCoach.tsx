@@ -1,0 +1,325 @@
+
+import React, { useState, useMemo } from 'react';
+import { TopicMetric, ActiveTab, CoachInsights, FlashcardDeck, LearnMethod } from '../types';
+import { EmojiImage } from './EmojiImage';
+import { GapRadar } from './GapRadar';
+import { generateCoachInsights, WrongAnswerContext } from '../services/geminiService';
+import { buildLearningProfile } from '../services/learningProfileService';
+import { getAllResults } from '../services/quizHistoryService';
+import { getAllRecallResults } from '../services/recallHistoryService';
+import { getAllExamResults } from '../services/examHistoryService';
+import { getStreak } from '../services/streakService';
+import { toast } from '../services/toast';
+
+// ─── Helpers ──────────────────────────────────────────────────────────────────
+
+const METHOD_LABELS: Record<LearnMethod, string> = {
+  anki: 'Anki', quiz: 'Quiz', feynman: 'Feynman', explainer: 'KI-Erklärer', exam: 'Klausur',
+};
+
+const scoreColor = (s: number) => s >= 70 ? '#22c55e' : s >= 50 ? '#f59e0b' : '#f43f5e';
+
+const securityColor = (s: 'sicher' | 'unsicher' | 'kritisch') =>
+  s === 'sicher' ? '#22c55e' : s === 'unsicher' ? '#f59e0b' : '#f43f5e';
+
+const priorityColor = (p: 'hoch' | 'mittel' | 'niedrig') =>
+  p === 'hoch' ? '#f43f5e' : p === 'mittel' ? '#f59e0b' : '#94a3b8';
+
+// ─── Main Component ────────────────────────────────────────────────────────────
+
+interface LearningCoachProps {
+  metrics: TopicMetric[];
+  decks: FlashcardDeck[];
+  onNavigate: (tab: ActiveTab) => void;
+  onAction?: (topic: string, mode: 'cards' | 'recall' | 'quiz') => void;
+}
+
+export const LearningCoach: React.FC<LearningCoachProps> = ({ metrics, decks, onNavigate, onAction }) => {
+  const [insights, setInsights] = useState<CoachInsights | null>(null);
+  const [isLoading, setIsLoading] = useState(false);
+
+  const quizResults   = useMemo(() => getAllResults(), []);
+  const recallResults = useMemo(() => getAllRecallResults(), []);
+  const examResults    = useMemo(() => getAllExamResults(), []);
+  const streak         = useMemo(() => getStreak(), []);
+
+  const profile = useMemo(() => buildLearningProfile({
+    metrics, quizResults, recallResults, examResults, decks,
+    streak: { current: streak.current, best: streak.best },
+  }), [metrics, quizResults, recallResults, examResults, decks, streak]);
+
+  const wrongAnswersCtx = useMemo((): WrongAnswerContext[] =>
+    quizResults.slice(0, 5).flatMap(result =>
+      (result.answers || [])
+        .filter(a => !a.isCorrect)
+        .slice(0, 4)
+        .map(a => {
+          const q = result.questions?.[a.questionIndex];
+          if (!q) return null;
+          return { question: q.question, topic: q.topic, explanation: q.explanation, docName: result.docName };
+        })
+        .filter((x): x is WrongAnswerContext => x !== null)
+    ).slice(0, 15),
+  [quizResults]);
+
+  const hasAnyData = profile.perMethod.length > 0;
+
+  const handleRunCoach = async () => {
+    if (!hasAnyData) return;
+    setIsLoading(true);
+    try {
+      setInsights(await generateCoachInsights(profile, wrongAnswersCtx));
+    } catch (e: any) {
+      toast.error(`Coach-Analyse fehlgeschlagen: ${e?.message || 'Unbekannter Fehler'}`);
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  const tabFromKey = (key: string): ActiveTab =>
+    (ActiveTab as Record<string, ActiveTab>)[key] ?? ActiveTab.DASHBOARD;
+
+  if (!hasAnyData) {
+    return (
+      <div className="space-y-10">
+        <div className="text-center space-y-3">
+          <h1 className="text-4xl lg:text-7xl font-black tracking-tighter" style={{ color: 'var(--ink)' }}>
+            Lern <span style={{ color: 'var(--primary)' }}>Coach</span> <EmojiImage emoji="🧭" size={36} />
+          </h1>
+        </div>
+        <div className="flex flex-col items-center justify-center py-32 space-y-6 opacity-30">
+          <EmojiImage emoji="📊" size={64} />
+          <div className="text-center space-y-2">
+            <p className="font-black text-slate-400 uppercase text-xs tracking-widest">Noch keine Daten</p>
+            <p className="text-sm text-slate-500 max-w-xs mx-auto">
+              Absolviere ein Quiz, eine Klausur, Feynman oder den KI-Erklärer, damit dein Coach loslegen kann.
+            </p>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  return (
+    <div className="space-y-10 lg:space-y-12 animate-in fade-in duration-700 pb-20">
+
+      {/* ── Header ── */}
+      <div className="text-center space-y-3">
+        <h1 className="text-4xl lg:text-7xl font-black tracking-tighter" style={{ color: 'var(--ink)' }}>
+          Lern <span style={{ color: 'var(--primary)' }}>Coach</span> <EmojiImage emoji="🧭" size={36} />
+        </h1>
+        <p className="text-base font-medium opacity-80" style={{ color: 'var(--mute)' }}>
+          Dein persönlicher KI-Lerncoach — alle Methoden, ein Überblick.
+        </p>
+      </div>
+
+      {/* ── Coach-Hero: Klausurprognose + Top-Empfehlung ── */}
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-4 lg:gap-6">
+        <div
+          className="lg:col-span-1 p-6 lg:p-8 rounded-[24px] lg:rounded-[32px] border shadow-sm flex flex-col items-center justify-center text-center"
+          style={{ background: 'var(--card)', borderColor: 'var(--border-color)' }}
+        >
+          <h3 className="text-[9px] font-black uppercase tracking-widest mb-4" style={{ color: 'var(--mute)' }}>
+            Klausurprognose
+          </h3>
+          {profile.examPrognosis ? (
+            <>
+              <p className="text-5xl font-black" style={{ color: 'var(--primary)' }}>{profile.examPrognosis.grade}</p>
+              <p className="text-[10px] font-bold uppercase mt-2" style={{ color: 'var(--mute)' }}>
+                {profile.examPrognosis.passProbability}% Bestehenswahrscheinlichkeit
+              </p>
+              <p className="text-[9px] mt-1" style={{ color: 'var(--mute)' }}>
+                Basis: {profile.examPrognosis.basis} Klausur{profile.examPrognosis.basis !== 1 ? 'en' : ''}
+              </p>
+            </>
+          ) : (
+            <p className="text-[10px] font-bold" style={{ color: 'var(--mute)' }}>
+              Noch keine Klausur absolviert — Prognose folgt nach der ersten Simulation.
+            </p>
+          )}
+        </div>
+
+        <div
+          className="lg:col-span-2 p-6 lg:p-8 rounded-[24px] lg:rounded-[32px] shadow-sm flex flex-col justify-center"
+          style={{ background: 'var(--ink)' }}
+        >
+          <h3 className="text-[9px] font-black uppercase tracking-widest opacity-50 mb-3" style={{ color: 'var(--bg-main)' }}>
+            KI-Coach
+          </h3>
+          {!insights ? (
+            <>
+              <p className="text-sm font-medium mb-4" style={{ color: 'var(--bg-main)', opacity: 0.85 }}>
+                Lass die KI dein Lernprofil analysieren: Verbindungen zwischen Themen, eine Prognose und konkrete nächste Schritte.
+              </p>
+              <button
+                onClick={handleRunCoach}
+                disabled={isLoading}
+                className="self-start px-8 py-4 rounded-2xl font-black uppercase text-[10px] tracking-[0.2em] shadow-xl hover:scale-105 active:scale-95 transition-all disabled:opacity-40"
+                style={{ background: 'var(--primary)', color: 'var(--primary-text)' }}
+              >
+                {isLoading ? 'Coach analysiert…' : <>Coach starten <EmojiImage emoji="✨" size={13} /></>}
+              </button>
+            </>
+          ) : (
+            <div className="space-y-2">
+              {insights.synthesis.map((s, i) => (
+                <p key={i} className="text-sm font-medium leading-relaxed" style={{ color: 'var(--bg-main)', opacity: 0.9 }}>
+                  {s}
+                </p>
+              ))}
+            </div>
+          )}
+        </div>
+      </div>
+
+      {/* ── Deterministische Panels ── */}
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 lg:gap-6">
+
+        {/* Methodenvergleich */}
+        {profile.perMethod.length > 0 && (
+          <div className="p-6 lg:p-8 rounded-[24px] lg:rounded-[32px] border shadow-sm space-y-4" style={{ background: 'var(--card)', borderColor: 'var(--border-color)' }}>
+            <h3 className="text-[9px] font-black uppercase tracking-widest" style={{ color: 'var(--mute)' }}>Methodenvergleich</h3>
+            <div className="space-y-3">
+              {profile.perMethod.map(m => (
+                <div key={m.method} className="space-y-1">
+                  <div className="flex justify-between items-baseline">
+                    <span className="text-xs font-black" style={{ color: 'var(--ink)' }}>{METHOD_LABELS[m.method]}</span>
+                    <span className="text-xs font-black" style={{ color: scoreColor(m.avgScore) }}>
+                      {m.avgScore}% {m.trend === 'up' ? '↑' : m.trend === 'down' ? '↓' : ''}
+                    </span>
+                  </div>
+                  <div className="h-2 rounded-full overflow-hidden" style={{ background: 'var(--border-color)' }}>
+                    <div className="h-full rounded-full transition-all" style={{ width: `${m.avgScore}%`, background: scoreColor(m.avgScore) }} />
+                  </div>
+                </div>
+              ))}
+            </div>
+            {insights?.methodInsight && (
+              <p className="text-[11px] font-medium pt-2 border-t italic" style={{ color: 'var(--ink2)', borderColor: 'var(--border-soft)' }}>
+                {insights.methodInsight}
+              </p>
+            )}
+          </div>
+        )}
+
+        {/* Themen-Sicherheit */}
+        {profile.topicMastery.length > 0 && (
+          <div className="p-6 lg:p-8 rounded-[24px] lg:rounded-[32px] border shadow-sm space-y-4" style={{ background: 'var(--card)', borderColor: 'var(--border-color)' }}>
+            <h3 className="text-[9px] font-black uppercase tracking-widest" style={{ color: 'var(--mute)' }}>Themen-Sicherheit</h3>
+            <div className="flex flex-wrap gap-2">
+              {profile.topicMastery.slice(0, 10).map(t => (
+                <button
+                  key={t.topic}
+                  onClick={() => onAction?.(t.topic, 'quiz')}
+                  className="px-3 py-2 rounded-xl text-[9px] font-black uppercase tracking-wider transition-all hover:opacity-80"
+                  style={{
+                    background: `color-mix(in srgb, ${securityColor(t.security)} 10%, var(--bg-sidebar))`,
+                    color: securityColor(t.security),
+                    border: `1px solid color-mix(in srgb, ${securityColor(t.security)} 25%, transparent)`,
+                  }}
+                >
+                  {t.topic} · {t.security}
+                </button>
+              ))}
+            </div>
+          </div>
+        )}
+
+        {/* Vergessensplan */}
+        {profile.forgetting.length > 0 && (
+          <div className="p-6 lg:p-8 rounded-[24px] lg:rounded-[32px] border shadow-sm space-y-4" style={{ background: 'var(--card)', borderColor: 'var(--border-color)' }}>
+            <h3 className="text-[9px] font-black uppercase tracking-widest" style={{ color: 'var(--mute)' }}>Vergessensplan</h3>
+            <div className="space-y-2">
+              {profile.forgetting.map(f => (
+                <div key={f.topic} className="flex justify-between items-center">
+                  <span className="text-xs font-bold" style={{ color: 'var(--ink)' }}>{f.topic}</span>
+                  <span className="text-[10px] font-black uppercase" style={{ color: 'var(--primary)' }}>
+                    {f.dueInDays <= 0 ? 'Heute wiederholen' : `in ${f.dueInDays} Tag${f.dueInDays !== 1 ? 'en' : ''}`}
+                  </span>
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
+
+        {/* Tageszeit + Lernvolumen */}
+        <div className="p-6 lg:p-8 rounded-[24px] lg:rounded-[32px] border shadow-sm space-y-4" style={{ background: 'var(--card)', borderColor: 'var(--border-color)' }}>
+          <h3 className="text-[9px] font-black uppercase tracking-widest" style={{ color: 'var(--mute)' }}>Lernrhythmus</h3>
+          <div className="grid grid-cols-2 gap-4">
+            <div>
+              <p className="text-[9px] font-bold uppercase" style={{ color: 'var(--mute)' }}>Beste Tageszeit</p>
+              <p className="text-lg font-black" style={{ color: 'var(--ink)' }}>{profile.timeOfDay.bestPart ?? '—'}</p>
+            </div>
+            <div>
+              <p className="text-[9px] font-bold uppercase" style={{ color: 'var(--mute)' }}>Streak</p>
+              <p className="text-lg font-black" style={{ color: 'var(--ink)' }}>{profile.volume.streakCurrent} Tage</p>
+            </div>
+            <div>
+              <p className="text-[9px] font-bold uppercase" style={{ color: 'var(--mute)' }}>Sessions/Woche</p>
+              <p className="text-lg font-black" style={{ color: 'var(--ink)' }}>{profile.volume.sessionsPerWeek}</p>
+            </div>
+            <div>
+              <p className="text-[9px] font-bold uppercase" style={{ color: 'var(--mute)' }}>Sessions gesamt</p>
+              <p className="text-lg font-black" style={{ color: 'var(--ink)' }}>{profile.volume.totalSessions}</p>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      {/* ── KI-Coach-Ergebnis (Verbindungen, Prognose, Empfehlungen) ── */}
+      {insights && (
+        <div className="space-y-6">
+          {insights.connections.length > 0 && (
+            <div className="p-6 lg:p-8 rounded-[24px] lg:rounded-[32px] border shadow-sm space-y-3" style={{ background: 'var(--card)', borderColor: 'var(--border-color)' }}>
+              <h3 className="text-[9px] font-black uppercase tracking-widest" style={{ color: 'var(--mute)' }}>Verbindungen erkannt</h3>
+              {insights.connections.map((c, i) => (
+                <p key={i} className="text-sm font-medium leading-relaxed" style={{ color: 'var(--ink2)' }}>
+                  <strong style={{ color: 'var(--ink)' }}>{c.a}</strong> ↔ <strong style={{ color: 'var(--ink)' }}>{c.b}</strong>: {c.reasoning}
+                </p>
+              ))}
+            </div>
+          )}
+
+          {insights.forwardPrediction && (
+            <div
+              className="p-6 rounded-[24px] flex items-start gap-3"
+              style={{ background: 'color-mix(in srgb, var(--primary) 8%, transparent)', border: '1px solid color-mix(in srgb, var(--primary) 20%, transparent)' }}
+            >
+              <EmojiImage emoji="🔮" size={20} />
+              <p className="text-sm font-medium leading-relaxed" style={{ color: 'var(--ink)' }}>{insights.forwardPrediction}</p>
+            </div>
+          )}
+
+          {insights.recommendations.length > 0 && (
+            <div className="space-y-3">
+              <h3 className="text-lg font-black" style={{ color: 'var(--ink)' }}>Empfehlungen</h3>
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                {[...insights.recommendations]
+                  .sort((a, b) => (a.priority === 'hoch' ? 0 : a.priority === 'mittel' ? 1 : 2) - (b.priority === 'hoch' ? 0 : b.priority === 'mittel' ? 1 : 2))
+                  .map((r, i) => (
+                  <button
+                    key={i}
+                    onClick={() => onNavigate(tabFromKey(r.tab))}
+                    className="text-left p-5 rounded-[20px] border transition-all hover:opacity-80"
+                    style={{ background: 'var(--bg-sidebar)', borderColor: 'var(--border-color)', borderLeftWidth: 4, borderLeftColor: priorityColor(r.priority) }}
+                  >
+                    <p className="text-[8px] font-black uppercase tracking-widest mb-1" style={{ color: priorityColor(r.priority) }}>
+                      {r.priority} Priorität
+                    </p>
+                    <p className="text-sm font-black mb-1" style={{ color: 'var(--ink)' }}>{r.action}</p>
+                    <p className="text-[11px] font-medium" style={{ color: 'var(--mute)' }}>{r.reasoning}</p>
+                  </button>
+                ))}
+              </div>
+            </div>
+          )}
+        </div>
+      )}
+
+      {/* ── Bestehende Verlaufs-/Fehleranalyse (unverändert, ohne eigenen Header) ── */}
+      <div className="pt-8 border-t" style={{ borderColor: 'var(--border-color)' }}>
+        <GapRadar metrics={metrics} onNavigate={onNavigate} onAction={onAction} hideHeader />
+      </div>
+    </div>
+  );
+};

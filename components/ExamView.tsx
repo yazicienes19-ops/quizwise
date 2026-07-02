@@ -2,6 +2,7 @@
 import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { ExamQuestion, ActiveTab, ScoringProfile, ExamAnalysis, QuestionFeedbackType } from '../types';
 import { saveQuestionFeedback } from '../services/examFeedbackService';
+import { germanGradeFromPercentage } from '../services/learningProfileService';
 import { EmojiImage } from './EmojiImage';
 import type { jsPDF as JsPDFType } from 'jspdf';
 
@@ -105,18 +106,16 @@ export const ExamView: React.FC<ExamViewProps> = ({
   const percentage     = totalPoints > 0 ? (achievedTotal / totalPoints) * 100 : 0;
   const isTimeLow      = timeLeft !== null && timeLeft > 0 && timeLeft <= 300;
 
+  // Farbe/Hintergrund sind UI-spezifisch und bleiben hier; die Note selbst kommt
+  // aus der geteilten Notenskala (auch von der Klausurprognose des Lern-Coaches genutzt).
   const getGrade = (p: number) => {
-    if (p >= 95) return { grade: '1.0', label: 'Sehr Gut',        color: 'text-emerald-600', bg: 'bg-emerald-50' };
-    if (p >= 90) return { grade: '1.3', label: 'Sehr Gut',        color: 'text-emerald-600', bg: 'bg-emerald-50' };
-    if (p >= 85) return { grade: '1.7', label: 'Gut',             color: 'text-emerald-500', bg: 'bg-emerald-50/50' };
-    if (p >= 80) return { grade: '2.0', label: 'Gut',             color: 'text-emerald-500', bg: 'bg-emerald-50/50' };
-    if (p >= 75) return { grade: '2.3', label: 'Gut',             color: 'text-indigo-500',  bg: 'bg-indigo-50/50' };
-    if (p >= 70) return { grade: '2.7', label: 'Befriedigend',    color: 'text-indigo-500',  bg: 'bg-indigo-50/50' };
-    if (p >= 65) return { grade: '3.0', label: 'Befriedigend',    color: 'text-amber-500',   bg: 'bg-amber-50/50' };
-    if (p >= 60) return { grade: '3.3', label: 'Befriedigend',    color: 'text-amber-500',   bg: 'bg-amber-50/50' };
-    if (p >= 55) return { grade: '3.7', label: 'Ausreichend',     color: 'text-amber-600',   bg: 'bg-amber-100/50' };
-    if (p >= 50) return { grade: '4.0', label: 'Ausreichend',     color: 'text-amber-600',   bg: 'bg-amber-100/50' };
-    return        { grade: '5.0', label: 'Nicht Bestanden',       color: 'text-rose-600',    bg: 'bg-rose-50' };
+    const { grade, label } = germanGradeFromPercentage(p);
+    if (p >= 90) return { grade, label, color: 'text-emerald-600', bg: 'bg-emerald-50' };
+    if (p >= 80) return { grade, label, color: 'text-emerald-500', bg: 'bg-emerald-50/50' };
+    if (p >= 70) return { grade, label, color: 'text-indigo-500',  bg: 'bg-indigo-50/50' };
+    if (p >= 60) return { grade, label, color: 'text-amber-500',   bg: 'bg-amber-50/50' };
+    if (p >= 50) return { grade, label, color: 'text-amber-600',   bg: 'bg-amber-100/50' };
+    return        { grade, label, color: 'text-rose-600',          bg: 'bg-rose-50' };
   };
   const gradeInfo = getGrade(percentage);
 

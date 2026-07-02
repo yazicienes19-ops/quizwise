@@ -14,7 +14,7 @@ interface ExamSystemProps {
   collections: Collection[];
   getDocumentSource?: (doc: ProcessedDocument) => GenerationSource;
   onSaveToLibrary?: (file: File) => void;
-  onComplete?: (result: { score: number; docName: string; passed: boolean; totalPoints: number; achievedPoints: number }) => void;
+  onComplete?: (result: { score: number; docName: string; passed: boolean; totalPoints: number; achievedPoints: number; weakTopics: string[] }) => void;
   onNavigate?: (tab: ActiveTab) => void;
   initialDoc?: ProcessedDocument;
   initialQuestions?: ExamQuestion[];
@@ -176,7 +176,13 @@ export const ExamSystem: React.FC<ExamSystemProps> = ({ documents, collections, 
       const totalPoints    = evaluated.reduce((s, q) => s + q.points, 0);
       const achievedPoints = evaluated.reduce((s, q) => s + (q.achievedPoints ?? 0), 0);
       const score = totalPoints > 0 ? Math.round((achievedPoints / totalPoints) * 100) : 0;
-      onComplete?.({ score, docName: examDocName, passed: score >= 50, totalPoints, achievedPoints });
+      // Schwache Themen: Aufgaben mit weniger als 50% der Punkte (dedupliziert)
+      const weakTopics = [...new Set(
+        evaluated
+          .filter(q => q.topic && q.points > 0 && (q.achievedPoints ?? 0) / q.points < 0.5)
+          .map(q => q.topic as string)
+      )];
+      onComplete?.({ score, docName: examDocName, passed: score >= 50, totalPoints, achievedPoints, weakTopics });
 
       // Analyse asynchron im Hintergrund (kein Blocker)
       analyzeExamResults(evaluated)
