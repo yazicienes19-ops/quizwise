@@ -1,5 +1,5 @@
 
-import React, { useState, useEffect, useRef, useCallback } from 'react';
+import React, { useState, useEffect, useRef, useCallback, useMemo } from 'react';
 import { ExamQuestion, ActiveTab, ScoringProfile, ExamAnalysis, QuestionFeedbackType } from '../types';
 import { saveQuestionFeedback } from '../services/examFeedbackService';
 import { germanGradeFromPercentage } from '../services/learningProfileService';
@@ -22,7 +22,18 @@ interface ExamViewProps {
   examTitle?: string;
   scoringProfile?: ScoringProfile;
   analysis?: ExamAnalysis | null;
+  categoryBreakdown?: { category: string; score: number }[];
+  onAction?: (topic: string, mode: 'cards' | 'recall' | 'quiz') => void;
 }
+
+const CATEGORY_LABELS: Record<string, string> = {
+  definition: 'Definitionen',
+  verstaendnis: 'Verständnis',
+  transfer: 'Transfer',
+  beispiel: 'Beispiele',
+  rechnung: 'Rechenaufgaben',
+  fachbegriff: 'Fachbegriffe',
+};
 
 const formatTime = (s: number) =>
   `${Math.floor(s / 60).toString().padStart(2, '0')}:${(s % 60).toString().padStart(2, '0')}`;
@@ -41,7 +52,7 @@ export const ExamView: React.FC<ExamViewProps> = ({
   questions, mode, onSave, onSubmit, isEvaluating,
   examDuration, onNewExam, onNavigate, onSaveExam,
   initialAnswers, onAnswersChange, onSaveProgress, examTitle,
-  scoringProfile, analysis,
+  scoringProfile, analysis, categoryBreakdown, onAction,
 }) => {
   const [answers, setAnswers]           = useState<Record<string, any>>(initialAnswers ?? {});
   const [editingId, setEditingId]       = useState<string | null>(null);
@@ -118,6 +129,31 @@ export const ExamView: React.FC<ExamViewProps> = ({
     return        { grade, label, color: 'text-rose-600',          bg: 'bg-rose-50' };
   };
   const gradeInfo = getGrade(percentage);
+
+  // Schwächstes Thema dieser Klausur — Grundlage für den Folge-Button
+  const weakestTopic = useMemo(() => {
+    if (mode !== 'result') return null;
+    const byTopic: Record<string, { achieved: number; total: number }> = {};
+    questions.forEach(q => {
+      if (!q.topic || q.points <= 0) return;
+      const entry = byTopic[q.topic] ?? { achieved: 0, total: 0 };
+      entry.achieved += q.achievedPoints ?? 0;
+      entry.total += q.points;
+      byTopic[q.topic] = entry;
+    });
+    const entries = Object.entries(byTopic).map(([topic, { achieved, total }]) => ({
+      topic, score: total > 0 ? Math.round((achieved / total) * 100) : 0,
+    }));
+    if (!entries.length) return null;
+    return entries.sort((a, b) => a.score - b.score)[0];
+  }, [questions, mode]);
+
+  const weakestCategory = categoryBreakdown && categoryBreakdown.length > 0
+    ? [...categoryBreakdown].sort((a, b) => a.score - b.score)[0]
+    : null;
+  // Feynman passt inhaltlich besser zu Verständnis/Transfer-Schwächen als reines Faktenabfragen
+  const followUpMode: 'recall' | 'quiz' =
+    weakestCategory?.category === 'transfer' || weakestCategory?.category === 'verstaendnis' ? 'recall' : 'quiz';
 
   const handleExportPdf = useCallback(async () => {
     const { jsPDF } = await import('jspdf');
@@ -618,6 +654,15 @@ export const ExamView: React.FC<ExamViewProps> = ({
                   </button>
                 </>
               )}
+              {onAction && weakestTopic && weakestTopic.score < 70 && (
+                <button
+                  onClick={() => onAction(weakestTopic.topic, followUpMode)}
+                  className="px-5 py-2.5 rounded-[16px] font-black uppercase text-[9px] tracking-widest text-white hover:scale-[1.02] transition-all shadow-lg"
+                  style={{ background: '#f43f5e' }}
+                >
+                  {followUpMode === 'recall' ? 'Feynman' : 'Quiz'} zu „{weakestTopic.topic}" üben
+                </button>
+              )}
             </div>
           </div>
         </div>
@@ -635,6 +680,32 @@ export const ExamView: React.FC<ExamViewProps> = ({
               {e === 'terms' ? 'Fachbegriffe' : e === 'understanding' ? 'Verständnis' : e === 'examples' ? 'Beispiele' : 'Definitionen'}
             </span>
           ))}
+        </div>
+      )}
+
+      {/* Kategorie-Aufschlüsselung — sofort verfügbar, kein KI-Call nötig */}
+      {mode === 'result' && categoryBreakdown && categoryBreakdown.length > 0 && (
+        <div className="rounded-[24px] sm:rounded-[32px] p-5 sm:p-8 space-y-4 animate-in fade-in duration-500" style={{ background: 'var(--bg-sidebar)', border: '1px solid var(--border-color)' }}>
+          <div>
+            <h3 className="text-lg font-black dark:text-white">Kategorie-Aufschlüsselung</h3>
+            <p className="text-[10px] font-black uppercase tracking-widest text-slate-400">Nicht nur die Gesamtpunktzahl — wo genau standen die Lücken?</p>
+          </div>
+          <div className="space-y-3">
+            {[...categoryBreakdown].sort((a, b) => a.score - b.score).map(cb => (
+              <div key={cb.category} className="space-y-1">
+                <div className="flex justify-between items-center text-[11px] font-bold dark:text-slate-300">
+                  <span>{CATEGORY_LABELS[cb.category] || cb.category}</span>
+                  <span className={cb.score >= 70 ? 'text-emerald-600' : cb.score >= 50 ? 'text-amber-600' : 'text-rose-600'}>{cb.score}%</span>
+                </div>
+                <div className="h-2 bg-slate-100 dark:bg-slate-800 rounded-full overflow-hidden">
+                  <div
+                    className={`h-full rounded-full transition-all duration-1000 ${cb.score >= 70 ? 'bg-emerald-500' : cb.score >= 50 ? 'bg-amber-400' : 'bg-rose-500'}`}
+                    style={{ width: `${cb.score}%` }}
+                  />
+                </div>
+              </div>
+            ))}
+          </div>
         </div>
       )}
 

@@ -1,20 +1,43 @@
 
 import React, { useState, useMemo, useEffect } from 'react';
-import { ProcessedDocument, Collection, ScoringProfile, ScoringMode } from '../types';
+import { ProcessedDocument, Collection, ScoringProfile, ScoringMode, ExamQuestion, TopicMetric, FlashcardDeck } from '../types';
 import { GenerationSource } from '../services/geminiService';
 import { GeneratedImage } from './GeneratedImage';
 import { SourceSelector } from './SourceSelector';
 import { getAllMeta, documentDisplayName } from '../services/libraryService';
+import { buildLearningProfile } from '../services/learningProfileService';
+import { getAllResults } from '../services/quizHistoryService';
+import { getAllRecallResults } from '../services/recallHistoryService';
+import { getAllExamResults } from '../services/examHistoryService';
+import { getStreak } from '../services/streakService';
+
+type ExamOptions = {
+  count: number; difficulty: string;
+  types?: string[];
+  adaptive?: { weakCategories: string[]; weakTopics: string[] };
+};
 
 interface ExamGeneratorProps {
-  onGenerate: (content: GenerationSource, style?: GenerationSource, options?: { count: number, difficulty: string }, docName?: string, totalMinutes?: number, scoringProfile?: ScoringProfile) => void;
+  onGenerate: (content: GenerationSource, style?: GenerationSource, options?: ExamOptions, docName?: string, totalMinutes?: number, scoringProfile?: ScoringProfile) => void;
   isLoading: boolean;
   documents: ProcessedDocument[];
   collections: Collection[];
   getDocumentSource?: (doc: ProcessedDocument) => GenerationSource;
   onSaveToLibrary?: (file: File) => void;
   initialDoc?: ProcessedDocument;
+  metrics: TopicMetric[];
+  decks: FlashcardDeck[];
 }
+
+const EXAM_TYPE_OPTIONS: { id: ExamQuestion['type']; label: string }[] = [
+  { id: 'mc', label: 'Multiple Choice' },
+  { id: 'matching', label: 'Zuordnung' },
+  { id: 'truefalse', label: 'Wahr/Falsch' },
+  { id: 'fillblank', label: 'Lückentext' },
+  { id: 'ranking', label: 'Sortierung' },
+  { id: 'numeric', label: 'Numerisch' },
+  { id: 'open', label: 'Freitext' },
+];
 
 export const ExamGenerator: React.FC<ExamGeneratorProps> = ({
   onGenerate,
@@ -24,6 +47,8 @@ export const ExamGenerator: React.FC<ExamGeneratorProps> = ({
   getDocumentSource,
   onSaveToLibrary,
   initialDoc,
+  metrics,
+  decks,
 }) => {
   const [contentSource, setContentSource] = useState<GenerationSource | null>(null);
   const [contentName, setContentName] = useState('');
@@ -51,6 +76,26 @@ export const ExamGenerator: React.FC<ExamGeneratorProps> = ({
   const [difficulty, setDifficulty] = useState<'leicht' | 'mittel' | 'schwer'>('mittel');
   const [scoringMode, setScoringMode] = useState<ScoringMode>('standard');
   const [emphases, setEmphases] = useState<ScoringProfile['emphases']>([]);
+  const [selectedTypes, setSelectedTypes] = useState<ExamQuestion['type'][]>(EXAM_TYPE_OPTIONS.map(t => t.id));
+  const [customMinutes, setCustomMinutes] = useState<number | null>(null);
+  const [adaptiveEnabled, setAdaptiveEnabled] = useState(false);
+
+  const profile = useMemo(() => buildLearningProfile({
+    metrics, decks,
+    quizResults: getAllResults(),
+    recallResults: getAllRecallResults(),
+    examResults: getAllExamResults(),
+    streak: getStreak(),
+  }), [metrics, decks]);
+  const hasAdaptiveData = profile.categoryMastery.length > 0 || profile.topicMastery.length > 0;
+
+  const autoMinutes = useMemo(() => {
+    const baseTimePerQuestion = difficulty === 'leicht' ? 4 : difficulty === 'mittel' ? 6 : 9;
+    return questionCount * baseTimePerQuestion + 5;
+  }, [questionCount, difficulty]);
+  // Bei Änderung von Fragenanzahl/Schwierigkeit den manuellen Timer-Override zurücksetzen
+  useEffect(() => { setCustomMinutes(null); }, [questionCount, difficulty]);
+  const effectiveMinutes = customMinutes ?? autoMinutes;
 
   const fileToBase64 = (file: File): Promise<string> =>
     new Promise((resolve, reject) => {
@@ -98,21 +143,31 @@ export const ExamGenerator: React.FC<ExamGeneratorProps> = ({
               : { text: doc.content };
         }
       }
-      const baseTimePerQuestion = difficulty === 'leicht' ? 4 : difficulty === 'mittel' ? 6 : 9;
-      const totalMinutes = questionCount * baseTimePerQuestion + 5;
       const scoringProfile: ScoringProfile = { mode: scoringMode, emphases };
-      onGenerate(contentSource, styleSource, { count: questionCount, difficulty }, contentName, totalMinutes, scoringProfile);
+      const adaptive = adaptiveEnabled ? {
+        weakCategories: profile.categoryMastery.filter(c => c.avgScore < 60).map(c => c.category),
+        weakTopics: profile.topicMastery.filter(t => t.security !== 'sicher').slice(0, 5).map(t => t.topic),
+      } : undefined;
+      onGenerate(
+        contentSource, styleSource,
+        { count: questionCount, difficulty, types: selectedTypes, adaptive },
+        contentName, effectiveMinutes, scoringProfile
+      );
     } catch (e) {
       console.error(e);
       throw e;
     }
   };
 
-  const estimatedDuration = useMemo(() => {
-    const baseTimePerQuestion = difficulty === 'leicht' ? 4 : difficulty === 'mittel' ? 6 : 9;
-    const total = questionCount * baseTimePerQuestion;
-    return `${total - 5} - ${total + 10} Min.`;
-  }, [questionCount, difficulty]);
+  const toggleType = (type: ExamQuestion['type']) => {
+    setSelectedTypes(prev => {
+      if (prev.includes(type)) {
+        // Mindestens ein Typ muss aktiv bleiben
+        return prev.length > 1 ? prev.filter(t => t !== type) : prev;
+      }
+      return [...prev, type];
+    });
+  };
 
   return (
     <div className="max-w-4xl mx-auto space-y-10 lg:space-y-16 animate-in fade-in slide-in-from-bottom-4 duration-700 py-8 sm:py-10 px-4">
@@ -276,6 +331,24 @@ export const ExamGenerator: React.FC<ExamGeneratorProps> = ({
                   ))}
                 </div>
               </div>
+
+              <div className="space-y-3">
+                <div className="text-[10px] font-black uppercase tracking-widest text-slate-400">Fragetypen</div>
+                <div className="flex flex-wrap gap-2">
+                  {EXAM_TYPE_OPTIONS.map(t => {
+                    const active = selectedTypes.includes(t.id);
+                    return (
+                      <button
+                        key={t.id}
+                        onClick={() => toggleType(t.id)}
+                        className={`px-3 py-1.5 rounded-xl text-[9px] font-black uppercase tracking-widest border-2 transition-all ${active ? 'border-indigo-500 bg-indigo-50 dark:bg-indigo-950/20 text-indigo-600' : 'border-slate-200 dark:border-slate-700 text-slate-400 hover:border-indigo-300'}`}
+                      >
+                        {active ? '✓ ' : ''}{t.label}
+                      </button>
+                    );
+                  })}
+                </div>
+              </div>
             </div>
 
             {/* Bewertungsprofil */}
@@ -320,12 +393,44 @@ export const ExamGenerator: React.FC<ExamGeneratorProps> = ({
               </p>
             </div>
 
-            <div className="pt-8 border-t border-slate-50 dark:border-slate-800">
-              <div className="space-y-1">
-                <p className="text-[10px] font-black uppercase text-slate-400 tracking-widest">Geschätzte Dauer</p>
-                <p className="text-xl font-black dark:text-white">{estimatedDuration}</p>
+            <div className="pt-8 border-t border-slate-50 dark:border-slate-800 space-y-3">
+              <div className="flex justify-between items-center text-[10px] font-black uppercase tracking-widest text-slate-400">
+                <span>Bearbeitungszeit</span>
+                {customMinutes !== null && (
+                  <button onClick={() => setCustomMinutes(null)} className="text-indigo-500 hover:text-indigo-700 normal-case tracking-normal font-bold">Zurücksetzen</button>
+                )}
+              </div>
+              <div className="flex items-center gap-4">
+                <button
+                  onClick={() => setCustomMinutes(Math.max(10, effectiveMinutes - 5))}
+                  className="w-11 h-11 rounded-2xl bg-slate-50 dark:bg-slate-800 text-slate-500 dark:text-slate-400 font-black text-lg hover:bg-slate-100 dark:hover:bg-slate-700 transition-all shrink-0"
+                >−</button>
+                <p className="flex-1 text-center text-xl font-black dark:text-white">{effectiveMinutes} Min.</p>
+                <button
+                  onClick={() => setCustomMinutes(effectiveMinutes + 5)}
+                  className="w-11 h-11 rounded-2xl bg-slate-50 dark:bg-slate-800 text-slate-500 dark:text-slate-400 font-black text-lg hover:bg-slate-100 dark:hover:bg-slate-700 transition-all shrink-0"
+                >+</button>
               </div>
             </div>
+
+            {/* Adaptive Klausur — nur sichtbar mit genug Lernhistorie */}
+            {hasAdaptiveData && (
+              <button
+                type="button"
+                onClick={() => setAdaptiveEnabled(v => !v)}
+                className={`w-full flex items-start gap-4 p-5 rounded-[24px] border-2 text-left transition-all ${adaptiveEnabled ? 'border-indigo-500 bg-indigo-50 dark:bg-indigo-950/20' : 'border-slate-200 dark:border-slate-700'}`}
+              >
+                <div className={`w-5 h-5 rounded-lg border-2 flex items-center justify-center shrink-0 mt-0.5 transition-all ${adaptiveEnabled ? 'bg-indigo-600 border-indigo-600' : 'border-slate-300 dark:border-slate-600'}`}>
+                  {adaptiveEnabled && (
+                    <svg width="10" height="10" viewBox="0 0 10 10" fill="none"><polyline points="1.5,5 4,7.5 8.5,2.5" stroke="white" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/></svg>
+                  )}
+                </div>
+                <div>
+                  <p className="text-[11px] font-black uppercase tracking-widest dark:text-white">Adaptiv anhand meines Lernprofils</p>
+                  <p className="text-[10px] text-slate-400 font-medium mt-1">Gewichtet die Klausur stärker auf deine bisher schwachen Themen und Kategorien.</p>
+                </div>
+              </button>
+            )}
 
             <button
               onClick={handleStart}

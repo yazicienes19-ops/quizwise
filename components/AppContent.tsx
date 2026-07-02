@@ -114,6 +114,19 @@ export const AppContent: React.FC<AppContentProps> = (p) => {
     handleApiError, updateMetricsAfterSession,
   } = p;
 
+  // Gemeinsamer Folge-Aktion-Handler für schwache Themen — von Lern-Coach UND Klausur-Ergebnis genutzt
+  const handleWeakTopicAction = (topic: string, mode: 'cards' | 'recall' | 'quiz') => {
+    if (mode === 'quiz') {
+      const match = getAllResults().find(r => r.weakTopics.includes(topic));
+      const doc = match ? documents.find(d => d.id === match.docId) ?? null : null;
+      setPendingActionDoc(doc); setPendingTopic(doc ? topic : null);
+      setQuestions([]); setAnswers([]); setActiveTab(ActiveTab.QUIZ);
+    } else {
+      const tabMap = { cards: ActiveTab.CARDS, recall: ActiveTab.RECALL, quiz: ActiveTab.QUIZ } as const;
+      setActiveTab(tabMap[mode]);
+    }
+  };
+
   if (isLoading && activeTab !== ActiveTab.EXAM && activeTab !== ActiveTab.QUIZ && activeTab !== ActiveTab.PLANNER && activeTab !== ActiveTab.RECALL) {
     return (
       <div className="flex flex-col items-center justify-center py-20 lg:py-32 space-y-8 animate-in fade-in zoom-in-95 duration-500 px-4">
@@ -282,32 +295,22 @@ export const AppContent: React.FC<AppContentProps> = (p) => {
           onSaveToLibrary={file => handleFileUpload(file)}
           initialDoc={pendingActionDoc ?? undefined}
           initialQuestions={examInitialQuestions?.questions}
-          onComplete={({ score, docName, passed, totalPoints, achievedPoints, weakTopics }) => {
-            saveExamResult({ docName, timestamp: Date.now(), score, passed, totalPoints, achievedPoints, weakTopics }, user?.id);
+          metrics={metrics} decks={decks}
+          onComplete={({ score, docName, passed, totalPoints, achievedPoints, weakTopics, categoryBreakdown }) => {
+            saveExamResult({ docName, timestamp: Date.now(), score, passed, totalPoints, achievedPoints, weakTopics, categoryBreakdown }, user?.id);
             updateMetricsAfterSession(score, docName, 'exam');
             setExamInitialQuestions(null);
             setSavedExams(getSavedExams());
             recordActivity(user?.id);
           }}
           onNavigate={setActiveTab}
+          onAction={handleWeakTopicAction}
         />
       </div>
     );
 
     case ActiveTab.RADAR:
-      return <LearningCoach metrics={metrics} decks={decks} onNavigate={setActiveTab}
-        onAction={(topic, mode) => {
-          if (mode === 'quiz') {
-            const match = getAllResults().find(r => r.weakTopics.includes(topic));
-            const doc = match ? documents.find(d => d.id === match.docId) ?? null : null;
-            setPendingActionDoc(doc); setPendingTopic(doc ? topic : null);
-            setQuestions([]); setAnswers([]); setActiveTab(ActiveTab.QUIZ);
-          } else {
-            const tabMap = { cards: ActiveTab.CARDS, recall: ActiveTab.RECALL, quiz: ActiveTab.QUIZ } as const;
-            setActiveTab(tabMap[mode]);
-          }
-        }}
-      />;
+      return <LearningCoach metrics={metrics} decks={decks} onNavigate={setActiveTab} onAction={handleWeakTopicAction} />;
 
     case ActiveTab.EXPLAINER:
       return <ExplainerSystem

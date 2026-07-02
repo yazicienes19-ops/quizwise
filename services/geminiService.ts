@@ -828,7 +828,32 @@ Strukturiere in 3 Stufen: Grundlagen, Vertiefung und Kontext. Antworte auf Deuts
   });
 };
 
-export const generateFullExam = async (content: GenerationSource, style?: GenerationSource, options?: { count: number, difficulty: string }): Promise<ExamQuestion[]> => {
+const EXAM_TYPE_WEIGHTS: Record<string, number> = {
+  mc: 0.25, matching: 0.15, truefalse: 0.15, fillblank: 0.10, ranking: 0.10, numeric: 0.05, open: 0.20,
+};
+const EXAM_ALL_TYPES = Object.keys(EXAM_TYPE_WEIGHTS);
+// Reihenfolge, in der Rundungs-Rest zugeschlagen wird (bevorzugt "open", da am flexibelsten)
+const EXAM_REMAINDER_ORDER = ['open', 'mc', 'matching', 'truefalse', 'fillblank', 'ranking', 'numeric'];
+
+const EXAM_TYPE_BULLETS: Record<string, (n: number) => string> = {
+  mc: n => `- ${n} MC (type "mc"): Klassische Faktenabfrage ODER — NUR wenn das Material Fälle/Kasuistiken/Szenarien enthält — Fallbeispiel im Feld scenarioText (2-4 Sätze), danach Frage. options[]: genau 4 Antworten. correctIndices[]: Indizes der richtigen (1-3 korrekte). solution: kurze Begründung. Punkte: 2-4.`,
+  matching: n => `- ${n} Zuordnung (type "matching"): matchLeft[] + matchRight[] je 4 Einträge (Paare). matchCorrect[]: für jedes matchLeft[i] der Index in matchRight (0-3). options[]: leer. solution: korrekte Zuordnungen als Text. Punkte: 4-6.`,
+  truefalse: n => `- ${n} Wahr/Falsch (type "truefalse"): tfCorrect: true oder false. tfReasonOptions[]: genau 3 Begründungsoptionen. tfCorrectReasonIndex: Index (0-2) der richtigen. options[]: leer. solution: Erklärung. Punkte: 2-3.`,
+  fillblank: n => `- ${n} Lückentext (type "fillblank"): blankText: Satz mit [LÜCKE] als Platzhalter (max. 4 Lücken). blanks[]: korrekte Füllwörter in gleicher Reihenfolge. options[]: leer. solution: kompletter Text. Punkte: 3-5.`,
+  ranking: n => `- ${n} Sortierung (type "ranking"): rankingItems[]: 4-5 Konzepte/Schritte/Phasen in KORREKTER Reihenfolge. options[]: leer. solution: Begründung der Reihenfolge. Punkte: 3-5. NUR wenn das Material Prozesse, Phasen oder geordnete Abläufe enthält.`,
+  numeric: n => `- ${n} Numerisch (type "numeric"): numericAnswer: korrekte Zahl. numericTolerance: akzeptabler Spielraum. options[]: leer. solution: Erklärung. Punkte: 2-3. NUR wenn das Material konkrete Zahlen/Formeln/Statistiken enthält. Wenn nicht: als "open" ersetzen.`,
+  open: n => `- ${n} Freitext/Kurzantwort (type "open"): Transfer oder 2-3-Satz-Erklärung unter Zeitdruck. options[]: leer. solution: Musterantwort mit Kernbegriffen. Punkte: 5-10.`,
+};
+
+export const generateFullExam = async (
+  content: GenerationSource,
+  style?: GenerationSource,
+  options?: {
+    count: number; difficulty: string;
+    types?: string[];
+    adaptive?: { weakCategories: string[]; weakTopics: string[] };
+  }
+): Promise<ExamQuestion[]> => {
   const parts: any[] = [sourceTopart(content)];
 
   if (style) {
@@ -842,35 +867,49 @@ export const generateFullExam = async (content: GenerationSource, style?: Genera
 
   const count      = options?.count || 10;
   const difficulty = options?.difficulty || 'mittel';
+  const selectedTypes = (options?.types && options.types.length > 0) ? options.types.filter(t => EXAM_ALL_TYPES.includes(t)) : EXAM_ALL_TYPES;
+  const activeTypes = selectedTypes.length > 0 ? selectedTypes : EXAM_ALL_TYPES;
+  const activeWeightSum = activeTypes.reduce((s, t) => s + EXAM_TYPE_WEIGHTS[t], 0);
 
-  const mcCount      = Math.max(1, Math.round(count * 0.25));
-  const matchCount   = Math.max(1, Math.round(count * 0.15));
-  const tfCount      = Math.max(1, Math.round(count * 0.15));
-  const fillCount    = Math.max(0, Math.round(count * 0.10));
-  const rankCount    = Math.max(0, Math.round(count * 0.10));
-  const numCount     = Math.max(0, Math.round(count * 0.05));
-  const openCount    = Math.max(1, count - mcCount - matchCount - tfCount - fillCount - rankCount - numCount);
+  const typeCounts: Record<string, number> = {};
+  EXAM_ALL_TYPES.forEach(t => {
+    typeCounts[t] = activeTypes.includes(t) ? Math.max(1, Math.round(count * (EXAM_TYPE_WEIGHTS[t] / activeWeightSum))) : 0;
+  });
+  // Rundungsdifferenz ausgleichen, damit die Summe exakt "count" ergibt
+  const diff = count - Object.values(typeCounts).reduce((s, n) => s + n, 0);
+  if (diff !== 0) {
+    const target = EXAM_REMAINDER_ORDER.find(t => activeTypes.includes(t));
+    if (target) typeCounts[target] = Math.max(0, typeCounts[target] + diff);
+  }
+
+  const typeBullets = EXAM_ALL_TYPES
+    .filter(t => typeCounts[t] > 0)
+    .map(t => EXAM_TYPE_BULLETS[t](typeCounts[t]))
+    .join('\n');
 
   const seed = Math.random().toString(36).slice(2, 8);
+
+  let adaptiveBlock = '';
+  if (options?.adaptive && (options.adaptive.weakCategories.length > 0 || options.adaptive.weakTopics.length > 0)) {
+    adaptiveBlock = `\n\nADAPTIVE GEWICHTUNG (aus dem echten Lernprofil des Studierenden):
+Bisher schwache Kategorien: ${options.adaptive.weakCategories.join(', ') || '—'}.
+Bisher schwache Themen: ${options.adaptive.weakTopics.join(', ') || '—'}.
+Gewichte die Fragenverteilung stärker auf diese Kategorien und bevorzuge Fragen zu diesen Themen, SOFERN das Lernmaterial dazu Inhalte hergibt. Ignoriere dies, wenn das Material keinen Bezug dazu hat — erfinde keine Fragen zu Themen, die nicht im Material stehen.`;
+  }
 
   parts.push({ text: `Erstelle eine akademische Klausur mit genau ${count} Aufgaben auf Niveau "${difficulty}".
 Zufalls-Seed: ${seed}
 
 FRAGETYPEN-VERTEILUNG (zwingend einhalten, Summe = ${count}):
-- ${mcCount} MC (type "mc"): Klassische Faktenabfrage ODER — NUR wenn das Material Fälle/Kasuistiken/Szenarien enthält — Fallbeispiel im Feld scenarioText (2-4 Sätze), danach Frage. options[]: genau 4 Antworten. correctIndices[]: Indizes der richtigen (1-3 korrekte). solution: kurze Begründung. Punkte: 2-4.
-- ${matchCount} Zuordnung (type "matching"): matchLeft[] + matchRight[] je 4 Einträge (Paare). matchCorrect[]: für jedes matchLeft[i] der Index in matchRight (0-3). options[]: leer. solution: korrekte Zuordnungen als Text. Punkte: 4-6.
-- ${tfCount} Wahr/Falsch (type "truefalse"): tfCorrect: true oder false. tfReasonOptions[]: genau 3 Begründungsoptionen. tfCorrectReasonIndex: Index (0-2) der richtigen. options[]: leer. solution: Erklärung. Punkte: 2-3.
-- ${fillCount} Lückentext (type "fillblank"): blankText: Satz mit [LÜCKE] als Platzhalter (max. 4 Lücken). blanks[]: korrekte Füllwörter in gleicher Reihenfolge. options[]: leer. solution: kompletter Text. Punkte: 3-5.
-- ${rankCount} Sortierung (type "ranking"): rankingItems[]: 4-5 Konzepte/Schritte/Phasen in KORREKTER Reihenfolge. options[]: leer. solution: Begründung der Reihenfolge. Punkte: 3-5. NUR wenn das Material Prozesse, Phasen oder geordnete Abläufe enthält.
-- ${numCount} Numerisch (type "numeric"): numericAnswer: korrekte Zahl. numericTolerance: akzeptabler Spielraum. options[]: leer. solution: Erklärung. Punkte: 2-3. NUR wenn das Material konkrete Zahlen/Formeln/Statistiken enthält. Wenn nicht: als "open" ersetzen.
-- ${openCount} Freitext/Kurzantwort (type "open"): Transfer oder 2-3-Satz-Erklärung unter Zeitdruck. options[]: leer. solution: Musterantwort mit Kernbegriffen. Punkte: 5-10.
+${typeBullets}
 
 ALLGEMEINE REGELN:
 - Jede Aufgabe deckt einen ANDEREN Aspekt des Materials ab
 - id: fortlaufend "q1", "q2", ...
 - topic: das fachliche Thema der Aufgabe in 1-3 Worten (z.B. "Kognitive Dissonanz"), konsistent benannt wenn mehrere Aufgaben dasselbe Thema betreffen
+- category: die am besten passende Kategorie — "definition" (Begriffsdefinition), "verstaendnis" (Verständnisfrage), "transfer" (Anwendung auf neue Situation/Fallbeispiel), "beispiel" (konkretes Beispiel nennen/erkennen), "rechnung" (Berechnung/Formel), "fachbegriff" (Fachterminologie)
 - Alle Arrays die nicht für den Typ relevant sind: als leeres Array [] angeben
-- Nicht relevante Felder weglassen oder mit 0/false/null als Default` });
+- Nicht relevante Felder weglassen oder mit 0/false/null als Default${adaptiveBlock}` });
 
   const text = await callBackend({
     complexity: 'heavy',
@@ -904,8 +943,9 @@ ALLGEMEINE REGELN:
             solution:             { type: Type.STRING },
             points:               { type: Type.NUMBER },
             topic:                { type: Type.STRING },
+            category:             { type: Type.STRING },
           },
-          required: ['id', 'question', 'type', 'solution', 'points', 'topic']
+          required: ['id', 'question', 'type', 'solution', 'points', 'topic', 'category']
         }
       }
     }

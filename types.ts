@@ -45,6 +45,14 @@ export interface TopicSecurity {
   weakCount: number;                      // wie oft als Schwachstelle aufgetaucht
 }
 
+export type ExamCategory = 'definition' | 'verstaendnis' | 'transfer' | 'beispiel' | 'rechnung' | 'fachbegriff';
+
+export interface CategoryMastery {
+  category: ExamCategory;
+  avgScore: number;                       // 0–100, über alle Klausuren gemittelt
+  weakCount: number;                      // wie oft score < 60 in einer Klausur
+}
+
 export interface ForgettingItem {
   topic: string;
   dueInDays: number;                      // negativ = überfällig
@@ -66,6 +74,7 @@ export interface ExamPrognosis {
 export interface LearningProfile {
   perMethod: MethodStat[];
   topicMastery: TopicSecurity[];
+  categoryMastery: CategoryMastery[];
   forgetting: ForgettingItem[];
   timeOfDay: { bestPart: TimeOfDayStat['part'] | null; byPart: TimeOfDayStat[] };
   examPrognosis: ExamPrognosis | null;
@@ -305,6 +314,8 @@ export interface ExamQuestion {
   points: number;
   /** Fachliches Thema der Aufgabe (1-3 Worte) — Grundlage für weakTopics & spätere adaptive Klausur */
   topic?: string;
+  /** Fachliche Kategorie — Grundlage für die Kategorie-Aufschlüsselung nach der Klausur */
+  category?: 'definition' | 'verstaendnis' | 'transfer' | 'beispiel' | 'rechnung' | 'fachbegriff';
   userAnswer?: any;
   feedback?: string;
   achievedPoints?: number;

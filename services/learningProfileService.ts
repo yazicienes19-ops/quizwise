@@ -1,6 +1,6 @@
 import type {
   TopicMetric, LearningProfile, MethodStat, TopicSecurity, ForgettingItem,
-  TimeOfDayStat, ExamPrognosis, FlashcardDeck, LearnMethod,
+  TimeOfDayStat, ExamPrognosis, FlashcardDeck, LearnMethod, CategoryMastery, ExamCategory,
 } from '../types';
 import type { QuizResult } from './quizHistoryService';
 import type { ExamResult } from './examHistoryService';
@@ -95,6 +95,24 @@ const buildTopicMastery = (metrics: TopicMetric[], quizResults: QuizResult[], ex
   return [...byTopic.values()].sort((a, b) => a.confidence - b.confidence || b.weakCount - a.weakCount);
 };
 
+// ─── Kategorie-Sicherheit (aus Klausur-Kategorie-Aufschlüsselung) ──────────────────
+
+const buildCategoryMastery = (examResults: ExamResult[]): CategoryMastery[] => {
+  const scoresByCategory: Record<string, number[]> = {};
+  examResults.forEach(r => {
+    (r.categoryBreakdown || []).forEach(({ category, score }) => {
+      (scoresByCategory[category] ??= []).push(score);
+    });
+  });
+  return Object.entries(scoresByCategory)
+    .map(([category, scores]) => ({
+      category: category as ExamCategory,
+      avgScore: avg(scores),
+      weakCount: scores.filter(s => s < 60).length,
+    }))
+    .sort((a, b) => a.avgScore - b.avgScore);
+};
+
 // ─── Vergessensanalyse (aus SRS-Fälligkeit) ─────────────────────────────────────
 
 const buildForgetting = (decks: FlashcardDeck[]): ForgettingItem[] => {
@@ -182,6 +200,7 @@ export const buildLearningProfile = ({
   return {
     perMethod: buildPerMethod(quizResults, recallResults, examResults, metrics),
     topicMastery: buildTopicMastery(metrics, quizResults, examResults),
+    categoryMastery: buildCategoryMastery(examResults),
     forgetting: buildForgetting(decks),
     timeOfDay: buildTimeOfDay(timestamped),
     examPrognosis: buildExamPrognosis(examResults),

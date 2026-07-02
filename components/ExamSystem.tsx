@@ -2,7 +2,7 @@
 import React, { useState } from 'react';
 import { ExamGenerator } from './ExamGenerator';
 import { ExamView } from './ExamView';
-import { ExamQuestion, ProcessedDocument, Collection, ActiveTab, ScoringProfile, ExamAnalysis } from '../types';
+import { ExamQuestion, ProcessedDocument, Collection, ActiveTab, ScoringProfile, ExamAnalysis, TopicMetric, FlashcardDeck } from '../types';
 import { generateFullExam, evaluateWithRubric, analyzeExamResults, GenerationSource } from '../services/geminiService';
 import { formatFeedbackContext } from '../services/examFeedbackService';
 import { GeneratedImage } from './GeneratedImage';
@@ -14,15 +14,21 @@ interface ExamSystemProps {
   collections: Collection[];
   getDocumentSource?: (doc: ProcessedDocument) => GenerationSource;
   onSaveToLibrary?: (file: File) => void;
-  onComplete?: (result: { score: number; docName: string; passed: boolean; totalPoints: number; achievedPoints: number; weakTopics: string[] }) => void;
+  onComplete?: (result: {
+    score: number; docName: string; passed: boolean; totalPoints: number; achievedPoints: number;
+    weakTopics: string[]; categoryBreakdown: { category: string; score: number }[];
+  }) => void;
   onNavigate?: (tab: ActiveTab) => void;
+  onAction?: (topic: string, mode: 'cards' | 'recall' | 'quiz') => void;
   initialDoc?: ProcessedDocument;
   initialQuestions?: ExamQuestion[];
+  metrics: TopicMetric[];
+  decks: FlashcardDeck[];
 }
 
 const DEFAULT_SCORING_PROFILE: ScoringProfile = { mode: 'standard', emphases: [] };
 
-export const ExamSystem: React.FC<ExamSystemProps> = ({ documents, collections, getDocumentSource, onSaveToLibrary, onComplete, onNavigate, initialDoc, initialQuestions }) => {
+export const ExamSystem: React.FC<ExamSystemProps> = ({ documents, collections, getDocumentSource, onSaveToLibrary, onComplete, onNavigate, onAction, initialDoc, initialQuestions, metrics, decks }) => {
   const [questions, setQuestions]         = useState<ExamQuestion[] | null>(initialQuestions ?? null);
   const [isLoading, setIsLoading]         = useState(false);
   const [loadingHint, setLoadingHint]     = useState('');
@@ -40,8 +46,9 @@ export const ExamSystem: React.FC<ExamSystemProps> = ({ documents, collections, 
   });
   const [scoringProfile, setScoringProfile] = useState<ScoringProfile>(DEFAULT_SCORING_PROFILE);
   const [examAnalysis, setExamAnalysis]     = useState<ExamAnalysis | null>(null);
+  const [categoryBreakdown, setCategoryBreakdown] = useState<{ category: string; score: number }[]>([]);
 
-  const resetExam = () => { setQuestions(null); setMode('edit'); setShowCancelConfirm(false); setExamDuration(undefined); setExamAnalysis(null); };
+  const resetExam = () => { setQuestions(null); setMode('edit'); setShowCancelConfirm(false); setExamDuration(undefined); setExamAnalysis(null); setCategoryBreakdown([]); };
 
   // Vorübergehende KI-Überlastung: clientseitig erneut versuchen. Das Backend
   // wiederholt selbst schon kurz — hier fangen wir längere Aussetzer ab und
@@ -49,7 +56,11 @@ export const ExamSystem: React.FC<ExamSystemProps> = ({ documents, collections, 
   const isTransientError = (msg: string) =>
     /ausgelast|überlast|quota|\b503\b|RESOURCE_EXHAUSTED|rate limit|\b429\b|timeout|erneut versuchen/i.test(msg);
 
-  const handleGenerate = async (content: GenerationSource, style?: GenerationSource, options?: { count: number, difficulty: string }, docName?: string, totalMinutes?: number, profile?: ScoringProfile) => {
+  const handleGenerate = async (
+    content: GenerationSource, style?: GenerationSource,
+    options?: { count: number; difficulty: string; types?: string[]; adaptive?: { weakCategories: string[]; weakTopics: string[] } },
+    docName?: string, totalMinutes?: number, profile?: ScoringProfile
+  ) => {
     if (docName) setExamDocName(docName.replace(/\.[^/.]+$/, ''));
     if (totalMinutes) setExamDuration(totalMinutes);
     if (profile) setScoringProfile(profile);
@@ -182,7 +193,22 @@ export const ExamSystem: React.FC<ExamSystemProps> = ({ documents, collections, 
           .filter(q => q.topic && q.points > 0 && (q.achievedPoints ?? 0) / q.points < 0.5)
           .map(q => q.topic as string)
       )];
-      onComplete?.({ score, docName: examDocName, passed: score >= 50, totalPoints, achievedPoints, weakTopics });
+
+      // Kategorie-Aufschlüsselung: Score je Kategorie über alle Fragen dieser Kategorie
+      const categoryPoints: Record<string, { achieved: number; total: number }> = {};
+      evaluated.forEach(q => {
+        if (!q.category || q.points <= 0) return;
+        const entry = categoryPoints[q.category] ?? { achieved: 0, total: 0 };
+        entry.achieved += q.achievedPoints ?? 0;
+        entry.total += q.points;
+        categoryPoints[q.category] = entry;
+      });
+      const categoryBreakdown = Object.entries(categoryPoints).map(([category, { achieved, total }]) => ({
+        category, score: total > 0 ? Math.round((achieved / total) * 100) : 0,
+      }));
+
+      onComplete?.({ score, docName: examDocName, passed: score >= 50, totalPoints, achievedPoints, weakTopics, categoryBreakdown });
+      setCategoryBreakdown(categoryBreakdown);
 
       // Analyse asynchron im Hintergrund (kein Blocker)
       analyzeExamResults(evaluated)
@@ -224,6 +250,8 @@ export const ExamSystem: React.FC<ExamSystemProps> = ({ documents, collections, 
       getDocumentSource={getDocumentSource}
       onSaveToLibrary={onSaveToLibrary}
       initialDoc={initialDoc}
+      metrics={metrics}
+      decks={decks}
     />;
   }
 
@@ -277,6 +305,8 @@ export const ExamSystem: React.FC<ExamSystemProps> = ({ documents, collections, 
         examTitle={examDocName}
         scoringProfile={scoringProfile}
         analysis={examAnalysis}
+        categoryBreakdown={categoryBreakdown}
+        onAction={onAction}
         onSaveProgress={(name) => {
           const withAnswers = questions.map(q => ({ ...q, userAnswer: currentAnswers[q.id] }));
           saveExamToStorage({ name, docName: examDocName, questions: withAnswers });

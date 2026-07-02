@@ -93,6 +93,30 @@ describe('buildLearningProfile — Vergessensanalyse', () => {
   });
 });
 
+describe('buildLearningProfile — Kategorie-Sicherheit', () => {
+  it('mittelt Scores pro Kategorie über mehrere Klausuren und zählt Schwachstellen', () => {
+    const examResults: ExamResult[] = [
+      { id: 'e1', docName: 'K1', timestamp: now, score: 70, passed: true, totalPoints: 100, achievedPoints: 70, weakTopics: [], categoryBreakdown: [{ category: 'transfer', score: 30 }, { category: 'definition', score: 90 }] },
+      { id: 'e2', docName: 'K2', timestamp: now - DAY_MS, score: 60, passed: true, totalPoints: 100, achievedPoints: 60, weakTopics: [], categoryBreakdown: [{ category: 'transfer', score: 50 }, { category: 'definition', score: 85 }] },
+    ];
+    const profile = buildLearningProfile({ ...emptyInput, examResults });
+    const transfer = profile.categoryMastery.find(c => c.category === 'transfer');
+    const definition = profile.categoryMastery.find(c => c.category === 'definition');
+    expect(transfer).toMatchObject({ avgScore: 40, weakCount: 2 });
+    expect(definition).toMatchObject({ avgScore: 88, weakCount: 0 });
+    // schwächste Kategorie zuerst
+    expect(profile.categoryMastery[0].category).toBe('transfer');
+  });
+
+  it('liefert leere categoryMastery ohne Kategorie-Daten', () => {
+    const examResults: ExamResult[] = [
+      { id: 'e1', docName: 'K1', timestamp: now, score: 70, passed: true, totalPoints: 100, achievedPoints: 70, weakTopics: [] },
+    ];
+    const profile = buildLearningProfile({ ...emptyInput, examResults });
+    expect(profile.categoryMastery).toEqual([]);
+  });
+});
+
 describe('buildLearningProfile — Klausurprognose', () => {
   it('gewichtet neuere Klausuren stärker und berechnet eine Note', () => {
     const examResults: ExamResult[] = [

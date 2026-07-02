@@ -10,6 +10,7 @@ export interface ExamResult {
   totalPoints: number;
   achievedPoints: number;
   weakTopics: string[];
+  categoryBreakdown?: { category: string; score: number }[];
 }
 
 const readAll = (): ExamResult[] => {
