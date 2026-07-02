@@ -25,6 +25,17 @@ const securityColor = (s: 'sicher' | 'unsicher' | 'kritisch') =>
 const priorityColor = (p: 'hoch' | 'mittel' | 'niedrig') =>
   p === 'hoch' ? '#f43f5e' : p === 'mittel' ? '#f59e0b' : '#94a3b8';
 
+const priorityEmoji = (p: 'hoch' | 'mittel' | 'niedrig') =>
+  p === 'hoch' ? '🔴' : p === 'mittel' ? '🟡' : '🟢';
+
+/** Mindestmenge an Sessions, ab der eine KI-Coach-Analyse tatsächlich Substanz hat statt zu raten. */
+const MIN_SESSIONS_FOR_COACH = 5;
+
+const TAB_ACTION_LABELS: Record<string, string> = {
+  QUIZ: 'Quiz starten', CARDS: 'Karteikarten üben', RECALL: 'Feynman starten',
+  EXAM: 'Klausur starten', EXPLAINER: 'KI-Erklärer starten',
+};
+
 // ─── Main Component ────────────────────────────────────────────────────────────
 
 interface LearningCoachProps {
@@ -63,6 +74,7 @@ export const LearningCoach: React.FC<LearningCoachProps> = ({ metrics, decks, on
   [quizResults]);
 
   const hasAnyData = profile.perMethod.length > 0;
+  const hasEnoughForCoach = profile.volume.totalSessions >= MIN_SESSIONS_FOR_COACH;
 
   // Trivial aus perMethod abgeleitet — kein eigenes Service-Feld nötig
   const strongestMethod = profile.perMethod.length > 0
@@ -78,7 +90,7 @@ export const LearningCoach: React.FC<LearningCoachProps> = ({ metrics, decks, on
   ].sort((a, b) => a.avgScore - b.avgScore);
 
   const handleRunCoach = async () => {
-    if (!hasAnyData) return;
+    if (!hasAnyData || !hasEnoughForCoach) return;
     setIsLoading(true);
     try {
       setInsights(await generateCoachInsights(profile, wrongAnswersCtx));
@@ -165,7 +177,12 @@ export const LearningCoach: React.FC<LearningCoachProps> = ({ metrics, decks, on
           <h3 className="text-[9px] font-black uppercase tracking-widest opacity-50 mb-3" style={{ color: 'var(--bg-main)' }}>
             KI-Coach
           </h3>
-          {!insights ? (
+          {!hasEnoughForCoach ? (
+            <p className="text-sm font-medium leading-relaxed" style={{ color: 'var(--bg-main)', opacity: 0.85 }}>
+              Noch nicht genügend Daten vorhanden. Nutze QuizWise weiter, damit dein persönlicher KI-Lerncoach
+              fundierte Analysen und Empfehlungen erstellen kann.
+            </p>
+          ) : !insights ? (
             <>
               <p className="text-sm font-medium mb-4" style={{ color: 'var(--bg-main)', opacity: 0.85 }}>
                 Lass die KI dein Lernprofil analysieren: Verbindungen zwischen Themen, eine Prognose und konkrete nächste Schritte.
@@ -392,6 +409,7 @@ export const LearningCoach: React.FC<LearningCoachProps> = ({ metrics, decks, on
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                 {[...insights.recommendations]
                   .sort((a, b) => (a.priority === 'hoch' ? 0 : a.priority === 'mittel' ? 1 : 2) - (b.priority === 'hoch' ? 0 : b.priority === 'mittel' ? 1 : 2))
+                  .slice(0, 3)
                   .map((r, i) => (
                   <button
                     key={i}
@@ -400,10 +418,15 @@ export const LearningCoach: React.FC<LearningCoachProps> = ({ metrics, decks, on
                     style={{ background: 'var(--bg-sidebar)', borderColor: 'var(--border-color)', borderLeftWidth: 4, borderLeftColor: priorityColor(r.priority) }}
                   >
                     <p className="text-[8px] font-black uppercase tracking-widest mb-1" style={{ color: priorityColor(r.priority) }}>
-                      {r.priority} Priorität
+                      {priorityEmoji(r.priority)} {r.priority}
                     </p>
                     <p className="text-sm font-black mb-1" style={{ color: 'var(--ink)' }}>{r.action}</p>
-                    <p className="text-[11px] font-medium" style={{ color: 'var(--mute)' }}>{r.reasoning}</p>
+                    <p className="text-[11px] font-medium mb-2" style={{ color: 'var(--mute)' }}>
+                      <strong style={{ color: 'var(--ink2)' }}>Grund:</strong> {r.reasoning}
+                    </p>
+                    <p className="text-[10px] font-black uppercase tracking-widest" style={{ color: 'var(--primary)' }}>
+                      ➡ {TAB_ACTION_LABELS[r.tab] || 'Starten'}
+                    </p>
                   </button>
                 ))}
               </div>

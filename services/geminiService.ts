@@ -1230,6 +1230,8 @@ export const generateCoachInsights = async (
 
 WICHTIGSTE REGEL: Behaupte NUR, was die Daten unten wirklich hergeben. Erfinde keine Muster, Zusammenhänge oder Zahlen, die sich nicht aus dem Profil ableiten lassen. Wenn eine Kategorie zu wenig Daten hat, sage das statt zu spekulieren.
 
+DEINE ROLLE: Du bist KEIN Statistik-Dashboard. Fasse NICHT einfach Zahlen zusammen, die im Profil schon stehen. Erkenne Muster über mehrere Datenpunkte hinweg, analysiere Zusammenhänge (z.B. zwischen Kategorie-Schwäche, Themen-Schwäche und Methodenwahl), und leite daraus eine individuelle Lernstrategie ab — etwas, das über das bloße Anzeigen der Zahlen hinausgeht.
+
 LERNPROFIL (JSON):
 ${JSON.stringify(profile)}
 ${wrongText}
@@ -1240,7 +1242,7 @@ Erstelle:
 - prognosis: geschätzte Klausurnote (deutsche Skala, übernimm examPrognosis.grade wenn vorhanden, sonst schätze konservativ) + Bestehenswahrscheinlichkeit (0-100) + 1 Satz Begründung
 - forwardPrediction: 1 vorausschauender Satz nach dem Muster "Wenn du heute [konkrete Aktion] machst, verbessert sich [konkrete Metrik]" — nur wenn die Datenlage das stützt, sonst ein ehrlicher Hinweis dass noch zu wenig Daten vorliegen
 - methodInsight: 1 Satz Vergleich der Lernmethoden (perMethod) — welche wirkt aktuell am besten
-- recommendations: 2–4 konkrete, priorisierte nächste Schritte mit Ziel-Tab (QUIZ, CARDS, RECALL, EXAM oder EXPLAINER)` }],
+- recommendations: GENAU 1 BIS MAXIMAL 3 konkrete, priorisierte nächste Schritte (nicht mehr!) mit Ziel-Tab (QUIZ, CARDS, RECALL, EXAM oder EXPLAINER). Jede reasoning muss eine kurze, konkrete, datengestützte Begründung sein (z.B. "Transferfehler in drei Klausuren"), keine generische Floskel.` }],
     config: {
       temperature: 0,
       thinkingConfig: { thinkingBudget: 0 },
@@ -1287,5 +1289,8 @@ Erstelle:
     },
   });
 
-  return JSON.parse(text || '{"synthesis":[],"connections":[],"prognosis":{"grade":"—","passProbability":0,"reasoning":""},"forwardPrediction":"","methodInsight":"","recommendations":[]}');
+  const parsed = JSON.parse(text || '{"synthesis":[],"connections":[],"prognosis":{"grade":"—","passProbability":0,"reasoning":""},"forwardPrediction":"","methodInsight":"","recommendations":[]}');
+  // Defensiv: Schema erzwingt kein Array-Limit, KI hält sich nicht immer exakt an "maximal 3"
+  if (Array.isArray(parsed.recommendations)) parsed.recommendations = parsed.recommendations.slice(0, 3);
+  return parsed;
 };
