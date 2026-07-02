@@ -89,6 +89,27 @@ export const LearningCoach: React.FC<LearningCoachProps> = ({ metrics, decks, on
     ...profile.typeMastery.map(t => ({ key: `type-${t.type}`, label: t.label, avgScore: t.avgScore })),
   ].sort((a, b) => a.avgScore - b.avgScore);
 
+  // Erklärt, warum bestimmte Panels noch nicht erscheinen, statt sie kommentarlos zu verstecken —
+  // nur Panels mit einer klaren, festen Datenschwelle (keine Platzhalter für "einfach noch leer").
+  const lockedPanels = [
+    profile.longTermTrend === null && {
+      label: 'Deine Entwicklung seit Beginn',
+      reason: `Braucht mindestens 4 Klausuren, du hast ${examResults.length}.`,
+    },
+    !hasEnoughForCoach && {
+      label: 'KI-Coach',
+      reason: `Braucht mindestens ${MIN_SESSIONS_FOR_COACH} Lernsessions, du hast ${profile.volume.totalSessions}.`,
+    },
+    profile.topicMastery.length === 0 && {
+      label: 'Themen-Sicherheit',
+      reason: 'Erscheint nach deiner ersten Quiz-, Klausur- oder Karteikarten-Session.',
+    },
+    wissensprofilItems.length === 0 && {
+      label: 'Wissensprofil',
+      reason: 'Erscheint nach deiner ersten Klausur oder deinem ersten Quiz.',
+    },
+  ].filter((x): x is { label: string; reason: string } => Boolean(x));
+
   const handleRunCoach = async () => {
     if (!hasAnyData || !hasEnoughForCoach) return;
     setIsLoading(true);
@@ -378,6 +399,20 @@ export const LearningCoach: React.FC<LearningCoachProps> = ({ metrics, decks, on
           </div>
         )}
       </div>
+
+      {/* ── Bald verfügbar — erklärt fehlende Panels statt sie kommentarlos zu verstecken ── */}
+      {lockedPanels.length > 0 && (
+        <div className="p-5 lg:p-6 rounded-[20px] border border-dashed space-y-2" style={{ borderColor: 'var(--border-color)' }}>
+          <p className="text-[9px] font-black uppercase tracking-widest flex items-center gap-1.5" style={{ color: 'var(--mute)' }}>
+            <EmojiImage emoji="🔒" size={11} /> Bald verfügbar
+          </p>
+          {lockedPanels.map(l => (
+            <p key={l.label} className="text-[11px] font-medium" style={{ color: 'var(--mute)' }}>
+              <strong style={{ color: 'var(--ink2)' }}>{l.label}:</strong> {l.reason}
+            </p>
+          ))}
+        </div>
+      )}
 
       {/* ── KI-Coach-Ergebnis (Verbindungen, Prognose, Empfehlungen) ── */}
       {insights && (
