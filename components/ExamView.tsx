@@ -2,7 +2,7 @@
 import React, { useState, useEffect, useRef, useCallback, useMemo } from 'react';
 import { ExamQuestion, ActiveTab, ScoringProfile, ExamAnalysis, QuestionFeedbackType } from '../types';
 import { saveQuestionFeedback } from '../services/examFeedbackService';
-import { germanGradeFromPercentage } from '../services/learningProfileService';
+import { germanGradeFromPercentage, CATEGORY_LABELS } from '../services/learningProfileService';
 import { EmojiImage } from './EmojiImage';
 import type { jsPDF as JsPDFType } from 'jspdf';
 
@@ -25,15 +25,6 @@ interface ExamViewProps {
   categoryBreakdown?: { category: string; score: number }[];
   onAction?: (topic: string, mode: 'cards' | 'recall' | 'quiz') => void;
 }
-
-const CATEGORY_LABELS: Record<string, string> = {
-  definition: 'Definitionen',
-  verstaendnis: 'Verständnis',
-  transfer: 'Transfer',
-  beispiel: 'Beispiele',
-  rechnung: 'Rechenaufgaben',
-  fachbegriff: 'Fachbegriffe',
-};
 
 const formatTime = (s: number) =>
   `${Math.floor(s / 60).toString().padStart(2, '0')}:${(s % 60).toString().padStart(2, '0')}`;

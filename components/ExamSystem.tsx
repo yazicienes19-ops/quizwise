@@ -17,6 +17,8 @@ interface ExamSystemProps {
   onComplete?: (result: {
     score: number; docName: string; passed: boolean; totalPoints: number; achievedPoints: number;
     weakTopics: string[]; categoryBreakdown: { category: string; score: number }[];
+    typeBreakdown: { type: string; score: number }[];
+    fatigue?: { earlyScore: number; lateScore: number };
   }) => void;
   onNavigate?: (tab: ActiveTab) => void;
   onAction?: (topic: string, mode: 'cards' | 'recall' | 'quiz') => void;
@@ -207,7 +209,32 @@ export const ExamSystem: React.FC<ExamSystemProps> = ({ documents, collections, 
         category, score: total > 0 ? Math.round((achieved / total) * 100) : 0,
       }));
 
-      onComplete?.({ score, docName: examDocName, passed: score >= 50, totalPoints, achievedPoints, weakTopics, categoryBreakdown });
+      // Typ-Aufschlüsselung: Score je Fragetyp (Grundlage für das Wissensprofil im Lern-Coach)
+      const typePoints: Record<string, { achieved: number; total: number }> = {};
+      evaluated.forEach(q => {
+        if (q.points <= 0) return;
+        const entry = typePoints[q.type] ?? { achieved: 0, total: 0 };
+        entry.achieved += q.achievedPoints ?? 0;
+        entry.total += q.points;
+        typePoints[q.type] = entry;
+      });
+      const typeBreakdown = Object.entries(typePoints).map(([type, { achieved, total }]) => ({
+        type, score: total > 0 ? Math.round((achieved / total) * 100) : 0,
+      }));
+
+      // Fatigue-Signal: Score erste vs. zweite Hälfte der Fragen in Original-Reihenfolge
+      const withPoints = evaluated.filter(q => q.points > 0);
+      const mid = Math.floor(withPoints.length / 2);
+      const scoreOf = (qs: ExamQuestion[]) => {
+        const total = qs.reduce((s, q) => s + q.points, 0);
+        const achieved = qs.reduce((s, q) => s + (q.achievedPoints ?? 0), 0);
+        return total > 0 ? Math.round((achieved / total) * 100) : 0;
+      };
+      const fatigue = withPoints.length >= 4
+        ? { earlyScore: scoreOf(withPoints.slice(0, mid)), lateScore: scoreOf(withPoints.slice(mid)) }
+        : undefined;
+
+      onComplete?.({ score, docName: examDocName, passed: score >= 50, totalPoints, achievedPoints, weakTopics, categoryBreakdown, typeBreakdown, fatigue });
       setCategoryBreakdown(categoryBreakdown);
 
       // Analyse asynchron im Hintergrund (kein Blocker)

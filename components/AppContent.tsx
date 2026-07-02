@@ -296,8 +296,8 @@ export const AppContent: React.FC<AppContentProps> = (p) => {
           initialDoc={pendingActionDoc ?? undefined}
           initialQuestions={examInitialQuestions?.questions}
           metrics={metrics} decks={decks}
-          onComplete={({ score, docName, passed, totalPoints, achievedPoints, weakTopics, categoryBreakdown }) => {
-            saveExamResult({ docName, timestamp: Date.now(), score, passed, totalPoints, achievedPoints, weakTopics, categoryBreakdown }, user?.id);
+          onComplete={({ score, docName, passed, totalPoints, achievedPoints, weakTopics, categoryBreakdown, typeBreakdown, fatigue }) => {
+            saveExamResult({ docName, timestamp: Date.now(), score, passed, totalPoints, achievedPoints, weakTopics, categoryBreakdown, typeBreakdown, fatigue }, user?.id);
             updateMetricsAfterSession(score, docName, 'exam');
             setExamInitialQuestions(null);
             setSavedExams(getSavedExams());

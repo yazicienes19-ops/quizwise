@@ -4,7 +4,7 @@ import { TopicMetric, ActiveTab, CoachInsights, FlashcardDeck, LearnMethod } fro
 import { EmojiImage } from './EmojiImage';
 import { GapRadar } from './GapRadar';
 import { generateCoachInsights, WrongAnswerContext } from '../services/geminiService';
-import { buildLearningProfile } from '../services/learningProfileService';
+import { buildLearningProfile, CATEGORY_LABELS } from '../services/learningProfileService';
 import { getAllResults } from '../services/quizHistoryService';
 import { getAllRecallResults } from '../services/recallHistoryService';
 import { getAllExamResults } from '../services/examHistoryService';
@@ -64,6 +64,19 @@ export const LearningCoach: React.FC<LearningCoachProps> = ({ metrics, decks, on
 
   const hasAnyData = profile.perMethod.length > 0;
 
+  // Trivial aus perMethod abgeleitet — kein eigenes Service-Feld nötig
+  const strongestMethod = profile.perMethod.length > 0
+    ? profile.perMethod.reduce((best, cur) => cur.avgScore > best.avgScore ? cur : best)
+    : null;
+  const preferredMethod = profile.perMethod.length > 0
+    ? profile.perMethod.reduce((best, cur) => cur.sessions > best.sessions ? cur : best)
+    : null;
+
+  const wissensprofilItems = [
+    ...profile.categoryMastery.map(c => ({ key: `cat-${c.category}`, label: CATEGORY_LABELS[c.category] || c.category, avgScore: c.avgScore })),
+    ...profile.typeMastery.map(t => ({ key: `type-${t.type}`, label: t.label, avgScore: t.avgScore })),
+  ].sort((a, b) => a.avgScore - b.avgScore);
+
   const handleRunCoach = async () => {
     if (!hasAnyData) return;
     setIsLoading(true);
@@ -110,6 +123,12 @@ export const LearningCoach: React.FC<LearningCoachProps> = ({ metrics, decks, on
         </h1>
         <p className="text-base font-medium opacity-80" style={{ color: 'var(--mute)' }}>
           Dein persönlicher KI-Lerncoach — alle Methoden, ein Überblick.
+        </p>
+        <p
+          className="inline-block px-5 py-2.5 rounded-2xl text-sm font-black"
+          style={{ background: 'color-mix(in srgb, var(--primary) 10%, transparent)', color: 'var(--primary)' }}
+        >
+          {profile.motivationLine}
         </p>
       </div>
 
@@ -183,9 +202,19 @@ export const LearningCoach: React.FC<LearningCoachProps> = ({ metrics, decks, on
               {profile.perMethod.map(m => (
                 <div key={m.method} className="space-y-1">
                   <div className="flex justify-between items-baseline">
-                    <span className="text-xs font-black" style={{ color: 'var(--ink)' }}>{METHOD_LABELS[m.method]}</span>
-                    <span className="text-xs font-black" style={{ color: scoreColor(m.avgScore) }}>
-                      {m.avgScore}% {m.trend === 'up' ? '↑' : m.trend === 'down' ? '↓' : ''}
+                    <span className="text-xs font-black flex items-center gap-1" style={{ color: 'var(--ink)' }}>
+                      {METHOD_LABELS[m.method]}
+                      {strongestMethod?.method === m.method && <EmojiImage emoji="👑" size={11} />}
+                    </span>
+                    <span className="flex items-center gap-2">
+                      {m.improvementPerSession !== 0 && (
+                        <span className="text-[9px] font-black" style={{ color: m.improvementPerSession > 0 ? '#22c55e' : '#f43f5e' }}>
+                          {m.improvementPerSession > 0 ? '+' : ''}{m.improvementPerSession}%/Session
+                        </span>
+                      )}
+                      <span className="text-xs font-black" style={{ color: scoreColor(m.avgScore) }}>
+                        {m.avgScore}% {m.trend === 'up' ? '↑' : m.trend === 'down' ? '↓' : ''}
+                      </span>
                     </span>
                   </div>
                   <div className="h-2 rounded-full overflow-hidden" style={{ background: 'var(--border-color)' }}>
@@ -251,6 +280,10 @@ export const LearningCoach: React.FC<LearningCoachProps> = ({ metrics, decks, on
               <p className="text-lg font-black" style={{ color: 'var(--ink)' }}>{profile.timeOfDay.bestPart ?? '—'}</p>
             </div>
             <div>
+              <p className="text-[9px] font-bold uppercase" style={{ color: 'var(--mute)' }}>Produktivster Tag</p>
+              <p className="text-lg font-black" style={{ color: 'var(--ink)' }}>{profile.dayOfWeek.bestDay ?? '—'}</p>
+            </div>
+            <div>
               <p className="text-[9px] font-bold uppercase" style={{ color: 'var(--mute)' }}>Streak</p>
               <p className="text-lg font-black" style={{ color: 'var(--ink)' }}>{profile.volume.streakCurrent} Tage</p>
             </div>
@@ -259,11 +292,74 @@ export const LearningCoach: React.FC<LearningCoachProps> = ({ metrics, decks, on
               <p className="text-lg font-black" style={{ color: 'var(--ink)' }}>{profile.volume.sessionsPerWeek}</p>
             </div>
             <div>
+              <p className="text-[9px] font-bold uppercase" style={{ color: 'var(--mute)' }}>Bevorzugte Methode</p>
+              <p className="text-lg font-black" style={{ color: 'var(--ink)' }}>{preferredMethod ? METHOD_LABELS[preferredMethod.method] : '—'}</p>
+            </div>
+            <div>
               <p className="text-[9px] font-bold uppercase" style={{ color: 'var(--mute)' }}>Sessions gesamt</p>
               <p className="text-lg font-black" style={{ color: 'var(--ink)' }}>{profile.volume.totalSessions}</p>
             </div>
           </div>
         </div>
+
+        {/* Wissensprofil — Kategorien + Fragetypen vereint */}
+        {wissensprofilItems.length > 0 && (
+          <div className="p-6 lg:p-8 rounded-[24px] lg:rounded-[32px] border shadow-sm space-y-4" style={{ background: 'var(--card)', borderColor: 'var(--border-color)' }}>
+            <h3 className="text-[9px] font-black uppercase tracking-widest" style={{ color: 'var(--mute)' }}>Wissensprofil</h3>
+            <div className="flex flex-wrap gap-2">
+              {wissensprofilItems.map(item => (
+                <button
+                  key={item.key}
+                  onClick={() => onNavigate(ActiveTab.QUIZ)}
+                  className="px-3 py-2 rounded-xl text-[9px] font-black uppercase tracking-wider transition-all hover:opacity-80"
+                  style={{
+                    background: `color-mix(in srgb, ${scoreColor(item.avgScore)} 10%, var(--bg-sidebar))`,
+                    color: scoreColor(item.avgScore),
+                    border: `1px solid color-mix(in srgb, ${scoreColor(item.avgScore)} 25%, transparent)`,
+                  }}
+                >
+                  {item.label} · {item.avgScore}%
+                </button>
+              ))}
+            </div>
+          </div>
+        )}
+
+        {/* Ursachenanalyse — nur wirklich ausgelöste Ursachen */}
+        {profile.causeAnalysis.length > 0 && (
+          <div className="p-6 lg:p-8 rounded-[24px] lg:rounded-[32px] border shadow-sm space-y-4" style={{ background: 'var(--card)', borderColor: 'var(--border-color)' }}>
+            <h3 className="text-[9px] font-black uppercase tracking-widest" style={{ color: 'var(--mute)' }}>Warum verlierst du Punkte?</h3>
+            <div className="space-y-3">
+              {profile.causeAnalysis.map(c => (
+                <div key={c.cause}>
+                  <p className="text-xs font-black" style={{ color: '#f43f5e' }}>{c.cause}</p>
+                  <p className="text-[11px] font-medium mt-0.5" style={{ color: 'var(--ink2)' }}>{c.description}</p>
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
+
+        {/* Langzeit-Entwicklung */}
+        {profile.longTermTrend && (
+          <div className="p-6 lg:p-8 rounded-[24px] lg:rounded-[32px] border shadow-sm space-y-4" style={{ background: 'var(--card)', borderColor: 'var(--border-color)' }}>
+            <h3 className="text-[9px] font-black uppercase tracking-widest" style={{ color: 'var(--mute)' }}>Deine Entwicklung seit Beginn</h3>
+            <div className="flex flex-wrap gap-2">
+              {profile.longTermTrend.map(t => (
+                <span
+                  key={t.label}
+                  className="px-3 py-2 rounded-xl text-[10px] font-black"
+                  style={{
+                    background: `color-mix(in srgb, ${t.delta >= 0 ? '#22c55e' : '#f43f5e'} 12%, var(--bg-sidebar))`,
+                    color: t.delta >= 0 ? '#22c55e' : '#f43f5e',
+                  }}
+                >
+                  {t.label} {t.delta >= 0 ? '+' : ''}{t.delta}%
+                </span>
+              ))}
+            </div>
+          </div>
+        )}
       </div>
 
       {/* ── KI-Coach-Ergebnis (Verbindungen, Prognose, Empfehlungen) ── */}

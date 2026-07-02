@@ -36,6 +36,14 @@ export interface MethodStat {
   avgScore: number;                       // 0–100
   sessions: number;
   trend: 'up' | 'down' | 'stable';
+  improvementPerSession: number;          // Prozentpunkte Verbesserung, normiert auf Sessions (0 wenn zu wenig Daten)
+}
+
+export interface TypeMastery {
+  type: string;                           // z.B. "mc", "open", "matching"
+  label: string;                          // Anzeigename, z.B. "Multiple Choice"
+  avgScore: number;                       // 0–100
+  weakCount: number;                      // wie oft score < 60
 }
 
 export interface TopicSecurity {
@@ -71,13 +79,34 @@ export interface ExamPrognosis {
   basis: number;                          // Anzahl Klausuren als Grundlage
 }
 
+export interface CauseAnalysisItem {
+  cause: string;
+  description: string;
+}
+
+export interface LongTermTrendItem {
+  label: string;
+  delta: number;                          // Prozentpunkte, + oder -
+}
+
+export interface DayOfWeekStat {
+  day: 'Montag' | 'Dienstag' | 'Mittwoch' | 'Donnerstag' | 'Freitag' | 'Samstag' | 'Sonntag';
+  avgScore: number;
+  sessions: number;
+}
+
 export interface LearningProfile {
   perMethod: MethodStat[];
   topicMastery: TopicSecurity[];
   categoryMastery: CategoryMastery[];
+  typeMastery: TypeMastery[];
   forgetting: ForgettingItem[];
   timeOfDay: { bestPart: TimeOfDayStat['part'] | null; byPart: TimeOfDayStat[] };
+  dayOfWeek: { bestDay: DayOfWeekStat['day'] | null; byDay: DayOfWeekStat[] };
   examPrognosis: ExamPrognosis | null;
+  causeAnalysis: CauseAnalysisItem[];
+  longTermTrend: LongTermTrendItem[] | null;
+  motivationLine: string;
   volume: { streakCurrent: number; streakBest: number; sessionsPerWeek: number; totalSessions: number };
 }
 

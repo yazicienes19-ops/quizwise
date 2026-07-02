@@ -1,12 +1,29 @@
 import type {
   TopicMetric, LearningProfile, MethodStat, TopicSecurity, ForgettingItem,
   TimeOfDayStat, ExamPrognosis, FlashcardDeck, LearnMethod, CategoryMastery, ExamCategory,
+  TypeMastery, CauseAnalysisItem, LongTermTrendItem, DayOfWeekStat,
 } from '../types';
 import type { QuizResult } from './quizHistoryService';
 import type { ExamResult } from './examHistoryService';
 import type { RecallResult } from './recallHistoryService';
 
 const DAY_MS = 24 * 60 * 60 * 1000;
+
+export const CATEGORY_LABELS: Record<string, string> = {
+  definition: 'Definitionen', verstaendnis: 'Verständnis', transfer: 'Transfer',
+  beispiel: 'Beispiele', rechnung: 'Rechenaufgaben', fachbegriff: 'Fachbegriffe',
+};
+
+const TYPE_LABELS: Record<string, string> = {
+  mc: 'Multiple Choice', single: 'Multiple Choice',
+  truefalse: 'Wahr/Falsch',
+  matching: 'Zuordnung',
+  cloze: 'Lückentext', fillblank: 'Lückentext',
+  ranking: 'Sortierung',
+  numeric: 'Numerisch',
+  open: 'Freitext',
+  scenario: 'Fallbeispiel',
+};
 
 /**
  * Deutsche Notenskala (Standard-Notenschlüssel), aus ExamView.tsx extrahiert
@@ -38,6 +55,15 @@ const trendOf = (scoresNewestFirst: number[]): 'up' | 'down' | 'stable' => {
   return 'stable';
 };
 
+/** Ø erste 3 vs. letzte 3 Sessions (chronologisch), Differenz normiert auf Session-Anzahl. 0 unter der Mindestmenge. */
+const improvementPerSession = (scoresNewestFirst: number[]): number => {
+  if (scoresNewestFirst.length < 4) return 0;
+  const chronological = [...scoresNewestFirst].reverse();
+  const firstAvg = avg(chronological.slice(0, 3));
+  const lastAvg = avg(chronological.slice(-3));
+  return Math.round((lastAvg - firstAvg) / scoresNewestFirst.length);
+};
+
 const avg = (nums: number[]): number => nums.length ? Math.round(nums.reduce((s, v) => s + v, 0) / nums.length) : 0;
 
 // ─── Methodenvergleich ─────────────────────────────────────────────────────────
@@ -48,21 +74,25 @@ const buildPerMethod = (
   const stats: MethodStat[] = [];
 
   if (metrics.length > 0) {
-    stats.push({ method: 'anki', avgScore: avg(metrics.map(m => m.confidence)), sessions: metrics.reduce((s, m) => s + m.totalAttempts, 0), trend: 'stable' });
+    stats.push({ method: 'anki', avgScore: avg(metrics.map(m => m.confidence)), sessions: metrics.reduce((s, m) => s + m.totalAttempts, 0), trend: 'stable', improvementPerSession: 0 });
   }
   if (quizResults.length > 0) {
-    stats.push({ method: 'quiz', avgScore: avg(quizResults.map(r => r.score)), sessions: quizResults.length, trend: trendOf(quizResults.map(r => r.score)) });
+    const scores = quizResults.map(r => r.score);
+    stats.push({ method: 'quiz', avgScore: avg(scores), sessions: quizResults.length, trend: trendOf(scores), improvementPerSession: improvementPerSession(scores) });
   }
   const feynman = recallResults.filter(r => r.method !== 'explainer');
   if (feynman.length > 0) {
-    stats.push({ method: 'feynman', avgScore: avg(feynman.map(r => r.score)), sessions: feynman.length, trend: trendOf(feynman.map(r => r.score)) });
+    const scores = feynman.map(r => r.score);
+    stats.push({ method: 'feynman', avgScore: avg(scores), sessions: feynman.length, trend: trendOf(scores), improvementPerSession: improvementPerSession(scores) });
   }
   const explainer = recallResults.filter(r => r.method === 'explainer');
   if (explainer.length > 0) {
-    stats.push({ method: 'explainer', avgScore: avg(explainer.map(r => r.score)), sessions: explainer.length, trend: trendOf(explainer.map(r => r.score)) });
+    const scores = explainer.map(r => r.score);
+    stats.push({ method: 'explainer', avgScore: avg(scores), sessions: explainer.length, trend: trendOf(scores), improvementPerSession: improvementPerSession(scores) });
   }
   if (examResults.length > 0) {
-    stats.push({ method: 'exam', avgScore: avg(examResults.map(r => r.score)), sessions: examResults.length, trend: trendOf(examResults.map(r => r.score)) });
+    const scores = examResults.map(r => r.score);
+    stats.push({ method: 'exam', avgScore: avg(scores), sessions: examResults.length, trend: trendOf(scores), improvementPerSession: improvementPerSession(scores) });
   }
   return stats;
 };
@@ -113,6 +143,92 @@ const buildCategoryMastery = (examResults: ExamResult[]): CategoryMastery[] => {
     .sort((a, b) => a.avgScore - b.avgScore);
 };
 
+// ─── Wissensprofil nach Fragetyp (Klausur-typeBreakdown + Quiz-Antworten) ──────────
+
+const buildTypeMastery = (quizResults: QuizResult[], examResults: ExamResult[]): TypeMastery[] => {
+  const scoresByLabel: Record<string, number[]> = {};
+  const addScore = (rawType: string, score: number) => {
+    const label = TYPE_LABELS[rawType] || rawType;
+    (scoresByLabel[label] ??= []).push(score);
+  };
+
+  examResults.forEach(r => (r.typeBreakdown || []).forEach(({ type, score }) => addScore(type, score)));
+
+  quizResults.forEach(r => {
+    const byType: Record<string, { correct: number; total: number }> = {};
+    (r.answers || []).forEach(a => {
+      const rawType = r.questions?.[a.questionIndex]?.questionType || 'mc';
+      const entry = byType[rawType] ?? { correct: 0, total: 0 };
+      entry.total += 1;
+      if (a.isCorrect) entry.correct += 1;
+      byType[rawType] = entry;
+    });
+    Object.entries(byType).forEach(([rawType, { correct, total }]) => {
+      if (total > 0) addScore(rawType, Math.round((correct / total) * 100));
+    });
+  });
+
+  return Object.entries(scoresByLabel)
+    .map(([label, scores]) => ({ type: label, label, avgScore: avg(scores), weakCount: scores.filter(s => s < 60).length }))
+    .sort((a, b) => a.avgScore - b.avgScore);
+};
+
+// ─── Ursachenanalyse (nur wirklich belegbare Signale) ──────────────────────────────
+
+const buildCauseAnalysis = (
+  categoryMastery: CategoryMastery[], topicMastery: TopicSecurity[], examResults: ExamResult[],
+): CauseAnalysisItem[] => {
+  const items: CauseAnalysisItem[] = [];
+
+  const definition = categoryMastery.find(c => c.category === 'definition');
+  if (definition && definition.avgScore < 60) {
+    items.push({ cause: 'Definitionsprobleme', description: `Du verlierst regelmäßig Punkte bei Definitionsfragen (Ø ${definition.avgScore}%).` });
+  }
+  const transfer = categoryMastery.find(c => c.category === 'transfer');
+  if (transfer && transfer.avgScore < 60) {
+    items.push({ cause: 'Transferprobleme', description: `Die Anwendung von Wissen auf neue Situationen fällt dir schwer (Ø ${transfer.avgScore}%).` });
+  }
+  if (topicMastery.length > 0) {
+    const kritischShare = topicMastery.filter(t => t.security === 'kritisch').length / topicMastery.length;
+    if (kritischShare > 0.5) {
+      items.push({ cause: 'Fehlendes Grundlagenwissen', description: 'Bei mehr als der Hälfte deiner Themen fehlt noch die Basis-Sicherheit.' });
+    }
+  }
+  const fatigueExams = examResults.filter(r => r.fatigue && r.fatigue.earlyScore - r.fatigue.lateScore >= 15);
+  if (fatigueExams.length >= 2) {
+    items.push({ cause: 'Konzentrationsabfall zum Ende der Klausur', description: `In ${fatigueExams.length} Klausuren warst du in der zweiten Hälfte spürbar schwächer als in der ersten.` });
+  }
+
+  return items;
+};
+
+// ─── Langzeit-Entwicklung (früheste vs. neueste Klausur-Hälfte) ────────────────────
+
+const buildLongTermTrend = (examResults: ExamResult[]): LongTermTrendItem[] | null => {
+  if (examResults.length < 4) return null;
+  const chronological = [...examResults].reverse(); // älteste zuerst (Speicherreihenfolge ist neueste zuerst)
+  const mid = Math.floor(chronological.length / 2);
+  const earlyHalf = chronological.slice(0, mid);
+  const lateHalf = chronological.slice(mid);
+
+  const items: LongTermTrendItem[] = [
+    { label: 'Klausurergebnisse', delta: avg(lateHalf.map(r => r.score)) - avg(earlyHalf.map(r => r.score)) },
+  ];
+
+  const earlyByCategory: Record<string, number[]> = {};
+  earlyHalf.forEach(r => (r.categoryBreakdown || []).forEach(({ category, score }) => { (earlyByCategory[category] ??= []).push(score); }));
+  const lateByCategory: Record<string, number[]> = {};
+  lateHalf.forEach(r => (r.categoryBreakdown || []).forEach(({ category, score }) => { (lateByCategory[category] ??= []).push(score); }));
+
+  Object.keys(lateByCategory).forEach(category => {
+    if (!earlyByCategory[category]) return; // nur Kategorien, die in beiden Hälften vorkommen
+    const delta = avg(lateByCategory[category]) - avg(earlyByCategory[category]);
+    items.push({ label: CATEGORY_LABELS[category] || category, delta });
+  });
+
+  return items;
+};
+
 // ─── Vergessensanalyse (aus SRS-Fälligkeit) ─────────────────────────────────────
 
 const buildForgetting = (decks: FlashcardDeck[]): ForgettingItem[] => {
@@ -157,6 +273,27 @@ const buildTimeOfDay = (allTimestampedScores: { timestamp: number; score: number
   return { bestPart, byPart };
 };
 
+// ─── Wochentag-Insight ──────────────────────────────────────────────────────────────
+
+const DAY_NAMES: DayOfWeekStat['day'][] = ['Sonntag', 'Montag', 'Dienstag', 'Mittwoch', 'Donnerstag', 'Freitag', 'Samstag'];
+
+const buildDayOfWeek = (allTimestampedScores: { timestamp: number; score: number }[]): LearningProfile['dayOfWeek'] => {
+  const buckets: Record<string, number[]> = {};
+  allTimestampedScores.forEach(({ timestamp, score }) => {
+    const day = DAY_NAMES[new Date(timestamp).getDay()];
+    (buckets[day] ??= []).push(score);
+  });
+  const byDay = Object.entries(buckets)
+    .filter(([, scores]) => scores.length >= 2)
+    .map(([day, scores]) => ({ day: day as DayOfWeekStat['day'], avgScore: avg(scores), sessions: scores.length }));
+
+  const bestDay = byDay.length > 0
+    ? byDay.reduce((best, cur) => cur.avgScore > best.avgScore ? cur : best).day
+    : null;
+
+  return { bestDay, byDay };
+};
+
 // ─── Klausurprognose ─────────────────────────────────────────────────────────────
 
 const buildExamPrognosis = (examResults: ExamResult[]): ExamPrognosis | null => {
@@ -168,6 +305,32 @@ const buildExamPrognosis = (examResults: ExamResult[]): ExamPrognosis | null => 
   const passedShare = (recent.filter(r => r.passed).length / recent.length) * 100;
   const passProbability = Math.round(weightedScore * 0.7 + passedShare * 0.3);
   return { grade: germanGradeFromPercentage(weightedScore).grade, passProbability, basis: recent.length };
+};
+
+// ─── Motivations-Banner (regelbasiert, kein KI-Call) ───────────────────────────────
+
+const buildMotivationLine = (
+  timestamped: { timestamp: number; score: number }[],
+  examPrognosis: ExamPrognosis | null,
+  streakCurrent: number,
+): string => {
+  const now = Date.now();
+  const recent = timestamped.filter(t => now - t.timestamp <= 7 * DAY_MS);
+  const prior = timestamped.filter(t => now - t.timestamp > 7 * DAY_MS && now - t.timestamp <= 21 * DAY_MS);
+  if (recent.length >= 2 && prior.length >= 2 && avg(recent.map(t => t.score)) >= avg(prior.map(t => t.score)) + 8) {
+    return 'Du bist heute besser vorbereitet als vor zwei Wochen.';
+  }
+
+  if (examPrognosis && examPrognosis.passProbability >= 80 && examPrognosis.passProbability < 90) {
+    return `Deine Bestehenswahrscheinlichkeit liegt bei ${examPrognosis.passProbability}% — noch ein Stück bis über 90%.`;
+  }
+
+  const overallTrend = trendOf([...timestamped].sort((a, b) => b.timestamp - a.timestamp).map(t => t.score));
+  if (overallTrend === 'up' || streakCurrent >= 3) {
+    return 'Deine Klausurleistungen verbessern sich kontinuierlich.';
+  }
+
+  return 'Bleib dran — jede Lernsession bringt dich näher an dein Ziel.';
 };
 
 // ─── Hauptfunktion ────────────────────────────────────────────────────────────────
@@ -197,13 +360,22 @@ export const buildLearningProfile = ({
   const weeksSpan = Math.max(1, (Date.now() - oldestTimestamp) / (7 * DAY_MS));
   const sessionsPerWeek = Math.round((quizResults.length + recallResults.length + examResults.length) / weeksSpan);
 
+  const categoryMastery = buildCategoryMastery(examResults);
+  const topicMastery = buildTopicMastery(metrics, quizResults, examResults);
+  const examPrognosis = buildExamPrognosis(examResults);
+
   return {
     perMethod: buildPerMethod(quizResults, recallResults, examResults, metrics),
-    topicMastery: buildTopicMastery(metrics, quizResults, examResults),
-    categoryMastery: buildCategoryMastery(examResults),
+    topicMastery,
+    categoryMastery,
+    typeMastery: buildTypeMastery(quizResults, examResults),
     forgetting: buildForgetting(decks),
     timeOfDay: buildTimeOfDay(timestamped),
-    examPrognosis: buildExamPrognosis(examResults),
+    dayOfWeek: buildDayOfWeek(timestamped),
+    examPrognosis,
+    causeAnalysis: buildCauseAnalysis(categoryMastery, topicMastery, examResults),
+    longTermTrend: buildLongTermTrend(examResults),
+    motivationLine: buildMotivationLine(timestamped, examPrognosis, streak.current),
     volume: { streakCurrent: streak.current, streakBest: streak.best, sessionsPerWeek, totalSessions },
   };
 };

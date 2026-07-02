@@ -3,7 +3,7 @@ import { buildLearningProfile, germanGradeFromPercentage } from './learningProfi
 import type { QuizResult } from './quizHistoryService';
 import type { ExamResult } from './examHistoryService';
 import type { RecallResult } from './recallHistoryService';
-import type { TopicMetric, FlashcardDeck } from '../types';
+import type { TopicMetric, FlashcardDeck, QuizQuestion, UserAnswer } from '../types';
 
 const DAY_MS = 24 * 60 * 60 * 1000;
 const now = Date.now();
@@ -135,5 +135,123 @@ describe('buildLearningProfile — Klausurprognose', () => {
   it('liefert null ohne Klausur-Historie', () => {
     const profile = buildLearningProfile(emptyInput);
     expect(profile.examPrognosis).toBeNull();
+  });
+});
+
+describe('buildLearningProfile — Lerngewinn pro Methode', () => {
+  it('berechnet improvementPerSession aus erster vs. letzter 3 Sessions', () => {
+    // Speicherreihenfolge neueste zuerst: 90,85,80 (neu) ... 40,35,30 (alt) → klare Verbesserung
+    const quizResults: QuizResult[] = [90, 85, 80, 60, 40, 35, 30].map((score, i) => ({
+      id: `q${i}`, docId: 'd', docName: 'Doc', timestamp: now - i * DAY_MS, score,
+      correctCount: 1, totalCount: 1, weakTopics: [], questions: [], answers: [],
+    }));
+    const profile = buildLearningProfile({ ...emptyInput, quizResults });
+    const quiz = profile.perMethod.find(m => m.method === 'quiz');
+    expect(quiz?.improvementPerSession).toBeGreaterThan(0);
+  });
+
+  it('liefert 0 unter der Mindestmenge von 4 Sessions', () => {
+    const quizResults: QuizResult[] = [90, 40].map((score, i) => ({
+      id: `q${i}`, docId: 'd', docName: 'Doc', timestamp: now - i * DAY_MS, score,
+      correctCount: 1, totalCount: 1, weakTopics: [], questions: [], answers: [],
+    }));
+    const profile = buildLearningProfile({ ...emptyInput, quizResults });
+    expect(profile.perMethod.find(m => m.method === 'quiz')?.improvementPerSession).toBe(0);
+  });
+});
+
+describe('buildLearningProfile — Wissensprofil (Fragetyp)', () => {
+  it('kombiniert Klausur-typeBreakdown und Quiz-Antworten unter gemeinsamem Label', () => {
+    const examResults: ExamResult[] = [
+      { id: 'e1', docName: 'K1', timestamp: now, score: 70, passed: true, totalPoints: 100, achievedPoints: 70, weakTopics: [], typeBreakdown: [{ type: 'fillblank', score: 40 }] },
+    ];
+    const questions: QuizQuestion[] = [
+      { question: 'Q1', options: [], correctAnswerIndices: [0], isMultipleChoice: false, explanation: '', distractorExplanations: [], sourceReference: '', questionType: 'cloze' },
+      { question: 'Q2', options: [], correctAnswerIndices: [0], isMultipleChoice: false, explanation: '', distractorExplanations: [], sourceReference: '', questionType: 'cloze' },
+    ];
+    const answers: UserAnswer[] = [
+      { questionIndex: 0, selectedOptionIndices: [], isCorrect: true },
+      { questionIndex: 1, selectedOptionIndices: [], isCorrect: false },
+    ];
+    const quizResults: QuizResult[] = [
+      { id: 'q1', docId: 'd', docName: 'Doc', timestamp: now, score: 50, correctCount: 1, totalCount: 2, weakTopics: [], questions, answers },
+    ];
+    const profile = buildLearningProfile({ ...emptyInput, examResults, quizResults });
+    // "fillblank" (Exam) und "cloze" (Quiz) müssen unter "Lückentext" zusammengeführt werden
+    const lueckentext = profile.typeMastery.find(t => t.label === 'Lückentext');
+    expect(lueckentext).toBeDefined();
+    expect(lueckentext!.avgScore).toBe(Math.round((40 + 50) / 2));
+  });
+});
+
+describe('buildLearningProfile — Ursachenanalyse', () => {
+  it('meldet nur wirklich ausgelöste Ursachen, keine Platzhalter', () => {
+    const examResults: ExamResult[] = [
+      { id: 'e1', docName: 'K1', timestamp: now, score: 50, passed: false, totalPoints: 100, achievedPoints: 50, weakTopics: [], categoryBreakdown: [{ category: 'transfer', score: 30 }] },
+    ];
+    const profile = buildLearningProfile({ ...emptyInput, examResults });
+    expect(profile.causeAnalysis.some(c => c.cause === 'Transferprobleme')).toBe(true);
+    expect(profile.causeAnalysis.some(c => c.cause === 'Definitionsprobleme')).toBe(false);
+  });
+
+  it('erkennt Konzentrationsabfall erst ab zwei betroffenen Klausuren', () => {
+    const examResults: ExamResult[] = [
+      { id: 'e1', docName: 'K1', timestamp: now, score: 60, passed: true, totalPoints: 100, achievedPoints: 60, weakTopics: [], fatigue: { earlyScore: 80, lateScore: 40 } },
+      { id: 'e2', docName: 'K2', timestamp: now - DAY_MS, score: 60, passed: true, totalPoints: 100, achievedPoints: 60, weakTopics: [], fatigue: { earlyScore: 85, lateScore: 50 } },
+    ];
+    const profile = buildLearningProfile({ ...emptyInput, examResults });
+    expect(profile.causeAnalysis.some(c => c.cause.includes('Konzentrationsabfall'))).toBe(true);
+  });
+
+  it('liefert leere Liste ohne jeden Trigger', () => {
+    const profile = buildLearningProfile(emptyInput);
+    expect(profile.causeAnalysis).toEqual([]);
+  });
+});
+
+describe('buildLearningProfile — Langzeit-Entwicklung', () => {
+  it('liefert null unter 4 Klausuren', () => {
+    const examResults: ExamResult[] = [1, 2, 3].map(i => ({
+      id: `e${i}`, docName: `K${i}`, timestamp: now - i * DAY_MS, score: 50, passed: true, totalPoints: 100, achievedPoints: 50, weakTopics: [],
+    }));
+    const profile = buildLearningProfile({ ...emptyInput, examResults });
+    expect(profile.longTermTrend).toBeNull();
+  });
+
+  it('vergleicht früheste vs. neueste Hälfte bei genug Klausuren', () => {
+    // Speicherreihenfolge neueste zuerst: 90,85 (neu) ... 40,35 (alt)
+    const examResults: ExamResult[] = [90, 85, 40, 35].map((score, i) => ({
+      id: `e${i}`, docName: `K${i}`, timestamp: now - i * DAY_MS, score, passed: true, totalPoints: 100, achievedPoints: score, weakTopics: [],
+    }));
+    const profile = buildLearningProfile({ ...emptyInput, examResults });
+    expect(profile.longTermTrend).not.toBeNull();
+    const overall = profile.longTermTrend!.find(t => t.label === 'Klausurergebnisse');
+    expect(overall?.delta).toBeGreaterThan(0);
+  });
+});
+
+describe('buildLearningProfile — Motivations-Banner', () => {
+  it('liefert immer einen nicht-leeren Satz, auch ohne Daten', () => {
+    const profile = buildLearningProfile(emptyInput);
+    expect(profile.motivationLine.length).toBeGreaterThan(0);
+  });
+
+  it('erkennt Verbesserung gegenüber vor zwei Wochen', () => {
+    const quizResults: QuizResult[] = [
+      { id: 'q1', docId: 'd', docName: 'Doc', timestamp: now - 1 * DAY_MS, score: 90, correctCount: 1, totalCount: 1, weakTopics: [], questions: [], answers: [] },
+      { id: 'q2', docId: 'd', docName: 'Doc', timestamp: now - 2 * DAY_MS, score: 85, correctCount: 1, totalCount: 1, weakTopics: [], questions: [], answers: [] },
+      { id: 'q3', docId: 'd', docName: 'Doc', timestamp: now - 15 * DAY_MS, score: 40, correctCount: 1, totalCount: 1, weakTopics: [], questions: [], answers: [] },
+      { id: 'q4', docId: 'd', docName: 'Doc', timestamp: now - 18 * DAY_MS, score: 35, correctCount: 1, totalCount: 1, weakTopics: [], questions: [], answers: [] },
+    ];
+    const profile = buildLearningProfile({ ...emptyInput, quizResults });
+    expect(profile.motivationLine).toBe('Du bist heute besser vorbereitet als vor zwei Wochen.');
+  });
+});
+
+describe('buildLearningProfile — Wochentag-Insight', () => {
+  it('liefert null ohne genug Sessions an einem Wochentag', () => {
+    const profile = buildLearningProfile(emptyInput);
+    expect(profile.dayOfWeek.bestDay).toBeNull();
+    expect(profile.dayOfWeek.byDay).toEqual([]);
   });
 });

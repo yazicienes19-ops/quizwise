@@ -11,6 +11,9 @@ export interface ExamResult {
   achievedPoints: number;
   weakTopics: string[];
   categoryBreakdown?: { category: string; score: number }[];
+  typeBreakdown?: { type: string; score: number }[];
+  /** Score erste vs. zweite Hälfte der Fragen (Original-Reihenfolge) — Signal für Konzentrationsabfall */
+  fatigue?: { earlyScore: number; lateScore: number };
 }
 
 const readAll = (): ExamResult[] => {
