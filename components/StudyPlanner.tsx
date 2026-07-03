@@ -6,7 +6,7 @@ import { generateSmartStudyPlan } from '../services/geminiService';
 import { countDueCards, migrateLegacyCard } from '../services/spacedRepetition';
 import { getMistakeQueue } from '../services/mistakeReviewService';
 import { getAllResults } from '../services/quizHistoryService';
-import { getSpacedSettings, saveSpacedSettings, buildSpacedPlan, applySpacedPlan } from '../services/spacedPlanningService';
+import { getSpacedSettings, saveSpacedSettings, buildSpacedPlan, applySpacedPlan, buildDueForecast } from '../services/spacedPlanningService';
 import { toast } from '../services/toast';
 import { ChevronLeft, ChevronRight, X, Plus } from 'lucide-react';
 
@@ -210,7 +210,7 @@ export const StudyPlanner: React.FC<StudyPlannerProps> = ({ metrics, decks, exam
   const handleSmartPlan = async () => {
     setIsGenerating(true);
     try {
-      const plan = await generateSmartStudyPlan(metrics, decks, examTerms);
+      const plan = await generateSmartStudyPlan(metrics, decks, examTerms, buildDueForecast(decks, getMistakeQueue(), 7));
       savePlan(plan);
       const days = [...new Set(plan.map(e => e.day))];
       toast.success(`Plan erstellt: ${plan.length} Einträge für ${days.length} Tag${days.length !== 1 ? 'e' : ''}.`);

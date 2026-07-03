@@ -1,4 +1,5 @@
 import { Type } from "@google/genai";
+import { countDueCards, migrateLegacyCard } from './spacedRepetition';
 import {
   QuizQuestion,
   Flashcard,
@@ -312,11 +313,12 @@ export const searchScholar = async (query: string): Promise<{ text: string, resu
   return { text: '', results: data.results || [] };
 };
 
-export const generateSmartStudyPlan = async (metrics: TopicMetric[], decks: FlashcardDeck[], exams: ExamTerm[]): Promise<StudyEntry[]> => {
+export const generateSmartStudyPlan = async (metrics: TopicMetric[], decks: FlashcardDeck[], exams: ExamTerm[], dueForecast?: number[]): Promise<StudyEntry[]> => {
   const context = {
     knowledgeGaps: metrics.filter(m => m.confidence < 70).map(m => ({ topic: m.topic, confidence: m.confidence })),
-    flashcardStatus: decks.map(d => ({ title: d.title, dueCards: d.cards.filter(c => c.nextReview <= Date.now() || c.level === 0).length })),
-    upcomingExams: exams
+    flashcardStatus: decks.map(d => ({ title: d.title, dueCards: countDueCards(d.cards.map(c => c.srs ? c : { ...c, srs: migrateLegacyCard(c) })) })),
+    upcomingExams: exams,
+    ...(dueForecast ? { dueLoadNext7Days: dueForecast.slice(0, 7) } : {}),
   };
 
   const text = await callBackend({
@@ -325,7 +327,8 @@ export const generateSmartStudyPlan = async (metrics: TopicMetric[], decks: Flas
   ANFORDERUNGEN:
   1. Plane täglich 2-3 Sessions zwischen 08:00 und 20:00 Uhr.
   2. Priorisiere Themen mit niedriger confidence (Wissenslücken).
-  3. Berücksichtige die Prüfungstermine.
+  3. Berücksichtige die Prüfungstermine.${dueForecast ? `
+  3b. dueLoadNext7Days = fällige Wiederholungen pro Tag (Index 0 = heute): plane an Tagen mit hoher Last kürzere Neustoff-Sessions und explizite Wiederholungs-Sessions ein.` : ''}
   4. Weise jeder Session eine Farbe zu (emerald, blue, purple, rose).
   5. Sessions: 60 bis 120 Minuten.
   GIB NUR DAS JSON-ARRAY ZURÜCK.` }],
