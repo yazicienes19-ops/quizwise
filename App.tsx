@@ -71,6 +71,7 @@ const App: React.FC = () => {
         if (cloud.learning.quiz_history.length) localStorage.setItem('quizwise_quiz_history', JSON.stringify(cloud.learning.quiz_history));
         if (cloud.learning.exam_history.length) localStorage.setItem('quizwise_exam_history', JSON.stringify(cloud.learning.exam_history));
         if (cloud.learning.recall_history.length) localStorage.setItem('quizwise_recall_history', JSON.stringify(cloud.learning.recall_history));
+        if (cloud.learning.mistake_queue.length) localStorage.setItem('quizwise_mistake_queue', JSON.stringify(cloud.learning.mistake_queue));
       }
       if (cloud.metrics.length) { setMetrics(cloud.metrics); localStorage.setItem('quizwise_metrics', JSON.stringify(cloud.metrics)); }
       if (cloud.saved) {

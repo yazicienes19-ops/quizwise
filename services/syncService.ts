@@ -7,6 +7,7 @@ export interface CloudLearningData {
   quiz_history: any[];
   exam_history: any[];
   recall_history: any[];
+  mistake_queue: any[];
 }
 
 export interface CloudSavedContent {
@@ -25,6 +26,7 @@ export interface CloudPreferences {
   onboarding_done?: boolean;
   feynman_intro_done?: boolean;
   recall_intro_done?: boolean;
+  spaced_planning?: boolean;
 }
 
 export interface AllCloudData {
@@ -40,6 +42,7 @@ const EMPTY_LEARNING: CloudLearningData = {
   quiz_history: [],
   exam_history: [],
   recall_history: [],
+  mistake_queue: [],
 };
 
 const EMPTY_SAVED: CloudSavedContent = {
@@ -81,6 +84,7 @@ export async function loadAllCloudData(userId: string): Promise<AllCloudData> {
       quiz_history: learningRes.data.quiz_history ?? [],
       exam_history: learningRes.data.exam_history ?? [],
       recall_history: learningRes.data.recall_history ?? [],
+      mistake_queue: learningRes.data.mistake_queue ?? [],
     } : null,
     saved: savedRes.data ? {
       saved_quizzes: savedRes.data.saved_quizzes ?? [],
@@ -148,14 +152,16 @@ export async function migrateLocalToCloud(userId: string): Promise<void> {
   const quizHistory = readLocal('quizwise_quiz_history');
   const examHistory = readLocal('quizwise_exam_history');
   const recallHistory = readLocal('quizwise_recall_history');
+  const mistakeQueue = readLocal('quizwise_mistake_queue');
 
-  if (streak || examTerms || quizHistory || examHistory || recallHistory) {
+  if (streak || examTerms || quizHistory || examHistory || recallHistory || mistakeQueue) {
     await supabase.from('user_learning_data').update({
       ...(streak ? { streak } : {}),
       ...(examTerms ? { exam_terms: examTerms } : {}),
       ...(quizHistory ? { quiz_history: quizHistory } : {}),
       ...(examHistory ? { exam_history: examHistory } : {}),
       ...(recallHistory ? { recall_history: recallHistory } : {}),
+      ...(mistakeQueue ? { mistake_queue: mistakeQueue } : {}),
       updated_at: new Date().toISOString(),
     }).eq('user_id', userId);
   }
