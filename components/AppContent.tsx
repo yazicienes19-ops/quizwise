@@ -13,6 +13,8 @@ import { getSavedQuizzes } from '../services/savedQuizzesService';
 import { getSavedExams } from '../services/savedExamsService';
 import { searchScholar, searchWeb, generateQuizFromDocument, generateQuizFromFlashcards } from '../services/geminiService';
 import { getAllResults } from '../services/quizHistoryService';
+import { countDueMistakes } from '../services/mistakeReviewService';
+import type { MistakeItem } from '../services/mistakeReviewService';
 import { saveRecallResult } from '../services/recallHistoryService';
 import { saveExamResult } from '../services/examHistoryService';
 import { recordActivity } from '../services/streakService';
@@ -93,6 +95,9 @@ interface AppContentProps {
   handleStartQuizFromDoc: (doc: ProcessedDocument, quizType?: QuizType, options?: any) => Promise<void>;
   handleStartQuizFromSetup: (config: QuizConfig, docIds?: string[]) => Promise<void>;
   handleCreateFlashcardsFromMistakes: (wrongQs: QuizQuestion[]) => void;
+  reviewSessionItems: MistakeItem[] | null;
+  setReviewSessionItems: (items: MistakeItem[] | null) => void;
+  handleStartMistakeReview: () => void;
   handleApiError: (e: any) => void;
   updateMetricsAfterSession: (score: number, name: string, type: 'quiz' | 'exam' | 'recall' | 'cards') => Promise<void>;
 }
@@ -111,6 +116,7 @@ export const AppContent: React.FC<AppContentProps> = (p) => {
     handleSaveQuiz, handleLoadSavedQuiz, handleDeleteSavedQuiz,
     handleLoadSavedExam, handleDeleteSavedExam, onQuizComplete,
     handleStartQuizFromDoc, handleStartQuizFromSetup, handleCreateFlashcardsFromMistakes,
+    setReviewSessionItems, handleStartMistakeReview,
     handleApiError, updateMetricsAfterSession,
   } = p;
 
@@ -189,7 +195,7 @@ export const AppContent: React.FC<AppContentProps> = (p) => {
           setSavedQuizzes(getSavedQuizzes());
           toast.success('Quiz gespeichert!');
         }}
-        onCancel={() => { clearQuizProgress(); setQuizInitialAnswers(undefined); setQuestions([]); setAnswers([]); setPendingActionDoc(null); }}
+        onCancel={() => { clearQuizProgress(); setQuizInitialAnswers(undefined); setQuestions([]); setAnswers([]); setPendingActionDoc(null); setReviewSessionItems(null); }}
       />;
       if (answers.length > 0) return <ResultView
         answers={answers} questions={questions} docName={activeQuizMeta?.docName}
@@ -199,8 +205,35 @@ export const AppContent: React.FC<AppContentProps> = (p) => {
         onCreateFlashcards={pendingActionDoc ? handleCreateFlashcardsFromMistakes : undefined}
         onSaveQuiz={handleSaveQuiz}
       />;
+      const dueMistakes = countDueMistakes();
       return (
         <div>
+          {dueMistakes > 0 && (
+            <div className="max-w-3xl mx-auto px-4 pt-6 pb-2">
+              <div
+                className="flex items-center justify-between gap-4 rounded-[20px] px-5 py-4"
+                style={{
+                  background: 'color-mix(in srgb, var(--primary) 8%, transparent)',
+                  border: '1px solid color-mix(in srgb, var(--primary) 20%, transparent)',
+                }}
+              >
+                <div className="min-w-0">
+                  <p className="text-[9px] font-black uppercase tracking-widest" style={{ color: 'var(--primary)' }}>Wiederholen</p>
+                  <p className="text-sm font-black dark:text-white mt-0.5">
+                    {dueMistakes} Frage{dueMistakes !== 1 ? 'n' : ''} fällig — aus früheren Fehlern
+                  </p>
+                  <p className="text-[10px] font-medium text-slate-400 mt-0.5">Richtig beantwortet = längeres Intervall, falsch = bald wieder dran.</p>
+                </div>
+                <button
+                  onClick={handleStartMistakeReview}
+                  className="px-5 py-3 rounded-[14px] text-[10px] font-black uppercase tracking-widest text-white hover:scale-105 active:scale-95 transition-all shrink-0"
+                  style={{ background: 'var(--primary)' }}
+                >
+                  Wiederholen üben
+                </button>
+              </div>
+            </div>
+          )}
           {savedQuizzes.length > 0 && (
             <div className="max-w-3xl mx-auto px-4 pt-6 pb-2 space-y-3">
               <p className="text-[9px] font-black uppercase tracking-[0.3em] text-slate-400">Gespeicherte Quizze</p>

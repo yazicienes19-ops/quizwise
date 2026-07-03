@@ -2,6 +2,7 @@
 import React, { useState, useEffect, useMemo } from 'react';
 import { ActiveTab, FlashcardDeck } from '../types';
 import { countDueCards, migrateLegacyCard } from '../services/spacedRepetition';
+import { countDueMistakes } from '../services/mistakeReviewService';
 import { getStreak } from '../services/streakService';
 import {
   Home, BookOpen, HelpCircle, Calendar, Brain, GraduationCap,
@@ -63,6 +64,8 @@ export const Layout: React.FC<LayoutProps> = ({
       return countDueCards(allCards);
     } catch { return 0; }
   }, []);
+
+  const dueMistakesCount = useMemo(() => countDueMistakes(), []);
 
   const streak = useMemo(() => getStreak(), []);
 
@@ -164,6 +167,12 @@ export const Layout: React.FC<LayoutProps> = ({
                           className="text-[8px] font-black rounded-full px-1.5 py-0.5 shrink-0"
                           style={{ background: 'var(--primary)', color: 'var(--primary-text)' }}
                         >{dueCardsCount}</span>
+                      )}
+                      {item.tab === ActiveTab.QUIZ && dueMistakesCount > 0 && (
+                        <span
+                          className="text-[8px] font-black rounded-full px-1.5 py-0.5 shrink-0"
+                          style={{ background: 'var(--primary)', color: 'var(--primary-text)' }}
+                        >{dueMistakesCount}</span>
                       )}
                     </button>
                   );

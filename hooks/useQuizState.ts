@@ -7,6 +7,9 @@ import { getSavedQuizzes, saveQuizToStorage, deleteSavedQuiz, SavedQuiz } from '
 import { getSavedExams, deleteSavedExam, SavedExam } from '../services/savedExamsService';
 import { getMeta, saveMeta, documentDisplayName } from '../services/libraryService';
 import { saveQuizResult, getDocStats } from '../services/quizHistoryService';
+import { addMistakes, getDueMistakes, rateMistake, MistakeItem } from '../services/mistakeReviewService';
+import { interleaveByKey } from '../services/interleave';
+import { countDueCards, migrateLegacyCard } from '../services/spacedRepetition';
 import { recordActivity } from '../services/streakService';
 import { toast } from '../services/toast';
 
@@ -29,6 +32,9 @@ interface UseQuizStateParams {
 
 const PROGRESS_KEY = 'quizwise_quiz_progress';
 
+/** Meta-docId für Wiederholungs-Sessions aus der Fehler-Queue. */
+export const MISTAKE_REVIEW_DOC_ID = 'mistake-review';
+
 export const useQuizState = (params: UseQuizStateParams) => {
   const [questions, setQuestions] = useState<QuizQuestion[]>([]);
   const [answers, setAnswers] = useState<UserAnswer[]>([]);
@@ -37,10 +43,13 @@ export const useQuizState = (params: UseQuizStateParams) => {
   const [savedQuizzes, setSavedQuizzes] = useState<SavedQuiz[]>(() => getSavedQuizzes());
   const [savedExams, setSavedExams] = useState<SavedExam[]>(() => getSavedExams());
   const [examInitialQuestions, setExamInitialQuestions] = useState<SavedExam | null>(null);
+  const [reviewSessionItems, setReviewSessionItems] = useState<MistakeItem[] | null>(null);
 
   const progressTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   const saveQuizProgress = (qs: QuizQuestion[], ans: UserAnswer[], meta: { docId: string; docName: string } | null) => {
+    // Review-Sessions sind kurz und werden über den SRS-Status verwaltet — kein Resume
+    if (meta?.docId === MISTAKE_REVIEW_DOC_ID) return;
     if (progressTimer.current) clearTimeout(progressTimer.current);
     progressTimer.current = setTimeout(() => {
       localStorage.setItem(PROGRESS_KEY, JSON.stringify({ questions: qs, answers: ans, meta, timestamp: Date.now() }));
@@ -181,6 +190,22 @@ export const useQuizState = (params: UseQuizStateParams) => {
     } catch (e) { params.handleApiError(e); } finally { params.setIsLoading(false); }
   };
 
+  /** Startet eine Wiederholungs-Session aus fälligen Fehlerfragen (interleaved). */
+  const handleStartMistakeReview = () => {
+    const due = getDueMistakes();
+    if (!due.length) { toast.info('Keine fälligen Fragen zum Wiederholen.'); return; }
+    // Interleaving: nie zwei Fragen zum selben Thema hintereinander
+    const ordered = interleaveByKey(due, i => i.question.topic || i.docName);
+    clearQuizProgress();
+    setReviewSessionItems(ordered);
+    setQuestions(ordered.map(i => i.question));
+    setAnswers([]);
+    setQuizInitialAnswers(undefined);
+    setActiveQuizMeta({ docId: MISTAKE_REVIEW_DOC_ID, docName: 'Fehler-Wiederholung' });
+    params.setPendingActionDoc(null);
+    params.setActiveTab(ActiveTab.QUIZ);
+  };
+
   const onQuizComplete = async (ans: UserAnswer[]) => {
     clearQuizProgress();
     setQuizInitialAnswers(undefined);
@@ -191,13 +216,33 @@ export const useQuizState = (params: UseQuizStateParams) => {
     const allTopics = wrongQs.map(q => q.topic).filter((t): t is string => Boolean(t));
     const weakTopics = allTopics.filter((t, i) => allTopics.indexOf(t) === i);
 
-    if (activeQuizMeta) {
+    // Wiederholungs-Session: nur SRS-Re-Rating, keine History/Metriken
+    if (reviewSessionItems) {
+      reviewSessionItems.forEach((item, i) => {
+        const a = ans[i];
+        if (a) rateMistake(item.id, !!a.isCorrect, params.userId);
+      });
+      setReviewSessionItems(null);
+      const dueCardsLeft = params.decks.reduce((sum, d) =>
+        sum + countDueCards(d.cards.map(c => c.srs ? c : { ...c, srs: migrateLegacyCard(c) })), 0);
+      toast.success(`Wiederholung abgeschlossen: ${correct} von ${ans.length} richtig${dueCardsLeft > 0 ? ` · Noch ${dueCardsLeft} Karte${dueCardsLeft !== 1 ? 'n' : ''} fällig` : ''}`);
+      recordActivity(params.userId);
+      return;
+    }
+
+    const isMistakeReviewMeta = activeQuizMeta?.docId === MISTAKE_REVIEW_DOC_ID;
+
+    if (activeQuizMeta && !isMistakeReviewMeta) {
       saveQuizResult({ docId: activeQuizMeta.docId, docName: activeQuizMeta.docName, timestamp: Date.now(), score, correctCount: correct, totalCount: ans.length, weakTopics, questions, answers: ans }, params.userId);
       const stats = getDocStats(activeQuizMeta.docId);
       saveMeta(activeQuizMeta.docId, { quizCount: stats.count, lastQuizAt: Date.now(), avgQuizAccuracy: stats.avgAccuracy ?? score, weakTopics: stats.weakTopics });
+      // Falsche Fragen für spätere SM-2-Wiederholung einreihen
+      if (wrongQs.length) addMistakes(wrongQs, activeQuizMeta, params.userId);
     }
 
-    await params.updateMetricsAfterSession(score, activeQuizMeta?.docName || 'Quiz Session', 'quiz');
+    if (!isMistakeReviewMeta) {
+      await params.updateMetricsAfterSession(score, activeQuizMeta?.docName || 'Quiz Session', 'quiz');
+    }
     recordActivity(params.userId);
   };
 
@@ -243,5 +288,6 @@ export const useQuizState = (params: UseQuizStateParams) => {
     handleLoadSavedExam, handleDeleteSavedExam,
     handleStartQuizFromDoc, handleStartQuizFromSetup,
     onQuizComplete, handleCreateFlashcardsFromMistakes,
+    reviewSessionItems, setReviewSessionItems, handleStartMistakeReview,
   };
 };
