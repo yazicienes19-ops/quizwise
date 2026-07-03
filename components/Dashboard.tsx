@@ -5,6 +5,7 @@ import { GeneratedImage } from './GeneratedImage';
 import { toast } from '../services/toast';
 import { Layers, Flame } from 'lucide-react';
 import { countDueCards, migrateLegacyCard } from '../services/spacedRepetition';
+import { countDueMistakes } from '../services/mistakeReviewService';
 import { getStreak } from '../services/streakService';
 
 const USAGE_KEY = 'quizwise_feature_usage';
@@ -28,6 +29,8 @@ interface DashboardProps {
   flowResult: LearningFlowResult | null;
   onAcceptFlow: (res: LearningFlowResult) => void;
   documents?: ProcessedDocument[];
+  /** Startet die Wiederholungs-Session fälliger Fehlerfragen (Quiz-Tab). */
+  onStartMistakeReview?: () => void;
 }
 
 interface ActionCard {
@@ -48,7 +51,7 @@ const BASE_CARDS: ActionCard[] = [
   { id: ActiveTab.RADAR, title: 'Lern-Analyse', desc: 'Identifiziere Lücken im Verständnis.', prompt: 'Data analysis radar chart, academic illustration', color: 'text-emerald-500' }
 ];
 
-export const Dashboard: React.FC<DashboardProps> = ({ onTabChange, flowResult, documents = [] }) => {
+export const Dashboard: React.FC<DashboardProps> = ({ onTabChange, flowResult, documents = [], onStartMistakeReview }) => {
   const [hovered, setHovered] = useState<ActiveTab | null>(null);
   const [usageCounts, setUsageCounts] = useState<Record<string, number>>(getUsageCounts);
 
@@ -59,6 +62,8 @@ export const Dashboard: React.FC<DashboardProps> = ({ onTabChange, flowResult, d
       return countDueCards(allCards);
     } catch { return 0; }
   }, []);
+
+  const dueMistakesCount = useMemo(() => countDueMistakes(), []);
 
   const streak = useMemo(() => getStreak(), []);
 
@@ -177,23 +182,53 @@ export const Dashboard: React.FC<DashboardProps> = ({ onTabChange, flowResult, d
         </div>
       </div>
 
-      {/* Top-Banner: Due + Streak + Exam Countdown */}
-      {(dueCardsCount > 0 || streak.current > 0 || nextExam) && (
+      {/* Top-Banner: Heute fällig (Karten + Fehlerfragen) + Streak + Exam Countdown */}
+      {(dueCardsCount > 0 || dueMistakesCount > 0 || streak.current > 0 || nextExam) && (
         <div className="max-w-6xl mx-auto w-full grid grid-cols-1 sm:grid-cols-3 gap-3">
-          {dueCardsCount > 0 && (
-            <button
-              onClick={() => onTabChange(ActiveTab.CARDS)}
-              className="flex items-center gap-3 px-5 py-4 rounded-[20px] transition-all hover:scale-[1.02] active:scale-[0.98] text-left"
+          {(dueCardsCount > 0 || dueMistakesCount > 0) && (
+            <div
+              className="px-5 py-4 rounded-[20px] space-y-3"
               style={{ background: 'color-mix(in srgb, var(--primary) 10%, var(--bg-sidebar))', border: '1px solid color-mix(in srgb, var(--primary) 25%, transparent)' }}
             >
-              <div className="w-9 h-9 rounded-xl flex items-center justify-center shrink-0" style={{ background: 'var(--primary)' }}>
-                <Layers size={16} style={{ color: 'var(--primary-text)' }} />
+              <div className="flex items-center gap-3">
+                <div className="w-9 h-9 rounded-xl flex items-center justify-center shrink-0" style={{ background: 'var(--primary)' }}>
+                  <Layers size={16} style={{ color: 'var(--primary-text)' }} />
+                </div>
+                <div className="min-w-0">
+                  <p className="text-[11px] font-black uppercase tracking-widest" style={{ color: 'var(--primary)' }}>Heute fällig</p>
+                  <p className="text-[9px] text-slate-400 truncate">
+                    {[
+                      dueCardsCount > 0 ? `${dueCardsCount} Karte${dueCardsCount !== 1 ? 'n' : ''}` : null,
+                      dueMistakesCount > 0 ? `${dueMistakesCount} Frage${dueMistakesCount !== 1 ? 'n' : ''}` : null,
+                    ].filter(Boolean).join(' · ')}
+                  </p>
+                </div>
               </div>
-              <div>
-                <p className="text-[11px] font-black uppercase tracking-widest" style={{ color: 'var(--primary)' }}>{dueCardsCount} fällig heute</p>
-                <p className="text-[9px] text-slate-400">Karteikarten wiederholen</p>
+              <div className="flex gap-2">
+                {dueCardsCount > 0 && (
+                  <button
+                    onClick={() => onTabChange(ActiveTab.CARDS)}
+                    className="flex-1 py-2 rounded-xl text-[9px] font-black uppercase tracking-widest text-white hover:scale-[1.03] active:scale-95 transition-all"
+                    style={{ background: 'var(--primary)' }}
+                  >
+                    Karten wiederholen
+                  </button>
+                )}
+                {dueMistakesCount > 0 && onStartMistakeReview && (
+                  <button
+                    onClick={onStartMistakeReview}
+                    className="flex-1 py-2 rounded-xl text-[9px] font-black uppercase tracking-widest transition-all hover:scale-[1.03] active:scale-95"
+                    style={{
+                      background: 'color-mix(in srgb, var(--primary) 12%, transparent)',
+                      color: 'var(--primary)',
+                      border: '1px solid color-mix(in srgb, var(--primary) 30%, transparent)',
+                    }}
+                  >
+                    Fragen wiederholen
+                  </button>
+                )}
               </div>
-            </button>
+            </div>
           )}
           {streak.current > 0 && (
             <div
