@@ -45,7 +45,7 @@ interface ActionCard {
 const BASE_CARDS: ActionCard[] = [
   { id: ActiveTab.RECALL, title: 'Recall Studio', desc: 'Meistere Themen mit der Feynman-Methode.', prompt: 'Human brain active recall, academic illustration', color: 'text-indigo-600', badge: 'Active Recall' },
   { id: ActiveTab.LIBRARY, title: 'Bibliothek', desc: 'Verwalte deine PDF-Sammlung und Quellen.', prompt: 'Academic library books, minimalist illustration', color: 'text-blue-500' },
-  { id: ActiveTab.QUIZ, title: 'Quiz Center', desc: 'KI-gestützte Tests für maximalen Erfolg.', prompt: 'Target bullseye icon, academic minimalist illustration', color: 'text-indigo-500', badge: 'KI-Powered' },
+  { id: ActiveTab.QUIZ, title: 'Quiz Center', desc: 'Teste dich mit Fragen aus deinen Unterlagen.', prompt: 'Target bullseye icon, academic minimalist illustration', color: 'text-indigo-500', badge: 'KI-Powered' },
   { id: ActiveTab.EXAM, title: 'Klausur-Modus', desc: 'Simuliere echte Prüfungen unter Zeitdruck.', prompt: 'Exam paper graduation cap, academic illustration', color: 'text-rose-500', badge: 'Advanced' },
   { id: ActiveTab.CARDS, title: 'Karteikarten', desc: 'Training nach Anki-Standard.', prompt: 'Flashcards study deck, minimalist illustration', color: 'text-violet-500' },
   { id: ActiveTab.RADAR, title: 'Lern-Analyse', desc: 'Identifiziere Lücken im Verständnis.', prompt: 'Data analysis radar chart, academic illustration', color: 'text-emerald-500' }
@@ -144,7 +144,7 @@ export const Dashboard: React.FC<DashboardProps> = ({ onTabChange, flowResult, d
         <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 max-w-2xl w-full">
           {[
             { n: '1', label: 'Dokument hochladen', desc: 'PDF, Word oder Text aus deinem Studium' },
-            { n: '2', label: 'Quiz generieren', desc: 'KI erstellt sofort Fragen aus deinen Unterlagen' },
+            { n: '2', label: 'Quiz generieren', desc: 'QuizWise erstellt sofort Fragen aus deinen Unterlagen' },
             { n: '3', label: 'Klausur bestehen', desc: 'Lerne gezielt, erkenne Lücken, erziele bessere Noten' },
           ].map(({ n, label, desc }) => (
             <div key={n} className="p-5 rounded-[24px] space-y-2" style={{ background: 'var(--bg-sidebar)', border: '1px solid var(--border-color)' }}>
@@ -292,7 +292,7 @@ export const Dashboard: React.FC<DashboardProps> = ({ onTabChange, flowResult, d
         <div className="max-w-6xl mx-auto space-y-8 animate-in slide-in-from-bottom-8 duration-700">
           <div className="flex justify-between items-center px-4">
             <h2 className="text-[11px] font-black uppercase tracking-[0.4em] text-indigo-500 flex items-center gap-2">
-              Nächste Schritte (KI-Empfehlung)
+              Nächste Schritte (Empfehlung)
               <GeneratedImage prompt="Sparkles icon, academic minimalist" className="w-4 h-4 rounded-full" />
             </h2>
           </div>

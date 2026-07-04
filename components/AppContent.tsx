@@ -140,7 +140,7 @@ export const AppContent: React.FC<AppContentProps> = (p) => {
           <div className="w-20 h-20 lg:w-24 lg:h-24 border-8 border-indigo-100 dark:border-indigo-900/30 rounded-full" />
           <div className="w-20 h-20 lg:w-24 lg:h-24 border-8 border-indigo-600 border-t-transparent rounded-full animate-spin absolute top-0 left-0" />
         </div>
-        <p className="text-2xl font-black uppercase tracking-tighter text-slate-900 dark:text-white">KI am Werk...</p>
+        <p className="text-2xl font-black uppercase tracking-tighter text-slate-900 dark:text-white">Einen Moment …</p>
       </div>
     );
   }
@@ -172,7 +172,7 @@ export const AppContent: React.FC<AppContentProps> = (p) => {
           </div>
           <div className="text-center space-y-1">
             <p className="text-lg font-black uppercase tracking-tighter dark:text-white">Quiz wird generiert</p>
-            <p className="text-sm text-slate-500 dark:text-slate-400">KI liest deine Quelle...</p>
+            <p className="text-sm text-slate-500 dark:text-slate-400">Deine Quelle wird gelesen …</p>
           </div>
         </div>
       );
@@ -269,7 +269,7 @@ export const AppContent: React.FC<AppContentProps> = (p) => {
               flushSync(() => setIsLoading(true));
               try {
                 const q = await generateQuizFromFlashcards(deck);
-                if (!q.length) throw new Error('Die KI konnte aus diesem Stapel kein Quiz erstellen. Bitte versuche es noch einmal.');
+                if (!q.length) throw new Error('Aus diesem Stapel ließ sich kein Quiz erstellen. Bitte versuche es noch einmal.');
                 const meta = { docId: deck.id, docName: deck.title };
                 setQuestions(q); setQuizInitialAnswers(undefined); setActiveQuizMeta(meta);
                 saveQuizProgress(q, [], meta);
@@ -405,7 +405,7 @@ export const AppContent: React.FC<AppContentProps> = (p) => {
           setIsLoading(true);
           try {
             const q = await generateQuizFromFlashcards(deck);
-            if (!q.length) throw new Error('Die KI konnte aus diesem Stapel kein Quiz erstellen. Bitte versuche es noch einmal.');
+            if (!q.length) throw new Error('Aus diesem Stapel ließ sich kein Quiz erstellen. Bitte versuche es noch einmal.');
             const meta = { docId: deck.id, docName: deck.title };
             setQuestions(q); setQuizInitialAnswers(undefined); setActiveQuizMeta(meta);
             saveQuizProgress(q, [], meta); setActiveTab(ActiveTab.QUIZ);

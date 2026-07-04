@@ -22,7 +22,7 @@ export const UpgradeModal: React.FC<UpgradeModalProps> = ({ onClose }) => {
   };
 
   const features = [
-    'Unlimitierte KI-Anfragen',
+    'Unbegrenzte Generierungen',
     'Alle Module freigeschaltet',
     'Klausur-Simulator ohne Limit',
     'Prioritäts-Support',

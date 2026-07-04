@@ -122,7 +122,7 @@ export const ActiveRecall: React.FC<ActiveRecallProps> = ({
     setUserAnswer('');
     try {
       const res = await generateRecallChallenge(activeSource, focusTopic.trim() || undefined);
-      if (!res || !res.question) throw new Error('Ungültige Antwort der KI');
+      if (!res || !res.question) throw new Error('Ungültige Antwort');
       setChallenge(res);
     } catch (e: any) {
       console.error('Recall Start Error:', e);
@@ -356,7 +356,7 @@ export const ActiveRecall: React.FC<ActiveRecallProps> = ({
                 {isEvaluating ? (
                   <>
                     <div className="w-3.5 h-3.5 border-2 border-white/40 border-t-white rounded-full animate-spin" />
-                    KI analysiert...
+                    Analyse läuft …
                   </>
                 ) : (
                   <>
@@ -371,7 +371,7 @@ export const ActiveRecall: React.FC<ActiveRecallProps> = ({
           {/* Lade-Overlay während Bewertung */}
           {isEvaluating && (
             <div className="rounded-[32px] p-6 text-center animate-in fade-in duration-300" style={{ background: 'var(--bg-sidebar)', border: '1px solid var(--border-color)' }}>
-              <p className="text-[10px] font-black uppercase text-slate-400 tracking-widest">KI liest dein Dokument und bewertet deine Antwort...</p>
+              <p className="text-[10px] font-black uppercase text-slate-400 tracking-widest">Deine Antwort wird mit dem Dokument abgeglichen …</p>
             </div>
           )}
         </div>
@@ -392,7 +392,7 @@ export const ActiveRecall: React.FC<ActiveRecallProps> = ({
               </span>
             </div>
             <div className="md:col-span-2 bg-indigo-600 p-8 lg:p-10 rounded-[32px] lg:rounded-[40px] shadow-3d-deep flex flex-col justify-center border border-indigo-500">
-              <h3 className="text-[9px] font-black uppercase tracking-[0.3em] mb-3" style={{ color: 'var(--primary-text)', opacity: 0.6 }}>KI-Analyse</h3>
+              <h3 className="text-[9px] font-black uppercase tracking-[0.3em] mb-3" style={{ color: 'var(--primary-text)', opacity: 0.6 }}>Feedback</h3>
               <p className="text-base lg:text-lg font-medium leading-relaxed italic" style={{ color: 'var(--primary-text)' }}>"{evaluation.feedback}"</p>
             </div>
           </div>

@@ -26,7 +26,7 @@ const priorityColor = (p: 'hoch' | 'mittel' | 'niedrig') =>
 const priorityEmoji = (p: 'hoch' | 'mittel' | 'niedrig') =>
   p === 'hoch' ? '🔴' : p === 'mittel' ? '🟡' : '🟢';
 
-/** Mindestmenge an Sessions, ab der eine KI-Coach-Analyse tatsächlich Substanz hat statt zu raten. */
+/** Mindestmenge an Sessions, ab der eine Dein Coach-Analyse tatsächlich Substanz hat statt zu raten. */
 const MIN_SESSIONS_FOR_COACH = 5;
 
 /** Coach-Ergebnis überlebt Tab-Wechsel; wird ungültig sobald neue Sessions dazukommen. */
@@ -34,7 +34,7 @@ const INSIGHTS_CACHE_KEY = 'quizwise_coach_insights_v1';
 
 const TAB_ACTION_LABELS: Record<string, string> = {
   QUIZ: 'Quiz starten', CARDS: 'Karteikarten üben', RECALL: 'Feynman starten',
-  EXAM: 'Klausur starten', EXPLAINER: 'KI-Erklärer starten',
+  EXAM: 'Klausur starten', EXPLAINER: 'Erklärer starten',
 };
 
 // ─── Main Component ────────────────────────────────────────────────────────────
@@ -148,7 +148,7 @@ export const LearningCoach: React.FC<LearningCoachProps> = ({ metrics, decks, on
       reason: `Braucht mindestens 4 Klausuren, du hast ${examResults.length}.`,
     },
     !hasEnoughForCoach && {
-      label: 'KI-Coach',
+      label: 'Dein Coach',
       reason: `Braucht mindestens ${MIN_SESSIONS_FOR_COACH} Lernsessions, du hast ${profile.volume.totalSessions}.`,
     },
     displayTopics.length === 0 && {
@@ -199,7 +199,7 @@ export const LearningCoach: React.FC<LearningCoachProps> = ({ metrics, decks, on
           <div className="text-center space-y-2">
             <p className="font-black text-slate-400 uppercase text-xs tracking-widest">Noch keine Daten</p>
             <p className="text-sm text-slate-500 max-w-xs mx-auto">
-              Absolviere ein Quiz, eine Klausur, Feynman oder den KI-Erklärer, damit dein Coach loslegen kann.
+              Absolviere ein Quiz, eine Klausur, Feynman oder den Erklärer, damit dein Coach loslegen kann.
             </p>
           </div>
         </div>
@@ -216,7 +216,7 @@ export const LearningCoach: React.FC<LearningCoachProps> = ({ metrics, decks, on
           Lern <span style={{ color: 'var(--primary)' }}>Coach</span> <EmojiImage emoji="🧭" size={36} />
         </h1>
         <p className="text-base font-medium opacity-80" style={{ color: 'var(--mute)' }}>
-          Dein persönlicher KI-Lerncoach — alle Methoden, ein Überblick.
+          Dein persönlicher Lerncoach — alle Methoden, ein Überblick.
         </p>
         <p
           className="inline-block px-5 py-2.5 rounded-2xl text-sm font-black"
@@ -323,17 +323,17 @@ export const LearningCoach: React.FC<LearningCoachProps> = ({ metrics, decks, on
           style={{ background: 'var(--ink)' }}
         >
           <h3 className="text-[9px] font-black uppercase tracking-widest opacity-50 mb-3" style={{ color: 'var(--bg-main)' }}>
-            KI-Coach
+            Dein Coach
           </h3>
           {!hasEnoughForCoach ? (
             <p className="text-sm font-medium leading-relaxed" style={{ color: 'var(--bg-main)', opacity: 0.85 }}>
-              Noch nicht genügend Daten vorhanden. Nutze QuizWise weiter, damit dein persönlicher KI-Lerncoach
+              Noch nicht genügend Daten vorhanden. Nutze QuizWise weiter, damit dein persönlicher Lerncoach
               fundierte Analysen und Empfehlungen erstellen kann.
             </p>
           ) : !insights ? (
             <>
               <p className="text-sm font-medium mb-4" style={{ color: 'var(--bg-main)', opacity: 0.85 }}>
-                Lass die KI dein Lernprofil analysieren: Verbindungen zwischen Themen, eine Prognose und konkrete nächste Schritte.
+                Lass dein Lernprofil analysieren: Verbindungen zwischen Themen, eine Prognose und konkrete nächste Schritte.
               </p>
               <button
                 onClick={handleRunCoach}
@@ -341,7 +341,7 @@ export const LearningCoach: React.FC<LearningCoachProps> = ({ metrics, decks, on
                 className="self-start px-8 py-4 rounded-2xl font-black uppercase text-[10px] tracking-[0.2em] shadow-xl hover:scale-105 active:scale-95 transition-all disabled:opacity-40"
                 style={{ background: 'var(--primary)', color: 'var(--primary-text)' }}
               >
-                {isLoading ? 'Coach analysiert…' : <>Coach starten <EmojiImage emoji="✨" size={13} /></>}
+                {isLoading ? 'Analyse läuft …' : <>Coach starten <EmojiImage emoji="✨" size={13} /></>}
               </button>
             </>
           ) : (
@@ -577,7 +577,7 @@ export const LearningCoach: React.FC<LearningCoachProps> = ({ metrics, decks, on
         </div>
       )}
 
-      {/* ── KI-Coach-Ergebnis (Verbindungen, Prognose, Empfehlungen) ── */}
+      {/* ── Dein Coach-Ergebnis (Verbindungen, Prognose, Empfehlungen) ── */}
       {insights && (
         <div className="space-y-6">
           {insights.connections.length > 0 && (

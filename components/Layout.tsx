@@ -70,7 +70,7 @@ export const Layout: React.FC<LayoutProps> = ({
   const streak = useMemo(() => getStreak(), []);
 
   const EXTRA_LABELS: Partial<Record<ActiveTab, string>> = {
-    [ActiveTab.EXPLAINER]: 'KI-Erklärer',
+    [ActiveTab.EXPLAINER]: 'Erklärer',
     [ActiveTab.SEARCH]:    'Recherche',
     [ActiveTab.PAPER]:     'Hausarbeit',
   };
@@ -90,7 +90,7 @@ export const Layout: React.FC<LayoutProps> = ({
     { tab: ActiveTab.RECALL,    label: 'Erklären üben',  icon: Brain },
     { tab: ActiveTab.EXAM,      label: 'Klausur üben',   icon: GraduationCap },
     { tab: ActiveTab.RADAR,     label: 'Lern-Coach',     icon: BarChart2 },
-    { tab: ActiveTab.EXPLAINER, label: 'KI-Erklärer',    icon: Lightbulb },
+    { tab: ActiveTab.EXPLAINER, label: 'Erklärer',    icon: Lightbulb },
     { tab: ActiveTab.SEARCH,    label: 'Recherche',      icon: Search },
     { tab: ActiveTab.PAPER,     label: 'Hausarbeit',     icon: FileText },
   ];

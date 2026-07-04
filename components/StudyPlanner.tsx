@@ -281,7 +281,7 @@ export const StudyPlanner: React.FC<StudyPlannerProps> = ({ metrics, decks, exam
           Study <span className="text-indigo-600">Flow</span>
         </h1>
         <p className="text-slate-500 dark:text-slate-400 font-medium max-w-xl mx-auto">
-          Dein akademischer Rhythmus. Kalender, Wochenplan und KI-gesteuerte Lernstruktur.
+          Dein akademischer Rhythmus. Kalender, Wochenplan und automatische Lernstruktur.
         </p>
 
         <div className="flex justify-center gap-3 pt-2">

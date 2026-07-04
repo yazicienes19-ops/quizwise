@@ -40,7 +40,7 @@ const STEPS: Step[] = [
         <circle cx="12" cy="12" r="2" />
       </svg>
     ),
-    title: 'Die KI erstellt dein Quiz',
+    title: 'Die QuizWise erstellt dein Quiz',
     description: 'Aus deinen Unterlagen entstehen automatisch Quizfragen, Karteikarten und Klausur-Simulationen.',
     highlight: 'Kein manuelles Kartenerstellen mehr',
   },

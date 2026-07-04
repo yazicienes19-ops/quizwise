@@ -418,7 +418,7 @@ export const TermPaperSystem: React.FC<TermPaperSystemProps> = ({
     if (!magicInput.trim()) return;
     setIsMagicLoading(true);
     try { setMagicResult(await magicFormatCitation(magicInput)); }
-    catch { toast.error('Fehler beim KI-Zitieren.'); }
+    catch { toast.error('Fehler beim Automatisches Zitieren.'); }
     finally { setIsMagicLoading(false); }
   };
 
@@ -464,7 +464,7 @@ export const TermPaperSystem: React.FC<TermPaperSystemProps> = ({
     { id: 'phrases',    label: 'Formulierungen' },
     { id: 'paraphrase', label: 'Paraphrasieren' },
     { id: 'citations',  label: 'Zitierung' },
-    { id: 'magic',      label: 'KI-Zitierer' },
+    { id: 'magic',      label: 'Zitier-Assistent' },
     { id: 'checklist',  label: 'Checkliste' },
   ];
 
@@ -535,7 +535,7 @@ export const TermPaperSystem: React.FC<TermPaperSystemProps> = ({
           <div className="space-y-8 animate-in fade-in duration-500">
             {/* Input form */}
             <div className="bg-white dark:bg-slate-900 rounded-[32px] border border-slate-100 dark:border-slate-800 p-6 sm:p-8 space-y-6">
-              <h3 className="text-[10px] font-black uppercase tracking-widest text-indigo-600">KI-Gliederung generieren</h3>
+              <h3 className="text-[10px] font-black uppercase tracking-widest text-indigo-600">Gliederung erstellen</h3>
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                 <div className="sm:col-span-2">
                   <input type="text" value={topic} onChange={e => setTopic(e.target.value)}
@@ -545,7 +545,7 @@ export const TermPaperSystem: React.FC<TermPaperSystemProps> = ({
                 </div>
                 <div className="sm:col-span-2">
                   <textarea value={focus} onChange={e => setFocus(e.target.value)}
-                    placeholder="Forschungsfrage / Fokus (optional — KI schlägt eine vor)"
+                    placeholder="Forschungsfrage / Fokus (optional — wird sonst automatisch vorgeschlagen)"
                     className="w-full p-4 bg-slate-50 dark:bg-slate-800 rounded-2xl border-2 border-transparent focus:border-indigo-500 outline-none dark:text-white resize-none h-24 transition-colors"
                   />
                 </div>
@@ -739,7 +739,7 @@ export const TermPaperSystem: React.FC<TermPaperSystemProps> = ({
               <button onClick={handleAddSource} disabled={isAdding || !manualTitle || !manualAuthor}
                 className="w-full bg-indigo-600 text-white font-black py-4 rounded-2xl text-[11px] uppercase tracking-widest hover:scale-[1.01] active:scale-[0.99] transition-all disabled:opacity-50"
               >
-                {isAdding ? 'KI formatiert alle 4 Stile...' : `In allen Stilen zitieren`}
+                {isAdding ? 'Wird formatiert alle 4 Stile...' : `In allen Stilen zitieren`}
               </button>
             </div>
 
@@ -970,12 +970,12 @@ export const TermPaperSystem: React.FC<TermPaperSystemProps> = ({
           </div>
         )}
 
-        {/* ── KI-ZITIERER ── */}
+        {/* ── ZITIER-ASSISTENT ── */}
         {tab === 'magic' && (
           <div className="space-y-8 animate-in fade-in duration-500 max-w-3xl mx-auto">
             <div className="text-center space-y-2">
               <p className="text-sm text-slate-500 dark:text-slate-400 font-medium">
-                Rohen Text, Website-Inhalt oder Quellfragment einfügen — KI formatiert in alle 4 Stile.
+                Rohen Text, Website-Inhalt oder Quellfragment einfügen — Wird formatiert in alle 4 Stile.
               </p>
             </div>
             <textarea value={magicInput} onChange={e => setMagicInput(e.target.value)}
@@ -985,7 +985,7 @@ export const TermPaperSystem: React.FC<TermPaperSystemProps> = ({
             <button onClick={handleMagicFormat} disabled={isMagicLoading || !magicInput.trim()}
               className="w-full bg-indigo-600 text-white font-black py-4 rounded-2xl text-[11px] uppercase tracking-widest hover:scale-[1.01] active:scale-[0.99] transition-all disabled:opacity-50"
             >
-              {isMagicLoading ? 'KI formatiert...' : 'In allen Stilen zitieren'}
+              {isMagicLoading ? 'Wird formatiert...' : 'In allen Stilen zitieren'}
             </button>
 
             {magicResult && (

@@ -126,7 +126,7 @@ export const useQuizState = (params: UseQuizStateParams) => {
       const source = params.getDocumentSource(doc);
       const excludeTopics = getUsedTopics(doc.id);
       const quiz = await generateQuizFromDocument(source, quizType, { ...options, excludeTopics });
-      if (!quiz.length) throw new Error('Die KI konnte keine verwertbaren Fragen erstellen. Bitte versuche es noch einmal.');
+      if (!quiz.length) throw new Error('Daraus ließen sich keine Fragen erstellen. Bitte versuche es noch einmal.');
       const meta = { docId: doc.id, docName: documentDisplayName(doc) };
       setQuestions(quiz);
       setQuizInitialAnswers(undefined);
@@ -182,7 +182,7 @@ export const useQuizState = (params: UseQuizStateParams) => {
         questionType: config.questionType,
         excludeTopics,
       });
-      if (!quiz.length) throw new Error('Die KI konnte keine verwertbaren Fragen erstellen. Bitte versuche es noch einmal.');
+      if (!quiz.length) throw new Error('Daraus ließen sich keine Fragen erstellen. Bitte versuche es noch einmal.');
       setQuestions(quiz);
       setQuizInitialAnswers(undefined);
       saveUsedTopics(params.pendingActionDoc!.id, quiz);

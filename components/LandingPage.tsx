@@ -8,7 +8,7 @@ interface LandingPageProps {
 const features = [
   {
     icon: '🤖',
-    title: 'KI-Karteikarten',
+    title: 'Karteikarten',
     desc: 'PDF oder Text hochladen — Gemini erstellt sofort einen kompletten Kartenstapel.',
     color: 'indigo',
   },
@@ -88,7 +88,7 @@ export const LandingPage: React.FC<LandingPageProps> = ({ onAuthClick }) => {
       <section className="max-w-6xl mx-auto px-6 pt-24 pb-20 text-center">
         <div className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-indigo-50 dark:bg-indigo-950/50 border border-indigo-200 dark:border-indigo-800 mb-8">
           <span className="w-2 h-2 rounded-full bg-indigo-500 animate-pulse" />
-          <span className="text-[10px] font-black uppercase tracking-widest text-indigo-600 dark:text-indigo-400">KI-gestütztes Lernen für Studenten</span>
+          <span className="text-[10px] font-black uppercase tracking-widest text-indigo-600 dark:text-indigo-400">Cleveres Lernen fürs Studium</span>
         </div>
 
         <h1 className="text-6xl sm:text-7xl lg:text-8xl font-black tracking-tighter leading-[0.9] mb-6">
@@ -163,7 +163,7 @@ export const LandingPage: React.FC<LandingPageProps> = ({ onAuthClick }) => {
             <ul className="space-y-3 mb-8">
               {[
                 '3 Dokumente',
-                '20 KI-Anfragen pro Tag',
+                '20 Generierungen pro Tag',
                 'Karteikarten & Quiz',
                 'Spaced Repetition',
                 'Streak & Dashboard',
@@ -193,7 +193,7 @@ export const LandingPage: React.FC<LandingPageProps> = ({ onAuthClick }) => {
             <ul className="space-y-3 mb-8">
               {[
                 'Unlimitierte Dokumente',
-                'Unlimitierte KI-Anfragen',
+                'Unbegrenzte Generierungen',
                 'Klausur-Modus mit Notenskala',
                 'Feynman-Methode',
                 'Anki/Quizlet-Import & -Export',

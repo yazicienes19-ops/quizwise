@@ -220,7 +220,7 @@ const LegendDot: React.FC<{ color: string; label: string }> = ({ color, label })
 
 // ─── Main Component ────────────────────────────────────────────────────────────
 
-/** Routing der KI-Fehleranalyse-Empfehlung auf die passende Lernaktion. */
+/** Routing der Fehleranalyse-Empfehlung auf die passende Lernaktion. */
 const ERROR_ACTION_TARGET: Record<string, { mode?: 'quiz' | 'cards' | 'recall'; tab: ActiveTab }> = {
   'kurze Erklärung':                     { tab: ActiveTab.EXPLAINER },
   '3 gezielte Übungsfragen':             { mode: 'quiz', tab: ActiveTab.QUIZ },
@@ -891,7 +891,7 @@ export const GapRadar: React.FC<GapRadarProps> = ({ metrics, onNavigate, onActio
       <div className="pt-8 border-t space-y-6" style={{ borderColor: 'var(--border-color)' }}>
         <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
           <div>
-            <h3 className="text-xl font-black" style={{ color: 'var(--ink)' }}>KI Fehleranalyse</h3>
+            <h3 className="text-xl font-black" style={{ color: 'var(--ink)' }}>Fehleranalyse</h3>
             <p className="text-xs mt-0.5" style={{ color: 'var(--mute)' }}>
               {wrongAnswersCtx.length > 0
                 ? `KI analysiert ${wrongAnswersCtx.length} echte Fehlantworten aus deinen Quizzen.`
@@ -904,7 +904,7 @@ export const GapRadar: React.FC<GapRadarProps> = ({ metrics, onNavigate, onActio
             className="w-full sm:w-auto px-8 py-4 rounded-2xl font-black uppercase text-[10px] tracking-[0.2em] shadow-xl hover:scale-105 active:scale-95 transition-all disabled:opacity-40 shrink-0"
             style={{ background: 'var(--ink)', color: 'var(--bg-main)' }}
           >
-            {isAnalyzing ? 'KI analysiert...' : <>Tiefenanalyse <EmojiImage emoji="✨" size={13} /></>}
+            {isAnalyzing ? 'Analyse läuft …' : <>Tiefenanalyse <EmojiImage emoji="✨" size={13} /></>}
           </button>
         </div>
 

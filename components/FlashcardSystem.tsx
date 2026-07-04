@@ -628,7 +628,7 @@ export const FlashcardSystem: React.FC<FlashcardSystemProps> = ({
             </div>
 
             <div className="space-y-6 pt-4 border-t border-slate-50 dark:border-slate-800">
-              <h3 className="text-[10px] lg:text-[11px] font-black uppercase tracking-[0.4em] text-indigo-600">KI Deck Generator</h3>
+              <h3 className="text-[10px] lg:text-[11px] font-black uppercase tracking-[0.4em] text-indigo-600">Karten-Generator</h3>
 
               <div className="space-y-4">
                 <div className="flex justify-between items-center text-[9px] lg:text-[10px] font-black uppercase text-slate-400 tracking-widest px-2">
@@ -651,7 +651,7 @@ export const FlashcardSystem: React.FC<FlashcardSystemProps> = ({
               {isGenerating ? (
                 <div className="py-8 flex flex-col items-center gap-3 text-center">
                   <div className="w-8 h-8 border-4 border-indigo-100 border-t-indigo-600 rounded-full animate-spin" />
-                  <p className="text-[10px] font-black uppercase tracking-widest text-indigo-600 animate-pulse">KI generiert Karten...</p>
+                  <p className="text-[10px] font-black uppercase tracking-widest text-indigo-600 animate-pulse">Deine Karten entstehen …</p>
                 </div>
               ) : (
                 <SourceSelector

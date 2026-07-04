@@ -331,7 +331,7 @@ export const SettingsModal: React.FC<Props> = ({ user, isDark, onToggleTheme, on
               {profile?.usage && profile.plan !== 'pro' && (
                 <div className="space-y-2">
                   <div className="flex justify-between text-[10px] font-black uppercase tracking-widest text-slate-400">
-                    <span>KI-Anfragen heute</span>
+                    <span>Generierungen heute</span>
                     <span className="dark:text-white">{profile.usage.used} / {profile.usage.limit ?? '∞'}</span>
                   </div>
                   <div className="h-2 rounded-full overflow-hidden" style={{ background: 'color-mix(in srgb, var(--border-color) 60%, var(--bg-main))' }}>
@@ -344,7 +344,7 @@ export const SettingsModal: React.FC<Props> = ({ user, isDark, onToggleTheme, on
               {/* Upgrade CTA (Free) */}
               {profile?.plan !== 'pro' && (
                 <div className="space-y-4">
-                  {['Unlimitierte KI-Anfragen', 'Alle Module freigeschaltet', 'Prioritäts-Support'].map(f => (
+                  {['Unbegrenzte Generierungen', 'Alle Module freigeschaltet', 'Prioritäts-Support'].map(f => (
                     <div key={f} className="flex items-center gap-3">
                       <Check className="w-4 h-4 text-emerald-500 shrink-0" strokeWidth={2.5} />
                       <p className="text-[12px] font-bold dark:text-white">{f}</p>

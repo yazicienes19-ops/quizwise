@@ -180,10 +180,10 @@ export const ExplainerSystem: React.FC<ExplainerSystemProps> = ({
       {/* Header */}
       <div className="space-y-1">
         <h1 className="text-4xl lg:text-5xl font-black tracking-tighter dark:text-white">
-          KI-Erklärer
+          Erklärer
         </h1>
         <p className="text-sm text-slate-400 font-medium">
-          Wähle ein Konzept aus deinen Unterlagen — die KI erklärt es dir Schritt für Schritt.
+          Wähle ein Konzept aus deinen Unterlagen — QuizWise erklärt es dir Schritt für Schritt.
         </p>
       </div>
 
@@ -237,7 +237,7 @@ export const ExplainerSystem: React.FC<ExplainerSystemProps> = ({
 
           {/* Konzept */}
           <div className="space-y-2">
-            <p className="text-[10px] font-black uppercase tracking-widest text-slate-400">Was soll dir die KI erklären?</p>
+            <p className="text-[10px] font-black uppercase tracking-widest text-slate-400">Was möchtest du verstehen?</p>
             <input
               type="text"
               value={concept}
@@ -323,7 +323,7 @@ export const ExplainerSystem: React.FC<ExplainerSystemProps> = ({
             <div className="w-20 h-20 rounded-full absolute top-0 left-0 animate-spin" style={{ border: '6px solid var(--primary)', borderTopColor: 'transparent' }} />
           </div>
           <div className="space-y-1">
-            <p className="text-lg font-black uppercase tracking-widest dark:text-white">KI erklärt…</p>
+            <p className="text-lg font-black uppercase tracking-widest dark:text-white">Deine Erklärung entsteht …</p>
             <p className="text-sm text-slate-400 font-medium">
               {activeSource ? `„${concept}" wird aus ${activeSourceName || 'deinem Dokument'} aufbereitet` : `„${concept}" wird aufbereitet`}
             </p>

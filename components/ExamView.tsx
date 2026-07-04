@@ -592,7 +592,7 @@ export const ExamView: React.FC<ExamViewProps> = ({
               {percentage >= 90 ? 'Hervorragende Leistung! Sie haben das Thema tiefgreifend verstanden.' :
                percentage >= 70 ? 'Gute Leistung. Sie beherrschen die wesentlichen Inhalte sicher.' :
                percentage >= 50 ? 'Bestanden. Es sind jedoch noch Lücken in der Tiefe vorhanden.' :
-               'Leider hat es diesmal nicht gereicht. Nutzen Sie die KI-Fehleranalyse für die Nachbereitung.'}
+               'Leider hat es diesmal nicht gereicht. Nutzen Sie die Fehleranalyse für die Nachbereitung.'}
             </p>
             {onSaveExam && (
               <div className="pt-2 border-t border-slate-200 dark:border-slate-700">
@@ -833,7 +833,7 @@ export const ExamView: React.FC<ExamViewProps> = ({
                         <div className="flex justify-between items-center mb-4">
                           <div className="flex items-center gap-2">
                             <h4 className="text-[10px] font-black uppercase tracking-widest text-slate-400">
-                              {q.type === 'open' ? 'KI-Korrektur' : 'Auswertung'}
+                              {q.type === 'open' ? 'Korrektur' : 'Auswertung'}
                             </h4>
                             {q.evaluationConfidence !== undefined && (
                               <span className={`text-[8px] font-black uppercase tracking-widest px-2 py-0.5 rounded-full ${q.evaluationConfidence >= 80 ? 'bg-emerald-100 dark:bg-emerald-900/30 text-emerald-600' : q.evaluationConfidence >= 60 ? 'bg-amber-100 dark:bg-amber-900/30 text-amber-600' : 'bg-rose-100 dark:bg-rose-900/30 text-rose-600'}`}>
