@@ -5,6 +5,7 @@ import { EmojiImage } from './EmojiImage';
 import { GapRadar } from './GapRadar';
 import { generateCoachInsights, WrongAnswerContext } from '../services/geminiService';
 import { buildLearningProfile, buildRealTopicMastery, buildDailyPlan, buildMethodCommentary, CATEGORY_LABELS, METHOD_LABELS } from '../services/learningProfileService';
+import { buildLearningScore } from '../services/learningScoreService';
 import type { DailyPlanStep } from '../services/learningProfileService';
 import { getAllResults } from '../services/quizHistoryService';
 import { getAllRecallResults } from '../services/recallHistoryService';
@@ -98,6 +99,11 @@ export const LearningCoach: React.FC<LearningCoachProps> = ({ metrics, decks, on
     : null;
   const methodCommentary = insights?.methodInsight ?? buildMethodCommentary(profile.perMethod);
 
+  const learningScore = useMemo(
+    () => buildLearningScore({ quizResults, examResults, recallResults, metrics, decks, streakCurrent: streak.current }),
+    [quizResults, examResults, recallResults, metrics, decks, streak],
+  );
+
   const wissensprofilItems = [
     ...profile.categoryMastery.map(c => ({ key: `cat-${c.category}`, label: CATEGORY_LABELS[c.category] || c.category, avgScore: c.avgScore })),
     ...profile.typeMastery.map(t => ({ key: `type-${t.type}`, label: t.label, avgScore: t.avgScore })),
@@ -121,6 +127,10 @@ export const LearningCoach: React.FC<LearningCoachProps> = ({ metrics, decks, on
     wissensprofilItems.length === 0 && {
       label: 'Wissensprofil',
       reason: 'Erscheint nach deiner ersten Klausur oder deinem ersten Quiz.',
+    },
+    learningScore.overall === null && {
+      label: 'Learning Score',
+      reason: 'Braucht mehr Daten — z.B. 2 Erklär-Sessions, 10 gelernte Karteikarten oder 2 Klausuren.',
     },
   ].filter((x): x is { label: string; reason: string } => Boolean(x));
 
@@ -329,6 +339,37 @@ export const LearningCoach: React.FC<LearningCoachProps> = ({ metrics, decks, on
                 {methodCommentary}
               </p>
             )}
+          </div>
+        )}
+
+        {/* Learning Score — 5 Lernbereiche, deterministisch berechnet */}
+        {learningScore.overall !== null && (
+          <div className="p-6 lg:p-8 rounded-[24px] lg:rounded-[32px] border shadow-sm space-y-4" style={{ background: 'var(--card)', borderColor: 'var(--border-color)' }}>
+            <div className="flex items-baseline justify-between">
+              <h3 className="text-[9px] font-black uppercase tracking-widest" style={{ color: 'var(--mute)' }}>Learning Score</h3>
+              <span className="text-3xl font-black" style={{ color: 'var(--primary)' }}>{learningScore.overall}</span>
+            </div>
+            <div className="space-y-3">
+              {learningScore.dimensions.map(d => (
+                <div key={d.key} className="space-y-1">
+                  <div className="flex justify-between items-baseline">
+                    <span className="text-xs font-black flex items-center gap-1.5" style={{ color: 'var(--ink)' }}>
+                      <EmojiImage emoji={d.emoji} size={12} /> {d.label}
+                    </span>
+                    <span className="text-xs font-black" style={{ color: d.score !== null ? scoreColor(d.score) : 'var(--mute)' }}>
+                      {d.score !== null ? `${d.score}` : '—'}
+                    </span>
+                  </div>
+                  {d.score !== null ? (
+                    <div className="h-2 rounded-full overflow-hidden" style={{ background: 'var(--border-color)' }}>
+                      <div className="h-full rounded-full transition-all" style={{ width: `${d.score}%`, background: scoreColor(d.score) }} />
+                    </div>
+                  ) : (
+                    <p className="text-[9px] font-medium" style={{ color: 'var(--mute)' }}>{d.hint}</p>
+                  )}
+                </div>
+              ))}
+            </div>
           </div>
         )}
 
