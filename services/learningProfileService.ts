@@ -15,6 +15,10 @@ export const CATEGORY_LABELS: Record<string, string> = {
   beispiel: 'Beispiele', rechnung: 'Rechenaufgaben', fachbegriff: 'Fachbegriffe',
 };
 
+export const METHOD_LABELS: Record<LearnMethod, string> = {
+  anki: 'Anki', quiz: 'Quiz', feynman: 'Feynman', explainer: 'KI-Erklärer', exam: 'Klausur',
+};
+
 const TYPE_LABELS: Record<string, string> = {
   mc: 'Multiple Choice', single: 'Multiple Choice',
   truefalse: 'Wahr/Falsch',
@@ -394,6 +398,31 @@ const buildMotivationLine = (
   }
 
   return 'Bleib dran — jede Lernsession bringt dich näher an dein Ziel.';
+};
+
+// ─── Methodenkommentar (deterministischer Fallback ohne KI) ──────────────────────
+
+/**
+ * Kurzer Kommentar (max. 2 Sätze) zum Methodenvergleich — rein aus den
+ * vorhandenen Werten, kein KI-Call. Wird nur genutzt, wenn kein
+ * insights.methodInsight aus dem Coach-Lauf vorliegt.
+ */
+export const buildMethodCommentary = (perMethod: MethodStat[]): string | null => {
+  if (perMethod.length === 0) return null;
+  if (perMethod.length === 1) {
+    return `Bisher lernst du fast nur mit ${METHOD_LABELS[perMethod[0].method]}. Eine zweite Methode macht den Vergleich erst möglich.`;
+  }
+  const sorted = [...perMethod].sort((a, b) => b.avgScore - a.avgScore);
+  const best = sorted[0];
+  const worst = sorted[sorted.length - 1];
+  const first = `Deine besten Ergebnisse erzielst du aktuell mit ${METHOD_LABELS[best.method]} (Ø ${best.avgScore}%).`;
+  if (best.avgScore - worst.avgScore >= 15) {
+    return `${first} Bei ${METHOD_LABELS[worst.method]} liegt noch am meisten Luft — gezieltes Üben lohnt sich dort.`;
+  }
+  if (best.trend === 'up') {
+    return `${first} Der Trend zeigt dort weiter nach oben.`;
+  }
+  return `${first} Deine Methoden liegen nah beieinander — der Mix funktioniert.`;
 };
 
 // ─── Tagesplan („Heute solltest du") ────────────────────────────────────────────

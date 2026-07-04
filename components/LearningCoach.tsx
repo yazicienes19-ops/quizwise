@@ -1,10 +1,10 @@
 
 import React, { useState, useMemo } from 'react';
-import { TopicMetric, ActiveTab, CoachInsights, FlashcardDeck, LearnMethod, LearningFlowResult } from '../types';
+import { TopicMetric, ActiveTab, CoachInsights, FlashcardDeck, LearningFlowResult } from '../types';
 import { EmojiImage } from './EmojiImage';
 import { GapRadar } from './GapRadar';
 import { generateCoachInsights, WrongAnswerContext } from '../services/geminiService';
-import { buildLearningProfile, buildRealTopicMastery, buildDailyPlan, CATEGORY_LABELS } from '../services/learningProfileService';
+import { buildLearningProfile, buildRealTopicMastery, buildDailyPlan, buildMethodCommentary, CATEGORY_LABELS, METHOD_LABELS } from '../services/learningProfileService';
 import type { DailyPlanStep } from '../services/learningProfileService';
 import { getAllResults } from '../services/quizHistoryService';
 import { getAllRecallResults } from '../services/recallHistoryService';
@@ -13,10 +13,6 @@ import { getStreak } from '../services/streakService';
 import { toast } from '../services/toast';
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
-
-const METHOD_LABELS: Record<LearnMethod, string> = {
-  anki: 'Anki', quiz: 'Quiz', feynman: 'Feynman', explainer: 'KI-Erklärer', exam: 'Klausur',
-};
 
 const scoreColor = (s: number) => s >= 70 ? '#22c55e' : s >= 50 ? '#f59e0b' : '#f43f5e';
 
@@ -100,9 +96,7 @@ export const LearningCoach: React.FC<LearningCoachProps> = ({ metrics, decks, on
   const strongestMethod = profile.perMethod.length > 0
     ? profile.perMethod.reduce((best, cur) => cur.avgScore > best.avgScore ? cur : best)
     : null;
-  const preferredMethod = profile.perMethod.length > 0
-    ? profile.perMethod.reduce((best, cur) => cur.sessions > best.sessions ? cur : best)
-    : null;
+  const methodCommentary = insights?.methodInsight ?? buildMethodCommentary(profile.perMethod);
 
   const wissensprofilItems = [
     ...profile.categoryMastery.map(c => ({ key: `cat-${c.category}`, label: CATEGORY_LABELS[c.category] || c.category, avgScore: c.avgScore })),
@@ -330,9 +324,9 @@ export const LearningCoach: React.FC<LearningCoachProps> = ({ metrics, decks, on
                 </div>
               ))}
             </div>
-            {insights?.methodInsight && (
+            {methodCommentary && (
               <p className="text-[11px] font-medium pt-2 border-t italic" style={{ color: 'var(--ink2)', borderColor: 'var(--border-soft)' }}>
-                {insights.methodInsight}
+                {methodCommentary}
               </p>
             )}
           </div>
@@ -393,14 +387,11 @@ export const LearningCoach: React.FC<LearningCoachProps> = ({ metrics, decks, on
             <div>
               <p className="text-[9px] font-bold uppercase" style={{ color: 'var(--mute)' }}>Streak</p>
               <p className="text-lg font-black" style={{ color: 'var(--ink)' }}>{profile.volume.streakCurrent} Tage</p>
+              <p className="text-[9px] font-medium" style={{ color: 'var(--mute)' }}>Rekord: {profile.volume.streakBest} Tage</p>
             </div>
             <div>
               <p className="text-[9px] font-bold uppercase" style={{ color: 'var(--mute)' }}>Sessions/Woche</p>
               <p className="text-lg font-black" style={{ color: 'var(--ink)' }}>{profile.volume.sessionsPerWeek}</p>
-            </div>
-            <div>
-              <p className="text-[9px] font-bold uppercase" style={{ color: 'var(--mute)' }}>Bevorzugte Methode</p>
-              <p className="text-lg font-black" style={{ color: 'var(--ink)' }}>{preferredMethod ? METHOD_LABELS[preferredMethod.method] : '—'}</p>
             </div>
             <div>
               <p className="text-[9px] font-bold uppercase" style={{ color: 'var(--mute)' }}>Sessions gesamt</p>

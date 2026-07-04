@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { buildLearningProfile, buildRealTopicMastery, buildDailyPlan, germanGradeFromPercentage } from './learningProfileService';
+import { buildLearningProfile, buildRealTopicMastery, buildDailyPlan, buildMethodCommentary, germanGradeFromPercentage } from './learningProfileService';
 import type { QuizResult } from './quizHistoryService';
 import type { ExamResult } from './examHistoryService';
 import type { RecallResult } from './recallHistoryService';
@@ -393,5 +393,37 @@ describe('buildDailyPlan — Heute solltest du', () => {
     expect(plan.filter(s => s.title.includes('Klausursimulation')).length + plan.filter(s => s.title.includes('Quiz')).length).toBeGreaterThanOrEqual(1);
     expect(plan.length).toBeLessThanOrEqual(3);
     expect(plan.every(s => s.minutes > 0)).toBe(true);
+  });
+});
+
+describe('buildMethodCommentary — deterministischer Methodenkommentar', () => {
+  const mk = (method: string, avgScore: number, trend: 'up' | 'down' | 'stable' = 'stable') =>
+    ({ method, avgScore, sessions: 5, trend, improvementPerSession: 0 }) as import('../types').MethodStat;
+
+  it('null bei 0 Methoden', () => {
+    expect(buildMethodCommentary([])).toBeNull();
+  });
+
+  it('eigener Satz bei nur einer Methode', () => {
+    const c = buildMethodCommentary([mk('quiz', 80)]);
+    expect(c).toContain('Quiz');
+    expect(c).toContain('zweite Methode');
+  });
+
+  it('benennt die stärkste Methode und bleibt bei max. 2 Sätzen', () => {
+    const c = buildMethodCommentary([mk('feynman', 85), mk('anki', 60)])!;
+    expect(c).toContain('Feynman');
+    expect(c).toContain('Anki'); // Abstand >= 15 → Übe-Empfehlung
+    expect(c.split('. ').length).toBeLessThanOrEqual(2 + 1);
+  });
+
+  it('kleiner Abstand → "liegen nah beieinander"', () => {
+    const c = buildMethodCommentary([mk('quiz', 72), mk('exam', 70)])!;
+    expect(c).toContain('nah beieinander');
+  });
+
+  it('Trend-Satz wenn stärkste Methode aufwärts zeigt', () => {
+    const c = buildMethodCommentary([mk('exam', 75, 'up'), mk('quiz', 70)])!;
+    expect(c).toContain('Trend');
   });
 });
