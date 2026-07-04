@@ -21,7 +21,7 @@ interface SourceSelectorProps {
   userPlan?: 'free' | 'pro';
 }
 
-type Tab = 'library' | 'folder' | 'upload' | 'text';
+type Tab = 'library' | 'upload' | 'text';
 
 const DocIcon = ({ type }: { type: string }) => {
   if (type === 'pdf') return <FileText size={20} className="text-rose-500 shrink-0" />;
@@ -131,12 +131,20 @@ export const SourceSelector: React.FC<SourceSelectorProps> = ({
 
   const tabs: { id: Tab; label: string; icon: React.ReactNode }[] = [
     { id: 'library', label: 'Aus Bibliothek', icon: <BookOpen className="w-4 h-4" strokeWidth={1.75} /> },
-    ...(foldersWithDocs.length > 0
-      ? [{ id: 'folder' as Tab, label: 'Ganzer Ordner', icon: <FolderOpen className="w-4 h-4" strokeWidth={1.75} /> }]
-      : []),
     { id: 'upload',  label: 'Neue Datei',     icon: <Upload className="w-4 h-4" strokeWidth={1.75} /> },
     { id: 'text',    label: 'Text einfügen',  icon: <FileText className="w-4 h-4" strokeWidth={1.75} /> },
   ];
+
+  // Ordner-Zeilen erscheinen direkt in der Bibliotheks-Liste (kein eigener Tab):
+  // sichtbar wenn Suche/Filter passt — Klick nutzt ALLE Quellen des Ordners gemeinsam.
+  const visibleFolders = useMemo(
+    () => foldersWithDocs.filter(({ collection }) => {
+      const matchesSearch = collection.name.toLowerCase().includes(search.toLowerCase());
+      const matchesCol = filterCol === 'all' || filterCol === collection.id;
+      return matchesSearch && matchesCol;
+    }),
+    [foldersWithDocs, search, filterCol],
+  );
 
   return (
     <div className="rounded-[32px] overflow-hidden" style={{ background: 'var(--bg-sidebar)', border: '1px solid var(--border-color)' }}>
@@ -218,9 +226,37 @@ export const SourceSelector: React.FC<SourceSelectorProps> = ({
                   )}
                 </div>
 
-                {/* Dokumenten-Liste */}
+                {/* Dokumenten-Liste — Ordner zuerst (ganzer Ordner = eine Wissensbasis) */}
                 <div className="space-y-2 max-h-72 overflow-y-auto pr-1">
-                  {filtered.length === 0 ? (
+                  {visibleFolders.map(({ collection, count }) => {
+                    const result = buildCollectionSource(collection, documents);
+                    const included = result?.includedCount ?? 0;
+                    const ready = included > 0;
+                    return (
+                      <button
+                        key={`folder-${collection.id}`}
+                        onClick={() => handleSelectFolder(collection)}
+                        disabled={isLoading || !ready}
+                        className="w-full flex items-center gap-4 px-5 py-4 rounded-2xl text-left transition-all hover:scale-[1.01] active:scale-[0.99] disabled:opacity-50 group"
+                        style={{
+                          background: 'color-mix(in srgb, var(--primary) 7%, var(--bg-main))',
+                          border: '1px solid color-mix(in srgb, var(--primary) 22%, transparent)',
+                        }}
+                      >
+                        <FolderOpen size={20} className="shrink-0" style={{ color: 'var(--primary)' }} strokeWidth={1.75} />
+                        <div className="flex-1 min-w-0">
+                          <p className="text-[12px] font-black dark:text-white truncate">{collection.emoji} {collection.name}</p>
+                          <p className="text-[10px] uppercase tracking-widest mt-0.5" style={{ color: 'var(--primary)' }}>
+                            Ganzer Ordner · {count} Quelle{count !== 1 ? 'n' : ''}
+                            {ready && included < count && <> · {included} nutzbar</>}
+                            {!ready && <> · wird noch verarbeitet</>}
+                          </p>
+                        </div>
+                        <ChevronRight className="w-4 h-4 shrink-0 transition-colors" style={{ color: 'var(--primary)' }} strokeWidth={2} />
+                      </button>
+                    );
+                  })}
+                  {filtered.length === 0 && visibleFolders.length === 0 ? (
                     <p className="text-center text-[11px] text-slate-400 py-8 italic">Keine Treffer für „{search}"</p>
                   ) : (
                     filtered.map(doc => {
@@ -249,41 +285,6 @@ export const SourceSelector: React.FC<SourceSelectorProps> = ({
                 </div>
               </>
             )}
-          </div>
-        )}
-
-        {/* ── Tab: Ganzer Ordner — der Wissensraum eines Moduls ─────────── */}
-        {tab === 'folder' && (
-          <div className="space-y-3">
-            <p className="text-[10px] font-medium text-slate-400 px-1">
-              Alle Quellen eines Ordners gemeinsam nutzen — Folien, Notizen, Fotos und Zusammenfassungen zählen als eine Wissensbasis.
-            </p>
-            {foldersWithDocs.map(({ collection, count }) => {
-              const result = buildCollectionSource(collection, documents);
-              const included = result?.includedCount ?? 0;
-              const pending = result?.pendingCount ?? 0;
-              const ready = included > 0;
-              return (
-                <button
-                  key={collection.id}
-                  onClick={() => handleSelectFolder(collection)}
-                  disabled={isLoading || !ready}
-                  className="w-full flex items-center gap-4 px-5 py-4 rounded-2xl text-left transition-all hover:scale-[1.01] active:scale-[0.99] disabled:opacity-50 group"
-                  style={{ background: 'color-mix(in srgb, var(--border-color) 25%, var(--bg-main))', border: '1px solid var(--border-color)' }}
-                >
-                  <span className="text-2xl shrink-0">{collection.emoji}</span>
-                  <div className="flex-1 min-w-0">
-                    <p className="text-[12px] font-black dark:text-white truncate">{collection.name}</p>
-                    <p className="text-[10px] text-slate-400 uppercase tracking-widest mt-0.5">
-                      {count} Quelle{count !== 1 ? 'n' : ''}
-                      {ready && included < count && <> · {included} nutzbar</>}
-                      {!ready && pending > 0 && <> · wird noch verarbeitet</>}
-                    </p>
-                  </div>
-                  <ChevronRight className="w-4 h-4 text-slate-300 group-hover:text-indigo-500 transition-colors shrink-0" strokeWidth={2} />
-                </button>
-              );
-            })}
           </div>
         )}
 
