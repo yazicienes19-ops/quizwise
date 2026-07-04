@@ -53,7 +53,7 @@ const STEPS: Step[] = [
     ),
     title: 'Lerne gezielt deine Schwächen',
     description: 'QuizWise erkennt, wo du Lücken hast, und schlägt dir vor, was du als Nächstes wiederholen solltest.',
-    highlight: 'Recall Studio · Klausur-Modus · Lern-Analyse',
+    highlight: 'Erklären üben · Klausur üben · Lern-Coach',
   },
 ];
 

@@ -67,7 +67,7 @@ export const AuthPage: React.FC = () => {
   const FEATURES = [
     { label: 'Quiz aus deinen Unterlagen', sub: 'PDFs, Word, Fotos von Notizen' },
     { label: 'Karteikarten & Klausur-Simulation', sub: 'Spaced Repetition & Vollklausuren' },
-    { label: 'Lern-Analyse & Recall Studio', sub: 'Schwächen erkennen und gezielt üben' },
+    { label: 'Lern-Coach & Erklären üben', sub: 'Schwächen erkennen und gezielt üben' },
     { label: 'KI-Agents & StudyFlow', sub: 'Persönlicher Lern-Coach für jeden Tag' },
   ];
 
@@ -99,7 +99,7 @@ export const AuthPage: React.FC = () => {
         <div className="relative z-10 space-y-6">
           <div className="space-y-3">
             <p className="text-[10px] font-black uppercase tracking-[0.3em] text-white/60">
-              Advanced Academic Intelligence
+              Dein Lernbegleiter fürs Studium
             </p>
             <h1 className="text-4xl font-black tracking-tight text-white leading-tight">
               Lerne smarter,<br />nicht länger.

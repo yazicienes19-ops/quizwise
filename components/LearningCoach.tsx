@@ -190,7 +190,7 @@ export const LearningCoach: React.FC<LearningCoachProps> = ({ metrics, decks, on
     return (
       <div className="space-y-10">
         <div className="text-center space-y-3">
-          <h1 className="text-4xl lg:text-7xl font-black tracking-tighter" style={{ color: 'var(--ink)' }}>
+          <h1 className="text-4xl lg:text-6xl font-black tracking-tighter" style={{ color: 'var(--ink)' }}>
             Lern <span style={{ color: 'var(--primary)' }}>Coach</span> <EmojiImage emoji="🧭" size={36} />
           </h1>
         </div>
@@ -212,7 +212,7 @@ export const LearningCoach: React.FC<LearningCoachProps> = ({ metrics, decks, on
 
       {/* ── Header ── */}
       <div className="text-center space-y-3">
-        <h1 className="text-4xl lg:text-7xl font-black tracking-tighter" style={{ color: 'var(--ink)' }}>
+        <h1 className="text-4xl lg:text-6xl font-black tracking-tighter" style={{ color: 'var(--ink)' }}>
           Lern <span style={{ color: 'var(--primary)' }}>Coach</span> <EmojiImage emoji="🧭" size={36} />
         </h1>
         <p className="text-base font-medium opacity-80" style={{ color: 'var(--mute)' }}>

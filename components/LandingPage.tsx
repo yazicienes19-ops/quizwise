@@ -32,7 +32,7 @@ const features = [
   },
   {
     icon: '📊',
-    title: 'Klausur-Modus',
+    title: 'Klausur üben',
     desc: 'Zeitdruck, Notenskala (1,0–5,0) und PDF-Export mit Feedback pro Frage.',
     color: 'blue',
   },
@@ -194,7 +194,7 @@ export const LandingPage: React.FC<LandingPageProps> = ({ onAuthClick }) => {
               {[
                 'Unlimitierte Dokumente',
                 'Unbegrenzte Generierungen',
-                'Klausur-Modus mit Notenskala',
+                'Klausursimulation mit Notenskala',
                 'Feynman-Methode',
                 'Anki/Quizlet-Import & -Export',
                 'Decks mit Kommilitonen teilen',

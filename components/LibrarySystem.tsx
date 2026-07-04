@@ -216,7 +216,7 @@ export const LibrarySystem: React.FC<LibrarySystemProps> = ({
         <div className="space-y-8 py-6 lg:py-10 px-4 animate-in fade-in duration-500">
           <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
             <div>
-              <h1 className="text-3xl sm:text-4xl lg:text-5xl font-black tracking-tighter" style={{ color: 'var(--text-main)' }}>
+              <h1 className="text-3xl sm:text-4xl lg:text-6xl font-black tracking-tighter" style={{ color: 'var(--text-main)' }}>
                 Bibliothek <EmojiImage emoji="📚" size={36} className="inline-block" />
               </h1>
               <p className="text-sm text-slate-400 font-medium mt-1">
@@ -460,7 +460,7 @@ export const LibrarySystem: React.FC<LibrarySystemProps> = ({
                 })()}
               </button>
             )}
-            <h1 className="text-3xl sm:text-4xl lg:text-5xl font-black tracking-tighter" style={{ color: 'var(--text-main)' }}>
+            <h1 className="text-3xl sm:text-4xl lg:text-6xl font-black tracking-tighter" style={{ color: 'var(--text-main)' }}>
               {activeColId !== 'all' && activeColId !== 'uncategorized'
                 ? (collections.find(c => c.id === activeColId)?.name ?? 'Bibliothek')
                 : 'Bibliothek'

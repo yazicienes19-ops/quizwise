@@ -23,7 +23,7 @@ const ACTIONS: Action[] = [
   { tab: ActiveTab.EXPLAINER, emoji: '💡', title: 'Erklären lassen',             desc: 'KI erklärt dir Konzepte und Definitionen aus dieser Quelle.',               cta: 'Erklärer öffnen',  directStart: true, accent: true },
   { tab: ActiveTab.CARDS,     emoji: '🃏', title: 'Karteikarten generieren',     desc: 'Erstellt automatisch Lernkarten aus Definitionen und Begriffen.',            cta: 'Karten erstellen', directStart: true },
   { tab: ActiveTab.RECALL,    emoji: '🧠', title: 'Recall starten',              desc: 'Erkläre das Thema frei — KI prüft dein Verständnis anhand dieser Quelle.', cta: 'Recall starten',   directStart: true },
-  { tab: ActiveTab.EXAM,      emoji: '📝', title: 'Klausur simulieren',          desc: 'Prüfungssimulation mit offenen und geschlossenen Fragen.',                   cta: 'Klausur-Modus',    directStart: false, danger: true },
+  { tab: ActiveTab.EXAM,      emoji: '📝', title: 'Klausur simulieren',          desc: 'Prüfungssimulation mit offenen und geschlossenen Fragen.',                   cta: 'Klausur üben',    directStart: false, danger: true },
   { tab: ActiveTab.PLANNER,   emoji: '📅', title: 'Lernplan erstellen',          desc: 'Plane deine Lernzeit auf Basis deines Fortschritts und Prüfungstermins.',   cta: 'Planer öffnen',    directStart: false },
   { tab: ActiveTab.RADAR,     emoji: '📊', title: 'Schwächen analysieren',       desc: 'Zeigt deine schwachen Themen aus allen bisherigen Lernsessions.',            cta: 'Analyse öffnen',   directStart: false },
   { tab: ActiveTab.PAPER,     emoji: '✍️',  title: 'Für Hausarbeit verwenden',   desc: 'Nutze diese Quelle als Grundlage für wissenschaftliche Arbeiten.',           cta: 'Hausarbeit',       directStart: false },

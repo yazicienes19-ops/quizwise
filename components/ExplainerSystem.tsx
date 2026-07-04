@@ -179,7 +179,7 @@ export const ExplainerSystem: React.FC<ExplainerSystemProps> = ({
 
       {/* Header */}
       <div className="space-y-1">
-        <h1 className="text-4xl lg:text-5xl font-black tracking-tighter dark:text-white">
+        <h1 className="text-4xl lg:text-6xl font-black tracking-tighter dark:text-white">
           Erklärer
         </h1>
         <p className="text-sm text-slate-400 font-medium">

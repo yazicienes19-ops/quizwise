@@ -28,7 +28,7 @@ export const SplashScreen: React.FC = () => {
             Quiz<span style={{ color: 'var(--primary, #4f46e5)' }}>Wise</span>
           </p>
           <p className="text-[9px] font-bold uppercase tracking-[0.3em] text-slate-400">
-            Advanced Academic Intelligence
+            Dein Lernbegleiter fürs Studium
           </p>
         </div>
 

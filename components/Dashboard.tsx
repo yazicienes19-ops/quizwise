@@ -43,12 +43,12 @@ interface ActionCard {
 }
 
 const BASE_CARDS: ActionCard[] = [
-  { id: ActiveTab.RECALL, title: 'Recall Studio', desc: 'Meistere Themen mit der Feynman-Methode.', prompt: 'Human brain active recall, academic illustration', color: 'text-indigo-600', badge: 'Active Recall' },
+  { id: ActiveTab.RECALL, title: 'Erklären üben', desc: 'Erkläre Themen in eigenen Worten — mit sofortigem Feedback.', prompt: 'Human brain active recall, academic illustration', color: 'text-indigo-600', badge: 'Feynman' },
   { id: ActiveTab.LIBRARY, title: 'Bibliothek', desc: 'Verwalte deine PDF-Sammlung und Quellen.', prompt: 'Academic library books, minimalist illustration', color: 'text-blue-500' },
-  { id: ActiveTab.QUIZ, title: 'Quiz Center', desc: 'Teste dich mit Fragen aus deinen Unterlagen.', prompt: 'Target bullseye icon, academic minimalist illustration', color: 'text-indigo-500', badge: 'KI-Powered' },
-  { id: ActiveTab.EXAM, title: 'Klausur-Modus', desc: 'Simuliere echte Prüfungen unter Zeitdruck.', prompt: 'Exam paper graduation cap, academic illustration', color: 'text-rose-500', badge: 'Advanced' },
-  { id: ActiveTab.CARDS, title: 'Karteikarten', desc: 'Training nach Anki-Standard.', prompt: 'Flashcards study deck, minimalist illustration', color: 'text-violet-500' },
-  { id: ActiveTab.RADAR, title: 'Lern-Analyse', desc: 'Identifiziere Lücken im Verständnis.', prompt: 'Data analysis radar chart, academic illustration', color: 'text-emerald-500' }
+  { id: ActiveTab.QUIZ, title: 'Quiz', desc: 'Teste dich mit Fragen aus deinen Unterlagen.', prompt: 'Target bullseye icon, academic minimalist illustration', color: 'text-indigo-500', badge: 'Aus deinen Unterlagen' },
+  { id: ActiveTab.EXAM, title: 'Klausur üben', desc: 'Simuliere echte Prüfungen unter Zeitdruck.', prompt: 'Exam paper graduation cap, academic illustration', color: 'text-rose-500', badge: 'Prüfungsnah' },
+  { id: ActiveTab.CARDS, title: 'Karteikarten', desc: 'Wiederholen genau im richtigen Moment.', prompt: 'Flashcards study deck, minimalist illustration', color: 'text-violet-500' },
+  { id: ActiveTab.RADAR, title: 'Lern-Coach', desc: 'Sieh, wo du stehst und was als Nächstes dran ist.', prompt: 'Data analysis radar chart, academic illustration', color: 'text-emerald-500' }
 ];
 
 export const Dashboard: React.FC<DashboardProps> = ({ onTabChange, flowResult, documents = [], onStartMistakeReview }) => {
@@ -174,10 +174,10 @@ export const Dashboard: React.FC<DashboardProps> = ({ onTabChange, flowResult, d
       <div className="text-center space-y-6">
         <div className="space-y-2">
             <h1 className="text-5xl sm:text-7xl lg:text-9xl font-light tracking-tighter leading-none" style={{ color: 'var(--text-main)' }}>
-                Quiz<span className="font-bold text-indigo-500">Wise</span>
+                Quiz<span className="font-bold" style={{ color: 'var(--primary)' }}>Wise</span>
             </h1>
             <p className="text-[9px] sm:text-xs font-black uppercase tracking-[0.3em] sm:tracking-[1em] text-slate-400 dark:text-white/30 sm:pl-4 text-center break-words">
-                Advanced Academic Intelligence
+                Dein Lernbegleiter fürs Studium
             </p>
         </div>
       </div>
