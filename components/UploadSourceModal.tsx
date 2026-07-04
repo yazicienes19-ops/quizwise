@@ -40,6 +40,8 @@ const Field: React.FC<{
 );
 
 export const UploadSourceModal: React.FC<Props> = ({ onClose, onUpload }) => {
+  const [mode, setMode]             = useState<'file' | 'text'>('file');
+  const [pastedText, setPastedText] = useState('');
   const [file, setFile]             = useState<File | null>(null);
   const [isDragging, setIsDragging] = useState(false);
   const [isUploading, setIsUploading] = useState(false);
@@ -72,7 +74,14 @@ export const UploadSourceModal: React.FC<Props> = ({ onClose, onUpload }) => {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!file) return;
+    // Text-Modus: eingefügte Notiz wird als .txt-Quelle gespeichert (z.B. aus
+    // NotebookLM, ChatGPT, eigenen Mitschriften) — für QuizWise gleichwertig zu Dateien
+    const uploadFile = mode === 'text'
+      ? (pastedText.trim().length >= 20
+          ? new File([pastedText.trim()], `${(displayTitle.trim() || 'Notiz')}.txt`, { type: 'text/plain' })
+          : null)
+      : file;
+    if (!uploadFile) return;
     setIsUploading(true);
     try {
       const meta: Partial<SourceMeta> = {
@@ -86,7 +95,7 @@ export const UploadSourceModal: React.FC<Props> = ({ onClose, onUpload }) => {
         isAltklausur: isAltklausur || undefined,
         status:       'ready',
       };
-      await onUpload(file, meta);
+      await onUpload(uploadFile, meta);
       onClose();
     } finally {
       setIsUploading(false);
@@ -108,7 +117,7 @@ export const UploadSourceModal: React.FC<Props> = ({ onClose, onUpload }) => {
         <div className="flex justify-between items-center px-8 py-6 border-b border-slate-100 dark:border-slate-800">
           <div>
             <h2 className="text-xl font-black dark:text-white">Quelle hinzufügen</h2>
-            <p className="text-[10px] font-black uppercase tracking-widest text-slate-400 mt-0.5">PDF · DOCX · TXT · MD</p>
+            <p className="text-[10px] font-black uppercase tracking-widest text-slate-400 mt-0.5">Dateien · Fotos · Notizen · eingefügter Text</p>
           </div>
           <button aria-label="Schließen" onClick={onClose} className="p-2 text-slate-400 hover:text-rose-500 transition-colors rounded-xl">
             <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round">
@@ -124,8 +133,41 @@ export const UploadSourceModal: React.FC<Props> = ({ onClose, onUpload }) => {
               <span className="text-[10px] font-black uppercase tracking-widest">Wird hochgeladen…</span>
             </div>
           )}
+          {/* Modus: Datei hochladen oder Text einfügen */}
+          <div className="flex p-1 rounded-2xl gap-1" style={{ background: 'color-mix(in srgb, var(--border-color) 40%, var(--bg-main))' }}>
+            {([['file', 'Datei / Foto'], ['text', 'Text einfügen']] as const).map(([m, lbl]) => (
+              <button
+                key={m}
+                type="button"
+                onClick={() => setMode(m)}
+                className={`flex-1 py-2.5 rounded-xl text-[10px] font-black uppercase tracking-wider transition-all ${
+                  mode === m ? 'bg-indigo-600 text-white shadow-lg' : 'text-slate-400 hover:text-slate-600 dark:hover:text-slate-200'
+                }`}
+              >
+                {lbl}
+              </button>
+            ))}
+          </div>
+
+          {/* Text-Modus */}
+          {mode === 'text' && (
+            <div className="space-y-2">
+              <textarea
+                autoFocus
+                value={pastedText}
+                onChange={e => setPastedText(e.target.value)}
+                placeholder="Füge hier deine Notizen, eine Zusammenfassung aus NotebookLM/ChatGPT oder einen Skript-Abschnitt ein…"
+                rows={7}
+                className="w-full px-4 py-3 bg-slate-50 dark:bg-slate-800 rounded-2xl text-sm font-medium outline-none border-2 border-transparent focus:border-indigo-500 dark:text-white resize-none leading-relaxed"
+              />
+              <p className="text-[10px] text-slate-400 px-1">
+                {pastedText.trim().split(/\s+/).filter(Boolean).length} Wörter · wird als Text-Quelle im Ordner gespeichert
+              </p>
+            </div>
+          )}
+
           {/* Drop Zone */}
-          {!file ? (
+          {mode === 'file' && (!file ? (
             <div
               onDrop={handleDrop}
               onDragOver={e => { e.preventDefault(); setIsDragging(true); }}
@@ -152,7 +194,7 @@ export const UploadSourceModal: React.FC<Props> = ({ onClose, onUpload }) => {
               </div>
               <button type="button" onClick={() => setFile(null)} className="text-slate-400 hover:text-rose-500 transition-colors font-black text-lg leading-none">×</button>
             </div>
-          )}
+          ))}
 
           {/* Metadata form */}
           <fieldset disabled={isUploading} className="space-y-4 disabled:opacity-60">
@@ -204,11 +246,11 @@ export const UploadSourceModal: React.FC<Props> = ({ onClose, onUpload }) => {
 
           <button
             type="submit"
-            disabled={!file || isUploading}
+            disabled={isUploading || (mode === 'file' ? !file : pastedText.trim().length < 20)}
             className="w-full bg-indigo-600 py-4 rounded-2xl text-[11px] font-black uppercase tracking-widest shadow-lg hover:scale-[1.02] transition-all disabled:opacity-40 disabled:scale-100"
             style={{ color: 'var(--primary-text)' }}
           >
-            {isUploading ? 'Wird hochgeladen…' : 'Quelle hochladen'}
+            {isUploading ? 'Wird gespeichert…' : mode === 'text' ? 'Notiz speichern' : 'Quelle hochladen'}
           </button>
         </form>
       </div>

@@ -1,8 +1,9 @@
 import React, { useState, useRef, useMemo } from 'react';
-import { BookOpen, Upload, FileText, Search, ChevronRight, X, File, Image } from 'lucide-react';
+import { BookOpen, Upload, FileText, Search, ChevronRight, X, File, Image, FolderOpen } from 'lucide-react';
 import { ProcessedDocument, Collection } from '../types';
 import type { GenerationSource } from '../services/geminiService';
 import { documentDisplayName as docTitle } from '../services/libraryService';
+import { buildCollectionSource, collectionDocs } from '../services/collectionSource';
 import mammoth from 'mammoth';
 
 interface SourceSelectorProps {
@@ -20,7 +21,7 @@ interface SourceSelectorProps {
   userPlan?: 'free' | 'pro';
 }
 
-type Tab = 'library' | 'upload' | 'text';
+type Tab = 'library' | 'folder' | 'upload' | 'text';
 
 const DocIcon = ({ type }: { type: string }) => {
   if (type === 'pdf') return <FileText size={20} className="text-rose-500 shrink-0" />;
@@ -114,8 +115,25 @@ export const SourceSelector: React.FC<SourceSelectorProps> = ({
     onSelectSource({ text: pastedText.trim() }, 'Eingefügter Text');
   };
 
+  // Ordner mit Inhalten — jeder Ordner ist ein Wissensraum aus allen seinen Quellen
+  const foldersWithDocs = useMemo(
+    () => collections
+      .map(c => ({ collection: c, count: collectionDocs(c, documents).length }))
+      .filter(f => f.count > 0),
+    [collections, documents],
+  );
+
+  const handleSelectFolder = (collection: Collection) => {
+    const result = buildCollectionSource(collection, documents);
+    if (!result || result.includedCount === 0) return;
+    onSelectSource(result.source, result.name);
+  };
+
   const tabs: { id: Tab; label: string; icon: React.ReactNode }[] = [
     { id: 'library', label: 'Aus Bibliothek', icon: <BookOpen className="w-4 h-4" strokeWidth={1.75} /> },
+    ...(foldersWithDocs.length > 0
+      ? [{ id: 'folder' as Tab, label: 'Ganzer Ordner', icon: <FolderOpen className="w-4 h-4" strokeWidth={1.75} /> }]
+      : []),
     { id: 'upload',  label: 'Neue Datei',     icon: <Upload className="w-4 h-4" strokeWidth={1.75} /> },
     { id: 'text',    label: 'Text einfügen',  icon: <FileText className="w-4 h-4" strokeWidth={1.75} /> },
   ];
@@ -231,6 +249,41 @@ export const SourceSelector: React.FC<SourceSelectorProps> = ({
                 </div>
               </>
             )}
+          </div>
+        )}
+
+        {/* ── Tab: Ganzer Ordner — der Wissensraum eines Moduls ─────────── */}
+        {tab === 'folder' && (
+          <div className="space-y-3">
+            <p className="text-[10px] font-medium text-slate-400 px-1">
+              Alle Quellen eines Ordners gemeinsam nutzen — Folien, Notizen, Fotos und Zusammenfassungen zählen als eine Wissensbasis.
+            </p>
+            {foldersWithDocs.map(({ collection, count }) => {
+              const result = buildCollectionSource(collection, documents);
+              const included = result?.includedCount ?? 0;
+              const pending = result?.pendingCount ?? 0;
+              const ready = included > 0;
+              return (
+                <button
+                  key={collection.id}
+                  onClick={() => handleSelectFolder(collection)}
+                  disabled={isLoading || !ready}
+                  className="w-full flex items-center gap-4 px-5 py-4 rounded-2xl text-left transition-all hover:scale-[1.01] active:scale-[0.99] disabled:opacity-50 group"
+                  style={{ background: 'color-mix(in srgb, var(--border-color) 25%, var(--bg-main))', border: '1px solid var(--border-color)' }}
+                >
+                  <span className="text-2xl shrink-0">{collection.emoji}</span>
+                  <div className="flex-1 min-w-0">
+                    <p className="text-[12px] font-black dark:text-white truncate">{collection.name}</p>
+                    <p className="text-[10px] text-slate-400 uppercase tracking-widest mt-0.5">
+                      {count} Quelle{count !== 1 ? 'n' : ''}
+                      {ready && included < count && <> · {included} nutzbar</>}
+                      {!ready && pending > 0 && <> · wird noch verarbeitet</>}
+                    </p>
+                  </div>
+                  <ChevronRight className="w-4 h-4 text-slate-300 group-hover:text-indigo-500 transition-colors shrink-0" strokeWidth={2} />
+                </button>
+              );
+            })}
           </div>
         )}
 
