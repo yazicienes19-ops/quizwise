@@ -286,7 +286,7 @@ export const ExportDeckModal: React.FC<ExportDeckModalProps> = ({ deck, userId, 
             <h2 className="text-xl font-black dark:text-white truncate">{deck.title}</h2>
             <p className="text-[10px] font-bold text-slate-400 mt-0.5">{deck.cards.length} Karten</p>
           </div>
-          <button
+          <button aria-label="Schließen"
             onClick={onClose}
             className="p-2 text-slate-400 hover:text-rose-500 transition-colors rounded-xl shrink-0"
           >

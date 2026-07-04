@@ -69,7 +69,7 @@ export const AuthModal: React.FC<AuthModalProps> = ({ onClose, onSuccess }) => {
               </p>
             </div>
           </div>
-          <button
+          <button aria-label="Schließen"
             onClick={onClose}
             className="w-8 h-8 flex items-center justify-center rounded-xl text-slate-400 hover:text-slate-700 dark:hover:text-white transition-all"
             style={{ background: 'color-mix(in srgb, var(--border-color) 60%, var(--bg-sidebar))' }}

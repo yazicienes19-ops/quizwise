@@ -122,7 +122,7 @@ export const FlashcardPlayer: React.FC<FlashcardPlayerProps> = ({ cards, onRevie
           </div>
         </div>
         )}
-        <button
+        <button aria-label="Lernsession schließen"
           onClick={onClose}
           className="text-slate-400 hover:text-rose-500 transition-colors p-2"
         >

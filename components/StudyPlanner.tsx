@@ -453,10 +453,10 @@ export const StudyPlanner: React.FC<StudyPlannerProps> = ({ metrics, decks, exam
           {/* Calendar Nav */}
           <div className="flex items-center justify-between px-6 py-5" style={{ borderBottom: '1px solid var(--border-color)' }}>
             <div className="flex items-center gap-3">
-              <button onClick={goPrev} className="w-9 h-9 flex items-center justify-center rounded-xl transition-colors" style={{ background: 'var(--bg-main)', color: 'var(--border-color)' }}>
+              <button aria-label="Vorheriger Monat" onClick={goPrev} className="w-9 h-9 flex items-center justify-center rounded-xl transition-colors" style={{ background: 'var(--bg-main)', color: 'var(--border-color)' }}>
                 <ChevronLeft size={16} />
               </button>
-              <button onClick={goNext} className="w-9 h-9 flex items-center justify-center rounded-xl transition-colors" style={{ background: 'var(--bg-main)', color: 'var(--border-color)' }}>
+              <button aria-label="Nächster Monat" onClick={goNext} className="w-9 h-9 flex items-center justify-center rounded-xl transition-colors" style={{ background: 'var(--bg-main)', color: 'var(--border-color)' }}>
                 <ChevronRight size={16} />
               </button>
               <h2 className="text-base font-black capitalize ml-1" style={{ color: 'var(--text-main)' }}>{monthLabel}</h2>

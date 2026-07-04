@@ -53,7 +53,7 @@ export const DeckStatsModal: React.FC<DeckStatsModalProps> = ({ deck, onClose })
             <h2 className="text-xl font-black dark:text-white truncate">{deck.title}</h2>
             <p className="text-[10px] font-bold text-slate-400 mt-0.5">{stats.total} Karten gesamt</p>
           </div>
-          <button onClick={onClose} className="p-2 text-slate-400 hover:text-rose-500 transition-colors rounded-xl shrink-0">
+          <button aria-label="Schließen" onClick={onClose} className="p-2 text-slate-400 hover:text-rose-500 transition-colors rounded-xl shrink-0">
             <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round">
               <line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/>
             </svg>

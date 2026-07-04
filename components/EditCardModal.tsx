@@ -72,7 +72,7 @@ export const EditCardModal: React.FC<EditCardModalProps> = ({
               </span>
             )}
           </div>
-          <button
+          <button aria-label="Schließen"
             onClick={onClose}
             className="p-2 text-slate-400 hover:text-rose-500 transition-colors rounded-xl"
           >

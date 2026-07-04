@@ -502,7 +502,14 @@ export const QuizPlayer: React.FC<QuizPlayerProps> = ({
             <span>{Math.round(progress)}%</span>
           </div>
         </div>
-        <div className="w-full h-2 bg-slate-200 dark:bg-slate-800 rounded-full overflow-hidden">
+        <div
+          className="w-full h-2 bg-slate-200 dark:bg-slate-800 rounded-full overflow-hidden"
+          role="progressbar"
+          aria-valuenow={currentIndex + 1}
+          aria-valuemin={1}
+          aria-valuemax={questions.length}
+          aria-label={`Frage ${currentIndex + 1} von ${questions.length}`}
+        >
           <div className="h-full transition-all duration-700 ease-out" style={{ width: `${progress}%`, background: 'var(--primary)' }} />
         </div>
         {currentQuestion.topic && (

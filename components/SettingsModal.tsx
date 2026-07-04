@@ -197,7 +197,7 @@ export const SettingsModal: React.FC<Props> = ({ user, isDark, onToggleTheme, on
             <h2 className="text-xl font-black dark:text-white uppercase tracking-tight">Einstellungen</h2>
             <p className="text-[10px] text-slate-400 font-bold uppercase tracking-widest mt-0.5">{user?.email || 'Nicht eingeloggt'}</p>
           </div>
-          <button onClick={onClose} className="w-9 h-9 flex items-center justify-center rounded-xl text-slate-400 hover:text-slate-700 dark:hover:text-white transition-all active:scale-95" style={{ background: 'color-mix(in srgb, var(--border-color) 60%, var(--bg-sidebar))' }}>
+          <button aria-label="Schließen" onClick={onClose} className="w-9 h-9 flex items-center justify-center rounded-xl text-slate-400 hover:text-slate-700 dark:hover:text-white transition-all active:scale-95" style={{ background: 'color-mix(in srgb, var(--border-color) 60%, var(--bg-sidebar))' }}>
             <X className="w-5 h-5" strokeWidth={2} />
           </button>
         </div>
