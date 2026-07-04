@@ -26,7 +26,7 @@ export interface NavGroup {
 export const LABOR_GROUP: NavGroup = {
   title: 'Labor',
   items: [
-    { tab: ActiveTab.EXPLAINER, label: 'KI-Erklärer', hint: 'Konzepte verstehen' },
+    { tab: ActiveTab.EXPLAINER, label: 'Erklärer', hint: 'Konzepte verstehen' },
     { tab: ActiveTab.PAPER, label: 'Hausarbeit', hint: 'Mit Quellen schreiben' },
     { tab: ActiveTab.SEARCH, label: 'Recherche', hint: 'Paper & Web suchen' },
   ],
@@ -44,8 +44,8 @@ export const NAV_GROUPS: NavGroup[] = [
     items: [
       { tab: ActiveTab.QUIZ, label: 'Quiz', hint: 'Fragen aus deinen Unterlagen' },
       { tab: ActiveTab.CARDS, label: 'Karteikarten', hint: 'Täglich wiederholen' },
-      { tab: ActiveTab.RECALL, label: 'Erklären üben', hint: 'Feynman-Methode' },
-      { tab: ActiveTab.EXAM, label: 'Klausur üben', hint: 'Prüfung simulieren' },
+      { tab: ActiveTab.RECALL, label: 'Feynman-Methode', hint: 'Erklären in eigenen Worten' },
+      { tab: ActiveTab.EXAM, label: 'Klausur-Simulator', hint: 'Prüfung simulieren' },
     ],
   },
   {
@@ -63,8 +63,8 @@ export const NAV_GROUPS: NavGroup[] = [
   {
     title: 'Fortschritt',
     items: [
-      { tab: ActiveTab.RADAR, label: 'Lern-Coach', hint: 'Was du üben solltest' },
-      { tab: ActiveTab.PLANNER, label: 'Lernplan' },
+      { tab: ActiveTab.RADAR, label: 'Lernfortschritt', hint: 'Was du üben solltest' },
+      { tab: ActiveTab.PLANNER, label: 'Kalender' },
     ],
   },
 ];

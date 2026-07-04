@@ -278,7 +278,7 @@ export const StudyPlanner: React.FC<StudyPlannerProps> = ({ metrics, decks, exam
           <span className="text-[10px] font-black uppercase tracking-[0.3em] text-indigo-600">Zeitmanagement</span>
         </div>
         <h1 className="text-4xl lg:text-6xl font-black tracking-tighter" style={{ color: 'var(--text-main)' }}>
-          Dein <span style={{ color: 'var(--primary)' }}>Lernplan</span>
+          Dein <span style={{ color: 'var(--primary)' }}>Kalender</span>
         </h1>
         <p className="text-slate-500 dark:text-slate-400 font-medium max-w-xl mx-auto">
           Kalender, Wochenplan und automatisch geplante Wiederholungen.

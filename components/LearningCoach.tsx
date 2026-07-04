@@ -191,7 +191,7 @@ export const LearningCoach: React.FC<LearningCoachProps> = ({ metrics, decks, on
       <div className="space-y-10">
         <div className="text-center space-y-3">
           <h1 className="text-4xl lg:text-6xl font-black tracking-tighter" style={{ color: 'var(--ink)' }}>
-            Lern <span style={{ color: 'var(--primary)' }}>Coach</span> <EmojiImage emoji="🧭" size={36} />
+            Dein <span style={{ color: 'var(--primary)' }}>Lernfortschritt</span> <EmojiImage emoji="🧭" size={36} />
           </h1>
         </div>
         <div className="flex flex-col items-center justify-center py-32 space-y-6 opacity-30">
@@ -213,7 +213,7 @@ export const LearningCoach: React.FC<LearningCoachProps> = ({ metrics, decks, on
       {/* ── Header ── */}
       <div className="text-center space-y-3">
         <h1 className="text-4xl lg:text-6xl font-black tracking-tighter" style={{ color: 'var(--ink)' }}>
-          Lern <span style={{ color: 'var(--primary)' }}>Coach</span> <EmojiImage emoji="🧭" size={36} />
+          Dein <span style={{ color: 'var(--primary)' }}>Lernfortschritt</span> <EmojiImage emoji="🧭" size={36} />
         </h1>
         <p className="text-base font-medium opacity-80" style={{ color: 'var(--mute)' }}>
           Dein persönlicher Lerncoach — alle Methoden, ein Überblick.

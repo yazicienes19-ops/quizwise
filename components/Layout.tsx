@@ -81,15 +81,15 @@ export const Layout: React.FC<LayoutProps> = ({
     { tab: ActiveTab.DASHBOARD, short: 'Start' },
     { tab: ActiveTab.QUIZ,      short: 'Quiz'  },
     { tab: ActiveTab.LIBRARY,   short: 'Bib'   },
-    { tab: ActiveTab.PLANNER,   short: 'Plan'  },
+    { tab: ActiveTab.PLANNER,   short: 'Kalender' },
   ];
 
   // Mobile "Mehr"-Sheet: alle anderen Tabs
   const mobileSheetItems = [
     { tab: ActiveTab.CARDS,     label: 'Karteikarten',   icon: Layers },
-    { tab: ActiveTab.RECALL,    label: 'Erklären üben',  icon: Brain },
-    { tab: ActiveTab.EXAM,      label: 'Klausur üben',   icon: GraduationCap },
-    { tab: ActiveTab.RADAR,     label: 'Lern-Coach',     icon: BarChart2 },
+    { tab: ActiveTab.RECALL,    label: 'Feynman-Methode', icon: Brain },
+    { tab: ActiveTab.EXAM,      label: 'Klausur-Simulator', icon: GraduationCap },
+    { tab: ActiveTab.RADAR,     label: 'Lernfortschritt', icon: BarChart2 },
     { tab: ActiveTab.EXPLAINER, label: 'Erklärer',    icon: Lightbulb },
     { tab: ActiveTab.SEARCH,    label: 'Recherche',      icon: Search },
     { tab: ActiveTab.PAPER,     label: 'Hausarbeit',     icon: FileText },

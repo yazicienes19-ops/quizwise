@@ -179,7 +179,7 @@ export const ActiveRecall: React.FC<ActiveRecallProps> = ({
       {/* Header */}
       <div className="text-center space-y-3">
         <h1 className="text-4xl lg:text-7xl font-black text-slate-900 dark:text-white tracking-tighter flex items-center justify-center gap-3">
-          Erklären <span style={{ color: 'var(--primary)' }}>üben</span>
+          Feynman-<span style={{ color: 'var(--primary)' }}>Methode</span>
           <GeneratedImage prompt="Human brain active recall, academic illustration" className="w-8 h-8 lg:w-12 lg:h-12 rounded-xl" />
         </h1>
         <p className="text-base text-slate-500 dark:text-slate-400 font-medium opacity-80">Erkläre ein Thema in eigenen Worten — so merkst du, was wirklich sitzt</p>

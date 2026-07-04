@@ -43,12 +43,12 @@ interface ActionCard {
 }
 
 const BASE_CARDS: ActionCard[] = [
-  { id: ActiveTab.RECALL, title: 'Erklären üben', desc: 'Erkläre Themen in eigenen Worten — mit sofortigem Feedback.', prompt: 'Human brain active recall, academic illustration', color: 'text-indigo-600', badge: 'Feynman' },
+  { id: ActiveTab.RECALL, title: 'Feynman-Methode', desc: 'Erkläre Themen in eigenen Worten — mit sofortigem Feedback.', prompt: 'Human brain active recall, academic illustration', color: 'text-indigo-600', badge: 'Feynman' },
   { id: ActiveTab.LIBRARY, title: 'Bibliothek', desc: 'Verwalte deine PDF-Sammlung und Quellen.', prompt: 'Academic library books, minimalist illustration', color: 'text-blue-500' },
   { id: ActiveTab.QUIZ, title: 'Quiz', desc: 'Teste dich mit Fragen aus deinen Unterlagen.', prompt: 'Target bullseye icon, academic minimalist illustration', color: 'text-indigo-500', badge: 'Aus deinen Unterlagen' },
-  { id: ActiveTab.EXAM, title: 'Klausur üben', desc: 'Simuliere echte Prüfungen unter Zeitdruck.', prompt: 'Exam paper graduation cap, academic illustration', color: 'text-rose-500', badge: 'Prüfungsnah' },
+  { id: ActiveTab.EXAM, title: 'Klausur-Simulator', desc: 'Simuliere echte Prüfungen unter Zeitdruck.', prompt: 'Exam paper graduation cap, academic illustration', color: 'text-rose-500', badge: 'Prüfungsnah' },
   { id: ActiveTab.CARDS, title: 'Karteikarten', desc: 'Wiederholen genau im richtigen Moment.', prompt: 'Flashcards study deck, minimalist illustration', color: 'text-violet-500' },
-  { id: ActiveTab.RADAR, title: 'Lern-Coach', desc: 'Sieh, wo du stehst und was als Nächstes dran ist.', prompt: 'Data analysis radar chart, academic illustration', color: 'text-emerald-500' }
+  { id: ActiveTab.RADAR, title: 'Lernfortschritt', desc: 'Sieh, wo du stehst und was als Nächstes dran ist.', prompt: 'Data analysis radar chart, academic illustration', color: 'text-emerald-500' }
 ];
 
 export const Dashboard: React.FC<DashboardProps> = ({ onTabChange, flowResult, documents = [], onStartMistakeReview }) => {

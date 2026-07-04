@@ -67,7 +67,7 @@ export const AuthPage: React.FC = () => {
   const FEATURES = [
     { label: 'Quiz aus deinen Unterlagen', sub: 'PDFs, Word, Fotos von Notizen' },
     { label: 'Karteikarten & Klausur-Simulation', sub: 'Spaced Repetition & Vollklausuren' },
-    { label: 'Lern-Coach & Erklären üben', sub: 'Schwächen erkennen und gezielt üben' },
+    { label: 'Lernfortschritt & Feynman-Methode', sub: 'Schwächen erkennen und gezielt üben' },
     { label: 'KI-Agents & StudyFlow', sub: 'Persönlicher Lern-Coach für jeden Tag' },
   ];
 

@@ -32,7 +32,7 @@ const features = [
   },
   {
     icon: '📊',
-    title: 'Klausur üben',
+    title: 'Klausur-Simulator',
     desc: 'Zeitdruck, Notenskala (1,0–5,0) und PDF-Export mit Feedback pro Frage.',
     color: 'blue',
   },
