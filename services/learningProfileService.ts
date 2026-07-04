@@ -125,6 +125,68 @@ const buildTopicMastery = (metrics: TopicMetric[], quizResults: QuizResult[], ex
   return [...byTopic.values()].sort((a, b) => a.confidence - b.confidence || b.weakCount - a.weakCount);
 };
 
+/**
+ * Themen-Sicherheit aus ECHTEN KI-Subthemen (statt Dokumentnamen).
+ *
+ * Quelle: gespeicherte Quiz-Fragen (`questions[].topic`) × Antworten (`isCorrect`)
+ * — deterministisch, keine Datenmigration. `weakTopics` aus Quiz+Klausur
+ * verschärfen die Einstufung. Recall-Scores fließen nur in bereits bekannte
+ * Themen ein (Recall-`topic` kann auch ein Dokumentname sein).
+ *
+ * Liefert [] wenn keine echten Themen existieren — der Aufrufer fällt dann auf
+ * `profile.topicMastery` (Dokumentnamen) zurück. `buildTopicMastery` und der
+ * LearningProfile-Typ bleiben unverändert (Coach-Prompt + ExamGenerator
+ * adaptive Gewichtung hängen daran).
+ */
+export const buildRealTopicMastery = (
+  quizResults: QuizResult[],
+  examResults: ExamResult[],
+  recallResults: RecallResult[],
+): TopicSecurity[] => {
+  const acc = new Map<string, { correct: number; total: number; samples: number[] }>();
+  quizResults.slice(0, 30).forEach(r => {
+    (r.answers || []).forEach(a => {
+      const topic = r.questions?.[a.questionIndex]?.topic?.trim();
+      if (!topic) return;
+      const e = acc.get(topic) ?? { correct: 0, total: 0, samples: [] };
+      e.total += 1;
+      if (a.isCorrect) e.correct += 1;
+      acc.set(topic, e);
+    });
+  });
+
+  const weakCounts: Record<string, number> = {};
+  quizResults.slice(0, 15).forEach(r => r.weakTopics.forEach(t => { weakCounts[t] = (weakCounts[t] || 0) + 1; }));
+  examResults.slice(0, 15).forEach(r => r.weakTopics.forEach(t => { weakCounts[t] = (weakCounts[t] || 0) + 1; }));
+
+  recallResults.slice(0, 15).forEach(r => {
+    const topic = r.topic?.trim();
+    if (!topic) return;
+    const e = acc.get(topic);
+    if (e) e.samples.push(r.score);
+    else if (weakCounts[topic]) acc.set(topic, { correct: 0, total: 0, samples: [r.score] });
+  });
+
+  const byTopic = new Map<string, TopicSecurity>();
+  acc.forEach((e, topic) => {
+    // Mindestschwelle gegen 1-Frage-Rauschen
+    if (e.total < 2 && e.samples.length === 0 && !weakCounts[topic]) return;
+    const pcts: number[] = [];
+    if (e.total > 0) pcts.push(Math.round((e.correct / e.total) * 100));
+    pcts.push(...e.samples);
+    const confidence = avg(pcts);
+    const weakCount = weakCounts[topic] || 0;
+    byTopic.set(topic, { topic, confidence, security: securityOf(confidence, weakCount), weakCount });
+  });
+  Object.entries(weakCounts).forEach(([topic, weakCount]) => {
+    if (!byTopic.has(topic)) {
+      byTopic.set(topic, { topic, confidence: 0, security: securityOf(0, weakCount), weakCount });
+    }
+  });
+
+  return [...byTopic.values()].sort((a, b) => a.confidence - b.confidence || b.weakCount - a.weakCount);
+};
+
 // ─── Kategorie-Sicherheit (aus Klausur-Kategorie-Aufschlüsselung) ──────────────────
 
 const buildCategoryMastery = (examResults: ExamResult[]): CategoryMastery[] => {

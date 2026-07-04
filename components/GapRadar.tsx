@@ -3,6 +3,7 @@ import React, { useState, useMemo, useRef, useEffect } from 'react';
 import { TopicMetric, LearningAnalysis, ActiveTab } from '../types';
 import { EmojiImage } from './EmojiImage';
 import { analyzeLearningProgress, WrongAnswerContext } from '../services/geminiService';
+import { buildRealTopicMastery } from '../services/learningProfileService';
 import { getAllResults } from '../services/quizHistoryService';
 import { getAllRecallResults } from '../services/recallHistoryService';
 import { getAllExamResults } from '../services/examHistoryService';
@@ -324,15 +325,27 @@ export const GapRadar: React.FC<GapRadarProps> = ({ metrics, onNavigate, onActio
       : null,
   [filteredMetrics]);
 
-  // ── Biggest gap (priority: failed exam > low anki < 70 > quiz weakTopic) ───
+  // Echte KI-Subthemen (respektiert den Dokument-Filter automatisch)
+  const realTopics = useMemo(
+    () => buildRealTopicMastery(filteredQuiz, filteredExam, filteredRecall),
+    [filteredQuiz, filteredExam, filteredRecall],
+  );
+
+  // ── Biggest gap (priority: failed exam > schwächstes echtes Thema > low anki > quiz weakTopic) ───
   const biggestGap = useMemo((): {
     topic: string; score: number; action: 'exam' | 'anki' | 'quiz';
   } | null => {
     if (selectedMode === 'all' || selectedMode === 'exam') {
       const failed = [...filteredExam].sort((a, b) => a.score - b.score).filter(r => !r.passed);
       if (failed.length > 0) {
-        return { topic: failed[0].docName, score: failed[0].score, action: 'exam' };
+        // Echtes Thema der Klausur statt Dokumentname (Fallback bleibt)
+        return { topic: failed[0].weakTopics?.[0] ?? failed[0].docName, score: failed[0].score, action: 'exam' };
       }
+    }
+    // Schwächstes echtes Thema aus der Quiz-/Recall-History
+    const weakestReal = realTopics.find(t => t.security !== 'sicher');
+    if (weakestReal && (selectedMode === 'all' || selectedMode === 'quiz')) {
+      return { topic: weakestReal.topic, score: weakestReal.confidence, action: 'quiz' };
     }
     if (selectedMode === 'all' || selectedMode === 'anki') {
       const sorted = [...filteredMetrics].sort((a, b) => a.confidence - b.confidence);
@@ -358,7 +371,7 @@ export const GapRadar: React.FC<GapRadarProps> = ({ metrics, onNavigate, onActio
       }
     }
     return null;
-  }, [selectedMode, filteredExam, filteredMetrics, filteredQuiz, filteredRecall]);
+  }, [selectedMode, filteredExam, filteredMetrics, filteredQuiz, filteredRecall, realTopics]);
 
   // ── Today learn: priority order ──────────────────────────────────────────────
   const todayLearn = useMemo(() => {
@@ -419,7 +432,9 @@ export const GapRadar: React.FC<GapRadarProps> = ({ metrics, onNavigate, onActio
     }
     if (selectedMode === 'all' || selectedMode === 'exam') {
       filteredExam.filter(r => !r.passed).forEach(r => {
-        counts[r.docName] = (counts[r.docName] || 0) + 1;
+        // Echte Themen der Klausur zählen; Dokumentname nur wenn keine erkannt wurden
+        const topics = r.weakTopics?.length ? r.weakTopics : [r.docName];
+        topics.forEach(t => { counts[t] = (counts[t] || 0) + 1; });
       });
     }
     if (selectedMode === 'all' || selectedMode === 'feynman') {

@@ -4,7 +4,7 @@ import { TopicMetric, ActiveTab, CoachInsights, FlashcardDeck, LearnMethod } fro
 import { EmojiImage } from './EmojiImage';
 import { GapRadar } from './GapRadar';
 import { generateCoachInsights, WrongAnswerContext } from '../services/geminiService';
-import { buildLearningProfile, CATEGORY_LABELS } from '../services/learningProfileService';
+import { buildLearningProfile, buildRealTopicMastery, CATEGORY_LABELS } from '../services/learningProfileService';
 import { getAllResults } from '../services/quizHistoryService';
 import { getAllRecallResults } from '../services/recallHistoryService';
 import { getAllExamResults } from '../services/examHistoryService';
@@ -59,6 +59,14 @@ export const LearningCoach: React.FC<LearningCoachProps> = ({ metrics, decks, on
     streak: { current: streak.current, best: streak.best },
   }), [metrics, quizResults, recallResults, examResults, decks, streak]);
 
+  // Echte KI-Subthemen (z.B. "Klassische Konditionierung") statt Dokumentnamen;
+  // Fallback auf die docname-basierten Metriken wenn noch keine Themen erkannt wurden.
+  const realTopics = useMemo(
+    () => buildRealTopicMastery(quizResults, examResults, recallResults),
+    [quizResults, examResults, recallResults],
+  );
+  const displayTopics = realTopics.length > 0 ? realTopics : profile.topicMastery;
+
   const wrongAnswersCtx = useMemo((): WrongAnswerContext[] =>
     quizResults.slice(0, 5).flatMap(result =>
       (result.answers || [])
@@ -100,7 +108,7 @@ export const LearningCoach: React.FC<LearningCoachProps> = ({ metrics, decks, on
       label: 'KI-Coach',
       reason: `Braucht mindestens ${MIN_SESSIONS_FOR_COACH} Lernsessions, du hast ${profile.volume.totalSessions}.`,
     },
-    profile.topicMastery.length === 0 && {
+    displayTopics.length === 0 && {
       label: 'Themen-Sicherheit',
       reason: 'Erscheint nach deiner ersten Quiz-, Klausur- oder Karteikarten-Session.',
     },
@@ -269,12 +277,12 @@ export const LearningCoach: React.FC<LearningCoachProps> = ({ metrics, decks, on
           </div>
         )}
 
-        {/* Themen-Sicherheit */}
-        {profile.topicMastery.length > 0 && (
+        {/* Themen-Sicherheit — echte Themen, Dokumentnamen nur als Fallback */}
+        {displayTopics.length > 0 && (
           <div className="p-6 lg:p-8 rounded-[24px] lg:rounded-[32px] border shadow-sm space-y-4" style={{ background: 'var(--card)', borderColor: 'var(--border-color)' }}>
             <h3 className="text-[9px] font-black uppercase tracking-widest" style={{ color: 'var(--mute)' }}>Themen-Sicherheit</h3>
             <div className="flex flex-wrap gap-2">
-              {profile.topicMastery.slice(0, 10).map(t => (
+              {displayTopics.slice(0, 10).map(t => (
                 <button
                   key={t.topic}
                   onClick={() => onAction?.(t.topic, 'quiz')}

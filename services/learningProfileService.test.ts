@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { buildLearningProfile, germanGradeFromPercentage } from './learningProfileService';
+import { buildLearningProfile, buildRealTopicMastery, germanGradeFromPercentage } from './learningProfileService';
 import type { QuizResult } from './quizHistoryService';
 import type { ExamResult } from './examHistoryService';
 import type { RecallResult } from './recallHistoryService';
@@ -253,5 +253,90 @@ describe('buildLearningProfile — Wochentag-Insight', () => {
     const profile = buildLearningProfile(emptyInput);
     expect(profile.dayOfWeek.bestDay).toBeNull();
     expect(profile.dayOfWeek.byDay).toEqual([]);
+  });
+});
+
+describe('buildRealTopicMastery — echte Themen statt Dokumentnamen', () => {
+  const mkQuestion = (topic?: string): QuizQuestion => ({
+    question: `Frage zu ${topic ?? '?'}`, options: ['A', 'B'], correctAnswerIndices: [0],
+    isMultipleChoice: false, explanation: '', distractorExplanations: [], sourceReference: '', topic,
+  });
+  const mkAnswer = (questionIndex: number, isCorrect: boolean): UserAnswer =>
+    ({ questionIndex, selectedOptionIndices: [0], isCorrect });
+  const mkQuiz = (id: string, pairs: { topic?: string; correct: boolean }[], weakTopics: string[] = []): QuizResult => ({
+    id, docId: 'd1', docName: 'LERNSKRIPT überarbeitet.pdf', timestamp: now, score: 50,
+    correctCount: pairs.filter(p => p.correct).length, totalCount: pairs.length, weakTopics,
+    questions: pairs.map(p => mkQuestion(p.topic)),
+    answers: pairs.map((p, i) => mkAnswer(i, p.correct)),
+  });
+
+  it('mittelt die Genauigkeit pro Thema aus Fragen und Antworten', () => {
+    const quiz = mkQuiz('q1', [
+      { topic: 'Konditionierung', correct: true },
+      { topic: 'Konditionierung', correct: false },
+      { topic: 'Gedächtnis', correct: true },
+      { topic: 'Gedächtnis', correct: true },
+    ]);
+    const topics = buildRealTopicMastery([quiz], [], []);
+    expect(topics.find(t => t.topic === 'Konditionierung')?.confidence).toBe(50);
+    expect(topics.find(t => t.topic === 'Gedächtnis')?.confidence).toBe(100);
+  });
+
+  it('Dokumentnamen tauchen nie als Thema auf', () => {
+    const quiz = mkQuiz('q1', [
+      { topic: 'Motivation', correct: true },
+      { topic: 'Motivation', correct: true },
+    ]);
+    const topics = buildRealTopicMastery([quiz], [], []);
+    expect(topics.map(t => t.topic)).not.toContain('LERNSKRIPT überarbeitet.pdf');
+  });
+
+  it('Mindestschwelle: einzelne Frage ohne weitere Signale wird ignoriert', () => {
+    const quiz = mkQuiz('q1', [{ topic: 'Randthema', correct: true }]);
+    expect(buildRealTopicMastery([quiz], [], [])).toEqual([]);
+  });
+
+  it('weakTopics aus Klausuren verschärfen die Einstufung', () => {
+    const quiz = mkQuiz('q1', [
+      { topic: 'Neurotransmitter', correct: true },
+      { topic: 'Neurotransmitter', correct: false },
+    ]);
+    const exams: ExamResult[] = [
+      { id: 'e1', docName: 'Doc', timestamp: now, score: 40, passed: false, totalPoints: 10, achievedPoints: 4, weakTopics: ['Neurotransmitter', 'Neurotransmitter-Zusatz'] } as ExamResult,
+    ];
+    const topics = buildRealTopicMastery([quiz], exams, []);
+    const nt = topics.find(t => t.topic === 'Neurotransmitter');
+    expect(nt?.weakCount).toBe(1);
+    expect(nt?.security).toBe('unsicher');
+    // Nur über weakTopics bekannt → confidence 0
+    expect(topics.find(t => t.topic === 'Neurotransmitter-Zusatz')?.confidence).toBe(0);
+  });
+
+  it('Recall-Scores fließen nur in bereits bekannte Themen ein', () => {
+    const quiz = mkQuiz('q1', [
+      { topic: 'Wahrnehmung', correct: true },
+      { topic: 'Wahrnehmung', correct: true },
+    ]);
+    const recalls: RecallResult[] = [
+      { id: 'r1', docName: 'Wahrnehmung', timestamp: now, score: 50, topic: 'Wahrnehmung', missingPoints: [] },
+      { id: 'r2', docName: 'Skript.pdf', timestamp: now, score: 90, topic: 'Skript.pdf', missingPoints: [] },
+    ];
+    const topics = buildRealTopicMastery([quiz], [], recalls);
+    expect(topics.find(t => t.topic === 'Wahrnehmung')?.confidence).toBe(75); // (100 + 50) / 2
+    expect(topics.map(t => t.topic)).not.toContain('Skript.pdf');
+  });
+
+  it('Altdaten ohne questions/answers/topic crashen nicht', () => {
+    const legacy = { id: 'q1', docId: 'd1', docName: 'Doc', timestamp: now, score: 50, correctCount: 1, totalCount: 2, weakTopics: [] } as unknown as QuizResult;
+    expect(buildRealTopicMastery([legacy], [], [])).toEqual([]);
+  });
+
+  it('sortiert worst-first', () => {
+    const quiz = mkQuiz('q1', [
+      { topic: 'Stark', correct: true }, { topic: 'Stark', correct: true },
+      { topic: 'Schwach', correct: false }, { topic: 'Schwach', correct: false },
+    ]);
+    const topics = buildRealTopicMastery([quiz], [], []);
+    expect(topics[0].topic).toBe('Schwach');
   });
 });
