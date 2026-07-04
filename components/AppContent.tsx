@@ -293,6 +293,22 @@ export const AppContent: React.FC<AppContentProps> = (p) => {
           updateMetricsAfterSession(score, topic, 'recall');
           recordActivity(user?.id);
         }}
+        onCreateCardsFromGaps={(topic, points) => {
+          if (!points.length) return;
+          const cards = points.map(p => ({
+            id: Math.random().toString(36).slice(2, 9),
+            front: `${topic}: Was fehlte hier?\n„${p.slice(0, 120)}${p.length > 120 ? '…' : ''}"`,
+            back: p,
+            level: 0,
+            nextReview: Date.now(),
+          }));
+          const newDeck: FlashcardDeck = { id: Math.random().toString(36).slice(2, 9), title: `Lücken: ${topic}`, cards };
+          const updatedDecks = [...decks, newDeck];
+          setDecks(updatedDecks);
+          localStorage.setItem('flashcard_decks', JSON.stringify(updatedDecks));
+          toast.success(`${cards.length} Karteikarte${cards.length !== 1 ? 'n' : ''} aus Lücken erstellt`);
+          setActiveTab(ActiveTab.CARDS);
+        }}
         initialDoc={pendingActionDoc ?? undefined}
       />;
 

@@ -1,5 +1,5 @@
 
-import React, { useState, useEffect, useRef, useCallback } from 'react';
+import React, { useState, useEffect, useRef, useCallback, useMemo } from 'react';
 import { ProcessedDocument, Collection, RecallChallenge, RecallEvaluation } from '../types';
 import type { GenerationSource } from '../services/geminiService';
 import { generateRecallChallenge, evaluateRecallResponse } from '../services/geminiService';
@@ -7,6 +7,10 @@ import { GeneratedImage } from './GeneratedImage';
 import { SourceSelector } from './SourceSelector';
 import { toast } from '../services/toast';
 import { documentDisplayName } from '../services/libraryService';
+import { buildRealTopicMastery } from '../services/learningProfileService';
+import { getAllResults } from '../services/quizHistoryService';
+import { getAllRecallResults } from '../services/recallHistoryService';
+import { getAllExamResults } from '../services/examHistoryService';
 
 interface ActiveRecallProps {
   availableDocuments: ProcessedDocument[];
@@ -14,6 +18,8 @@ interface ActiveRecallProps {
   getDocumentSource?: (doc: ProcessedDocument) => GenerationSource;
   onSaveToLibrary?: (file: File) => void;
   onComplete: (score: number, topic: string, missingPoints: string[]) => void;
+  /** Erstellt Karteikarten aus den identifizierten Lücken (wird in AppContent verdrahtet). */
+  onCreateCardsFromGaps?: (topic: string, points: string[]) => void;
   initialDoc?: ProcessedDocument;
 }
 
@@ -23,10 +29,19 @@ export const ActiveRecall: React.FC<ActiveRecallProps> = ({
   getDocumentSource,
   onSaveToLibrary,
   onComplete,
+  onCreateCardsFromGaps,
   initialDoc,
 }) => {
   const [activeSource, setActiveSource] = useState<GenerationSource | null>(null);
   const [activeSourceName, setActiveSourceName] = useState('');
+  const [focusTopic, setFocusTopic] = useState('');
+
+  // Schwache echte Themen als Fokus-Vorschläge (gleiche Quelle wie der Lern-Coach)
+  const topicSuggestions = useMemo(() =>
+    buildRealTopicMastery(getAllResults(), getAllExamResults(), getAllRecallResults())
+      .filter(t => t.security !== 'sicher')
+      .slice(0, 5),
+  []);
   const [challenge, setChallenge] = useState<RecallChallenge | null>(null);
   const [userAnswer, setUserAnswer] = useState('');
   const [evaluation, setEvaluation] = useState<RecallEvaluation | null>(null);
@@ -106,7 +121,7 @@ export const ActiveRecall: React.FC<ActiveRecallProps> = ({
     setEvaluation(null);
     setUserAnswer('');
     try {
-      const res = await generateRecallChallenge(activeSource);
+      const res = await generateRecallChallenge(activeSource, focusTopic.trim() || undefined);
       if (!res || !res.question) throw new Error('Ungültige Antwort der KI');
       setChallenge(res);
     } catch (e: any) {
@@ -123,7 +138,8 @@ export const ActiveRecall: React.FC<ActiveRecallProps> = ({
     try {
       const res = await evaluateRecallResponse(challenge, userAnswer, activeSource);
       setEvaluation(res);
-      onComplete(res.score, activeSourceName || 'Recall Session', res.missingPoints ?? []);
+      // Themen-Ebene: gewähltes Fokus-Thema als Topic speichern, sonst Quellname
+      onComplete(res.score, focusTopic.trim() || activeSourceName || 'Recall Session', res.missingPoints ?? []);
     } catch (e: any) {
       console.error('Evaluation Error:', e);
       toast.error('Bewertung fehlgeschlagen. Versuche es erneut.');
@@ -196,6 +212,41 @@ export const ActiveRecall: React.FC<ActiveRecallProps> = ({
               isLoading={isLoading}
               label="Fokus wählen"
             />
+          )}
+
+          {/* Fokus-Thema (optional) + Vorschläge aus dem Lernprofil */}
+          {activeSource && (
+            <div className="space-y-3">
+              <div className="space-y-2">
+                <p className="text-[10px] font-black uppercase tracking-widest text-slate-400">Fokus-Thema (optional)</p>
+                <input
+                  type="text"
+                  value={focusTopic}
+                  onChange={e => setFocusTopic(e.target.value)}
+                  placeholder="z.B. Operante Konditionierung — leer lassen für freie Themenwahl"
+                  className="w-full px-5 py-4 rounded-2xl text-base font-bold outline-none transition-all"
+                  style={{ background: 'var(--bg-sidebar)', border: '1px solid var(--border-color)', color: 'var(--text-main)' }}
+                />
+              </div>
+              {topicSuggestions.length > 0 && (
+                <div className="flex flex-wrap gap-2">
+                  {topicSuggestions.map(t => (
+                    <button
+                      key={t.topic}
+                      onClick={() => setFocusTopic(t.topic)}
+                      className="px-3 py-2 rounded-xl text-[9px] font-black uppercase tracking-wider transition-all hover:opacity-80"
+                      style={{
+                        background: `color-mix(in srgb, ${t.security === 'kritisch' ? '#f43f5e' : '#f59e0b'} 10%, var(--bg-sidebar))`,
+                        color: t.security === 'kritisch' ? '#f43f5e' : '#f59e0b',
+                        border: `1px solid color-mix(in srgb, ${t.security === 'kritisch' ? '#f43f5e' : '#f59e0b'} 25%, transparent)`,
+                      }}
+                    >
+                      {t.topic} · {t.security}
+                    </button>
+                  ))}
+                </div>
+              )}
+            </div>
           )}
 
           <div className="text-center">
@@ -372,14 +423,25 @@ export const ActiveRecall: React.FC<ActiveRecallProps> = ({
                 Lücken identifiziert
               </h4>
               {evaluation.missingPoints.length > 0 ? (
-                <ul className="space-y-2.5">
-                  {evaluation.missingPoints.map((m, i) => (
-                    <li key={i} className="flex gap-3 items-start">
-                      <span className="w-1.5 h-1.5 rounded-full bg-rose-400 mt-1.5 shrink-0" />
-                      <p className="text-xs font-semibold text-slate-600 dark:text-slate-300 leading-normal">{m}</p>
-                    </li>
-                  ))}
-                </ul>
+                <>
+                  <ul className="space-y-2.5">
+                    {evaluation.missingPoints.map((m, i) => (
+                      <li key={i} className="flex gap-3 items-start">
+                        <span className="w-1.5 h-1.5 rounded-full bg-rose-400 mt-1.5 shrink-0" />
+                        <p className="text-xs font-semibold text-slate-600 dark:text-slate-300 leading-normal">{m}</p>
+                      </li>
+                    ))}
+                  </ul>
+                  {onCreateCardsFromGaps && (
+                    <button
+                      onClick={() => onCreateCardsFromGaps(focusTopic.trim() || activeSourceName || 'Recall', evaluation.missingPoints)}
+                      className="mt-4 w-full py-3 rounded-xl text-[9px] font-black uppercase tracking-widest transition-all hover:scale-[1.02] active:scale-[0.98]"
+                      style={{ background: 'color-mix(in srgb, var(--primary) 12%, transparent)', color: 'var(--primary)', border: '1px solid color-mix(in srgb, var(--primary) 30%, transparent)' }}
+                    >
+                      Lücken als Karteikarten sichern →
+                    </button>
+                  )}
+                </>
               ) : (
                 <p className="text-xs text-emerald-500 font-semibold">Keine Lücken gefunden — vollständige Antwort!</p>
               )}

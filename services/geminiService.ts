@@ -123,11 +123,15 @@ GIB IMMER NUR STRIKTES JSON ZURÜCK.`;
 
 // ─── Feature-Funktionen ──────────────────────────────────────────────────────
 
-export const generateRecallChallenge = async (source: GenerationSource): Promise<RecallChallenge> => {
+export const generateRecallChallenge = async (source: GenerationSource, focusTopic?: string): Promise<RecallChallenge> => {
   const parts: any[] = [sourceTopart(source)];
 
-  parts.push({ text: `Erzeuge eine Active-Recall-Herausforderung nach der Feynman-Technik.
+  const focusLine = focusTopic?.trim()
+    ? `\nFOKUS: Die Frage muss sich auf das Thema "${sanitizeUserInput(focusTopic, 120)}" beziehen. Enthält das Dokument dazu nichts, wähle das inhaltlich nächstliegende Thema aus dem Dokument.\n`
+    : '';
 
+  parts.push({ text: `Erzeuge eine Active-Recall-Herausforderung nach der Feynman-Technik.
+${focusLine}
 STRENGE REGEL: Verwende AUSSCHLIESSLICH Inhalte aus dem oben bereitgestellten Dokument. Kein Allgemeinwissen, keine Ergänzungen aus dem Internet, keine Erfindungen. Wenn das Dokument zu einem Thema schweigt, stelle keine Frage dazu.
 
 Die Frage soll tiefes Verständnis prüfen — Zusammenhänge, Ursachen und Bedeutung, nicht bloßes Faktenwissen.
