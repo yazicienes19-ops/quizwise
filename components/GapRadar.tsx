@@ -220,6 +220,14 @@ const LegendDot: React.FC<{ color: string; label: string }> = ({ color, label })
 
 // ─── Main Component ────────────────────────────────────────────────────────────
 
+/** Routing der KI-Fehleranalyse-Empfehlung auf die passende Lernaktion. */
+const ERROR_ACTION_TARGET: Record<string, { mode?: 'quiz' | 'cards' | 'recall'; tab: ActiveTab }> = {
+  'kurze Erklärung':                     { tab: ActiveTab.EXPLAINER },
+  '3 gezielte Übungsfragen':             { mode: 'quiz', tab: ActiveTab.QUIZ },
+  'Erstellung von Karteikarten':         { mode: 'cards', tab: ActiveTab.CARDS },
+  'Start einer geführten Study-Session': { mode: 'recall', tab: ActiveTab.RECALL },
+};
+
 interface GapRadarProps {
   metrics: TopicMetric[];
   onNavigate: (tab: ActiveTab) => void;
@@ -938,78 +946,51 @@ export const GapRadar: React.FC<GapRadarProps> = ({ metrics, onNavigate, onActio
               </p>
             </section>
 
-            <div className="grid grid-cols-1 gap-6">
-              {analysis.errorPatterns.map((error, idx) => (
-                <div
-                  key={idx}
-                  className="rounded-[32px] overflow-hidden shadow-sm border"
-                  style={{ background: 'var(--card)', borderColor: 'var(--border-color)' }}
-                >
+            <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+              {analysis.errorPatterns.map((error, idx) => {
+                const target = ERROR_ACTION_TARGET[error.recommendedAction.type] ?? { tab: ActiveTab.QUIZ };
+                const handleLearn = () => {
+                  if (target.mode && onAction && error.concepts?.[0]) onAction(error.concepts[0], target.mode);
+                  else onNavigate(target.tab);
+                };
+                return (
                   <div
-                    className="p-6 border-b flex flex-wrap justify-between items-center gap-3"
-                    style={{ background: 'color-mix(in srgb, var(--border-color) 30%, var(--card))', borderColor: 'var(--border-color)' }}
+                    key={idx}
+                    className="p-6 lg:p-8 rounded-[24px] lg:rounded-[32px] border shadow-sm space-y-4 flex flex-col"
+                    style={{ background: 'var(--card)', borderColor: 'var(--border-color)' }}
                   >
-                    <h4 className="text-base lg:text-xl font-black" style={{ color: 'var(--ink)' }}>
-                      {error.pattern}
-                    </h4>
-                    <span
-                      className="text-[9px] font-black px-3 py-1.5 rounded-full uppercase tracking-widest"
+                    <div>
+                      <div className="flex flex-wrap justify-between items-start gap-2">
+                        <p className="text-[9px] font-black uppercase tracking-widest" style={{ color: '#f43f5e' }}>Hauptproblem</p>
+                        <span
+                          className="text-[8px] font-black px-2.5 py-1 rounded-full uppercase tracking-widest shrink-0"
+                          style={{ background: 'var(--primary)', color: 'var(--primary-text)' }}
+                        >
+                          {error.count}× aufgetreten
+                        </span>
+                      </div>
+                      <h4 className="text-base font-black mt-1" style={{ color: 'var(--ink)' }}>{error.pattern}</h4>
+                      <p className="text-[11px] font-medium mt-1 leading-relaxed" style={{ color: 'var(--ink2)' }}>{error.description}</p>
+                    </div>
+                    <div>
+                      <p className="text-[9px] font-black uppercase tracking-widest" style={{ color: 'var(--mute)' }}>Vermutete Ursache</p>
+                      <p className="text-[11px] font-medium mt-1 leading-relaxed" style={{ color: 'var(--ink2)' }}>{error.probableCause}</p>
+                    </div>
+                    <div className="flex-1">
+                      <p className="text-[9px] font-black uppercase tracking-widest" style={{ color: 'var(--primary)' }}>Empfehlung</p>
+                      <p className="text-sm font-black mt-1" style={{ color: 'var(--ink)' }}>{error.recommendedAction.type}</p>
+                      <p className="text-[10px] italic mt-1 leading-relaxed" style={{ color: 'var(--ink2)' }}>{error.recommendedAction.reasoning}</p>
+                    </div>
+                    <button
+                      onClick={handleLearn}
+                      className="w-full py-3 rounded-xl text-[9px] font-black uppercase tracking-widest transition-all hover:scale-[1.02] active:scale-[0.98]"
                       style={{ background: 'var(--primary)', color: 'var(--primary-text)' }}
                     >
-                      {error.count}× aufgetreten
-                    </span>
+                      Jetzt lernen →
+                    </button>
                   </div>
-                  <div className="p-6 lg:p-10 grid grid-cols-1 lg:grid-cols-2 gap-8">
-                    <div className="space-y-5">
-                      <div>
-                        <p className="text-[9px] font-black uppercase tracking-widest mb-2" style={{ color: 'var(--mute)' }}>
-                          Beschreibung
-                        </p>
-                        <p className="text-sm leading-relaxed font-medium" style={{ color: 'var(--ink2)' }}>
-                          {error.description}
-                        </p>
-                      </div>
-                      <div className="grid grid-cols-2 gap-4 pt-4 border-t" style={{ borderColor: 'var(--border-soft)' }}>
-                        <div>
-                          <p className="text-[9px] font-black uppercase tracking-widest mb-1.5" style={{ color: 'var(--mute)' }}>
-                            Konzepte
-                          </p>
-                          <div className="flex flex-wrap gap-1">
-                            {error.concepts.map((c, i) => (
-                              <span key={i} className="text-[9px] font-bold" style={{ color: 'var(--ink2)' }}>#{c}</span>
-                            ))}
-                          </div>
-                        </div>
-                        <div>
-                          <p className="text-[9px] font-black uppercase tracking-widest mb-1.5" style={{ color: 'var(--mute)' }}>
-                            Vermutete Ursache
-                          </p>
-                          <p className="text-[10px] font-bold" style={{ color: 'var(--primary)' }}>
-                            {error.probableCause}
-                          </p>
-                        </div>
-                      </div>
-                    </div>
-                    <div
-                      className="p-6 rounded-[24px] border"
-                      style={{
-                        background: 'color-mix(in srgb, var(--primary) 6%, var(--bg-sidebar))',
-                        borderColor: 'color-mix(in srgb, var(--primary) 20%, transparent)',
-                      }}
-                    >
-                      <p className="text-[9px] font-black uppercase mb-3 tracking-widest" style={{ color: 'var(--primary)' }}>
-                        Empfohlene Aktion
-                      </p>
-                      <h5 className="text-lg font-black mb-3 leading-tight" style={{ color: 'var(--ink)' }}>
-                        {error.recommendedAction.type}
-                      </h5>
-                      <p className="text-xs leading-relaxed italic" style={{ color: 'var(--ink2)' }}>
-                        "{error.recommendedAction.reasoning}"
-                      </p>
-                    </div>
-                  </div>
-                </div>
-              ))}
+                );
+              })}
             </div>
           </div>
         )}
