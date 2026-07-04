@@ -1,5 +1,6 @@
 import { supabase } from './supabaseClient';
 import { FlashcardDeck } from '../types';
+import { mergeDeck } from './deckMerge';
 
 export const loadDecksFromSupabase = async (userId: string): Promise<FlashcardDeck[]> => {
   const { data, error } = await supabase
@@ -17,12 +18,27 @@ export const loadDecksFromSupabase = async (userId: string): Promise<FlashcardDe
 };
 
 export const saveDeckToSupabase = async (deck: FlashcardDeck, userId: string): Promise<void> => {
+  // Vor dem Upsert mit dem Cloud-Stand mergen — sonst überschreibt ein Gerät
+  // per Last-Write-Wins den SRS-Fortschritt eines anderen Geräts.
+  let toSave = deck;
+  try {
+    const { data } = await supabase
+      .from('flashcard_decks')
+      .select('cards')
+      .eq('id', deck.id)
+      .eq('user_id', userId)
+      .maybeSingle();
+    if (data?.cards?.length) {
+      toSave = mergeDeck(deck, { ...deck, cards: data.cards });
+    }
+  } catch { /* Cloud nicht erreichbar → lokalen Stand speichern */ }
+
   const { error } = await supabase.from('flashcard_decks').upsert({
-    id: deck.id,
+    id: toSave.id,
     user_id: userId,
-    title: deck.title,
-    cards: deck.cards,
-    source_document_id: deck.sourceDocumentId ?? null,
+    title: toSave.title,
+    cards: toSave.cards,
+    source_document_id: toSave.sourceDocumentId ?? null,
     updated_at: new Date().toISOString(),
   });
   if (error) throw error;

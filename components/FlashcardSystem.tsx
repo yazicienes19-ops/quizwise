@@ -8,6 +8,7 @@ import { toast } from '../services/toast';
 import { FlashcardPlayer } from './FlashcardPlayer';
 import { SourceSelector } from './SourceSelector';
 import { loadDecksFromSupabase, saveDeckToSupabase, deleteDeckFromSupabase, uploadAllDecksToSupabase } from '../services/flashcardService';
+import { mergeDecks } from '../services/deckMerge';
 import { documentDisplayName } from '../services/libraryService';
 import { getDueCards, createSrsState, migrateLegacyCard, countDueCards, QUALITY_MAP, reviewCard } from '../services/spacedRepetition';
 import { recordActivity } from '../services/streakService';
@@ -71,8 +72,13 @@ export const FlashcardSystem: React.FC<FlashcardSystemProps> = ({
         try {
           const cloudDecks = await loadDecksFromSupabase(userId);
           if (cloudDecks.length > 0) {
-            setDecks(cloudDecks);
-            localStorage.setItem('flashcard_decks', JSON.stringify(cloudDecks));
+            // Cloud NICHT blind übernehmen — mit lokalem Stand pro Karte mergen,
+            // sonst geht Offline-Lernfortschritt dieses Geräts verloren.
+            let localDecks: FlashcardDeck[] = [];
+            try { localDecks = JSON.parse(localStorage.getItem('flashcard_decks') || '[]'); } catch {}
+            const merged = mergeDecks(localDecks, cloudDecks);
+            setDecks(merged);
+            localStorage.setItem('flashcard_decks', JSON.stringify(merged));
             return;
           }
           // Keine Cloud-Decks: localStorage-Daten hochladen (Migration)
