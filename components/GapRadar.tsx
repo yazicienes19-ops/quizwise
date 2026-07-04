@@ -407,29 +407,6 @@ export const GapRadar: React.FC<GapRadarProps> = ({ metrics, onNavigate, onActio
     return items.slice(0, 3);
   }, [selectedMode, filteredExam, filteredMetrics, filteredRecall]);
 
-  // ── Next session recommendation ──────────────────────────────────────────────
-  const recommendation = useMemo(() => {
-    if (!biggestGap) {
-      return { text: 'Gute Performance! Starte ein Quiz zum Auffrischen.', tab: ActiveTab.QUIZ };
-    }
-    if (biggestGap.action === 'exam') {
-      return {
-        text: `Klausur zu „${biggestGap.topic}" wiederholen — Simulation starten.`,
-        tab: ActiveTab.EXAM,
-      };
-    }
-    if (biggestGap.action === 'anki') {
-      return {
-        text: `Anki-Deck zu „${biggestGap.topic}" abfragen (Confidence: ${biggestGap.score}%).`,
-        tab: ActiveTab.CARDS,
-      };
-    }
-    return {
-      text: `Quiz zu „${biggestGap.topic}" starten — schwache Themen gezielt üben.`,
-      tab: ActiveTab.QUIZ,
-    };
-  }, [biggestGap]);
-
   // ── Aggregated weak topics ────────────────────────────────────────────────────
   const weakTopics = useMemo(() => {
     const counts: Record<string, number> = {};
@@ -531,11 +508,27 @@ export const GapRadar: React.FC<GapRadarProps> = ({ metrics, onNavigate, onActio
 
   const hasAnyData = overallScore !== null || combinedHistory.length > 0;
 
+  // Tiefenanalyse cachen — sonst kostet jeder Coach-Besuch mit Klick einen Gemini-Call
+  const ANALYSIS_CACHE_KEY = 'quizwise_gap_analysis_v1';
+  const sessionStamp = allQuiz.length + allRecall.length + allExam.length;
+
+  useEffect(() => {
+    try {
+      const raw = localStorage.getItem(ANALYSIS_CACHE_KEY);
+      if (!raw) return;
+      const cached = JSON.parse(raw) as { analysis: LearningAnalysis; stamp: number };
+      if (cached?.analysis && cached.stamp === sessionStamp) setAnalysis(cached.analysis);
+    } catch {}
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
   const handleRunAnalysis = async () => {
     if (!hasAnyData) return;
     setIsAnalyzing(true);
     try {
-      setAnalysis(await analyzeLearningProgress(metrics, wrongAnswersCtx));
+      const result = await analyzeLearningProgress(metrics, wrongAnswersCtx);
+      setAnalysis(result);
+      try { localStorage.setItem(ANALYSIS_CACHE_KEY, JSON.stringify({ analysis: result, stamp: sessionStamp })); } catch {}
     } catch (e: any) {
       toast.error(`Analyse fehlgeschlagen: ${e?.message || 'Unbekannter Fehler'}`);
     } finally {
@@ -626,7 +619,7 @@ export const GapRadar: React.FC<GapRadarProps> = ({ metrics, onNavigate, onActio
       </div>
 
       {/* ── Bento Grid ── */}
-      <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 lg:gap-6">
+      <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 lg:gap-6">
 
         {/* Kachel 1: Gesamtfortschritt */}
         <div
@@ -729,25 +722,8 @@ export const GapRadar: React.FC<GapRadarProps> = ({ metrics, onNavigate, onActio
           </div>
         </div>
 
-        {/* Kachel 4: Nächste Session */}
-        <div
-          className="p-5 lg:p-8 rounded-[24px] lg:rounded-[32px] shadow-sm text-white flex flex-col justify-between"
-          style={{ background: 'var(--primary)' }}
-        >
-          <h3 className="text-[9px] font-black uppercase tracking-widest opacity-60 mb-3">
-            Nächste Session
-          </h3>
-          <p className="text-[11px] font-bold leading-snug mb-4" style={{ color: 'var(--primary-text)' }}>
-            {recommendation.text}
-          </p>
-          <button
-            onClick={() => onNavigate(recommendation.tab)}
-            className="w-full py-2.5 rounded-xl text-[8px] font-black uppercase tracking-widest transition-all hover:opacity-80 active:scale-95"
-            style={{ background: 'rgba(255,255,255,0.2)', color: 'var(--primary-text)' }}
-          >
-            Jetzt starten →
-          </button>
-        </div>
+        {/* „Nächste Session"-Kachel entfernt — die „Heute solltest du"-Karte
+            im LearningCoach beantwortet dieselbe Frage (eine Quelle statt drei). */}
       </div>
 
       {/* ── Progress Chart ── */}
