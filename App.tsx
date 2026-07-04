@@ -118,9 +118,16 @@ const App: React.FC = () => {
     setMetrics(updated);
     localStorage.setItem('quizwise_metrics', JSON.stringify(updated));
     if (auth.user) syncMetrics(auth.user.id, updated);
+
+    // KI-Flow max. 1x pro Tag — sonst kostet jede einzelne Session einen Gemini-Call,
+    // obwohl sich die Empfehlungen innerhalb eines Tages kaum ändern.
+    const d = new Date();
+    const todayStr = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+    if (localStorage.getItem('quizwise_flow_last_run') === todayStr) return;
     try {
       const flow = await orchestrateLearningFlow({ type, result: { score } }, updated, { entries: JSON.parse(localStorage.getItem('study_plan') || '[]'), exams: examTerms });
       saveFlowResult(flow);
+      localStorage.setItem('quizwise_flow_last_run', todayStr);
     } catch (e) { console.error('Flow error', e); }
   };
 
