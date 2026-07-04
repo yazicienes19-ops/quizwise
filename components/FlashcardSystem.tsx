@@ -8,6 +8,7 @@ import { toast } from '../services/toast';
 import { FlashcardPlayer } from './FlashcardPlayer';
 import { SourceSelector } from './SourceSelector';
 import { loadDecksFromSupabase, saveDeckToSupabase, deleteDeckFromSupabase, uploadAllDecksToSupabase } from '../services/flashcardService';
+import { documentDisplayName } from '../services/libraryService';
 import { getDueCards, createSrsState, migrateLegacyCard, countDueCards, QUALITY_MAP, reviewCard } from '../services/spacedRepetition';
 import { recordActivity } from '../services/streakService';
 import { AnkiImportModal } from './AnkiImportModal';
@@ -102,7 +103,7 @@ export const FlashcardSystem: React.FC<FlashcardSystemProps> = ({
     if (!initialDoc || !getDocumentSource) return;
     try {
       const source = getDocumentSource(initialDoc);
-      handleGenerateFromSource(source, initialDoc.name.replace(/\.[^/.]+$/, ''), initialDoc.id);
+      handleGenerateFromSource(source, documentDisplayName(initialDoc), initialDoc.id);
     } catch (_) {}
   }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
@@ -211,7 +212,7 @@ export const FlashcardSystem: React.FC<FlashcardSystemProps> = ({
       : doc.type === 'pdf'
         ? { file: { data: doc.content, mimeType: 'application/pdf' } }
         : { text: doc.content };
-    handleGenerateFromSource(source, doc.name, doc.id);
+    handleGenerateFromSource(source, documentDisplayName(doc), doc.id);
   };
 
   const deckStats = useMemo(() => {

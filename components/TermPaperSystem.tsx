@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { AcademicSource, CitationStyle, SearchResult, ProcessedDocument, MultiStyleCitation, PaperFramework } from '../types';
 import { EmojiImage } from './EmojiImage';
 import { generatePaperFramework, formatCitationFull, GenerationSource, magicFormatCitation } from '../services/geminiService';
+import { documentDisplayName } from '../services/libraryService';
 import { toast } from '../services/toast';
 
 interface TermPaperSystemProps {
@@ -377,7 +378,7 @@ export const TermPaperSystem: React.FC<TermPaperSystemProps> = ({
         try {
           genSources.push(getDocumentSource(doc));
         } catch {
-          toast.error(`"${doc.name}" konnte nicht geladen werden — wird übersprungen.`);
+          toast.error(`"${documentDisplayName(doc)}" konnte nicht geladen werden — wird übersprungen.`);
         }
       }
       const fw = await generatePaperFramework(topic, focus, pageCount, genSources);
@@ -571,7 +572,7 @@ export const TermPaperSystem: React.FC<TermPaperSystemProps> = ({
                           <div className={`w-4 h-4 rounded border-2 flex items-center justify-center shrink-0 text-[9px] ${selectedDocIds.includes(doc.id) ? 'bg-indigo-600 border-indigo-600 text-white' : 'border-slate-300'}`}>
                             {selectedDocIds.includes(doc.id) && '✓'}
                           </div>
-                          <span className="truncate">{doc.name}</span>
+                          <span className="truncate">{documentDisplayName(doc)}</span>
                         </div>
                       ))}
                     </div>

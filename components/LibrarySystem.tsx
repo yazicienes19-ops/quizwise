@@ -1,6 +1,6 @@
 import React, { useState, useMemo, useCallback } from 'react';
 import { ProcessedDocument, ActiveTab, Collection } from '../types';
-import { getAllMeta, saveMeta, deleteMeta } from '../services/libraryService';
+import { getAllMeta, saveMeta, deleteMeta, documentDisplayName } from '../services/libraryService';
 import type { SourceMeta } from '../services/libraryService';
 import { SourceCard } from './SourceCard';
 import { SourceDetailPage } from './SourceDetailPage';
@@ -344,7 +344,7 @@ export const LibrarySystem: React.FC<LibrarySystemProps> = ({
                         <h3 className="font-black text-base leading-snug" style={{ color: 'var(--text-main)' }}>{col.name}</h3>
                         {recentDoc && (
                           <p className="text-[10px] text-slate-400 mt-1 truncate">
-                            Zuletzt: {recentDoc.name.replace(/\.[^/.]+$/, '')}
+                            Zuletzt: {documentDisplayName(recentDoc)}
                           </p>
                         )}
                         {count === 0 && (

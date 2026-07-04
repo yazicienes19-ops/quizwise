@@ -161,7 +161,7 @@ export const useQuizState = (params: UseQuizStateParams) => {
       if (selectedDocs.length > 1) {
         const combined = selectedDocs.map(d => {
           const txt = d.digestText || (d.type === 'text' ? d.content : '');
-          return `[Quelle: ${d.name.replace(/\.[^/.]+$/, '')}]\n${txt}`;
+          return `[Quelle: ${documentDisplayName(d)}]\n${txt}`;
         }).join('\n\n---\n\n');
         source = { text: combined };
         metaName = `${selectedDocs.length} Dokumente`;

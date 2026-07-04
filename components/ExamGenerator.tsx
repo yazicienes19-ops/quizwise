@@ -123,7 +123,7 @@ export const ExamGenerator: React.FC<ExamGeneratorProps> = ({
           ? { file: { data: doc.content, mimeType: 'application/pdf' } }
           : { text: doc.content };
       setContentSource(source);
-      setContentName(doc.name);
+      setContentName(documentDisplayName(doc));
     } catch (_) {}
   };
 

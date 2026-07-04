@@ -4,6 +4,7 @@ import { ProcessedDocument, Collection, TopicMetric, FlashcardDeck } from '../ty
 import type { GenerationSource } from '../services/geminiService';
 import { generateExplanation } from '../services/geminiService';
 import { SourceSelector } from './SourceSelector';
+import { documentDisplayName } from '../services/libraryService';
 import { toast } from '../services/toast';
 import { buildLearningProfile } from '../services/learningProfileService';
 import { getAllResults } from '../services/quizHistoryService';
@@ -132,14 +133,14 @@ export const ExplainerSystem: React.FC<ExplainerSystemProps> = ({
     if (!initialDoc || !getDocumentSource) return;
     try {
       setActiveSource(getDocumentSource(initialDoc));
-      setActiveSourceName(initialDoc.name.replace(/\.[^/.]+$/, ''));
+      setActiveSourceName(documentDisplayName(initialDoc));
     } catch (_) {}
   }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
   const handleSelectDocument = (doc: ProcessedDocument) => {
     const source = getDocumentSource ? getDocumentSource(doc) : doc.type === 'pdf' ? { file: { data: doc.content, mimeType: 'application/pdf' } } : { text: doc.content };
     setActiveSource(source);
-    setActiveSourceName(doc.name.replace(/\.[^/.]+$/, ''));
+    setActiveSourceName(documentDisplayName(doc));
   };
 
   const canStart = concept.trim().length > 2 && (!!activeSource || useExternal);
