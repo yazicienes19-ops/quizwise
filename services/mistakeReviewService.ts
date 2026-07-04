@@ -1,4 +1,4 @@
-import type { QuizQuestion } from '../types';
+import type { QuizQuestion, ExamQuestion } from '../types';
 import { SrsState, createSrsState, reviewCard, getDueCards, ReviewQuality } from './spacedRepetition';
 
 /**
@@ -116,4 +116,56 @@ export const removeMistake = (id: string, userId?: string | null): void => {
   const items = readAll();
   const next = items.filter(i => i.id !== id);
   if (next.length !== items.length) write(next, userId);
+};
+
+// ─── Klausur-Fehler → Wiederholungs-Queue ────────────────────────────────────
+
+/**
+ * Wandelt eine Klausurfrage in eine replaybare QuizQuestion um.
+ * Nur mc und einfaches truefalse sind verlustfrei abbildbar — open/matching/
+ * ranking/fillblank/numeric und TF-mit-Begründung liefern null (bewusst).
+ */
+export const examQuestionToQuizQuestion = (q: ExamQuestion): QuizQuestion | null => {
+  if (q.type === 'mc' && q.options?.length && q.correctIndices?.length) {
+    return {
+      question: q.question,
+      options: q.options,
+      correctAnswerIndices: q.correctIndices,
+      isMultipleChoice: q.correctIndices.length > 1,
+      explanation: q.solution || '',
+      distractorExplanations: [],
+      sourceReference: '',
+      topic: q.topic,
+      questionType: 'mc',
+      ...(q.scenarioText ? { scenarioText: q.scenarioText } : {}),
+    };
+  }
+  if (q.type === 'truefalse' && typeof q.tfCorrect === 'boolean' && !q.tfReasonOptions?.length) {
+    return {
+      question: q.question,
+      options: ['Wahr', 'Falsch'],
+      correctAnswerIndices: [q.tfCorrect ? 0 : 1],
+      isMultipleChoice: false,
+      explanation: q.solution || '',
+      distractorExplanations: [],
+      sourceReference: '',
+      topic: q.topic,
+      questionType: 'truefalse',
+    };
+  }
+  return null;
+};
+
+/**
+ * Reiht falsch beantwortete Klausurfragen (unter 50% der Punkte) ein,
+ * soweit sie als QuizQuestion abbildbar sind. Rückgabe: Anzahl eingereiht.
+ */
+export const addExamMistakes = (
+  examQuestions: ExamQuestion[],
+  meta: { docId: string; docName: string },
+  userId?: string | null
+): number => {
+  const wrong = examQuestions.filter(q => q.points > 0 && (q.achievedPoints ?? 0) / q.points < 0.5);
+  const mapped = wrong.map(examQuestionToQuizQuestion).filter((q): q is QuizQuestion => q !== null);
+  return addMistakes(mapped, meta, userId);
 };

@@ -13,7 +13,7 @@ import { getSavedQuizzes } from '../services/savedQuizzesService';
 import { getSavedExams } from '../services/savedExamsService';
 import { searchScholar, searchWeb, generateQuizFromDocument, generateQuizFromFlashcards } from '../services/geminiService';
 import { getAllResults } from '../services/quizHistoryService';
-import { countDueMistakes } from '../services/mistakeReviewService';
+import { countDueMistakes, addExamMistakes } from '../services/mistakeReviewService';
 import type { MistakeItem } from '../services/mistakeReviewService';
 import { saveRecallResult } from '../services/recallHistoryService';
 import { saveExamResult } from '../services/examHistoryService';
@@ -329,8 +329,11 @@ export const AppContent: React.FC<AppContentProps> = (p) => {
           initialDoc={pendingActionDoc ?? undefined}
           initialQuestions={examInitialQuestions?.questions}
           metrics={metrics} decks={decks}
-          onComplete={({ score, docName, passed, totalPoints, achievedPoints, weakTopics, categoryBreakdown, typeBreakdown, fatigue }) => {
-            saveExamResult({ docName, timestamp: Date.now(), score, passed, totalPoints, achievedPoints, weakTopics, categoryBreakdown, typeBreakdown, fatigue }, user?.id);
+          onComplete={({ score, docName, passed, totalPoints, achievedPoints, weakTopics, categoryBreakdown, typeBreakdown, fatigue, questions: examQuestions }) => {
+            saveExamResult({ docName, timestamp: Date.now(), score, passed, totalPoints, achievedPoints, weakTopics, categoryBreakdown, typeBreakdown, fatigue, questions: examQuestions }, user?.id);
+            // Falsche mc/truefalse-Klausurfragen in die SM-2-Wiederholungs-Queue
+            const enqueued = addExamMistakes(examQuestions, { docId: `exam-${docName}`, docName }, user?.id);
+            if (enqueued > 0) toast.info(`${enqueued} Klausurfrage${enqueued !== 1 ? 'n' : ''} zur Wiederholung vorgemerkt`);
             updateMetricsAfterSession(score, docName, 'exam');
             setExamInitialQuestions(null);
             setSavedExams(getSavedExams());

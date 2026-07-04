@@ -1,6 +1,7 @@
 import { describe, it, expect, beforeEach } from 'vitest';
 import type { QuizQuestion } from '../types';
-import { getMistakeQueue, getDueMistakes, countDueMistakes, addMistakes, rateMistake, removeMistake } from './mistakeReviewService';
+import { getMistakeQueue, getDueMistakes, countDueMistakes, addMistakes, rateMistake, removeMistake, examQuestionToQuizQuestion, addExamMistakes } from './mistakeReviewService';
+import type { ExamQuestion } from '../types';
 
 const mkQ = (text: string): QuizQuestion => ({
   question: text,
@@ -88,5 +89,41 @@ describe('mistakeReviewService', () => {
     const n = addMistakes([mkQ('   ')], META);
     expect(n).toBe(0);
     expect(getMistakeQueue()).toHaveLength(0);
+  });
+});
+
+describe('Klausur-Fehler → Queue', () => {
+  beforeEach(() => localStorage.clear());
+
+  const mcQ = (achieved: number): ExamQuestion => ({
+    id: 'e1', question: 'Was ist Mitose?', type: 'mc',
+    options: ['A', 'B', 'C', 'D'], correctIndices: [1],
+    solution: 'B ist richtig weil …', points: 3, achievedPoints: achieved, topic: 'Zellbiologie',
+  });
+
+  it('mappt mc-Klausurfragen auf QuizQuestion', () => {
+    const q = examQuestionToQuizQuestion(mcQ(0))!;
+    expect(q.options).toHaveLength(4);
+    expect(q.correctAnswerIndices).toEqual([1]);
+    expect(q.explanation).toContain('richtig');
+    expect(q.topic).toBe('Zellbiologie');
+  });
+
+  it('mappt einfaches truefalse; TF mit Begründungsoptionen wird übersprungen', () => {
+    const tf: ExamQuestion = { id: 'e2', question: 'Aussage X', type: 'truefalse', tfCorrect: false, solution: '', points: 2 };
+    expect(examQuestionToQuizQuestion(tf)?.correctAnswerIndices).toEqual([1]);
+    const tfReason: ExamQuestion = { ...tf, tfReasonOptions: ['Weil A', 'Weil B'] };
+    expect(examQuestionToQuizQuestion(tfReason)).toBeNull();
+  });
+
+  it('open/matching liefern null', () => {
+    const open: ExamQuestion = { id: 'e3', question: 'Erkläre …', type: 'open', solution: '', points: 5 };
+    expect(examQuestionToQuizQuestion(open)).toBeNull();
+  });
+
+  it('addExamMistakes reiht nur Fragen unter 50% der Punkte ein', () => {
+    const n = addExamMistakes([mcQ(0), mcQ(3), { id: 'e4', question: 'Offen', type: 'open', solution: '', points: 5, achievedPoints: 0 }], { docId: 'x', docName: 'Klausur' });
+    expect(n).toBe(1); // nur die falsche mc-Frage; volle Punkte + open fallen raus
+    expect(getMistakeQueue()).toHaveLength(1);
   });
 });

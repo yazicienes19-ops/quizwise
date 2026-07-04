@@ -19,6 +19,7 @@ interface ExamSystemProps {
     weakTopics: string[]; categoryBreakdown: { category: string; score: number }[];
     typeBreakdown: { type: string; score: number }[];
     fatigue?: { earlyScore: number; lateScore: number };
+    questions: ExamQuestion[];
   }) => void;
   onNavigate?: (tab: ActiveTab) => void;
   onAction?: (topic: string, mode: 'cards' | 'recall' | 'quiz') => void;
@@ -234,7 +235,7 @@ export const ExamSystem: React.FC<ExamSystemProps> = ({ documents, collections, 
         ? { earlyScore: scoreOf(withPoints.slice(0, mid)), lateScore: scoreOf(withPoints.slice(mid)) }
         : undefined;
 
-      onComplete?.({ score, docName: examDocName, passed: score >= 50, totalPoints, achievedPoints, weakTopics, categoryBreakdown, typeBreakdown, fatigue });
+      onComplete?.({ score, docName: examDocName, passed: score >= 50, totalPoints, achievedPoints, weakTopics, categoryBreakdown, typeBreakdown, fatigue, questions: evaluated });
       setCategoryBreakdown(categoryBreakdown);
 
       // Analyse asynchron im Hintergrund (kein Blocker)
