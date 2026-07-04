@@ -35,6 +35,7 @@ export default defineConfig(() => {
           workbox: {
             cleanupOutdatedCaches: true,
             navigateFallback: null,
+            importScripts: ['push-sw.js'],
             maximumFileSizeToCacheInBytes: 5 * 1024 * 1024,
             runtimeCaching: [
               {

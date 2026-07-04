@@ -10,6 +10,8 @@ const userRoutes = require('./routes/user');
 const stripeRoutes = require('./routes/stripe');
 const searchRoutes = require('./routes/search');
 const documentRoutes = require('./routes/documents');
+const { router: pushRoutes, vapidConfigured } = require('./routes/push');
+const { startReminderCron } = require('./push/reminderCron');
 const { requireAuth } = require('./middleware/auth');
 const { checkUsageLimit } = require('./middleware/limits');
 const { checkAgentLimit } = require('./middleware/agentLimits');
@@ -23,6 +25,7 @@ const allowedOrigins = [
   'http://localhost:3000',
   'http://localhost:3001',
   'http://localhost:5173',
+  'capacitor://localhost', // native iOS-App (Capacitor-WebView)
   process.env.FRONTEND_URL,
 ].filter(Boolean);
 
@@ -65,6 +68,9 @@ app.use('/api/agents', geminiLimiter, requireAuth, checkAgentLimit, agentRoutes)
 app.use('/api/search', requireAuth, searchRoutes);
 app.use('/api/documents', requireAuth, documentRoutes);
 
+// Push: vapid-key öffentlich, subscribe/unsubscribe intern per requireAuth geschützt
+app.use('/api/push', pushRoutes);
+
 app.use((err, req, res, next) => {
   // Vollständigen Fehler serverseitig loggen (Stacktrace fürs Debugging)
   console.error(err.stack || err.message);
@@ -80,5 +86,6 @@ app.use((err, req, res, next) => {
 
 app.listen(PORT, () => {
   console.log(`QuizWise Backend laeuft auf Port ${PORT}`);
-  console.log(`Gemini: ${!!process.env.GEMINI_API_KEY} | Supabase: ${!!process.env.SUPABASE_URL}`);
+  console.log(`Gemini: ${!!process.env.GEMINI_API_KEY} | Supabase: ${!!process.env.SUPABASE_URL} | Push: ${vapidConfigured}`);
+  if (vapidConfigured) startReminderCron();
 });

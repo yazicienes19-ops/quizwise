@@ -9,6 +9,7 @@ import { fetchUserProfile } from '../services/geminiService';
 import { applyAccentColor } from './ColorPicker';
 import { startCheckout } from '../services/stripeService';
 import { changePassword, deleteAccount, exportUserData, getInvoices, cancelSubscription } from '../services/userService';
+import { isPushSupported, getExistingSubscription, subscribeToPush, unsubscribeFromPush } from '../services/pushService';
 import { toast } from '../services/toast';
 
 const PRESETS = [
@@ -86,6 +87,34 @@ export const SettingsModal: React.FC<Props> = ({ user, isDark, onToggleTheme, on
   const [accentColor, setAccentColor] = useState(() => localStorage.getItem('accent_color') || '#D97757');
   const [fontChoice, setFontChoice] = useState(() => localStorage.getItem('font_choice') || 'inter');
   const [lineHeight, setLineHeight] = useState(() => localStorage.getItem('line_height') || '1.6');
+
+  // Push-Erinnerung
+  const [pushEnabled, setPushEnabled] = useState(false);
+  const [pushBusy, setPushBusy] = useState(false);
+
+  useEffect(() => {
+    if (!isPushSupported()) return;
+    getExistingSubscription().then(sub => setPushEnabled(!!sub)).catch(() => {});
+  }, []);
+
+  const handleTogglePush = async () => {
+    setPushBusy(true);
+    try {
+      if (pushEnabled) {
+        await unsubscribeFromPush();
+        setPushEnabled(false);
+        toast.info('Lern-Erinnerung deaktiviert.');
+      } else {
+        await subscribeToPush();
+        setPushEnabled(true);
+        toast.success('Lern-Erinnerung aktiviert — täglich um 17 Uhr bei fälligen Wiederholungen.');
+      }
+    } catch (e: any) {
+      toast.error(e?.message || 'Benachrichtigungen konnten nicht aktiviert werden.');
+    } finally {
+      setPushBusy(false);
+    }
+  };
 
   // API
   const [apiKey, setApiKey] = useState(localStorage.getItem('gemini_api_key') || '');
@@ -377,6 +406,34 @@ export const SettingsModal: React.FC<Props> = ({ user, isDark, onToggleTheme, on
           {/* ── DESIGN ── */}
           {tab === 'design' && (
             <div className="space-y-8">
+
+              {/* Tägliche Lern-Erinnerung (Web Push) */}
+              {isPushSupported() && (
+                <div className="space-y-3">
+                  <p className="text-[10px] font-black uppercase tracking-widest text-slate-400">Benachrichtigungen</p>
+                  <button
+                    onClick={handleTogglePush}
+                    disabled={pushBusy}
+                    className="w-full flex items-center justify-between px-5 py-4 rounded-2xl transition-all hover:opacity-90 disabled:opacity-50 text-left"
+                    style={{ background: 'color-mix(in srgb, var(--border-color) 30%, var(--bg-main))', border: '1px solid var(--border-color)' }}
+                  >
+                    <div className="min-w-0 pr-3">
+                      <p className="text-[11px] font-black uppercase tracking-widest dark:text-white">Tägliche Lern-Erinnerung</p>
+                      <p className="text-[10px] font-medium text-slate-400 mt-0.5">
+                        {pushEnabled
+                          ? 'Aktiv — du bekommst um 17 Uhr eine Erinnerung, wenn Karten oder Fragen fällig sind.'
+                          : 'Erinnert dich um 17 Uhr, wenn Wiederholungen fällig sind. Kein Spam — nur bei fälligen Inhalten.'}
+                      </p>
+                    </div>
+                    <div
+                      className="w-11 h-6 rounded-full p-0.5 shrink-0 transition-all"
+                      style={{ background: pushEnabled ? 'var(--primary)' : 'var(--border-color)' }}
+                    >
+                      <div className={`w-5 h-5 rounded-full bg-white shadow transition-transform ${pushEnabled ? 'translate-x-5' : ''}`} />
+                    </div>
+                  </button>
+                </div>
+              )}
 
               {/* Erscheinungsbild */}
               <div className="space-y-3">
