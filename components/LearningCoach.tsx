@@ -1,10 +1,11 @@
 
 import React, { useState, useMemo } from 'react';
-import { TopicMetric, ActiveTab, CoachInsights, FlashcardDeck, LearnMethod } from '../types';
+import { TopicMetric, ActiveTab, CoachInsights, FlashcardDeck, LearnMethod, LearningFlowResult } from '../types';
 import { EmojiImage } from './EmojiImage';
 import { GapRadar } from './GapRadar';
 import { generateCoachInsights, WrongAnswerContext } from '../services/geminiService';
-import { buildLearningProfile, buildRealTopicMastery, CATEGORY_LABELS } from '../services/learningProfileService';
+import { buildLearningProfile, buildRealTopicMastery, buildDailyPlan, CATEGORY_LABELS } from '../services/learningProfileService';
+import type { DailyPlanStep } from '../services/learningProfileService';
 import { getAllResults } from '../services/quizHistoryService';
 import { getAllRecallResults } from '../services/recallHistoryService';
 import { getAllExamResults } from '../services/examHistoryService';
@@ -43,9 +44,10 @@ interface LearningCoachProps {
   decks: FlashcardDeck[];
   onNavigate: (tab: ActiveTab) => void;
   onAction?: (topic: string, mode: 'cards' | 'recall' | 'quiz') => void;
+  flowResult?: LearningFlowResult | null;
 }
 
-export const LearningCoach: React.FC<LearningCoachProps> = ({ metrics, decks, onNavigate, onAction }) => {
+export const LearningCoach: React.FC<LearningCoachProps> = ({ metrics, decks, onNavigate, onAction, flowResult = null }) => {
   const [insights, setInsights] = useState<CoachInsights | null>(null);
   const [isLoading, setIsLoading] = useState(false);
 
@@ -66,6 +68,16 @@ export const LearningCoach: React.FC<LearningCoachProps> = ({ metrics, decks, on
     [quizResults, examResults, recallResults],
   );
   const displayTopics = realTopics.length > 0 ? realTopics : profile.topicMastery;
+
+  const dailyPlan = useMemo(
+    () => buildDailyPlan({ flowResult, realTopics, decks, profile }),
+    [flowResult, realTopics, decks, profile],
+  );
+
+  const runPlanStep = (step: DailyPlanStep) => {
+    if (step.target.kind === 'action' && onAction) onAction(step.target.topic, step.target.mode);
+    else onNavigate(step.target.kind === 'tab' ? step.target.tab : ActiveTab.QUIZ);
+  };
 
   const wrongAnswersCtx = useMemo((): WrongAnswerContext[] =>
     quizResults.slice(0, 5).flatMap(result =>
@@ -172,6 +184,55 @@ export const LearningCoach: React.FC<LearningCoachProps> = ({ metrics, decks, on
           {profile.motivationLine}
         </p>
       </div>
+
+      {/* ── Heute solltest du — priorisierte nächste Schritte ── */}
+      {dailyPlan.length > 0 && (
+        <div
+          className="p-6 lg:p-8 rounded-[24px] lg:rounded-[32px] border shadow-sm space-y-4"
+          style={{ background: 'var(--card)', borderColor: 'color-mix(in srgb, var(--primary) 25%, var(--border-color))' }}
+        >
+          <h3 className="text-[9px] font-black uppercase tracking-widest" style={{ color: 'var(--primary)' }}>
+            Heute solltest du
+          </h3>
+          <div className="space-y-3">
+            {dailyPlan.map((step, i) => (
+              <button
+                key={i}
+                onClick={() => runPlanStep(step)}
+                className="w-full flex items-start gap-3 text-left transition-all hover:opacity-75"
+              >
+                <span
+                  className="w-6 h-6 rounded-lg flex items-center justify-center text-[10px] font-black shrink-0 mt-0.5"
+                  style={{ background: 'color-mix(in srgb, var(--primary) 12%, transparent)', color: 'var(--primary)' }}
+                >
+                  {i + 1}
+                </span>
+                <span className="min-w-0">
+                  <span className="text-sm font-black flex items-center gap-2 flex-wrap" style={{ color: 'var(--ink)' }}>
+                    {step.title}
+                    <span
+                      className="px-2 py-0.5 rounded-md text-[8px] font-black uppercase tracking-widest shrink-0"
+                      style={{ background: 'color-mix(in srgb, var(--primary) 8%, transparent)', color: 'var(--primary)' }}
+                    >
+                      {step.minutes} Min.
+                    </span>
+                  </span>
+                  {step.why && (
+                    <span className="block text-[11px] font-medium mt-0.5" style={{ color: 'var(--mute)' }}>{step.why}</span>
+                  )}
+                </span>
+              </button>
+            ))}
+          </div>
+          <button
+            onClick={() => runPlanStep(dailyPlan[0])}
+            className="px-8 py-4 rounded-2xl font-black uppercase text-[10px] tracking-[0.2em] shadow-xl hover:scale-105 active:scale-95 transition-all"
+            style={{ background: 'var(--primary)', color: 'var(--primary-text)' }}
+          >
+            Jetzt starten →
+          </button>
+        </div>
+      )}
 
       {/* ── Coach-Hero: Klausurprognose + Top-Empfehlung ── */}
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-4 lg:gap-6">

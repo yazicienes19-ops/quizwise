@@ -1,9 +1,10 @@
 import { describe, it, expect } from 'vitest';
-import { buildLearningProfile, buildRealTopicMastery, germanGradeFromPercentage } from './learningProfileService';
+import { buildLearningProfile, buildRealTopicMastery, buildDailyPlan, germanGradeFromPercentage } from './learningProfileService';
 import type { QuizResult } from './quizHistoryService';
 import type { ExamResult } from './examHistoryService';
 import type { RecallResult } from './recallHistoryService';
-import type { TopicMetric, FlashcardDeck, QuizQuestion, UserAnswer } from '../types';
+import type { TopicMetric, FlashcardDeck, QuizQuestion, UserAnswer, LearningFlowResult, TopicSecurity } from '../types';
+import { ActiveTab } from '../types';
 
 const DAY_MS = 24 * 60 * 60 * 1000;
 const now = Date.now();
@@ -338,5 +339,59 @@ describe('buildRealTopicMastery — echte Themen statt Dokumentnamen', () => {
     ]);
     const topics = buildRealTopicMastery([quiz], [], []);
     expect(topics[0].topic).toBe('Schwach');
+  });
+});
+
+describe('buildDailyPlan — Heute solltest du', () => {
+  const emptyProfile = buildLearningProfile(emptyInput);
+  const base = { flowResult: null, realTopics: [] as TopicSecurity[], decks: [] as FlashcardDeck[], profile: emptyProfile };
+
+  it('nutzt flowResult.next_actions als Primärquelle inkl. Dauer', () => {
+    const flowResult = {
+      next_actions: [
+        { title: 'Quiz zu Motivation', module: 'quiz', timebox_minutes: 15, focus_topics: ['Motivation'], why: 'Schwaches Thema' },
+        { title: 'Karten wiederholen', module: 'cards', timebox_minutes: 10, focus_topics: [], why: '' },
+        { title: 'Klausur üben', module: 'exam', timebox_minutes: 25, focus_topics: [], why: '' },
+        { title: 'Vierte Aktion', module: 'quiz', timebox_minutes: 5, focus_topics: [], why: '' },
+      ],
+    } as unknown as LearningFlowResult;
+    const plan = buildDailyPlan({ ...base, flowResult });
+    expect(plan).toHaveLength(3);
+    expect(plan[0].minutes).toBe(15);
+    expect(plan[0].target).toEqual({ kind: 'action', topic: 'Motivation', mode: 'quiz' });
+    expect(plan[2].target).toEqual({ kind: 'tab', tab: ActiveTab.EXAM });
+  });
+
+  it('kaputtes flowResult (ohne next_actions) → deterministischer Fallback', () => {
+    const broken = {} as LearningFlowResult;
+    const plan = buildDailyPlan({ ...base, flowResult: broken });
+    expect(plan.length).toBeGreaterThanOrEqual(1);
+  });
+
+  it('Fallback: fällige Karten kommen zuerst', () => {
+    const decks: FlashcardDeck[] = [{
+      id: 'd1', title: 'Deck',
+      cards: [{ id: 'c1', front: 'F', back: 'B', level: 0, nextReview: 0 }], // ohne srs = fällig
+    }];
+    const plan = buildDailyPlan({ ...base, decks });
+    expect(plan[0].title).toContain('fällige Karte');
+    expect(plan[0].target).toEqual({ kind: 'tab', tab: ActiveTab.CARDS });
+    expect(plan[0].minutes).toBeGreaterThanOrEqual(5);
+  });
+
+  it('Fallback: schwächstes echtes Thema als Quiz-Action', () => {
+    const realTopics: TopicSecurity[] = [
+      { topic: 'Konditionierung', confidence: 30, security: 'kritisch', weakCount: 2 },
+    ];
+    const plan = buildDailyPlan({ ...base, realTopics });
+    const quizStep = plan.find(s => s.target.kind === 'action');
+    expect(quizStep?.target).toEqual({ kind: 'action', topic: 'Konditionierung', mode: 'quiz' });
+  });
+
+  it('komplett leer → genau ein generischer Schritt', () => {
+    const plan = buildDailyPlan(base);
+    expect(plan.filter(s => s.title.includes('Klausursimulation')).length + plan.filter(s => s.title.includes('Quiz')).length).toBeGreaterThanOrEqual(1);
+    expect(plan.length).toBeLessThanOrEqual(3);
+    expect(plan.every(s => s.minutes > 0)).toBe(true);
   });
 });

@@ -1,8 +1,9 @@
 import type {
   TopicMetric, LearningProfile, MethodStat, TopicSecurity, ForgettingItem,
   TimeOfDayStat, ExamPrognosis, FlashcardDeck, LearnMethod, CategoryMastery, ExamCategory,
-  TypeMastery, CauseAnalysisItem, LongTermTrendItem, DayOfWeekStat,
+  TypeMastery, CauseAnalysisItem, LongTermTrendItem, DayOfWeekStat, LearningFlowResult,
 } from '../types';
+import { ActiveTab } from '../types';
 import type { QuizResult } from './quizHistoryService';
 import type { ExamResult } from './examHistoryService';
 import type { RecallResult } from './recallHistoryService';
@@ -393,6 +394,106 @@ const buildMotivationLine = (
   }
 
   return 'Bleib dran — jede Lernsession bringt dich näher an dein Ziel.';
+};
+
+// ─── Tagesplan („Heute solltest du") ────────────────────────────────────────────
+
+export interface DailyPlanStep {
+  title: string;
+  why?: string;
+  /** Geschätzte Dauer in Minuten. */
+  minutes: number;
+  target:
+    | { kind: 'action'; topic: string; mode: 'quiz' | 'cards' | 'recall' }
+    | { kind: 'tab'; tab: ActiveTab };
+}
+
+const FLOW_MODULE_TO_TAB: Record<string, ActiveTab> = {
+  analyse: ActiveTab.RADAR,
+  quiz: ActiveTab.QUIZ,
+  cards: ActiveTab.CARDS,
+  explain: ActiveTab.EXPLAINER,
+  calendar: ActiveTab.PLANNER,
+  exam: ActiveTab.EXAM,
+};
+
+/**
+ * Priorisierte nächste Lernschritte für die „Heute solltest du"-Karte.
+ * Primärquelle: persistierte KI-Empfehlungen (flowResult.next_actions,
+ * werden nach jeder Session berechnet — kein neuer API-Call). Fallback:
+ * deterministische Kette aus fälligen Karten, schwächstem Thema und
+ * Klausur-/Vergessens-Signalen. Garantiert mindestens einen Schritt.
+ */
+export const buildDailyPlan = (input: {
+  flowResult: LearningFlowResult | null;
+  realTopics: TopicSecurity[];
+  decks: FlashcardDeck[];
+  profile: LearningProfile;
+}): DailyPlanStep[] => {
+  const { flowResult, realTopics, decks, profile } = input;
+
+  if (flowResult?.next_actions?.length) {
+    return flowResult.next_actions.slice(0, 3).map(a => {
+      const focusTopic = a.focus_topics?.[0];
+      const target: DailyPlanStep['target'] =
+        focusTopic && (a.module === 'quiz' || a.module === 'cards')
+          ? { kind: 'action', topic: focusTopic, mode: a.module }
+          : { kind: 'tab', tab: FLOW_MODULE_TO_TAB[a.module] ?? ActiveTab.QUIZ };
+      return { title: a.title, why: a.why, minutes: a.timebox_minutes || 10, target };
+    });
+  }
+
+  const steps: DailyPlanStep[] = [];
+  const now = Date.now();
+
+  const dueCount = decks.reduce((sum, d) =>
+    sum + d.cards.filter(c => !c.srs || c.srs.nextReview <= now).length, 0);
+  if (dueCount > 0) {
+    steps.push({
+      title: `${dueCount} fällige Karte${dueCount !== 1 ? 'n' : ''} wiederholen`,
+      why: 'Wiederholen kurz vor dem Vergessen ist der effizienteste Zeitpunkt.',
+      minutes: Math.min(20, Math.max(5, Math.round(dueCount / 2))),
+      target: { kind: 'tab', tab: ActiveTab.CARDS },
+    });
+  }
+
+  const weakest = realTopics.find(t => t.security !== 'sicher');
+  if (weakest) {
+    steps.push({
+      title: `„${weakest.topic}" im Quiz festigen`,
+      why: weakest.security === 'kritisch' ? 'Dein aktuell kritischstes Thema.' : 'Hier bist du noch unsicher.',
+      minutes: 10,
+      target: { kind: 'action', topic: weakest.topic, mode: 'quiz' },
+    });
+  }
+
+  if (profile.examPrognosis === null) {
+    steps.push({
+      title: 'Erste Klausursimulation starten',
+      why: 'Erst mit einer Simulation kann deine Prognose berechnet werden.',
+      minutes: 25,
+      target: { kind: 'tab', tab: ActiveTab.EXAM },
+    });
+  } else if (profile.forgetting.length > 0) {
+    const f = profile.forgetting[0];
+    steps.push({
+      title: `„${f.topic}" auffrischen, bevor du es vergisst`,
+      why: f.dueInDays <= 0 ? 'Heute fällig.' : `In ${f.dueInDays} Tag${f.dueInDays !== 1 ? 'en' : ''} fällig.`,
+      minutes: 10,
+      target: { kind: 'tab', tab: ActiveTab.CARDS },
+    });
+  }
+
+  if (steps.length === 0) {
+    steps.push({
+      title: 'Kurzes Quiz zum Auffrischen starten',
+      why: 'Regelmäßiges Abrufen hält dein Wissen stabil.',
+      minutes: 10,
+      target: { kind: 'tab', tab: ActiveTab.QUIZ },
+    });
+  }
+
+  return steps.slice(0, 3);
 };
 
 // ─── Hauptfunktion ────────────────────────────────────────────────────────────────
