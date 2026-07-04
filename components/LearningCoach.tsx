@@ -1,10 +1,10 @@
 
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, useEffect } from 'react';
 import { TopicMetric, ActiveTab, CoachInsights, FlashcardDeck, LearningFlowResult } from '../types';
 import { EmojiImage } from './EmojiImage';
 import { GapRadar } from './GapRadar';
 import { generateCoachInsights, WrongAnswerContext } from '../services/geminiService';
-import { buildLearningProfile, buildRealTopicMastery, buildDailyPlan, buildMethodCommentary, CATEGORY_LABELS, METHOD_LABELS } from '../services/learningProfileService';
+import { buildLearningProfile, buildRealTopicMastery, buildDailyPlan, buildMethodCommentary, buildContextMotivation, CATEGORY_LABELS, METHOD_LABELS } from '../services/learningProfileService';
 import { buildLearningScore } from '../services/learningScoreService';
 import type { DailyPlanStep } from '../services/learningProfileService';
 import { getAllResults } from '../services/quizHistoryService';
@@ -29,6 +29,9 @@ const priorityEmoji = (p: 'hoch' | 'mittel' | 'niedrig') =>
 /** Mindestmenge an Sessions, ab der eine KI-Coach-Analyse tatsächlich Substanz hat statt zu raten. */
 const MIN_SESSIONS_FOR_COACH = 5;
 
+/** Coach-Ergebnis überlebt Tab-Wechsel; wird ungültig sobald neue Sessions dazukommen. */
+const INSIGHTS_CACHE_KEY = 'quizwise_coach_insights_v1';
+
 const TAB_ACTION_LABELS: Record<string, string> = {
   QUIZ: 'Quiz starten', CARDS: 'Karteikarten üben', RECALL: 'Feynman starten',
   EXAM: 'Klausur starten', EXPLAINER: 'KI-Erklärer starten',
@@ -47,6 +50,7 @@ interface LearningCoachProps {
 export const LearningCoach: React.FC<LearningCoachProps> = ({ metrics, decks, onNavigate, onAction, flowResult = null }) => {
   const [insights, setInsights] = useState<CoachInsights | null>(null);
   const [isLoading, setIsLoading] = useState(false);
+  const [showPrognosisInfo, setShowPrognosisInfo] = useState(false);
 
   const quizResults   = useMemo(() => getAllResults(), []);
   const recallResults = useMemo(() => getAllRecallResults(), []);
@@ -104,6 +108,33 @@ export const LearningCoach: React.FC<LearningCoachProps> = ({ metrics, decks, on
     [quizResults, examResults, recallResults, metrics, decks, streak],
   );
 
+  // Datenbasierte Motivation (unter der Prognose) + Datenbasis für die Transparenz-Aufklappung
+  const lastActivityTs = useMemo(() => {
+    const ts = [...quizResults, ...examResults, ...recallResults].map(r => r.timestamp);
+    return ts.length ? Math.max(...ts) : null;
+  }, [quizResults, examResults, recallResults]);
+  const contextMotivation = useMemo(
+    () => buildContextMotivation(profile, lastActivityTs),
+    [profile, lastActivityTs],
+  );
+  const learnedCardsCount = useMemo(
+    () => decks.reduce((sum, d) => sum + d.cards.filter(c => c.srs && c.srs.repetitions > 0).length, 0),
+    [decks],
+  );
+
+  // Gecachtes Coach-Ergebnis laden — nur wenn seitdem keine neuen Sessions dazukamen
+  useEffect(() => {
+    try {
+      const raw = localStorage.getItem(INSIGHTS_CACHE_KEY);
+      if (!raw) return;
+      const cached = JSON.parse(raw) as { insights: CoachInsights; totalSessions: number };
+      if (cached?.insights && cached.totalSessions === profile.volume.totalSessions) {
+        setInsights(cached.insights);
+      }
+    } catch {}
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
   const wissensprofilItems = [
     ...profile.categoryMastery.map(c => ({ key: `cat-${c.category}`, label: CATEGORY_LABELS[c.category] || c.category, avgScore: c.avgScore })),
     ...profile.typeMastery.map(t => ({ key: `type-${t.type}`, label: t.label, avgScore: t.avgScore })),
@@ -138,7 +169,13 @@ export const LearningCoach: React.FC<LearningCoachProps> = ({ metrics, decks, on
     if (!hasAnyData || !hasEnoughForCoach) return;
     setIsLoading(true);
     try {
-      setInsights(await generateCoachInsights(profile, wrongAnswersCtx));
+      const result = await generateCoachInsights(profile, wrongAnswersCtx);
+      setInsights(result);
+      try {
+        localStorage.setItem(INSIGHTS_CACHE_KEY, JSON.stringify({
+          insights: result, totalSessions: profile.volume.totalSessions, savedAt: Date.now(),
+        }));
+      } catch {}
     } catch (e: any) {
       toast.error(`Coach-Analyse fehlgeschlagen: ${e?.message || 'Unbekannter Fehler'}`);
     } finally {
@@ -253,15 +290,32 @@ export const LearningCoach: React.FC<LearningCoachProps> = ({ metrics, decks, on
               <p className="text-[10px] font-bold uppercase mt-2" style={{ color: 'var(--mute)' }}>
                 {profile.examPrognosis.passProbability}% Bestehenswahrscheinlichkeit
               </p>
-              <p className="text-[9px] mt-1" style={{ color: 'var(--mute)' }}>
-                Basis: {profile.examPrognosis.basis} Klausur{profile.examPrognosis.basis !== 1 ? 'en' : ''}
-              </p>
+              <button
+                onClick={() => setShowPrognosisInfo(v => !v)}
+                className="text-[9px] font-black uppercase tracking-widest mt-2 underline decoration-dotted underline-offset-2 transition-opacity hover:opacity-70"
+                style={{ color: 'var(--mute)' }}
+              >
+                Wie wird diese Prognose berechnet?
+              </button>
+              {showPrognosisInfo && (
+                <p className="text-[10px] font-medium mt-2 leading-relaxed text-left" style={{ color: 'var(--mute)' }}>
+                  Diese Prognose basiert aktuell auf: {examResults.length} Klausursimulation{examResults.length !== 1 ? 'en' : ''} ·{' '}
+                  {quizResults.length} Quiz-Session{quizResults.length !== 1 ? 's' : ''} ·{' '}
+                  {recallResults.length} Erklär-Session{recallResults.length !== 1 ? 's' : ''} ·{' '}
+                  {learnedCardsCount} gelernte{learnedCardsCount !== 1 ? 'n' : ''} Karteikarte{learnedCardsCount !== 1 ? 'n' : ''}.
+                  Gewichtet werden die letzten 5 Klausuren, neuere stärker. Je mehr Lerndaten, desto genauer.
+                </p>
+              )}
             </>
           ) : (
             <p className="text-[10px] font-bold" style={{ color: 'var(--mute)' }}>
               Noch keine Klausur absolviert — Prognose folgt nach der ersten Simulation.
             </p>
           )}
+          <div className="w-full mt-4 pt-3 border-t" style={{ borderColor: 'var(--border-soft)' }}>
+            <p className="text-[8px] font-black uppercase tracking-widest mb-1" style={{ color: 'var(--primary)' }}>Dein Coach meint</p>
+            <p className="text-[11px] font-medium italic leading-relaxed" style={{ color: 'var(--mute)' }}>{contextMotivation}</p>
+          </div>
         </div>
 
         <div
@@ -297,6 +351,14 @@ export const LearningCoach: React.FC<LearningCoachProps> = ({ metrics, decks, on
                   {s}
                 </p>
               ))}
+              <button
+                onClick={handleRunCoach}
+                disabled={isLoading}
+                className="text-[9px] font-black uppercase tracking-widest opacity-50 hover:opacity-80 transition-opacity disabled:opacity-30 mt-1"
+                style={{ color: 'var(--bg-main)' }}
+              >
+                {isLoading ? 'Analysiert…' : '↻ Neu analysieren'}
+              </button>
             </div>
           )}
         </div>

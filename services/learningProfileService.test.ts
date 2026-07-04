@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { buildLearningProfile, buildRealTopicMastery, buildDailyPlan, buildMethodCommentary, germanGradeFromPercentage } from './learningProfileService';
+import { buildLearningProfile, buildRealTopicMastery, buildDailyPlan, buildMethodCommentary, buildContextMotivation, germanGradeFromPercentage } from './learningProfileService';
 import type { QuizResult } from './quizHistoryService';
 import type { ExamResult } from './examHistoryService';
 import type { RecallResult } from './recallHistoryService';
@@ -425,5 +425,37 @@ describe('buildMethodCommentary — deterministischer Methodenkommentar', () => 
   it('Trend-Satz wenn stärkste Methode aufwärts zeigt', () => {
     const c = buildMethodCommentary([mk('exam', 75, 'up'), mk('quiz', 70)])!;
     expect(c).toContain('Trend');
+  });
+});
+
+describe('buildContextMotivation — datenbasierte Motivation', () => {
+  const emptyProfile = buildLearningProfile(emptyInput);
+
+  it('Inaktivität > 3 Tage hat höchste Priorität', () => {
+    const c = buildContextMotivation(emptyProfile, now - 4 * DAY_MS);
+    expect(c).toContain('Lernrhythmus');
+  });
+
+  it('positiver Trend → Trend-Satz', () => {
+    const profile = { ...emptyProfile, perMethod: [{ method: 'quiz', avgScore: 80, sessions: 5, trend: 'up', improvementPerSession: 2 }] } as typeof emptyProfile;
+    expect(buildContextMotivation(profile, now)).toContain('positiven Trend');
+  });
+
+  it('>= 3 kritische Themen → Fokus-Empfehlung', () => {
+    const kritisch = { topic: 'X', confidence: 20, security: 'kritisch', weakCount: 3 } as const;
+    const profile = { ...emptyProfile, topicMastery: [{ ...kritisch, topic: 'A' }, { ...kritisch, topic: 'B' }, { ...kritisch, topic: 'C' }] } as typeof emptyProfile;
+    expect(buildContextMotivation(profile, now)).toContain('ein Thema');
+  });
+
+  it('gute Prognose → richtige Richtung', () => {
+    const profile = { ...emptyProfile, examPrognosis: { grade: '2.0', passProbability: 82, basis: 3 } } as typeof emptyProfile;
+    expect(buildContextMotivation(profile, now)).toContain('richtige Richtung');
+  });
+
+  it('Fallback ohne Signale, keine Erfolgsversprechen', () => {
+    const c = buildContextMotivation(emptyProfile, now);
+    expect(c.length).toBeGreaterThan(10);
+    expect(c.toLowerCase()).not.toContain('bestehst');
+    expect(c.toLowerCase()).not.toContain('garantiert');
   });
 });

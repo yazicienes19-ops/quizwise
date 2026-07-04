@@ -525,6 +525,31 @@ export const buildDailyPlan = (input: {
   return steps.slice(0, 3);
 };
 
+// ─── Datenbasierte Motivation (unter der Klausurprognose) ────────────────────────
+
+/**
+ * Kurzer motivierender Satz, aus den aktuellen Lerndaten abgeleitet — NICHT
+ * zufällig, keine Erfolgsversprechen. Prioritäten: Inaktivität > positiver
+ * Trend > viele kritische Themen > gute Prognose > realistischer Fallback.
+ */
+export const buildContextMotivation = (profile: LearningProfile, lastActivityTs: number | null): string => {
+  if (lastActivityTs !== null && Date.now() - lastActivityTs > 3 * DAY_MS) {
+    return 'Schon eine kurze Session heute hilft dir, wieder in deinen Lernrhythmus zu finden.';
+  }
+  const examTrendUp = profile.longTermTrend?.some(t => t.label === 'Klausurergebnisse' && t.delta > 0);
+  const anyMethodUp = profile.perMethod.some(m => m.trend === 'up');
+  if (examTrendUp || anyMethodUp) {
+    return 'Deine letzten Sessions zeigen einen positiven Trend. Bleib konsequent.';
+  }
+  if (profile.topicMastery.filter(t => t.security === 'kritisch').length >= 3) {
+    return 'Konzentriere dich heute auf ein Thema — weniger gleichzeitig zu lernen führt oft zu besseren Ergebnissen.';
+  }
+  if (profile.examPrognosis && profile.examPrognosis.passProbability >= 70) {
+    return 'Deine Vorbereitung entwickelt sich in die richtige Richtung.';
+  }
+  return 'Kleine Fortschritte heute machen einen Unterschied in deiner nächsten Klausur.';
+};
+
 // ─── Hauptfunktion ────────────────────────────────────────────────────────────────
 
 export interface LearningProfileInput {
