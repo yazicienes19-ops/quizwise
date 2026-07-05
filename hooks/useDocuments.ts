@@ -44,9 +44,13 @@ export const useDocuments = ({ user, userPlan, isOffline, setIsLoading, setShowU
     let cancelled = false;
     let attempts = 0;
 
-    // PDF/Bild ohne fertigen Lern-Digest = für Ordner-Wissensbasis noch nicht lesbar
+    // PDF/Bild ohne fertigen Lern-Digest = für Ordner-Wissensbasis noch nicht lesbar.
+    // 'error' zählt fürs Nachholen (einmal neu versuchen), aber NICHT fürs Polling —
+    // sonst pollt die App endlos gegen dauerhaft fehlschlagende Dokumente (z.B. zu groß).
     const needsDigest = (d: ProcessedDocument) =>
       (d.type === 'pdf' || d.type === 'image') && d.digestStatus !== 'ready';
+    const digestInFlight = (d: ProcessedDocument) =>
+      (d.type === 'pdf' || d.type === 'image') && (d.digestStatus === 'pending' || d.digestStatus === undefined);
 
     const load = async (isFirst: boolean) => {
       try {
@@ -70,7 +74,7 @@ export const useDocuments = ({ user, userPlan, isOffline, setIsLoading, setShowU
         }
 
         // Solange Digests laufen: nachladen, bis alles lesbar ist (max ~5 Min)
-        if (cloudDocs.some(needsDigest) && attempts < 20) {
+        if (cloudDocs.some(digestInFlight) && attempts < 20) {
           attempts += 1;
           setTimeout(() => { if (!cancelled) load(false); }, 15_000);
         }

@@ -4,7 +4,12 @@ const { GoogleGenAI } = require('@google/genai');
 const router = express.Router();
 const ai = new GoogleGenAI({ apiKey: process.env.GEMINI_API_KEY });
 
-const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+// App-IDs sind 9-Zeichen-base36 (Math.random), Alt-Daten können UUIDs sein —
+// beides zulassen, nur das Zeichenformat absichern
+const ID_RE = /^[a-zA-Z0-9_-]{6,64}$/;
+
+// Gemini akzeptiert inline nur ~20 MB — darüber schlägt die Analyse immer fehl
+const MAX_ANALYZE_BYTES = 18 * 1024 * 1024;
 
 const DIGEST_PROMPT = `Analysiere dieses Dokument und erstelle einen vollständigen Lerndigest auf Deutsch.
 
@@ -22,7 +27,7 @@ Dieser Digest ersetzt das Originaldokument für alle zukünftigen KI-Aufrufe (Qu
 // Antwortet sofort, analysiert im Hintergrund
 router.post('/:id/analyze', async (req, res) => {
   const { id } = req.params;
-  if (!UUID_RE.test(id)) return res.status(400).json({ error: 'Ungültige Dokument-ID.' });
+  if (!ID_RE.test(id)) return res.status(400).json({ error: 'Ungültige Dokument-ID.' });
 
   const sb = req.supabase;
   const userId = req.user.id;
@@ -51,6 +56,9 @@ router.post('/:id/analyze', async (req, res) => {
           .download(doc.storage_path);
         if (fileErr) throw fileErr;
         const buffer = Buffer.from(await fileData.arrayBuffer());
+        if (buffer.length > MAX_ANALYZE_BYTES) {
+          throw new Error(`Datei zu groß für die Analyse (${(buffer.length / 1024 / 1024).toFixed(0)} MB, max. 18 MB).`);
+        }
         const mimeType = doc.file_type === 'pdf' ? 'application/pdf'
           : doc.mime_type || 'image/jpeg';
         part = { inlineData: { data: buffer.toString('base64'), mimeType } };

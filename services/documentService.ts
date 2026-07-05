@@ -46,7 +46,8 @@ export const loadDocumentsFromSupabase = async (): Promise<ProcessedDocument[]> 
   return (data || []).map(row => ({
     id: row.id,
     name: row.name,
-    type: row.file_type as 'pdf' | 'text' | 'docx',
+    type: row.file_type as 'pdf' | 'text' | 'docx' | 'image',
+    mimeType: row.mime_type ?? undefined,
     collectionId: row.collection_id ?? undefined,
     uploadDate: row.upload_date,
     content: row.content_text || '',
@@ -66,28 +67,37 @@ export const saveDocumentToSupabase = async (
   let storagePath: string | null = null;
   let contentText: string | null = null;
 
-  if (doc.type === 'pdf' && originalFile) {
+  if ((doc.type === 'pdf' || doc.type === 'image') && originalFile) {
+    // PDFs UND Bilder (Tafelfotos, Notizen) in den Storage — sonst kann das
+    // Backend sie nie analysieren und die Ordner-Wissensbasis bleibt leer
     storagePath = `${user.id}/${doc.id}/${originalFile.name}`;
     const { error: uploadErr } = await supabase.storage
       .from('document-files')
       .upload(storagePath, originalFile, { upsert: true });
     if (uploadErr) throw uploadErr;
-  } else if (doc.type !== 'pdf') {
-    // Text/DOCX: extrahierten Text speichern, max. 1 MB
+  } else if (doc.type === 'text' || doc.type === 'docx') {
+    // Extrahierten Text speichern, max. 1 MB (Bilder-Base64 gehört NICHT hierher)
     contentText = doc.content.slice(0, 1_000_000);
   }
 
-  const { error } = await supabase.from('documents').upsert({
+  const row: Record<string, unknown> = {
     id: doc.id,
     user_id: user.id,
     name: doc.name,
     file_type: doc.type,
+    mime_type: doc.mimeType ?? null,
     collection_id: doc.collectionId ?? null,
     storage_path: storagePath,
     content_text: contentText,
     upload_date: doc.uploadDate,
     status: 'ready',
-  });
+  };
+  let { error } = await supabase.from('documents').upsert(row);
+  if (error && /mime_type/i.test(error.message)) {
+    // Ältere DB ohne mime_type-Spalte: ohne das Feld erneut versuchen
+    delete row.mime_type;
+    ({ error } = await supabase.from('documents').upsert(row));
+  }
   if (error) throw error;
   return storagePath;
 };
