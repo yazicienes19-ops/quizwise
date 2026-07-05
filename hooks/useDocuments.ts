@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import type { User } from '@supabase/supabase-js';
 import { ProcessedDocument, Collection } from '../types';
 import type { GenerationSource } from '../services/geminiService';
@@ -27,6 +27,10 @@ interface UseDocumentsParams {
 export const useDocuments = ({ user, userPlan, isOffline, setIsLoading, setShowUpgradeModal }: UseDocumentsParams) => {
   const [documents, setDocuments] = useState<ProcessedDocument[]>([]);
   const [collections, setCollections] = useState<Collection[]>([]);
+  /** Löst Neuladen + Digest-Polling aus (z.B. nach einem Upload). */
+  const [refreshTick, setRefreshTick] = useState(0);
+  /** Verhindert doppelte Analyse-Trigger für dasselbe Dokument in dieser Session. */
+  const triggeredDigestsRef = useRef<Set<string>>(new Set());
 
   useEffect(() => {
     const saved = localStorage.getItem('quizwise_docs');
@@ -37,13 +41,52 @@ export const useDocuments = ({ user, userPlan, isOffline, setIsLoading, setShowU
 
   useEffect(() => {
     if (!user) return;
-    loadDocumentsFromSupabase()
-      .then(docs => { setDocuments(docs); localStorage.setItem('quizwise_docs', JSON.stringify(docs)); })
-      .catch(() => toast.error('Dokumente konnten nicht aus der Cloud geladen werden.'));
+    let cancelled = false;
+    let attempts = 0;
+
+    // PDF/Bild ohne fertigen Lern-Digest = für Ordner-Wissensbasis noch nicht lesbar
+    const needsDigest = (d: ProcessedDocument) =>
+      (d.type === 'pdf' || d.type === 'image') && d.digestStatus !== 'ready';
+
+    const load = async (isFirst: boolean) => {
+      try {
+        const cloudDocs = await loadDocumentsFromSupabase();
+        if (cancelled) return;
+
+        // Lokale, noch nicht gesyncte Dokumente nicht verwerfen
+        setDocuments(prev => {
+          const cloudIds = new Set(cloudDocs.map(d => d.id));
+          const merged = [...cloudDocs, ...prev.filter(d => !cloudIds.has(d.id))];
+          localStorage.setItem('quizwise_docs', JSON.stringify(merged));
+          return merged;
+        });
+
+        // Nachhol-Lauf: Digest für Dokumente anstoßen, die nie einen bekommen
+        // haben oder deren Verarbeitung fehlgeschlagen ist
+        if (isFirst) {
+          cloudDocs
+            .filter(d => needsDigest(d) && d.digestStatus !== 'pending' && !triggeredDigestsRef.current.has(d.id))
+            .forEach(d => { triggeredDigestsRef.current.add(d.id); triggerDocumentAnalysis(d.id); });
+        }
+
+        // Solange Digests laufen: nachladen, bis alles lesbar ist (max ~5 Min)
+        if (cloudDocs.some(needsDigest) && attempts < 20) {
+          attempts += 1;
+          setTimeout(() => { if (!cancelled) load(false); }, 15_000);
+        }
+      } catch {
+        if (isFirst && refreshTick === 0) toast.error('Dokumente konnten nicht aus der Cloud geladen werden.');
+      }
+    };
+
+    load(true);
     loadCollectionsFromSupabase()
-      .then(cols => { setCollections(cols); localStorage.setItem('quizwise_collections', JSON.stringify(cols)); })
+      .then(cols => { if (!cancelled) { setCollections(cols); localStorage.setItem('quizwise_collections', JSON.stringify(cols)); } })
       .catch(() => {});
-  }, [user]);
+
+    return () => { cancelled = true; };
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [user, refreshTick]);
 
   const saveDocs = (docs: ProcessedDocument[]) => {
     setDocuments(docs);
@@ -178,12 +221,21 @@ export const useDocuments = ({ user, userPlan, isOffline, setIsLoading, setShowU
         const storagePath = await saveDocumentToSupabase(newDoc, file);
         const savedDoc = { ...newDoc, storagePath: storagePath ?? undefined };
         saveDocs([...documents, savedDoc]);
-        if (user && storagePath) triggerDocumentAnalysis(newDoc.id);
+        if (user && storagePath) {
+          triggeredDigestsRef.current.add(newDoc.id);
+          triggerDocumentAnalysis(newDoc.id);
+          // Polling starten, damit der fertige Digest ohne Reload ankommt
+          setRefreshTick(t => t + 1);
+        }
       } else {
         saveDocs([...documents, newDoc]);
         if (user) {
           saveDocumentToSupabase(newDoc)
-            .then(() => triggerDocumentAnalysis(newDoc.id))
+            .then(() => {
+              triggeredDigestsRef.current.add(newDoc.id);
+              triggerDocumentAnalysis(newDoc.id);
+              setRefreshTick(t => t + 1);
+            })
             .catch(() => toast.error('Cloud-Sync fehlgeschlagen. Dokument nur lokal gespeichert.'));
         }
       }
