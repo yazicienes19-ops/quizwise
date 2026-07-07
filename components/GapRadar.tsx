@@ -704,7 +704,7 @@ export const GapRadar: React.FC<GapRadarProps> = ({ metrics, onNavigate, onActio
               todayLearn.map((item, i) => (
                 <div key={i} className="flex justify-between items-center">
                   <div className="min-w-0">
-                    <p className="text-[10px] font-black truncate pr-1" style={{ color: 'var(--ink)' }}>
+                    <p className="text-[10px] font-black break-words pr-1" style={{ color: 'var(--ink)' }}>
                       {item.topic}
                     </p>
                     <p className="text-[8px] uppercase font-bold" style={{ color: 'var(--mute)' }}>
@@ -862,7 +862,7 @@ export const GapRadar: React.FC<GapRadarProps> = ({ metrics, onNavigate, onActio
                 </span>
 
                 <div className="flex-1 min-w-0">
-                  <p className="text-[11px] font-black truncate" style={{ color: 'var(--ink)' }}>
+                  <p className="text-[11px] font-black break-words" style={{ color: 'var(--ink)' }}>
                     {entry.docName}
                   </p>
                   <p className="text-[9px] mt-0.5" style={{ color: 'var(--mute)' }}>

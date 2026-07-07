@@ -155,9 +155,9 @@ export const Layout: React.FC<LayoutProps> = ({
                     >
                       {Icon && <Icon className="w-4 h-4 shrink-0" strokeWidth={1.75} />}
                       <div className="flex-1 min-w-0">
-                        <span className="text-[11px] font-black uppercase tracking-widest block truncate">{item.label}</span>
+                        <span className="text-[11px] font-black uppercase tracking-widest block break-words">{item.label}</span>
                         {item.hint && !isActive && (
-                          <span className="block text-[9px] font-medium text-slate-400 normal-case tracking-normal mt-0.5 truncate">
+                          <span className="block text-[9px] font-medium text-slate-400 normal-case tracking-normal mt-0.5 break-words">
                             {item.hint}
                           </span>
                         )}
@@ -193,8 +193,8 @@ export const Layout: React.FC<LayoutProps> = ({
                     style={{ color: 'var(--primary-text)', background: 'var(--primary)' }}
                   >{userInitial}</div>
                   <div className="flex-1 min-w-0">
-                    <p className="text-[10px] font-black dark:text-white truncate">{user.user_metadata?.full_name || 'Nutzer'}</p>
-                    <p className="text-[9px] text-slate-400 truncate">{user.email}</p>
+                    <p className="text-[10px] font-black dark:text-white break-words">{user.user_metadata?.full_name || 'Nutzer'}</p>
+                    <p className="text-[9px] text-slate-400 break-words">{user.email}</p>
                   </div>
                   <button onClick={onLogout} className="text-slate-400 hover:text-rose-500 transition-colors shrink-0">
                     <LogOut className="w-4 h-4" strokeWidth={1.75} />
@@ -324,7 +324,7 @@ export const Layout: React.FC<LayoutProps> = ({
           <span className="text-[11px] font-black uppercase tracking-widest text-slate-900 dark:text-white">QuizWise</span>
         </div>
 
-        <span className="absolute left-1/2 -translate-x-1/2 text-[9px] font-black uppercase tracking-widest text-slate-400 pointer-events-none max-w-[110px] truncate">
+        <span className="absolute left-1/2 -translate-x-1/2 text-[9px] font-black uppercase tracking-widest text-slate-400 pointer-events-none max-w-[60vw] truncate">
           {currentPageLabel}
         </span>
 

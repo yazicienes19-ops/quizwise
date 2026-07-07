@@ -51,7 +51,7 @@ export const ResultView: React.FC<ResultViewProps> = ({
             <p className="text-[10px] font-black uppercase tracking-[0.3em] text-slate-400 mt-1">{grade.label}</p>
           </div>
           {docName && (
-            <p className="text-[10px] font-black uppercase tracking-widest text-indigo-500 truncate">{docName}</p>
+            <p className="text-[10px] font-black uppercase tracking-widest text-indigo-500 break-words">{docName}</p>
           )}
         </div>
 

@@ -34,7 +34,7 @@ const InTextRow: React.FC<{ label: string; value: string }> = ({ label, value })
   <div className="flex items-center gap-2 justify-between">
     <span className="text-[9px] font-bold text-slate-400 shrink-0">{label}:</span>
     <div className="flex items-center gap-1.5 min-w-0">
-      <code className="text-[10px] bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 px-2 py-0.5 rounded font-mono text-slate-700 dark:text-slate-300 truncate max-w-[160px]">{value || '–'}</code>
+      <code className="text-[10px] bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 px-2 py-0.5 rounded font-mono text-slate-700 dark:text-slate-300 break-words max-w-[160px]">{value || '–'}</code>
       {value && <CopyButton text={value} />}
     </div>
   </div>
@@ -572,7 +572,7 @@ export const TermPaperSystem: React.FC<TermPaperSystemProps> = ({
                           <div className={`w-4 h-4 rounded border-2 flex items-center justify-center shrink-0 text-[9px] ${selectedDocIds.includes(doc.id) ? 'bg-indigo-600 border-indigo-600 text-white' : 'border-slate-300'}`}>
                             {selectedDocIds.includes(doc.id) && '✓'}
                           </div>
-                          <span className="truncate">{documentDisplayName(doc)}</span>
+                          <span className="break-words">{documentDisplayName(doc)}</span>
                         </div>
                       ))}
                     </div>

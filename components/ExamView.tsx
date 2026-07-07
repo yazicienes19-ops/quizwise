@@ -408,7 +408,7 @@ export const ExamView: React.FC<ExamViewProps> = ({
             const isWrong   = mode === 'result' && selected !== undefined && selected !== -1 && !isCorrect;
             return (
               <div key={li} className="flex items-center gap-3">
-                <div className="flex-1 min-w-0 p-3 rounded-2xl text-sm font-bold bg-indigo-50 dark:bg-indigo-900/20 text-indigo-800 dark:text-indigo-200 border border-indigo-200 dark:border-indigo-800 truncate">
+                <div className="flex-1 min-w-0 p-3 rounded-2xl text-sm font-bold bg-indigo-50 dark:bg-indigo-900/20 text-indigo-800 dark:text-indigo-200 border border-indigo-200 dark:border-indigo-800 break-words">
                   {left}
                 </div>
                 <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" className="shrink-0 text-slate-400">

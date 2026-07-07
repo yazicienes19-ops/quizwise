@@ -283,7 +283,7 @@ export const ExportDeckModal: React.FC<ExportDeckModalProps> = ({ deck, userId, 
         <div className="flex justify-between items-start px-8 py-6 border-b border-slate-100 dark:border-slate-800">
           <div className="min-w-0 flex-1 pr-4">
             <p className="text-[10px] font-black uppercase tracking-widest text-slate-400 mb-1">Exportieren & Teilen</p>
-            <h2 className="text-xl font-black dark:text-white truncate">{deck.title}</h2>
+            <h2 className="text-xl font-black dark:text-white break-words">{deck.title}</h2>
             <p className="text-[10px] font-bold text-slate-400 mt-0.5">{deck.cards.length} Karten</p>
           </div>
           <button aria-label="Schließen"

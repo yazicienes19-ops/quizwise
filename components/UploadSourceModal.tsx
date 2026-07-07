@@ -189,7 +189,7 @@ export const UploadSourceModal: React.FC<Props> = ({ onClose, onUpload }) => {
             <div className="flex items-center gap-4 p-4 bg-slate-50 dark:bg-slate-800 rounded-2xl">
               <span className="text-2xl">{FILE_EMOJI[ext] ?? '📄'}</span>
               <div className="flex-grow min-w-0">
-                <p className="font-black dark:text-white text-sm truncate">{file.name}</p>
+                <p className="font-black dark:text-white text-sm break-words">{file.name}</p>
                 <p className="text-[10px] text-slate-400 uppercase tracking-widest">{(file.size / 1024 / 1024).toFixed(2)} MB</p>
               </div>
               <button type="button" onClick={() => setFile(null)} className="text-slate-400 hover:text-rose-500 transition-colors font-black text-lg leading-none">×</button>

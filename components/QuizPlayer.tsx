@@ -325,7 +325,7 @@ export const QuizPlayer: React.FC<QuizPlayerProps> = ({
             const isWrong   = showResult && selected !== undefined && !isCorrect;
             return (
               <div key={li} className="flex items-center gap-2">
-                <div className="flex-1 p-3 rounded-[16px] bg-indigo-50 dark:bg-indigo-900/20 border border-indigo-200 dark:border-indigo-800 text-indigo-800 dark:text-indigo-200 text-sm font-bold min-w-0 truncate">
+                <div className="flex-1 p-3 rounded-[16px] bg-indigo-50 dark:bg-indigo-900/20 border border-indigo-200 dark:border-indigo-800 text-indigo-800 dark:text-indigo-200 text-sm font-bold min-w-0 break-words">
                   {pair.left}
                 </div>
                 <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" className="shrink-0 text-slate-400">
@@ -484,7 +484,7 @@ export const QuizPlayer: React.FC<QuizPlayerProps> = ({
       {/* Header */}
       <div className="px-4 pt-6 lg:pt-10 space-y-3 mb-6">
         {sourceName && (
-          <p className="text-[9px] font-black uppercase tracking-[0.3em] text-indigo-500 truncate">{sourceName}</p>
+          <p className="text-[9px] font-black uppercase tracking-[0.3em] text-indigo-500 break-words">{sourceName}</p>
         )}
         <div className="flex justify-between items-center text-[10px] font-black uppercase text-slate-400 tracking-widest">
           <span>Frage {currentIndex + 1} / {questions.length}</span>
@@ -513,7 +513,7 @@ export const QuizPlayer: React.FC<QuizPlayerProps> = ({
           <div className="h-full transition-all duration-700 ease-out" style={{ width: `${progress}%`, background: 'var(--primary)' }} />
         </div>
         {currentQuestion.topic && (
-          <p className="text-[9px] font-black uppercase tracking-widest text-slate-400 truncate">Thema: {currentQuestion.topic}</p>
+          <p className="text-[9px] font-black uppercase tracking-widest text-slate-400 break-words">Thema: {currentQuestion.topic}</p>
         )}
       </div>
 

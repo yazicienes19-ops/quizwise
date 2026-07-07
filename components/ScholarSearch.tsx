@@ -202,10 +202,10 @@ export const ScholarSearch: React.FC<ScholarSearchProps> = ({
                   </span>
 
                   <div className="flex-1 min-w-0">
-                    <p className="text-sm font-bold text-slate-900 dark:text-white truncate leading-tight">
+                    <p className="text-sm font-bold text-slate-900 dark:text-white break-words leading-tight">
                       {result.title}
                     </p>
-                    <p className="text-[10px] text-slate-400 truncate mt-0.5">
+                    <p className="text-[10px] text-slate-400 break-words mt-0.5">
                       {result.authors} · {result.year}{result.journal ? ` · ${result.journal}` : ''}
                     </p>
                   </div>

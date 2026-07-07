@@ -55,7 +55,7 @@ export const ChapterSelectorModal: React.FC<ChapterSelectorModalProps> = ({
         {/* Header */}
         <div className="px-8 py-6 border-b border-slate-100 dark:border-slate-800 shrink-0">
           <p className="text-[9px] font-black uppercase tracking-widest text-slate-400 mb-1">Kapitel auswählen</p>
-          <h2 className="text-lg font-black dark:text-white truncate">{docTitle}</h2>
+          <h2 className="text-lg font-black dark:text-white break-words">{docTitle}</h2>
           <p className="text-[10px] text-slate-400 mt-1">
             {chapters.length} Kapitel erkannt · nur ausgewählte werden verarbeitet
           </p>
@@ -119,7 +119,7 @@ export const ChapterSelectorModal: React.FC<ChapterSelectorModalProps> = ({
 
                 {/* Chapter info */}
                 <div className="flex-1 min-w-0">
-                  <p className={`text-sm font-bold leading-snug truncate ${
+                  <p className={`text-sm font-bold leading-snug break-words ${
                     isSelected ? 'text-indigo-700 dark:text-indigo-300' : 'dark:text-white'
                   }`}>
                     {chapter.title}

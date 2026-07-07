@@ -152,7 +152,7 @@ export const QuizSetup: React.FC<QuizSetupProps> = ({ doc, availableDocs, onStar
                   </svg>
                 )}
               </div>
-              <span className="text-[10px] font-black truncate dark:text-white">{documentDisplayName(d)}</span>
+              <span className="text-[10px] font-black break-words dark:text-white">{documentDisplayName(d)}</span>
               {d.id === doc.id && <span className="text-[8px] font-black text-slate-400 shrink-0">Primär</span>}
             </button>
           ))}

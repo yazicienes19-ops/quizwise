@@ -352,7 +352,7 @@ export const StudyPlanner: React.FC<StudyPlannerProps> = ({ metrics, decks, exam
           <div className="space-y-2">
             {knowledgeGaps.slice(0, 3).map(gap => (
               <div key={gap.id} className="flex justify-between items-center">
-                <span className="text-[11px] font-bold text-slate-600 dark:text-slate-300 truncate pr-2">{gap.topic}</span>
+                <span className="text-[11px] font-bold text-slate-600 dark:text-slate-300 break-words pr-2">{gap.topic}</span>
                 <span className="text-[10px] font-black text-indigo-600">{gap.confidence}%</span>
               </div>
             ))}
@@ -364,7 +364,7 @@ export const StudyPlanner: React.FC<StudyPlannerProps> = ({ metrics, decks, exam
           <div className="space-y-2">
             {dueDecks.slice(0, 3).map(deck => (
               <div key={deck.id} className="flex justify-between items-center">
-                <span className="text-[11px] font-bold text-slate-600 dark:text-slate-300 truncate pr-2">{deck.title}</span>
+                <span className="text-[11px] font-bold text-slate-600 dark:text-slate-300 break-words pr-2">{deck.title}</span>
                 <div className="w-1.5 h-1.5 rounded-full bg-indigo-500" />
               </div>
             ))}
@@ -376,7 +376,7 @@ export const StudyPlanner: React.FC<StudyPlannerProps> = ({ metrics, decks, exam
           <div className="space-y-2">
             {examTerms.slice(0, 3).map(exam => (
               <div key={exam.id} className="flex justify-between items-center">
-                <span className="text-[11px] font-bold text-slate-600 dark:text-slate-300 truncate pr-2">{exam.title}</span>
+                <span className="text-[11px] font-bold text-slate-600 dark:text-slate-300 break-words pr-2">{exam.title}</span>
                 <span className="text-[9px] font-black text-rose-500">{new Date(exam.date + 'T12:00:00').toLocaleDateString('de-DE', { day: '2-digit', month: '2-digit' })}</span>
               </div>
             ))}
@@ -504,7 +504,7 @@ export const StudyPlanner: React.FC<StudyPlannerProps> = ({ metrics, decks, exam
                     {visible.map(item => (
                       <div
                         key={item.id}
-                        className={`px-2 py-0.5 rounded-md text-[9px] font-bold truncate ${
+                        className={`px-2 py-0.5 rounded-md text-[9px] font-bold break-words ${
                           item.source === 'exam'
                             ? 'bg-rose-100 dark:bg-rose-900/30 text-rose-700 dark:text-rose-400'
                             : item.isAuto
@@ -572,7 +572,7 @@ export const StudyPlanner: React.FC<StudyPlannerProps> = ({ metrics, decks, exam
                   />
                   <div className="flex-grow min-w-0">
                     <p className="text-sm font-black dark:text-white">{item.title}</p>
-                    {item.description && <p className="text-xs text-slate-400 mt-0.5 truncate">{item.description}</p>}
+                    {item.description && <p className="text-xs text-slate-400 mt-0.5 break-words">{item.description}</p>}
                     <p className="text-[9px] font-black uppercase tracking-widest mt-1" style={item.isAuto ? { color: 'var(--primary)' } : { color: '#94a3b8' }}>
                       {item.source === 'exam' ? 'Klausur' : item.isAuto ? 'Auto-Wiederholung' : 'Termin'}
                     </p>
@@ -637,7 +637,7 @@ export const StudyPlanner: React.FC<StudyPlannerProps> = ({ metrics, decks, exam
                         <span className={`w-2.5 h-2.5 rounded-full shrink-0 ${c.bg}`} />
                         <div className="flex-1 min-w-0">
                           <p className="text-[9px] font-black uppercase tracking-widest text-slate-400">{entry.subject}</p>
-                          <p className="text-sm font-black dark:text-white truncate">{entry.topic}</p>
+                          <p className="text-sm font-black dark:text-white break-words">{entry.topic}</p>
                           <p className="text-[10px] font-mono text-slate-400 mt-0.5">{entry.startTime} – {entry.endTime}</p>
                         </div>
                         <button
@@ -814,7 +814,7 @@ export const StudyPlanner: React.FC<StudyPlannerProps> = ({ metrics, decks, exam
                                 <X size={12} />
                               </button>
                             </div>
-                            <p className="text-sm font-black dark:text-white truncate leading-tight">{entry.topic}</p>
+                            <p className="text-sm font-black dark:text-white break-words leading-tight">{entry.topic}</p>
                             <div className="mt-auto flex justify-between items-end">
                               <span className="text-[9px] font-mono font-black text-slate-400">{entry.startTime} – {entry.endTime}</span>
                               <button

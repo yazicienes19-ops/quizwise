@@ -199,7 +199,7 @@ export const ExamGenerator: React.FC<ExamGeneratorProps> = ({
               {contentSource && (
                 <div className="ml-auto flex items-center gap-2 bg-emerald-50 dark:bg-emerald-950/20 px-3 py-1.5 rounded-xl">
                   <div className="w-2 h-2 rounded-full bg-emerald-500 shrink-0" />
-                  <p className="text-[10px] text-emerald-600 dark:text-emerald-400 font-black truncate max-w-[120px]">{contentName}</p>
+                  <p className="text-[10px] text-emerald-600 dark:text-emerald-400 font-black break-words max-w-[120px]">{contentName}</p>
                   <button onClick={() => { setContentSource(null); setContentName(''); }} className="text-emerald-400 hover:text-rose-500 transition-colors text-xs font-black ml-1">✕</button>
                 </div>
               )}
@@ -255,7 +255,7 @@ export const ExamGenerator: React.FC<ExamGeneratorProps> = ({
                         </svg>
                       )}
                     </div>
-                    <span className="text-[10px] font-black truncate dark:text-white">{documentDisplayName(d)}</span>
+                    <span className="text-[10px] font-black break-words dark:text-white">{documentDisplayName(d)}</span>
                   </button>
                 ))}
                 <div className="flex items-center gap-3 my-1">
@@ -281,7 +281,7 @@ export const ExamGenerator: React.FC<ExamGeneratorProps> = ({
             </label>
             {styleFile ? (
               <div className="p-3 bg-emerald-50 dark:bg-emerald-950/20 rounded-xl flex items-center gap-3">
-                <p className="text-[10px] text-emerald-600 dark:text-emerald-400 font-black truncate">{styleFile.name}</p>
+                <p className="text-[10px] text-emerald-600 dark:text-emerald-400 font-black break-words">{styleFile.name}</p>
                 <button type="button" onClick={() => setStyleFile(null)} className="ml-auto text-slate-400 hover:text-rose-500 text-xs font-black">✕</button>
               </div>
             ) : !styleLibDocId ? (

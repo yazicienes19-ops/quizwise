@@ -194,7 +194,7 @@ export const ActiveRecall: React.FC<ActiveRecallProps> = ({
                 <div className="w-3 h-3 rounded-full bg-indigo-500 shrink-0" />
                 <div>
                   <p className="text-[9px] font-black uppercase text-slate-400 tracking-widest">Aktive Quelle</p>
-                  <p className="text-sm font-black dark:text-white truncate max-w-xs">{activeSourceName}</p>
+                  <p className="text-sm font-black dark:text-white break-words max-w-xs">{activeSourceName}</p>
                 </div>
               </div>
               <button
@@ -279,7 +279,7 @@ export const ActiveRecall: React.FC<ActiveRecallProps> = ({
           <div className="flex items-center justify-between px-1">
             <div className="flex items-center gap-2">
               <div className="w-2 h-2 rounded-full bg-indigo-500" />
-              <span className="text-[10px] font-black uppercase text-slate-400 tracking-widest truncate max-w-[200px]">{activeSourceName}</span>
+              <span className="text-[10px] font-black uppercase text-slate-400 tracking-widest break-words max-w-[200px]">{activeSourceName}</span>
             </div>
             <button
               onClick={handleCancel}

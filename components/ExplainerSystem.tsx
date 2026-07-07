@@ -196,7 +196,7 @@ export const ExplainerSystem: React.FC<ExplainerSystemProps> = ({
             <div className="flex items-center justify-between px-5 py-4 rounded-2xl" style={{ background: 'var(--bg-sidebar)', border: '1px solid var(--border-color)' }}>
               <div className="flex items-center gap-2.5">
                 <div className="w-2 h-2 rounded-full shrink-0" style={{ background: 'var(--primary)' }} />
-                <span className="text-sm font-black truncate max-w-[260px]" style={{ color: 'var(--primary)' }}>{activeSourceName}</span>
+                <span className="text-sm font-black break-words max-w-[260px]" style={{ color: 'var(--primary)' }}>{activeSourceName}</span>
               </div>
               <button onClick={() => { setActiveSource(null); setActiveSourceName(''); }} className="text-slate-400 hover:text-rose-500 transition-colors font-black text-xs shrink-0 ml-3">Entfernen</button>
             </div>
@@ -300,9 +300,9 @@ export const ExplainerSystem: React.FC<ExplainerSystemProps> = ({
                     className="w-full flex items-center justify-between px-4 py-2.5 rounded-xl text-left transition-all hover:opacity-80"
                     style={{ background: 'var(--bg-sidebar)', border: '1px solid var(--border-color)' }}
                   >
-                    <span className="text-xs font-bold truncate dark:text-white">{h.concept}</span>
+                    <span className="text-xs font-bold break-words dark:text-white">{h.concept}</span>
                     <span className="flex items-center gap-2 shrink-0 ml-3">
-                      <span className="text-[9px] font-medium text-slate-400 truncate max-w-[120px]">{h.docName}</span>
+                      <span className="text-[9px] font-medium text-slate-400 break-words max-w-[120px]">{h.docName}</span>
                       <span className="text-[9px] font-medium text-slate-400">
                         {new Date(h.timestamp).toLocaleDateString('de-DE', { day: '2-digit', month: 'short' })}
                       </span>
@@ -339,7 +339,7 @@ export const ExplainerSystem: React.FC<ExplainerSystemProps> = ({
               <p className="text-[10px] font-black uppercase tracking-widest" style={{ color: 'var(--primary)' }}>
                 {activeSourceName ? `Aus: ${activeSourceName}` : 'Aus Allgemeinwissen'}
               </p>
-              <h2 className="text-2xl font-black dark:text-white truncate">{explainedConcept}</h2>
+              <h2 className="text-2xl font-black dark:text-white break-words">{explainedConcept}</h2>
             </div>
             {explanation && (
               <button onClick={() => { navigator.clipboard.writeText(explanation); toast.success('Kopiert!'); }}

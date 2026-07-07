@@ -169,7 +169,7 @@ export const SourceSelector: React.FC<SourceSelectorProps> = ({
               }`}
             >
               <span className="shrink-0">{t.icon}</span>
-              <span className="hidden sm:inline truncate">{t.label}</span>
+              <span className="hidden sm:inline break-words">{t.label}</span>
             </button>
           ))}
         </div>
@@ -245,7 +245,7 @@ export const SourceSelector: React.FC<SourceSelectorProps> = ({
                       >
                         <FolderOpen size={20} className="shrink-0" style={{ color: 'var(--primary)' }} strokeWidth={1.75} />
                         <div className="flex-1 min-w-0">
-                          <p className="text-[12px] font-black dark:text-white truncate">{collection.emoji} {collection.name}</p>
+                          <p className="text-[12px] font-black dark:text-white break-words">{collection.emoji} {collection.name}</p>
                           <p className="text-[10px] uppercase tracking-widest mt-0.5" style={{ color: 'var(--primary)' }}>
                             Ganzer Ordner · {count} Quelle{count !== 1 ? 'n' : ''}
                             {ready && included < count && <> · {included} nutzbar</>}
@@ -271,8 +271,8 @@ export const SourceSelector: React.FC<SourceSelectorProps> = ({
                         >
                           <DocIcon type={doc.type} />
                           <div className="flex-1 min-w-0">
-                            <p className="text-[12px] font-black dark:text-white truncate">{docTitle(doc)}</p>
-                            <p className="text-[10px] text-slate-400 uppercase tracking-widest mt-0.5 truncate">
+                            <p className="text-[12px] font-black dark:text-white break-words">{docTitle(doc)}</p>
+                            <p className="text-[10px] text-slate-400 uppercase tracking-widest mt-0.5 break-words">
                               {doc.type.toUpperCase()}
                               {col && <> · {col.emoji} {col.name}</>}
                             </p>

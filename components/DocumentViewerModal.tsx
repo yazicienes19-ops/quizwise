@@ -87,7 +87,7 @@ export const DocumentViewerModal: React.FC<DocumentViewerModalProps> = ({ doc, o
         {/* Header */}
         <div className="flex justify-between items-center px-6 py-4 border-b border-slate-100 dark:border-slate-800 shrink-0">
           <div className="min-w-0 flex-1 pr-4">
-            <h2 className="text-base font-black dark:text-white truncate">{documentDisplayName(doc)}</h2>
+            <h2 className="text-base font-black dark:text-white break-words">{documentDisplayName(doc)}</h2>
             <p className="text-[9px] font-black uppercase tracking-widest text-slate-400 mt-0.5">
               {doc.type === 'docx'
                 ? 'Extrahierter Text · keine Original-Formatierung'

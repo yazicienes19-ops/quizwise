@@ -79,7 +79,7 @@ export const EditSourceModal: React.FC<Props> = ({ doc, meta, onClose, onSaved }
         <div className="flex justify-between items-center px-8 py-6 border-b border-slate-100 dark:border-slate-800">
           <div>
             <h2 className="text-xl font-black dark:text-white">Quelle bearbeiten</h2>
-            <p className="text-[10px] font-black uppercase tracking-widest text-slate-400 mt-0.5 truncate max-w-[280px]">
+            <p className="text-[10px] font-black uppercase tracking-widest text-slate-400 mt-0.5 break-words max-w-[280px]">
               {doc.name}
             </p>
           </div>

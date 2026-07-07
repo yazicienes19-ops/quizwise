@@ -244,7 +244,7 @@ export const AppContent: React.FC<AppContentProps> = (p) => {
                 {savedQuizzes.map(sq => (
                   <div key={sq.id} className="flex items-center gap-3 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-[20px] px-5 py-4 shadow-sm">
                     <div className="flex-1 min-w-0">
-                      <p className="text-sm font-black dark:text-white truncate">{sq.name}</p>
+                      <p className="text-sm font-black dark:text-white break-words">{sq.name}</p>
                       <p className="text-[9px] text-slate-400 font-medium mt-0.5">{sq.questions.length} Fragen · {new Date(sq.savedAt).toLocaleDateString('de-DE', { day: '2-digit', month: 'short', year: '2-digit' })}</p>
                     </div>
                     <button onClick={() => handleLoadSavedQuiz(sq)} className="flex items-center gap-1.5 px-4 py-2 text-white rounded-[14px] text-[10px] font-black uppercase tracking-widest hover:scale-105 active:scale-95 transition-all shrink-0" style={{ background: 'var(--primary)' }}>
@@ -334,7 +334,7 @@ export const AppContent: React.FC<AppContentProps> = (p) => {
               {savedExams.map(se => (
                 <div key={se.id} className="flex items-center gap-3 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-[20px] px-5 py-4 shadow-sm">
                   <div className="flex-1 min-w-0">
-                    <p className="text-sm font-black dark:text-white truncate">{se.name}</p>
+                    <p className="text-sm font-black dark:text-white break-words">{se.name}</p>
                     <p className="text-[9px] text-slate-400 font-medium mt-0.5">{se.questions.length} Fragen · {new Date(se.savedAt).toLocaleDateString('de-DE', { day: '2-digit', month: 'short', year: '2-digit' })}</p>
                   </div>
                   <button onClick={() => handleLoadSavedExam(se)} className="flex items-center gap-1.5 px-4 py-2 text-white rounded-[14px] text-[10px] font-black uppercase tracking-widest hover:scale-105 active:scale-95 transition-all shrink-0" style={{ background: 'var(--primary)' }}>

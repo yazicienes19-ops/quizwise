@@ -459,7 +459,7 @@ export const FlashcardSystem: React.FC<FlashcardSystemProps> = ({
               </form>
             ) : (
               <div className="flex items-center gap-3">
-                <h2 className="text-3xl font-black dark:text-white truncate">{deck.title}</h2>
+                <h2 className="text-3xl font-black dark:text-white break-words">{deck.title}</h2>
                 <button
                   onClick={() => { setRenameTitle(deck.title); setIsRenamingDeck(true); }}
                   className="p-2 rounded-xl text-slate-300 hover:text-indigo-500 hover:bg-indigo-50 dark:hover:bg-indigo-950/30 transition-all shrink-0"
@@ -548,8 +548,8 @@ export const FlashcardSystem: React.FC<FlashcardSystemProps> = ({
                     >
                       <span className="text-[10px] font-black text-slate-300 dark:text-slate-600 w-6 shrink-0 text-right">{idx + 1}</span>
                       <div className="grid grid-cols-1 md:grid-cols-2 gap-2 flex-1 min-w-0">
-                        <p className="text-sm font-bold dark:text-white md:border-r md:border-slate-100 md:dark:border-slate-800 md:pr-4 leading-snug truncate">{card.front}</p>
-                        <p className="text-sm text-slate-400 dark:text-slate-500 leading-snug truncate">{card.back}</p>
+                        <p className="text-sm font-bold dark:text-white md:border-r md:border-slate-100 md:dark:border-slate-800 md:pr-4 leading-snug break-words">{card.front}</p>
+                        <p className="text-sm text-slate-400 dark:text-slate-500 leading-snug break-words">{card.back}</p>
                       </div>
                       <span className="shrink-0 p-2 rounded-xl text-slate-200 dark:text-slate-700 group-hover:text-indigo-500 group-hover:bg-indigo-50 dark:group-hover:bg-indigo-950/30 transition-all">
                         <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>
@@ -728,7 +728,7 @@ export const FlashcardSystem: React.FC<FlashcardSystemProps> = ({
                   >
                     <div className="flex-grow min-w-0 text-center sm:text-left">
                       <div className="flex items-center gap-2 justify-center sm:justify-start">
-                        <h4 className="text-lg lg:text-xl font-black text-slate-900 dark:text-white truncate group-hover:text-indigo-600 transition-colors cursor-pointer" onClick={() => handleOpenDeck(deck.id)}>
+                        <h4 className="text-lg lg:text-xl font-black text-slate-900 dark:text-white break-words group-hover:text-indigo-600 transition-colors cursor-pointer" onClick={() => handleOpenDeck(deck.id)}>
                           {deck.title}
                         </h4>
                         {!deck.sourceDocumentId && <span className="bg-slate-100 dark:bg-slate-800 text-[8px] font-black uppercase px-2 py-0.5 rounded text-slate-400 tracking-tighter">Manuell</span>}

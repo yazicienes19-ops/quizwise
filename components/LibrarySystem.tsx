@@ -345,7 +345,7 @@ export const LibrarySystem: React.FC<LibrarySystemProps> = ({
                       <div>
                         <h3 className="font-black text-base leading-snug" style={{ color: 'var(--text-main)' }}>{col.name}</h3>
                         {recentDoc && (
-                          <p className="text-[10px] text-slate-400 mt-1 truncate">
+                          <p className="text-[10px] text-slate-400 mt-1 break-words">
                             Zuletzt: {documentDisplayName(recentDoc)}
                           </p>
                         )}
@@ -425,7 +425,7 @@ export const LibrarySystem: React.FC<LibrarySystemProps> = ({
       }`}
       style={activeColId === id ? { color: 'var(--primary-text)' } : {}}
     >
-      <span className="flex items-center gap-2 truncate pr-2"><EmojiImage emoji={emoji} size={14} />{label}</span>
+      <span className="flex items-center gap-2 break-words pr-2"><EmojiImage emoji={emoji} size={14} />{label}</span>
       <span className={activeColId === id ? 'opacity-70' : 'opacity-40'}>{count}</span>
     </button>
   );
@@ -569,7 +569,7 @@ export const LibrarySystem: React.FC<LibrarySystemProps> = ({
                     <button
                       key={m}
                       onClick={() => setFilterModule(filterModule === m ? '' : m)}
-                      className={`w-full text-left px-4 py-2.5 rounded-xl text-[11px] font-black uppercase tracking-widest transition-all truncate ${filterModule === m ? 'bg-indigo-600' : 'text-slate-500 hover:bg-slate-50 dark:hover:bg-slate-800'}`}
+                      className={`w-full text-left px-4 py-2.5 rounded-xl text-[11px] font-black uppercase tracking-widest transition-all break-words ${filterModule === m ? 'bg-indigo-600' : 'text-slate-500 hover:bg-slate-50 dark:hover:bg-slate-800'}`}
                       style={filterModule === m ? { color: 'var(--primary-text)' } : {}}
                     >
                       {m}

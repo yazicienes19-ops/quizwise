@@ -196,7 +196,7 @@ export const Dashboard: React.FC<DashboardProps> = ({ onTabChange, flowResult, d
                 </div>
                 <div className="min-w-0">
                   <p className="text-[11px] font-black uppercase tracking-widest" style={{ color: 'var(--primary)' }}>Heute fällig</p>
-                  <p className="text-[9px] text-slate-400 truncate">
+                  <p className="text-[9px] text-slate-400 break-words">
                     {[
                       dueCardsCount > 0 ? `${dueCardsCount} Karte${dueCardsCount !== 1 ? 'n' : ''}` : null,
                       dueMistakesCount > 0 ? `${dueMistakesCount} Frage${dueMistakesCount !== 1 ? 'n' : ''}` : null,
@@ -256,7 +256,7 @@ export const Dashboard: React.FC<DashboardProps> = ({ onTabChange, flowResult, d
               </div>
               <div>
                 <p className="text-[11px] font-black uppercase tracking-widest" style={{ color: nextExam.days <= 7 ? '#f43f5e' : undefined }}>Noch {nextExam.days} Tag{nextExam.days !== 1 ? 'e' : ''}</p>
-                <p className="text-[9px] text-slate-400 truncate max-w-[140px]">{nextExam.subject}</p>
+                <p className="text-[9px] text-slate-400 break-words max-w-[140px]">{nextExam.subject}</p>
               </div>
             </div>
           )}
@@ -279,7 +279,7 @@ export const Dashboard: React.FC<DashboardProps> = ({ onTabChange, flowResult, d
               </div>
               <div>
                 <p className="text-[11px] font-black uppercase tracking-widest" style={{ color: 'var(--primary)' }}>Weiterlernen</p>
-                <p className="text-xs text-slate-500 dark:text-slate-400 truncate max-w-[220px]">{weiterlernCard.label}</p>
+                <p className="text-xs text-slate-500 dark:text-slate-400 break-words max-w-[220px]">{weiterlernCard.label}</p>
               </div>
             </div>
             <span className="text-[10px] font-black uppercase tracking-widest shrink-0" style={{ color: 'var(--primary)' }}>Fortsetzen →</span>

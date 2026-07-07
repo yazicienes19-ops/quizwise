@@ -72,7 +72,7 @@ export const FileUploader: React.FC<FileUploaderProps> = ({
             </div>
             <div>
               <p className="font-black text-[10px] sm:text-xs uppercase tracking-wider dark:text-white">{t.label}</p>
-              <p className="text-[8px] sm:text-[9px] text-slate-400 font-bold leading-tight line-clamp-1">{t.desc}</p>
+              <p className="text-[8px] sm:text-[9px] text-slate-400 font-bold leading-tight break-words">{t.desc}</p>
             </div>
           </button>
         ))}
@@ -156,7 +156,7 @@ export const FileUploader: React.FC<FileUploaderProps> = ({
                   className="p-5 bg-slate-50 dark:bg-slate-800/50 rounded-2xl border-2 border-transparent hover:border-indigo-500 text-left transition-all active:scale-95 group relative overflow-hidden"
                 >
                   <div className="absolute top-0 left-0 w-1 h-full bg-indigo-600 opacity-0 group-hover:opacity-100 transition-opacity" />
-                  <p className="font-black text-sm text-slate-900 dark:text-white group-hover:text-indigo-600 truncate">{deck.title}</p>
+                  <p className="font-black text-sm text-slate-900 dark:text-white group-hover:text-indigo-600 break-words">{deck.title}</p>
                   <div className="flex justify-between items-center mt-1">
                     <p className="text-[10px] font-bold text-slate-400 uppercase">{deck.cards.length} Karten</p>
                     <span className="text-[9px] font-black text-indigo-600 opacity-0 group-hover:opacity-100 transition-all translate-x-4 group-hover:translate-x-0">WÄHLEN →</span>

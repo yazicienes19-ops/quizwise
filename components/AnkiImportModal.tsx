@@ -170,9 +170,9 @@ export const AnkiImportModal: React.FC<AnkiImportModalProps> = ({ decks, onClose
               <div className="space-y-1.5">
                 {preview.map((c, i) => (
                   <div key={i} className="flex gap-3 px-3 py-2 bg-slate-50 dark:bg-slate-800 rounded-xl text-xs">
-                    <span className="font-black dark:text-white shrink-0 truncate max-w-[45%]">{c.front}</span>
+                    <span className="font-black dark:text-white shrink-0 break-words max-w-[45%]">{c.front}</span>
                     <span className="text-slate-300 dark:text-slate-600">→</span>
-                    <span className="text-slate-500 dark:text-slate-400 truncate">{c.back}</span>
+                    <span className="text-slate-500 dark:text-slate-400 break-words">{c.back}</span>
                   </div>
                 ))}
                 {parsed.length > 5 && (
