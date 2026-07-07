@@ -902,7 +902,7 @@ export const GapRadar: React.FC<GapRadarProps> = ({ metrics, onNavigate, onActio
             onClick={handleRunAnalysis}
             disabled={isAnalyzing || !hasAnyData}
             className="w-full sm:w-auto px-8 py-4 rounded-2xl font-black uppercase text-[10px] tracking-[0.2em] shadow-xl hover:scale-105 active:scale-95 transition-all disabled:opacity-40 shrink-0"
-            style={{ background: 'var(--ink)', color: 'var(--bg-main)' }}
+            style={{ background: 'var(--primary)', color: 'var(--primary-text)' }}
           >
             {isAnalyzing ? 'Analyse läuft …' : <>Tiefenanalyse <EmojiImage emoji="✨" size={13} /></>}
           </button>
@@ -911,8 +911,8 @@ export const GapRadar: React.FC<GapRadarProps> = ({ metrics, onNavigate, onActio
         {analysis && (
           <div className="space-y-10">
             <section
-              className="p-8 lg:p-10 rounded-[32px] shadow-lg"
-              style={{ background: 'var(--ink)', color: 'var(--bg-main)' }}
+              className="p-8 lg:p-10 rounded-[32px] shadow-lg border"
+              style={{ background: 'var(--card)', color: 'var(--ink)', borderColor: 'color-mix(in srgb, var(--primary) 25%, var(--border-color))' }}
             >
               <h2 className="text-[9px] font-black uppercase tracking-widest opacity-50 mb-3">
                 Psychologische Synthese

@@ -7,7 +7,15 @@
     --bg-main:         #FFFFFF;
     --bg-sidebar:      #F8FAFF;
     --border-color:    #E2E9F8;
+    --border-soft:     #EDF1FA;
     --text-main:       #0F1E3A;
+    --text-secondary:  #64748B;
+    /* Semantische Text-/Flächen-Token — wurden in Coach/Radar benutzt,
+       waren aber nie definiert (unsichtbare Buttons, transparente Karten) */
+    --ink:             #0F1E3A;
+    --ink2:            #3D5175;
+    --mute:            #7C8DB0;
+    --card:            #FFFFFF;
     --accent:          #D97757;
     --font-app:        'Inter', system-ui, sans-serif;
     --line-height-app: 1.6;
@@ -16,7 +24,13 @@
     --bg-main:       #0B1525;
     --bg-sidebar:    #0F1E35;
     --border-color:  #1A3055;
+    --border-soft:   #16294A;
     --text-main:     #E2ECF8;
+    --text-secondary: #94A3B8;
+    --ink:           #E2ECF8;
+    --ink2:          #B9C7E0;
+    --mute:          #8296B8;
+    --card:          #0F1E35;
     --accent:        #818cf8;
     --primary-soft: color-mix(in srgb, var(--primary) 18%, transparent);
     --primary-soft-text: color-mix(in srgb, var(--primary) 60%, white);
