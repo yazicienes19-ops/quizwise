@@ -13,6 +13,7 @@ import { getSavedQuizzes } from '../services/savedQuizzesService';
 import { getSavedExams } from '../services/savedExamsService';
 import { searchScholar, searchWeb, generateQuizFromDocument, generateQuizFromFlashcards } from '../services/geminiService';
 import { getAllResults } from '../services/quizHistoryService';
+import { sourceTopicsKey, getUsedTopics, saveUsedTopics } from '../hooks/useQuizState';
 import { countDueMistakes, addExamMistakes } from '../services/mistakeReviewService';
 import type { MistakeItem } from '../services/mistakeReviewService';
 import { saveRecallResult } from '../services/recallHistoryService';
@@ -47,6 +48,7 @@ interface AppContentProps {
   documents: ProcessedDocument[];
   collections: Collection[];
   handleFileUpload: (file: File, collectionId?: string) => Promise<string | null>;
+  retryAnalysis: (docId: string) => void;
   deleteDoc: (id: string) => void;
   addCollection: (col: Collection) => void;
   removeCollection: (id: string) => void;
@@ -105,7 +107,7 @@ interface AppContentProps {
 export const AppContent: React.FC<AppContentProps> = (p) => {
   const {
     activeTab, setActiveTab, isLoading, setIsLoading, user, userPlan,
-    documents, collections, handleFileUpload, deleteDoc, addCollection, removeCollection, updateCollection, moveDoc, getDocumentSource,
+    documents, collections, handleFileUpload, retryAnalysis, deleteDoc, addCollection, removeCollection, updateCollection, moveDoc, getDocumentSource,
     questions, setQuestions, answers, setAnswers, activeQuizMeta, setActiveQuizMeta,
     quizInitialAnswers, setQuizInitialAnswers, savedQuizzes, setSavedQuizzes,
     savedExams, setSavedExams, examInitialQuestions, setExamInitialQuestions,
@@ -153,6 +155,7 @@ export const AppContent: React.FC<AppContentProps> = (p) => {
       return <LibrarySystem
         documents={documents} collections={collections}
         onUpload={handleFileUpload} onDelete={deleteDoc}
+        onRetryAnalysis={retryAnalysis}
         onAction={(tab, doc) => {
           if (tab === ActiveTab.QUIZ) { setPendingActionDoc(doc); setQuestions([]); setAnswers([]); setActiveTab(ActiveTab.QUIZ); }
           else if (tab === ActiveTab.EXPLAINER || tab === ActiveTab.CARDS || tab === ActiveTab.RECALL || tab === ActiveTab.EXAM) { setPendingActionDoc(doc); setActiveTab(tab); }
@@ -260,9 +263,19 @@ export const AppContent: React.FC<AppContentProps> = (p) => {
           <FileUploader
             documents={documents} collections={collections}
             onDocumentSelect={(doc, type, opts) => handleStartQuizFromDoc(doc, type, opts)}
-            onSourceSelect={async (source, _name, type, opts) => {
+            onSourceSelect={async (source, name, type, opts) => {
               flushSync(() => { setIsLoading(true); setAnswers([]); setQuestions([]); });
-              try { const q = await generateQuizFromDocument(source, type, opts); setQuestions(q); }
+              try {
+                // Auch Ordner-/Freitext-Quellen tracken ihre Themen — sonst
+                // wiederholt das zweite Quiz aus demselben Ordner die Fragen
+                const topicsKey = sourceTopicsKey(name);
+                const q = await generateQuizFromDocument(source, type, { ...opts, excludeTopics: getUsedTopics(topicsKey) });
+                if (!q.length) throw new Error('Daraus ließen sich keine Fragen erstellen. Bitte versuche es noch einmal.');
+                const meta = { docId: topicsKey, docName: name };
+                setQuestions(q); setQuizInitialAnswers(undefined); setActiveQuizMeta(meta);
+                saveUsedTopics(topicsKey, q);
+                saveQuizProgress(q, [], meta);
+              }
               catch (e) { handleApiError(e); } finally { setIsLoading(false); }
             }}
             onDeckSelect={async (deck) => {

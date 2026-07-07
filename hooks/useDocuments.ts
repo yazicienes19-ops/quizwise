@@ -252,5 +252,17 @@ export const useDocuments = ({ user, userPlan, isOffline, setIsLoading, setShowU
     }
   };
 
-  return { documents, collections, saveDocs, addCollection, removeCollection, updateCollection, deleteDoc, moveDoc, getDocumentSource, handleFileUpload };
+  /** Analyse erneut anstoßen (z.B. nach 'error') — Badge springt sofort auf pending, Polling läuft wieder an. */
+  const retryAnalysis = (docId: string) => {
+    triggeredDigestsRef.current.add(docId);
+    triggerDocumentAnalysis(docId);
+    setDocuments(prev => {
+      const updated = prev.map(d => d.id === docId ? { ...d, digestStatus: 'pending' as const } : d);
+      localStorage.setItem('quizwise_docs', JSON.stringify(updated));
+      return updated;
+    });
+    setRefreshTick(t => t + 1);
+  };
+
+  return { documents, collections, saveDocs, addCollection, removeCollection, updateCollection, deleteDoc, moveDoc, getDocumentSource, handleFileUpload, retryAnalysis };
 };

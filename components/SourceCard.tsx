@@ -26,7 +26,29 @@ interface Props {
   onView: () => void;
   onDelete: () => void;
   onEdit: () => void;
+  /** Stößt die Dokument-Analyse erneut an (nur bei Status 'error' sichtbar). */
+  onRetryAnalysis?: () => void;
 }
+
+/** Digest-Badge + Retry: PDFs/Bilder ohne Status gelten als „wird analysiert" (Nachhol-Lauf läuft). */
+const DigestInfo: React.FC<{ doc: ProcessedDocument; onRetry?: () => void }> = ({ doc, onRetry }) => {
+  const status = doc.digestStatus ?? ((doc.type === 'pdf' || doc.type === 'image') ? 'pending' : undefined);
+  if (!status) return null;
+  return (
+    <>
+      <DigestStatusBadge status={status} />
+      {status === 'error' && onRetry && (
+        <button
+          onClick={e => { e.stopPropagation(); onRetry(); }}
+          className="text-[8px] font-black uppercase tracking-widest px-2 py-0.5 rounded-full transition-all hover:opacity-80"
+          style={{ background: 'color-mix(in srgb, var(--primary) 12%, transparent)', color: 'var(--primary)', border: '1px solid color-mix(in srgb, var(--primary) 30%, transparent)' }}
+        >
+          Erneut versuchen
+        </button>
+      )}
+    </>
+  );
+};
 
 const Stat: React.FC<{ label: string; value: number }> = ({ label, value }) => (
   <div className="text-center">
@@ -48,7 +70,7 @@ const IconEdit = () => (
   </svg>
 );
 
-export const SourceCard: React.FC<Props> = ({ doc, meta, view, onOpen, onView, onDelete, onEdit }) => {
+export const SourceCard: React.FC<Props> = ({ doc, meta, view, onOpen, onView, onDelete, onEdit, onRetryAnalysis }) => {
   const title = meta.displayTitle || doc.name.replace(/\.[^/.]+$/, '');
   const status = meta.status ?? 'ready';
   const emoji = FILE_EMOJI[doc.type] ?? '📄';
@@ -66,7 +88,7 @@ export const SourceCard: React.FC<Props> = ({ doc, meta, view, onOpen, onView, o
           <div className="flex items-center gap-2 flex-wrap">
             <h4 className="font-black text-sm truncate" style={{ color: 'var(--text-main)' }}>{title}</h4>
             <SourceStatusBadge status={status} />
-            {doc.digestStatus && <DigestStatusBadge status={doc.digestStatus} />}
+            <DigestInfo doc={doc} onRetry={onRetryAnalysis} />
           </div>
           <div className="flex items-center gap-3 mt-0.5 flex-wrap">
             {meta.module   && <span className="text-[9px] font-black uppercase text-indigo-600">{meta.module}</span>}
@@ -138,7 +160,7 @@ export const SourceCard: React.FC<Props> = ({ doc, meta, view, onOpen, onView, o
         </div>
         <div className="pt-1 flex items-center gap-1.5 flex-wrap">
           <SourceStatusBadge status={status} />
-          {doc.digestStatus && <DigestStatusBadge status={doc.digestStatus} />}
+          <DigestInfo doc={doc} onRetry={onRetryAnalysis} />
         </div>
       </div>
 

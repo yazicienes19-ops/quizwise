@@ -14,6 +14,7 @@ interface LibrarySystemProps {
   collections: Collection[];
   onUpload: (file: File, collectionId?: string) => Promise<string | null>;
   onDelete: (id: string) => void;
+  onRetryAnalysis?: (docId: string) => void;
   onAction: (tab: ActiveTab, doc: ProcessedDocument) => void;
   onAddCollection: (collection: Collection) => void;
   onDeleteCollection: (id: string) => void;
@@ -52,6 +53,7 @@ export const LibrarySystem: React.FC<LibrarySystemProps> = ({
   collections,
   onUpload,
   onDelete,
+  onRetryAnalysis,
   onAction,
   onAddCollection,
   onDeleteCollection,
@@ -670,6 +672,7 @@ export const LibrarySystem: React.FC<LibrarySystemProps> = ({
                     onView={() => setViewerDocId(doc.id)}
                     onDelete={() => handleDelete(doc)}
                     onEdit={() => setEditDocId(doc.id)}
+                    onRetryAnalysis={onRetryAnalysis ? () => onRetryAnalysis(doc.id) : undefined}
                   />
                 ))}
               </div>
@@ -685,6 +688,7 @@ export const LibrarySystem: React.FC<LibrarySystemProps> = ({
                     onView={() => setViewerDocId(doc.id)}
                     onDelete={() => handleDelete(doc)}
                     onEdit={() => setEditDocId(doc.id)}
+                    onRetryAnalysis={onRetryAnalysis ? () => onRetryAnalysis(doc.id) : undefined}
                   />
                 ))}
               </div>

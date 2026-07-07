@@ -35,6 +35,26 @@ const PROGRESS_KEY = 'quizwise_quiz_progress';
 /** Meta-docId für Wiederholungs-Sessions aus der Fehler-Queue. */
 export const MISTAKE_REVIEW_DOC_ID = 'mistake-review';
 
+// ── Themen-Tracking (excludeTopics) ─────────────────────────────────────────
+// Modul-Scope + exportiert, damit auch Ordner-/Freitext-Quellen (AppContent)
+// ihre benutzten Themen speichern — sonst wiederholt das zweite Quiz aus
+// demselben Ordner dieselben Themen.
+
+/** Stabiler Topics-Schlüssel für Quellen ohne Dokument-ID (Ordner, eingefügter Text). */
+export const sourceTopicsKey = (name: string): string =>
+  `src-${name.toLowerCase().replace(/[^a-z0-9äöüß]+/gi, '-').replace(/^-+|-+$/g, '').slice(0, 40)}`;
+
+export const getUsedTopics = (key: string): string[] => {
+  try { return JSON.parse(localStorage.getItem(`quizwise_topics_${key}`) || '[]'); } catch { return []; }
+};
+
+export const saveUsedTopics = (key: string, qs: QuizQuestion[]): void => {
+  const newTopics = qs.map(q => q.topic).filter(Boolean) as string[];
+  if (!newTopics.length) return;
+  const merged = [...getUsedTopics(key), ...newTopics].slice(-60);
+  localStorage.setItem(`quizwise_topics_${key}`, JSON.stringify(merged));
+};
+
 export const useQuizState = (params: UseQuizStateParams) => {
   const [questions, setQuestions] = useState<QuizQuestion[]>([]);
   const [answers, setAnswers] = useState<UserAnswer[]>([]);
@@ -103,17 +123,6 @@ export const useQuizState = (params: UseQuizStateParams) => {
   const handleLoadSavedExam = (exam: SavedExam) => { setExamInitialQuestions(exam); params.setActiveTab(ActiveTab.EXAM); };
 
   const handleDeleteSavedExam = (id: string) => { deleteSavedExam(id); setSavedExams(getSavedExams()); };
-
-  const getUsedTopics = (docId: string): string[] => {
-    try { return JSON.parse(localStorage.getItem(`quizwise_topics_${docId}`) || '[]'); } catch { return []; }
-  };
-
-  const saveUsedTopics = (docId: string, qs: QuizQuestion[]) => {
-    const newTopics = qs.map(q => q.topic).filter(Boolean) as string[];
-    if (!newTopics.length) return;
-    const merged = [...getUsedTopics(docId), ...newTopics].slice(-60);
-    localStorage.setItem(`quizwise_topics_${docId}`, JSON.stringify(merged));
-  };
 
   const handleStartQuizFromDoc = async (doc: ProcessedDocument, quizType: QuizType = QuizType.FAST, options?: any) => {
     flushSync(() => {
