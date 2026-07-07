@@ -1,11 +1,12 @@
 
 import React, { useState, useMemo, useEffect } from 'react';
-import { TopicMetric, ActiveTab, CoachInsights, FlashcardDeck, LearningFlowResult } from '../types';
+import { TopicMetric, ActiveTab, CoachInsights, FlashcardDeck, LearningFlowResult, ExamTerm } from '../types';
 import { EmojiImage } from './EmojiImage';
 import { GapRadar } from './GapRadar';
 import { generateCoachInsights, WrongAnswerContext } from '../services/geminiService';
 import { buildLearningProfile, buildRealTopicMastery, buildDailyPlan, buildMethodCommentary, buildContextMotivation, CATEGORY_LABELS, METHOD_LABELS } from '../services/learningProfileService';
 import { buildLearningScore } from '../services/learningScoreService';
+import { buildExamForecast } from '../services/examForecastService';
 import type { DailyPlanStep } from '../services/learningProfileService';
 import { getAllResults } from '../services/quizHistoryService';
 import { getAllRecallResults } from '../services/recallHistoryService';
@@ -45,9 +46,10 @@ interface LearningCoachProps {
   onNavigate: (tab: ActiveTab) => void;
   onAction?: (topic: string, mode: 'cards' | 'recall' | 'quiz') => void;
   flowResult?: LearningFlowResult | null;
+  examTerms?: ExamTerm[];
 }
 
-export const LearningCoach: React.FC<LearningCoachProps> = ({ metrics, decks, onNavigate, onAction, flowResult = null }) => {
+export const LearningCoach: React.FC<LearningCoachProps> = ({ metrics, decks, onNavigate, onAction, flowResult = null, examTerms = [] }) => {
   const [insights, setInsights] = useState<CoachInsights | null>(null);
   const [isLoading, setIsLoading] = useState(false);
   const [showPrognosisInfo, setShowPrognosisInfo] = useState(false);
@@ -121,6 +123,19 @@ export const LearningCoach: React.FC<LearningCoachProps> = ({ metrics, decks, on
     () => decks.reduce((sum, d) => sum + d.cards.filter(c => c.srs && c.srs.repetitions > 0).length, 0),
     [decks],
   );
+
+  // Klausurprognose: Zerfall + Trend + Mischwert (services/examForecastService)
+  const forecast = useMemo(() => {
+    const d = new Date();
+    const today = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+    const nextExam = [...examTerms].filter(t => t.date >= today).sort((a, b) => a.date.localeCompare(b.date))[0];
+    return buildExamForecast({
+      examResults,
+      topicMastery: displayTopics,
+      decks,
+      nextExamDate: nextExam?.date ?? null,
+    });
+  }, [examResults, displayTopics, decks, examTerms]);
 
   // Gecachtes Coach-Ergebnis laden — nur wenn seitdem keine neuen Sessions dazukamen
   useEffect(() => {
@@ -284,27 +299,50 @@ export const LearningCoach: React.FC<LearningCoachProps> = ({ metrics, decks, on
           <h3 className="text-[9px] font-black uppercase tracking-widest mb-4" style={{ color: 'var(--mute)' }}>
             Klausurprognose
           </h3>
-          {profile.examPrognosis ? (
+          {forecast ? (
             <>
-              <p className="text-5xl font-black" style={{ color: 'var(--primary)' }}>{profile.examPrognosis.grade}</p>
-              <p className="text-[10px] font-bold uppercase mt-2" style={{ color: 'var(--mute)' }}>
-                {profile.examPrognosis.passProbability}% Bestehenswahrscheinlichkeit
+              {forecast.preliminary && (
+                <span className="text-[8px] font-black uppercase tracking-widest px-2.5 py-1 rounded-full mb-2"
+                  style={{ background: 'color-mix(in srgb, #f59e0b 15%, transparent)', color: '#f59e0b' }}>
+                  Vorläufige Prognose
+                </span>
+              )}
+              <p className="text-5xl font-black" style={{ color: 'var(--primary)' }}>{forecast.grade}</p>
+              <p className="text-sm font-black mt-2" style={{ color: 'var(--ink)' }}>
+                {forecast.preliminary
+                  ? `${forecast.range.low}–${forecast.range.high} % erwartet`
+                  : `~${forecast.expected} % erwartet`}
               </p>
+              <p className="text-[10px] font-bold uppercase mt-1" style={{ color: 'var(--mute)' }}>
+                Bereich {forecast.range.low}–{forecast.range.high} % · Vertrauen: {forecast.confidence}
+              </p>
+              <p className="text-[10px] font-bold uppercase mt-0.5" style={{ color: 'var(--mute)' }}>
+                {forecast.passProbability}% Bestehenswahrscheinlichkeit
+              </p>
+              <div className="w-full mt-3 space-y-1 text-left">
+                <p className="text-[10px] font-medium" style={{ color: 'var(--ink2)' }}>
+                  📈 Lerntrend: <strong>{forecast.trendAvailable ? forecast.trend : `ab ${4 - forecast.basis.exams === 1 ? 'einer weiteren Klausur' : `${4 - forecast.basis.exams} weiteren Klausuren`} sichtbar`}</strong>
+                </p>
+                {forecast.projection && (
+                  <p className="text-[10px] font-medium" style={{ color: 'var(--ink2)' }}>
+                    📅 Bei deinem Trend bis zur Klausur am {new Date(`${forecast.projection.date}T12:00:00`).toLocaleDateString('de-DE', { day: '2-digit', month: '2-digit' })}: <strong>~{forecast.projection.value} %</strong>
+                  </p>
+                )}
+              </div>
               <button
                 onClick={() => setShowPrognosisInfo(v => !v)}
-                className="text-[9px] font-black uppercase tracking-widest mt-2 underline decoration-dotted underline-offset-2 transition-opacity hover:opacity-70"
+                className="text-[9px] font-black uppercase tracking-widest mt-3 underline decoration-dotted underline-offset-2 transition-opacity hover:opacity-70"
                 style={{ color: 'var(--mute)' }}
               >
-                Wie wird diese Prognose berechnet?
+                ℹ️ Wie wird diese Prognose berechnet?
               </button>
               {showPrognosisInfo && (
-                <p className="text-[10px] font-medium mt-2 leading-relaxed text-left" style={{ color: 'var(--mute)' }}>
-                  Diese Prognose basiert aktuell auf: {examResults.length} Klausursimulation{examResults.length !== 1 ? 'en' : ''} ·{' '}
-                  {quizResults.length} Quiz-Session{quizResults.length !== 1 ? 's' : ''} ·{' '}
-                  {recallResults.length} Erklär-Session{recallResults.length !== 1 ? 's' : ''} ·{' '}
-                  {learnedCardsCount} gelernte{learnedCardsCount !== 1 ? 'n' : ''} Karteikarte{learnedCardsCount !== 1 ? 'n' : ''}.
-                  Gewichtet werden die letzten 5 Klausuren, neuere stärker. Je mehr Lerndaten, desto genauer.
-                </p>
+                <div className="text-[10px] font-medium mt-2 leading-relaxed text-left space-y-2" style={{ color: 'var(--mute)' }}>
+                  <p><strong style={{ color: 'var(--ink2)' }}>Aktuelle Form zählt:</strong> Jedes Klausurergebnis verliert alle 14 Tage die Hälfte seines Gewichts — deine letzten Leistungen bestimmen die Prognose, alte ziehen dich nicht ewig runter.</p>
+                  <p><strong style={{ color: 'var(--ink2)' }}>Dein Trend:</strong> Ab 4 Klausuren berechnen wir deine Entwicklung und rechnen sie bis zu deinem Klausurtermin hoch — begrenzt auf realistische Veränderungen.</p>
+                  <p><strong style={{ color: 'var(--ink2)' }}>Ehrliche Unsicherheit:</strong> Bei weniger als 4 Klausuren ist die Prognose vorläufig und zeigt einen Bereich statt eines exakten Werts.</p>
+                  <p><strong style={{ color: 'var(--ink2)' }}>Was einfließt:</strong> 60 % Klausurleistung{forecast.parts.topicShare !== null ? ` · 25 % Themensicherheit (${forecast.parts.topicShare} % deiner Themen sicher)` : ''}{forecast.parts.retentionShare !== null ? ` · 15 % Abrufstabilität (${forecast.parts.retentionShare} % deiner Karten stabil)` : ''}. Basis: {forecast.basis.exams} Klausur{forecast.basis.exams !== 1 ? 'en' : ''}, {quizResults.length} Quizze, {learnedCardsCount} gelernte Karten.</p>
+                </div>
               )}
             </>
           ) : (
