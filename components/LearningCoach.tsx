@@ -319,20 +319,20 @@ export const LearningCoach: React.FC<LearningCoachProps> = ({ metrics, decks, on
         </div>
 
         <div
-          className="lg:col-span-2 p-6 lg:p-8 rounded-[24px] lg:rounded-[32px] shadow-sm flex flex-col justify-center"
-          style={{ background: 'var(--ink)' }}
+          className="lg:col-span-2 p-6 lg:p-8 rounded-[24px] lg:rounded-[32px] border shadow-sm flex flex-col justify-center"
+          style={{ background: 'var(--card)', borderColor: 'color-mix(in srgb, var(--primary) 25%, var(--border-color))' }}
         >
-          <h3 className="text-[9px] font-black uppercase tracking-widest opacity-50 mb-3" style={{ color: 'var(--bg-main)' }}>
+          <h3 className="text-[9px] font-black uppercase tracking-widest mb-3" style={{ color: 'var(--mute)' }}>
             Dein Coach
           </h3>
           {!hasEnoughForCoach ? (
-            <p className="text-sm font-medium leading-relaxed" style={{ color: 'var(--bg-main)', opacity: 0.85 }}>
+            <p className="text-sm font-medium leading-relaxed" style={{ color: 'var(--ink2)' }}>
               Noch nicht genügend Daten vorhanden. Nutze QuizWise weiter, damit dein persönlicher Lerncoach
               fundierte Analysen und Empfehlungen erstellen kann.
             </p>
           ) : !insights ? (
             <>
-              <p className="text-sm font-medium mb-4" style={{ color: 'var(--bg-main)', opacity: 0.85 }}>
+              <p className="text-sm font-medium mb-4" style={{ color: 'var(--ink2)' }}>
                 Lass dein Lernprofil analysieren: Verbindungen zwischen Themen, eine Prognose und konkrete nächste Schritte.
               </p>
               <button
@@ -347,15 +347,15 @@ export const LearningCoach: React.FC<LearningCoachProps> = ({ metrics, decks, on
           ) : (
             <div className="space-y-2">
               {insights.synthesis.map((s, i) => (
-                <p key={i} className="text-sm font-medium leading-relaxed" style={{ color: 'var(--bg-main)', opacity: 0.9 }}>
+                <p key={i} className="text-sm font-medium leading-relaxed" style={{ color: 'var(--ink)' }}>
                   {s}
                 </p>
               ))}
               <button
                 onClick={handleRunCoach}
                 disabled={isLoading}
-                className="text-[9px] font-black uppercase tracking-widest opacity-50 hover:opacity-80 transition-opacity disabled:opacity-30 mt-1"
-                style={{ color: 'var(--bg-main)' }}
+                className="text-[9px] font-black uppercase tracking-widest hover:opacity-80 transition-opacity disabled:opacity-30 mt-1"
+                style={{ color: 'var(--mute)' }}
               >
                 {isLoading ? 'Analysiert…' : '↻ Neu analysieren'}
               </button>
