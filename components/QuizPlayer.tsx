@@ -35,6 +35,8 @@ export const QuizPlayer: React.FC<QuizPlayerProps> = ({
 
   // MC / TF / Scenario
   const [selectedOptions, setSelectedOptions]   = useState<number[]>([]);
+  // Metakognitive Kalibrierung (v1: nur MC-artige Fragen)
+  const [confidence, setConfidence]             = useState<'sicher' | 'unsicher' | null>(null);
   // Open
   const [showSampleAnswer, setShowSampleAnswer] = useState(false);
   const [selfAssessCorrect, setSelfAssessCorrect] = useState<boolean | null>(null);
@@ -77,6 +79,7 @@ export const QuizPlayer: React.FC<QuizPlayerProps> = ({
 
   useEffect(() => {
     setSelectedOptions([]);
+    setConfidence(null);
     setShowResult(false);
     setShowExplanation(false);
     setShowSampleAnswer(false);
@@ -128,7 +131,7 @@ export const QuizPlayer: React.FC<QuizPlayerProps> = ({
   const canConfirm = (() => {
     if (!currentQuestion) return false;
     if (isOpen)     return selfAssessCorrect !== null;
-    if (isMcLike || isScenario) return selectedOptions.length > 0;
+    if (isMcLike || isScenario) return selectedOptions.length > 0 && confidence !== null;
     if (isMatching) return Object.keys(matchAnswer).length === (currentQuestion.matchPairs?.length ?? 0);
     if (isCloze)    return clozeBlankCount === 0 ||  // defekte Frage nicht blockieren
                            Array.from({ length: clozeBlankCount })
@@ -165,6 +168,7 @@ export const QuizPlayer: React.FC<QuizPlayerProps> = ({
       ...(isCloze              ? { clozeAnswer }              : {}),
       ...(isNumeric            ? { numericAnswer: parseFloat(numericInput) } : {}),
       ...(isRanking            ? { rankingAnswer: rankingOrder } : {}),
+      ...((isMcLike || isScenario) && confidence ? { confidence } : {}),
     };
     const newAnswers = [...answers, newAnswer];
     setAnswers(newAnswers);
@@ -175,7 +179,7 @@ export const QuizPlayer: React.FC<QuizPlayerProps> = ({
       onComplete(newAnswers);
     }
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [currentIndex, questions.length, answers, selectedOptions, isOpen, isMatching, isCloze, isNumeric, isRanking, matchAnswer, clozeAnswer, numericInput, rankingOrder, onComplete]);
+  }, [currentIndex, questions.length, answers, selectedOptions, confidence, isOpen, isMatching, isCloze, isNumeric, isRanking, matchAnswer, clozeAnswer, numericInput, rankingOrder, onComplete]);
 
   // Keyboard: 1–4 select option, Enter confirm/next
   useEffect(() => {
@@ -272,6 +276,33 @@ export const QuizPlayer: React.FC<QuizPlayerProps> = ({
               );
             })}
           </div>
+
+          {/* Metakognitive Kalibrierung: Selbsteinschätzung vor Aufdeckung der Lösung */}
+          {!showResult && selectedOptions.length > 0 && (
+            <div className="px-4 pb-4 animate-in fade-in slide-in-from-bottom-2 duration-300">
+              <p className="text-[8px] font-black uppercase tracking-widest text-slate-400 mb-2 px-1">Wie sicher bist du dir?</p>
+              <div className="flex gap-2">
+                <button
+                  onClick={() => setConfidence('unsicher')}
+                  className={`flex-1 py-3 rounded-2xl text-[10px] font-black uppercase tracking-widest border-2 transition-all flex items-center justify-center gap-2 ${
+                    confidence === 'unsicher' ? '' : 'border-slate-100 dark:border-slate-800 text-slate-400 hover:border-slate-300'
+                  }`}
+                  style={confidence === 'unsicher' ? { borderColor: 'var(--primary)', background: 'color-mix(in srgb, var(--primary) 10%, transparent)', color: 'var(--primary)' } : undefined}
+                >
+                  🤔 Unsicher
+                </button>
+                <button
+                  onClick={() => setConfidence('sicher')}
+                  className={`flex-1 py-3 rounded-2xl text-[10px] font-black uppercase tracking-widest border-2 transition-all flex items-center justify-center gap-2 ${
+                    confidence === 'sicher' ? '' : 'border-slate-100 dark:border-slate-800 text-slate-400 hover:border-slate-300'
+                  }`}
+                  style={confidence === 'sicher' ? { borderColor: 'var(--primary)', background: 'color-mix(in srgb, var(--primary) 10%, transparent)', color: 'var(--primary)' } : undefined}
+                >
+                  💪 Sicher
+                </button>
+              </div>
+            </div>
+          )}
         </>
       );
     }

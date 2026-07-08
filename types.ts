@@ -243,6 +243,8 @@ export interface UserAnswer {
   clozeAnswer?: string[];
   numericAnswer?: number;
   rankingAnswer?: string[];
+  /** Metakognitive Kalibrierung: Selbsteinschätzung vor Aufdeckung der Lösung (MC-artige Fragen, v1). */
+  confidence?: 'sicher' | 'unsicher';
 }
 
 export interface SearchResult {
