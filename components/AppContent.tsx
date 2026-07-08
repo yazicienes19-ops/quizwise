@@ -263,6 +263,7 @@ export const AppContent: React.FC<AppContentProps> = (p) => {
             </div>
           )}
           <FileUploader
+            key={`quiz-src-${activeModuleId ?? 'all'}`}
             documents={documents} collections={collections}
             onDocumentSelect={(doc, type, opts) => handleStartQuizFromDoc(doc, type, opts)}
             onSourceSelect={async (source, name, type, opts) => {
@@ -301,7 +302,7 @@ export const AppContent: React.FC<AppContentProps> = (p) => {
 
     case ActiveTab.RECALL:
       return <ActiveRecall
-        key={pendingActionDoc ? `recall-${pendingActionDoc.id}` : 'recall'}
+        key={pendingActionDoc ? `recall-${pendingActionDoc.id}` : `recall-${activeModuleId ?? 'all'}`}
         availableDocuments={documents} collections={collections}
         getDocumentSource={getDocumentSource}
         onSaveToLibrary={file => handleFileUpload(file)}
@@ -355,7 +356,7 @@ export const AppContent: React.FC<AppContentProps> = (p) => {
           </div>
         )}
         <ExamSystem
-          key={examInitialQuestions ? `exam-saved-${examInitialQuestions.id}` : pendingActionDoc ? `exam-${pendingActionDoc.id}` : 'exam'}
+          key={examInitialQuestions ? `exam-saved-${examInitialQuestions.id}` : pendingActionDoc ? `exam-${pendingActionDoc.id}` : `exam-${activeModuleId ?? 'all'}`}
           documents={documents} collections={collections}
           getDocumentSource={getDocumentSource}
           onSaveToLibrary={file => handleFileUpload(file)}
@@ -383,7 +384,7 @@ export const AppContent: React.FC<AppContentProps> = (p) => {
 
     case ActiveTab.EXPLAINER:
       return <ExplainerSystem
-        key={pendingActionDoc ? `explainer-${pendingActionDoc.id}` : 'explainer'}
+        key={pendingActionDoc ? `explainer-${pendingActionDoc.id}` : `explainer-${activeModuleId ?? 'all'}`}
         availableDocuments={documents} collections={collections}
         getDocumentSource={getDocumentSource}
         onSaveToLibrary={file => handleFileUpload(file)}

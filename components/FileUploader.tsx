@@ -1,9 +1,10 @@
 
-import React, { useState } from 'react';
+import React, { useState, useMemo } from 'react';
 import { QuizType, FlashcardDeck, ProcessedDocument, Collection } from '../types';
 import type { GenerationSource } from '../services/geminiService';
 import { EmojiImage } from './EmojiImage';
 import { SourceSelector } from './SourceSelector';
+import { buildCollectionSource } from '../services/collectionSource';
 
 interface FileUploaderProps {
   onDocumentSelect: (doc: ProcessedDocument, type: QuizType, options?: any) => void;
@@ -29,6 +30,18 @@ export const FileUploader: React.FC<FileUploaderProps> = ({
   userPlan = 'free',
 }) => {
   const [mode, setMode] = useState<'source' | 'deck'>('source');
+  // Aktives Fach: Quelle ist damit GESETZT — ein Klick startet das Quiz.
+  // 'Andere Quelle wählen' blendet den normalen Wähler ein.
+  const [moduleOverride, setModuleOverride] = useState(false);
+  const activeModule = useMemo(() => {
+    const id = localStorage.getItem('quizwise_active_module');
+    return id ? collections.find(c => c.id === id) ?? null : null;
+  }, [collections]);
+  const folderResult = useMemo(
+    () => activeModule ? buildCollectionSource(activeModule, documents) : null,
+    [activeModule, documents],
+  );
+  const folderReady = !!folderResult && folderResult.includedCount > 0;
   const [selectedQuizType, setSelectedQuizType] = useState<QuizType>(QuizType.FAST);
 
   const [customCount, setCustomCount] = useState(10);
@@ -124,8 +137,37 @@ export const FileUploader: React.FC<FileUploaderProps> = ({
         </div>
       </div>
 
+      {/* Aktives Fach: Ein-Klick-Start ohne Quellen-Dialog */}
+      {mode === 'source' && folderReady && !moduleOverride && activeModule && folderResult && (
+        <div
+          className="max-w-xl mx-auto p-6 lg:p-8 rounded-[28px] border text-center space-y-4"
+          style={{ background: 'color-mix(in srgb, var(--primary) 7%, var(--bg-sidebar))', borderColor: 'color-mix(in srgb, var(--primary) 25%, transparent)' }}
+        >
+          <p className="text-[9px] font-black uppercase tracking-widest" style={{ color: 'var(--primary)' }}>Dein aktives Fach</p>
+          <p className="text-2xl font-black dark:text-white">{activeModule.emoji} {activeModule.name}</p>
+          <p className="text-[11px] font-medium text-slate-400">
+            {folderResult.includedCount} Quelle{folderResult.includedCount !== 1 ? 'n' : ''} als gemeinsame Wissensbasis
+            {folderResult.pendingCount > 0 && <> · {folderResult.pendingCount} noch in Verarbeitung</>}
+          </p>
+          <button
+            onClick={() => onSourceSelect(folderResult.source, folderResult.name, selectedQuizType, getOptions())}
+            disabled={isLoading}
+            className="w-full py-4 rounded-2xl text-[11px] font-black uppercase tracking-widest transition-all hover:scale-[1.02] active:scale-[0.98] disabled:opacity-50"
+            style={{ background: 'var(--primary)', color: 'var(--primary-text)' }}
+          >
+            Quiz jetzt starten →
+          </button>
+          <button
+            onClick={() => setModuleOverride(true)}
+            className="text-[10px] font-black uppercase tracking-widest text-slate-400 hover:text-slate-600 dark:hover:text-slate-300 transition-colors"
+          >
+            Andere Quelle wählen
+          </button>
+        </div>
+      )}
+
       {/* Source Selection via SourceSelector */}
-      {mode === 'source' && (
+      {mode === 'source' && !(folderReady && !moduleOverride) && (
         <SourceSelector
           documents={documents}
           collections={collections}

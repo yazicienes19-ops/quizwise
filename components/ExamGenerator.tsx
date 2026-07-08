@@ -5,6 +5,7 @@ import { GenerationSource } from '../services/geminiService';
 import { GeneratedImage } from './GeneratedImage';
 import { SourceSelector } from './SourceSelector';
 import { getAllMeta, documentDisplayName } from '../services/libraryService';
+import { buildCollectionSource } from '../services/collectionSource';
 import { buildLearningProfile } from '../services/learningProfileService';
 import { getAllResults } from '../services/quizHistoryService';
 import { getAllRecallResults } from '../services/recallHistoryService';
@@ -54,16 +55,28 @@ export const ExamGenerator: React.FC<ExamGeneratorProps> = ({
   const [contentName, setContentName] = useState('');
 
   useEffect(() => {
-    if (!initialDoc) return;
-    try {
-      const source = getDocumentSource
-        ? getDocumentSource(initialDoc)
-        : initialDoc.type === 'pdf'
-          ? { file: { data: initialDoc.content, mimeType: 'application/pdf' } }
-          : { text: initialDoc.content };
-      setContentSource(source);
-      setContentName(initialDoc.name);
-    } catch (_) {}
+    if (initialDoc) {
+      try {
+        const source = getDocumentSource
+          ? getDocumentSource(initialDoc)
+          : initialDoc.type === 'pdf'
+            ? { file: { data: initialDoc.content, mimeType: 'application/pdf' } }
+            : { text: initialDoc.content };
+        setContentSource(source);
+        setContentName(initialDoc.name);
+      } catch (_) {}
+      return;
+    }
+    // Aktives Fach: Quelle direkt vorbelegen — kein Quellen-Klick nötig
+    const moduleId = localStorage.getItem('quizwise_active_module');
+    const col = moduleId ? collections.find(c => c.id === moduleId) : null;
+    if (col) {
+      const result = buildCollectionSource(col, documents);
+      if (result && result.includedCount > 0) {
+        setContentSource(result.source);
+        setContentName(result.name);
+      }
+    }
   }, []); // eslint-disable-line react-hooks/exhaustive-deps
   const [styleFile, setStyleFile] = useState<File | null>(null);
   const [styleLibDocId, setStyleLibDocId] = useState<string | null>(null);

@@ -8,6 +8,7 @@ import { SourceSelector } from './SourceSelector';
 import { toast } from '../services/toast';
 import { documentDisplayName } from '../services/libraryService';
 import { buildRealTopicMastery } from '../services/learningProfileService';
+import { buildCollectionSource } from '../services/collectionSource';
 import { getAllResults } from '../services/quizHistoryService';
 import { getAllRecallResults } from '../services/recallHistoryService';
 import { getAllExamResults } from '../services/examHistoryService';
@@ -57,12 +58,23 @@ export const ActiveRecall: React.FC<ActiveRecallProps> = ({
   );
 
   useEffect(() => {
-    if (!initialDoc || !getDocumentSource) return;
-    try {
-      const source = getDocumentSource(initialDoc);
-      setActiveSource(source);
-      setActiveSourceName(documentDisplayName(initialDoc));
-    } catch (_) {}
+    if (initialDoc && getDocumentSource) {
+      try {
+        setActiveSource(getDocumentSource(initialDoc));
+        setActiveSourceName(documentDisplayName(initialDoc));
+      } catch (_) {}
+      return;
+    }
+    // Aktives Fach: Quelle direkt vorbelegen — kein Quellen-Klick nötig
+    const moduleId = localStorage.getItem('quizwise_active_module');
+    const col = moduleId ? collections.find(c => c.id === moduleId) : null;
+    if (col) {
+      const result = buildCollectionSource(col, availableDocuments);
+      if (result && result.includedCount > 0) {
+        setActiveSource(result.source);
+        setActiveSourceName(result.name);
+      }
+    }
   }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
   // Spracherkennung beim Verlassen stoppen — sonst läuft das Mikrofon weiter

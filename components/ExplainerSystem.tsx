@@ -5,6 +5,7 @@ import type { GenerationSource } from '../services/geminiService';
 import { generateExplanation } from '../services/geminiService';
 import { SourceSelector } from './SourceSelector';
 import { documentDisplayName } from '../services/libraryService';
+import { buildCollectionSource } from '../services/collectionSource';
 import { toast } from '../services/toast';
 import { buildLearningProfile } from '../services/learningProfileService';
 import { getAllResults } from '../services/quizHistoryService';
@@ -130,11 +131,23 @@ export const ExplainerSystem: React.FC<ExplainerSystemProps> = ({
   [profile.topicMastery]);
 
   useEffect(() => {
-    if (!initialDoc || !getDocumentSource) return;
-    try {
-      setActiveSource(getDocumentSource(initialDoc));
-      setActiveSourceName(documentDisplayName(initialDoc));
-    } catch (_) {}
+    if (initialDoc && getDocumentSource) {
+      try {
+        setActiveSource(getDocumentSource(initialDoc));
+        setActiveSourceName(documentDisplayName(initialDoc));
+      } catch (_) {}
+      return;
+    }
+    // Aktives Fach: Quelle direkt vorbelegen — kein Quellen-Klick nötig
+    const moduleId = localStorage.getItem('quizwise_active_module');
+    const col = moduleId ? collections.find(c => c.id === moduleId) : null;
+    if (col) {
+      const result = buildCollectionSource(col, availableDocuments);
+      if (result && result.includedCount > 0) {
+        setActiveSource(result.source);
+        setActiveSourceName(result.name);
+      }
+    }
   }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
   const handleSelectDocument = (doc: ProcessedDocument) => {
