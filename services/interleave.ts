@@ -54,3 +54,12 @@ export function interleaveByKey<T>(items: T[], keyFn: (item: T) => string): T[] 
 
   return result;
 }
+
+/**
+ * Durchmischt frisch generierte Fragen nach Thema — verhindert, dass die KI
+ * Fragen blockweise pro Thema ausliefert (schadet der Langzeit-Retention).
+ * Fragen ohne Thema landen gemeinsam im Fallback-Bucket "Allgemein".
+ */
+export function interleaveQuestionsByTopic<T extends { topic?: string }>(qs: T[]): T[] {
+  return interleaveByKey(qs, q => q.topic || 'Allgemein');
+}

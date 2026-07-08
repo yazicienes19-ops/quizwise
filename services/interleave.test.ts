@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { interleaveByKey } from './interleave';
+import { interleaveByKey, interleaveQuestionsByTopic } from './interleave';
 
 interface Item { key: string; n: number; }
 const mk = (spec: string): Item[] => spec.split('').map((key, n) => ({ key, n }));
@@ -51,5 +51,37 @@ describe('interleaveByKey', () => {
     const input = mk('AABB');
     interleaveByKey(input, i => i.key);
     expect(keys(input)).toBe('AABB');
+  });
+});
+
+describe('interleaveQuestionsByTopic', () => {
+  interface Q { topic?: string; n: number; }
+
+  it('durchmischt Fragen nach topic (keine Themenblöcke)', () => {
+    const qs: Q[] = [
+      { topic: 'A', n: 0 }, { topic: 'A', n: 1 },
+      { topic: 'B', n: 2 }, { topic: 'B', n: 3 },
+    ];
+    const out = interleaveQuestionsByTopic(qs);
+    expect(out).toHaveLength(4);
+    const adjacentSame = out.filter((q, i) => i > 0 && out[i - 1].topic === q.topic).length;
+    expect(adjacentSame).toBe(0);
+  });
+
+  it('Fragen ohne topic landen gemeinsam im Fallback "Allgemein"', () => {
+    const qs: Q[] = [{ n: 0 }, { n: 1 }, { topic: 'A', n: 2 }];
+    const out = interleaveQuestionsByTopic(qs);
+    expect(out).toHaveLength(3);
+    expect(out.every(q => q.topic === undefined || q.topic === 'A')).toBe(true);
+  });
+
+  it('deterministisch', () => {
+    const qs: Q[] = [{ topic: 'A', n: 0 }, { topic: 'B', n: 1 }, { topic: 'A', n: 2 }];
+    expect(interleaveQuestionsByTopic(qs)).toEqual(interleaveQuestionsByTopic(qs));
+  });
+
+  it('einzelnes Thema bleibt unverändert (kein Nachteil bei nur einem Thema)', () => {
+    const qs: Q[] = [{ topic: 'A', n: 0 }, { topic: 'A', n: 1 }, { topic: 'A', n: 2 }];
+    expect(interleaveQuestionsByTopic(qs).map(q => q.n)).toEqual([0, 1, 2]);
   });
 });

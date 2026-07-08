@@ -8,6 +8,7 @@ import { formatFeedbackContext } from '../services/examFeedbackService';
 import { GeneratedImage } from './GeneratedImage';
 import { toast } from '../services/toast';
 import { saveExamToStorage } from '../services/savedExamsService';
+import { interleaveQuestionsByTopic } from '../services/interleave';
 
 interface ExamSystemProps {
   documents: ProcessedDocument[];
@@ -75,7 +76,7 @@ export const ExamSystem: React.FC<ExamSystemProps> = ({ documents, collections, 
       for (let attempt = 1; attempt <= maxAttempts; attempt++) {
         try {
           const exam = await generateFullExam(content, style, options);
-          setQuestions(exam);
+          setQuestions(interleaveQuestionsByTopic(exam));
           setMode('edit');
           return;
         } catch (e: any) {

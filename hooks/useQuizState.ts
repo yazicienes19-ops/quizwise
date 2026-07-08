@@ -8,7 +8,7 @@ import { getSavedExams, deleteSavedExam, SavedExam } from '../services/savedExam
 import { getMeta, saveMeta, documentDisplayName } from '../services/libraryService';
 import { saveQuizResult, getDocStats } from '../services/quizHistoryService';
 import { addMistakes, getDueMistakes, rateMistake, MistakeItem } from '../services/mistakeReviewService';
-import { interleaveByKey } from '../services/interleave';
+import { interleaveByKey, interleaveQuestionsByTopic } from '../services/interleave';
 import { countDueCards, migrateLegacyCard } from '../services/spacedRepetition';
 import { recordActivity } from '../services/streakService';
 import { toast } from '../services/toast';
@@ -134,8 +134,9 @@ export const useQuizState = (params: UseQuizStateParams) => {
     try {
       const source = params.getDocumentSource(doc);
       const excludeTopics = getUsedTopics(doc.id);
-      const quiz = await generateQuizFromDocument(source, quizType, { ...options, excludeTopics });
-      if (!quiz.length) throw new Error('Daraus ließen sich keine Fragen erstellen. Bitte versuche es noch einmal.');
+      const rawQuiz = await generateQuizFromDocument(source, quizType, { ...options, excludeTopics });
+      if (!rawQuiz.length) throw new Error('Daraus ließen sich keine Fragen erstellen. Bitte versuche es noch einmal.');
+      const quiz = interleaveQuestionsByTopic(rawQuiz);
       const meta = { docId: doc.id, docName: documentDisplayName(doc) };
       setQuestions(quiz);
       setQuizInitialAnswers(undefined);
@@ -184,14 +185,15 @@ export const useQuizState = (params: UseQuizStateParams) => {
       const customFocus = config.focus === 'weak' && stats.weakTopics.length > 0
         ? `Fokus auf schwache Themen: ${stats.weakTopics.join(', ')}` : undefined;
       const excludeTopics = getUsedTopics(params.pendingActionDoc!.id);
-      const quiz = await generateQuizFromDocument(source, QuizType.CUSTOM, {
+      const rawQuiz = await generateQuizFromDocument(source, QuizType.CUSTOM, {
         customCount: config.questionCount,
         customDifficulty: config.difficulty,
         customFocus,
         questionType: config.questionType,
         excludeTopics,
       });
-      if (!quiz.length) throw new Error('Daraus ließen sich keine Fragen erstellen. Bitte versuche es noch einmal.');
+      if (!rawQuiz.length) throw new Error('Daraus ließen sich keine Fragen erstellen. Bitte versuche es noch einmal.');
+      const quiz = interleaveQuestionsByTopic(rawQuiz);
       setQuestions(quiz);
       setQuizInitialAnswers(undefined);
       saveUsedTopics(params.pendingActionDoc!.id, quiz);

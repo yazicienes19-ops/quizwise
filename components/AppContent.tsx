@@ -14,6 +14,7 @@ import { getSavedExams } from '../services/savedExamsService';
 import { searchScholar, searchWeb, generateQuizFromDocument, generateQuizFromFlashcards } from '../services/geminiService';
 import { getAllResults } from '../services/quizHistoryService';
 import { sourceTopicsKey, getUsedTopics, saveUsedTopics } from '../hooks/useQuizState';
+import { interleaveQuestionsByTopic } from '../services/interleave';
 import { countDueMistakes, addExamMistakes } from '../services/mistakeReviewService';
 import type { MistakeItem } from '../services/mistakeReviewService';
 import { saveRecallResult } from '../services/recallHistoryService';
@@ -269,8 +270,9 @@ export const AppContent: React.FC<AppContentProps> = (p) => {
                 // Auch Ordner-/Freitext-Quellen tracken ihre Themen — sonst
                 // wiederholt das zweite Quiz aus demselben Ordner die Fragen
                 const topicsKey = sourceTopicsKey(name);
-                const q = await generateQuizFromDocument(source, type, { ...opts, excludeTopics: getUsedTopics(topicsKey) });
-                if (!q.length) throw new Error('Daraus ließen sich keine Fragen erstellen. Bitte versuche es noch einmal.');
+                const rawQ = await generateQuizFromDocument(source, type, { ...opts, excludeTopics: getUsedTopics(topicsKey) });
+                if (!rawQ.length) throw new Error('Daraus ließen sich keine Fragen erstellen. Bitte versuche es noch einmal.');
+                const q = interleaveQuestionsByTopic(rawQ);
                 const meta = { docId: topicsKey, docName: name };
                 setQuestions(q); setQuizInitialAnswers(undefined); setActiveQuizMeta(meta);
                 saveUsedTopics(topicsKey, q);
@@ -281,8 +283,9 @@ export const AppContent: React.FC<AppContentProps> = (p) => {
             onDeckSelect={async (deck) => {
               flushSync(() => setIsLoading(true));
               try {
-                const q = await generateQuizFromFlashcards(deck);
-                if (!q.length) throw new Error('Aus diesem Stapel ließ sich kein Quiz erstellen. Bitte versuche es noch einmal.');
+                const rawQ = await generateQuizFromFlashcards(deck);
+                if (!rawQ.length) throw new Error('Aus diesem Stapel ließ sich kein Quiz erstellen. Bitte versuche es noch einmal.');
+                const q = interleaveQuestionsByTopic(rawQ);
                 const meta = { docId: deck.id, docName: deck.title };
                 setQuestions(q); setQuizInitialAnswers(undefined); setActiveQuizMeta(meta);
                 saveQuizProgress(q, [], meta);
@@ -417,8 +420,9 @@ export const AppContent: React.FC<AppContentProps> = (p) => {
         onGenerateQuizFromDeck={async (deck) => {
           setIsLoading(true);
           try {
-            const q = await generateQuizFromFlashcards(deck);
-            if (!q.length) throw new Error('Aus diesem Stapel ließ sich kein Quiz erstellen. Bitte versuche es noch einmal.');
+            const rawQ = await generateQuizFromFlashcards(deck);
+            if (!rawQ.length) throw new Error('Aus diesem Stapel ließ sich kein Quiz erstellen. Bitte versuche es noch einmal.');
+            const q = interleaveQuestionsByTopic(rawQ);
             const meta = { docId: deck.id, docName: deck.title };
             setQuestions(q); setQuizInitialAnswers(undefined); setActiveQuizMeta(meta);
             saveQuizProgress(q, [], meta); setActiveTab(ActiveTab.QUIZ);
