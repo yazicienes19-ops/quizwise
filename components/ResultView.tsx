@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { UserAnswer, QuizQuestion } from '../types';
 import { EmojiImage } from './EmojiImage';
+import { computeCalibration, calibrationPct, MIN_CALIBRATED_FOR_DISPLAY } from '../services/calibration';
 
 interface ResultViewProps {
   answers: UserAnswer[];
@@ -40,11 +41,8 @@ export const ResultView: React.FC<ResultViewProps> = ({
     : { label: 'Noch Luft nach oben', icon: '🎯', color: 'text-rose-500' };
 
   // Metakognitive Kalibrierung: Selbsteinschätzung vs. tatsächliches Ergebnis (nur MC-artige Fragen, v1)
-  const calibrated = answers.filter(a => a.confidence);
-  const wellCalibrated = calibrated.filter(a => (a.confidence === 'sicher') === a.isCorrect).length;
-  const overconfident  = calibrated.filter(a => a.confidence === 'sicher' && !a.isCorrect).length;
-  const underconfident = calibrated.filter(a => a.confidence === 'unsicher' && a.isCorrect).length;
-  const pct = (n: number) => Math.round((n / calibrated.length) * 100);
+  const calibration = computeCalibration(answers);
+  const pct = (n: number) => calibrationPct(n, calibration.total);
 
   return (
     <div className="max-w-2xl mx-auto px-4 py-6 lg:py-10 space-y-6 animate-in zoom-in-95 duration-500 pb-20">
@@ -112,20 +110,20 @@ export const ResultView: React.FC<ResultViewProps> = ({
       )}
 
       {/* Metakognitive Kalibrierung: Selbsteinschätzung vs. Ergebnis */}
-      {calibrated.length >= 2 && (
+      {calibration.total >= MIN_CALIBRATED_FOR_DISPLAY && (
         <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-[24px] p-5">
           <p className="text-[9px] font-black uppercase tracking-widest text-slate-400 mb-3">Deine Selbsteinschätzung</p>
           <div className="grid grid-cols-3 gap-3">
             <div className="text-center">
-              <p className="text-xl font-black text-emerald-600 dark:text-emerald-400">{pct(wellCalibrated)}%</p>
+              <p className="text-xl font-black text-emerald-600 dark:text-emerald-400">{pct(calibration.wellCalibrated)}%</p>
               <p className="text-[8px] font-black uppercase tracking-widest text-slate-400 mt-0.5 leading-tight">Gut<br />kalibriert</p>
             </div>
             <div className="text-center">
-              <p className="text-xl font-black text-rose-500">{pct(overconfident)}%</p>
+              <p className="text-xl font-black text-rose-500">{pct(calibration.overconfident)}%</p>
               <p className="text-[8px] font-black uppercase tracking-widest text-slate-400 mt-0.5 leading-tight">Über-<br />schätzt</p>
             </div>
             <div className="text-center">
-              <p className="text-xl font-black text-amber-500">{pct(underconfident)}%</p>
+              <p className="text-xl font-black text-amber-500">{pct(calibration.underconfident)}%</p>
               <p className="text-[8px] font-black uppercase tracking-widest text-slate-400 mt-0.5 leading-tight">Unter-<br />schätzt</p>
             </div>
           </div>

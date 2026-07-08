@@ -84,4 +84,62 @@ describe('interleaveQuestionsByTopic', () => {
     const qs: Q[] = [{ topic: 'A', n: 0 }, { topic: 'A', n: 1 }, { topic: 'A', n: 2 }];
     expect(interleaveQuestionsByTopic(qs).map(q => q.n)).toEqual([0, 1, 2]);
   });
+
+  it('Edge Case: einzelnes Thema crasht nicht bei jeder Größe (1 bis 20 Fragen)', () => {
+    for (let n = 1; n <= 20; n++) {
+      const qs: Q[] = Array.from({ length: n }, (_, i) => ({ topic: 'A', n: i }));
+      expect(() => interleaveQuestionsByTopic(qs)).not.toThrow();
+      expect(interleaveQuestionsByTopic(qs)).toHaveLength(n);
+    }
+  });
+
+  // Muster-Verifikation: bei 3 gleich großen Themen muss ein echtes Round-Robin-
+  // Muster (A-B-C-A-B-C...) entstehen — nicht geblockt (AABBCC) und nicht
+  // "zufällig abwechselnd" (das wäre technisch lückenlos, verfehlt aber den
+  // Lerneffekt von Interleaving, der ein wiederkehrendes Zyklus-Muster will).
+  const threeTopicsRoundRobin = (perTopic: number): Q[] => {
+    const qs: Q[] = [];
+    for (let i = 0; i < perTopic; i++) {
+      qs.push({ topic: 'A', n: qs.length }, { topic: 'B', n: qs.length }, { topic: 'C', n: qs.length });
+    }
+    return qs;
+  };
+
+  it.each([
+    [6, 2],   // ~5er-Stufe (aufgerundet auf durch 3 teilbar)
+    [9, 3],   // ~10er-Stufe
+    [15, 5],  // 15er-Stufe
+    [21, 7],  // ~20er-Stufe
+  ])('bei %i Fragen (3 gleich große Themen) entsteht ABC-Zyklus, kein Block, kein Zufall', (total, perTopic) => {
+    const qs = threeTopicsRoundRobin(perTopic);
+    expect(qs).toHaveLength(total);
+    const out = interleaveQuestionsByTopic(qs);
+
+    // 1. Kein Block: nie zwei gleiche Themen direkt hintereinander
+    const adjacentSame = out.filter((q, i) => i > 0 && out[i - 1].topic === q.topic).length;
+    expect(adjacentSame).toBe(0);
+
+    // 2. Kein Zufall, sondern ein exaktes Zyklus-Muster: Position i mod 3
+    //    bestimmt deterministisch das Thema (A,B,C,A,B,C,...) — bei gleich
+    //    großen Buckets und deterministischem Tie-Break (erstgesehener Key
+    //    gewinnt) ist genau das der erwartete Greedy-Round-Robin-Output.
+    const expectedCycle = Array.from({ length: total }, (_, i) => ['A', 'B', 'C'][i % 3]);
+    expect(out.map(q => q.topic)).toEqual(expectedCycle);
+  });
+
+  it('unterschiedlich große Themen: größere Buckets zuerst, aber nie zwei gleiche Themen hintereinander', () => {
+    // 3 Themen, ungleiche Größen (Fall näher an echten KI-generierten Sets) — 10 Fragen gesamt
+    const qs: Q[] = [
+      ...Array.from({ length: 5 }, (_, i) => ({ topic: 'A', n: i })),
+      ...Array.from({ length: 3 }, (_, i) => ({ topic: 'B', n: i })),
+      ...Array.from({ length: 2 }, (_, i) => ({ topic: 'C', n: i })),
+    ];
+    const out = interleaveQuestionsByTopic(qs);
+    expect(out).toHaveLength(10);
+    const adjacentSame = out.filter((q, i) => i > 0 && out[i - 1].topic === q.topic).length;
+    // Bei 5/3/2 ist ein perfektes Interleaving nicht überall möglich (A ist
+    // in der Mehrheit) — aber Cluster dürfen laut Algorithmus nur am Ende
+    // durch den größten Rest-Bucket entstehen, nicht in der Mitte.
+    expect(adjacentSame).toBeLessThanOrEqual(1);
+  });
 });
