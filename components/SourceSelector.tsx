@@ -42,7 +42,11 @@ export const SourceSelector: React.FC<SourceSelectorProps> = ({
 }) => {
   const [tab, setTab] = useState<Tab>(documents.length > 0 ? 'library' : 'upload');
   const [search, setSearch] = useState('');
-  const [filterCol, setFilterCol] = useState<string>('all');
+  // Variante C: aktives Fach (app-weiter Kontext) als Vorauswahl des Ordner-Filters
+  const [filterCol, setFilterCol] = useState<string>(() => {
+    const active = localStorage.getItem('quizwise_active_module');
+    return active && collections.some(c => c.id === active) ? active : 'all';
+  });
   const [pastedText, setPastedText] = useState('');
   const [saveToLib, setSaveToLib] = useState(true);
   const [isProcessing, setIsProcessing] = useState(false);

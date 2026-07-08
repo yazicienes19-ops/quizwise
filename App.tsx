@@ -27,6 +27,13 @@ import { loadAllCloudData, syncLearningField, syncMetrics, migrateLocalToCloud }
 const App: React.FC = () => {
   const auth = useAuth();
   const [activeTab, setActiveTab] = useState<ActiveTab>(ActiveTab.DASHBOARD);
+  // Fach-Kontext (Variante C): gewähltes Modul gilt app-weit als Vorauswahl
+  const [activeModuleId, setActiveModuleIdState] = useState<string | null>(() => localStorage.getItem('quizwise_active_module'));
+  const setActiveModuleId = (id: string | null) => {
+    setActiveModuleIdState(id);
+    if (id) localStorage.setItem('quizwise_active_module', id);
+    else localStorage.removeItem('quizwise_active_module');
+  };
   const [pendingActionDoc, setPendingActionDoc] = useState<import('./types').ProcessedDocument | null>(null);
   const [pendingTopic, setPendingTopic] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(false);
@@ -199,6 +206,9 @@ const App: React.FC = () => {
       <Layout
         activeTab={activeTab}
         onTabChange={(tab) => { setPendingActionDoc(null); setPendingTopic(null); setActiveTab(tab); }}
+        collections={docs.collections}
+        activeModuleId={activeModuleId}
+        onModuleChange={setActiveModuleId}
         user={auth.user} onLoginClick={() => auth.setShowAuthModal(true)}
         onLogout={() => supabase.auth.signOut()}
         onUpgradeClick={() => setShowUpgradeModal(true)}
@@ -249,6 +259,7 @@ const App: React.FC = () => {
             searchResults={searchResults} setSearchResults={setSearchResults}
             savedSources={savedSources} setSavedSources={setSavedSources}
             isSearching={isSearching} setIsSearching={setIsSearching}
+            activeModuleId={activeModuleId}
             handleApiError={handleApiError}
             updateMetricsAfterSession={updateMetricsAfterSession}
           />

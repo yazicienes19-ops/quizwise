@@ -50,6 +50,7 @@ interface AppContentProps {
   collections: Collection[];
   handleFileUpload: (file: File, collectionId?: string) => Promise<string | null>;
   retryAnalysis: (docId: string) => void;
+  activeModuleId?: string | null;
   deleteDoc: (id: string) => void;
   addCollection: (col: Collection) => void;
   removeCollection: (id: string) => void;
@@ -108,7 +109,7 @@ interface AppContentProps {
 export const AppContent: React.FC<AppContentProps> = (p) => {
   const {
     activeTab, setActiveTab, isLoading, setIsLoading, user, userPlan,
-    documents, collections, handleFileUpload, retryAnalysis, deleteDoc, addCollection, removeCollection, updateCollection, moveDoc, getDocumentSource,
+    documents, collections, handleFileUpload, retryAnalysis, activeModuleId, deleteDoc, addCollection, removeCollection, updateCollection, moveDoc, getDocumentSource,
     questions, setQuestions, answers, setAnswers, activeQuizMeta, setActiveQuizMeta,
     quizInitialAnswers, setQuizInitialAnswers, savedQuizzes, setSavedQuizzes,
     savedExams, setSavedExams, examInitialQuestions, setExamInitialQuestions,
@@ -378,7 +379,7 @@ export const AppContent: React.FC<AppContentProps> = (p) => {
     );
 
     case ActiveTab.RADAR:
-      return <LearningCoach metrics={metrics} decks={decks} onNavigate={setActiveTab} onAction={handleWeakTopicAction} flowResult={flowResult} examTerms={examTerms} />;
+      return <LearningCoach metrics={metrics} decks={decks} onNavigate={setActiveTab} onAction={handleWeakTopicAction} flowResult={flowResult} examTerms={examTerms} activeModule={collections.find(c => c.id === activeModuleId) ?? null} documents={documents} />;
 
     case ActiveTab.EXPLAINER:
       return <ExplainerSystem

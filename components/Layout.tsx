@@ -1,6 +1,6 @@
 
 import React, { useState, useEffect, useMemo } from 'react';
-import { ActiveTab, FlashcardDeck } from '../types';
+import { ActiveTab, FlashcardDeck, Collection } from '../types';
 import { countDueCards, migrateLegacyCard } from '../services/spacedRepetition';
 import { countDueMistakes } from '../services/mistakeReviewService';
 import { getStreak } from '../services/streakService';
@@ -20,6 +20,10 @@ interface LayoutProps {
   children: React.ReactNode;
   activeTab: ActiveTab;
   onTabChange: (tab: ActiveTab) => void;
+  /** Fach-Kontext (Variante C): Ordner als app-weite Vorauswahl */
+  collections?: Collection[];
+  activeModuleId?: string | null;
+  onModuleChange?: (id: string | null) => void;
   user?: User | null;
   onLoginClick?: () => void;
   onLogout?: () => void;
@@ -44,7 +48,7 @@ const ICONS: Partial<Record<ActiveTab, LucideIcon>> = {
 };
 
 export const Layout: React.FC<LayoutProps> = ({
-  children, activeTab, onTabChange, user,
+  children, activeTab, onTabChange, collections = [], activeModuleId = null, onModuleChange, user,
   onLoginClick, onLogout, onUpgradeClick, onSettingsClick,
   isDark, onToggleTheme
 }) => {
@@ -130,6 +134,29 @@ export const Layout: React.FC<LayoutProps> = ({
               </div>
             )}
           </div>
+
+          {/* Fach-Kontext: gewähltes Modul gilt überall als Vorauswahl */}
+          {onModuleChange && collections.length > 0 && (
+            <div className="mb-6 -mt-6">
+              <p className="text-[8px] font-black uppercase tracking-[0.3em] text-slate-400 mb-1.5 px-1">Aktives Fach</p>
+              <select
+                value={activeModuleId ?? ''}
+                onChange={e => onModuleChange(e.target.value || null)}
+                aria-label="Aktives Fach wählen"
+                className="w-full px-3 py-2.5 rounded-xl text-[11px] font-black uppercase tracking-wider outline-none cursor-pointer"
+                style={{
+                  background: activeModuleId ? 'color-mix(in srgb, var(--primary) 10%, var(--bg-main))' : 'var(--bg-main)',
+                  border: `1px solid ${activeModuleId ? 'color-mix(in srgb, var(--primary) 35%, transparent)' : 'var(--border-color)'}`,
+                  color: activeModuleId ? 'var(--primary)' : 'var(--text-main)',
+                }}
+              >
+                <option value="">🎓 Alle Fächer</option>
+                {collections.map(c => (
+                  <option key={c.id} value={c.id}>{c.emoji} {c.name}</option>
+                ))}
+              </select>
+            </div>
+          )}
 
           <nav className="space-y-0.5 overflow-y-auto pr-1 scrollbar-hide flex-1">
             {visibleGroups.map((group, gi) => (

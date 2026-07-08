@@ -1,12 +1,14 @@
 
 import React, { useState, useMemo, useEffect } from 'react';
-import { TopicMetric, ActiveTab, CoachInsights, FlashcardDeck, LearningFlowResult, ExamTerm } from '../types';
+import { TopicMetric, ActiveTab, CoachInsights, FlashcardDeck, LearningFlowResult, ExamTerm, Collection, ProcessedDocument } from '../types';
 import { EmojiImage } from './EmojiImage';
 import { GapRadar } from './GapRadar';
 import { generateCoachInsights, WrongAnswerContext } from '../services/geminiService';
 import { buildLearningProfile, buildRealTopicMastery, buildDailyPlan, buildMethodCommentary, buildContextMotivation, CATEGORY_LABELS, METHOD_LABELS } from '../services/learningProfileService';
 import { buildLearningScore } from '../services/learningScoreService';
 import { buildExamForecast } from '../services/examForecastService';
+import { collectionDocs } from '../services/collectionSource';
+import { documentDisplayName } from '../services/libraryService';
 import type { DailyPlanStep } from '../services/learningProfileService';
 import { getAllResults } from '../services/quizHistoryService';
 import { getAllRecallResults } from '../services/recallHistoryService';
@@ -47,17 +49,40 @@ interface LearningCoachProps {
   onAction?: (topic: string, mode: 'cards' | 'recall' | 'quiz') => void;
   flowResult?: LearningFlowResult | null;
   examTerms?: ExamTerm[];
+  /** Variante C: aktives Fach — Auswertungen werden darauf gefiltert */
+  activeModule?: Collection | null;
+  documents?: ProcessedDocument[];
 }
 
-export const LearningCoach: React.FC<LearningCoachProps> = ({ metrics, decks, onNavigate, onAction, flowResult = null, examTerms = [] }) => {
+export const LearningCoach: React.FC<LearningCoachProps> = ({ metrics, decks, onNavigate, onAction, flowResult = null, examTerms = [], activeModule = null, documents = [] }) => {
   const [insights, setInsights] = useState<CoachInsights | null>(null);
   const [isLoading, setIsLoading] = useState(false);
   const [showPrognosisInfo, setShowPrognosisInfo] = useState(false);
 
-  const quizResults   = useMemo(() => getAllResults(), []);
-  const recallResults = useMemo(() => getAllRecallResults(), []);
-  const examResults    = useMemo(() => getAllExamResults(), []);
-  const streak         = useMemo(() => getStreak(), []);
+  const allQuizResults   = useMemo(() => getAllResults(), []);
+  const allRecallResults = useMemo(() => getAllRecallResults(), []);
+  const allExamResults   = useMemo(() => getAllExamResults(), []);
+  const streak           = useMemo(() => getStreak(), []);
+
+  // Variante C: bei aktivem Fach zählen nur Ergebnisse aus diesem Ordner
+  // (per Dokument-ID, Anzeigename oder Ordner-Quelle "Ordner: <Name>")
+  const moduleFilter = useMemo(() => {
+    if (!activeModule) return null;
+    const docs = collectionDocs(activeModule, documents);
+    const ids = new Set(docs.map(d => d.id));
+    const names = new Set([...docs.map(d => documentDisplayName(d)), `Ordner: ${activeModule.name}`]);
+    return { ids, names };
+  }, [activeModule, documents]);
+
+  const quizResults = useMemo(() =>
+    moduleFilter ? allQuizResults.filter(r => moduleFilter.ids.has(r.docId) || moduleFilter.names.has(r.docName)) : allQuizResults,
+  [allQuizResults, moduleFilter]);
+  const examResults = useMemo(() =>
+    moduleFilter ? allExamResults.filter(r => moduleFilter.names.has(r.docName)) : allExamResults,
+  [allExamResults, moduleFilter]);
+  const recallResults = useMemo(() =>
+    moduleFilter ? allRecallResults.filter(r => moduleFilter.names.has(r.docName) || moduleFilter.names.has(r.topic)) : allRecallResults,
+  [allRecallResults, moduleFilter]);
 
   const profile = useMemo(() => buildLearningProfile({
     metrics, quizResults, recallResults, examResults, decks,
@@ -233,6 +258,14 @@ export const LearningCoach: React.FC<LearningCoachProps> = ({ metrics, decks, on
         <p className="text-base font-medium opacity-80" style={{ color: 'var(--mute)' }}>
           Dein persönlicher Lerncoach — alle Methoden, ein Überblick.
         </p>
+        {activeModule && (
+          <p
+            className="inline-block px-4 py-1.5 rounded-full text-[10px] font-black uppercase tracking-widest mr-2"
+            style={{ background: 'color-mix(in srgb, var(--primary) 12%, transparent)', color: 'var(--primary)', border: '1px solid color-mix(in srgb, var(--primary) 30%, transparent)' }}
+          >
+            {activeModule.emoji} Nur {activeModule.name} — Fach links wechselbar
+          </p>
+        )}
         <p
           className="inline-block px-5 py-2.5 rounded-2xl text-sm font-black"
           style={{ background: 'color-mix(in srgb, var(--primary) 10%, transparent)', color: 'var(--primary)' }}
