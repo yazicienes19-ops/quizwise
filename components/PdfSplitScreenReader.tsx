@@ -285,8 +285,8 @@ export const PdfSplitScreenReader: React.FC<PdfSplitScreenReaderProps> = ({ doc,
           <div>
             <p className="text-[10px] font-black uppercase tracking-widest" style={{ color: 'var(--primary)' }}>Erklärer</p>
             <p className="text-xs text-slate-400 font-medium">
-              Frag zu Seite {pageNumber} nach — die Antwort bezieht sich nur auf diese Seite.
-              {pageText !== null && isScannedPage(pageText) && ' (Scan erkannt — die Seite wird als Bild analysiert.)'}
+              Frag zu Seite {pageNumber} nach. Die Antwort bezieht sich nur auf diese Seite.
+              {pageText !== null && isScannedPage(pageText) && ' (Scan erkannt, die Seite wird als Bild analysiert.)'}
             </p>
           </div>
 
@@ -352,7 +352,7 @@ export const PdfSplitScreenReader: React.FC<PdfSplitScreenReaderProps> = ({ doc,
             </p>
           ) : (
             <p className="text-xs font-bold dark:text-white">
-              Frag zwischendurch beim Erklärer nach — die Feynman-Runde startet dann direkt mit deinem Thema.
+              Frag zwischendurch beim Erklärer nach. Die Feynman-Runde startet dann direkt mit deinem Thema.
             </p>
           )}
         </div>

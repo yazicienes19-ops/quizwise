@@ -561,7 +561,7 @@ export const GapRadar: React.FC<GapRadarProps> = ({ metrics, onNavigate, onActio
             Lern <span className="text-indigo-600">Radar</span> <EmojiImage emoji="📡" size={36} />
           </h1>
           <p className="text-base text-slate-500 dark:text-slate-400 font-medium opacity-80">
-            Alle Lernmodi auf einen Blick — Quiz, Anki, Feynman & Klausur.
+            Alle Lernmodi auf einen Blick: Quiz, Anki, Feynman & Klausur.
           </p>
         </div>
       )}
@@ -837,7 +837,7 @@ export const GapRadar: React.FC<GapRadarProps> = ({ metrics, onNavigate, onActio
           <div>
             <h3 className="text-lg font-black" style={{ color: 'var(--ink)' }}>Lern-Verlauf</h3>
             <p className="text-xs mt-0.5" style={{ color: 'var(--mute)' }}>
-              Letzte {combinedHistory.length} Sessions — chronologisch.
+              Letzte {combinedHistory.length} Sessions, chronologisch.
             </p>
           </div>
           <div className="space-y-2">

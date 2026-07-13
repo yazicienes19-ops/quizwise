@@ -48,7 +48,7 @@ export const ExportDeckModal: React.FC<ExportDeckModalProps> = ({ deck, userId, 
     a.download = `${deck.title.replace(/[^a-z0-9äöüß]/gi, '_')}.txt`;
     a.click();
     URL.revokeObjectURL(url);
-    toast.success('CSV exportiert — in Anki oder Quizlet importierbar.');
+    toast.success('CSV exportiert. In Anki oder Quizlet importierbar.');
     onClose();
   };
 
@@ -89,7 +89,7 @@ export const ExportDeckModal: React.FC<ExportDeckModalProps> = ({ deck, userId, 
     doc.setFontSize(8);
     doc.setFont('helvetica', 'normal');
     doc.setTextColor(150, 150, 150);
-    doc.text('QuizWise — Karteikarten', margin, 10);
+    doc.text('QuizWise Karteikarten', margin, 10);
 
     doc.setFontSize(18);
     doc.setFont('helvetica', 'bold');
@@ -213,7 +213,7 @@ export const ExportDeckModal: React.FC<ExportDeckModalProps> = ({ deck, userId, 
     {
       key: 'csv',
       label: 'Als CSV exportieren',
-      description: 'Anki & Quizlet kompatibel — auch ohne QuizWise nutzbar',
+      description: 'Anki- & Quizlet-kompatibel, auch ohne QuizWise nutzbar',
       badge: 'Anki · Quizlet',
       icon: (
         <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
@@ -233,7 +233,7 @@ export const ExportDeckModal: React.FC<ExportDeckModalProps> = ({ deck, userId, 
     {
       key: 'pdf',
       label: 'Als PDF exportieren',
-      description: 'Druckbar, tabellarisch — auch ohne App nutzbar',
+      description: 'Druckbar und tabellarisch, auch ohne App nutzbar',
       badge: 'Drucken · Teilen',
       icon: (
         <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
@@ -252,7 +252,7 @@ export const ExportDeckModal: React.FC<ExportDeckModalProps> = ({ deck, userId, 
     {
       key: 'json',
       label: 'Als JSON sichern',
-      description: 'QuizWise Format — direkt wieder importierbar',
+      description: 'QuizWise-Format, direkt wieder importierbar',
       badge: null,
       icon: (
         <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">

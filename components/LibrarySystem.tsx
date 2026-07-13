@@ -710,7 +710,7 @@ const EmptyLibrary: React.FC<{ onUpload: () => void }> = ({ onUpload }) => (
         Noch keine Lernunterlagen
       </p>
       <p className="text-sm text-slate-400 leading-relaxed">
-        Lade dein erstes Skript hoch. QuizWise erstellt daraus Quiz, Karteikarten, Erklärungen und Lernpläne — direkt aus deinen echten Unterlagen.
+        Lade dein erstes Skript hoch. QuizWise erstellt daraus Quiz, Karteikarten, Erklärungen und Lernpläne, direkt aus deinen echten Unterlagen.
       </p>
     </div>
     <button

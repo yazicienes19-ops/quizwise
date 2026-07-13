@@ -108,7 +108,7 @@ export const ExplainerSystem: React.FC<ExplainerSystemProps> = ({
   const handleExplain = async (overrideConcept?: string) => {
     const trimmed = (overrideConcept ?? concept).trim();
     if (trimmed.length <= 2) { toast.error('Bitte zuerst ein Konzept eingeben.'); return; }
-    if (!activeSource && !useExternal) { toast.error('Bitte ein Dokument wählen — oder Allgemeinwissen erlauben.'); return; }
+    if (!activeSource && !useExternal) { toast.error('Bitte ein Dokument wählen oder Allgemeinwissen erlauben.'); return; }
     setConcept(trimmed);
     setStep('loading');
     try {
@@ -141,7 +141,7 @@ export const ExplainerSystem: React.FC<ExplainerSystemProps> = ({
           Erklärer
         </h1>
         <p className="text-sm text-slate-400 font-medium">
-          Wähle ein Konzept aus deinen Unterlagen — QuizWise erklärt es dir Schritt für Schritt.
+          Wähle ein Konzept aus deinen Unterlagen. QuizWise erklärt es dir Schritt für Schritt.
         </p>
       </div>
 
@@ -173,7 +173,7 @@ export const ExplainerSystem: React.FC<ExplainerSystemProps> = ({
           {/* Vorschläge aus dem Lernprofil */}
           {suggestions.length > 0 && (
             <div className="space-y-2">
-              <p className="text-[10px] font-black uppercase tracking-widest text-slate-400">Diese Themen sitzen noch nicht — lass sie dir erklären</p>
+              <p className="text-[10px] font-black uppercase tracking-widest text-slate-400">Diese Themen sitzen noch nicht. Lass sie dir erklären</p>
               <div className="flex flex-wrap gap-2">
                 {suggestions.map(s => (
                   <button
@@ -218,7 +218,7 @@ export const ExplainerSystem: React.FC<ExplainerSystemProps> = ({
               <p className="text-[10px] font-black uppercase tracking-widest dark:text-white">Mit Allgemeinwissen ergänzen</p>
               <p className="text-[10px] font-medium text-slate-400">
                 {useExternal
-                  ? 'KI darf über dein Dokument hinausgehen — Ergänzungen werden gekennzeichnet.'
+                  ? 'Die Erklärung darf über dein Dokument hinausgehen, Ergänzungen werden gekennzeichnet.'
                   : 'KI nutzt ausschließlich dein Dokument. Nichts wird dazuerfunden.'}
               </p>
             </div>
@@ -242,7 +242,7 @@ export const ExplainerSystem: React.FC<ExplainerSystemProps> = ({
           {/* Hinweis warum Dokument fehlt */}
           {!activeSource && !useExternal && (
             <p className="text-center text-[10px] text-slate-400 font-medium">
-              Wähle ein Dokument — oder aktiviere Allgemeinwissen, um ohne Quelle zu starten.
+              Wähle ein Dokument oder aktiviere Allgemeinwissen, um ohne Quelle zu starten.
             </p>
           )}
 

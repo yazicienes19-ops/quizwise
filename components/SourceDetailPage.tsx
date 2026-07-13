@@ -25,7 +25,7 @@ const ACTIONS: Action[] = [
   { tab: ActiveTab.EXPLAINER, emoji: '💡', title: 'Erklären lassen',             desc: 'KI erklärt dir Konzepte und Definitionen aus dieser Quelle.',               cta: 'Erklärer öffnen',  directStart: true, accent: true },
   { tab: ActiveTab.READER,    emoji: '📖', title: 'Skript lesen + Erklärer',     desc: 'Split-Screen: lies das Dokument und frag direkt zu Textstellen nach.',      cta: 'Split-Screen öffnen', directStart: true },
   { tab: ActiveTab.CARDS,     emoji: '🃏', title: 'Karteikarten generieren',     desc: 'Erstellt automatisch Lernkarten aus Definitionen und Begriffen.',            cta: 'Karten erstellen', directStart: true },
-  { tab: ActiveTab.RECALL,    emoji: '🧠', title: 'Recall starten',              desc: 'Erkläre das Thema frei — KI prüft dein Verständnis anhand dieser Quelle.', cta: 'Recall starten',   directStart: true },
+  { tab: ActiveTab.RECALL,    emoji: '🧠', title: 'Recall starten',              desc: 'Erkläre das Thema frei. QuizWise prüft dein Verständnis anhand dieser Quelle.', cta: 'Recall starten',   directStart: true },
   { tab: ActiveTab.EXAM,      emoji: '📝', title: 'Klausur simulieren',          desc: 'Prüfungssimulation mit offenen und geschlossenen Fragen.',                   cta: 'Klausur-Simulator',    directStart: false, danger: true },
   { tab: ActiveTab.PLANNER,   emoji: '📅', title: 'Lernplan erstellen',          desc: 'Plane deine Lernzeit auf Basis deines Fortschritts und Prüfungstermins.',   cta: 'Planer öffnen',    directStart: false },
   { tab: ActiveTab.RADAR,     emoji: '📊', title: 'Schwächen analysieren',       desc: 'Zeigt deine schwachen Themen aus allen bisherigen Lernsessions.',            cta: 'Analyse öffnen',   directStart: false },
@@ -216,7 +216,7 @@ export const SourceDetailPage: React.FC<Props> = ({ doc, meta, onBack, onAction,
         {status !== 'ready' && (
           <div className="p-4 bg-amber-50 dark:bg-amber-900/20 border border-amber-200 dark:border-amber-800 rounded-2xl">
             <p className="text-[11px] font-black uppercase tracking-widest text-amber-700 dark:text-amber-400 text-center">
-              Diese Quelle wird noch verarbeitet — Aktionen stehen danach zur Verfügung.
+              Diese Quelle wird noch verarbeitet. Aktionen stehen danach zur Verfügung.
             </p>
           </div>
         )}

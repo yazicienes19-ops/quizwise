@@ -67,13 +67,13 @@ export const ApiKeySettings: React.FC<ApiKeySettingsProps> = ({ onClose }) => {
         ) : !hasCurrent ? (
           <div className="flex items-center gap-3 p-4 bg-amber-50 dark:bg-amber-950/20 rounded-2xl border border-amber-100 dark:border-amber-900/30">
             <AlertTriangle className="w-4 h-4 text-amber-500 shrink-0" strokeWidth={2} />
-            <p className="text-[11px] font-bold text-amber-700 dark:text-amber-400">Kein API-Schlüssel gesetzt — Generierungs-Funktionen sind deaktiviert.</p>
+            <p className="text-[11px] font-bold text-amber-700 dark:text-amber-400">Kein API-Schlüssel gesetzt. Generierungs-Funktionen sind deaktiviert.</p>
           </div>
         ) : null}
 
         {/* Info */}
         <div className="space-y-3 text-[11px] text-slate-500 dark:text-slate-400 leading-relaxed">
-          <p>Der Gemini-API-Schlüssel liegt sicher auf dem QuizWise-Server. Du musst hier nichts eintragen — alles läuft automatisch.</p>
+          <p>Der Gemini-API-Schlüssel liegt sicher auf dem QuizWise-Server. Du musst hier nichts eintragen, alles läuft automatisch.</p>
         </div>
 
         {/* Input */}

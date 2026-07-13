@@ -15,7 +15,7 @@ interface ErrorMapping {
 const ERROR_MAP: ErrorMapping[] = [
   {
     match: m => m.includes('LIMIT_REACHED'),
-    message: 'Tageslimit erreicht (20 Anfragen). Morgen geht es weiter — oder upgrade auf Pro für unbegrenztes Lernen.',
+    message: 'Tageslimit erreicht (20 Anfragen). Morgen geht es weiter. Oder hol dir Pro für unbegrenztes Lernen.',
   },
   {
     match: m => m.includes('einloggen') || m.includes('not authenticated') || m.includes('JWT'),
@@ -35,7 +35,7 @@ const ERROR_MAP: ErrorMapping[] = [
   },
   {
     match: m => m.includes('timeout') || m.includes('DEADLINE'),
-    message: 'Die Anfrage hat zu lange gedauert. Bei großen Dokumenten kann das passieren — versuche es noch einmal.',
+    message: 'Die Anfrage hat zu lange gedauert. Bei großen Dokumenten kann das passieren. Versuche es noch einmal.',
   },
   {
     match: m => m.includes('SAFETY') || m.includes('blocked'),
@@ -43,7 +43,7 @@ const ERROR_MAP: ErrorMapping[] = [
   },
   {
     match: m => m.includes('JSON') || m.includes('parse'),
-    message: 'Die KI-Antwort war fehlerhaft. Einfach nochmal versuchen — das passiert selten zweimal.',
+    message: 'Die KI-Antwort war fehlerhaft. Einfach nochmal versuchen, das passiert selten zweimal.',
   },
 ];
 

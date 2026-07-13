@@ -105,7 +105,7 @@ export const AuthPage: React.FC = () => {
               Lerne smarter,<br />nicht länger.
             </h1>
             <p className="text-base text-white/75 leading-relaxed max-w-sm">
-              Lade deine Unterlagen hoch — QuizWise erstellt automatisch Quizze,
+              Lade deine Unterlagen hoch. QuizWise erstellt automatisch Quizze,
               Karteikarten und Klausur-Simulationen.
             </p>
           </div>
@@ -160,7 +160,7 @@ export const AuthPage: React.FC = () => {
             <p className="text-sm text-slate-500 dark:text-slate-400">
               {mode === 'login'
                 ? 'Melde dich an, um weiterzulernen.'
-                : 'Kostenlos starten — kein Kreditkarte nötig.'}
+                : 'Kostenlos starten, keine Kreditkarte nötig.'}
             </p>
           </div>
 

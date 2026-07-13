@@ -164,7 +164,7 @@ export const AnkiImportModal: React.FC<AnkiImportModalProps> = ({ decks, onClose
           {preview.length > 0 && (
             <div className="space-y-2">
               <p className="text-[9px] font-black uppercase tracking-widest text-slate-400">
-                Vorschau — {parsed.length} Karte{parsed.length !== 1 ? 'n' : ''} erkannt
+                Vorschau: {parsed.length} Karte{parsed.length !== 1 ? 'n' : ''} erkannt
                 {skipped > 0 && <span className="text-amber-500 ml-2">· {skipped} übersprungen</span>}
               </p>
               <div className="space-y-1.5">

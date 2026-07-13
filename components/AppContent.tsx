@@ -231,7 +231,7 @@ export const AppContent: React.FC<AppContentProps> = (p) => {
                 <div className="min-w-0">
                   <p className="text-[9px] font-black uppercase tracking-widest" style={{ color: 'var(--primary)' }}>Wiederholen</p>
                   <p className="text-sm font-black dark:text-white mt-0.5">
-                    {dueMistakes} Frage{dueMistakes !== 1 ? 'n' : ''} fällig — aus früheren Fehlern
+                    {dueMistakes} Frage{dueMistakes !== 1 ? 'n' : ''} aus früheren Fehlern fällig
                   </p>
                   <p className="text-[10px] font-medium text-slate-400 mt-0.5">Richtig beantwortet = längeres Intervall, falsch = bald wieder dran.</p>
                 </div>

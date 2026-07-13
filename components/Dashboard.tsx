@@ -43,7 +43,7 @@ interface ActionCard {
 }
 
 const BASE_CARDS: ActionCard[] = [
-  { id: ActiveTab.RECALL, title: 'Feynman-Methode', desc: 'Erkläre Themen in eigenen Worten — mit sofortigem Feedback.', prompt: 'Human brain active recall, academic illustration', color: 'text-indigo-600', badge: 'Feynman' },
+  { id: ActiveTab.RECALL, title: 'Feynman-Methode', desc: 'Erkläre Themen in eigenen Worten und erhalte sofort Feedback.', prompt: 'Human brain active recall, academic illustration', color: 'text-indigo-600', badge: 'Feynman' },
   { id: ActiveTab.LIBRARY, title: 'Bibliothek', desc: 'Verwalte deine PDF-Sammlung und Quellen.', prompt: 'Academic library books, minimalist illustration', color: 'text-blue-500' },
   { id: ActiveTab.QUIZ, title: 'Quiz', desc: 'Teste dich mit Fragen aus deinen Unterlagen.', prompt: 'Target bullseye icon, academic minimalist illustration', color: 'text-indigo-500', badge: 'Aus deinen Unterlagen' },
   { id: ActiveTab.EXAM, title: 'Klausur-Simulator', desc: 'Simuliere echte Prüfungen unter Zeitdruck.', prompt: 'Exam paper graduation cap, academic illustration', color: 'text-rose-500', badge: 'Prüfungsnah' },
@@ -139,7 +139,7 @@ export const Dashboard: React.FC<DashboardProps> = ({ onTabChange, flowResult, d
         <div className="text-center space-y-4 max-w-md">
           <div className="text-7xl mb-2">📚</div>
           <h2 className="text-3xl font-black tracking-tighter dark:text-white">Willkommen bei QuizWise</h2>
-          <p className="text-slate-500 dark:text-slate-400 font-medium">Lade dein erstes Dokument hoch — in 3 Schritten zum personalisierten Lernkurs.</p>
+          <p className="text-slate-500 dark:text-slate-400 font-medium">Lade dein erstes Dokument hoch: In 3 Schritten zum personalisierten Lernkurs.</p>
         </div>
         <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 max-w-2xl w-full">
           {[

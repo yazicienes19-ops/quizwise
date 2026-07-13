@@ -201,7 +201,7 @@ export const ActiveRecall: React.FC<ActiveRecallProps> = ({
             className="mt-4 px-4 py-2 rounded-[14px] text-[10px] font-black uppercase tracking-widest transition-all hover:scale-105"
             style={{ background: 'var(--primary)', color: 'var(--primary-text)' }}
           >
-            Verstanden — loslegen
+            Verstanden, loslegen
           </button>
         </div>
       )}
@@ -212,7 +212,7 @@ export const ActiveRecall: React.FC<ActiveRecallProps> = ({
           Feynman-<span style={{ color: 'var(--primary)' }}>Methode</span>
           <GeneratedImage prompt="Human brain active recall, academic illustration" className="w-8 h-8 lg:w-12 lg:h-12 rounded-xl" />
         </h1>
-        <p className="text-base text-slate-500 dark:text-slate-400 font-medium opacity-80">Erkläre ein Thema in eigenen Worten — so merkst du, was wirklich sitzt</p>
+        <p className="text-base text-slate-500 dark:text-slate-400 font-medium opacity-80">Erkläre ein Thema in eigenen Worten. So merkst du, was wirklich sitzt.</p>
       </div>
 
       {/* ── Phase 1: Quellenauswahl + Start ── */}
@@ -253,7 +253,7 @@ export const ActiveRecall: React.FC<ActiveRecallProps> = ({
                   type="text"
                   value={focusTopic}
                   onChange={e => setFocusTopic(e.target.value)}
-                  placeholder="z.B. Operante Konditionierung — leer lassen für freie Themenwahl"
+                  placeholder="z.B. Operante Konditionierung (leer lassen für freie Themenwahl)"
                   className="w-full px-5 py-4 rounded-2xl text-base font-bold outline-none transition-all"
                   style={{ background: 'var(--bg-sidebar)', border: '1px solid var(--border-color)', color: 'var(--text-main)' }}
                 />
@@ -370,7 +370,7 @@ export const ActiveRecall: React.FC<ActiveRecallProps> = ({
             </div>
             {isListening && (
               <p className="text-[10px] font-black uppercase tracking-widest text-center animate-pulse" style={{ color: 'var(--primary)' }}>
-                Aufnahme läuft — sprich jetzt auf Deutsch
+                Aufnahme läuft, sprich jetzt auf Deutsch
               </p>
             )}
             <div className="flex flex-col sm:flex-row justify-between items-center gap-4 px-4 lg:px-6">
@@ -444,7 +444,7 @@ export const ActiveRecall: React.FC<ActiveRecallProps> = ({
                   ))}
                 </ul>
               ) : (
-                <p className="text-xs text-slate-400 italic">Noch keine klaren Stärken identifiziert — versuch es ausführlicher.</p>
+                <p className="text-xs text-slate-400 italic">Noch keine klaren Stärken identifiziert. Versuch es ausführlicher.</p>
               )}
             </div>
             <div className="p-8 rounded-[32px]" style={{ background: 'var(--bg-sidebar)', border: '1px solid var(--border-color)' }}>
@@ -473,7 +473,7 @@ export const ActiveRecall: React.FC<ActiveRecallProps> = ({
                   )}
                 </>
               ) : (
-                <p className="text-xs text-emerald-500 font-semibold">Keine Lücken gefunden — vollständige Antwort!</p>
+                <p className="text-xs text-emerald-500 font-semibold">Keine Lücken gefunden, vollständige Antwort!</p>
               )}
             </div>
           </div>

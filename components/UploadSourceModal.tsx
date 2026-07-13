@@ -155,7 +155,7 @@ export const UploadSourceModal: React.FC<Props> = ({ onClose, onUpload }) => {
               <span className="w-4 h-4 border-2 border-indigo-200 border-t-indigo-600 rounded-full animate-spin" />
               <span className="text-[10px] font-black uppercase tracking-widest">
                 {mode === 'link'
-                  ? (linkKind === 'youtube' ? 'Video wird verarbeitet — das kann bis zu einer Minute dauern…' : 'Seite wird geladen…')
+                  ? (linkKind === 'youtube' ? 'Video wird verarbeitet, das kann bis zu einer Minute dauern…' : 'Seite wird geladen…')
                   : 'Wird hochgeladen…'}
               </span>
             </div>
@@ -205,8 +205,8 @@ export const UploadSourceModal: React.FC<Props> = ({ onClose, onUpload }) => {
                 className="w-full px-4 py-3 bg-slate-50 dark:bg-slate-800 rounded-2xl text-sm font-medium outline-none border-2 border-transparent focus:border-indigo-500 dark:text-white"
               />
               <p className="text-[10px] text-slate-400 px-1 leading-relaxed">
-                {linkKind === 'youtube' && <>📺 YouTube-Video erkannt — QuizWise erstellt daraus ein lernfertiges Skript mit Kapiteln.</>}
-                {linkKind === 'web' && <>🌐 Webseite erkannt — der Artikeltext wird als Quelle importiert.</>}
+                {linkKind === 'youtube' && <>📺 YouTube-Video erkannt. QuizWise erstellt daraus ein lernfertiges Skript mit Kapiteln.</>}
+                {linkKind === 'web' && <>🌐 Webseite erkannt. Der Artikeltext wird als Quelle importiert.</>}
                 {!linkKind && <>Füge einen YouTube-Link oder die Adresse eines Artikels ein (z.&nbsp;B. Wikipedia, Blogbeiträge, Online-Skripte).</>}
               </p>
             </div>

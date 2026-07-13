@@ -85,7 +85,7 @@ export const SourceSelector: React.FC<SourceSelectorProps> = ({
 
     const isDuplicate = documents.some(d => d.name === file.name);
     if (isDuplicate) {
-      setUploadWarning(`"${file.name}" ist bereits in deiner Bibliothek — wird trotzdem verarbeitet.`);
+      setUploadWarning(`"${file.name}" ist bereits in deiner Bibliothek, wird aber trotzdem verarbeitet.`);
     }
 
     setIsProcessing(true);
@@ -373,7 +373,7 @@ export const SourceSelector: React.FC<SourceSelectorProps> = ({
               autoFocus
               value={pastedText}
               onChange={e => setPastedText(e.target.value)}
-              placeholder="Füge hier deinen Lernstoff ein — Mitschrift, Zusammenfassung, Skript-Abschnitt..."
+              placeholder="Füge hier deinen Lernstoff ein: Mitschrift, Zusammenfassung, Skript-Abschnitt..."
               rows={8}
               className="w-full p-5 rounded-[24px] text-sm dark:text-white placeholder-slate-400 outline-none resize-none leading-relaxed"
               style={{ background: 'color-mix(in srgb, var(--border-color) 25%, var(--bg-main))', border: '1px solid var(--border-color)' }}

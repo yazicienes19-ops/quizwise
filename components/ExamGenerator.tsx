@@ -236,7 +236,7 @@ export const ExamGenerator: React.FC<ExamGeneratorProps> = ({
               </div>
               <div>
                 <h3 className="text-xl font-black dark:text-white uppercase tracking-tight">Altklausur</h3>
-                <p className="text-[10px] text-rose-500 uppercase font-black tracking-widest">Optional — Stil übernehmen</p>
+                <p className="text-[10px] text-rose-500 uppercase font-black tracking-widest">Optional: Stil übernehmen</p>
               </div>
             </div>
 
@@ -400,9 +400,9 @@ export const ExamGenerator: React.FC<ExamGeneratorProps> = ({
                 })}
               </div>
               <p className="text-[9px] text-slate-400 italic">
-                {scoringMode === 'strict'   ? 'Strenge Bewertung — Fachbegriffe und exakte Formulierungen zählen.' : ''}
-                {scoringMode === 'standard' ? 'Realistischer Hochschulmaßstab — Kernaussage ist entscheidend.' : ''}
-                {scoringMode === 'lenient'  ? 'Lernmodus — Verständnis wird belohnt, Formulierungen sind zweitrangig.' : ''}
+                {scoringMode === 'strict'   ? 'Strenge Bewertung: Fachbegriffe und exakte Formulierungen zählen.' : ''}
+                {scoringMode === 'standard' ? 'Realistischer Hochschulmaßstab: Die Kernaussage ist entscheidend.' : ''}
+                {scoringMode === 'lenient'  ? 'Lernmodus: Verständnis wird belohnt, Formulierungen sind zweitrangig.' : ''}
               </p>
             </div>
 

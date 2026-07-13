@@ -130,7 +130,7 @@ export const SplitScreenReader: React.FC<SplitScreenReaderProps> = ({ doc, userI
         <div className="max-w-3xl mx-auto py-20 px-4 text-center space-y-4">
           <DigestStatusBadge status="pending" />
           <p className="text-lg font-black dark:text-white">Dieses Dokument wird noch analysiert.</p>
-          <p className="text-sm text-slate-400 font-medium">Der Split-Screen-Reader nutzt den KI-Lerndigest als Textquelle — sobald die Analyse fertig ist, kannst du direkt lesen und nachfragen.</p>
+          <p className="text-sm text-slate-400 font-medium">Der Split-Screen-Reader nutzt den Lerndigest als Textquelle. Sobald die Analyse fertig ist, kannst du direkt lesen und nachfragen.</p>
           <button onClick={onBack} className="px-6 py-3 rounded-2xl text-[11px] font-black uppercase tracking-widest" style={{ background: 'var(--primary)', color: 'var(--primary-text)' }}>
             Zurück
           </button>
@@ -188,7 +188,7 @@ export const SplitScreenReader: React.FC<SplitScreenReaderProps> = ({ doc, userI
           <h1 className="text-2xl lg:text-4xl font-black tracking-tight dark:text-white break-words">Skript lesen</h1>
           {usesDigest && (
             <p className="text-[10px] font-medium text-slate-400 mt-1">
-              Du liest den KI-Lerndigest dieses Dokuments — bei PDFs/Bildern gibt es keinen Volltext, der Digest fasst alle Lerninhalte vollständig zusammen.
+              Du liest den Lerndigest dieses Dokuments. Bei PDFs und Bildern gibt es keinen Volltext, der Digest fasst alle Lerninhalte vollständig zusammen.
             </p>
           )}
         </div>
@@ -263,7 +263,7 @@ export const SplitScreenReader: React.FC<SplitScreenReaderProps> = ({ doc, userI
           <div className="rounded-[32px] p-6 lg:p-8 space-y-5 flex flex-col" style={{ background: 'var(--bg-sidebar)', border: '1px solid var(--border-color)' }}>
             <div>
               <p className="text-[10px] font-black uppercase tracking-widest" style={{ color: 'var(--primary)' }}>Erklärer</p>
-              <p className="text-xs text-slate-400 font-medium">Frag zu diesem Kapitel nach — die Antwort bezieht sich nur auf diesen Abschnitt.</p>
+              <p className="text-xs text-slate-400 font-medium">Frag zu diesem Kapitel nach. Die Antwort bezieht sich nur auf diesen Abschnitt.</p>
             </div>
 
             <div className="space-y-4 max-h-[45vh] overflow-y-auto pr-2">
@@ -326,7 +326,7 @@ export const SplitScreenReader: React.FC<SplitScreenReaderProps> = ({ doc, userI
             </p>
           ) : handoffTopic ? (
             <p className="text-xs font-bold dark:text-white">
-              Dazu hast du noch nichts gefragt — trotzdem erklären? Vorschlag: <span style={{ color: 'var(--primary)' }}>„{handoffTopic}"</span>
+              Dazu hast du noch nichts gefragt. Trotzdem erklären? Vorschlag: <span style={{ color: 'var(--primary)' }}>„{handoffTopic}"</span>
             </p>
           ) : null}
         </div>

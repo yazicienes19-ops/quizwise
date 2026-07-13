@@ -33,7 +33,7 @@ const STEPS: Step[] = [
       </svg>
     ),
     title: 'Lade deine Unterlagen hoch',
-    description: 'Vorlesungsfolien, Skripte, Notizen — PDF, Word oder Foto. QuizWise liest alles und versteht den Inhalt.',
+    description: 'Vorlesungsfolien, Skripte oder Notizen als PDF, Word oder Foto. QuizWise liest alles und versteht den Inhalt.',
     highlight: 'Deine Bibliothek ist der Startpunkt',
   },
   {
@@ -45,7 +45,7 @@ const STEPS: Step[] = [
       </svg>
     ),
     title: 'Übe, wie es dir liegt',
-    description: 'Aus deinen Unterlagen entstehen Quizfragen, Karteikarten und komplette Klausursimulationen — ganz ohne manuelles Erstellen.',
+    description: 'Aus deinen Unterlagen entstehen Quizfragen, Karteikarten und komplette Klausursimulationen, ganz ohne manuelles Erstellen.',
     highlight: 'Quiz · Karteikarten · Klausur-Simulator · Feynman-Methode',
   },
   {
@@ -56,7 +56,7 @@ const STEPS: Step[] = [
       </svg>
     ),
     title: 'Fehler kommen von selbst wieder',
-    description: 'Was du falsch beantwortest, legt dir QuizWise nach bewährten Lernintervallen automatisch wieder vor — kurz bevor du es vergessen würdest.',
+    description: 'Was du falsch beantwortest, legt dir QuizWise nach bewährten Lernintervallen automatisch wieder vor, kurz bevor du es vergessen würdest.',
     highlight: 'Wiederholen genau im richtigen Moment',
   },
   {
@@ -68,7 +68,7 @@ const STEPS: Step[] = [
     ),
     title: 'Dein Coach behält den Überblick',
     description: 'Die Lernfortschritt-Ansicht zeigt dir jeden Tag, was du als Nächstes tun solltest, wo deine Schwächen liegen und wie deine Klausurprognose steht.',
-    highlight: '„Heute solltest du …" — jeden Tag ein klarer Plan',
+    highlight: '„Heute solltest du …": jeden Tag ein klarer Plan',
   },
 ];
 

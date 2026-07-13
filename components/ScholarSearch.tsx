@@ -291,7 +291,7 @@ export const ScholarSearch: React.FC<ScholarSearchProps> = ({
                       style={{ background: 'var(--primary)' }}
                     >
                       <GraduationCap className="w-4 h-4" strokeWidth={2} />
-                      Daraus lernen — Quiz generieren
+                      Quiz daraus generieren
                     </button>
                   </div>
                 )}
@@ -309,7 +309,7 @@ export const ScholarSearch: React.FC<ScholarSearchProps> = ({
             className="flex items-center gap-3 bg-emerald-600 hover:bg-emerald-700 text-white px-6 py-3.5 rounded-2xl shadow-2xl font-black uppercase text-[10px] tracking-widest transition-all hover:scale-105 active:scale-95"
           >
             <BookOpen className="w-4 h-4" strokeWidth={2.5} />
-            {savedResults.length} {savedResults.length === 1 ? 'Quelle' : 'Quellen'} gespeichert — Zur Hausarbeit
+            {savedResults.length} {savedResults.length === 1 ? 'Quelle' : 'Quellen'} gespeichert · Zur Hausarbeit
           </button>
         </div>
       )}

@@ -90,7 +90,7 @@ const GUIDE_SECTIONS = [
       'Roter Faden: Jedes Kapitel muss zur Fragestellung beitragen',
       'Vom Allgemeinen zum Speziellen strukturieren',
       'Jeden Abschnitt mit Überleitung zum nächsten beenden',
-      'Aussagen immer belegen — keine unbelegten Behauptungen',
+      'Aussagen immer belegen, keine unbelegten Behauptungen',
       'Direkte Zitate sparsam einsetzen (max. 10–15 % des Textes)',
       'Eigene Analyse/Interpretation, nicht nur Wiedergabe von Quellen',
       'Fachbegriffe beim ersten Vorkommen erklären',
@@ -101,7 +101,7 @@ const GUIDE_SECTIONS = [
     icon: '🎯',
     color: 'amber',
     items: [
-      'Keine neuen Argumente — nur Zusammenfassung der Ergebnisse',
+      'Keine neuen Argumente, nur Zusammenfassung der Ergebnisse',
       'Forschungsfrage explizit beantworten',
       'Kritische Reflexion: Grenzen der eigenen Arbeit benennen',
       'Ausblick: Welche Fragen bleiben offen? Zukünftige Forschung?',
@@ -115,9 +115,9 @@ const GUIDE_SECTIONS = [
     items: [
       'Alphabetisch nach Nachname des Erstautors sortieren',
       'Alle im Text zitierten Quellen müssen hier erscheinen (und umgekehrt)',
-      'Einheitlicher Zitierstil (APA / Harvard / Chicago — je nach Vorgabe)',
+      'Einheitlicher Zitierstil (APA, Harvard oder Chicago, je nach Vorgabe)',
       'Internetquellen: Zuletzt abgerufen am [Datum] angeben',
-      'Kein "und weiter" oder "et al." im Verzeichnis — alle Autoren ausschreiben',
+      'Kein "und weiter" oder "et al." im Verzeichnis, alle Autoren ausschreiben',
     ]
   },
   {
@@ -235,7 +235,7 @@ const PARAPHRASE_EXAMPLES = [
     label: 'Psychologie',
     original: '„Kognitive Dissonanz entsteht, wenn eine Person zwei widersprüchliche Überzeugungen gleichzeitig hält." (Festinger, 1957, S. 3)',
     wrong: 'Kognitive Dissonanz tritt auf, wenn jemand zwei gegensätzliche Überzeugungen gleichzeitig besitzt. (Festinger, 1957, S. 3)',
-    wrongReason: 'Nur einzelne Wörter durch Synonyme ersetzt — Satzstruktur und Aussage sind identisch. Das zählt als Plagiat.',
+    wrongReason: 'Nur einzelne Wörter durch Synonyme ersetzt, Satzstruktur und Aussage sind identisch. Das zählt als Plagiat.',
     right: 'Festinger (1957) zufolge entsteht innerer Konflikt genau dort, wo sich zwei Überzeugungen einer Person gegenseitig ausschließen (S. 3).',
     rightReason: 'Eigene Satzstruktur, anderer Blickwinkel (Konflikt statt Dissonanz), Autor narrativ eingebaut.',
   },
@@ -243,7 +243,7 @@ const PARAPHRASE_EXAMPLES = [
     label: 'Soziologie',
     original: '„Die Globalisierung hat wirtschaftliche Ungleichheiten zwischen Ländern verstärkt." (Autor, 2020, S. 45)',
     wrong: 'Durch die Globalisierung haben sich wirtschaftliche Ungleichheiten zwischen verschiedenen Ländern vergrößert. (Autor, 2020, S. 45)',
-    wrongReason: 'Ein Wort ergänzt, ein Synonym eingesetzt — kaum verändert. Bleibt ein verschleiertes Direktzitat.',
+    wrongReason: 'Ein Wort ergänzt, ein Synonym eingesetzt, kaum verändert. Das bleibt ein verschleiertes Direktzitat.',
     right: 'Im Zuge der weltweiten Vernetzung haben sich Wohlstandsgefälle zwischen Staaten weiter zugespitzt (vgl. Autor, 2020, S. 45).',
     rightReason: 'Andere Metapher (Wohlstandsgefälle), vollständiger Satzumbau, Quellenangabe mit „vgl." für indirektes Zitat.',
   },
@@ -251,7 +251,7 @@ const PARAPHRASE_EXAMPLES = [
     label: 'Allgemein',
     original: '„Aktives Lernen führt zu besserem Behalten als passives Zuhören." (Autor, 2019, S. 12)',
     wrong: 'Aktives Lernen führt zu einem besseren Behalten des Stoffs als passives Zuhören. (Autor, 2019, S. 12)',
-    wrongReason: 'Nur ein Artikel hinzugefügt. Das ist keine Paraphrase — das ist ein Plagiat mit minimalster Änderung.',
+    wrongReason: 'Nur ein Artikel hinzugefügt. Das ist keine Paraphrase, sondern ein Plagiat mit minimalster Änderung.',
     right: 'Wie Autor (2019) zeigt, verfestigt sich Wissen nachhaltiger, wenn Lernende sich aktiv mit dem Stoff auseinandersetzen, anstatt ihn bloß zu rezipieren (S. 12).',
     rightReason: 'Vollständig umgebaut, eigene Satzstruktur, Quelle narrativ eingebunden, Synonym-Kette (verfestigt sich / rezipieren).',
   },
@@ -275,8 +275,8 @@ const CHECKLIST_GROUPS = [
     items: [
       { id: 'c6',  text: 'Alle Direktzitate haben Anführungszeichen + Quelle + Seitenzahl' },
       { id: 'c7',  text: 'Alle indirekten Zitate haben einen Kurzbeleg (vgl. Autor, Jahr)' },
-      { id: 'c8',  text: 'Jede im Text zitierte Quelle steht im Literaturverzeichnis — und umgekehrt' },
-      { id: 'c9',  text: 'Zitierstil ist durchgehend einheitlich — nur ein Stil in der gesamten Arbeit' },
+      { id: 'c8',  text: 'Jede im Text zitierte Quelle steht im Literaturverzeichnis und umgekehrt' },
+      { id: 'c9',  text: 'Zitierstil ist durchgehend einheitlich, nur ein Stil in der gesamten Arbeit' },
       { id: 'c10', text: 'Internetquellen haben ein „Zuletzt abgerufen am ..."-Datum' },
     ],
   },
@@ -378,7 +378,7 @@ export const TermPaperSystem: React.FC<TermPaperSystemProps> = ({
         try {
           genSources.push(getDocumentSource(doc));
         } catch {
-          toast.error(`"${documentDisplayName(doc)}" konnte nicht geladen werden — wird übersprungen.`);
+          toast.error(`"${documentDisplayName(doc)}" konnte nicht geladen werden und wird übersprungen.`);
         }
       }
       const fw = await generatePaperFramework(topic, focus, pageCount, genSources);
@@ -545,7 +545,7 @@ export const TermPaperSystem: React.FC<TermPaperSystemProps> = ({
                 </div>
                 <div className="sm:col-span-2">
                   <textarea value={focus} onChange={e => setFocus(e.target.value)}
-                    placeholder="Forschungsfrage / Fokus (optional — wird sonst automatisch vorgeschlagen)"
+                    placeholder="Forschungsfrage / Fokus (optional, wird sonst automatisch vorgeschlagen)"
                     className="w-full p-4 bg-slate-50 dark:bg-slate-800 rounded-2xl border-2 border-transparent focus:border-indigo-500 outline-none dark:text-white resize-none h-24 transition-colors"
                   />
                 </div>
@@ -676,7 +676,7 @@ export const TermPaperSystem: React.FC<TermPaperSystemProps> = ({
         {tab === 'phrases' && (
           <div className="space-y-6 animate-in fade-in duration-500">
             <p className="text-sm text-slate-500 dark:text-slate-400 text-center font-medium">
-              Akademische Formulierungen für Deutsche Hausarbeiten — einfach kopieren.
+              Akademische Formulierungen für deutsche Hausarbeiten, einfach kopieren.
             </p>
             {/* Category tabs */}
             <div className="flex flex-wrap gap-2 justify-center">
@@ -722,7 +722,7 @@ export const TermPaperSystem: React.FC<TermPaperSystemProps> = ({
               <h3 className="text-[10px] font-black uppercase tracking-widest text-indigo-600">Quelle hinzufügen</h3>
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                 {[
-                  { val: manualAuthor, set: setManualAuthor, ph: 'Autor(en) — z.B. Müller, A. & Schmidt, B.' },
+                  { val: manualAuthor, set: setManualAuthor, ph: 'Autor(en), z.B. Müller, A. & Schmidt, B.' },
                   { val: manualTitle,  set: setManualTitle,  ph: 'Titel der Quelle *' },
                   { val: manualYear,   set: setManualYear,   ph: 'Erscheinungsjahr' },
                   { val: manualJournal,set: setManualJournal,ph: 'Journal / Verlag / Herausgeber' },
@@ -853,7 +853,7 @@ export const TermPaperSystem: React.FC<TermPaperSystemProps> = ({
           <div className="space-y-8 animate-in fade-in duration-500">
             <div className="text-center space-y-2">
               <p className="text-sm text-slate-500 dark:text-slate-400 font-medium max-w-xl mx-auto">
-                Paraphrasieren heißt: fremde Ideen in eigenen Worten wiedergeben — mit Quellenangabe. Nicht nur Synonyme tauschen.
+                Paraphrasieren heißt: fremde Ideen in eigenen Worten wiedergeben, mit Quellenangabe. Nicht nur Synonyme tauschen.
               </p>
             </div>
 
@@ -861,9 +861,9 @@ export const TermPaperSystem: React.FC<TermPaperSystemProps> = ({
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
               {[
                 { icon: '🔄', rule: 'Satzstruktur komplett umbauen', detail: 'Aktiv ↔ Passiv, Haupt- zu Nebensatz' },
-                { icon: '💬', rule: 'Eigenen Wortschatz nutzen', detail: 'Nicht nur Synonyme — echte Umformulierung' },
+                { icon: '💬', rule: 'Eigenen Wortschatz nutzen', detail: 'Nicht nur Synonyme, sondern echte Umformulierung' },
                 { icon: '📌', rule: 'Quelle immer angeben', detail: 'Auch bei indirekten Zitaten: (vgl. Autor, Jahr, S. X)' },
-                { icon: '🎯', rule: 'Aussage erhalten', detail: 'Inhalt darf sich nicht verändern — nur die Form' },
+                { icon: '🎯', rule: 'Aussage erhalten', detail: 'Inhalt darf sich nicht verändern, nur die Form' },
               ].map((r, i) => (
                 <div key={i} className="flex items-start gap-3 p-4 bg-slate-50 dark:bg-slate-800 rounded-2xl border border-slate-100 dark:border-slate-700">
                   <span className="text-xl shrink-0">{r.icon}</span>
@@ -890,13 +890,13 @@ export const TermPaperSystem: React.FC<TermPaperSystemProps> = ({
                     </div>
                     {/* Wrong */}
                     <div>
-                      <p className="text-[8px] font-black uppercase tracking-widest text-rose-500 mb-1.5">❌ Falsch — Plagiat</p>
+                      <p className="text-[8px] font-black uppercase tracking-widest text-rose-500 mb-1.5">❌ Falsch: Plagiat</p>
                       <p className="text-sm italic text-slate-700 dark:text-slate-300 bg-rose-50 dark:bg-rose-900/20 border border-rose-200 dark:border-rose-800 p-3 rounded-xl leading-relaxed">{ex.wrong}</p>
                       <p className="text-[10px] text-rose-600 dark:text-rose-400 mt-1.5 font-medium">{ex.wrongReason}</p>
                     </div>
                     {/* Right */}
                     <div>
-                      <p className="text-[8px] font-black uppercase tracking-widest text-emerald-600 mb-1.5">✓ Richtig — korrekte Paraphrase</p>
+                      <p className="text-[8px] font-black uppercase tracking-widest text-emerald-600 mb-1.5">✓ Richtig: korrekte Paraphrase</p>
                       <p className="text-sm italic text-slate-700 dark:text-slate-300 bg-emerald-50 dark:bg-emerald-900/20 border border-emerald-200 dark:border-emerald-800 p-3 rounded-xl leading-relaxed">{ex.right}</p>
                       <p className="text-[10px] text-emerald-600 dark:text-emerald-400 mt-1.5 font-medium">{ex.rightReason}</p>
                     </div>
@@ -918,7 +918,7 @@ export const TermPaperSystem: React.FC<TermPaperSystemProps> = ({
                     {checked.size} / {totalItems} erledigt
                   </p>
                   <p className="text-xs text-slate-400 mt-0.5">
-                    {checked.size === totalItems ? '🎉 Alles gecheckt — du kannst abgeben!' : 'Hake ab was du geprüft hast'}
+                    {checked.size === totalItems ? '🎉 Alles gecheckt, du kannst abgeben!' : 'Hake ab was du geprüft hast'}
                   </p>
                 </div>
                 <div className="flex flex-col items-end gap-2">
@@ -975,7 +975,7 @@ export const TermPaperSystem: React.FC<TermPaperSystemProps> = ({
           <div className="space-y-8 animate-in fade-in duration-500 max-w-3xl mx-auto">
             <div className="text-center space-y-2">
               <p className="text-sm text-slate-500 dark:text-slate-400 font-medium">
-                Rohen Text, Website-Inhalt oder Quellfragment einfügen — Wird formatiert in alle 4 Stile.
+                Rohen Text, Website-Inhalt oder Quellfragment einfügen. Wird in alle 4 Stile formatiert.
               </p>
             </div>
             <textarea value={magicInput} onChange={e => setMagicInput(e.target.value)}

@@ -20,7 +20,7 @@ export const ResultView: React.FC<ResultViewProps> = ({
 }) => {
   const [expandedIdx, setExpandedIdx] = useState<number | null>(null);
   const [showSaveInput, setShowSaveInput] = useState(false);
-  const [saveName, setSaveName] = useState(docName ? `Quiz — ${docName}` : 'Mein Quiz');
+  const [saveName, setSaveName] = useState(docName ? `Quiz: ${docName}` : 'Mein Quiz');
   const [saved, setSaved] = useState(false);
 
   const correctCount    = answers.filter(a => a.isCorrect).length;
@@ -137,7 +137,7 @@ export const ResultView: React.FC<ResultViewProps> = ({
           {saved ? (
             <div className="flex items-center gap-2 text-emerald-600">
               <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round"><polyline points="20 6 9 17 4 12"/></svg>
-              <span className="text-sm font-black">Quiz gespeichert — offline abrufbar</span>
+              <span className="text-sm font-black">Quiz gespeichert, offline abrufbar</span>
             </div>
           ) : showSaveInput ? (
             <div className="flex gap-2">

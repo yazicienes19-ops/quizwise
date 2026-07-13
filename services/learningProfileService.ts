@@ -389,7 +389,7 @@ const buildMotivationLine = (
   }
 
   if (examPrognosis && examPrognosis.passProbability >= 80 && examPrognosis.passProbability < 90) {
-    return `Deine Bestehenswahrscheinlichkeit liegt bei ${examPrognosis.passProbability}% — noch ein Stück bis über 90%.`;
+    return `Deine Bestehenswahrscheinlichkeit liegt bei ${examPrognosis.passProbability}%, noch ein Stück bis über 90%.`;
   }
 
   const overallTrend = trendOf([...timestamped].sort((a, b) => b.timestamp - a.timestamp).map(t => t.score));
@@ -397,7 +397,7 @@ const buildMotivationLine = (
     return 'Deine Klausurleistungen verbessern sich kontinuierlich.';
   }
 
-  return 'Bleib dran — jede Lernsession bringt dich näher an dein Ziel.';
+  return 'Bleib dran, jede Lernsession bringt dich näher an dein Ziel.';
 };
 
 // ─── Methodenkommentar (deterministischer Fallback ohne KI) ──────────────────────
@@ -417,12 +417,12 @@ export const buildMethodCommentary = (perMethod: MethodStat[]): string | null =>
   const worst = sorted[sorted.length - 1];
   const first = `Deine besten Ergebnisse erzielst du aktuell mit ${METHOD_LABELS[best.method]} (Ø ${best.avgScore}%).`;
   if (best.avgScore - worst.avgScore >= 15) {
-    return `${first} Bei ${METHOD_LABELS[worst.method]} liegt noch am meisten Luft — gezieltes Üben lohnt sich dort.`;
+    return `${first} Bei ${METHOD_LABELS[worst.method]} liegt noch am meisten Luft, gezieltes Üben lohnt sich dort.`;
   }
   if (best.trend === 'up') {
     return `${first} Der Trend zeigt dort weiter nach oben.`;
   }
-  return `${first} Deine Methoden liegen nah beieinander — der Mix funktioniert.`;
+  return `${first} Deine Methoden liegen nah beieinander, der Mix funktioniert.`;
 };
 
 // ─── Tagesplan („Heute solltest du") ────────────────────────────────────────────
@@ -542,7 +542,7 @@ export const buildContextMotivation = (profile: LearningProfile, lastActivityTs:
     return 'Deine letzten Sessions zeigen einen positiven Trend. Bleib konsequent.';
   }
   if (profile.topicMastery.filter(t => t.security === 'kritisch').length >= 3) {
-    return 'Konzentriere dich heute auf ein Thema — weniger gleichzeitig zu lernen führt oft zu besseren Ergebnissen.';
+    return 'Konzentriere dich heute auf ein Thema. Weniger gleichzeitig zu lernen führt oft zu besseren Ergebnissen.';
   }
   if (profile.examPrognosis && profile.examPrognosis.passProbability >= 70) {
     return 'Deine Vorbereitung entwickelt sich in die richtige Richtung.';

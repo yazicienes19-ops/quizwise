@@ -753,7 +753,7 @@ export const FlashcardSystem: React.FC<FlashcardSystemProps> = ({
                         <button
                           onClick={() => handleOpenDeck(deck.id, 'free')}
                           className="flex-none flex items-center gap-1.5 border-2 border-slate-200 dark:border-slate-700 text-slate-500 dark:text-slate-400 px-3 py-3 rounded-xl lg:rounded-2xl text-[9px] font-black uppercase tracking-widest hover:border-emerald-400 hover:text-emerald-600 transition-all"
-                          title="Frei üben — alle Karten, beliebig oft, ohne den Fälligkeitsplan zu verändern"
+                          title="Frei üben: alle Karten, beliebig oft, ohne den Fälligkeitsplan zu verändern"
                         >
                           <svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round"><polyline points="23 4 23 10 17 10"/><polyline points="1 20 1 14 7 14"/><path d="M3.51 9a9 9 0 0 1 14.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0 0 20.49 15"/></svg>
                           Üben

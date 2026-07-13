@@ -178,7 +178,7 @@ export const ExamView: React.FC<ExamViewProps> = ({
     doc.setFontSize(18);
     doc.setFont('helvetica', 'bold');
     doc.setTextColor(...gradeColor);
-    doc.text(`Note ${gradeInfo.grade} — ${gradeInfo.label}`, margin + 6, y + 8);
+    doc.text(`Note ${gradeInfo.grade} (${gradeInfo.label})`, margin + 6, y + 8);
     doc.setFontSize(9);
     doc.setFont('helvetica', 'normal');
     doc.setTextColor(80, 80, 80);
@@ -424,7 +424,7 @@ export const ExamView: React.FC<ExamViewProps> = ({
                     }}
                     className="flex-1 p-3 bg-white dark:bg-slate-800 rounded-2xl border-2 border-slate-200 dark:border-slate-700 text-sm font-medium dark:text-white outline-none focus:border-indigo-500 transition-colors"
                   >
-                    <option value="">— wählen —</option>
+                    <option value="">Bitte wählen</option>
                     {q.matchRight.map((right, ri) => (
                       <option key={ri} value={ri}>{right}</option>
                     ))}
@@ -599,7 +599,7 @@ export const ExamView: React.FC<ExamViewProps> = ({
                 {examSaved ? (
                   <p className="text-emerald-600 text-[10px] font-black uppercase tracking-widest flex items-center gap-1.5">
                     <svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round"><polyline points="20 6 9 17 4 12"/></svg>
-                    Klausur gespeichert — offline abrufbar
+                    Klausur gespeichert, offline abrufbar
                   </p>
                 ) : showSaveInput ? (
                   <div className="flex gap-2 mb-2">
@@ -679,7 +679,7 @@ export const ExamView: React.FC<ExamViewProps> = ({
         <div className="rounded-[24px] sm:rounded-[32px] p-5 sm:p-8 space-y-4 animate-in fade-in duration-500" style={{ background: 'var(--bg-sidebar)', border: '1px solid var(--border-color)' }}>
           <div>
             <h3 className="text-lg font-black dark:text-white">Kategorie-Aufschlüsselung</h3>
-            <p className="text-[10px] font-black uppercase tracking-widest text-slate-400">Nicht nur die Gesamtpunktzahl — wo genau standen die Lücken?</p>
+            <p className="text-[10px] font-black uppercase tracking-widest text-slate-400">Nicht nur die Gesamtpunktzahl: Wo genau standen die Lücken?</p>
           </div>
           <div className="space-y-3">
             {[...categoryBreakdown].sort((a, b) => a.score - b.score).map(cb => (
@@ -898,7 +898,7 @@ export const ExamView: React.FC<ExamViewProps> = ({
                         </div>
                       ) : (
                         <p className="text-[9px] font-black uppercase tracking-widest text-slate-300 dark:text-slate-600 pl-1">
-                          Feedback gespeichert — danke!
+                          Feedback gespeichert, danke!
                         </p>
                       )}
                     </div>
@@ -961,7 +961,7 @@ export const ExamView: React.FC<ExamViewProps> = ({
             <p className={`px-6 py-2 rounded-full text-[10px] font-black uppercase tracking-widest shadow-lg backdrop-blur-sm transition-all ${
               isTimeLow ? 'bg-rose-500 text-white animate-pulse' : 'bg-white/80 dark:bg-slate-900/80 text-slate-500 dark:text-slate-400'
             }`}>
-              {timeLeft === 0 ? '⏱ Zeit abgelaufen — wird eingereicht...' : `⏱ ${formatTime(timeLeft)} verbleibend`}
+              {timeLeft === 0 ? '⏱ Zeit abgelaufen, wird eingereicht...' : `⏱ ${formatTime(timeLeft)} verbleibend`}
             </p>
           ) : (
             <p className="bg-white/80 dark:bg-slate-900/80 backdrop-blur-sm px-6 py-2 rounded-full text-[9px] font-black uppercase text-slate-400 tracking-widest shadow-lg">

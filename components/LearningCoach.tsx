@@ -201,7 +201,7 @@ export const LearningCoach: React.FC<LearningCoachProps> = ({ metrics, decks, on
     },
     learningScore.overall === null && {
       label: 'Learning Score',
-      reason: 'Braucht mehr Daten — z.B. 2 Erklär-Sessions, 10 gelernte Karteikarten oder 2 Klausuren.',
+      reason: 'Braucht mehr Daten, z.B. 2 Erklär-Sessions, 10 gelernte Karteikarten oder 2 Klausuren.',
     },
   ].filter((x): x is { label: string; reason: string } => Boolean(x));
 
@@ -256,14 +256,14 @@ export const LearningCoach: React.FC<LearningCoachProps> = ({ metrics, decks, on
           Dein <span style={{ color: 'var(--primary)' }}>Lernfortschritt</span> <EmojiImage emoji="🧭" size={36} />
         </h1>
         <p className="text-base font-medium opacity-80" style={{ color: 'var(--mute)' }}>
-          Dein persönlicher Lerncoach — alle Methoden, ein Überblick.
+          Dein persönlicher Lerncoach: alle Methoden, ein Überblick.
         </p>
         {activeModule && (
           <p
             className="inline-block px-4 py-1.5 rounded-full text-[10px] font-black uppercase tracking-widest mr-2"
             style={{ background: 'color-mix(in srgb, var(--primary) 12%, transparent)', color: 'var(--primary)', border: '1px solid color-mix(in srgb, var(--primary) 30%, transparent)' }}
           >
-            {activeModule.emoji} Nur {activeModule.name} — Fach links wechselbar
+            {activeModule.emoji} Nur {activeModule.name} (Fach links wechselbar)
           </p>
         )}
         <p
@@ -371,8 +371,8 @@ export const LearningCoach: React.FC<LearningCoachProps> = ({ metrics, decks, on
               </button>
               {showPrognosisInfo && (
                 <div className="text-[10px] font-medium mt-2 leading-relaxed text-left space-y-2" style={{ color: 'var(--mute)' }}>
-                  <p><strong style={{ color: 'var(--ink2)' }}>Aktuelle Form zählt:</strong> Jedes Klausurergebnis verliert alle 14 Tage die Hälfte seines Gewichts — deine letzten Leistungen bestimmen die Prognose, alte ziehen dich nicht ewig runter.</p>
-                  <p><strong style={{ color: 'var(--ink2)' }}>Dein Trend:</strong> Ab 4 Klausuren berechnen wir deine Entwicklung und rechnen sie bis zu deinem Klausurtermin hoch — begrenzt auf realistische Veränderungen.</p>
+                  <p><strong style={{ color: 'var(--ink2)' }}>Aktuelle Form zählt:</strong> Jedes Klausurergebnis verliert alle 14 Tage die Hälfte seines Gewichts. Deine letzten Leistungen bestimmen die Prognose, alte ziehen dich nicht ewig runter.</p>
+                  <p><strong style={{ color: 'var(--ink2)' }}>Dein Trend:</strong> Ab 4 Klausuren berechnen wir deine Entwicklung und rechnen sie bis zu deinem Klausurtermin hoch, begrenzt auf realistische Veränderungen.</p>
                   <p><strong style={{ color: 'var(--ink2)' }}>Ehrliche Unsicherheit:</strong> Bei weniger als 4 Klausuren ist die Prognose vorläufig und zeigt einen Bereich statt eines exakten Werts.</p>
                   <p><strong style={{ color: 'var(--ink2)' }}>Was einfließt:</strong> 60 % Klausurleistung{forecast.parts.topicShare !== null ? ` · 25 % Themensicherheit (${forecast.parts.topicShare} % deiner Themen sicher)` : ''}{forecast.parts.retentionShare !== null ? ` · 15 % Abrufstabilität (${forecast.parts.retentionShare} % deiner Karten stabil)` : ''}. Basis: {forecast.basis.exams} Klausur{forecast.basis.exams !== 1 ? 'en' : ''}, {quizResults.length} Quizze, {learnedCardsCount} gelernte Karten.</p>
                 </div>
@@ -380,7 +380,7 @@ export const LearningCoach: React.FC<LearningCoachProps> = ({ metrics, decks, on
             </>
           ) : (
             <p className="text-[10px] font-bold" style={{ color: 'var(--mute)' }}>
-              Noch keine Klausur absolviert — Prognose folgt nach der ersten Simulation.
+              Noch keine Klausur absolviert. Die Prognose folgt nach der ersten Simulation.
             </p>
           )}
           <div className="w-full mt-4 pt-3 border-t" style={{ borderColor: 'var(--border-soft)' }}>
