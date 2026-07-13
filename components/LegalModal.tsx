@@ -14,7 +14,7 @@ const CONTENT: Record<LegalPage, { title: string; body: React.ReactNode }> = {
     body: (
       <div className="space-y-4 text-sm text-slate-600 dark:text-slate-300 leading-relaxed">
         <p className="text-xs text-amber-600 dark:text-amber-400 font-bold bg-amber-50 dark:bg-amber-950/30 p-3 rounded-xl">
-          ⚠️ Adresse noch ausstehend — vor dem Launch in LegalModal.tsx eintragen.
+          ⚠️ Adresse noch ausstehend, vor dem Launch in LegalModal.tsx eintragen.
         </p>
         <div>
           <p className="font-bold text-slate-900 dark:text-white">Angaben gemäß § 5 TMG</p>
@@ -131,7 +131,7 @@ const CONTENT: Record<LegalPage, { title: string; body: React.ReactNode }> = {
           </p>
           <ul className="list-disc pl-4 mt-1 space-y-1">
             <li><strong>Free-Tarif:</strong> 20 KI-Anfragen pro Tag, kostenlos.</li>
-            <li><strong>Pro-Tarif:</strong> Unlimitierte KI-Anfragen, 4,99 €/Monat, monatlich kündbar.</li>
+            <li><strong>Pro-Tarif:</strong> Unlimitierte KI-Anfragen, 9,99 €/Monat, monatlich kündbar.</li>
           </ul>
           <p className="mt-1">
             Der Anbieter behält sich vor, den Funktionsumfang des Free-Tarifs jederzeit anzupassen.
@@ -142,7 +142,7 @@ const CONTENT: Record<LegalPage, { title: string; body: React.ReactNode }> = {
           <p>
             Das Pro-Abonnement wird monatlich im Voraus abgerechnet und verlängert sich automatisch,
             sofern es nicht gekündigt wird. Die Kündigung ist jederzeit zum Ende des laufenden
-            Abrechnungszeitraums möglich — direkt über die App-Einstellungen (Bereich „Abonnement")
+            Abrechnungszeitraums möglich, direkt über die App-Einstellungen (Bereich „Abonnement")
             oder per E-Mail an yazicienes19@gmail.com. Nach der Kündigung bleibt der Pro-Zugang
             bis zum Ende des bezahlten Zeitraums aktiv.
           </p>

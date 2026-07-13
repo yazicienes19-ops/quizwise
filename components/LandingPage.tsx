@@ -9,7 +9,7 @@ const features = [
   {
     icon: '🤖',
     title: 'Karteikarten',
-    desc: 'PDF oder Text hochladen — Gemini erstellt sofort einen kompletten Kartenstapel.',
+    desc: 'PDF oder Text hochladen: QuizWise erstellt sofort einen kompletten Kartenstapel.',
     color: 'indigo',
   },
   {
@@ -21,13 +21,13 @@ const features = [
   {
     icon: '📝',
     title: 'Intelligente Quizze',
-    desc: 'Multiple Choice, Lückentexte und offene Fragen — aus deinen eigenen Unterlagen.',
+    desc: 'Multiple Choice, Lückentexte und offene Fragen aus deinen eigenen Unterlagen.',
     color: 'amber',
   },
   {
     icon: '🧠',
     title: 'Feynman-Methode',
-    desc: 'Erkläre ein Konzept in eigenen Worten — die KI bewertet dein Verständnis.',
+    desc: 'Erkläre ein Konzept in eigenen Worten und QuizWise bewertet dein Verständnis.',
     color: 'rose',
   },
   {
@@ -97,7 +97,7 @@ export const LandingPage: React.FC<LandingPageProps> = ({ onAuthClick }) => {
         </h1>
 
         <p className="text-xl text-slate-500 dark:text-slate-400 max-w-2xl mx-auto mb-12 leading-relaxed">
-          Lade deine Unterlagen hoch — QuizWise erstellt Karteikarten, Quizze und Klausuren mit KI.
+          Lade deine Unterlagen hoch. QuizWise erstellt daraus Karteikarten, Quizze und Klausuren.
           Spaced Repetition sorgt dafür, dass du nichts vergisst.
         </p>
 
@@ -188,7 +188,11 @@ export const LandingPage: React.FC<LandingPageProps> = ({ onAuthClick }) => {
               Empfohlen
             </div>
             <p className="text-[10px] font-black uppercase tracking-widest text-indigo-500 mb-2">Pro</p>
-            <p className="text-5xl font-black mb-1">6,99 €</p>
+            <div className="flex items-end gap-3 mb-1">
+              <p className="text-5xl font-black">9,99 €</p>
+              <p className="text-xl font-black text-slate-300 dark:text-slate-600 line-through mb-1.5">14,99 €</p>
+            </div>
+            <p className="text-[10px] font-black uppercase tracking-widest mb-1" style={{ color: 'var(--primary)' }}>Einführungspreis: Frühstarter behalten ihn dauerhaft</p>
             <p className="text-[11px] text-slate-400 mb-8">pro Monat, jederzeit kündbar</p>
             <ul className="space-y-3 mb-8">
               {[
@@ -224,7 +228,7 @@ export const LandingPage: React.FC<LandingPageProps> = ({ onAuthClick }) => {
             Bereit, smarter zu lernen?
           </h2>
           <p className="text-lg text-slate-500 dark:text-slate-400 mb-10">
-            Starte kostenlos — kein Abo, kein Risiko.
+            Starte kostenlos, ohne Abo und ohne Risiko.
           </p>
           <button
             onClick={() => onAuthClick('register')}

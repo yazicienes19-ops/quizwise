@@ -53,7 +53,11 @@ export const UpgradeModal: React.FC<UpgradeModalProps> = ({ onClose }) => {
         {/* Preis */}
         <div className="px-8 pb-6">
           <div className="p-6 rounded-[24px] text-center space-y-1" style={{ background: 'color-mix(in srgb, var(--primary) 10%, transparent)', border: '1px solid color-mix(in srgb, var(--primary) 30%, transparent)' }}>
-            <p className="text-4xl font-black dark:text-white">4,99 €</p>
+            <div className="flex items-end justify-center gap-2.5">
+              <p className="text-4xl font-black dark:text-white">9,99 €</p>
+              <p className="text-lg font-black text-slate-300 dark:text-slate-600 line-through mb-1">14,99 €</p>
+            </div>
+            <p className="text-[10px] font-black uppercase tracking-widest" style={{ color: 'var(--primary)' }}>Einführungspreis: bleibt für dich dauerhaft</p>
             <p className="text-[11px] text-slate-400 font-bold uppercase tracking-widest">pro Monat · jederzeit kündbar</p>
           </div>
         </div>

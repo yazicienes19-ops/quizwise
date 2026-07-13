@@ -107,7 +107,7 @@ export const SettingsModal: React.FC<Props> = ({ user, isDark, onToggleTheme, on
       } else {
         await subscribeToPush();
         setPushEnabled(true);
-        toast.success('Lern-Erinnerung aktiviert — täglich um 17 Uhr bei fälligen Wiederholungen.');
+        toast.success('Lern-Erinnerung aktiviert: täglich um 17 Uhr bei fälligen Wiederholungen.');
       }
     } catch (e: any) {
       toast.error(e?.message || 'Benachrichtigungen konnten nicht aktiviert werden.');
@@ -354,7 +354,7 @@ export const SettingsModal: React.FC<Props> = ({ user, isDark, onToggleTheme, on
                     disabled={isCheckingOut}
                     className="w-full py-4 rounded-2xl text-[11px] font-black uppercase tracking-widest text-white flex items-center justify-center gap-2 transition-all hover:scale-[1.02] active:scale-95 disabled:opacity-50"
                     style={{ background: 'var(--primary)' }}>
-                    {isCheckingOut ? <><Loader2 className="w-4 h-4 animate-spin" /> Weiterleitung...</> : <><Zap className="w-4 h-4" strokeWidth={2} /> Upgrade auf Pro — 4,99 €/Monat</>}
+                    {isCheckingOut ? <><Loader2 className="w-4 h-4 animate-spin" /> Weiterleitung...</> : <><Zap className="w-4 h-4" strokeWidth={2} /> Upgrade auf Pro für 9,99 €/Monat</>}
                   </button>
                   <p className="text-center text-[10px] text-slate-400">Jederzeit kündbar · Sichere Zahlung via Stripe</p>
                 </div>
@@ -421,8 +421,8 @@ export const SettingsModal: React.FC<Props> = ({ user, isDark, onToggleTheme, on
                       <p className="text-[11px] font-black uppercase tracking-widest dark:text-white">Tägliche Lern-Erinnerung</p>
                       <p className="text-[10px] font-medium text-slate-400 mt-0.5">
                         {pushEnabled
-                          ? 'Aktiv — du bekommst um 17 Uhr eine Erinnerung, wenn Karten oder Fragen fällig sind.'
-                          : 'Erinnert dich um 17 Uhr, wenn Wiederholungen fällig sind. Kein Spam — nur bei fälligen Inhalten.'}
+                          ? 'Aktiv: Du bekommst um 17 Uhr eine Erinnerung, wenn Karten oder Fragen fällig sind.'
+                          : 'Erinnert dich um 17 Uhr, wenn Wiederholungen fällig sind. Kein Spam, nur bei fälligen Inhalten.'}
                       </p>
                     </div>
                     <div
@@ -498,7 +498,7 @@ export const SettingsModal: React.FC<Props> = ({ user, isDark, onToggleTheme, on
                   ))}
                 </div>
                 <p className="text-[10px] text-slate-400">
-                  {lineHeight === '1.4' ? 'Platzsparend, geeignet für dichte Inhalte.' : lineHeight === '1.6' ? 'Ausgewogen — empfohlen für die meisten Nutzer.' : 'Großzügig, ideal zum entspannten Lesen.'}
+                  {lineHeight === '1.4' ? 'Platzsparend, geeignet für dichte Inhalte.' : lineHeight === '1.6' ? 'Ausgewogen, empfohlen für die meisten Nutzer.' : 'Großzügig, ideal zum entspannten Lesen.'}
                 </p>
               </div>
 
@@ -591,7 +591,7 @@ export const SettingsModal: React.FC<Props> = ({ user, isDark, onToggleTheme, on
             <div className="space-y-6">
               <div className="p-4 bg-amber-50 dark:bg-amber-950/20 rounded-2xl border border-amber-100 dark:border-amber-900/30">
                 <p className="text-[11px] font-bold text-amber-700 dark:text-amber-400 leading-relaxed">
-                  Nur für die lokale Entwicklung. In der veröffentlichten App wird der API-Key sicher auf dem Server gespeichert — Nutzer brauchen keinen eigenen Key.
+                  Nur für die lokale Entwicklung. In der veröffentlichten App wird der API-Key sicher auf dem Server gespeichert, Nutzer brauchen keinen eigenen Key.
                 </p>
               </div>
               <div className="space-y-2">
