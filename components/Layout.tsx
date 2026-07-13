@@ -135,7 +135,21 @@ export const Layout: React.FC<LayoutProps> = ({
             )}
           </div>
 
-          {/* Fach-Kontext: gewähltes Modul gilt überall als Vorauswahl */}
+          {/* Fach-Kontext: gewähltes Modul gilt überall als Vorauswahl.
+              Auch ohne Ordner sichtbar — sonst wissen Nutzer nicht, dass es das Feature gibt. */}
+          {onModuleChange && collections.length === 0 && (
+            <div className="mb-6 -mt-6">
+              <p className="text-[8px] font-black uppercase tracking-[0.3em] text-slate-400 mb-1.5 px-1">Aktives Fach</p>
+              <button
+                onClick={() => onTabChange(ActiveTab.LIBRARY)}
+                className="w-full px-3 py-2.5 rounded-xl text-left transition-all hover:translate-x-0.5"
+                style={{ background: 'var(--bg-main)', border: '1px dashed var(--border-color)' }}
+              >
+                <span className="text-[11px] font-black uppercase tracking-wider block" style={{ color: 'var(--text-main)' }}>🎓 Alle Fächer</span>
+                <span className="block text-[9px] font-medium text-slate-400 mt-0.5">Lege in der Bibliothek Ordner an, um nach Fach zu lernen</span>
+              </button>
+            </div>
+          )}
           {onModuleChange && collections.length > 0 && (
             <div className="mb-6 -mt-6">
               <p className="text-[8px] font-black uppercase tracking-[0.3em] text-slate-400 mb-1.5 px-1">Aktives Fach</p>
