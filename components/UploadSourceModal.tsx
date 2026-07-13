@@ -1,5 +1,7 @@
 import React, { useState, useRef, useCallback } from 'react';
 import type { SourceMeta } from '../services/libraryService';
+import { detectUrlKind, importFromUrl } from '../services/urlImport';
+import { toast } from '../services/toast';
 
 interface Props {
   onClose: () => void;
@@ -40,8 +42,9 @@ const Field: React.FC<{
 );
 
 export const UploadSourceModal: React.FC<Props> = ({ onClose, onUpload }) => {
-  const [mode, setMode]             = useState<'file' | 'text'>('file');
+  const [mode, setMode]             = useState<'file' | 'text' | 'link'>('file');
   const [pastedText, setPastedText] = useState('');
+  const [linkUrl, setLinkUrl]       = useState('');
   const [file, setFile]             = useState<File | null>(null);
   const [isDragging, setIsDragging] = useState(false);
   const [isUploading, setIsUploading] = useState(false);
@@ -72,16 +75,10 @@ export const UploadSourceModal: React.FC<Props> = ({ onClose, onUpload }) => {
     if (f) pickFile(f);
   };
 
+  const linkKind = detectUrlKind(linkUrl);
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    // Text-Modus: eingefügte Notiz wird als .txt-Quelle gespeichert (z.B. aus
-    // NotebookLM, ChatGPT, eigenen Mitschriften) — für QuizWise gleichwertig zu Dateien
-    const uploadFile = mode === 'text'
-      ? (pastedText.trim().length >= 20
-          ? new File([pastedText.trim()], `${(displayTitle.trim() || 'Notiz')}.txt`, { type: 'text/plain' })
-          : null)
-      : file;
-    if (!uploadFile) return;
     setIsUploading(true);
     try {
       const meta: Partial<SourceMeta> = {
@@ -95,8 +92,34 @@ export const UploadSourceModal: React.FC<Props> = ({ onClose, onUpload }) => {
         isAltklausur: isAltklausur || undefined,
         status:       'ready',
       };
+
+      let uploadFile: File | null;
+      if (mode === 'link') {
+        // Link-Modus: Backend holt den Inhalt (YouTube → Lernskript,
+        // Webseite → Artikeltext) — gespeichert wird eine normale Text-Quelle
+        const imported = await importFromUrl(linkUrl);
+        const title = displayTitle.trim() || imported.title;
+        const safeName = title.replace(/[\\/:*?"<>|]/g, '').slice(0, 120) || 'Import';
+        uploadFile = new File([imported.text], `${safeName}.txt`, { type: 'text/plain' });
+        meta.displayTitle = title;
+        meta.sourceUrl  = imported.url;
+        meta.sourceKind = imported.kind;
+        if (!meta.notes && imported.author) meta.notes = `Von ${imported.author}`;
+      } else if (mode === 'text') {
+        // Text-Modus: eingefügte Notiz wird als .txt-Quelle gespeichert (z.B. aus
+        // NotebookLM, ChatGPT, eigenen Mitschriften) — für QuizWise gleichwertig zu Dateien
+        uploadFile = pastedText.trim().length >= 20
+          ? new File([pastedText.trim()], `${(displayTitle.trim() || 'Notiz')}.txt`, { type: 'text/plain' })
+          : null;
+      } else {
+        uploadFile = file;
+      }
+      if (!uploadFile) return;
+
       await onUpload(uploadFile, meta);
       onClose();
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : 'Import fehlgeschlagen.');
     } finally {
       setIsUploading(false);
     }
@@ -117,7 +140,7 @@ export const UploadSourceModal: React.FC<Props> = ({ onClose, onUpload }) => {
         <div className="flex justify-between items-center px-8 py-6 border-b border-slate-100 dark:border-slate-800">
           <div>
             <h2 className="text-xl font-black dark:text-white">Quelle hinzufügen</h2>
-            <p className="text-[10px] font-black uppercase tracking-widest text-slate-400 mt-0.5">Dateien · Fotos · Notizen · eingefügter Text</p>
+            <p className="text-[10px] font-black uppercase tracking-widest text-slate-400 mt-0.5">Dateien · Fotos · Notizen · YouTube & Web-Links</p>
           </div>
           <button aria-label="Schließen" onClick={onClose} className="p-2 text-slate-400 hover:text-rose-500 transition-colors rounded-xl">
             <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round">
@@ -130,12 +153,16 @@ export const UploadSourceModal: React.FC<Props> = ({ onClose, onUpload }) => {
           {isUploading && (
             <div className="flex items-center justify-center gap-3 py-2 text-indigo-600">
               <span className="w-4 h-4 border-2 border-indigo-200 border-t-indigo-600 rounded-full animate-spin" />
-              <span className="text-[10px] font-black uppercase tracking-widest">Wird hochgeladen…</span>
+              <span className="text-[10px] font-black uppercase tracking-widest">
+                {mode === 'link'
+                  ? (linkKind === 'youtube' ? 'Video wird verarbeitet — das kann bis zu einer Minute dauern…' : 'Seite wird geladen…')
+                  : 'Wird hochgeladen…'}
+              </span>
             </div>
           )}
-          {/* Modus: Datei hochladen oder Text einfügen */}
+          {/* Modus: Datei hochladen, Text einfügen oder Link importieren */}
           <div className="flex p-1 rounded-2xl gap-1" style={{ background: 'color-mix(in srgb, var(--border-color) 40%, var(--bg-main))' }}>
-            {([['file', 'Datei / Foto'], ['text', 'Text einfügen']] as const).map(([m, lbl]) => (
+            {([['file', 'Datei / Foto'], ['text', 'Text'], ['link', 'Link']] as const).map(([m, lbl]) => (
               <button
                 key={m}
                 type="button"
@@ -166,6 +193,25 @@ export const UploadSourceModal: React.FC<Props> = ({ onClose, onUpload }) => {
             </div>
           )}
 
+          {/* Link-Modus */}
+          {mode === 'link' && (
+            <div className="space-y-2">
+              <input
+                autoFocus
+                type="url"
+                value={linkUrl}
+                onChange={e => setLinkUrl(e.target.value)}
+                placeholder="https://www.youtube.com/watch?v=… oder Artikel-Link"
+                className="w-full px-4 py-3 bg-slate-50 dark:bg-slate-800 rounded-2xl text-sm font-medium outline-none border-2 border-transparent focus:border-indigo-500 dark:text-white"
+              />
+              <p className="text-[10px] text-slate-400 px-1 leading-relaxed">
+                {linkKind === 'youtube' && <>📺 YouTube-Video erkannt — QuizWise erstellt daraus ein lernfertiges Skript mit Kapiteln.</>}
+                {linkKind === 'web' && <>🌐 Webseite erkannt — der Artikeltext wird als Quelle importiert.</>}
+                {!linkKind && <>Füge einen YouTube-Link oder die Adresse eines Artikels ein (z.&nbsp;B. Wikipedia, Blogbeiträge, Online-Skripte).</>}
+              </p>
+            </div>
+          )}
+
           {/* Drop Zone */}
           {mode === 'file' && (!file ? (
             <div
@@ -183,7 +229,7 @@ export const UploadSourceModal: React.FC<Props> = ({ onClose, onUpload }) => {
               <p className="text-4xl mb-3">📂</p>
               <p className="font-black dark:text-white text-sm">Datei hierher ziehen</p>
               <p className="text-[10px] text-slate-400 mt-1 uppercase tracking-widest">oder klicken zum Auswählen</p>
-              <p className="text-[9px] text-slate-300 dark:text-slate-600 mt-3">PDF · DOCX · TXT · Markdown</p>
+              <p className="text-[9px] text-slate-300 dark:text-slate-600 mt-3">PDF · DOCX · TXT · Markdown · Fotos (JPG/PNG/HEIC)</p>
             </div>
           ) : (
             <div className="flex items-center gap-4 p-4 bg-slate-50 dark:bg-slate-800 rounded-2xl">
@@ -202,7 +248,7 @@ export const UploadSourceModal: React.FC<Props> = ({ onClose, onUpload }) => {
               label="Titel (optional)"
               value={displayTitle}
               onChange={setDisplayTitle}
-              placeholder={file ? file.name.replace(/\.[^/.]+$/, '') : 'z.B. KI Grundlagen SS 2025'}
+              placeholder={file ? file.name.replace(/\.[^/.]+$/, '') : mode === 'link' ? 'Leer lassen = Titel des Videos / Artikels' : 'z.B. KI Grundlagen SS 2025'}
             />
             <div className="grid grid-cols-2 gap-4">
               <Field label="Modul / Fach"   value={module}   onChange={setModule}   placeholder="z.B. Psychologie" />
@@ -246,11 +292,11 @@ export const UploadSourceModal: React.FC<Props> = ({ onClose, onUpload }) => {
 
           <button
             type="submit"
-            disabled={isUploading || (mode === 'file' ? !file : pastedText.trim().length < 20)}
+            disabled={isUploading || (mode === 'file' ? !file : mode === 'text' ? pastedText.trim().length < 20 : !linkKind)}
             className="w-full bg-indigo-600 py-4 rounded-2xl text-[11px] font-black uppercase tracking-widest shadow-lg hover:scale-[1.02] transition-all disabled:opacity-40 disabled:scale-100"
             style={{ color: 'var(--primary-text)' }}
           >
-            {isUploading ? 'Wird gespeichert…' : mode === 'text' ? 'Notiz speichern' : 'Quelle hochladen'}
+            {isUploading ? 'Wird gespeichert…' : mode === 'text' ? 'Notiz speichern' : mode === 'link' ? 'Link importieren' : 'Quelle hochladen'}
           </button>
         </form>
       </div>

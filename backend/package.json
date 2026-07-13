@@ -13,12 +13,14 @@
   "type": "commonjs",
   "dependencies": {
     "@google/genai": "^2.3.0",
+    "@mozilla/readability": "^0.6.0",
     "@supabase/supabase-js": "^2.105.4",
     "cors": "^2.8.6",
     "dotenv": "^17.4.2",
     "express": "^5.2.1",
     "express-rate-limit": "^8.5.2",
     "helmet": "^8.2.0",
+    "jsdom": "^29.1.1",
     "node-cron": "^4.5.0",
     "stripe": "^22.1.1",
     "web-push": "^3.6.7"

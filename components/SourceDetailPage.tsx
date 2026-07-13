@@ -6,6 +6,7 @@ import { SourceStatusBadge } from './SourceStatusBadge';
 import { EmojiImage } from './EmojiImage';
 
 const FILE_EMOJI: Record<string, string> = { pdf: '📕', docx: '📘', text: '📄' };
+const SOURCE_KIND_EMOJI: Record<string, string> = { youtube: '📺', web: '🌐' };
 
 interface Action {
   tab: ActiveTab;
@@ -16,11 +17,13 @@ interface Action {
   directStart: boolean; // true = KI startet sofort mit dieser Quelle
   accent?: boolean;
   danger?: boolean;
+  docTypes?: ProcessedDocument['type'][]; // fehlt = für alle Dateitypen sichtbar
 }
 
 const ACTIONS: Action[] = [
   { tab: ActiveTab.QUIZ,      emoji: '🎯', title: 'Quiz starten',                desc: 'Startet sofort prüfungsnahe Fragen direkt aus dieser Quelle.',              cta: 'Quiz starten',     directStart: true, accent: true },
   { tab: ActiveTab.EXPLAINER, emoji: '💡', title: 'Erklären lassen',             desc: 'KI erklärt dir Konzepte und Definitionen aus dieser Quelle.',               cta: 'Erklärer öffnen',  directStart: true, accent: true },
+  { tab: ActiveTab.READER,    emoji: '📖', title: 'Skript lesen + Erklärer',     desc: 'Split-Screen: lies das Dokument und frag direkt zu Textstellen nach.',      cta: 'Split-Screen öffnen', directStart: true },
   { tab: ActiveTab.CARDS,     emoji: '🃏', title: 'Karteikarten generieren',     desc: 'Erstellt automatisch Lernkarten aus Definitionen und Begriffen.',            cta: 'Karten erstellen', directStart: true },
   { tab: ActiveTab.RECALL,    emoji: '🧠', title: 'Recall starten',              desc: 'Erkläre das Thema frei — KI prüft dein Verständnis anhand dieser Quelle.', cta: 'Recall starten',   directStart: true },
   { tab: ActiveTab.EXAM,      emoji: '📝', title: 'Klausur simulieren',          desc: 'Prüfungssimulation mit offenen und geschlossenen Fragen.',                   cta: 'Klausur-Simulator',    directStart: false, danger: true },
@@ -40,7 +43,7 @@ interface Props {
 export const SourceDetailPage: React.FC<Props> = ({ doc, meta, onBack, onAction, onViewDocument }) => {
   const title     = meta.displayTitle || doc.name.replace(/\.[^/.]+$/, '');
   const status    = meta.status ?? 'ready';
-  const emoji     = FILE_EMOJI[doc.type] ?? '📄';
+  const emoji     = (meta.sourceKind && SOURCE_KIND_EMOJI[meta.sourceKind]) || FILE_EMOJI[doc.type] || '📄';
   const uploadedAt = new Date(doc.uploadDate).toLocaleDateString('de-DE', { day: '2-digit', month: 'long', year: 'numeric' });
   const lastOpened = meta.lastOpenedAt
     ? new Date(meta.lastOpenedAt).toLocaleDateString('de-DE', { day: '2-digit', month: 'long' })
@@ -80,6 +83,19 @@ export const SourceDetailPage: React.FC<Props> = ({ doc, meta, onBack, onAction,
                 </svg>
                 Dokument ansehen
               </button>
+              {meta.sourceUrl && (
+                <a
+                  href={meta.sourceUrl}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="flex items-center gap-1.5 px-3 py-1.5 bg-slate-50 dark:bg-slate-800 text-slate-500 dark:text-slate-300 rounded-xl text-[9px] font-black uppercase tracking-widest hover:bg-slate-100 dark:hover:bg-slate-700 transition-colors"
+                >
+                  <svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+                    <path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"/><polyline points="15 3 21 3 21 9"/><line x1="10" y1="14" x2="21" y2="3"/>
+                  </svg>
+                  {meta.sourceKind === 'youtube' ? 'Video öffnen' : 'Quelle öffnen'}
+                </a>
+              )}
             </div>
 
             <div className="flex flex-wrap gap-x-6 gap-y-1">
@@ -206,7 +222,7 @@ export const SourceDetailPage: React.FC<Props> = ({ doc, meta, onBack, onAction,
         )}
 
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-          {ACTIONS.map(action => (
+          {ACTIONS.filter(a => !a.docTypes || a.docTypes.includes(doc.type)).map(action => (
             <ActionCard
               key={action.tab}
               action={action}

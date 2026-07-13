@@ -5,6 +5,7 @@ import { SourceStatusBadge, DigestStatusBadge } from './SourceStatusBadge';
 import { EmojiImage } from './EmojiImage';
 
 const FILE_EMOJI: Record<string, string> = { pdf: '📕', docx: '📘', text: '📄' };
+const SOURCE_KIND_EMOJI: Record<string, string> = { youtube: '📺', web: '🌐' };
 
 const IconTrash = () => (
   <svg xmlns="http://www.w3.org/2000/svg" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round">
@@ -73,7 +74,7 @@ const IconEdit = () => (
 export const SourceCard: React.FC<Props> = ({ doc, meta, view, onOpen, onView, onDelete, onEdit, onRetryAnalysis }) => {
   const title = meta.displayTitle || doc.name.replace(/\.[^/.]+$/, '');
   const status = meta.status ?? 'ready';
-  const emoji = FILE_EMOJI[doc.type] ?? '📄';
+  const emoji = (meta.sourceKind && SOURCE_KIND_EMOJI[meta.sourceKind]) || FILE_EMOJI[doc.type] || '📄';
   const uploadedAt = new Date(doc.uploadDate).toLocaleDateString('de-DE', { day: '2-digit', month: 'short', year: 'numeric' });
   const lastOpened = meta.lastOpenedAt
     ? new Date(meta.lastOpenedAt).toLocaleDateString('de-DE', { day: '2-digit', month: 'short' })

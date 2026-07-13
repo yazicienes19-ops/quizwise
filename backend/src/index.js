@@ -10,6 +10,7 @@ const userRoutes = require('./routes/user');
 const stripeRoutes = require('./routes/stripe');
 const searchRoutes = require('./routes/search');
 const documentRoutes = require('./routes/documents');
+const importRoutes = require('./routes/importUrl');
 const { router: pushRoutes, vapidConfigured } = require('./routes/push');
 const { startReminderCron } = require('./push/reminderCron');
 const { requireAuth } = require('./middleware/auth');
@@ -67,6 +68,8 @@ app.use('/api/agents', geminiLimiter, requireAuth, checkAgentLimit, agentRoutes)
 // Geschützt: Login (kein Gemini-Limit, ruft externe API auf)
 app.use('/api/search', requireAuth, searchRoutes);
 app.use('/api/documents', requireAuth, documentRoutes);
+// Quellen-Import per Link (YouTube zählt intern als Generierung)
+app.use('/api/import', geminiLimiter, requireAuth, importRoutes);
 
 // Push: vapid-key öffentlich, subscribe/unsubscribe intern per requireAuth geschützt
 app.use('/api/push', pushRoutes);

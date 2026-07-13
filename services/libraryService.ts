@@ -9,6 +9,9 @@ export interface SourceMeta {
   examDate?: string;
   notes?: string;
   isAltklausur?: boolean;
+  /** Herkunfts-Link bei importierten Quellen (YouTube-Video, Webartikel) */
+  sourceUrl?: string;
+  sourceKind?: 'youtube' | 'web';
   status?: SourceStatus;
   lastOpenedAt?: number;
   quizCount?: number;
