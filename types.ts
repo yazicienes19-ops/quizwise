@@ -211,7 +211,8 @@ export enum ActiveTab {
   RADAR = 'RADAR',
   EXPLAINER = 'EXPLAINER',
   EXAM = 'EXAM',
-  RECALL = 'RECALL'
+  RECALL = 'RECALL',
+  READER = 'READER'
 }
 
 export enum QuizType {

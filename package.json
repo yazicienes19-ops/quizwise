@@ -12,6 +12,8 @@
     "test:watch": "vitest"
   },
   "dependencies": {
+    "@capacitor/core": "^8.4.1",
+    "@capacitor/ios": "^8.4.1",
     "@google/genai": "^1.40.0",
     "@stripe/stripe-js": "^9.5.0",
     "@supabase/supabase-js": "^2.105.4",
@@ -21,12 +23,14 @@
     "jspdf": "^4.2.1",
     "lucide-react": "^0.575.0",
     "mammoth": "1.8.0",
+    "pdfjs-dist": "^6.1.200",
     "react": "^19.2.4",
     "react-dom": "^19.2.4",
     "recharts": "^3.8.1",
     "tailwind-merge": "^3.5.0"
   },
   "devDependencies": {
+    "@capacitor/cli": "^8.4.1",
     "@testing-library/jest-dom": "^6.9.1",
     "@testing-library/react": "^16.3.2",
     "@types/node": "^22.14.0",

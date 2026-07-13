@@ -70,3 +70,12 @@ export function getTextForChapterDetection(doc: {
   if (doc.digestText) return doc.digestText;
   return '';
 }
+
+/** Wie detectChapters(), degradiert aber bei 0 erkannten Kapiteln auf ein
+ *  synthetisches Ganzdokument-Kapitel — Aufrufer müssen nie den Leerfall behandeln. */
+export function getChaptersOrWhole(text: string): Chapter[] {
+  const chapters = detectChapters(text);
+  if (chapters.length > 0) return chapters;
+  if (!text || !text.trim()) return [];
+  return [{ index: 0, title: 'Gesamtes Dokument', content: text.trim(), charCount: text.trim().length }];
+}

@@ -16,6 +16,8 @@ export interface CloudSavedContent {
   lib_meta: Record<string, any>;
   study_events: any[];
   study_templates: any[];
+  reading_progress: Record<string, any>;
+  reader_log: any[];
 }
 
 export interface CloudPreferences {
@@ -51,6 +53,8 @@ const EMPTY_SAVED: CloudSavedContent = {
   lib_meta: {},
   study_events: [],
   study_templates: [],
+  reading_progress: {},
+  reader_log: [],
 };
 
 async function ensureRows(userId: string): Promise<void> {
@@ -92,6 +96,8 @@ export async function loadAllCloudData(userId: string): Promise<AllCloudData> {
       lib_meta: savedRes.data.lib_meta ?? {},
       study_events: savedRes.data.study_events ?? [],
       study_templates: savedRes.data.study_templates ?? [],
+      reading_progress: savedRes.data.reading_progress ?? {},
+      reader_log: savedRes.data.reader_log ?? [],
     } : null,
     preferences: (profileRes.data?.preferences as CloudPreferences) ?? {},
     metrics,
@@ -171,14 +177,18 @@ export async function migrateLocalToCloud(userId: string): Promise<void> {
   const libMeta = readLocal('quizwise_lib_meta');
   const studyEvents = readLocal('study_events');
   const studyTemplates = readLocal('study_templates');
+  const readingProgress = readLocal('quizwise_reading_progress');
+  const readerLog = readLocal('quizwise_reader_log');
 
-  if (savedQuizzes || savedExams || libMeta || studyEvents || studyTemplates) {
+  if (savedQuizzes || savedExams || libMeta || studyEvents || studyTemplates || readingProgress || readerLog) {
     await supabase.from('user_saved_content').update({
       ...(savedQuizzes ? { saved_quizzes: savedQuizzes } : {}),
       ...(savedExams ? { saved_exams: savedExams } : {}),
       ...(libMeta ? { lib_meta: libMeta } : {}),
       ...(studyEvents ? { study_events: studyEvents } : {}),
       ...(studyTemplates ? { study_templates: studyTemplates } : {}),
+      ...(readingProgress ? { reading_progress: readingProgress } : {}),
+      ...(readerLog ? { reader_log: readerLog } : {}),
       updated_at: new Date().toISOString(),
     }).eq('user_id', userId);
   }

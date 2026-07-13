@@ -22,6 +22,10 @@ interface ActiveRecallProps {
   /** Erstellt Karteikarten aus den identifizierten Lücken (wird in AppContent verdrahtet). */
   onCreateCardsFromGaps?: (topic: string, points: string[]) => void;
   initialDoc?: ProcessedDocument;
+  /** Themen-Vorbelegung, z.B. aus dem Split-Screen-Reader-Handoff. */
+  initialFocusTopic?: string;
+  /** Startet die Herausforderung automatisch, sobald die Quelle gesetzt ist — kein manueller Klick nötig. */
+  autoStart?: boolean;
 }
 
 export const ActiveRecall: React.FC<ActiveRecallProps> = ({
@@ -32,10 +36,12 @@ export const ActiveRecall: React.FC<ActiveRecallProps> = ({
   onComplete,
   onCreateCardsFromGaps,
   initialDoc,
+  initialFocusTopic,
+  autoStart,
 }) => {
   const [activeSource, setActiveSource] = useState<GenerationSource | null>(null);
   const [activeSourceName, setActiveSourceName] = useState('');
-  const [focusTopic, setFocusTopic] = useState('');
+  const [focusTopic, setFocusTopic] = useState(initialFocusTopic ?? '');
 
   // Schwache echte Themen als Fokus-Vorschläge (gleiche Quelle wie der Lern-Coach)
   const topicSuggestions = useMemo(() =>
@@ -143,6 +149,18 @@ export const ActiveRecall: React.FC<ActiveRecallProps> = ({
       setIsLoading(false);
     }
   };
+
+  // Auto-Start (z.B. Feynman-Handoff aus dem Reader): activeSource wird erst
+  // asynchron im Mount-Effekt gesetzt — dieser Effekt wartet darauf und feuert
+  // dann genau einmal, statt startNewChallenge() direkt beim Mount aufzurufen
+  // (activeSource wäre dort noch null → Race).
+  const autoStartedRef = useRef(false);
+  useEffect(() => {
+    if (autoStart && activeSource && !autoStartedRef.current) {
+      autoStartedRef.current = true;
+      startNewChallenge();
+    }
+  }, [activeSource]); // eslint-disable-line react-hooks/exhaustive-deps
 
   const handleEvaluate = async () => {
     if (!challenge || !userAnswer.trim() || !activeSource) return;

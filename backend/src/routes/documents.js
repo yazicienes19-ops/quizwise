@@ -69,7 +69,7 @@ router.post('/:id/analyze', async (req, res) => {
       }
 
       const response = await ai.models.generateContent({
-        model: 'gemini-2.5-flash',
+        model: 'gemini-2.5-flash-lite',
         contents: [{ role: 'user', parts: [part, { text: DIGEST_PROMPT }] }],
         config: { temperature: 0.2, thinkingConfig: { thinkingBudget: 0 } },
       });
@@ -78,7 +78,14 @@ router.post('/:id/analyze', async (req, res) => {
       await sb.from('documents').update({ digest_text: digestText, digest_status: 'ready' }).eq('id', id);
     } catch (err) {
       console.error('Digest-Fehler:', err.message);
-      await sb.from('documents').update({ digest_status: 'error' }).eq('id', id).catch(() => {});
+      // sb-Query-Builder ist nur "thenable" (implementiert .then() für await),
+      // aber KEIN echtes Promise — .catch() direkt anhängen wirft TypeError
+      // und crasht diesen fire-and-forget Hintergrund-Task komplett.
+      try {
+        await sb.from('documents').update({ digest_status: 'error' }).eq('id', id);
+      } catch (updateErr) {
+        console.error('Digest-Fehlerstatus konnte nicht gespeichert werden:', updateErr.message);
+      }
     }
   })();
 });

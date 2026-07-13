@@ -34,6 +34,8 @@ const ExamSystem = React.lazy(() => import('./ExamSystem').then(m => ({ default:
 const ScholarSearch = React.lazy(() => import('./ScholarSearch').then(m => ({ default: m.ScholarSearch })));
 const LibrarySystem = React.lazy(() => import('./LibrarySystem').then(m => ({ default: m.LibrarySystem })));
 const ActiveRecall = React.lazy(() => import('./ActiveRecall').then(m => ({ default: m.ActiveRecall })));
+const SplitScreenReader = React.lazy(() => import('./SplitScreenReader').then(m => ({ default: m.SplitScreenReader })));
+const PdfSplitScreenReader = React.lazy(() => import('./PdfSplitScreenReader').then(m => ({ default: m.PdfSplitScreenReader })));
 const LearningCoach = React.lazy(() => import('./LearningCoach').then(m => ({ default: m.LearningCoach })));
 const ExplainerSystem = React.lazy(() => import('./ExplainerSystem').then(m => ({ default: m.ExplainerSystem })));
 const StudyPlanner = React.lazy(() => import('./StudyPlanner').then(m => ({ default: m.StudyPlanner })));
@@ -132,6 +134,10 @@ export const AppContent: React.FC<AppContentProps> = (p) => {
       setPendingActionDoc(doc); setPendingTopic(doc ? topic : null);
       setQuestions([]); setAnswers([]); setActiveTab(ActiveTab.QUIZ);
     } else {
+      // Kein konkretes Dokument für dieses Thema bekannt — alten pending-Kontext
+      // verwerfen, sonst würde z.B. ein Feynman-Auto-Start (Reader-Handoff) auf
+      // einem völlig anderen, veralteten Dokument erneut losgehen.
+      setPendingActionDoc(null); setPendingTopic(null);
       const tabMap = { cards: ActiveTab.CARDS, recall: ActiveTab.RECALL, quiz: ActiveTab.QUIZ } as const;
       setActiveTab(tabMap[mode]);
     }
@@ -160,7 +166,7 @@ export const AppContent: React.FC<AppContentProps> = (p) => {
         onRetryAnalysis={retryAnalysis}
         onAction={(tab, doc) => {
           if (tab === ActiveTab.QUIZ) { setPendingActionDoc(doc); setQuestions([]); setAnswers([]); setActiveTab(ActiveTab.QUIZ); }
-          else if (tab === ActiveTab.EXPLAINER || tab === ActiveTab.CARDS || tab === ActiveTab.RECALL || tab === ActiveTab.EXAM) { setPendingActionDoc(doc); setActiveTab(tab); }
+          else if (tab === ActiveTab.EXPLAINER || tab === ActiveTab.CARDS || tab === ActiveTab.RECALL || tab === ActiveTab.EXAM || tab === ActiveTab.READER) { setPendingActionDoc(doc); setActiveTab(tab); }
           else { setPendingActionDoc(null); setActiveTab(tab); }
         }}
         onAddCollection={addCollection} onDeleteCollection={removeCollection}
@@ -300,9 +306,32 @@ export const AppContent: React.FC<AppContentProps> = (p) => {
       );
     }
 
+    case ActiveTab.READER: {
+      if (!pendingActionDoc) return <Dashboard onTabChange={setActiveTab} flowResult={flowResult} onAcceptFlow={saveFlowResult} documents={documents} onStartMistakeReview={handleStartMistakeReview} />;
+      // PDFs bekommen die echte Seitenansicht (pdf.js) statt des Digest-Fließtexts —
+      // der Digest-Reader bleibt Fallback für Bilder und PDFs ohne Dateiinhalt.
+      if (pendingActionDoc.type === 'pdf' && (pendingActionDoc.storagePath || pendingActionDoc.content)) {
+        return <PdfSplitScreenReader
+          key={`pdf-reader-${pendingActionDoc.id}`}
+          doc={pendingActionDoc}
+          userId={user?.id}
+          onBack={() => { setPendingActionDoc(null); setActiveTab(ActiveTab.LIBRARY); }}
+          onStartFeynman={(topic) => { setPendingTopic(topic); setActiveTab(ActiveTab.RECALL); }}
+        />;
+      }
+      return <SplitScreenReader
+        key={`reader-${pendingActionDoc.id}`}
+        doc={pendingActionDoc}
+        userId={user?.id}
+        onBack={() => { setPendingActionDoc(null); setActiveTab(ActiveTab.LIBRARY); }}
+        onStartFeynman={(topic) => { setPendingTopic(topic); setActiveTab(ActiveTab.RECALL); }}
+        onRetryAnalysis={() => retryAnalysis(pendingActionDoc.id)}
+      />;
+    }
+
     case ActiveTab.RECALL:
       return <ActiveRecall
-        key={pendingActionDoc ? `recall-${pendingActionDoc.id}` : `recall-${activeModuleId ?? 'all'}`}
+        key={pendingActionDoc ? `recall-${pendingActionDoc.id}-${pendingTopic ?? ''}` : `recall-${activeModuleId ?? 'all'}`}
         availableDocuments={documents} collections={collections}
         getDocumentSource={getDocumentSource}
         onSaveToLibrary={file => handleFileUpload(file)}
@@ -328,6 +357,8 @@ export const AppContent: React.FC<AppContentProps> = (p) => {
           setActiveTab(ActiveTab.CARDS);
         }}
         initialDoc={pendingActionDoc ?? undefined}
+        initialFocusTopic={pendingActionDoc && pendingTopic ? pendingTopic : undefined}
+        autoStart={!!(pendingActionDoc && pendingTopic)}
       />;
 
     case ActiveTab.EXAM: return (

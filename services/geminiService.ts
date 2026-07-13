@@ -805,7 +805,8 @@ export const analyzeLearningProgress = async (
 export const generateExplanation = async (
   source: GenerationSource | null,
   concept: string,
-  useExternalKnowledge: boolean
+  useExternalKnowledge: boolean,
+  includeSourceQuote: boolean = false
 ): Promise<string> => {
   if (!useExternalKnowledge && !source?.file && !source?.text && !source?.storagePath) {
     throw new Error('Kein Dokument übergeben — externe Quellen sind deaktiviert.');
@@ -814,11 +815,15 @@ export const generateExplanation = async (
   const parts: any[] = [];
   if (source) parts.push(sourceTopart(source));
 
+  const sourceQuoteInstruction = includeSourceQuote
+    ? `\nFüge ganz am Ende, als letzte Zeile der Antwort, hinzu: **Quelle:** "wörtliches Zitat aus dem Dokument, max. 200 Zeichen, das deine Erklärung am besten belegt".`
+    : '';
+
   const safeConcept = sanitizeUserInput(concept, 200);
   if (!useExternalKnowledge) {
     parts.push({ text: `Erkläre das Konzept "${safeConcept}" ausschließlich basierend auf dem oben bereitgestellten Dokument.
 STRENGE REGEL: Verwende NUR Inhalte aus dem Dokument. Kein Allgemeinwissen, keine externen Quellen, keine Erfindungen. Wenn das Dokument zu "${safeConcept}" nichts enthält, sage das klar.
-Strukturiere in 3 Stufen: Grundlagen, Vertiefung und Kontext. Antworte auf Deutsch.` });
+Strukturiere in 3 Stufen: Grundlagen, Vertiefung und Kontext. Antworte auf Deutsch.${sourceQuoteInstruction}` });
   } else if (source) {
     parts.push({ text: `Erkläre das Konzept "${safeConcept}".
 Nutze das oben bereitgestellte Dokument als primäre Quelle. Ergänze mit deinem Allgemeinwissen wo das Dokument lückenhaft ist — kennzeichne solche Ergänzungen mit "Allgemeinwissen:".

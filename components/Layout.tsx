@@ -535,8 +535,11 @@ export const Layout: React.FC<LayoutProps> = ({
       )}
 
       {/* ── MAIN CONTENT ── */}
-      <main className="flex-grow overflow-y-auto w-full relative pt-16 pb-24 px-4 sm:px-6 md:pt-8 md:pb-8 md:px-8 lg:pt-16 lg:pb-16 lg:px-16">
-        <div className="max-w-6xl mx-auto relative z-10">{children}</div>
+      {/* Reader füllt die Fläche (Split-Screen braucht jeden Pixel), alle anderen Tabs behalten den zentrierten Lesebreiten-Container */}
+      <main className={`flex-grow overflow-y-auto w-full relative ${activeTab === ActiveTab.READER
+        ? 'pt-16 pb-20 px-2 sm:px-4 md:pt-4 md:pb-4 md:px-4'
+        : 'pt-16 pb-24 px-4 sm:px-6 md:pt-8 md:pb-8 md:px-8 lg:pt-16 lg:pb-16 lg:px-16'}`}>
+        <div className={`relative z-10 ${activeTab === ActiveTab.READER ? 'w-full' : 'max-w-6xl mx-auto'}`}>{children}</div>
       </main>
 
       {showApiSettings && (

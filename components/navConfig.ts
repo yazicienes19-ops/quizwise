@@ -26,7 +26,6 @@ export interface NavGroup {
 export const LABOR_GROUP: NavGroup = {
   title: 'Labor',
   items: [
-    { tab: ActiveTab.EXPLAINER, label: 'Erklärer', hint: 'Konzepte verstehen' },
     { tab: ActiveTab.PAPER, label: 'Hausarbeit', hint: 'Mit Quellen schreiben' },
     { tab: ActiveTab.SEARCH, label: 'Recherche', hint: 'Paper & Web suchen' },
   ],
@@ -46,18 +45,17 @@ export const NAV_GROUPS: NavGroup[] = [
       { tab: ActiveTab.CARDS, label: 'Karteikarten', hint: 'Täglich wiederholen' },
       { tab: ActiveTab.RECALL, label: 'Feynman-Methode', hint: 'Erklären in eigenen Worten' },
       { tab: ActiveTab.EXAM, label: 'Klausur-Simulator', hint: 'Prüfung simulieren' },
+      { tab: ActiveTab.EXPLAINER, label: 'Erklärer', hint: 'Konzepte verstehen' },
     ],
   },
   {
     title: 'Material',
     items: [
       { tab: ActiveTab.LIBRARY, label: 'Bibliothek', hint: 'PDFs & Notizen' },
-      // KI-Erklärer + Hausarbeit + Recherche sind Aktionen auf Dokumenten →
-      // erreichbar über die Bibliothek (Dokument anklicken → Aktion wählen).
-      // Falls eigene Nav-Punkte gewünscht, hier wieder einkommentieren:
-      // { tab: ActiveTab.EXPLAINER, label: 'Erklär mir das', hint: 'KI erklärt Konzepte' },
-      // { tab: ActiveTab.PAPER, label: 'Hausarbeit', hint: 'Mit Quellen schreiben' },
-      // { tab: ActiveTab.SEARCH, label: 'Recherche', hint: 'Paper & Web suchen' },
+      // Hausarbeit + Recherche sind Aktionen auf Dokumenten → erreichbar über
+      // die Bibliothek (Dokument anklicken → Aktion wählen). Der Split-Screen-
+      // Reader ist ebenfalls dokument-gebunden und braucht deshalb keinen
+      // eigenen Nav-Punkt (immer über Bibliothek → Quelle → Aktionskarte).
     ],
   },
   {
