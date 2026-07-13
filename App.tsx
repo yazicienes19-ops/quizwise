@@ -211,7 +211,7 @@ const App: React.FC = () => {
         collections={docs.collections}
         activeModuleId={activeModuleId}
         onModuleChange={setActiveModuleId}
-        user={auth.user} onLoginClick={() => auth.setShowAuthModal(true)}
+        user={auth.user} userPlan={auth.userPlan} onLoginClick={() => auth.setShowAuthModal(true)}
         onLogout={() => supabase.auth.signOut()}
         onUpgradeClick={() => setShowUpgradeModal(true)}
         onSettingsClick={() => setShowSettings(true)}
@@ -222,7 +222,7 @@ const App: React.FC = () => {
             <div className="flex items-center gap-3">
               <span className="text-xl">🔥</span>
               <p className="text-[11px] font-bold text-amber-800 dark:text-amber-300">
-                Deine <strong>{streak.current}-Tage-Streak</strong> endet heute — noch {totalDueCards} Karte{totalDueCards !== 1 ? 'n' : ''} fällig!
+                Deine <strong>{streak.current}-Tage-Streak</strong> endet heute, noch {totalDueCards} Karte{totalDueCards !== 1 ? 'n' : ''} fällig!
               </p>
             </div>
             <button

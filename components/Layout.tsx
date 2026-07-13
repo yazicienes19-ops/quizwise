@@ -25,6 +25,7 @@ interface LayoutProps {
   activeModuleId?: string | null;
   onModuleChange?: (id: string | null) => void;
   user?: User | null;
+  userPlan?: 'free' | 'pro';
   onLoginClick?: () => void;
   onLogout?: () => void;
   onUpgradeClick?: () => void;
@@ -48,7 +49,7 @@ const ICONS: Partial<Record<ActiveTab, LucideIcon>> = {
 };
 
 export const Layout: React.FC<LayoutProps> = ({
-  children, activeTab, onTabChange, collections = [], activeModuleId = null, onModuleChange, user,
+  children, activeTab, onTabChange, collections = [], activeModuleId = null, onModuleChange, user, userPlan = 'free',
   onLoginClick, onLogout, onUpgradeClick, onSettingsClick,
   isDark, onToggleTheme
 }) => {
@@ -234,21 +235,36 @@ export const Layout: React.FC<LayoutProps> = ({
                     style={{ color: 'var(--primary-text)', background: 'var(--primary)' }}
                   >{userInitial}</div>
                   <div className="flex-1 min-w-0">
-                    <p className="text-[10px] font-black dark:text-white break-words">{user.user_metadata?.full_name || 'Nutzer'}</p>
-                    <p className="text-[9px] text-slate-400 break-words">{user.email}</p>
+                    <p className="text-[10px] font-black dark:text-white break-words flex items-center gap-1.5">
+                      <span className="truncate">{user.user_metadata?.full_name || 'Nutzer'}</span>
+                      {userPlan === 'pro' && (
+                        <span
+                          className="text-[7px] font-black uppercase tracking-widest rounded-full px-1.5 py-0.5 shrink-0"
+                          style={{ background: 'var(--primary)', color: 'var(--primary-text)' }}
+                        >Pro</span>
+                      )}
+                    </p>
+                    {/* Umbruch nur am @, nie mitten im Wort */}
+                    <p className="text-[9px] text-slate-400 break-words">
+                      {user.email?.includes('@')
+                        ? <>{user.email.split('@')[0]}<wbr />@{user.email.split('@').slice(1).join('@')}</>
+                        : user.email}
+                    </p>
                   </div>
                   <button onClick={onLogout} className="text-slate-400 hover:text-rose-500 transition-colors shrink-0">
                     <LogOut className="w-4 h-4" strokeWidth={1.75} />
                   </button>
                 </div>
-                <button
-                  onClick={onUpgradeClick}
-                  className="w-full flex items-center justify-center gap-2 px-4 py-2.5 rounded-2xl text-[10px] font-black uppercase tracking-widest transition-all hover:scale-[1.02] active:scale-95"
-                  style={{ background: 'color-mix(in srgb, var(--primary) 15%, transparent)', color: 'var(--primary)', border: '1px solid color-mix(in srgb, var(--primary) 30%, transparent)' }}
-                >
-                  <Zap className="w-3.5 h-3.5" strokeWidth={2} />
-                  Upgrade zu Pro
-                </button>
+                {userPlan !== 'pro' && (
+                  <button
+                    onClick={onUpgradeClick}
+                    className="w-full flex items-center justify-center gap-2 px-4 py-2.5 rounded-2xl text-[10px] font-black uppercase tracking-widest transition-all hover:scale-[1.02] active:scale-95"
+                    style={{ background: 'color-mix(in srgb, var(--primary) 15%, transparent)', color: 'var(--primary)', border: '1px solid color-mix(in srgb, var(--primary) 30%, transparent)' }}
+                  >
+                    <Zap className="w-3.5 h-3.5" strokeWidth={2} />
+                    Upgrade zu Pro
+                  </button>
+                )}
               </>
             ) : (
               <button
