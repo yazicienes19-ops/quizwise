@@ -8,50 +8,51 @@
  * sich. Kein Breaking Change in App.tsx nötig.
  */
 import { ActiveTab } from '../types';
+import type { TKey } from '../i18n';
 
 export interface NavItem {
   tab: ActiveTab;
-  label: string;
-  /** Kurzer Untertitel der erklärt was hier passiert — max 4 Wörter */
-  hint?: string;
+  labelKey: TKey;
+  /** Kurzer Untertitel-Schlüssel der erklärt was hier passiert */
+  hintKey?: TKey;
 }
 
 export interface NavGroup {
   /** null = kein Gruppen-Header (für Start) */
-  title: string | null;
+  titleKey: TKey | null;
   items: NavItem[];
 }
 
 /** Labor-Gruppe: nur für Admins (isAdmin(userId) === true) */
 export const LABOR_GROUP: NavGroup = {
-  title: 'Labor',
+  titleKey: 'nav.group.lab',
   items: [
-    { tab: ActiveTab.PAPER, label: 'Hausarbeit', hint: 'Mit Quellen schreiben' },
-    { tab: ActiveTab.SEARCH, label: 'Recherche', hint: 'Paper & Web suchen' },
+    { tab: ActiveTab.PAPER, labelKey: 'nav.paper', hintKey: 'nav.paper.hint' },
+    { tab: ActiveTab.SEARCH, labelKey: 'nav.search', hintKey: 'nav.search.hint' },
   ],
 };
 
 export const NAV_GROUPS: NavGroup[] = [
   {
-    title: null,
+    titleKey: null,
     items: [
-      { tab: ActiveTab.DASHBOARD, label: 'Start' },
+      { tab: ActiveTab.DASHBOARD, labelKey: 'nav.start' },
     ],
   },
   {
-    title: 'Lernen',
+    titleKey: 'nav.group.learn',
     items: [
-      { tab: ActiveTab.QUIZ, label: 'Quiz', hint: 'Fragen aus deinen Unterlagen' },
-      { tab: ActiveTab.CARDS, label: 'Karteikarten', hint: 'Täglich wiederholen' },
-      { tab: ActiveTab.RECALL, label: 'Feynman-Methode', hint: 'Erklären in eigenen Worten' },
-      { tab: ActiveTab.EXAM, label: 'Klausur-Simulator', hint: 'Prüfung simulieren' },
-      { tab: ActiveTab.EXPLAINER, label: 'Erklärer', hint: 'Konzepte verstehen' },
+      { tab: ActiveTab.QUIZ, labelKey: 'nav.quiz', hintKey: 'nav.quiz.hint' },
+      { tab: ActiveTab.CARDS, labelKey: 'nav.cards', hintKey: 'nav.cards.hint' },
+      { tab: ActiveTab.RECALL, labelKey: 'nav.recall', hintKey: 'nav.recall.hint' },
+      { tab: ActiveTab.EXAM, labelKey: 'nav.exam', hintKey: 'nav.exam.hint' },
+      { tab: ActiveTab.EXPLAINER, labelKey: 'nav.explainer', hintKey: 'nav.explainer.hint' },
     ],
   },
   {
-    title: 'Material',
+    titleKey: 'nav.group.material',
     items: [
-      { tab: ActiveTab.LIBRARY, label: 'Bibliothek', hint: 'PDFs & Notizen' },
+      { tab: ActiveTab.LIBRARY, labelKey: 'nav.library', hintKey: 'nav.library.hint' },
       // Hausarbeit + Recherche sind Aktionen auf Dokumenten → erreichbar über
       // die Bibliothek (Dokument anklicken → Aktion wählen). Der Split-Screen-
       // Reader ist ebenfalls dokument-gebunden und braucht deshalb keinen
@@ -59,10 +60,10 @@ export const NAV_GROUPS: NavGroup[] = [
     ],
   },
   {
-    title: 'Fortschritt',
+    titleKey: 'nav.group.progress',
     items: [
-      { tab: ActiveTab.RADAR, label: 'Lernfortschritt', hint: 'Was du üben solltest' },
-      { tab: ActiveTab.PLANNER, label: 'Kalender' },
+      { tab: ActiveTab.RADAR, labelKey: 'nav.radar', hintKey: 'nav.radar.hint' },
+      { tab: ActiveTab.PLANNER, labelKey: 'nav.planner' },
     ],
   },
 ];

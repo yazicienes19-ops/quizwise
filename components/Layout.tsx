@@ -15,6 +15,8 @@ import { ApiKeySettings } from './ApiKeySettings';
 import { LegalModal } from './LegalModal';
 import { NAV_GROUPS, LABOR_GROUP } from './navConfig';
 import { isAdmin } from '../config/admin';
+import { useTranslation } from '../i18n/I18nProvider';
+import type { TKey } from '../i18n';
 
 interface LayoutProps {
   children: React.ReactNode;
@@ -53,6 +55,7 @@ export const Layout: React.FC<LayoutProps> = ({
   onLoginClick, onLogout, onUpgradeClick, onSettingsClick,
   isDark, onToggleTheme
 }) => {
+  const { t } = useTranslation();
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
   const [showApiSettings, setShowApiSettings] = useState(false);
   const [legalPage, setLegalPage] = useState<'impressum' | 'datenschutz' | 'agb' | null>(null);
@@ -74,30 +77,31 @@ export const Layout: React.FC<LayoutProps> = ({
 
   const streak = useMemo(() => getStreak(), []);
 
-  const EXTRA_LABELS: Partial<Record<ActiveTab, string>> = {
-    [ActiveTab.EXPLAINER]: 'Erklärer',
-    [ActiveTab.SEARCH]:    'Recherche',
-    [ActiveTab.PAPER]:     'Hausarbeit',
+  const EXTRA_LABELS: Partial<Record<ActiveTab, TKey>> = {
+    [ActiveTab.EXPLAINER]: 'nav.explainer',
+    [ActiveTab.SEARCH]:    'nav.search',
+    [ActiveTab.PAPER]:     'nav.paper',
   };
-  const currentPageLabel = allNavItems.find(i => i.tab === activeTab)?.label ?? EXTRA_LABELS[activeTab] ?? '';
+  const currentItem = allNavItems.find(i => i.tab === activeTab);
+  const currentPageLabel = currentItem ? t(currentItem.labelKey) : EXTRA_LABELS[activeTab] ? t(EXTRA_LABELS[activeTab]!) : '';
 
   // Mobile bottom bar: 4 wichtigste Tabs
-  const mobileBottomTabs = [
-    { tab: ActiveTab.DASHBOARD, short: 'Start' },
-    { tab: ActiveTab.QUIZ,      short: 'Quiz'  },
-    { tab: ActiveTab.LIBRARY,   short: 'Bib'   },
-    { tab: ActiveTab.PLANNER,   short: 'Kalender' },
+  const mobileBottomTabs: { tab: ActiveTab; shortKey: TKey }[] = [
+    { tab: ActiveTab.DASHBOARD, shortKey: 'nav.start' },
+    { tab: ActiveTab.QUIZ,      shortKey: 'nav.quiz'  },
+    { tab: ActiveTab.LIBRARY,   shortKey: 'nav.short.library' },
+    { tab: ActiveTab.PLANNER,   shortKey: 'nav.planner' },
   ];
 
   // Mobile "Mehr"-Sheet: alle anderen Tabs
-  const mobileSheetItems = [
-    { tab: ActiveTab.CARDS,     label: 'Karteikarten',   icon: Layers },
-    { tab: ActiveTab.RECALL,    label: 'Feynman-Methode', icon: Brain },
-    { tab: ActiveTab.EXAM,      label: 'Klausur-Simulator', icon: GraduationCap },
-    { tab: ActiveTab.RADAR,     label: 'Lernfortschritt', icon: BarChart2 },
-    { tab: ActiveTab.EXPLAINER, label: 'Erklärer',    icon: Lightbulb },
-    { tab: ActiveTab.SEARCH,    label: 'Recherche',      icon: Search },
-    { tab: ActiveTab.PAPER,     label: 'Hausarbeit',     icon: FileText },
+  const mobileSheetItems: { tab: ActiveTab; labelKey: TKey; icon: LucideIcon }[] = [
+    { tab: ActiveTab.CARDS,     labelKey: 'nav.cards',     icon: Layers },
+    { tab: ActiveTab.RECALL,    labelKey: 'nav.recall',    icon: Brain },
+    { tab: ActiveTab.EXAM,      labelKey: 'nav.exam',      icon: GraduationCap },
+    { tab: ActiveTab.RADAR,     labelKey: 'nav.radar',     icon: BarChart2 },
+    { tab: ActiveTab.EXPLAINER, labelKey: 'nav.explainer', icon: Lightbulb },
+    { tab: ActiveTab.SEARCH,    labelKey: 'nav.search',    icon: Search },
+    { tab: ActiveTab.PAPER,     labelKey: 'nav.paper',     icon: FileText },
   ];
   const userInitial = (user?.user_metadata?.full_name || user?.email || 'U')[0].toUpperCase();
 
@@ -122,7 +126,7 @@ export const Layout: React.FC<LayoutProps> = ({
             >QW</div>
             <span className="text-xl font-black tracking-tighter text-slate-900 dark:text-white uppercase truncate flex-1">QuizWise</span>
             {streak.current > 0 && (
-              <div className="flex items-center gap-1 shrink-0" title={`${streak.current} Tage Streak`}>
+              <div className="flex items-center gap-1 shrink-0" title={t('layout.streakTitle', { n: streak.current })}>
                 <Flame
                   className="w-4 h-4"
                   style={{ color: streak.todayDone ? 'var(--primary)' : '#94a3b8' }}
@@ -140,24 +144,24 @@ export const Layout: React.FC<LayoutProps> = ({
               Auch ohne Ordner sichtbar — sonst wissen Nutzer nicht, dass es das Feature gibt. */}
           {onModuleChange && collections.length === 0 && (
             <div className="mb-6 -mt-6">
-              <p className="text-[8px] font-black uppercase tracking-[0.3em] text-slate-400 mb-1.5 px-1">Aktives Fach</p>
+              <p className="text-[8px] font-black uppercase tracking-[0.3em] text-slate-400 mb-1.5 px-1">{t('layout.activeSubject')}</p>
               <button
                 onClick={() => onTabChange(ActiveTab.LIBRARY)}
                 className="w-full px-3 py-2.5 rounded-xl text-left transition-all hover:translate-x-0.5"
                 style={{ background: 'var(--bg-main)', border: '1px dashed var(--border-color)' }}
               >
-                <span className="text-[11px] font-black uppercase tracking-wider block" style={{ color: 'var(--text-main)' }}>🎓 Alle Fächer</span>
-                <span className="block text-[9px] font-medium text-slate-400 mt-0.5">Lege in der Bibliothek Ordner an, um nach Fach zu lernen</span>
+                <span className="text-[11px] font-black uppercase tracking-wider block" style={{ color: 'var(--text-main)' }}>{t('layout.allSubjects')}</span>
+                <span className="block text-[9px] font-medium text-slate-400 mt-0.5">{t('layout.subjectHint')}</span>
               </button>
             </div>
           )}
           {onModuleChange && collections.length > 0 && (
             <div className="mb-6 -mt-6">
-              <p className="text-[8px] font-black uppercase tracking-[0.3em] text-slate-400 mb-1.5 px-1">Aktives Fach</p>
+              <p className="text-[8px] font-black uppercase tracking-[0.3em] text-slate-400 mb-1.5 px-1">{t('layout.activeSubject')}</p>
               <select
                 value={activeModuleId ?? ''}
                 onChange={e => onModuleChange(e.target.value || null)}
-                aria-label="Aktives Fach wählen"
+                aria-label={t('layout.selectSubject')}
                 className="w-full px-3 py-2.5 rounded-xl text-[11px] font-black uppercase tracking-wider outline-none cursor-pointer"
                 style={{
                   background: activeModuleId ? 'color-mix(in srgb, var(--primary) 10%, var(--bg-main))' : 'var(--bg-main)',
@@ -165,7 +169,7 @@ export const Layout: React.FC<LayoutProps> = ({
                   color: activeModuleId ? 'var(--primary)' : 'var(--text-main)',
                 }}
               >
-                <option value="">🎓 Alle Fächer</option>
+                <option value="">{t('layout.allSubjects')}</option>
                 {collections.map(c => (
                   <option key={c.id} value={c.id}>{c.emoji} {c.name}</option>
                 ))}
@@ -176,9 +180,9 @@ export const Layout: React.FC<LayoutProps> = ({
           <nav className="space-y-0.5 overflow-y-auto pr-1 scrollbar-hide flex-1">
             {visibleGroups.map((group, gi) => (
               <div key={gi}>
-                {group.title && (
+                {group.titleKey && (
                   <p className="px-3 pt-5 pb-1.5 text-[8px] font-black uppercase tracking-[0.3em] text-slate-400">
-                    {group.title}
+                    {t(group.titleKey)}
                   </p>
                 )}
                 {group.items.map(item => {
@@ -197,10 +201,10 @@ export const Layout: React.FC<LayoutProps> = ({
                     >
                       {Icon && <Icon className="w-4 h-4 shrink-0" strokeWidth={1.75} />}
                       <div className="flex-1 min-w-0">
-                        <span className="text-[11px] font-black uppercase tracking-widest block break-words">{item.label}</span>
-                        {item.hint && !isActive && (
+                        <span className="text-[11px] font-black uppercase tracking-widest block break-words">{t(item.labelKey)}</span>
+                        {item.hintKey && !isActive && (
                           <span className="block text-[9px] font-medium text-slate-400 normal-case tracking-normal mt-0.5 break-words">
-                            {item.hint}
+                            {t(item.hintKey)}
                           </span>
                         )}
                       </div>
@@ -236,7 +240,7 @@ export const Layout: React.FC<LayoutProps> = ({
                   >{userInitial}</div>
                   <div className="flex-1 min-w-0">
                     <p className="text-[10px] font-black dark:text-white break-words flex items-center gap-1.5">
-                      <span className="truncate">{user.user_metadata?.full_name || 'Nutzer'}</span>
+                      <span className="truncate">{user.user_metadata?.full_name || t('layout.user')}</span>
                       {userPlan === 'pro' && (
                         <span
                           className="text-[7px] font-black uppercase tracking-widest rounded-full px-1.5 py-0.5 shrink-0"
@@ -262,7 +266,7 @@ export const Layout: React.FC<LayoutProps> = ({
                     style={{ background: 'color-mix(in srgb, var(--primary) 15%, transparent)', color: 'var(--primary)', border: '1px solid color-mix(in srgb, var(--primary) 30%, transparent)' }}
                   >
                     <Zap className="w-3.5 h-3.5" strokeWidth={2} />
-                    Upgrade zu Pro
+                    {t('layout.upgradePro')}
                   </button>
                 )}
               </>
@@ -273,7 +277,7 @@ export const Layout: React.FC<LayoutProps> = ({
                 style={{ background: 'var(--primary)', color: 'var(--primary-text)' }}
               >
                 <LogIn className="w-4 h-4" strokeWidth={1.75} />
-                Einloggen / Registrieren
+                {t('layout.loginRegister')}
               </button>
             )}
           </div>
@@ -286,7 +290,7 @@ export const Layout: React.FC<LayoutProps> = ({
             >
               <span className="group-hover:translate-x-1 transition-transform flex items-center gap-2">
                 <Settings className="w-4 h-4" strokeWidth={1.75} />
-                Einstellungen
+                {t('layout.settings')}
               </span>
             </button>
             <div className="flex justify-center gap-3 pt-2">
@@ -296,7 +300,7 @@ export const Layout: React.FC<LayoutProps> = ({
                   onClick={() => setLegalPage(p)}
                   className="text-[8px] font-bold uppercase tracking-widest text-slate-400 hover:text-slate-600 dark:hover:text-slate-300 transition-colors"
                 >
-                  {p === 'impressum' ? 'Impressum' : p === 'datenschutz' ? 'Datenschutz' : 'AGB'}
+                  {p === 'impressum' ? t('legal.imprint') : p === 'datenschutz' ? t('legal.privacy') : t('legal.terms')}
                 </button>
               ))}
             </div>
@@ -323,14 +327,14 @@ export const Layout: React.FC<LayoutProps> = ({
               <button
                 key={item.tab}
                 onClick={() => onTabChange(item.tab)}
-                title={item.label}
+                title={t(item.labelKey)}
                 className={`w-12 h-12 flex flex-col items-center justify-center gap-[3px] rounded-xl transition-all duration-200 active:scale-90 shrink-0 ${
                   isActive ? '' : 'text-slate-500 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800'
                 }`}
                 style={isActive ? { background: 'var(--primary)', color: 'var(--primary-text)' } : {}}
               >
                 {Icon && <Icon className="w-[18px] h-[18px]" strokeWidth={1.75} />}
-                <span className="text-[7px] font-black uppercase tracking-wide leading-none">{item.label.slice(0, 6)}</span>
+                <span className="text-[7px] font-black uppercase tracking-wide leading-none">{t(item.labelKey).slice(0, 6)}</span>
               </button>
             );
           })}
@@ -343,14 +347,14 @@ export const Layout: React.FC<LayoutProps> = ({
         >
           <button
             onClick={onSettingsClick}
-            title="Einstellungen"
+            title={t('layout.settings')}
             className="w-12 h-12 flex items-center justify-center rounded-xl text-slate-500 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800 transition-all active:scale-95"
           >
             <Settings className="w-[18px] h-[18px]" strokeWidth={1.75} />
           </button>
           {user ? (
             <button
-              title={`${user.email} – Abmelden`}
+              title={t('layout.logoutTitle', { email: user.email ?? '' })}
               onClick={onLogout}
               className="w-10 h-10 rounded-xl flex items-center justify-center text-[11px] font-black transition-all hover:scale-105 active:scale-90"
               style={{ background: 'var(--primary)', color: 'var(--primary-text)' }}
@@ -358,7 +362,7 @@ export const Layout: React.FC<LayoutProps> = ({
           ) : (
             <button
               onClick={onLoginClick}
-              title="Einloggen"
+              title={t('layout.login')}
               className="w-12 h-12 flex items-center justify-center rounded-xl transition-all active:scale-95"
               style={{ background: 'var(--primary)', color: 'var(--primary-text)' }}
             >
@@ -418,7 +422,7 @@ export const Layout: React.FC<LayoutProps> = ({
               style={{ background: 'var(--primary)', color: 'var(--primary-text)' }}
             >
               <LogIn className="w-[14px] h-[14px]" strokeWidth={1.75} />
-              Login
+              {t('layout.login')}
             </button>
           )}
         </div>
@@ -440,7 +444,7 @@ export const Layout: React.FC<LayoutProps> = ({
               style={isActive ? { color: 'var(--primary)' } : { color: 'rgb(148 163 184)' }}
             >
               {Icon && <Icon className="w-6 h-6" strokeWidth={1.75} />}
-              <span className="text-[8px] font-black uppercase tracking-widest">{item.short}</span>
+              <span className="text-[8px] font-black uppercase tracking-widest">{t(item.shortKey)}</span>
             </button>
           );
         })}
@@ -452,7 +456,7 @@ export const Layout: React.FC<LayoutProps> = ({
           {isMobileMenuOpen
             ? <X className="w-6 h-6" strokeWidth={1.75} />
             : <Menu className="w-6 h-6" strokeWidth={1.75} />}
-          <span className="text-[8px] font-black uppercase tracking-widest">Mehr</span>
+          <span className="text-[8px] font-black uppercase tracking-widest">{t('nav.more')}</span>
         </button>
       </nav>
 
@@ -488,7 +492,7 @@ export const Layout: React.FC<LayoutProps> = ({
                       }
                     >
                       <item.icon className="w-5 h-5 shrink-0" strokeWidth={1.75} />
-                      <span className="text-[9px] font-black uppercase tracking-wider leading-tight">{item.label}</span>
+                      <span className="text-[9px] font-black uppercase tracking-wider leading-tight">{t(item.labelKey)}</span>
                     </button>
                   );
                 })}
@@ -507,7 +511,7 @@ export const Layout: React.FC<LayoutProps> = ({
               >
                 <span className="text-[10px] font-black uppercase tracking-wider flex items-center gap-2">
                   <KeyRound className="w-4 h-4" strokeWidth={1.75} />
-                  API-Schlüssel
+                  {t('layout.apiKey')}
                 </span>
                 <span className="w-2 h-2 rounded-full shrink-0 bg-emerald-500" />
               </button>
@@ -519,7 +523,7 @@ export const Layout: React.FC<LayoutProps> = ({
                 style={{ background: 'color-mix(in srgb, var(--border-color) 40%, var(--bg-sidebar))', borderColor: 'var(--border-color)' }}
               >
                 <span className="text-[10px] font-black uppercase tracking-wider">
-                  {isDark ? 'Tagmodus' : 'Nachtmodus'}
+                  {isDark ? t('layout.dayMode') : t('layout.nightMode')}
                 </span>
                 {isDark ? <Sun className="w-5 h-5" strokeWidth={1.75} /> : <Moon className="w-5 h-5" strokeWidth={1.75} />}
               </button>
@@ -534,7 +538,7 @@ export const Layout: React.FC<LayoutProps> = ({
                   style={{ background: 'color-mix(in srgb, #f43f5e 8%, var(--bg-sidebar))', border: '1px solid color-mix(in srgb, #f43f5e 20%, transparent)' }}
                 >
                   <LogOut className="w-4 h-4" strokeWidth={1.75} />
-                  Abmelden
+                  {t('layout.logout')}
                 </button>
               ) : (
                 <button
@@ -543,7 +547,7 @@ export const Layout: React.FC<LayoutProps> = ({
                   style={{ background: 'var(--primary)', color: 'var(--primary-text)' }}
                 >
                   <LogIn className="w-4 h-4" strokeWidth={1.75} />
-                  Einloggen / Registrieren
+                  {t('layout.loginRegister')}
                 </button>
               )}
 
@@ -555,7 +559,7 @@ export const Layout: React.FC<LayoutProps> = ({
                     onClick={() => { setIsMobileMenuOpen(false); setLegalPage(p); }}
                     className="text-[8px] font-bold uppercase tracking-widest text-slate-400 hover:text-slate-600 dark:hover:text-slate-300 transition-colors"
                   >
-                    {p === 'impressum' ? 'Impressum' : p === 'datenschutz' ? 'Datenschutz' : 'AGB'}
+                    {p === 'impressum' ? t('legal.imprint') : p === 'datenschutz' ? t('legal.privacy') : t('legal.terms')}
                   </button>
                 ))}
               </div>

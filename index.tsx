@@ -4,6 +4,7 @@ import ReactDOM from 'react-dom/client';
 import './app.css';
 import App from './App';
 import { PwaUpdatePrompt } from './components/PwaUpdatePrompt';
+import { I18nProvider } from './i18n/I18nProvider';
 
 // Wenn der SW eine leere/fehlerhafte Seite liefert: automatisch alles leeren und neu laden.
 // Tritt vor allem in Safari auf wenn ein alter SW gecacht ist.
@@ -32,7 +33,9 @@ if (!rootElement) {
 const root = ReactDOM.createRoot(rootElement);
 root.render(
   <React.StrictMode>
-    <App />
-    <PwaUpdatePrompt />
+    <I18nProvider>
+      <App />
+      <PwaUpdatePrompt />
+    </I18nProvider>
   </React.StrictMode>
 );

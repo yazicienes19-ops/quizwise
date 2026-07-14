@@ -29,6 +29,7 @@ export interface CloudPreferences {
   feynman_intro_done?: boolean;
   recall_intro_done?: boolean;
   spaced_planning?: boolean;
+  language?: string;
 }
 
 export interface AllCloudData {
@@ -205,6 +206,8 @@ export async function migrateLocalToCloud(userId: string): Promise<void> {
   if (accent) prefs.accent_color = accent;
   if (font) prefs.font_choice = font;
   if (lh) prefs.line_height = lh;
+  const lang = localStorage.getItem('quizwise_language');
+  if (lang) prefs.language = lang;
   if (localStorage.getItem('quizwise_onboarding_done')) prefs.onboarding_done = true;
   if (localStorage.getItem('quizwise_feynman_intro_v1')) prefs.feynman_intro_done = true;
   if (localStorage.getItem('quizwise_feynman_intro_done')) prefs.recall_intro_done = true;

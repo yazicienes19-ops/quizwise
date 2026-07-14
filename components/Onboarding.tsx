@@ -1,4 +1,6 @@
 import React, { useState } from 'react';
+import { useTranslation } from '../i18n/I18nProvider';
+import type { TKey, Locale } from '../i18n';
 
 const ONBOARDING_KEY = 'quizwise_onboarding_done';
 
@@ -13,9 +15,9 @@ interface OnboardingProps {
 
 interface Step {
   icon: React.ReactNode;
-  title: string;
-  description: string;
-  highlight: string;
+  titleKey: TKey;
+  descKey: TKey;
+  highlightKey: TKey;
 }
 
 const ICON_PROPS = {
@@ -32,9 +34,9 @@ const STEPS: Step[] = [
         <line x1="12" y1="3" x2="12" y2="15" />
       </svg>
     ),
-    title: 'Lade deine Unterlagen hoch',
-    description: 'Vorlesungsfolien, Skripte oder Notizen als PDF, Word oder Foto. QuizWise liest alles und versteht den Inhalt.',
-    highlight: 'Deine Bibliothek ist der Startpunkt',
+    titleKey: 'onboarding.step1.title',
+    descKey: 'onboarding.step1.desc',
+    highlightKey: 'onboarding.step1.highlight',
   },
   {
     icon: (
@@ -44,9 +46,9 @@ const STEPS: Step[] = [
         <circle cx="12" cy="12" r="2" />
       </svg>
     ),
-    title: 'Übe, wie es dir liegt',
-    description: 'Aus deinen Unterlagen entstehen Quizfragen, Karteikarten und komplette Klausursimulationen, ganz ohne manuelles Erstellen.',
-    highlight: 'Quiz · Karteikarten · Klausur-Simulator · Feynman-Methode',
+    titleKey: 'onboarding.step2.title',
+    descKey: 'onboarding.step2.desc',
+    highlightKey: 'onboarding.step2.highlight',
   },
   {
     icon: (
@@ -55,9 +57,9 @@ const STEPS: Step[] = [
         <path d="M20.49 15a9 9 0 1 1-2.12-9.36L23 10" />
       </svg>
     ),
-    title: 'Fehler kommen von selbst wieder',
-    description: 'Was du falsch beantwortest, legt dir QuizWise nach bewährten Lernintervallen automatisch wieder vor, kurz bevor du es vergessen würdest.',
-    highlight: 'Wiederholen genau im richtigen Moment',
+    titleKey: 'onboarding.step3.title',
+    descKey: 'onboarding.step3.desc',
+    highlightKey: 'onboarding.step3.highlight',
   },
   {
     icon: (
@@ -66,16 +68,21 @@ const STEPS: Step[] = [
         <polyline points="22 4 12 14.01 9 11.01" />
       </svg>
     ),
-    title: 'Dein Coach behält den Überblick',
-    description: 'Die Lernfortschritt-Ansicht zeigt dir jeden Tag, was du als Nächstes tun solltest, wo deine Schwächen liegen und wie deine Klausurprognose steht.',
-    highlight: '„Heute solltest du …": jeden Tag ein klarer Plan',
+    titleKey: 'onboarding.step4.title',
+    descKey: 'onboarding.step4.desc',
+    highlightKey: 'onboarding.step4.highlight',
   },
 ];
 
+// Gesamt = 1 Sprachschritt + 4 Inhaltsschritte
+const TOTAL = STEPS.length + 1;
+
 export const Onboarding: React.FC<OnboardingProps> = ({ onComplete, onStartUpload }) => {
+  const { t, locale, changeLocale } = useTranslation();
   const [step, setStep] = useState(0);
-  const isLast = step === STEPS.length - 1;
-  const current = STEPS[step];
+  const isLangStep = step === 0;
+  const isLast = step === TOTAL - 1;
+  const content = isLangStep ? null : STEPS[step - 1];
 
   const finish = (startUpload: boolean) => {
     localStorage.setItem(ONBOARDING_KEY, 'true');
@@ -90,12 +97,12 @@ export const Onboarding: React.FC<OnboardingProps> = ({ onComplete, onStartUploa
         style={{ background: 'var(--bg-sidebar)', border: '1px solid var(--border-color)' }}
       >
 
-        {/* Fortschritts-Balken — zurückliegende Schritte sind anklickbar */}
+        {/* Fortschritts-Balken: zurückliegende Schritte sind anklickbar */}
         <div className="flex gap-1.5 p-5 pb-0">
-          {STEPS.map((_, i) => (
+          {Array.from({ length: TOTAL }).map((_, i) => (
             <button
               key={i}
-              aria-label={`Zu Schritt ${i + 1}`}
+              aria-label={t('onboarding.step', { n: i + 1, total: TOTAL })}
               onClick={() => i < step && setStep(i)}
               className="h-1 flex-1 rounded-full transition-all duration-300"
               style={{
@@ -107,37 +114,68 @@ export const Onboarding: React.FC<OnboardingProps> = ({ onComplete, onStartUploa
           ))}
         </div>
 
-        <div className="p-8 pt-10 flex flex-col items-center text-center">
-          <div
-            className="w-16 h-16 rounded-[20px] flex items-center justify-center mb-6"
-            style={{ background: 'var(--primary)', color: 'var(--primary-text)' }}
-          >
-            {current.icon}
+        {isLangStep ? (
+          <div className="p-8 pt-10 flex flex-col items-center text-center">
+            <div className="w-16 h-16 rounded-[20px] flex items-center justify-center mb-6 text-3xl" style={{ background: 'var(--primary)', color: 'var(--primary-text)' }}>
+              🌍
+            </div>
+            <p className="text-[9px] font-black uppercase tracking-[0.3em] text-slate-400 mb-2">
+              {t('onboarding.step', { n: 1, total: TOTAL })}
+            </p>
+            <h2 className="text-xl font-black tracking-tight mb-3" style={{ color: 'var(--text-main)' }}>
+              {t('onboarding.lang.title')}
+            </h2>
+            <p className="text-sm text-slate-500 dark:text-slate-400 leading-relaxed mb-6">
+              {t('onboarding.lang.subtitle')}
+            </p>
+            <div className="grid grid-cols-2 gap-3 w-full">
+              {(['de', 'tr'] as Locale[]).map(l => (
+                <button
+                  key={l}
+                  onClick={() => changeLocale(l)}
+                  className="py-4 rounded-[16px] text-sm font-black uppercase tracking-widest transition-all hover:scale-[1.02]"
+                  style={locale === l
+                    ? { background: 'var(--primary)', color: 'var(--primary-text)', border: '2px solid var(--primary)' }
+                    : { background: 'var(--bg-main)', color: 'var(--text-main)', border: '2px solid var(--border-color)' }}
+                >
+                  {l === 'de' ? '🇩🇪 Deutsch' : '🇹🇷 Türkçe'}
+                </button>
+              ))}
+            </div>
           </div>
+        ) : content && (
+          <div className="p-8 pt-10 flex flex-col items-center text-center">
+            <div
+              className="w-16 h-16 rounded-[20px] flex items-center justify-center mb-6"
+              style={{ background: 'var(--primary)', color: 'var(--primary-text)' }}
+            >
+              {content.icon}
+            </div>
 
-          <p className="text-[9px] font-black uppercase tracking-[0.3em] text-slate-400 mb-2">
-            Schritt {step + 1} von {STEPS.length}
-          </p>
+            <p className="text-[9px] font-black uppercase tracking-[0.3em] text-slate-400 mb-2">
+              {t('onboarding.step', { n: step + 1, total: TOTAL })}
+            </p>
 
-          <h2 className="text-xl font-black tracking-tight mb-3" style={{ color: 'var(--text-main)' }}>
-            {current.title}
-          </h2>
+            <h2 className="text-xl font-black tracking-tight mb-3" style={{ color: 'var(--text-main)' }}>
+              {t(content.titleKey)}
+            </h2>
 
-          <p className="text-sm text-slate-500 dark:text-slate-400 leading-relaxed mb-4">
-            {current.description}
-          </p>
+            <p className="text-sm text-slate-500 dark:text-slate-400 leading-relaxed mb-4">
+              {t(content.descKey)}
+            </p>
 
-          <p
-            className="text-[10px] font-bold uppercase tracking-widest px-4 py-2 rounded-xl"
-            style={{
-              background: 'color-mix(in srgb, var(--primary) 10%, transparent)',
-              color: 'var(--primary)',
-              border: '1px solid color-mix(in srgb, var(--primary) 20%, transparent)',
-            }}
-          >
-            {current.highlight}
-          </p>
-        </div>
+            <p
+              className="text-[10px] font-bold uppercase tracking-widest px-4 py-2 rounded-xl"
+              style={{
+                background: 'color-mix(in srgb, var(--primary) 10%, transparent)',
+                color: 'var(--primary)',
+                border: '1px solid color-mix(in srgb, var(--primary) 20%, transparent)',
+              }}
+            >
+              {t(content.highlightKey)}
+            </p>
+          </div>
+        )}
 
         {/* Aktionen */}
         <div className="px-8 pb-8 space-y-3">
@@ -148,13 +186,13 @@ export const Onboarding: React.FC<OnboardingProps> = ({ onComplete, onStartUploa
                 className="w-full py-3.5 rounded-[16px] text-[11px] font-black uppercase tracking-widest hover:scale-[1.02] active:scale-[0.98] transition-all"
                 style={{ background: 'var(--primary)', color: 'var(--primary-text)' }}
               >
-                Erstes Dokument hochladen
+                {t('onboarding.uploadFirst')}
               </button>
               <button
                 onClick={() => finish(false)}
                 className="w-full py-3 text-[10px] font-bold uppercase tracking-widest text-slate-400 hover:text-slate-600 dark:hover:text-slate-300 transition-colors"
               >
-                Erstmal umschauen
+                {t('onboarding.lookAround')}
               </button>
             </>
           ) : (
@@ -164,7 +202,7 @@ export const Onboarding: React.FC<OnboardingProps> = ({ onComplete, onStartUploa
                 className="w-full py-3.5 rounded-[16px] text-[11px] font-black uppercase tracking-widest hover:scale-[1.02] active:scale-[0.98] transition-all"
                 style={{ background: 'var(--primary)', color: 'var(--primary-text)' }}
               >
-                Weiter
+                {t('common.next')}
               </button>
               <div className="flex items-center justify-between">
                 <button
@@ -172,13 +210,13 @@ export const Onboarding: React.FC<OnboardingProps> = ({ onComplete, onStartUploa
                   disabled={step === 0}
                   className="py-3 text-[10px] font-bold uppercase tracking-widest text-slate-400 hover:text-slate-600 dark:hover:text-slate-300 transition-colors disabled:opacity-0"
                 >
-                  ← Zurück
+                  ← {t('common.back')}
                 </button>
                 <button
                   onClick={() => finish(false)}
                   className="py-3 text-[10px] font-bold uppercase tracking-widest text-slate-400 hover:text-slate-600 dark:hover:text-slate-300 transition-colors"
                 >
-                  Überspringen
+                  {t('onboarding.skip')}
                 </button>
               </div>
             </>

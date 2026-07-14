@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { X, Mail, Lock, User, Loader2, GraduationCap } from 'lucide-react';
 import { supabase } from '../services/supabaseClient';
+import { useTranslation } from '../i18n/I18nProvider';
 
 interface AuthModalProps {
   onClose: () => void;
@@ -9,6 +10,7 @@ interface AuthModalProps {
 }
 
 export const AuthModal: React.FC<AuthModalProps> = ({ onClose, onSuccess }) => {
+  const { t } = useTranslation();
   const [mode, setMode] = useState<'login' | 'register'>('login');
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
@@ -31,7 +33,7 @@ export const AuthModal: React.FC<AuthModalProps> = ({ onClose, onSuccess }) => {
           options: { data: { full_name: name } }
         });
         if (error) throw error;
-        setSuccessMsg('Bestätigungs-E-Mail verschickt! Bitte E-Mail bestätigen.');
+        setSuccessMsg(t('auth.confirmSent'));
       } else {
         const { error } = await supabase.auth.signInWithPassword({ email, password });
         if (error) throw error;
@@ -41,9 +43,9 @@ export const AuthModal: React.FC<AuthModalProps> = ({ onClose, onSuccess }) => {
     } catch (err: any) {
       // Supabase-Fehlermeldungen auf Deutsch übersetzen
       const msg = err.message || '';
-      if (msg.includes('Invalid login')) setError('E-Mail oder Passwort falsch.');
-      else if (msg.includes('already registered')) setError('Diese E-Mail ist bereits registriert.');
-      else if (msg.includes('Password should')) setError('Passwort muss mindestens 6 Zeichen haben.');
+      if (msg.includes('Invalid login')) setError(t('auth.errInvalid'));
+      else if (msg.includes('already registered')) setError(t('auth.errExists'));
+      else if (msg.includes('Password should')) setError(t('auth.errShortPw'));
       else setError(msg);
     } finally {
       setIsLoading(false);
@@ -65,7 +67,7 @@ export const AuthModal: React.FC<AuthModalProps> = ({ onClose, onSuccess }) => {
             <div>
               <h2 className="text-base font-black dark:text-white uppercase tracking-tight">QuizWise</h2>
               <p className="text-[10px] text-slate-400 font-bold uppercase tracking-widest">
-                {mode === 'login' ? 'Willkommen zurück' : 'Konto erstellen'}
+                {mode === 'login' ? t('auth.welcomeBack') : t('auth.createAccount')}
               </p>
             </div>
           </div>
@@ -89,7 +91,7 @@ export const AuthModal: React.FC<AuthModalProps> = ({ onClose, onSuccess }) => {
                   mode === m ? 'bg-indigo-600 text-white shadow-lg' : 'text-slate-400 hover:text-slate-600'
                 }`}
               >
-                {m === 'login' ? 'Einloggen' : 'Registrieren'}
+                {m === 'login' ? t('auth.login') : t('auth.register')}
               </button>
             ))}
           </div>
@@ -99,14 +101,14 @@ export const AuthModal: React.FC<AuthModalProps> = ({ onClose, onSuccess }) => {
         <form onSubmit={handleSubmit} className="p-8 space-y-4">
           {mode === 'register' && (
             <div className="space-y-1.5">
-              <label className="text-[10px] font-black uppercase tracking-widest text-slate-400">Name</label>
+              <label className="text-[10px] font-black uppercase tracking-widest text-slate-400">{t('auth.name')}</label>
               <div className="relative">
                 <User className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" strokeWidth={1.75} />
                 <input
                   type="text"
                   value={name}
                   onChange={e => setName(e.target.value)}
-                  placeholder="Dein Name"
+                  placeholder={t('auth.namePlaceholder')}
                   required
                   className="w-full pl-11 pr-4 py-3.5 rounded-2xl text-sm dark:text-white placeholder-slate-400 outline-none focus:ring-2 focus:ring-indigo-500/50 transition-all"
                   style={{ background: 'color-mix(in srgb, var(--border-color) 30%, var(--bg-main))', border: '1px solid var(--border-color)' }}
@@ -116,14 +118,14 @@ export const AuthModal: React.FC<AuthModalProps> = ({ onClose, onSuccess }) => {
           )}
 
           <div className="space-y-1.5">
-            <label className="text-[10px] font-black uppercase tracking-widest text-slate-400">E-Mail</label>
+            <label className="text-[10px] font-black uppercase tracking-widest text-slate-400">{t('auth.email')}</label>
             <div className="relative">
               <Mail className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" strokeWidth={1.75} />
               <input
                 type="email"
                 value={email}
                 onChange={e => setEmail(e.target.value)}
-                placeholder="deine@email.de"
+                placeholder={t('auth.emailPlaceholder')}
                 required
                 className="w-full pl-11 pr-4 py-3.5 rounded-2xl text-sm dark:text-white placeholder-slate-400 outline-none focus:ring-2 focus:ring-indigo-500/50 transition-all"
                 style={{ background: 'color-mix(in srgb, var(--border-color) 30%, var(--bg-main))', border: '1px solid var(--border-color)' }}
@@ -132,14 +134,14 @@ export const AuthModal: React.FC<AuthModalProps> = ({ onClose, onSuccess }) => {
           </div>
 
           <div className="space-y-1.5">
-            <label className="text-[10px] font-black uppercase tracking-widest text-slate-400">Passwort</label>
+            <label className="text-[10px] font-black uppercase tracking-widest text-slate-400">{t('auth.password')}</label>
             <div className="relative">
               <Lock className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" strokeWidth={1.75} />
               <input
                 type="password"
                 value={password}
                 onChange={e => setPassword(e.target.value)}
-                placeholder="Mindestens 6 Zeichen"
+                placeholder={t('auth.passwordPlaceholder')}
                 required
                 minLength={6}
                 className="w-full pl-11 pr-4 py-3.5 rounded-2xl text-sm dark:text-white placeholder-slate-400 outline-none focus:ring-2 focus:ring-indigo-500/50 transition-all"
@@ -167,8 +169,8 @@ export const AuthModal: React.FC<AuthModalProps> = ({ onClose, onSuccess }) => {
             style={{ background: 'var(--primary)' }}
           >
             {isLoading
-              ? <><Loader2 className="w-4 h-4 animate-spin" /> Bitte warten...</>
-              : mode === 'login' ? 'Einloggen' : 'Konto erstellen'
+              ? <><Loader2 className="w-4 h-4 animate-spin" /> {t('auth.pleaseWait')}</>
+              : mode === 'login' ? t('auth.login') : t('auth.createAccount')
             }
           </button>
         </form>

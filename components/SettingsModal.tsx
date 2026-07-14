@@ -11,6 +11,8 @@ import { startCheckout } from '../services/stripeService';
 import { changePassword, deleteAccount, exportUserData, getInvoices, cancelSubscription } from '../services/userService';
 import { isPushSupported, getExistingSubscription, subscribeToPush, unsubscribeFromPush } from '../services/pushService';
 import { toast } from '../services/toast';
+import { useTranslation } from '../i18n/I18nProvider';
+import type { Locale } from '../i18n';
 
 const PRESETS = [
   { name: 'Claude Coral', value: '#D97757' },
@@ -63,6 +65,7 @@ interface Props {
 }
 
 export const SettingsModal: React.FC<Props> = ({ user, isDark, onToggleTheme, onLogout, onClose }) => {
+  const { t, locale, changeLocale } = useTranslation();
   const [tab, setTab] = useState<Tab>('profil');
 
   // Profil
@@ -441,13 +444,31 @@ export const SettingsModal: React.FC<Props> = ({ user, isDark, onToggleTheme, on
                 <div className="flex p-1 rounded-2xl gap-1" style={{ background: 'color-mix(in srgb, var(--border-color) 40%, var(--bg-main))' }}>
                   <button onClick={() => isDark && onToggleTheme()}
                     className={`flex-1 flex items-center justify-center gap-2 py-3 rounded-xl text-[11px] font-black uppercase tracking-widest transition-all ${!isDark ? 'bg-white text-slate-900 shadow-lg' : 'text-slate-400 hover:text-slate-600'}`}>
-                    <Sun className="w-4 h-4" strokeWidth={1.75} /> Tagmodus
+                    <Sun className="w-4 h-4" strokeWidth={1.75} /> {t('layout.dayMode')}
                   </button>
                   <button onClick={() => !isDark && onToggleTheme()}
                     className={`flex-1 flex items-center justify-center gap-2 py-3 rounded-xl text-[11px] font-black uppercase tracking-widest transition-all ${isDark ? 'bg-slate-800 text-white shadow-lg' : 'text-slate-400 hover:text-slate-600'}`}>
-                    <Moon className="w-4 h-4" strokeWidth={1.75} /> Nachtmodus
+                    <Moon className="w-4 h-4" strokeWidth={1.75} /> {t('layout.nightMode')}
                   </button>
                 </div>
+              </div>
+
+              {/* Sprache */}
+              <div className="space-y-3">
+                <p className="text-[10px] font-black uppercase tracking-widest text-slate-400">{t('settings.language.title')}</p>
+                <div className="flex p-1 rounded-2xl gap-1" style={{ background: 'color-mix(in srgb, var(--border-color) 40%, var(--bg-main))' }}>
+                  {(['de', 'tr'] as Locale[]).map(l => (
+                    <button
+                      key={l}
+                      onClick={() => changeLocale(l, user?.id)}
+                      className={`flex-1 py-2.5 rounded-xl text-[11px] font-black uppercase tracking-widest transition-all ${locale === l ? '' : 'text-slate-400 hover:text-slate-600 dark:hover:text-slate-200'}`}
+                      style={locale === l ? { background: 'var(--bg-sidebar)', color: 'var(--primary)', boxShadow: '0 1px 4px rgba(0,0,0,0.08)' } : {}}
+                    >
+                      {l === 'de' ? '🇩🇪 ' + t('language.german') : '🇹🇷 ' + t('language.turkish')}
+                    </button>
+                  ))}
+                </div>
+                <p className="text-[10px] text-slate-400">{t('settings.language.hint')}</p>
               </div>
 
               {/* Schriftart */}

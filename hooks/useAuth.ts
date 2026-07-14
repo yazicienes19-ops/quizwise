@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react';
 import type { User } from '@supabase/supabase-js';
 import { supabase } from '../services/supabaseClient';
 import { fetchUserProfile } from '../services/geminiService';
+import { setLocale } from '../i18n';
 
 export const useAuth = () => {
   const [user, setUser] = useState<User | null>(null);
@@ -41,6 +42,7 @@ export const useAuth = () => {
           if (pr.accent_color) { document.documentElement.style.setProperty('--primary', pr.accent_color); localStorage.setItem('accent_color', pr.accent_color); }
           if (pr.font_choice) localStorage.setItem('font_choice', pr.font_choice);
           if (pr.line_height) localStorage.setItem('line_height', pr.line_height);
+          if (pr.language === 'de' || pr.language === 'tr') { localStorage.setItem('quizwise_language', pr.language); setLocale(pr.language); }
         }
       })
       .catch(() => {});

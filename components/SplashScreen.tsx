@@ -1,10 +1,12 @@
 import React from 'react';
+import { useTranslation } from '../i18n/I18nProvider';
 
 /**
  * SplashScreen — ersetzt das `return null` während des Auth-Checks.
  * Zeigt das QuizWise-Branding statt eines weißen Bildschirms.
  */
 export const SplashScreen: React.FC = () => {
+  const { t } = useTranslation();
   return (
     <div className="fixed inset-0 z-[100] flex flex-col items-center justify-center bg-white dark:bg-slate-950">
       <div className="flex flex-col items-center gap-6 animate-in fade-in zoom-in-95 duration-500">
@@ -28,7 +30,7 @@ export const SplashScreen: React.FC = () => {
             Quiz<span style={{ color: 'var(--primary, #4f46e5)' }}>Wise</span>
           </p>
           <p className="text-[9px] font-bold uppercase tracking-[0.3em] text-slate-400">
-            Dein Lernbegleiter fürs Studium
+            {t('splash.tagline')}
           </p>
         </div>
 
