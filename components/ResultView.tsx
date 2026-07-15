@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import { UserAnswer, QuizQuestion } from '../types';
 import { EmojiImage } from './EmojiImage';
 import { computeCalibration, calibrationPct, MIN_CALIBRATED_FOR_DISPLAY } from '../services/calibration';
+import { useTranslation } from '../i18n/I18nProvider';
 
 interface ResultViewProps {
   answers: UserAnswer[];
@@ -18,9 +19,10 @@ export const ResultView: React.FC<ResultViewProps> = ({
   answers, questions, onRestart, docName,
   onRetryWrong, onGoToSource, onCreateFlashcards, onSaveQuiz,
 }) => {
+  const { t, tp } = useTranslation();
   const [expandedIdx, setExpandedIdx] = useState<number | null>(null);
   const [showSaveInput, setShowSaveInput] = useState(false);
-  const [saveName, setSaveName] = useState(docName ? `Quiz: ${docName}` : 'Mein Quiz');
+  const [saveName, setSaveName] = useState(docName ? t('result.quizNameDefault', { name: docName }) : t('quiz.myQuiz'));
   const [saved, setSaved] = useState(false);
 
   const correctCount    = answers.filter(a => a.isCorrect).length;
@@ -35,10 +37,10 @@ export const ResultView: React.FC<ResultViewProps> = ({
       .filter((t): t is string => Boolean(t) && !weakTopics.includes(t))
   )].slice(0, 4);
 
-  const grade = score >= 90 ? { label: 'Hervorragend', icon: '🏆', color: 'text-yellow-500' }
-    : score >= 75 ? { label: 'Sehr gut', icon: '🌟', color: 'text-emerald-600' }
-    : score >= 55 ? { label: 'Gut', icon: '📈', color: 'text-indigo-600' }
-    : { label: 'Noch Luft nach oben', icon: '🎯', color: 'text-rose-500' };
+  const grade = score >= 90 ? { label: t('result.grade.excellent'), icon: '🏆', color: 'text-yellow-500' }
+    : score >= 75 ? { label: t('result.grade.veryGood'), icon: '🌟', color: 'text-emerald-600' }
+    : score >= 55 ? { label: t('result.grade.good'), icon: '📈', color: 'text-indigo-600' }
+    : { label: t('result.grade.roomToGrow'), icon: '🎯', color: 'text-rose-500' };
 
   // Metakognitive Kalibrierung: Selbsteinschätzung vs. tatsächliches Ergebnis (nur MC-artige Fragen, v1)
   const calibration = computeCalibration(answers);
@@ -64,15 +66,15 @@ export const ResultView: React.FC<ResultViewProps> = ({
         <div className="grid grid-cols-3 divide-x divide-slate-100 dark:divide-slate-800 border-t border-slate-100 dark:border-slate-800">
           <div className="py-4 text-center">
             <p className="text-2xl font-black text-emerald-600 dark:text-emerald-400">{correctCount}</p>
-            <p className="text-[8px] font-black uppercase tracking-widest text-slate-400 mt-0.5">Richtig</p>
+            <p className="text-[8px] font-black uppercase tracking-widest text-slate-400 mt-0.5">{t('result.correct')}</p>
           </div>
           <div className="py-4 text-center">
             <p className="text-2xl font-black text-rose-500">{wrongCount}</p>
-            <p className="text-[8px] font-black uppercase tracking-widest text-slate-400 mt-0.5">Falsch</p>
+            <p className="text-[8px] font-black uppercase tracking-widest text-slate-400 mt-0.5">{t('result.wrong')}</p>
           </div>
           <div className="py-4 text-center">
             <p className="text-2xl font-black text-slate-800 dark:text-white">{answers.length}</p>
-            <p className="text-[8px] font-black uppercase tracking-widest text-slate-400 mt-0.5">Gesamt</p>
+            <p className="text-[8px] font-black uppercase tracking-widest text-slate-400 mt-0.5">{t('result.total')}</p>
           </div>
         </div>
       </div>
@@ -84,7 +86,7 @@ export const ResultView: React.FC<ResultViewProps> = ({
             <div className="bg-rose-50 dark:bg-rose-950/20 border border-rose-200 dark:border-rose-900/30 rounded-[24px] p-5">
               <p className="text-[9px] font-black uppercase tracking-widest text-rose-500 mb-3 flex items-center gap-1.5">
                 <span className="w-1.5 h-1.5 rounded-full bg-rose-500" />
-                Schwache Themen
+                {t('result.weakTopics')}
               </p>
               <div className="flex flex-wrap gap-1.5">
                 {weakTopics.map(t => (
@@ -97,7 +99,7 @@ export const ResultView: React.FC<ResultViewProps> = ({
             <div className="bg-emerald-50 dark:bg-emerald-950/20 border border-emerald-200 dark:border-emerald-900/30 rounded-[24px] p-5">
               <p className="text-[9px] font-black uppercase tracking-widest text-emerald-600 mb-3 flex items-center gap-1.5">
                 <span className="w-1.5 h-1.5 rounded-full bg-emerald-500" />
-                Starke Themen
+                {t('result.strongTopics')}
               </p>
               <div className="flex flex-wrap gap-1.5">
                 {strongTopics.map(t => (
@@ -112,19 +114,19 @@ export const ResultView: React.FC<ResultViewProps> = ({
       {/* Metakognitive Kalibrierung: Selbsteinschätzung vs. Ergebnis */}
       {calibration.total >= MIN_CALIBRATED_FOR_DISPLAY && (
         <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-[24px] p-5">
-          <p className="text-[9px] font-black uppercase tracking-widest text-slate-400 mb-3">Deine Selbsteinschätzung</p>
+          <p className="text-[9px] font-black uppercase tracking-widest text-slate-400 mb-3">{t('result.selfAssessment')}</p>
           <div className="grid grid-cols-3 gap-3">
             <div className="text-center">
               <p className="text-xl font-black text-emerald-600 dark:text-emerald-400">{pct(calibration.wellCalibrated)}%</p>
-              <p className="text-[8px] font-black uppercase tracking-widest text-slate-400 mt-0.5 leading-tight">Gut<br />kalibriert</p>
+              <p className="text-[8px] font-black uppercase tracking-widest text-slate-400 mt-0.5 leading-tight">{t('result.calibrated')}</p>
             </div>
             <div className="text-center">
               <p className="text-xl font-black text-rose-500">{pct(calibration.overconfident)}%</p>
-              <p className="text-[8px] font-black uppercase tracking-widest text-slate-400 mt-0.5 leading-tight">Über-<br />schätzt</p>
+              <p className="text-[8px] font-black uppercase tracking-widest text-slate-400 mt-0.5 leading-tight">{t('result.overestimated')}</p>
             </div>
             <div className="text-center">
               <p className="text-xl font-black text-amber-500">{pct(calibration.underconfident)}%</p>
-              <p className="text-[8px] font-black uppercase tracking-widest text-slate-400 mt-0.5 leading-tight">Unter-<br />schätzt</p>
+              <p className="text-[8px] font-black uppercase tracking-widest text-slate-400 mt-0.5 leading-tight">{t('result.underestimated')}</p>
             </div>
           </div>
         </div>
@@ -133,11 +135,11 @@ export const ResultView: React.FC<ResultViewProps> = ({
       {/* Save quiz offline */}
       {onSaveQuiz && (
         <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-[24px] p-5 space-y-3 shadow-3d-raised">
-          <p className="text-[9px] font-black uppercase tracking-widest text-slate-400">Offline speichern</p>
+          <p className="text-[9px] font-black uppercase tracking-widest text-slate-400">{t('result.saveOffline')}</p>
           {saved ? (
             <div className="flex items-center gap-2 text-emerald-600">
               <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round"><polyline points="20 6 9 17 4 12"/></svg>
-              <span className="text-sm font-black">Quiz gespeichert, offline abrufbar</span>
+              <span className="text-sm font-black">{t('result.savedOffline')}</span>
             </div>
           ) : showSaveInput ? (
             <div className="flex gap-2">
@@ -146,13 +148,13 @@ export const ResultView: React.FC<ResultViewProps> = ({
                 value={saveName}
                 onChange={e => setSaveName(e.target.value)}
                 className="flex-1 px-4 py-2.5 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-[16px] text-sm font-medium dark:text-white outline-none focus:border-indigo-500 transition-colors"
-                placeholder="Quiz-Name..."
+                placeholder={t('quiz.quizNamePlaceholder')}
               />
               <button
-                onClick={() => { onSaveQuiz(saveName.trim() || 'Mein Quiz'); setSaved(true); setShowSaveInput(false); }}
+                onClick={() => { onSaveQuiz(saveName.trim() || t('quiz.myQuiz')); setSaved(true); setShowSaveInput(false); }}
                 className="px-5 py-2.5 bg-indigo-600 text-white rounded-[16px] text-[10px] font-black uppercase tracking-widest hover:scale-105 active:scale-95 transition-all shrink-0"
               >
-                Speichern
+                {t('quiz.save')}
               </button>
             </div>
           ) : (
@@ -162,9 +164,9 @@ export const ResultView: React.FC<ResultViewProps> = ({
             >
               <div className="flex items-center gap-3">
                 <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="text-indigo-600"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
-                <span className="text-sm font-black dark:text-white">Quiz für offline speichern</span>
+                <span className="text-sm font-black dark:text-white">{t('result.saveForOffline')}</span>
               </div>
-              <span className="text-[9px] text-slate-400 font-black">{questions.length} Fragen</span>
+              <span className="text-[9px] text-slate-400 font-black">{tp('dashboard.questionsN', questions.length)}</span>
             </button>
           )}
         </div>
@@ -172,7 +174,7 @@ export const ResultView: React.FC<ResultViewProps> = ({
 
       {/* Action buttons */}
       <div className="space-y-2">
-        <p className="text-[9px] font-black uppercase tracking-widest text-slate-400 px-1">Nächster Schritt</p>
+        <p className="text-[9px] font-black uppercase tracking-widest text-slate-400 px-1">{t('result.nextStep')}</p>
 
         {wrongQuestions.length > 0 && onRetryWrong && (
           <button
@@ -180,8 +182,8 @@ export const ResultView: React.FC<ResultViewProps> = ({
             className="w-full flex items-center justify-between px-6 py-5 bg-indigo-600 text-white rounded-[24px] shadow-3d-deep hover:scale-[1.01] active:scale-[0.99] transition-all"
           >
             <div className="text-left">
-              <p className="text-sm font-black">Falsche Fragen wiederholen</p>
-              <p className="text-[9px] opacity-70 mt-0.5">{wrongQuestions.length} Fragen</p>
+              <p className="text-sm font-black">{t('result.retryWrong')}</p>
+              <p className="text-[9px] opacity-70 mt-0.5">{tp('dashboard.questionsN', wrongQuestions.length)}</p>
             </div>
             <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
               <polyline points="1 4 1 10 7 10"/><path d="M3.51 15a9 9 0 1 0 .49-3.1"/>
@@ -197,7 +199,7 @@ export const ResultView: React.FC<ResultViewProps> = ({
             <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
               <polyline points="23 4 23 10 17 10"/><path d="M20.49 15a9 9 0 1 1-.49-3.1"/>
             </svg>
-            <span className="text-[10px] font-black uppercase tracking-widest">Neues Quiz</span>
+            <span className="text-[10px] font-black uppercase tracking-widest">{t('result.newQuiz')}</span>
           </button>
 
           {onCreateFlashcards && wrongQuestions.length > 0 && (
@@ -208,7 +210,7 @@ export const ResultView: React.FC<ResultViewProps> = ({
               <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
                 <rect x="2" y="5" width="20" height="14" rx="2"/><line x1="2" y1="10" x2="22" y2="10"/>
               </svg>
-              <span className="text-[10px] font-black uppercase tracking-widest">Karten aus Fehlern ({wrongQuestions.length})</span>
+              <span className="text-[10px] font-black uppercase tracking-widest">{t('result.cardsFromWrong', { n: wrongQuestions.length })}</span>
             </button>
           )}
 
@@ -220,7 +222,7 @@ export const ResultView: React.FC<ResultViewProps> = ({
               <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
                 <path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20"/><path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z"/>
               </svg>
-              <span className="text-[10px] font-black uppercase tracking-widest">Zur Quelle</span>
+              <span className="text-[10px] font-black uppercase tracking-widest">{t('result.toSource')}</span>
             </button>
           )}
         </div>
@@ -228,7 +230,7 @@ export const ResultView: React.FC<ResultViewProps> = ({
 
       {/* Question review */}
       <div className="space-y-3">
-        <p className="text-[9px] font-black uppercase tracking-widest text-slate-400 px-1">Fragenübersicht</p>
+        <p className="text-[9px] font-black uppercase tracking-widest text-slate-400 px-1">{t('result.questionOverview')}</p>
         {questions.map((q, i) => {
           const correct = answers[i]?.isCorrect;
           const open    = expandedIdx === i;
@@ -258,19 +260,19 @@ export const ResultView: React.FC<ResultViewProps> = ({
                   <div className="text-xs space-y-1 pt-3">
                     {answers[i]?.selectedOptionIndices?.length > 0 && (
                       <p className="text-slate-500 dark:text-slate-400">
-                        <span className="font-black text-[9px] uppercase tracking-widest mr-2">Deine Wahl:</span>
+                        <span className="font-black text-[9px] uppercase tracking-widest mr-2">{t('result.yourChoice')}</span>
                         {answers[i].selectedOptionIndices.map(idx => q.options[idx]).join(', ')}
                       </p>
                     )}
                     {!correct && q.correctAnswerIndices?.length > 0 && q.options.length > 0 && (
                       <p className="text-emerald-600 dark:text-emerald-400">
-                        <span className="font-black text-[9px] uppercase tracking-widest mr-2">Korrekt:</span>
+                        <span className="font-black text-[9px] uppercase tracking-widest mr-2">{t('result.correctLabel')}</span>
                         {q.correctAnswerIndices.map(idx => q.options[idx]).join(', ')}
                       </p>
                     )}
                     {q.explanation && (
                       <p className="text-slate-500 dark:text-slate-400 pt-1 border-t border-slate-50 dark:border-slate-800 mt-2">
-                        <span className="font-black text-[9px] uppercase tracking-widest mr-2">Erklärung:</span>
+                        <span className="font-black text-[9px] uppercase tracking-widest mr-2">{t('result.explanationLabel')}</span>
                         {q.explanation}
                       </p>
                     )}

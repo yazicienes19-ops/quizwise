@@ -7,6 +7,8 @@ import { Layers, Flame } from 'lucide-react';
 import { countDueCards, migrateLegacyCard } from '../services/spacedRepetition';
 import { countDueMistakes } from '../services/mistakeReviewService';
 import { getStreak } from '../services/streakService';
+import { useTranslation } from '../i18n/I18nProvider';
+import type { TKey } from '../i18n';
 
 const USAGE_KEY = 'quizwise_feature_usage';
 
@@ -35,23 +37,24 @@ interface DashboardProps {
 
 interface ActionCard {
   id: ActiveTab;
-  title: string;
-  desc: string;
+  titleKey: TKey;
+  descKey: TKey;
   prompt: string;
   color: string;
-  badge?: string;
+  badgeKey?: TKey;
 }
 
 const BASE_CARDS: ActionCard[] = [
-  { id: ActiveTab.RECALL, title: 'Feynman-Methode', desc: 'Erkläre Themen in eigenen Worten und erhalte sofort Feedback.', prompt: 'Human brain active recall, academic illustration', color: 'text-indigo-600', badge: 'Feynman' },
-  { id: ActiveTab.LIBRARY, title: 'Bibliothek', desc: 'Verwalte deine PDF-Sammlung und Quellen.', prompt: 'Academic library books, minimalist illustration', color: 'text-blue-500' },
-  { id: ActiveTab.QUIZ, title: 'Quiz', desc: 'Teste dich mit Fragen aus deinen Unterlagen.', prompt: 'Target bullseye icon, academic minimalist illustration', color: 'text-indigo-500', badge: 'Aus deinen Unterlagen' },
-  { id: ActiveTab.EXAM, title: 'Klausur-Simulator', desc: 'Simuliere echte Prüfungen unter Zeitdruck.', prompt: 'Exam paper graduation cap, academic illustration', color: 'text-rose-500', badge: 'Prüfungsnah' },
-  { id: ActiveTab.CARDS, title: 'Karteikarten', desc: 'Wiederholen genau im richtigen Moment.', prompt: 'Flashcards study deck, minimalist illustration', color: 'text-violet-500' },
-  { id: ActiveTab.RADAR, title: 'Lernfortschritt', desc: 'Sieh, wo du stehst und was als Nächstes dran ist.', prompt: 'Data analysis radar chart, academic illustration', color: 'text-emerald-500' }
+  { id: ActiveTab.RECALL, titleKey: 'nav.recall', descKey: 'dashboard.card.recall.desc', prompt: 'Human brain active recall, academic illustration', color: 'text-indigo-600', badgeKey: 'dashboard.card.recall.badge' },
+  { id: ActiveTab.LIBRARY, titleKey: 'nav.library', descKey: 'dashboard.card.library.desc', prompt: 'Academic library books, minimalist illustration', color: 'text-blue-500' },
+  { id: ActiveTab.QUIZ, titleKey: 'nav.quiz', descKey: 'dashboard.card.quiz.desc', prompt: 'Target bullseye icon, academic minimalist illustration', color: 'text-indigo-500', badgeKey: 'dashboard.card.quiz.badge' },
+  { id: ActiveTab.EXAM, titleKey: 'nav.exam', descKey: 'dashboard.card.exam.desc', prompt: 'Exam paper graduation cap, academic illustration', color: 'text-rose-500', badgeKey: 'dashboard.card.exam.badge' },
+  { id: ActiveTab.CARDS, titleKey: 'nav.cards', descKey: 'dashboard.card.cards.desc', prompt: 'Flashcards study deck, minimalist illustration', color: 'text-violet-500' },
+  { id: ActiveTab.RADAR, titleKey: 'nav.radar', descKey: 'dashboard.card.radar.desc', prompt: 'Data analysis radar chart, academic illustration', color: 'text-emerald-500' }
 ];
 
 export const Dashboard: React.FC<DashboardProps> = ({ onTabChange, flowResult, documents = [], onStartMistakeReview }) => {
+  const { t, tp } = useTranslation();
   const [hovered, setHovered] = useState<ActiveTab | null>(null);
   const [usageCounts, setUsageCounts] = useState<Record<string, number>>(getUsageCounts);
 
@@ -74,7 +77,7 @@ export const Dashboard: React.FC<DashboardProps> = ({ onTabChange, flowResult, d
       if (raw) {
         const { meta, timestamp } = JSON.parse(raw);
         if (meta && timestamp && Date.now() - timestamp < 7 * 24 * 60 * 60 * 1000) {
-          return { type: 'quiz' as const, label: meta.docName || 'Quiz fortsetzen', tab: ActiveTab.QUIZ };
+          return { type: 'quiz' as const, label: meta.docName || t('dashboard.quizResume'), tab: ActiveTab.QUIZ };
         }
       }
     } catch {}
@@ -129,7 +132,7 @@ export const Dashboard: React.FC<DashboardProps> = ({ onTabChange, flowResult, d
       color: 'indigo'
     };
     localStorage.setItem('study_plan', JSON.stringify([...plan, newEntry]));
-    toast.success('Im Lernplan eingetragen!');
+    toast.success(t('dashboard.addedToPlan'));
     onTabChange(ActiveTab.PLANNER);
   };
 
@@ -138,19 +141,19 @@ export const Dashboard: React.FC<DashboardProps> = ({ onTabChange, flowResult, d
       <div className="flex flex-col items-center justify-center py-20 px-4 space-y-10 animate-in fade-in duration-700 min-h-[60vh]">
         <div className="text-center space-y-4 max-w-md">
           <div className="text-7xl mb-2">📚</div>
-          <h2 className="text-3xl font-black tracking-tighter dark:text-white">Willkommen bei QuizWise</h2>
-          <p className="text-slate-500 dark:text-slate-400 font-medium">Lade dein erstes Dokument hoch: In 3 Schritten zum personalisierten Lernkurs.</p>
+          <h2 className="text-3xl font-black tracking-tighter dark:text-white">{t('dashboard.empty.welcome')}</h2>
+          <p className="text-slate-500 dark:text-slate-400 font-medium">{t('dashboard.empty.subtitle')}</p>
         </div>
         <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 max-w-2xl w-full">
-          {[
-            { n: '1', label: 'Dokument hochladen', desc: 'PDF, Word oder Text aus deinem Studium' },
-            { n: '2', label: 'Quiz generieren', desc: 'QuizWise erstellt sofort Fragen aus deinen Unterlagen' },
-            { n: '3', label: 'Klausur bestehen', desc: 'Lerne gezielt, erkenne Lücken, erziele bessere Noten' },
-          ].map(({ n, label, desc }) => (
+          {([
+            { n: '1', labelKey: 'dashboard.empty.step1.label', descKey: 'dashboard.empty.step1.desc' },
+            { n: '2', labelKey: 'dashboard.empty.step2.label', descKey: 'dashboard.empty.step2.desc' },
+            { n: '3', labelKey: 'dashboard.empty.step3.label', descKey: 'dashboard.empty.step3.desc' },
+          ] as { n: string; labelKey: TKey; descKey: TKey }[]).map(({ n, labelKey, descKey }) => (
             <div key={n} className="p-5 rounded-[24px] space-y-2" style={{ background: 'var(--bg-sidebar)', border: '1px solid var(--border-color)' }}>
-              <p className="text-[9px] font-black uppercase tracking-widest" style={{ color: 'var(--primary)' }}>Schritt {n}</p>
-              <p className="text-sm font-black dark:text-white">{label}</p>
-              <p className="text-[10px] text-slate-400">{desc}</p>
+              <p className="text-[9px] font-black uppercase tracking-widest" style={{ color: 'var(--primary)' }}>{t('dashboard.stepLabel', { n })}</p>
+              <p className="text-sm font-black dark:text-white">{t(labelKey)}</p>
+              <p className="text-[10px] text-slate-400">{t(descKey)}</p>
             </div>
           ))}
         </div>
@@ -162,7 +165,7 @@ export const Dashboard: React.FC<DashboardProps> = ({ onTabChange, flowResult, d
           <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round">
             <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/>
           </svg>
-          Erste Quelle hochladen
+          {t('dashboard.empty.cta')}
         </button>
       </div>
     );
@@ -177,7 +180,7 @@ export const Dashboard: React.FC<DashboardProps> = ({ onTabChange, flowResult, d
                 Quiz<span className="font-bold" style={{ color: 'var(--primary)' }}>Wise</span>
             </h1>
             <p className="text-[9px] sm:text-xs font-black uppercase tracking-[0.3em] sm:tracking-[1em] text-slate-400 dark:text-white/30 sm:pl-4 text-center break-words">
-                Dein Lernbegleiter fürs Studium
+                {t('splash.tagline')}
             </p>
         </div>
       </div>
@@ -195,11 +198,11 @@ export const Dashboard: React.FC<DashboardProps> = ({ onTabChange, flowResult, d
                   <Layers size={16} style={{ color: 'var(--primary-text)' }} />
                 </div>
                 <div className="min-w-0">
-                  <p className="text-[11px] font-black uppercase tracking-widest" style={{ color: 'var(--primary)' }}>Heute fällig</p>
+                  <p className="text-[11px] font-black uppercase tracking-widest" style={{ color: 'var(--primary)' }}>{t('dashboard.dueToday')}</p>
                   <p className="text-[9px] text-slate-400 break-words">
                     {[
-                      dueCardsCount > 0 ? `${dueCardsCount} Karte${dueCardsCount !== 1 ? 'n' : ''}` : null,
-                      dueMistakesCount > 0 ? `${dueMistakesCount} Frage${dueMistakesCount !== 1 ? 'n' : ''}` : null,
+                      dueCardsCount > 0 ? tp('dashboard.cardsN', dueCardsCount) : null,
+                      dueMistakesCount > 0 ? tp('dashboard.questionsN', dueMistakesCount) : null,
                     ].filter(Boolean).join(' · ')}
                   </p>
                 </div>
@@ -211,7 +214,7 @@ export const Dashboard: React.FC<DashboardProps> = ({ onTabChange, flowResult, d
                     className="flex-1 py-2 rounded-xl text-[9px] font-black uppercase tracking-widest text-white hover:scale-[1.03] active:scale-95 transition-all"
                     style={{ background: 'var(--primary)' }}
                   >
-                    Karten wiederholen
+                    {t('dashboard.reviewCards')}
                   </button>
                 )}
                 {dueMistakesCount > 0 && onStartMistakeReview && (
@@ -224,7 +227,7 @@ export const Dashboard: React.FC<DashboardProps> = ({ onTabChange, flowResult, d
                       border: '1px solid color-mix(in srgb, var(--primary) 30%, transparent)',
                     }}
                   >
-                    Fragen wiederholen
+                    {t('dashboard.reviewQuestions')}
                   </button>
                 )}
               </div>
@@ -239,8 +242,8 @@ export const Dashboard: React.FC<DashboardProps> = ({ onTabChange, flowResult, d
                 <Flame size={16} style={{ color: streak.todayDone ? 'var(--primary)' : '#94a3b8' }} fill={streak.todayDone ? 'var(--primary)' : 'none'} strokeWidth={2} />
               </div>
               <div>
-                <p className="text-[11px] font-black uppercase tracking-widest" style={{ color: streak.todayDone ? 'var(--primary)' : undefined }}>{streak.current} Tage Streak</p>
-                <p className="text-[9px] text-slate-400">Rekord: {streak.best} · {streak.todayDone ? 'Heute erledigt ✓' : 'Heute noch offen'}</p>
+                <p className="text-[11px] font-black uppercase tracking-widest" style={{ color: streak.todayDone ? 'var(--primary)' : undefined }}>{t('layout.streakTitle', { n: streak.current })}</p>
+                <p className="text-[9px] text-slate-400">{streak.todayDone ? t('dashboard.recordDone', { best: streak.best }) : t('dashboard.recordOpen', { best: streak.best })}</p>
               </div>
             </div>
           )}
@@ -255,7 +258,7 @@ export const Dashboard: React.FC<DashboardProps> = ({ onTabChange, flowResult, d
                 </svg>
               </div>
               <div>
-                <p className="text-[11px] font-black uppercase tracking-widest" style={{ color: nextExam.days <= 7 ? '#f43f5e' : undefined }}>Noch {nextExam.days} Tag{nextExam.days !== 1 ? 'e' : ''}</p>
+                <p className="text-[11px] font-black uppercase tracking-widest" style={{ color: nextExam.days <= 7 ? '#f43f5e' : undefined }}>{tp('dashboard.daysLeft', nextExam.days)}</p>
                 <p className="text-[9px] text-slate-400 break-words max-w-[140px]">{nextExam.subject}</p>
               </div>
             </div>
@@ -278,11 +281,11 @@ export const Dashboard: React.FC<DashboardProps> = ({ onTabChange, flowResult, d
                 </svg>
               </div>
               <div>
-                <p className="text-[11px] font-black uppercase tracking-widest" style={{ color: 'var(--primary)' }}>Weiterlernen</p>
+                <p className="text-[11px] font-black uppercase tracking-widest" style={{ color: 'var(--primary)' }}>{t('dashboard.continue')}</p>
                 <p className="text-xs text-slate-500 dark:text-slate-400 break-words max-w-[220px]">{weiterlernCard.label}</p>
               </div>
             </div>
-            <span className="text-[10px] font-black uppercase tracking-widest shrink-0" style={{ color: 'var(--primary)' }}>Fortsetzen →</span>
+            <span className="text-[10px] font-black uppercase tracking-widest shrink-0" style={{ color: 'var(--primary)' }}>{t('dashboard.resume')}</span>
           </button>
         </div>
       )}
@@ -292,7 +295,7 @@ export const Dashboard: React.FC<DashboardProps> = ({ onTabChange, flowResult, d
         <div className="max-w-6xl mx-auto space-y-8 animate-in slide-in-from-bottom-8 duration-700">
           <div className="flex justify-between items-center px-4">
             <h2 className="text-[11px] font-black uppercase tracking-[0.4em] text-indigo-500 flex items-center gap-2">
-              Nächste Schritte (Empfehlung)
+              {t('dashboard.nextSteps')}
               <GeneratedImage prompt="Sparkles icon, academic minimalist" className="w-4 h-4 rounded-full" />
             </h2>
           </div>
@@ -317,7 +320,7 @@ export const Dashboard: React.FC<DashboardProps> = ({ onTabChange, flowResult, d
                 <div className="absolute top-0 right-0 w-24 h-24 bg-white/5 blur-2xl rounded-full translate-x-8 -translate-y-8"></div>
                 <div className="relative z-10 space-y-4">
                   <div className="flex justify-between items-center">
-                    <span className="text-[9px] font-black uppercase tracking-widest opacity-60">{action.timebox_minutes} Min. Fokus</span>
+                    <span className="text-[9px] font-black uppercase tracking-widest opacity-60">{t('dashboard.minFocus', { n: action.timebox_minutes })}</span>
                     <span className="text-xs">➔</span>
                   </div>
                   <h3 className="text-xl font-black leading-tight">{action.title}</h3>
@@ -329,15 +332,15 @@ export const Dashboard: React.FC<DashboardProps> = ({ onTabChange, flowResult, d
             {flowResult.calendar_suggestion.should_schedule && flowResult.calendar_suggestion.suggested_blocks.map((block, i) => (
                <div key={i} className="p-8 rounded-[32px] flex flex-col justify-between group border-2 border-dashed border-indigo-200 dark:border-indigo-900" style={{ background: 'var(--bg-sidebar)' }}>
                   <div>
-                    <span className="text-[9px] font-black uppercase text-indigo-500 tracking-widest mb-2 block">Lernplan-Vorschlag</span>
-                    <h3 className="text-lg font-black dark:text-white">{block.day}, {block.start_time} Uhr</h3>
+                    <span className="text-[9px] font-black uppercase text-indigo-500 tracking-widest mb-2 block">{t('dashboard.planSuggestion')}</span>
+                    <h3 className="text-lg font-black dark:text-white">{t('dashboard.blockTime', { day: block.day, time: block.start_time })}</h3>
                     <p className="text-[11px] text-slate-500 mt-1">{block.focus_topics.join(', ')}</p>
                   </div>
                   <button
                     onClick={() => handleAcceptSuggestion(block)}
                     className="mt-6 w-full py-3 text-[10px] font-black uppercase tracking-widest rounded-xl hover:bg-indigo-600 hover:text-white transition-all"
                     style={{ background: 'var(--bg-main)', color: 'var(--text-secondary, #64748b)', border: '1px solid var(--border-color)' }}
-                  >In Kalender eintragen</button>
+                  >{t('dashboard.addToCalendar')}</button>
                </div>
             ))}
           </div>
@@ -374,7 +377,7 @@ export const Dashboard: React.FC<DashboardProps> = ({ onTabChange, flowResult, d
                   >
                     <GeneratedImage prompt={card.prompt} className="w-7 h-7 lg:w-9 lg:h-9" />
                   </div>
-                  {card.badge && (
+                  {card.badgeKey && (
                     <span
                       className="text-[9px] font-black uppercase tracking-widest px-3 py-1.5 rounded-full transition-colors duration-300"
                       style={isHovered
@@ -382,7 +385,7 @@ export const Dashboard: React.FC<DashboardProps> = ({ onTabChange, flowResult, d
                         : { background: 'var(--p50)', color: 'var(--primary)', border: '1px solid var(--p100)' }
                       }
                     >
-                      {card.badge}
+                      {t(card.badgeKey)}
                     </span>
                   )}
                 </div>
@@ -391,13 +394,13 @@ export const Dashboard: React.FC<DashboardProps> = ({ onTabChange, flowResult, d
                     className="text-2xl lg:text-3xl font-black tracking-tight transition-colors duration-300"
                     style={{ color: isHovered ? 'var(--primary-text)' : undefined }}
                   >
-                    {card.title}
+                    {t(card.titleKey)}
                   </h3>
                   <p
                     className="text-sm lg:text-base leading-relaxed font-medium transition-colors duration-300"
                     style={{ color: isHovered ? 'color-mix(in srgb, var(--primary-text) 75%, transparent)' : undefined }}
                   >
-                    {card.desc}
+                    {t(card.descKey)}
                   </p>
                 </div>
               </div>
