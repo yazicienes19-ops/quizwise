@@ -3,6 +3,7 @@ import { ProcessedDocument, ActiveTab, Collection } from '../types';
 import { getAllMeta, saveMeta, deleteMeta, documentDisplayName } from '../services/libraryService';
 import type { SourceMeta } from '../services/libraryService';
 import { SourceCard } from './SourceCard';
+import { useTranslation } from '../i18n/I18nProvider';
 import { SourceDetailPage } from './SourceDetailPage';
 import { UploadSourceModal } from './UploadSourceModal';
 import { EditSourceModal } from './EditSourceModal';
@@ -61,6 +62,7 @@ export const LibrarySystem: React.FC<LibrarySystemProps> = ({
   onMoveDocument,
   isLoading,
 }) => {
+  const { t, tp } = useTranslation();
   const [allMeta, setAllMeta]           = useState<Record<string, SourceMeta>>(() => getAllMeta());
   const [viewDocId, setViewDocId]       = useState<string | null>(null);
   const [editDocId, setEditDocId]       = useState<string | null>(null);
@@ -232,8 +234,8 @@ export const LibrarySystem: React.FC<LibrarySystemProps> = ({
               style={{ color: 'var(--primary-text)' }}
             >
               {isLoading
-                ? <><span className="w-3.5 h-3.5 border-2 border-white/30 border-t-white rounded-full animate-spin" /> Lädt…</>
-                : <><IconUpload /> Quelle hinzufügen</>
+                ? <><span className="w-3.5 h-3.5 border-2 border-white/30 border-t-white rounded-full animate-spin" /> {t('lib.loading')}</>
+                : <><IconUpload /> {t('lib.addSource')}</>
               }
             </button>
           </div>
@@ -258,7 +260,7 @@ export const LibrarySystem: React.FC<LibrarySystemProps> = ({
                       <button
                         onClick={e => { e.stopPropagation(); setEditColId(col.id); setEditColName(col.name); setEditColEmoji(col.emoji); }}
                         className="w-8 h-8 rounded-xl flex items-center justify-center bg-white dark:bg-slate-800 shadow text-slate-400 hover:text-indigo-500 transition-colors"
-                        title="Ordner bearbeiten"
+                        title={t('lib.editFolder')}
                       >
                         <svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round">
                           <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/>
@@ -273,7 +275,7 @@ export const LibrarySystem: React.FC<LibrarySystemProps> = ({
                           }
                         }}
                         className="w-8 h-8 rounded-xl flex items-center justify-center bg-white dark:bg-slate-800 shadow text-slate-400 hover:text-rose-500 transition-colors"
-                        title="Ordner löschen"
+                        title={t('lib.deleteFolder')}
                       >
                         <svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round">
                           <polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/>
@@ -298,7 +300,7 @@ export const LibrarySystem: React.FC<LibrarySystemProps> = ({
                         <input
                           value={editColEmoji}
                           onChange={e => setEditColEmoji(e.target.value)}
-                          placeholder="Emoji"
+                          placeholder={t('lib.emojiPlaceholder')}
                           maxLength={4}
                           className="w-14 text-center px-2 py-2 rounded-xl text-xl border-2 border-indigo-500 outline-none"
                           style={{ background: 'var(--bg-main)' }}
@@ -307,7 +309,7 @@ export const LibrarySystem: React.FC<LibrarySystemProps> = ({
                           autoFocus
                           value={editColName}
                           onChange={e => setEditColName(e.target.value)}
-                          placeholder="Ordner-Name"
+                          placeholder={t('lib.folderName')}
                           className="flex-1 px-3 py-2 rounded-xl text-sm font-bold border-2 border-indigo-500 outline-none"
                           style={{ background: 'var(--bg-main)', color: 'var(--text-main)' }}
                         />
@@ -317,7 +319,7 @@ export const LibrarySystem: React.FC<LibrarySystemProps> = ({
                           type="submit"
                           className="flex-1 py-2.5 rounded-xl text-[9px] font-black uppercase tracking-widest"
                           style={{ background: 'var(--primary)', color: 'var(--primary-text)' }}
-                        >Speichern</button>
+                        >{t('lib.save')}</button>
                         <button
                           type="button"
                           onClick={() => setEditColId(null)}
@@ -350,7 +352,7 @@ export const LibrarySystem: React.FC<LibrarySystemProps> = ({
                           </p>
                         )}
                         {count === 0 && (
-                          <p className="text-[10px] text-slate-300 dark:text-slate-600 mt-1">Noch leer</p>
+                          <p className="text-[10px] text-slate-300 dark:text-slate-600 mt-1">{t('lib.empty')}</p>
                         )}
                       </div>
                       <div className="flex items-center gap-1 text-[10px] font-black uppercase tracking-widest mt-auto" style={{ color: 'var(--primary)' }}>
@@ -375,7 +377,7 @@ export const LibrarySystem: React.FC<LibrarySystemProps> = ({
                 <EmojiImage emoji="🌐" size={28} />
               </div>
               <div>
-                <h3 className="font-black text-base" style={{ color: 'var(--text-main)' }}>Alle Dokumente</h3>
+                <h3 className="font-black text-base" style={{ color: 'var(--text-main)' }}>{t('lib.allDocs')}</h3>
                 <p className="text-[10px] text-slate-400 mt-1">{documents.length} gesamt</p>
               </div>
               <div className="flex items-center gap-1 text-[10px] font-black uppercase tracking-widest mt-auto text-slate-400">
@@ -401,11 +403,11 @@ export const LibrarySystem: React.FC<LibrarySystemProps> = ({
                   autoFocus
                   value={newColName}
                   onChange={e => setNewColName(e.target.value)}
-                  placeholder="Ordner-Name…"
+                  placeholder={t('lib.folderNameDots')}
                   className="px-4 py-2.5 rounded-2xl text-xs font-bold outline-none border-2 border-indigo-500"
                   style={{ background: 'var(--bg-main)', color: 'var(--text-main)' }}
                 />
-                <button type="submit" className="px-4 py-2.5 bg-indigo-600 rounded-2xl text-[9px] font-black uppercase tracking-widest" style={{ color: 'var(--primary-text)' }}>Erstellen</button>
+                <button type="submit" className="px-4 py-2.5 bg-indigo-600 rounded-2xl text-[9px] font-black uppercase tracking-widest" style={{ color: 'var(--primary-text)' }}>{t('lib.create')}</button>
                 <button type="button" onClick={() => { setIsAddingCol(false); setNewColName(''); }} className="px-3 py-2.5 text-slate-400 text-[9px] font-black uppercase">✕</button>
               </form>
             )}
@@ -464,13 +466,13 @@ export const LibrarySystem: React.FC<LibrarySystemProps> = ({
             )}
             <h1 className="text-3xl sm:text-4xl lg:text-6xl font-black tracking-tighter" style={{ color: 'var(--text-main)' }}>
               {activeColId !== 'all' && activeColId !== 'uncategorized'
-                ? (collections.find(c => c.id === activeColId)?.name ?? 'Bibliothek')
-                : 'Bibliothek'
+                ? (collections.find(c => c.id === activeColId)?.name ?? t('lib.title'))
+                : t('lib.title')
               } <EmojiImage emoji={activeColId !== 'all' && activeColId !== 'uncategorized' ? (collections.find(c => c.id === activeColId)?.emoji ?? '📚') : '📚'} size={36} className="inline-block" />
             </h1>
             <p className="text-sm text-slate-400 font-medium mt-1">
-              {filtered.length} {filtered.length === 1 ? 'Dokument' : 'Dokumente'}
-              {activeColId === 'all' ? ' · Dein persönliches Lernsystem' : ''}
+              {tp('lib.docsN', filtered.length)}
+              {activeColId === 'all' ? t('lib.personalSystem') : ''}
             </p>
           </div>
           <button
@@ -480,8 +482,8 @@ export const LibrarySystem: React.FC<LibrarySystemProps> = ({
             style={{ color: 'var(--primary-text)' }}
           >
             {isLoading
-              ? <><span className="w-3.5 h-3.5 border-2 border-white/30 border-t-white rounded-full animate-spin" /> Lädt…</>
-              : <><IconUpload /> Quelle hinzufügen</>
+              ? <><span className="w-3.5 h-3.5 border-2 border-white/30 border-t-white rounded-full animate-spin" /> {t('lib.loading')}</>
+              : <><IconUpload /> {t('lib.addSource')}</>
             }
           </button>
         </div>
@@ -491,7 +493,7 @@ export const LibrarySystem: React.FC<LibrarySystemProps> = ({
           <div className="lg:col-span-3 space-y-6">
             <div className="rounded-[28px] shadow-3d-raised p-5 space-y-4" style={{ background: 'var(--bg-sidebar)', border: '1px solid var(--border-color)' }}>
               <div className="flex justify-between items-center px-1">
-                <span className="text-[10px] font-black uppercase tracking-widest text-slate-400">Sammlungen</span>
+                <span className="text-[10px] font-black uppercase tracking-widest text-slate-400">{t('lib.collections')}</span>
                 {!isAddingCol && (
                   <button
                     onClick={() => setIsAddingCol(true)}
@@ -506,12 +508,12 @@ export const LibrarySystem: React.FC<LibrarySystemProps> = ({
                     autoFocus
                     value={newColName}
                     onChange={e => setNewColName(e.target.value)}
-                    placeholder="z.B. Semester 1"
+                    placeholder={t('lib.exampleSemester')}
                     className="w-full p-3 rounded-xl text-xs font-bold outline-none border-2 border-indigo-500"
                     style={{ background: 'var(--bg-main)', color: 'var(--text-main)' }}
                   />
                   <div className="flex gap-2">
-                    <button type="submit" className="flex-1 bg-indigo-600 py-2 rounded-xl text-[9px] font-black uppercase tracking-widest" style={{ color: 'var(--primary-text)' }}>Erstellen</button>
+                    <button type="submit" className="flex-1 bg-indigo-600 py-2 rounded-xl text-[9px] font-black uppercase tracking-widest" style={{ color: 'var(--primary-text)' }}>{t('lib.create')}</button>
                     <button type="button" onClick={() => { setIsAddingCol(false); setNewColName(''); }} className="px-3 text-slate-400 py-2 rounded-xl text-[9px] font-black uppercase" style={{ background: 'var(--bg-main)' }}>✕</button>
                   </div>
                 </form>
@@ -528,7 +530,7 @@ export const LibrarySystem: React.FC<LibrarySystemProps> = ({
                         <button
                           onClick={() => { setShowFolderView(true); setEditColId(col.id); setEditColName(col.name); setEditColEmoji(col.emoji); }}
                           className="w-6 h-6 rounded-lg flex items-center justify-center bg-white dark:bg-slate-700 shadow text-slate-400 hover:text-indigo-500 transition-colors"
-                          title="Bearbeiten"
+                          title={t('lib.edit')}
                         >
                           <svg xmlns="http://www.w3.org/2000/svg" width="8" height="8" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round">
                             <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/>
@@ -542,7 +544,7 @@ export const LibrarySystem: React.FC<LibrarySystemProps> = ({
                             }
                           }}
                           className="w-6 h-6 rounded-lg flex items-center justify-center bg-rose-500 text-white shadow transition-all hover:scale-110"
-                          title="Löschen"
+                          title={t('lib.delete')}
                         >
                           <svg xmlns="http://www.w3.org/2000/svg" width="8" height="8" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="4" strokeLinecap="round" strokeLinejoin="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
                         </button>
@@ -556,7 +558,7 @@ export const LibrarySystem: React.FC<LibrarySystemProps> = ({
             {/* Module filter */}
             {modules.length > 0 && (
               <div className="rounded-[28px] shadow-3d-raised p-5 space-y-3" style={{ background: 'var(--bg-sidebar)', border: '1px solid var(--border-color)' }}>
-                <span className="text-[10px] font-black uppercase tracking-widest text-slate-400 px-1 block">Module</span>
+                <span className="text-[10px] font-black uppercase tracking-widest text-slate-400 px-1 block">{t('lib.modules')}</span>
                 <div className="space-y-1">
                   <button
                     onClick={() => setFilterModule('')}
@@ -590,7 +592,7 @@ export const LibrarySystem: React.FC<LibrarySystemProps> = ({
                 <input
                   value={search}
                   onChange={e => setSearch(e.target.value)}
-                  placeholder="Quelle suchen…"
+                  placeholder={t('lib.searchPlaceholder')}
                   className="w-full pl-10 pr-4 py-3 rounded-2xl text-sm font-medium outline-none focus:border-indigo-500 shadow-3d-raised"
                   style={{ background: 'var(--bg-sidebar)', border: '1px solid var(--border-color)', color: 'var(--text-main)' }}
                 />
@@ -604,10 +606,10 @@ export const LibrarySystem: React.FC<LibrarySystemProps> = ({
                   className="flex-1 min-w-[100px] px-3 py-2.5 rounded-2xl text-[10px] font-black uppercase tracking-widest outline-none focus:border-indigo-500 shadow-3d-raised"
                   style={{ background: 'var(--bg-sidebar)', border: '1px solid var(--border-color)', color: 'var(--text-main)' }}
                 >
-                  <option value="all">Alle Typen</option>
+                  <option value="all">{t('lib.allTypes')}</option>
                   <option value="pdf">PDF</option>
                   <option value="docx">DOCX</option>
-                  <option value="text">Text</option>
+                  <option value="text">{t('lib.text')}</option>
                 </select>
 
                 <select
@@ -616,9 +618,9 @@ export const LibrarySystem: React.FC<LibrarySystemProps> = ({
                   className="flex-1 min-w-[100px] px-3 py-2.5 rounded-2xl text-[10px] font-black uppercase tracking-widest outline-none focus:border-indigo-500 shadow-3d-raised"
                   style={{ background: 'var(--bg-sidebar)', border: '1px solid var(--border-color)', color: 'var(--text-main)' }}
                 >
-                  <option value="recent">Neueste</option>
-                  <option value="name">Name</option>
-                  <option value="type">Typ</option>
+                  <option value="recent">{t('lib.newest')}</option>
+                  <option value="name">{t('lib.name')}</option>
+                  <option value="type">{t('lib.type')}</option>
                 </select>
 
                 <div className="flex rounded-2xl p-1 shadow-3d-raised shrink-0" style={{ background: 'var(--bg-sidebar)', border: '1px solid var(--border-color)' }}>
@@ -657,8 +659,8 @@ export const LibrarySystem: React.FC<LibrarySystemProps> = ({
             ) : filtered.length === 0 ? (
               <div className="flex flex-col items-center justify-center py-24 text-center space-y-4">
                 <EmojiImage emoji="🔍" size={48} />
-                <p className="text-sm font-black uppercase tracking-widest text-slate-400">Keine Treffer</p>
-                <p className="text-xs text-slate-400">Versuche einen anderen Suchbegriff oder entferne Filter.</p>
+                <p className="text-sm font-black uppercase tracking-widest text-slate-400">{t('lib.noResults')}</p>
+                <p className="text-xs text-slate-400">{t('lib.noResultsHint')}</p>
               </div>
             ) : viewMode === 'grid' ? (
               <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-5">
@@ -700,17 +702,19 @@ export const LibrarySystem: React.FC<LibrarySystemProps> = ({
   );
 };
 
-const EmptyLibrary: React.FC<{ onUpload: () => void }> = ({ onUpload }) => (
+const EmptyLibrary: React.FC<{ onUpload: () => void }> = ({ onUpload }) => {
+  const { t } = useTranslation();
+  return (
   <div className="flex flex-col items-center justify-center py-32 text-center space-y-6 animate-in fade-in duration-500">
     <div className="w-24 h-24 bg-indigo-50 dark:bg-indigo-950/30 rounded-full flex items-center justify-center">
       <EmojiImage emoji="📭" size={48} />
     </div>
     <div className="space-y-3 max-w-sm">
       <p className="text-lg font-black uppercase tracking-widest text-slate-700 dark:text-slate-200">
-        Noch keine Lernunterlagen
+        {t('lib.emptyTitle')}
       </p>
       <p className="text-sm text-slate-400 leading-relaxed">
-        Lade dein erstes Skript hoch. QuizWise erstellt daraus Quiz, Karteikarten, Erklärungen und Lernpläne, direkt aus deinen echten Unterlagen.
+        {t('lib.emptyDesc')}
       </p>
     </div>
     <button
@@ -718,7 +722,7 @@ const EmptyLibrary: React.FC<{ onUpload: () => void }> = ({ onUpload }) => (
       className="flex items-center gap-2 px-8 py-4 bg-indigo-600 rounded-2xl font-black uppercase text-[11px] tracking-widest shadow-lg hover:scale-105 active:scale-95 transition-all"
       style={{ color: 'var(--primary-text)' }}
     >
-      <IconUpload /> Erste Quelle hochladen
+      <IconUpload /> {t('lib.uploadFirst')}
     </button>
     <div className="flex gap-6 pt-4">
       {['PDF', 'DOCX', 'TXT', 'MD'].map(f => (
@@ -726,5 +730,6 @@ const EmptyLibrary: React.FC<{ onUpload: () => void }> = ({ onUpload }) => (
       ))}
     </div>
   </div>
-);
+  );
+};
 

@@ -4,6 +4,9 @@ import type { SourceMeta } from '../services/libraryService';
 import { getDocStats } from '../services/quizHistoryService';
 import { SourceStatusBadge } from './SourceStatusBadge';
 import { EmojiImage } from './EmojiImage';
+import { useTranslation } from '../i18n/I18nProvider';
+import { formatDate } from '../i18n/dates';
+import type { TKey } from '../i18n';
 
 const FILE_EMOJI: Record<string, string> = { pdf: '📕', docx: '📘', text: '📄' };
 const SOURCE_KIND_EMOJI: Record<string, string> = { youtube: '📺', web: '🌐' };
@@ -11,9 +14,9 @@ const SOURCE_KIND_EMOJI: Record<string, string> = { youtube: '📺', web: '🌐'
 interface Action {
   tab: ActiveTab;
   emoji: string;
-  title: string;
-  desc: string;
-  cta: string;
+  titleKey: TKey;
+  descKey: TKey;
+  ctaKey: TKey;
   directStart: boolean; // true = KI startet sofort mit dieser Quelle
   accent?: boolean;
   danger?: boolean;
@@ -21,15 +24,15 @@ interface Action {
 }
 
 const ACTIONS: Action[] = [
-  { tab: ActiveTab.QUIZ,      emoji: '🎯', title: 'Quiz starten',                desc: 'Startet sofort prüfungsnahe Fragen direkt aus dieser Quelle.',              cta: 'Quiz starten',     directStart: true, accent: true },
-  { tab: ActiveTab.EXPLAINER, emoji: '💡', title: 'Erklären lassen',             desc: 'KI erklärt dir Konzepte und Definitionen aus dieser Quelle.',               cta: 'Erklärer öffnen',  directStart: true, accent: true },
-  { tab: ActiveTab.READER,    emoji: '📖', title: 'Skript lesen + Erklärer',     desc: 'Split-Screen: lies das Dokument und frag direkt zu Textstellen nach.',      cta: 'Split-Screen öffnen', directStart: true },
-  { tab: ActiveTab.CARDS,     emoji: '🃏', title: 'Karteikarten generieren',     desc: 'Erstellt automatisch Lernkarten aus Definitionen und Begriffen.',            cta: 'Karten erstellen', directStart: true },
-  { tab: ActiveTab.RECALL,    emoji: '🧠', title: 'Recall starten',              desc: 'Erkläre das Thema frei. QuizWise prüft dein Verständnis anhand dieser Quelle.', cta: 'Recall starten',   directStart: true },
-  { tab: ActiveTab.EXAM,      emoji: '📝', title: 'Klausur simulieren',          desc: 'Prüfungssimulation mit offenen und geschlossenen Fragen.',                   cta: 'Klausur-Simulator',    directStart: false, danger: true },
-  { tab: ActiveTab.PLANNER,   emoji: '📅', title: 'Lernplan erstellen',          desc: 'Plane deine Lernzeit auf Basis deines Fortschritts und Prüfungstermins.',   cta: 'Planer öffnen',    directStart: false },
-  { tab: ActiveTab.RADAR,     emoji: '📊', title: 'Schwächen analysieren',       desc: 'Zeigt deine schwachen Themen aus allen bisherigen Lernsessions.',            cta: 'Analyse öffnen',   directStart: false },
-  { tab: ActiveTab.PAPER,     emoji: '✍️',  title: 'Für Hausarbeit verwenden',   desc: 'Nutze diese Quelle als Grundlage für wissenschaftliche Arbeiten.',           cta: 'Hausarbeit',       directStart: false },
+  { tab: ActiveTab.QUIZ,      emoji: '🎯', titleKey: 'sd.action.quiz.title',      descKey: 'sd.action.quiz.desc',      ctaKey: 'sd.action.quiz.cta',      directStart: true, accent: true },
+  { tab: ActiveTab.EXPLAINER, emoji: '💡', titleKey: 'sd.action.explainer.title', descKey: 'sd.action.explainer.desc', ctaKey: 'sd.action.explainer.cta', directStart: true, accent: true },
+  { tab: ActiveTab.READER,    emoji: '📖', titleKey: 'sd.action.reader.title',    descKey: 'sd.action.reader.desc',    ctaKey: 'sd.action.reader.cta',    directStart: true },
+  { tab: ActiveTab.CARDS,     emoji: '🃏', titleKey: 'sd.action.cards.title',     descKey: 'sd.action.cards.desc',     ctaKey: 'sd.action.cards.cta',     directStart: true },
+  { tab: ActiveTab.RECALL,    emoji: '🧠', titleKey: 'sd.action.recall.title',    descKey: 'sd.action.recall.desc',    ctaKey: 'sd.action.recall.cta',    directStart: true },
+  { tab: ActiveTab.EXAM,      emoji: '📝', titleKey: 'sd.action.exam.title',      descKey: 'sd.action.exam.desc',      ctaKey: 'sd.action.exam.cta',      directStart: false, danger: true },
+  { tab: ActiveTab.PLANNER,   emoji: '📅', titleKey: 'sd.action.planner.title',   descKey: 'sd.action.planner.desc',   ctaKey: 'sd.action.planner.cta',   directStart: false },
+  { tab: ActiveTab.RADAR,     emoji: '📊', titleKey: 'sd.action.radar.title',     descKey: 'sd.action.radar.desc',     ctaKey: 'sd.action.radar.cta',     directStart: false },
+  { tab: ActiveTab.PAPER,     emoji: '✍️',  titleKey: 'sd.action.paper.title',     descKey: 'sd.action.paper.desc',     ctaKey: 'sd.action.paper.cta',     directStart: false },
 ];
 
 interface Props {
@@ -41,12 +44,13 @@ interface Props {
 }
 
 export const SourceDetailPage: React.FC<Props> = ({ doc, meta, onBack, onAction, onViewDocument }) => {
+  const { t } = useTranslation();
   const title     = meta.displayTitle || doc.name.replace(/\.[^/.]+$/, '');
   const status    = meta.status ?? 'ready';
   const emoji     = (meta.sourceKind && SOURCE_KIND_EMOJI[meta.sourceKind]) || FILE_EMOJI[doc.type] || '📄';
-  const uploadedAt = new Date(doc.uploadDate).toLocaleDateString('de-DE', { day: '2-digit', month: 'long', year: 'numeric' });
+  const uploadedAt = formatDate(doc.uploadDate, { day: '2-digit', month: 'long', year: 'numeric' });
   const lastOpened = meta.lastOpenedAt
-    ? new Date(meta.lastOpenedAt).toLocaleDateString('de-DE', { day: '2-digit', month: 'long' })
+    ? formatDate(meta.lastOpenedAt, { day: '2-digit', month: 'long' })
     : null;
 
   const quizStats = useMemo(() => getDocStats(doc.id), [doc.id]);
@@ -61,7 +65,7 @@ export const SourceDetailPage: React.FC<Props> = ({ doc, meta, onBack, onAction,
         <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round">
           <polyline points="15 18 9 12 15 6"/>
         </svg>
-        Zurück zur Bibliothek
+        {t('quizSetup.backToLibrary')}
       </button>
 
       {/* Source Header */}
@@ -81,7 +85,7 @@ export const SourceDetailPage: React.FC<Props> = ({ doc, meta, onBack, onAction,
                 <svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
                   <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/>
                 </svg>
-                Dokument ansehen
+                {t('sd.viewDocument')}
               </button>
               {meta.sourceUrl && (
                 <a
@@ -93,7 +97,7 @@ export const SourceDetailPage: React.FC<Props> = ({ doc, meta, onBack, onAction,
                   <svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
                     <path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"/><polyline points="15 3 21 3 21 9"/><line x1="10" y1="14" x2="21" y2="3"/>
                   </svg>
-                  {meta.sourceKind === 'youtube' ? 'Video öffnen' : 'Quelle öffnen'}
+                  {meta.sourceKind === 'youtube' ? t('sd.openVideo') : t('sd.openSource')}
                 </a>
               )}
             </div>
@@ -101,25 +105,25 @@ export const SourceDetailPage: React.FC<Props> = ({ doc, meta, onBack, onAction,
             <div className="flex flex-wrap gap-x-6 gap-y-1">
               {meta.module && (
                 <div className="flex items-center gap-1.5">
-                  <span className="text-[9px] font-black uppercase text-slate-400 tracking-widest">Modul</span>
+                  <span className="text-[9px] font-black uppercase text-slate-400 tracking-widest">{t('sd.module')}</span>
                   <span className="text-[10px] font-black text-indigo-600">{meta.module}</span>
                 </div>
               )}
               {meta.semester && (
                 <div className="flex items-center gap-1.5">
-                  <span className="text-[9px] font-black uppercase text-slate-400 tracking-widest">Semester</span>
+                  <span className="text-[9px] font-black uppercase text-slate-400 tracking-widest">{t('sd.semester')}</span>
                   <span className="text-[10px] font-black text-slate-600 dark:text-slate-300">{meta.semester}</span>
                 </div>
               )}
               {meta.examDate && (
                 <div className="flex items-center gap-1.5">
-                  <span className="text-[9px] font-black uppercase text-slate-400 tracking-widest">Prüfung</span>
-                  <span className="text-[10px] font-black text-rose-600">{new Date(meta.examDate).toLocaleDateString('de-DE', { day: '2-digit', month: 'short', year: 'numeric' })}</span>
+                  <span className="text-[9px] font-black uppercase text-slate-400 tracking-widest">{t('sd.exam')}</span>
+                  <span className="text-[10px] font-black text-rose-600">{formatDate(meta.examDate, { day: '2-digit', month: 'short', year: 'numeric' })}</span>
                 </div>
               )}
               <div className="flex items-center gap-1.5">
                 <span className="text-[9px] font-black uppercase text-slate-400 tracking-widest">
-                  {lastOpened ? 'Zuletzt geöffnet' : 'Hochgeladen'}
+                  {lastOpened ? t('sd.lastOpened') : t('sd.uploaded')}
                 </span>
                 <span className="text-[10px] font-black text-slate-500">{lastOpened ?? uploadedAt}</span>
               </div>
@@ -143,9 +147,9 @@ export const SourceDetailPage: React.FC<Props> = ({ doc, meta, onBack, onAction,
           {/* Quick stats */}
           {(meta.quizCount || meta.flashcardCount || meta.topicCount) ? (
             <div className="flex sm:flex-col gap-4 sm:gap-2 shrink-0 sm:text-right">
-              {meta.quizCount      ? <QuickStat label="Quiz" value={meta.quizCount} /> : null}
-              {meta.flashcardCount ? <QuickStat label="Karten" value={meta.flashcardCount} /> : null}
-              {meta.topicCount     ? <QuickStat label="Themen" value={meta.topicCount} /> : null}
+              {meta.quizCount      ? <QuickStat label={t('nav.quiz')} value={meta.quizCount} /> : null}
+              {meta.flashcardCount ? <QuickStat label={t('sd.cards')} value={meta.flashcardCount} /> : null}
+              {meta.topicCount     ? <QuickStat label={t('sd.topics')} value={meta.topicCount} /> : null}
             </div>
           ) : null}
         </div>
@@ -155,34 +159,34 @@ export const SourceDetailPage: React.FC<Props> = ({ doc, meta, onBack, onAction,
       {quizStats.count > 0 && (
         <div className="bg-white dark:bg-slate-900 rounded-[28px] border border-slate-200 dark:border-slate-800 shadow-3d-raised p-6 space-y-4">
           <div className="flex items-center justify-between">
-            <p className="text-[9px] font-black uppercase tracking-[0.3em] text-slate-400">Lernfortschritt</p>
+            <p className="text-[9px] font-black uppercase tracking-[0.3em] text-slate-400">{t('sd.progress')}</p>
             <button
               onClick={() => onAction(ActiveTab.QUIZ, doc)}
               className="text-[9px] font-black uppercase tracking-widest text-indigo-600 hover:text-indigo-700 transition-colors"
             >
-              Neues Quiz →
+              {t('sd.newQuiz')}
             </button>
           </div>
 
           <div className="flex gap-6">
             <div>
               <p className="text-2xl font-black text-slate-900 dark:text-white">{quizStats.count}</p>
-              <p className="text-[8px] font-black uppercase tracking-widest text-slate-400">Quizze</p>
+              <p className="text-[8px] font-black uppercase tracking-widest text-slate-400">{t('quizSetup.quizzes')}</p>
             </div>
             {quizStats.avgAccuracy !== null && (
               <div>
                 <p className={`text-2xl font-black ${quizStats.avgAccuracy >= 70 ? 'text-emerald-600' : quizStats.avgAccuracy >= 50 ? 'text-amber-500' : 'text-rose-500'}`}>
                   {quizStats.avgAccuracy}%
                 </p>
-                <p className="text-[8px] font-black uppercase tracking-widest text-slate-400">Ø Genauigkeit</p>
+                <p className="text-[8px] font-black uppercase tracking-widest text-slate-400">{t('quizSetup.avgAccuracy')}</p>
               </div>
             )}
             {quizStats.lastAt && (
               <div>
                 <p className="text-2xl font-black text-slate-900 dark:text-white">
-                  {new Date(quizStats.lastAt).toLocaleDateString('de-DE', { day: '2-digit', month: 'short' })}
+                  {formatDate(quizStats.lastAt, { day: '2-digit', month: 'short' })}
                 </p>
-                <p className="text-[8px] font-black uppercase tracking-widest text-slate-400">Zuletzt</p>
+                <p className="text-[8px] font-black uppercase tracking-widest text-slate-400">{t('quizSetup.last')}</p>
               </div>
             )}
           </div>
@@ -191,7 +195,7 @@ export const SourceDetailPage: React.FC<Props> = ({ doc, meta, onBack, onAction,
             <div>
               <p className="text-[8px] font-black uppercase tracking-widest text-rose-500 mb-2 flex items-center gap-1.5">
                 <span className="w-1 h-1 rounded-full bg-rose-500" />
-                Schwache Themen
+                {t('result.weakTopics')}
               </p>
               <div className="flex flex-wrap gap-1.5">
                 {quizStats.weakTopics.map(t => (
@@ -206,17 +210,17 @@ export const SourceDetailPage: React.FC<Props> = ({ doc, meta, onBack, onAction,
       {/* Action prompt */}
       <div className="space-y-5">
         <div className="flex items-center justify-between px-1">
-          <h2 className="text-[10px] font-black uppercase tracking-[0.4em] text-slate-400">Was möchtest du mit dieser Quelle machen?</h2>
+          <h2 className="text-[10px] font-black uppercase tracking-[0.4em] text-slate-400">{t('sd.whatToDo')}</h2>
           <span className="flex items-center gap-1.5 text-[9px] font-black uppercase tracking-widest text-emerald-600 dark:text-emerald-400">
             <span className="w-1.5 h-1.5 rounded-full bg-emerald-500" />
-            Startet direkt mit dieser Quelle
+            {t('sd.startsDirectly')}
           </span>
         </div>
 
         {status !== 'ready' && (
           <div className="p-4 bg-amber-50 dark:bg-amber-900/20 border border-amber-200 dark:border-amber-800 rounded-2xl">
             <p className="text-[11px] font-black uppercase tracking-widest text-amber-700 dark:text-amber-400 text-center">
-              Diese Quelle wird noch verarbeitet. Aktionen stehen danach zur Verfügung.
+              {t('sd.processing')}
             </p>
           </div>
         )}
@@ -244,6 +248,7 @@ const QuickStat: React.FC<{ label: string; value: number }> = ({ label, value })
 );
 
 const ActionCard: React.FC<{ action: Action; disabled: boolean; onAction: () => void }> = ({ action, disabled, onAction }) => {
+  const { t } = useTranslation();
   const base = 'rounded-[24px] p-5 flex flex-col gap-3 border transition-all group cursor-pointer text-left';
 
   let cardClass = 'bg-white dark:bg-slate-900 border-slate-200 dark:border-slate-800 hover:shadow-3d-raised';
@@ -269,15 +274,15 @@ const ActionCard: React.FC<{ action: Action; disabled: boolean; onAction: () => 
         <EmojiImage emoji={action.emoji} size={28} className={action.accent ? 'text-white' : 'text-slate-700 dark:text-slate-300'} />
         {action.directStart && (
           <span className={`text-[8px] font-black uppercase tracking-widest px-2 py-0.5 rounded-full ${action.accent ? 'bg-white/20 text-white' : 'bg-emerald-50 dark:bg-emerald-900/20 text-emerald-600 dark:text-emerald-400'}`}>
-            ⚡ Direkt
+            ⚡ {t('sd.direct')}
           </span>
         )}
       </div>
       <div className="flex-grow">
-        <p className={`text-sm font-black leading-snug ${textColor}`}>{action.title}</p>
-        <p className={`text-[10px] mt-1 leading-relaxed ${subColor}`}>{action.desc}</p>
+        <p className={`text-sm font-black leading-snug ${textColor}`}>{t(action.titleKey)}</p>
+        <p className={`text-[10px] mt-1 leading-relaxed ${subColor}`}>{t(action.descKey)}</p>
       </div>
-      <div className={`${btnClass} ${btnText}`}>{action.cta}</div>
+      <div className={`${btnClass} ${btnText}`}>{t(action.ctaKey)}</div>
     </button>
   );
 };
