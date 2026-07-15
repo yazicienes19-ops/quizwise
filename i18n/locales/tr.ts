@@ -596,4 +596,26 @@ export const tr: Translations = {
   'dvm.loadFailed': 'Belge yüklenemedi.',
   'dvm.extractedText': 'Çıkarılan metin · orijinal biçimlendirme yok',
   'dvm.noTextContent': 'Metin içeriği mevcut değil.',
+
+  // shared true/false
+  'tf.true': 'Doğru',
+  'tf.false': 'Yanlış',
+
+  // learning score service
+  'ls.verstaendnis': 'Anlama',
+  'ls.verstaendnis.hint': '2 anlatım oturumu gerekir ({n} tane var).',
+  'ls.langzeit': 'Bilgiyi tutma',
+  'ls.langzeit.hint': '10 öğrenilmiş kart gerekir ({n} tane var).',
+  'ls.abruf': 'Bilgiyi hatırlama',
+  'ls.abruf.hint': '2 test ya da 3 kart konusu gerekir.',
+  'ls.transfer': 'Bilgiyi uygulama',
+  'ls.transfer.hint': 'Transfer/örnek soruları olan bir sınav gerekir.',
+  'ls.klausur': 'Sınav performansı',
+  'ls.klausur.hint': '2 sınav simülasyonu gerekir ({n} tane var).',
+
+  // spaced planning service (otomatik takvim kayıtları)
+  'sp.examReview': 'Sınav tekrarı: {title}',
+  'sp.review': 'Tekrar: {name}',
+  'sp.dueReviews': 'Zamanı gelen tekrarlar ({n})',
+  'sp.autoPlanned': 'Otomatik planlandı (Spaced Repetition)',
 };

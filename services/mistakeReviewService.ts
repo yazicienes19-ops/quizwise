@@ -1,5 +1,6 @@
 import type { QuizQuestion, ExamQuestion } from '../types';
 import { SrsState, createSrsState, reviewCard, getDueCards, ReviewQuality } from './spacedRepetition';
+import { t } from '../i18n';
 
 /**
  * mistakeReviewService — SM-2-geplante Wiederholung falsch beantworteter Quizfragen.
@@ -143,7 +144,7 @@ export const examQuestionToQuizQuestion = (q: ExamQuestion): QuizQuestion | null
   if (q.type === 'truefalse' && typeof q.tfCorrect === 'boolean' && !q.tfReasonOptions?.length) {
     return {
       question: q.question,
-      options: ['Wahr', 'Falsch'],
+      options: [t('tf.true'), t('tf.false')],
       correctAnswerIndices: [q.tfCorrect ? 0 : 1],
       isMultipleChoice: false,
       explanation: q.solution || '',

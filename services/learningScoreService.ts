@@ -2,6 +2,7 @@ import type { TopicMetric, FlashcardDeck } from '../types';
 import type { QuizResult } from './quizHistoryService';
 import type { ExamResult } from './examHistoryService';
 import type { RecallResult } from './recallHistoryService';
+import { t } from '../i18n';
 
 /**
  * learningScoreService — deterministischer „Learning Score" für den Lern-Coach.
@@ -73,11 +74,11 @@ export const buildLearningScore = (input: {
     : null;
 
   const dimensions: LearningScoreDimension[] = [
-    { key: 'verstaendnis', emoji: '🧠', label: 'Verständnis', score: verstaendnis, hint: `Braucht 2 Erklär-Sessions (du hast ${recallResults.length}).` },
-    { key: 'langzeit', emoji: '📚', label: 'Wissen behalten', score: langzeit, hint: `Braucht 10 gelernte Karteikarten (du hast ${establishedCards.length}).` },
-    { key: 'abruf', emoji: '⚡', label: 'Wissen abrufen', score: abruf, hint: 'Braucht 2 Quizzes oder 3 Karteikarten-Themen.' },
-    { key: 'transfer', emoji: '🎯', label: 'Wissen anwenden', score: transfer, hint: 'Braucht eine Klausur mit Transfer-/Beispielaufgaben.' },
-    { key: 'klausur', emoji: '📝', label: 'Klausurleistung', score: klausur, hint: `Braucht 2 Klausursimulationen (du hast ${examResults.length}).` },
+    { key: 'verstaendnis', emoji: '🧠', label: t('ls.verstaendnis'), score: verstaendnis, hint: t('ls.verstaendnis.hint', { n: recallResults.length }) },
+    { key: 'langzeit', emoji: '📚', label: t('ls.langzeit'), score: langzeit, hint: t('ls.langzeit.hint', { n: establishedCards.length }) },
+    { key: 'abruf', emoji: '⚡', label: t('ls.abruf'), score: abruf, hint: t('ls.abruf.hint') },
+    { key: 'transfer', emoji: '🎯', label: t('ls.transfer'), score: transfer, hint: t('ls.transfer.hint') },
+    { key: 'klausur', emoji: '📝', label: t('ls.klausur'), score: klausur, hint: t('ls.klausur.hint', { n: examResults.length }) },
   ];
 
   const available = dimensions.filter((d): d is LearningScoreDimension & { score: number } => d.score !== null);

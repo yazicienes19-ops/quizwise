@@ -598,4 +598,26 @@ export const de = {
   'dvm.loadFailed': 'Dokument konnte nicht geladen werden.',
   'dvm.extractedText': 'Extrahierter Text · keine Original-Formatierung',
   'dvm.noTextContent': 'Kein Textinhalt verfügbar.',
+
+  // shared true/false
+  'tf.true': 'Wahr',
+  'tf.false': 'Falsch',
+
+  // learning score service
+  'ls.verstaendnis': 'Verständnis',
+  'ls.verstaendnis.hint': 'Braucht 2 Erklär-Sessions (du hast {n}).',
+  'ls.langzeit': 'Wissen behalten',
+  'ls.langzeit.hint': 'Braucht 10 gelernte Karteikarten (du hast {n}).',
+  'ls.abruf': 'Wissen abrufen',
+  'ls.abruf.hint': 'Braucht 2 Quizzes oder 3 Karteikarten-Themen.',
+  'ls.transfer': 'Wissen anwenden',
+  'ls.transfer.hint': 'Braucht eine Klausur mit Transfer-/Beispielaufgaben.',
+  'ls.klausur': 'Klausurleistung',
+  'ls.klausur.hint': 'Braucht 2 Klausursimulationen (du hast {n}).',
+
+  // spaced planning service (Auto-Kalender-Einträge)
+  'sp.examReview': 'Klausur-Wiederholung: {title}',
+  'sp.review': 'Wiederholen: {name}',
+  'sp.dueReviews': 'Fällige Wiederholungen ({n})',
+  'sp.autoPlanned': 'Automatisch geplant (Spaced Repetition)',
 } as const;
