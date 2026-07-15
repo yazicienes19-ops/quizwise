@@ -1,4 +1,8 @@
 import React from 'react';
+import { t } from '../i18n';
+
+// Erklärer-Überschriften beider Sprachen (DE + TR) für die Block-Erkennung.
+const HEADING_RE = /^(Grundlagen|Vertiefung|Kontext|Temel Bilgiler|Derinlemesine|Bağlam|Stufe\s*\d*|Phase\s*\d*|Aşama\s*\d*)[\s:]/i;
 
 export function parseInline(text: string, baseKey: string): React.ReactNode[] {
   const parts: React.ReactNode[] = [];
@@ -26,13 +30,13 @@ export function renderMarkdown(text: string): React.ReactNode {
     if (line.startsWith('# '))   { blocks.push(<h2 key={key++} className="text-2xl lg:text-3xl font-black text-slate-900 dark:text-white tracking-tight mt-2">{parseInline(line.slice(2),String(key))}</h2>); i++; continue; }
     if (line.startsWith('## '))  { blocks.push(<h3 key={key++} className="text-xl lg:text-2xl font-black text-slate-900 dark:text-white tracking-tight mt-1">{parseInline(line.slice(3),String(key))}</h3>); i++; continue; }
     if (line.startsWith('### ')) { blocks.push(<h4 key={key++} className="text-base lg:text-lg font-black text-slate-700 dark:text-slate-200 uppercase tracking-wider mt-1">{parseInline(line.slice(4),String(key))}</h4>); i++; continue; }
-    if (line.match(/^(Grundlagen|Vertiefung|Kontext|Stufe\s*\d*|Phase\s*\d*)[\s:]/i)) {
+    if (HEADING_RE.test(line)) {
       blocks.push(<h3 key={key++} className="text-xl lg:text-2xl font-black text-slate-900 dark:text-white tracking-tight mt-1">{parseInline(line,String(key))}</h3>); i++; continue;
     }
     if (line.startsWith('Allgemeinwissen:')) {
       const content: string[] = [line.replace('Allgemeinwissen:','').trim()]; i++;
       while (i < lines.length && lines[i].trim() && !lines[i].startsWith('#') && !lines[i].match(/^[-*•]\s/) && !lines[i].match(/^\d+\.\s/)) { content.push(lines[i]); i++; }
-      blocks.push(<div key={key++} className="px-5 py-4 rounded-2xl" style={{ background:'color-mix(in srgb,var(--primary) 8%,transparent)', border:'1px solid color-mix(in srgb,var(--primary) 20%,transparent)' }}><p className="text-[9px] font-black uppercase tracking-widest mb-2" style={{ color:'var(--primary)' }}>Externes Wissen</p><p className="text-base font-medium text-slate-700 dark:text-slate-300 leading-relaxed">{parseInline(content.join(' '),String(key))}</p></div>);
+      blocks.push(<div key={key++} className="px-5 py-4 rounded-2xl" style={{ background:'color-mix(in srgb,var(--primary) 8%,transparent)', border:'1px solid color-mix(in srgb,var(--primary) 20%,transparent)' }}><p className="text-[9px] font-black uppercase tracking-widest mb-2" style={{ color:'var(--primary)' }}>{t('reader.externalKnowledge')}</p><p className="text-base font-medium text-slate-700 dark:text-slate-300 leading-relaxed">{parseInline(content.join(' '),String(key))}</p></div>);
       continue;
     }
     if (line.match(/^[-*•]\s/)) {
@@ -48,7 +52,7 @@ export function renderMarkdown(text: string): React.ReactNode {
       continue;
     }
     const paraLines: string[] = [line]; i++;
-    while (i < lines.length && lines[i].trim() && !lines[i].startsWith('#') && !lines[i].match(/^[-*•]\s/) && !lines[i].match(/^\d+\.\s/) && !lines[i].startsWith('Allgemeinwissen:') && !lines[i].match(/^(Grundlagen|Vertiefung|Kontext|Stufe\s*\d*|Phase\s*\d*)[\s:]/i)) { paraLines.push(lines[i]); i++; }
+    while (i < lines.length && lines[i].trim() && !lines[i].startsWith('#') && !lines[i].match(/^[-*•]\s/) && !lines[i].match(/^\d+\.\s/) && !lines[i].startsWith('Allgemeinwissen:') && !HEADING_RE.test(lines[i])) { paraLines.push(lines[i]); i++; }
     blocks.push(<p key={key++} className="text-base lg:text-lg font-medium text-slate-700 dark:text-slate-300 leading-relaxed">{parseInline(paraLines.join(' '),String(key))}</p>);
   }
   return <div className="space-y-5">{blocks}</div>;

@@ -54,7 +54,10 @@ async function fetchWithTimeout(target, options = {}) {
 // Gemini kann öffentliche YouTube-Videos direkt per URL verarbeiten — kein
 // Transkript-Scraping nötig (das von Cloud-IPs aus regelmäßig blockiert wird).
 
-const YOUTUBE_PROMPT = `Du erhältst ein Lehrvideo. Erstelle daraus ein vollständiges, lernfertiges Skript auf Deutsch.
+// language: 'de' (Default) | 'tr' — steuert nur die Ausgabesprache des Skripts.
+const youtubePrompt = (language = 'de') => {
+  const langLine = language === 'tr' ? 'auf Türkisch' : 'auf Deutsch';
+  return `Du erhältst ein Lehrvideo. Erstelle daraus ein vollständiges, lernfertiges Skript ${langLine}.
 
 Regeln:
 - Gib AUSSCHLIESSLICH Inhalte wieder, die im Video vorkommen — kein externes Wissen ergänzen.
@@ -62,9 +65,11 @@ Regeln:
 - Schreibe in vollständigen Sätzen; alle Definitionen, Beispiele, Zahlen und Merksätze aus dem Video übernehmen.
 - Keine Meta-Kommentare ("In diesem Video...", "Der Sprecher sagt...") — formuliere den Stoff direkt als Lerntext.
 - Beginne direkt mit der ersten Überschrift.`;
+};
 
 router.post('/youtube', checkUsageLimit, async (req, res) => {
   const url = validatePublicHttpUrl(req.body?.url);
+  const language = req.body?.language === 'tr' ? 'tr' : 'de';
   const videoId = url && parseYouTubeId(url);
   if (!videoId) {
     return res.status(400).json({ error: 'Das ist kein gültiger YouTube-Link.' });
@@ -98,7 +103,7 @@ router.post('/youtube', checkUsageLimit, async (req, res) => {
         role: 'user',
         parts: [
           { fileData: { fileUri: canonicalUrl } },
-          { text: YOUTUBE_PROMPT },
+          { text: youtubePrompt(language) },
         ],
       }],
       config: {

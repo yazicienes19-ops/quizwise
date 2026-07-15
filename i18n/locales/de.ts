@@ -186,4 +186,7 @@ export const de = {
   // settings (nur die Sprach-Sektion; restliche Settings-Strings folgen in einem späteren Batch)
   'settings.language.title': 'Sprache',
   'settings.language.hint': 'Gilt für die Oberfläche und für neu erstellte Lerninhalte.',
+
+  // reader / markdown
+  'reader.externalKnowledge': 'Externes Wissen',
 } as const;

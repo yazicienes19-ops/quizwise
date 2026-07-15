@@ -7,7 +7,9 @@ export function extractSourceQuote(markdown: string): string | null {
   const lines = markdown.split('\n').map(l => l.trim()).filter(Boolean);
   if (lines.length === 0) return null;
   const lastLine = lines[lines.length - 1];
-  const match = lastLine.match(/^\*\*Quelle:\*\*\s*[""]?(.+?)[""]?$/);
+  // Der Prompt gibt "**Quelle:**" als stabiles Token vor; "Kaynak" wird zusätzlich
+  // akzeptiert, falls das Modell den Marker doch übersetzt.
+  const match = lastLine.match(/^\*\*(?:Quelle|Kaynak):\*\*\s*[""]?(.+?)[""]?$/);
   if (!match) return null;
   const quote = match[1].trim();
   return quote.length > 0 ? quote : null;

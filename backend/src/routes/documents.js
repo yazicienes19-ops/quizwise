@@ -11,7 +11,10 @@ const ID_RE = /^[a-zA-Z0-9_-]{6,64}$/;
 // Gemini akzeptiert inline nur ~20 MB — darüber schlägt die Analyse immer fehl
 const MAX_ANALYZE_BYTES = 18 * 1024 * 1024;
 
-const DIGEST_PROMPT = `Analysiere dieses Dokument und erstelle einen vollständigen Lerndigest auf Deutsch.
+// language: 'de' (Default) | 'tr' — steuert nur die Ausgabesprache des Digests.
+const digestPrompt = (language = 'de') => {
+  const langLine = language === 'tr' ? 'auf Türkisch' : 'auf Deutsch';
+  return `Analysiere dieses Dokument und erstelle einen vollständigen Lerndigest ${langLine}.
 
 Erfasse ALLE Lerninhalte lückenlos:
 - Definitionen und Fachbegriffe mit Erklärungen
@@ -22,12 +25,14 @@ Erfasse ALLE Lerninhalte lückenlos:
 
 Strukturiere den Digest in klar benannte Abschnitte nach Themen.
 Dieser Digest ersetzt das Originaldokument für alle zukünftigen KI-Aufrufe (Quiz, Karteikarten, Erklärer) — sei vollständig.`;
+};
 
 // POST /api/documents/:id/analyze
 // Antwortet sofort, analysiert im Hintergrund
 router.post('/:id/analyze', async (req, res) => {
   const { id } = req.params;
   if (!ID_RE.test(id)) return res.status(400).json({ error: 'Ungültige Dokument-ID.' });
+  const language = req.body?.language === 'tr' ? 'tr' : 'de';
 
   const sb = req.supabase;
   const userId = req.user.id;
@@ -70,7 +75,7 @@ router.post('/:id/analyze', async (req, res) => {
 
       const response = await ai.models.generateContent({
         model: 'gemini-2.5-flash-lite',
-        contents: [{ role: 'user', parts: [part, { text: DIGEST_PROMPT }] }],
+        contents: [{ role: 'user', parts: [part, { text: digestPrompt(language) }] }],
         config: { temperature: 0.2, thinkingConfig: { thinkingBudget: 0 } },
       });
 

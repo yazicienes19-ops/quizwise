@@ -184,4 +184,7 @@ export const tr: Translations = {
   // settings
   'settings.language.title': 'Dil',
   'settings.language.hint': 'Arayüz ve yeni oluşturulan öğrenme içerikleri için geçerlidir.',
+
+  // reader / markdown
+  'reader.externalKnowledge': 'Dış bilgi',
 };

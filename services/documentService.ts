@@ -1,5 +1,6 @@
 import { supabase } from './supabaseClient';
 import { ProcessedDocument, Collection } from '../types';
+import { getLocale } from '../i18n';
 
 // ── Collections ───────────────────────────────────────────────────────────────
 
@@ -130,7 +131,9 @@ export const triggerDocumentAnalysis = async (docId: string): Promise<void> => {
   const backendUrl = import.meta.env.VITE_BACKEND_URL || 'http://localhost:4000';
   fetch(`${backendUrl}/api/documents/${docId}/analyze`, {
     method: 'POST',
-    headers: { Authorization: `Bearer ${session.access_token}` },
+    headers: { Authorization: `Bearer ${session.access_token}`, 'Content-Type': 'application/json' },
+    // Digest in der aktiven Sprache erstellen (nur für neue Analysen).
+    body: JSON.stringify({ language: getLocale() }),
   }).catch(() => {});
 };
 

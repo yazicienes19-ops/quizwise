@@ -29,6 +29,7 @@ import {
 // ─── Backend-Verbindung ──────────────────────────────────────────────────────
 import { supabase } from './supabaseClient';
 import { parseQuizQuestions } from './quizNormalize';
+import { outputLangDirective, explainerHeadings } from './aiLocale';
 
 const BACKEND_URL = import.meta.env.VITE_BACKEND_URL || 'http://localhost:4000';
 
@@ -139,7 +140,7 @@ Die Frage soll tiefes Verständnis prüfen — Zusammenhänge, Ursachen und Bede
 Liefere:
 - question: Eine Erklärungsfrage die nur mit dem Dokument beantwortet werden kann
 - expectedKeywords: Die 6-10 zentralen Begriffe aus dem Dokument die in einer vollständigen Antwort vorkommen sollten
-- conceptContext: 4-6 Sätze was eine vollständige Antwort laut Dokument enthalten muss — Kernaussagen, Zusammenhänge, Beispiele aus dem Material` });
+- conceptContext: 4-6 Sätze was eine vollständige Antwort laut Dokument enthalten muss — Kernaussagen, Zusammenhänge, Beispiele aus dem Material${outputLangDirective()}` });
 
   const text = await callBackend({
     complexity: 'heavy',
@@ -167,7 +168,7 @@ export const evaluateRecallResponse = async (challenge: RecallChallenge, userAns
 
   const safeAnswer = sanitizeUserInput(userAnswer, 3000);
 
-  parts.push({ text: `Bewerte diese Feynman-Antwort präzise und direkt. Auf Deutsch.
+  parts.push({ text: `Bewerte diese Feynman-Antwort präzise und direkt.${outputLangDirective()}
 
 Das obige Dokument ist die einzige Quelle der Wahrheit — prüfe den Inhalt des <nutzerantwort>-Tags direkt dagegen.
 Frage: "${challenge.question}"
@@ -225,7 +226,7 @@ export const orchestrateLearningFlow = async (
     complexity: 'heavy',
     parts: [{ text: `Analysiere folgende Lernaktivität und erzeuge den 'Next Best Actions'-Plan:
   ${JSON.stringify(context)}
-  FORMATREGELN: max. 3 next_actions. Falls Lücken vorhanden (>30% Fehler), schlage einen Kalenderblock vor.` }],
+  FORMATREGELN: max. 3 next_actions. Falls Lücken vorhanden (>30% Fehler), schlage einen Kalenderblock vor.${outputLangDirective()}` }],
     systemInstruction: ORCHESTRATOR_INSTRUCTION,
     config: {
       thinkingConfig: { thinkingBudget: 0 },
@@ -335,7 +336,8 @@ export const generateSmartStudyPlan = async (metrics: TopicMetric[], decks: Flas
   3b. dueLoadNext7Days = fällige Wiederholungen pro Tag (Index 0 = heute): plane an Tagen mit hoher Last kürzere Neustoff-Sessions und explizite Wiederholungs-Sessions ein.` : ''}
   4. Weise jeder Session eine Farbe zu (emerald, blue, purple, rose).
   5. Sessions: 60 bis 120 Minuten.
-  GIB NUR DAS JSON-ARRAY ZURÜCK.` }],
+  6. Die Wochentags-Werte im Feld "day" bleiben immer deutsch (Montag bis Sonntag) und die Farb-Werte englisch — nur die Inhalte von subject/topic in der Zielsprache.
+  GIB NUR DAS JSON-ARRAY ZURÜCK.${outputLangDirective()}` }],
     config: {
       thinkingConfig: { thinkingBudget: 0 },
       responseMimeType: 'application/json',
@@ -482,7 +484,7 @@ ANTWORTOPTIONEN-REGELN für MC/Single/TF/Szenario (zwingend einhalten):
 7. Die richtige Antwort darf sich nicht durch Länge, Stil oder Formulierungsmuster von den falschen unterscheiden
 8. Keine offensichtlich falschen Distraktoren — alle Optionen müssen plausibel klingen
 
-Zu jeder Frage: Erklärung (explanation), Textbezug (sourceReference), Thema (topic) und Schwierigkeitsgrad (difficulty) IMMER befüllen.` });
+Zu jeder Frage: Erklärung (explanation), Textbezug (sourceReference), Thema (topic) und Schwierigkeitsgrad (difficulty) IMMER befüllen.${outputLangDirective()}` });
     return callBackend({
       complexity: 'heavy',
       parts: batchParts,
@@ -517,7 +519,7 @@ STRENGE DIVERSITÄTS-REGELN:
 2. Verteile die Karten gleichmäßig über ALLE Abschnitte/Kapitel — nicht nur die prominentesten Themen
 3. Mische Kartentypen: Definition, Unterschied (A vs B), Anwendung, Ursache/Wirkung, Aufzählung
 4. Vorderseite: präzise Frage oder Begriff — Rückseite: vollständige prägnante Antwort (2-4 Sätze)
-5. Vermeide Karten die dasselbe Thema nur anders formulieren` });
+5. Vermeide Karten die dasselbe Thema nur anders formulieren${outputLangDirective()}` });
 
   const text = await callBackend({
     complexity: 'heavy',
@@ -545,7 +547,7 @@ export const generateQuizFromFlashcards = async (deck: FlashcardDeck): Promise<Q
   const cardsJson = JSON.stringify(deck.cards.map(c => ({ q: c.front, a: c.back })));
 
   const text = await callBackend({
-    parts: [{ text: `Erstelle ein Quiz aus diesen Karteikarten: ${cardsJson}` }],
+    parts: [{ text: `Erstelle ein Quiz aus diesen Karteikarten: ${cardsJson}${outputLangDirective()}` }],
     config: {
       thinkingConfig: { thinkingBudget: 0 },
       responseMimeType: 'application/json',
@@ -762,7 +764,7 @@ export const analyzeLearningProgress = async (
 
   const text = await callBackend({
     complexity: 'heavy',
-    parts: [{ text: `Analysiere den Lernfortschritt eines Studenten auf Deutsch.\n\nThemen-Konfidenz: ${metricsText}${wrongText}\n\nIdentifiziere konkrete Fehlermuster aus den echten Fragen (z.B. "Begriffsverwechslungen", "Konzeptuelle Lücken"), gib gezielte Lernempfehlungen und eine psychologische Gesamteinschätzung.` }],
+    parts: [{ text: `Analysiere den Lernfortschritt eines Studenten.\n\nThemen-Konfidenz: ${metricsText}${wrongText}\n\nIdentifiziere konkrete Fehlermuster aus den echten Fragen (z.B. "Begriffsverwechslungen", "Konzeptuelle Lücken"), gib gezielte Lernempfehlungen und eine psychologische Gesamteinschätzung.${outputLangDirective()}` }],
     config: {
       thinkingConfig: { thinkingBudget: 0 },
       responseMimeType: 'application/json',
@@ -823,14 +825,14 @@ export const generateExplanation = async (
   if (!useExternalKnowledge) {
     parts.push({ text: `Erkläre das Konzept "${safeConcept}" ausschließlich basierend auf dem oben bereitgestellten Dokument.
 STRENGE REGEL: Verwende NUR Inhalte aus dem Dokument. Kein Allgemeinwissen, keine externen Quellen, keine Erfindungen. Wenn das Dokument zu "${safeConcept}" nichts enthält, sage das klar.
-Strukturiere in 3 Stufen: Grundlagen, Vertiefung und Kontext. Antworte auf Deutsch.${sourceQuoteInstruction}` });
+Strukturiere in 3 Stufen mit exakt diesen Überschriften: ${explainerHeadings()}.${outputLangDirective()}${sourceQuoteInstruction}` });
   } else if (source) {
     parts.push({ text: `Erkläre das Konzept "${safeConcept}".
-Nutze das oben bereitgestellte Dokument als primäre Quelle. Ergänze mit deinem Allgemeinwissen wo das Dokument lückenhaft ist — kennzeichne solche Ergänzungen mit "Allgemeinwissen:".
-Strukturiere in 3 Stufen: Grundlagen, Vertiefung und Kontext. Antworte auf Deutsch.` });
+Nutze das oben bereitgestellte Dokument als primäre Quelle. Ergänze mit deinem Allgemeinwissen wo das Dokument lückenhaft ist — kennzeichne solche Ergänzungen exakt mit dem Präfix "Allgemeinwissen:".
+Strukturiere in 3 Stufen mit exakt diesen Überschriften: ${explainerHeadings()}.${outputLangDirective()}` });
   } else {
     parts.push({ text: `Erkläre das Konzept "${safeConcept}" umfassend aus deinem Allgemeinwissen.
-Strukturiere in 3 Stufen: Grundlagen, Vertiefung und Kontext. Antworte auf Deutsch.` });
+Strukturiere in 3 Stufen mit exakt diesen Überschriften: ${explainerHeadings()}.${outputLangDirective()}` });
   }
 
   return callBackend({
@@ -921,7 +923,8 @@ ALLGEMEINE REGELN:
 - topic: das fachliche Thema der Aufgabe in 1-3 Worten (z.B. "Kognitive Dissonanz"), konsistent benannt wenn mehrere Aufgaben dasselbe Thema betreffen
 - category: die am besten passende Kategorie — "definition" (Begriffsdefinition), "verstaendnis" (Verständnisfrage), "transfer" (Anwendung auf neue Situation/Fallbeispiel), "beispiel" (konkretes Beispiel nennen/erkennen), "rechnung" (Berechnung/Formel), "fachbegriff" (Fachterminologie)
 - Alle Arrays die nicht für den Typ relevant sind: als leeres Array [] angeben
-- Nicht relevante Felder weglassen oder mit 0/false/null als Default${adaptiveBlock}` });
+- Nicht relevante Felder weglassen oder mit 0/false/null als Default
+- Die category-Werte (definition, verstaendnis, transfer, beispiel, rechnung, fachbegriff) bleiben immer exakt diese Tokens, unabhängig von der Sprache${adaptiveBlock}${outputLangDirective()}` });
 
   const text = await callBackend({
     complexity: 'heavy',
@@ -979,7 +982,7 @@ BEWERTUNGSREGELN — STRENGER HOCHSCHULMASSSTAB:
 - achievedPoints: nie negativ, nie größer als points.
 - Wenn userAnswer leer/fehlt: achievedPoints = 0, feedback = "Keine Antwort gegeben."
 
-Daten: ${JSON.stringify(questions)}` }],
+Daten: ${JSON.stringify(questions)}${outputLangDirective()}` }],
     config: {
       thinkingConfig: { thinkingBudget: 0 },
       responseMimeType: 'application/json',
@@ -1051,7 +1054,7 @@ REGELN:
 - criterionScores: Je Kriterium Name, max. Punkte, tatsächliche Punkte, Erklärung (1 Satz), Status (full/partial/none).
 - Wenn userAnswer leer: achievedPoints=0, confidence=100, feedback="Keine Antwort gegeben.", criterionScores=[{criterionId:"c0",criterionName:"Antwort",pointsAwarded:0,maxPoints:points,explanation:"Keine Antwort.",status:"none"}].
 
-Fragen: ${questionsJson}`
+Fragen: ${questionsJson}${outputLangDirective()}`
     }],
     config: {
       temperature: 0,
@@ -1122,7 +1125,7 @@ export const analyzeExamResults = async (questions: ExamQuestion[]): Promise<Exa
   const text = await callBackend({
     complexity: 'light',
     parts: [{
-      text: `Analysiere diese Klausurergebnisse und erstelle eine Lernanalyse auf Deutsch.
+      text: `Analysiere diese Klausurergebnisse und erstelle eine Lernanalyse.
 
 Ergebnisse: ${JSON.stringify(summary)}
 
@@ -1132,7 +1135,7 @@ Erstelle:
 - recommendations: 2–4 konkrete Lernempfehlungen (Was sollte als nächstes gelernt werden?)
 - topicPerformance: 2–5 Themengebiete mit Prozent-Score (0–100)
 
-Sei konkret und lernorientiert. Keine allgemeinen Phrasen.`
+Sei konkret und lernorientiert. Keine allgemeinen Phrasen.${outputLangDirective()}`
     }],
     config: {
       temperature: 0.3,
@@ -1193,10 +1196,10 @@ Gib zurück:
 - correct: Liste mit max. 3 Dingen die der Student richtig erklärt hat (konkret, 1 Satz je Punkt)
 - missing: Liste mit max. 4 wichtigen Aspekten die gefehlt haben (konkret, 1 Satz je Punkt)
 - wrong: Liste mit max. 2 Dingen die falsch oder ungenau waren (konkret, 1 Satz je Punkt) — leer wenn nichts falsch war
-- feedback: 2–3 Sätze Gesamtfeedback auf Deutsch (was gut war, wo der Student ansetzen sollte)
+- feedback: 2–3 Sätze Gesamtfeedback (was gut war, wo der Student ansetzen sollte)
 - nextSteps: 1 konkreter Satz was der Student als nächstes lernen oder wiederholen sollte
 
-Wichtig: Wenn die Erklärung leer oder sehr kurz ist, gib score=0 und erkläre warum.` });
+Wichtig: Wenn die Erklärung leer oder sehr kurz ist, gib score=0 und erkläre warum.${outputLangDirective()}` });
 
   const text = await callBackend({
     complexity: 'light',
@@ -1238,7 +1241,7 @@ export const generateCoachInsights = async (
   const text = await callBackend({
     complexity: 'heavy',
     parts: [{
-      text: `Du bist der persönliche Lerncoach von QuizWise. Analysiere das folgende, bereits berechnete Lernprofil eines Studenten auf Deutsch.
+      text: `Du bist der persönliche Lerncoach von QuizWise. Analysiere das folgende, bereits berechnete Lernprofil eines Studenten.
 
 WICHTIGSTE REGEL: Behaupte NUR, was die Daten unten wirklich hergeben. Erfinde keine Muster, Zusammenhänge oder Zahlen, die sich nicht aus dem Profil ableiten lassen. Wenn eine Kategorie zu wenig Daten hat, sage das statt zu spekulieren.
 
@@ -1254,7 +1257,9 @@ Erstelle:
 - prognosis: geschätzte Klausurnote (deutsche Skala, übernimm examPrognosis.grade wenn vorhanden, sonst schätze konservativ) + Bestehenswahrscheinlichkeit (0-100) + 1 Satz Begründung
 - forwardPrediction: 1 vorausschauender Satz nach dem Muster "Wenn du heute [konkrete Aktion] machst, verbessert sich [konkrete Metrik]" — nur wenn die Datenlage das stützt, sonst ein ehrlicher Hinweis dass noch zu wenig Daten vorliegen
 - methodInsight: 1 Satz Vergleich der Lernmethoden (perMethod) — welche wirkt aktuell am besten
-- recommendations: GENAU 1 BIS MAXIMAL 3 konkrete, priorisierte nächste Schritte (nicht mehr!) mit Ziel-Tab (QUIZ, CARDS, RECALL, EXAM oder EXPLAINER). Jede reasoning muss eine kurze, konkrete, datengestützte Begründung sein (z.B. "Transferfehler in drei Klausuren"), keine generische Floskel.` }],
+- recommendations: GENAU 1 BIS MAXIMAL 3 konkrete, priorisierte nächste Schritte (nicht mehr!) mit Ziel-Tab (QUIZ, CARDS, RECALL, EXAM oder EXPLAINER). Jede reasoning muss eine kurze, konkrete, datengestützte Begründung sein (z.B. "Transferfehler in drei Klausuren"), keine generische Floskel.
+
+Die Ziel-Tab-Werte (QUIZ, CARDS, RECALL, EXAM, EXPLAINER) und die Notenskala bleiben unverändert; nur die Fließtexte in der Zielsprache.${outputLangDirective()}` }],
     config: {
       temperature: 0,
       thinkingConfig: { thinkingBudget: 0 },

@@ -1,4 +1,5 @@
 import { supabase } from './supabaseClient';
+import { getLocale } from '../i18n';
 
 // ── Quellen-Import per Link (YouTube-Video oder Webartikel) ───────────────────
 // Der Abruf läuft über das Backend: YouTube wird dort zu einem Lernskript
@@ -57,7 +58,7 @@ export const importFromUrl = async (raw: string): Promise<ImportedSource> => {
       'Content-Type': 'application/json',
       Authorization: `Bearer ${session.access_token}`,
     },
-    body: JSON.stringify({ url: normalizeUrl(raw) }),
+    body: JSON.stringify({ url: normalizeUrl(raw), language: getLocale() }),
   });
 
   const body = await response.json().catch(() => ({}));
