@@ -5,6 +5,7 @@ import type { GenerationSource } from '../services/geminiService';
 import { EmojiImage } from './EmojiImage';
 import { generateFlashcardsFromDocument } from '../services/geminiService';
 import { toast } from '../services/toast';
+import { useTranslation } from '../i18n/I18nProvider';
 import { FlashcardPlayer } from './FlashcardPlayer';
 import { SourceSelector } from './SourceSelector';
 import { loadDecksFromSupabase, saveDeckToSupabase, deleteDeckFromSupabase, uploadAllDecksToSupabase } from '../services/flashcardService';
@@ -40,6 +41,7 @@ export const FlashcardSystem: React.FC<FlashcardSystemProps> = ({
   initialDoc,
   userId,
 }) => {
+  const { t } = useTranslation();
   const [decks, setDecks] = useState<FlashcardDeck[]>([]);
   const [activeDeckId, setActiveDeckId] = useState<string | null>(null);
   const [sessionCards, setSessionCards] = useState<Flashcard[]>([]);
@@ -206,7 +208,7 @@ export const FlashcardSystem: React.FC<FlashcardSystemProps> = ({
       saveDecks([...decks, newDeck], newDeck);
     } catch (e) {
       console.error(e);
-      toast.error('Fehler bei der Generierung.');
+      toast.error(t('fcs.genError'));
     } finally {
       setIsGenerating(null);
     }
@@ -320,7 +322,7 @@ export const FlashcardSystem: React.FC<FlashcardSystemProps> = ({
             }))
           }];
         } else {
-          toast.error('Ungültiges Format. Nur QuizWise-Exporte werden unterstützt.');
+          toast.error(t('fcs.importInvalidFormat'));
           return;
         }
 
@@ -330,7 +332,7 @@ export const FlashcardSystem: React.FC<FlashcardSystemProps> = ({
         if (userId) uploadAllDecksToSupabase(imported, userId).catch(() => {});
         toast.success(`${imported.length} Deck${imported.length !== 1 ? 's' : ''} mit ${imported.reduce((sum, d) => sum + d.cards.length, 0)} Karten importiert.`);
       } catch {
-        toast.error('Fehler beim Lesen der Datei. Ist es eine gültige JSON-Datei?');
+        toast.error(t('fcs.importReadError'));
       } finally {
         if (importInputRef.current) importInputRef.current.value = '';
       }
@@ -380,7 +382,7 @@ export const FlashcardSystem: React.FC<FlashcardSystemProps> = ({
     let cardsToLearn: Flashcard[];
     if (mode === 'free') {
       // Frei lernen: ALLE Karten, zufällig gemischt, SRS bleibt unberührt.
-      if (migratedCards.length === 0) { toast.error('Keine Karten in diesem Deck.'); return; }
+      if (migratedCards.length === 0) { toast.error(t('fcs.noCardsInDeck')); return; }
       cardsToLearn = [...migratedCards];
       for (let i = cardsToLearn.length - 1; i > 0; i--) {
         const j = Math.floor(Math.random() * (i + 1));
@@ -388,11 +390,11 @@ export const FlashcardSystem: React.FC<FlashcardSystemProps> = ({
       }
     } else if (mode === 'all') {
       cardsToLearn = [...migratedCards].sort((a, b) => (a.srs?.nextReview ?? 0) - (b.srs?.nextReview ?? 0));
-      if (cardsToLearn.length === 0) { toast.error('Keine Karten in diesem Deck.'); return; }
+      if (cardsToLearn.length === 0) { toast.error(t('fcs.noCardsInDeck')); return; }
     } else {
       cardsToLearn = getDueCards(migratedCards);
       if (cardsToLearn.length === 0) {
-        toast.success('Dieses Deck ist für heute erledigt! 🎉 Tipp: "Üben" lernt jederzeit weiter.');
+        toast.success(t('fcs.deckDoneToday'));
         return;
       }
     }
@@ -463,7 +465,7 @@ export const FlashcardSystem: React.FC<FlashcardSystemProps> = ({
                 <button
                   onClick={() => { setRenameTitle(deck.title); setIsRenamingDeck(true); }}
                   className="p-2 rounded-xl text-slate-300 hover:text-indigo-500 hover:bg-indigo-50 dark:hover:bg-indigo-950/30 transition-all shrink-0"
-                  title="Deck umbenennen"
+                  title={t('fcs.renameDeck')}
                 >
                   <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>
                 </button>
@@ -523,8 +525,8 @@ export const FlashcardSystem: React.FC<FlashcardSystemProps> = ({
 
             if (deck.cards.length === 0) return (
               <div className="py-20 text-center space-y-4 opacity-30 px-6">
-                <p className="text-[10px] font-black uppercase tracking-widest">Noch keine Karten</p>
-                <p className="text-xs">Klicke „Neue Karte" um loszulegen.</p>
+                <p className="text-[10px] font-black uppercase tracking-widest">{t('fcs.noCards')}</p>
+                <p className="text-xs">{t('fcs.noCardsHint')}</p>
               </div>
             );
 
@@ -589,7 +591,7 @@ export const FlashcardSystem: React.FC<FlashcardSystemProps> = ({
       )}
       <div className="text-center space-y-4 px-4">
         <h1 className="text-5xl lg:text-7xl font-black text-slate-900 dark:text-white tracking-tighter">
-          Anki <span className="text-indigo-600">Decks</span> <EmojiImage emoji="🎓" size={48} />
+          Anki <span className="text-indigo-600">{t('fcs.decks')}</span> <EmojiImage emoji="🎓" size={48} />
         </h1>
         <p className="text-lg lg:text-xl text-slate-500 dark:text-slate-400 font-medium opacity-80">
           Wissenschaftlich fundiertes Lernen durch Spaced Repetition.
@@ -602,7 +604,7 @@ export const FlashcardSystem: React.FC<FlashcardSystemProps> = ({
           <div className="bg-white dark:bg-slate-900 rounded-[30px] lg:rounded-[40px] border border-slate-200 dark:border-slate-800 shadow-3d-raised p-5 lg:p-7 space-y-8">
             
             <div className="space-y-4">
-              <h3 className="text-[10px] font-black uppercase tracking-[0.4em] text-indigo-600">Manuelles Deck</h3>
+              <h3 className="text-[10px] font-black uppercase tracking-[0.4em] text-indigo-600">{t('fcs.manualDeck')}</h3>
               {!showManualDeckDialog ? (
                 <button 
                   onClick={() => setShowManualDeckDialog(true)}
@@ -614,13 +616,13 @@ export const FlashcardSystem: React.FC<FlashcardSystemProps> = ({
                 <form onSubmit={handleCreateEmptyDeck} className="space-y-3 animate-in zoom-in-95 duration-200">
                   <input 
                     autoFocus
-                    placeholder="Name des neuen Decks..."
+                    placeholder={t('fcs.newDeckPlaceholder')}
                     value={manualDeckTitle}
                     onChange={e => setManualDeckTitle(e.target.value)}
                     className="w-full p-4 bg-slate-50 dark:bg-slate-800 rounded-xl text-xs font-bold outline-none border-2 border-indigo-500 dark:text-white"
                   />
                   <div className="flex gap-2">
-                    <button type="submit" className="flex-1 bg-indigo-600 text-white py-3 rounded-xl text-[9px] font-black uppercase tracking-widest">Erstellen</button>
+                    <button type="submit" className="flex-1 bg-indigo-600 text-white py-3 rounded-xl text-[9px] font-black uppercase tracking-widest">{t('fcs.create')}</button>
                     <button type="button" onClick={() => setShowManualDeckDialog(false)} className="px-4 bg-slate-100 dark:bg-slate-800 text-slate-400 py-3 rounded-xl text-[9px] font-black uppercase">X</button>
                   </div>
                 </form>
@@ -628,11 +630,11 @@ export const FlashcardSystem: React.FC<FlashcardSystemProps> = ({
             </div>
 
             <div className="space-y-6 pt-4 border-t border-slate-50 dark:border-slate-800">
-              <h3 className="text-[10px] lg:text-[11px] font-black uppercase tracking-[0.4em] text-indigo-600">Karten-Generator</h3>
+              <h3 className="text-[10px] lg:text-[11px] font-black uppercase tracking-[0.4em] text-indigo-600">{t('fcs.cardGenerator')}</h3>
 
               <div className="space-y-4">
                 <div className="flex justify-between items-center text-[9px] lg:text-[10px] font-black uppercase text-slate-400 tracking-widest px-2">
-                  <span>Karten-Anzahl</span>
+                  <span>{t('fcs.cardCount')}</span>
                   <span>{selectedCount}</span>
                 </div>
                 <div className="flex bg-slate-50 dark:bg-slate-800 p-1 rounded-xl lg:rounded-2xl shadow-inner border border-slate-100 dark:border-slate-700">
@@ -651,7 +653,7 @@ export const FlashcardSystem: React.FC<FlashcardSystemProps> = ({
               {isGenerating ? (
                 <div className="py-8 flex flex-col items-center gap-3 text-center">
                   <div className="w-8 h-8 border-4 border-indigo-100 border-t-indigo-600 rounded-full animate-spin" />
-                  <p className="text-[10px] font-black uppercase tracking-widest text-indigo-600 animate-pulse">Deine Karten entstehen …</p>
+                  <p className="text-[10px] font-black uppercase tracking-widest text-indigo-600 animate-pulse">{t('fcs.cardsForming')}</p>
                 </div>
               ) : (
                 <SourceSelector
@@ -681,7 +683,7 @@ export const FlashcardSystem: React.FC<FlashcardSystemProps> = ({
               <button
                 onClick={() => setShowAnkiImport(true)}
                 className="flex items-center gap-2 px-4 py-2 bg-slate-100 dark:bg-slate-800 text-slate-500 hover:text-indigo-600 rounded-xl text-[9px] font-black uppercase tracking-widest transition-colors"
-                title="Karten importieren (CSV/TSV/Text)"
+                title={t('fcs.importCards')}
               >
                 <svg xmlns="http://www.w3.org/2000/svg" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
                 Importieren
@@ -690,7 +692,7 @@ export const FlashcardSystem: React.FC<FlashcardSystemProps> = ({
                 <button
                   onClick={handleExportAll}
                   className="flex items-center gap-2 px-4 py-2 bg-slate-100 dark:bg-slate-800 text-slate-500 hover:text-indigo-600 rounded-xl text-[9px] font-black uppercase tracking-widest transition-colors"
-                  title="Alle Stapel als JSON exportieren"
+                  title={t('fcs.exportAll')}
                 >
                   <svg xmlns="http://www.w3.org/2000/svg" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
                   Alle sichern
@@ -698,15 +700,15 @@ export const FlashcardSystem: React.FC<FlashcardSystemProps> = ({
               )}
                <div className="flex items-center gap-2">
                  <div className="w-2 h-2 rounded-full bg-blue-500"></div>
-                 <span className="text-[9px] font-black text-slate-400 uppercase">Neu</span>
+                 <span className="text-[9px] font-black text-slate-400 uppercase">{t('fcs.statNew')}</span>
                </div>
                <div className="flex items-center gap-2">
                  <div className="w-2 h-2 rounded-full bg-rose-500"></div>
-                 <span className="text-[9px] font-black text-slate-400 uppercase">Learn</span>
+                 <span className="text-[9px] font-black text-slate-400 uppercase">{t('fcs.statLearn')}</span>
                </div>
                <div className="flex items-center gap-2">
                  <div className="w-2 h-2 rounded-full bg-emerald-500"></div>
-                 <span className="text-[9px] font-black text-slate-400 uppercase">Due</span>
+                 <span className="text-[9px] font-black text-slate-400 uppercase">{t('fcs.statDue')}</span>
                </div>
             </div>
           </div>
@@ -715,8 +717,8 @@ export const FlashcardSystem: React.FC<FlashcardSystemProps> = ({
             {decks.length === 0 ? (
               <div className="py-20 lg:py-32 text-center space-y-4 lg:space-y-6 opacity-30 px-6">
                 <EmojiImage emoji="🗃️" size={64} className="mx-auto" />
-                <p className="text-[10px] lg:text-sm font-black uppercase tracking-widest">Keine Stapel vorhanden</p>
-                <p className="text-xs">Nutze den Generator links oder erstelle ein manuelles Deck.</p>
+                <p className="text-[10px] lg:text-sm font-black uppercase tracking-widest">{t('fcs.noDecks')}</p>
+                <p className="text-xs">{t('fcs.noDecksHint')}</p>
               </div>
             ) : (
               decks.map(deck => {
@@ -731,7 +733,7 @@ export const FlashcardSystem: React.FC<FlashcardSystemProps> = ({
                         <h4 className="text-lg lg:text-xl font-black text-slate-900 dark:text-white break-words group-hover:text-indigo-600 transition-colors cursor-pointer" onClick={() => handleOpenDeck(deck.id)}>
                           {deck.title}
                         </h4>
-                        {!deck.sourceDocumentId && <span className="bg-slate-100 dark:bg-slate-800 text-[8px] font-black uppercase px-2 py-0.5 rounded text-slate-400 tracking-tighter">Manuell</span>}
+                        {!deck.sourceDocumentId && <span className="bg-slate-100 dark:bg-slate-800 text-[8px] font-black uppercase px-2 py-0.5 rounded text-slate-400 tracking-tighter">{t('fcs.manual')}</span>}
                       </div>
                       <p className="text-[9px] font-bold text-slate-400 uppercase mt-1">Total: {deck.cards.length} Karten</p>
                     </div>
@@ -753,7 +755,7 @@ export const FlashcardSystem: React.FC<FlashcardSystemProps> = ({
                         <button
                           onClick={() => handleOpenDeck(deck.id, 'free')}
                           className="flex-none flex items-center gap-1.5 border-2 border-slate-200 dark:border-slate-700 text-slate-500 dark:text-slate-400 px-3 py-3 rounded-xl lg:rounded-2xl text-[9px] font-black uppercase tracking-widest hover:border-emerald-400 hover:text-emerald-600 transition-all"
-                          title="Frei üben: alle Karten, beliebig oft, ohne den Fälligkeitsplan zu verändern"
+                          title={t('fcs.practiceTitle')}
                         >
                           <svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round"><polyline points="23 4 23 10 17 10"/><polyline points="1 20 1 14 7 14"/><path d="M3.51 9a9 9 0 0 1 14.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0 0 20.49 15"/></svg>
                           Üben
@@ -761,28 +763,28 @@ export const FlashcardSystem: React.FC<FlashcardSystemProps> = ({
                         <button
                           onClick={() => handleOpenDeck(deck.id, 'all')}
                           className="flex-none border-2 border-slate-200 dark:border-slate-700 text-slate-500 dark:text-slate-400 px-3 py-3 rounded-xl lg:rounded-2xl text-[9px] font-black uppercase tracking-widest hover:border-indigo-400 hover:text-indigo-600 transition-all"
-                          title="Alle Karten der Reihe nach lernen (verändert den SRS-Plan)"
+                          title={t('fcs.learnAllTitle')}
                         >
                           Alle
                         </button>
                         <button
                           onClick={() => setStatsDeck(deck)}
                           className="p-3 bg-slate-50 dark:bg-slate-800 text-slate-400 hover:text-indigo-600 rounded-xl transition-all"
-                          title="Statistiken"
+                          title={t('fcs.statsTitle')}
                         >
                           <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round"><line x1="18" y1="20" x2="18" y2="10"/><line x1="12" y1="20" x2="12" y2="4"/><line x1="6" y1="20" x2="6" y2="14"/></svg>
                         </button>
                         <button
                           onClick={() => setEditingDeckId(deck.id)}
                           className="p-3 bg-slate-50 dark:bg-slate-800 text-slate-400 hover:text-indigo-600 rounded-xl transition-all"
-                          title="Bearbeiten"
+                          title={t('fcs.editTitle')}
                         >
                           <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"></path><path d="M18.5 2.5a2.121 2.121 0 1 1 3 3L12 15l-4 1 1-4 9.5-9.5z"></path></svg>
                         </button>
                         <button
                           onClick={() => setExportingDeck(deck)}
                           className="p-3 bg-slate-50 dark:bg-slate-800 text-slate-400 hover:text-indigo-600 rounded-xl transition-all"
-                          title="Exportieren & Teilen"
+                          title={t('fcs.exportShareTitle')}
                         >
                           <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><circle cx="18" cy="5" r="3"/><circle cx="6" cy="12" r="3"/><circle cx="18" cy="19" r="3"/><line x1="8.59" y1="13.51" x2="15.42" y2="17.49"/><line x1="15.41" y1="6.51" x2="8.59" y2="10.49"/></svg>
                         </button>
