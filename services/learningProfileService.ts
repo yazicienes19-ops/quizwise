@@ -7,45 +7,48 @@ import { ActiveTab } from '../types';
 import type { QuizResult } from './quizHistoryService';
 import type { ExamResult } from './examHistoryService';
 import type { RecallResult } from './recallHistoryService';
+import { t, tp } from '../i18n';
+import type { TKey } from '../i18n';
 
 const DAY_MS = 24 * 60 * 60 * 1000;
 
-export const CATEGORY_LABELS: Record<string, string> = {
-  definition: 'Definitionen', verstaendnis: 'Verständnis', transfer: 'Transfer',
-  beispiel: 'Beispiele', rechnung: 'Rechenaufgaben', fachbegriff: 'Fachbegriffe',
+// Kategorie-/Methoden-/Typ-Enums → Übersetzungsschlüssel. Die Enum-Werte selbst
+// bleiben sprachneutrale Protokoll-Tokens; nur die Anzeige wird lokalisiert.
+const CATEGORY_KEYS: Record<string, TKey> = {
+  definition: 'lp.cat.definition', verstaendnis: 'lp.cat.verstaendnis', transfer: 'lp.cat.transfer',
+  beispiel: 'lp.cat.beispiel', rechnung: 'lp.cat.rechnung', fachbegriff: 'lp.cat.fachbegriff',
+};
+const METHOD_KEYS: Record<LearnMethod, TKey> = {
+  anki: 'lp.method.anki', quiz: 'lp.method.quiz', feynman: 'lp.method.feynman', explainer: 'lp.method.explainer', exam: 'lp.method.exam',
+};
+const TYPE_KEYS: Record<string, TKey> = {
+  mc: 'lp.type.mc', single: 'lp.type.mc', truefalse: 'lp.type.truefalse', matching: 'lp.type.matching',
+  cloze: 'lp.type.cloze', fillblank: 'lp.type.cloze', ranking: 'lp.type.ranking', numeric: 'lp.type.numeric',
+  open: 'lp.type.open', scenario: 'lp.type.scenario',
 };
 
-export const METHOD_LABELS: Record<LearnMethod, string> = {
-  anki: 'Anki', quiz: 'Quiz', feynman: 'Feynman', explainer: 'KI-Erklärer', exam: 'Klausur',
-};
-
-const TYPE_LABELS: Record<string, string> = {
-  mc: 'Multiple Choice', single: 'Multiple Choice',
-  truefalse: 'Wahr/Falsch',
-  matching: 'Zuordnung',
-  cloze: 'Lückentext', fillblank: 'Lückentext',
-  ranking: 'Sortierung',
-  numeric: 'Numerisch',
-  open: 'Freitext',
-  scenario: 'Fallbeispiel',
-};
+/** Locale-abhängige Anzeige-Labels (zur Aufrufzeit übersetzt). */
+export const getCategoryLabel = (c: string): string => (CATEGORY_KEYS[c] ? t(CATEGORY_KEYS[c]) : c);
+export const getMethodLabel = (m: LearnMethod): string => (METHOD_KEYS[m] ? t(METHOD_KEYS[m]) : m);
+export const getTypeLabel = (ty: string): string => (TYPE_KEYS[ty] ? t(TYPE_KEYS[ty]) : ty);
 
 /**
  * Deutsche Notenskala (Standard-Notenschlüssel), aus ExamView.tsx extrahiert
  * damit sie auch für die Klausurprognose des Lern-Coaches wiederverwendbar ist.
+ * Die Note (1.0–5.0) bleibt sprachneutral, nur das Label wird lokalisiert.
  */
 export const germanGradeFromPercentage = (p: number): { grade: string; label: string } => {
-  if (p >= 95) return { grade: '1.0', label: 'Sehr Gut' };
-  if (p >= 90) return { grade: '1.3', label: 'Sehr Gut' };
-  if (p >= 85) return { grade: '1.7', label: 'Gut' };
-  if (p >= 80) return { grade: '2.0', label: 'Gut' };
-  if (p >= 75) return { grade: '2.3', label: 'Gut' };
-  if (p >= 70) return { grade: '2.7', label: 'Befriedigend' };
-  if (p >= 65) return { grade: '3.0', label: 'Befriedigend' };
-  if (p >= 60) return { grade: '3.3', label: 'Befriedigend' };
-  if (p >= 55) return { grade: '3.7', label: 'Ausreichend' };
-  if (p >= 50) return { grade: '4.0', label: 'Ausreichend' };
-  return { grade: '5.0', label: 'Nicht Bestanden' };
+  if (p >= 95) return { grade: '1.0', label: t('lp.grade.sehrGut') };
+  if (p >= 90) return { grade: '1.3', label: t('lp.grade.sehrGut') };
+  if (p >= 85) return { grade: '1.7', label: t('lp.grade.gut') };
+  if (p >= 80) return { grade: '2.0', label: t('lp.grade.gut') };
+  if (p >= 75) return { grade: '2.3', label: t('lp.grade.gut') };
+  if (p >= 70) return { grade: '2.7', label: t('lp.grade.befriedigend') };
+  if (p >= 65) return { grade: '3.0', label: t('lp.grade.befriedigend') };
+  if (p >= 60) return { grade: '3.3', label: t('lp.grade.befriedigend') };
+  if (p >= 55) return { grade: '3.7', label: t('lp.grade.ausreichend') };
+  if (p >= 50) return { grade: '4.0', label: t('lp.grade.ausreichend') };
+  return { grade: '5.0', label: t('lp.grade.nichtBestanden') };
 };
 
 const trendOf = (scoresNewestFirst: number[]): 'up' | 'down' | 'stable' => {
@@ -215,7 +218,7 @@ const buildCategoryMastery = (examResults: ExamResult[]): CategoryMastery[] => {
 const buildTypeMastery = (quizResults: QuizResult[], examResults: ExamResult[]): TypeMastery[] => {
   const scoresByLabel: Record<string, number[]> = {};
   const addScore = (rawType: string, score: number) => {
-    const label = TYPE_LABELS[rawType] || rawType;
+    const label = getTypeLabel(rawType);
     (scoresByLabel[label] ??= []).push(score);
   };
 
@@ -249,21 +252,21 @@ const buildCauseAnalysis = (
 
   const definition = categoryMastery.find(c => c.category === 'definition');
   if (definition && definition.avgScore < 60) {
-    items.push({ cause: 'Definitionsprobleme', description: `Du verlierst regelmäßig Punkte bei Definitionsfragen (Ø ${definition.avgScore}%).` });
+    items.push({ cause: t('lp.cause.definition'), description: t('lp.cause.definition.desc', { n: definition.avgScore }) });
   }
   const transfer = categoryMastery.find(c => c.category === 'transfer');
   if (transfer && transfer.avgScore < 60) {
-    items.push({ cause: 'Transferprobleme', description: `Die Anwendung von Wissen auf neue Situationen fällt dir schwer (Ø ${transfer.avgScore}%).` });
+    items.push({ cause: t('lp.cause.transfer'), description: t('lp.cause.transfer.desc', { n: transfer.avgScore }) });
   }
   if (topicMastery.length > 0) {
     const kritischShare = topicMastery.filter(t => t.security === 'kritisch').length / topicMastery.length;
     if (kritischShare > 0.5) {
-      items.push({ cause: 'Fehlendes Grundlagenwissen', description: 'Bei mehr als der Hälfte deiner Themen fehlt noch die Basis-Sicherheit.' });
+      items.push({ cause: t('lp.cause.basics'), description: t('lp.cause.basics.desc') });
     }
   }
   const fatigueExams = examResults.filter(r => r.fatigue && r.fatigue.earlyScore - r.fatigue.lateScore >= 15);
   if (fatigueExams.length >= 2) {
-    items.push({ cause: 'Konzentrationsabfall zum Ende der Klausur', description: `In ${fatigueExams.length} Klausuren warst du in der zweiten Hälfte spürbar schwächer als in der ersten.` });
+    items.push({ cause: t('lp.cause.fatigue'), description: t('lp.cause.fatigue.desc', { n: fatigueExams.length }) });
   }
 
   return items;
@@ -278,8 +281,10 @@ const buildLongTermTrend = (examResults: ExamResult[]): LongTermTrendItem[] | nu
   const earlyHalf = chronological.slice(0, mid);
   const lateHalf = chronological.slice(mid);
 
+  // items[0] ist immer der Klausur-Gesamttrend (wird intern über Index 0 erkannt,
+  // nicht über das Anzeige-Label — das darf lokalisiert werden).
   const items: LongTermTrendItem[] = [
-    { label: 'Klausurergebnisse', delta: avg(lateHalf.map(r => r.score)) - avg(earlyHalf.map(r => r.score)) },
+    { label: t('lp.trend.examResults'), delta: avg(lateHalf.map(r => r.score)) - avg(earlyHalf.map(r => r.score)) },
   ];
 
   const earlyByCategory: Record<string, number[]> = {};
@@ -290,7 +295,7 @@ const buildLongTermTrend = (examResults: ExamResult[]): LongTermTrendItem[] | nu
   Object.keys(lateByCategory).forEach(category => {
     if (!earlyByCategory[category]) return; // nur Kategorien, die in beiden Hälften vorkommen
     const delta = avg(lateByCategory[category]) - avg(earlyByCategory[category]);
-    items.push({ label: CATEGORY_LABELS[category] || category, delta });
+    items.push({ label: getCategoryLabel(category), delta });
   });
 
   return items;
@@ -385,19 +390,19 @@ const buildMotivationLine = (
   const recent = timestamped.filter(t => now - t.timestamp <= 7 * DAY_MS);
   const prior = timestamped.filter(t => now - t.timestamp > 7 * DAY_MS && now - t.timestamp <= 21 * DAY_MS);
   if (recent.length >= 2 && prior.length >= 2 && avg(recent.map(t => t.score)) >= avg(prior.map(t => t.score)) + 8) {
-    return 'Du bist heute besser vorbereitet als vor zwei Wochen.';
+    return t('lp.mot.betterPrepared');
   }
 
   if (examPrognosis && examPrognosis.passProbability >= 80 && examPrognosis.passProbability < 90) {
-    return `Deine Bestehenswahrscheinlichkeit liegt bei ${examPrognosis.passProbability}%, noch ein Stück bis über 90%.`;
+    return t('lp.mot.passProb', { n: examPrognosis.passProbability });
   }
 
   const overallTrend = trendOf([...timestamped].sort((a, b) => b.timestamp - a.timestamp).map(t => t.score));
   if (overallTrend === 'up' || streakCurrent >= 3) {
-    return 'Deine Klausurleistungen verbessern sich kontinuierlich.';
+    return t('lp.mot.improving');
   }
 
-  return 'Bleib dran, jede Lernsession bringt dich näher an dein Ziel.';
+  return t('lp.mot.keepGoing');
 };
 
 // ─── Methodenkommentar (deterministischer Fallback ohne KI) ──────────────────────
@@ -410,19 +415,19 @@ const buildMotivationLine = (
 export const buildMethodCommentary = (perMethod: MethodStat[]): string | null => {
   if (perMethod.length === 0) return null;
   if (perMethod.length === 1) {
-    return `Bisher lernst du fast nur mit ${METHOD_LABELS[perMethod[0].method]}. Eine zweite Methode macht den Vergleich erst möglich.`;
+    return t('lp.mc.single', { method: getMethodLabel(perMethod[0].method) });
   }
   const sorted = [...perMethod].sort((a, b) => b.avgScore - a.avgScore);
   const best = sorted[0];
   const worst = sorted[sorted.length - 1];
-  const first = `Deine besten Ergebnisse erzielst du aktuell mit ${METHOD_LABELS[best.method]} (Ø ${best.avgScore}%).`;
+  const first = t('lp.mc.best', { method: getMethodLabel(best.method), score: best.avgScore });
   if (best.avgScore - worst.avgScore >= 15) {
-    return `${first} Bei ${METHOD_LABELS[worst.method]} liegt noch am meisten Luft, gezieltes Üben lohnt sich dort.`;
+    return t('lp.mc.mostRoom', { first, method: getMethodLabel(worst.method) });
   }
   if (best.trend === 'up') {
-    return `${first} Der Trend zeigt dort weiter nach oben.`;
+    return t('lp.mc.trendUp', { first });
   }
-  return `${first} Deine Methoden liegen nah beieinander, der Mix funktioniert.`;
+  return t('lp.mc.mixWorks', { first });
 };
 
 // ─── Tagesplan („Heute solltest du") ────────────────────────────────────────────
@@ -479,8 +484,8 @@ export const buildDailyPlan = (input: {
     sum + d.cards.filter(c => !c.srs || c.srs.nextReview <= now).length, 0);
   if (dueCount > 0) {
     steps.push({
-      title: `${dueCount} fällige Karte${dueCount !== 1 ? 'n' : ''} wiederholen`,
-      why: 'Wiederholen kurz vor dem Vergessen ist der effizienteste Zeitpunkt.',
+      title: tp('lp.dp.dueCards', dueCount),
+      why: t('lp.dp.dueCardsWhy'),
       minutes: Math.min(20, Math.max(5, Math.round(dueCount / 2))),
       target: { kind: 'tab', tab: ActiveTab.CARDS },
     });
@@ -489,8 +494,8 @@ export const buildDailyPlan = (input: {
   const weakest = realTopics.find(t => t.security !== 'sicher');
   if (weakest) {
     steps.push({
-      title: `„${weakest.topic}" im Quiz festigen`,
-      why: weakest.security === 'kritisch' ? 'Dein aktuell kritischstes Thema.' : 'Hier bist du noch unsicher.',
+      title: t('lp.dp.solidifyTopic', { topic: weakest.topic }),
+      why: weakest.security === 'kritisch' ? t('lp.dp.criticalTopic') : t('lp.dp.stillUnsure'),
       minutes: 10,
       target: { kind: 'action', topic: weakest.topic, mode: 'quiz' },
     });
@@ -498,16 +503,16 @@ export const buildDailyPlan = (input: {
 
   if (profile.examPrognosis === null) {
     steps.push({
-      title: 'Erste Klausursimulation starten',
-      why: 'Erst mit einer Simulation kann deine Prognose berechnet werden.',
+      title: t('lp.dp.firstExam'),
+      why: t('lp.dp.firstExamWhy'),
       minutes: 25,
       target: { kind: 'tab', tab: ActiveTab.EXAM },
     });
   } else if (profile.forgetting.length > 0) {
     const f = profile.forgetting[0];
     steps.push({
-      title: `„${f.topic}" auffrischen, bevor du es vergisst`,
-      why: f.dueInDays <= 0 ? 'Heute fällig.' : `In ${f.dueInDays} Tag${f.dueInDays !== 1 ? 'en' : ''} fällig.`,
+      title: t('lp.dp.refresh', { topic: f.topic }),
+      why: f.dueInDays <= 0 ? t('lp.dp.dueToday') : tp('lp.dp.dueInDays', f.dueInDays),
       minutes: 10,
       target: { kind: 'tab', tab: ActiveTab.CARDS },
     });
@@ -515,8 +520,8 @@ export const buildDailyPlan = (input: {
 
   if (steps.length === 0) {
     steps.push({
-      title: 'Kurzes Quiz zum Auffrischen starten',
-      why: 'Regelmäßiges Abrufen hält dein Wissen stabil.',
+      title: t('lp.dp.shortQuiz'),
+      why: t('lp.dp.shortQuizWhy'),
       minutes: 10,
       target: { kind: 'tab', tab: ActiveTab.QUIZ },
     });
@@ -534,20 +539,21 @@ export const buildDailyPlan = (input: {
  */
 export const buildContextMotivation = (profile: LearningProfile, lastActivityTs: number | null): string => {
   if (lastActivityTs !== null && Date.now() - lastActivityTs > 3 * DAY_MS) {
-    return 'Schon eine kurze Session heute hilft dir, wieder in deinen Lernrhythmus zu finden.';
+    return t('lp.cm.inactive');
   }
-  const examTrendUp = profile.longTermTrend?.some(t => t.label === 'Klausurergebnisse' && t.delta > 0);
+  // longTermTrend[0] ist per Konstruktion immer der Klausur-Gesamttrend (siehe buildLongTermTrend)
+  const examTrendUp = (profile.longTermTrend?.[0]?.delta ?? 0) > 0;
   const anyMethodUp = profile.perMethod.some(m => m.trend === 'up');
   if (examTrendUp || anyMethodUp) {
-    return 'Deine letzten Sessions zeigen einen positiven Trend. Bleib konsequent.';
+    return t('lp.cm.positiveTrend');
   }
   if (profile.topicMastery.filter(t => t.security === 'kritisch').length >= 3) {
-    return 'Konzentriere dich heute auf ein Thema. Weniger gleichzeitig zu lernen führt oft zu besseren Ergebnissen.';
+    return t('lp.cm.oneTopic');
   }
   if (profile.examPrognosis && profile.examPrognosis.passProbability >= 70) {
-    return 'Deine Vorbereitung entwickelt sich in die richtige Richtung.';
+    return t('lp.cm.rightDirection');
   }
-  return 'Kleine Fortschritte heute machen einen Unterschied in deiner nächsten Klausur.';
+  return t('lp.cm.smallProgress');
 };
 
 // ─── Hauptfunktion ────────────────────────────────────────────────────────────────

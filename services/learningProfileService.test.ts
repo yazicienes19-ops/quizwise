@@ -1,5 +1,6 @@
-import { describe, it, expect } from 'vitest';
+import { describe, it, expect, beforeEach } from 'vitest';
 import { buildLearningProfile, buildRealTopicMastery, buildDailyPlan, buildMethodCommentary, buildContextMotivation, germanGradeFromPercentage } from './learningProfileService';
+import { setLocale } from '../i18n';
 import type { QuizResult } from './quizHistoryService';
 import type { ExamResult } from './examHistoryService';
 import type { RecallResult } from './recallHistoryService';
@@ -8,6 +9,9 @@ import { ActiveTab } from '../types';
 
 const DAY_MS = 24 * 60 * 60 * 1000;
 const now = Date.now();
+
+// Die deutschen Assertions unten prüfen die de-Ausgabe; Locale explizit fixieren.
+beforeEach(() => setLocale('de'));
 
 const emptyInput = {
   metrics: [] as TopicMetric[],

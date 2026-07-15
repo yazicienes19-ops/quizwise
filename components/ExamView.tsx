@@ -2,7 +2,7 @@
 import React, { useState, useEffect, useRef, useCallback, useMemo } from 'react';
 import { ExamQuestion, ActiveTab, ScoringProfile, ExamAnalysis, QuestionFeedbackType } from '../types';
 import { saveQuestionFeedback } from '../services/examFeedbackService';
-import { germanGradeFromPercentage, CATEGORY_LABELS } from '../services/learningProfileService';
+import { germanGradeFromPercentage, getCategoryLabel } from '../services/learningProfileService';
 import { EmojiImage } from './EmojiImage';
 import type { jsPDF as JsPDFType } from 'jspdf';
 
@@ -685,7 +685,7 @@ export const ExamView: React.FC<ExamViewProps> = ({
             {[...categoryBreakdown].sort((a, b) => a.score - b.score).map(cb => (
               <div key={cb.category} className="space-y-1">
                 <div className="flex justify-between items-center text-[11px] font-bold dark:text-slate-300">
-                  <span>{CATEGORY_LABELS[cb.category] || cb.category}</span>
+                  <span>{getCategoryLabel(cb.category)}</span>
                   <span className={cb.score >= 70 ? 'text-emerald-600' : cb.score >= 50 ? 'text-amber-600' : 'text-rose-600'}>{cb.score}%</span>
                 </div>
                 <div className="h-2 bg-slate-100 dark:bg-slate-800 rounded-full overflow-hidden">

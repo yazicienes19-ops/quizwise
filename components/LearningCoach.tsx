@@ -4,7 +4,7 @@ import { TopicMetric, ActiveTab, CoachInsights, FlashcardDeck, LearningFlowResul
 import { EmojiImage } from './EmojiImage';
 import { GapRadar } from './GapRadar';
 import { generateCoachInsights, WrongAnswerContext } from '../services/geminiService';
-import { buildLearningProfile, buildRealTopicMastery, buildDailyPlan, buildMethodCommentary, buildContextMotivation, CATEGORY_LABELS, METHOD_LABELS } from '../services/learningProfileService';
+import { buildLearningProfile, buildRealTopicMastery, buildDailyPlan, buildMethodCommentary, buildContextMotivation, getCategoryLabel, getMethodLabel } from '../services/learningProfileService';
 import { buildLearningScore } from '../services/learningScoreService';
 import { buildExamForecast } from '../services/examForecastService';
 import { collectionDocs } from '../services/collectionSource';
@@ -176,7 +176,7 @@ export const LearningCoach: React.FC<LearningCoachProps> = ({ metrics, decks, on
   }, []);
 
   const wissensprofilItems = [
-    ...profile.categoryMastery.map(c => ({ key: `cat-${c.category}`, label: CATEGORY_LABELS[c.category] || c.category, avgScore: c.avgScore })),
+    ...profile.categoryMastery.map(c => ({ key: `cat-${c.category}`, label: getCategoryLabel(c.category), avgScore: c.avgScore })),
     ...profile.typeMastery.map(t => ({ key: `type-${t.type}`, label: t.label, avgScore: t.avgScore })),
   ].sort((a, b) => a.avgScore - b.avgScore);
 
@@ -447,7 +447,7 @@ export const LearningCoach: React.FC<LearningCoachProps> = ({ metrics, decks, on
                 <div key={m.method} className="space-y-1">
                   <div className="flex justify-between items-baseline">
                     <span className="text-xs font-black flex items-center gap-1" style={{ color: 'var(--ink)' }}>
-                      {METHOD_LABELS[m.method]}
+                      {getMethodLabel(m.method)}
                       {strongestMethod?.method === m.method && <EmojiImage emoji="👑" size={11} />}
                     </span>
                     <span className="flex items-center gap-2">
