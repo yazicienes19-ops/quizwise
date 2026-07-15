@@ -3,6 +3,8 @@ import React, { useEffect, useState } from 'react';
 import { ProcessedDocument } from '../types';
 import { documentDisplayName } from '../services/libraryService';
 import { downloadPdfAsBase64 } from '../services/documentService';
+import { useTranslation } from '../i18n/I18nProvider';
+import { t as translate } from '../i18n';
 
 interface DocumentViewerModalProps {
   doc: ProcessedDocument;
@@ -17,6 +19,7 @@ const base64ToBlob = (base64: string, mime: string): Blob => {
 };
 
 export const DocumentViewerModal: React.FC<DocumentViewerModalProps> = ({ doc, onClose }) => {
+  const { t } = useTranslation();
   const [blobUrl, setBlobUrl] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(doc.type === 'pdf' || doc.type === 'image');
   const [error, setError] = useState<string | null>(null);
@@ -34,7 +37,7 @@ export const DocumentViewerModal: React.FC<DocumentViewerModalProps> = ({ doc, o
         } else if (doc.content) {
           base64 = doc.content;
         } else {
-          throw new Error('Kein Inhalt verfügbar');
+          throw new Error(translate('dvm.noContent'));
         }
         if (cancelled) return;
         const mime = doc.type === 'pdf' ? 'application/pdf' : (doc.mimeType || 'image/jpeg');
@@ -42,7 +45,7 @@ export const DocumentViewerModal: React.FC<DocumentViewerModalProps> = ({ doc, o
         url = URL.createObjectURL(blob);
         setBlobUrl(url);
       } catch {
-        if (!cancelled) setError('Dokument konnte nicht geladen werden.');
+        if (!cancelled) setError(translate('dvm.loadFailed'));
       } finally {
         if (!cancelled) setIsLoading(false);
       }
@@ -90,7 +93,7 @@ export const DocumentViewerModal: React.FC<DocumentViewerModalProps> = ({ doc, o
             <h2 className="text-base font-black dark:text-white break-words">{documentDisplayName(doc)}</h2>
             <p className="text-[9px] font-black uppercase tracking-widest text-slate-400 mt-0.5">
               {doc.type === 'docx'
-                ? 'Extrahierter Text · keine Original-Formatierung'
+                ? t('dvm.extractedText')
                 : doc.type.toUpperCase()}
             </p>
           </div>
@@ -99,14 +102,14 @@ export const DocumentViewerModal: React.FC<DocumentViewerModalProps> = ({ doc, o
               <button
                 onClick={handleDownload}
                 className="p-2.5 bg-slate-100 dark:bg-slate-800 text-slate-400 hover:text-indigo-600 rounded-xl transition-all"
-                title="Herunterladen"
+                title={t('dvm.download')}
               >
                 <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
                   <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/>
                 </svg>
               </button>
             )}
-            <button aria-label="Dokument schließen" onClick={onClose} className="p-2.5 text-slate-400 hover:text-rose-500 transition-colors rounded-xl">
+            <button aria-label={t('upl.close')} onClick={onClose} className="p-2.5 text-slate-400 hover:text-rose-500 transition-colors rounded-xl">
               <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round">
                 <line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/>
               </svg>
@@ -140,7 +143,7 @@ export const DocumentViewerModal: React.FC<DocumentViewerModalProps> = ({ doc, o
             <div className="h-full overflow-y-auto px-8 py-8">
               <div className="max-w-2xl mx-auto">
                 <pre className="whitespace-pre-wrap font-sans text-sm leading-relaxed text-slate-700 dark:text-slate-300">
-                  {doc.content || 'Kein Textinhalt verfügbar.'}
+                  {doc.content || t('dvm.noTextContent')}
                 </pre>
               </div>
             </div>

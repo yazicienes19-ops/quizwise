@@ -2,6 +2,7 @@
 import React, { useMemo } from 'react';
 import { FlashcardDeck } from '../types';
 import { migrateLegacyCard } from '../services/spacedRepetition';
+import { useTranslation } from '../i18n/I18nProvider';
 
 interface DeckStatsModalProps {
   deck: FlashcardDeck;
@@ -9,6 +10,7 @@ interface DeckStatsModalProps {
 }
 
 export const DeckStatsModal: React.FC<DeckStatsModalProps> = ({ deck, onClose }) => {
+  const { t } = useTranslation();
   const stats = useMemo(() => {
     const now = Date.now();
     const cards = deck.cards.map(c => c.srs ? c : { ...c, srs: migrateLegacyCard(c) });
@@ -31,10 +33,10 @@ export const DeckStatsModal: React.FC<DeckStatsModalProps> = ({ deck, onClose })
   }, [deck]);
 
   const segments = [
-    { label: 'Neu',        value: stats.newCards,  color: 'bg-blue-400',    text: 'text-blue-500'    },
-    { label: 'Lernen',     value: stats.learning,  color: 'bg-amber-400',   text: 'text-amber-500'   },
-    { label: 'Wiederh.',   value: stats.reviewing, color: 'bg-emerald-400', text: 'text-emerald-500' },
-    { label: 'Gemeistert', value: stats.mastered,  color: 'bg-indigo-500',  text: 'text-indigo-500'  },
+    { label: t('dsm.new'),        value: stats.newCards,  color: 'bg-blue-400',    text: 'text-blue-500'    },
+    { label: t('dsm.learning'),   value: stats.learning,  color: 'bg-amber-400',   text: 'text-amber-500'   },
+    { label: t('dsm.reviewShort'),value: stats.reviewing, color: 'bg-emerald-400', text: 'text-emerald-500' },
+    { label: t('dsm.mastered'),   value: stats.mastered,  color: 'bg-indigo-500',  text: 'text-indigo-500'  },
   ];
 
   return (
@@ -49,11 +51,11 @@ export const DeckStatsModal: React.FC<DeckStatsModalProps> = ({ deck, onClose })
         {/* Header */}
         <div className="flex justify-between items-start px-8 py-6 border-b border-slate-100 dark:border-slate-800">
           <div className="min-w-0 flex-1 pr-4">
-            <p className="text-[10px] font-black uppercase tracking-widest text-slate-400 mb-1">Statistik</p>
+            <p className="text-[10px] font-black uppercase tracking-widest text-slate-400 mb-1">{t('dsm.stats')}</p>
             <h2 className="text-xl font-black dark:text-white break-words">{deck.title}</h2>
-            <p className="text-[10px] font-bold text-slate-400 mt-0.5">{stats.total} Karten gesamt</p>
+            <p className="text-[10px] font-bold text-slate-400 mt-0.5">{t('dsm.totalCards', { n: stats.total })}</p>
           </div>
-          <button aria-label="Schließen" onClick={onClose} className="p-2 text-slate-400 hover:text-rose-500 transition-colors rounded-xl shrink-0">
+          <button aria-label={t('upl.close')} onClick={onClose} className="p-2 text-slate-400 hover:text-rose-500 transition-colors rounded-xl shrink-0">
             <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round">
               <line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/>
             </svg>
@@ -92,20 +94,20 @@ export const DeckStatsModal: React.FC<DeckStatsModalProps> = ({ deck, onClose })
           <div className="grid grid-cols-3 gap-3">
             <div className="p-4 bg-slate-50 dark:bg-slate-800 rounded-2xl text-center">
               <p className="text-2xl font-black" style={{ color: 'var(--primary)' }}>{stats.dueToday}</p>
-              <p className="text-[9px] font-black uppercase tracking-widest text-slate-400 mt-1">Heute fällig</p>
+              <p className="text-[9px] font-black uppercase tracking-widest text-slate-400 mt-1">{t('dashboard.dueToday')}</p>
             </div>
             <div className="p-4 bg-slate-50 dark:bg-slate-800 rounded-2xl text-center">
               <p className="text-2xl font-black text-slate-700 dark:text-slate-200">{stats.masteredPct}%</p>
-              <p className="text-[9px] font-black uppercase tracking-widest text-slate-400 mt-1">Gemeistert</p>
+              <p className="text-[9px] font-black uppercase tracking-widest text-slate-400 mt-1">{t('dsm.mastered')}</p>
             </div>
             <div className="p-4 bg-slate-50 dark:bg-slate-800 rounded-2xl text-center">
               <p className="text-2xl font-black text-slate-700 dark:text-slate-200">{stats.avgEase.toFixed(2)}</p>
-              <p className="text-[9px] font-black uppercase tracking-widest text-slate-400 mt-1">Ø Ease</p>
+              <p className="text-[9px] font-black uppercase tracking-widest text-slate-400 mt-1">{t('dsm.avgEase')}</p>
             </div>
           </div>
 
           {stats.total === 0 && (
-            <p className="text-center text-sm text-slate-400 py-4">Noch keine Karten in diesem Deck.</p>
+            <p className="text-center text-sm text-slate-400 py-4">{t('dsm.noCards')}</p>
           )}
         </div>
       </div>

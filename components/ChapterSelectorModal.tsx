@@ -1,6 +1,7 @@
 
 import React, { useState } from 'react';
 import { Chapter, extractChapterText } from '../services/chapterService';
+import { useTranslation } from '../i18n/I18nProvider';
 
 interface ChapterSelectorModalProps {
   docTitle: string;
@@ -19,6 +20,7 @@ export const ChapterSelectorModal: React.FC<ChapterSelectorModalProps> = ({
   onSkip,
   onClose,
 }) => {
+  const { t } = useTranslation();
   const [selected, setSelected] = useState<Set<number>>(new Set(chapters.map(c => c.index)));
 
   const toggle = (idx: number) =>
@@ -54,10 +56,10 @@ export const ChapterSelectorModal: React.FC<ChapterSelectorModalProps> = ({
       >
         {/* Header */}
         <div className="px-8 py-6 border-b border-slate-100 dark:border-slate-800 shrink-0">
-          <p className="text-[9px] font-black uppercase tracking-widest text-slate-400 mb-1">Kapitel auswählen</p>
+          <p className="text-[9px] font-black uppercase tracking-widest text-slate-400 mb-1">{t('csm.title')}</p>
           <h2 className="text-lg font-black dark:text-white break-words">{docTitle}</h2>
           <p className="text-[10px] text-slate-400 mt-1">
-            {chapters.length} Kapitel erkannt · nur ausgewählte werden verarbeitet
+            {t('csm.detected', { n: chapters.length })}
           </p>
         </div>
 
@@ -71,7 +73,7 @@ export const ChapterSelectorModal: React.FC<ChapterSelectorModalProps> = ({
                 : 'bg-slate-100 dark:bg-slate-800 text-slate-500 hover:text-indigo-600'
             }`}
           >
-            Alle
+            {t('csm.all')}
           </button>
           <button
             onClick={selectNone}
@@ -81,10 +83,10 @@ export const ChapterSelectorModal: React.FC<ChapterSelectorModalProps> = ({
                 : 'bg-slate-100 dark:bg-slate-800 text-slate-500 hover:text-slate-700'
             }`}
           >
-            Keine
+            {t('csm.none')}
           </button>
           <span className="ml-auto text-[10px] font-bold text-slate-400 self-center">
-            {selected.size} / {chapters.length} · ~{approxPages(totalChars)} Seiten
+            {t('csm.summary', { sel: selected.size, total: chapters.length, pages: approxPages(totalChars) })}
           </span>
         </div>
 
@@ -128,7 +130,7 @@ export const ChapterSelectorModal: React.FC<ChapterSelectorModalProps> = ({
 
                 {/* Size */}
                 <span className="text-[9px] font-black text-slate-300 dark:text-slate-600 shrink-0">
-                  ~{approxPages(chapter.charCount)}S
+                  {t('csm.pagesShort', { n: approxPages(chapter.charCount) })}
                 </span>
               </button>
             );
@@ -141,7 +143,7 @@ export const ChapterSelectorModal: React.FC<ChapterSelectorModalProps> = ({
             onClick={onSkip}
             className="flex-1 py-3 bg-slate-100 dark:bg-slate-800 text-slate-500 rounded-2xl text-[10px] font-black uppercase tracking-widest hover:text-slate-700 transition-colors"
           >
-            Ganzes Dokument
+            {t('csm.fullDocument')}
           </button>
           <button
             onClick={handleConfirm}
@@ -150,10 +152,10 @@ export const ChapterSelectorModal: React.FC<ChapterSelectorModalProps> = ({
             style={{ background: 'var(--primary)' }}
           >
             {noneSelected
-              ? 'Nichts ausgewählt'
+              ? t('csm.nothingSelected')
               : selected.size === chapters.length
-              ? 'Alle generieren'
-              : `${selected.size} Kapitel generieren`}
+              ? t('csm.generateAll')
+              : t('csm.generateN', { n: selected.size })}
           </button>
         </div>
       </div>

@@ -1,6 +1,7 @@
 
 import React, { useState, useEffect, useRef } from 'react';
 import { Flashcard } from '../types';
+import { useTranslation } from '../i18n/I18nProvider';
 
 interface EditCardModalProps {
   card?: Flashcard;
@@ -19,6 +20,7 @@ export const EditCardModal: React.FC<EditCardModalProps> = ({
   onDelete,
   onClose,
 }) => {
+  const { t } = useTranslation();
   const isNew = !card;
   const [front, setFront] = useState(card?.front ?? '');
   const [back, setBack]   = useState(card?.back  ?? '');
@@ -64,7 +66,7 @@ export const EditCardModal: React.FC<EditCardModalProps> = ({
         <div className="flex justify-between items-center px-8 py-6 border-b border-slate-100 dark:border-slate-800">
           <div className="flex items-center gap-3">
             <h2 className="text-xl font-black dark:text-white">
-              {isNew ? 'Neue Karte' : 'Karte bearbeiten'}
+              {isNew ? t('ecm.newCard') : t('ecm.editCard')}
             </h2>
             {!isNew && cardIndex !== undefined && totalCards !== undefined && (
               <span className="text-[9px] font-black uppercase tracking-widest bg-slate-100 dark:bg-slate-800 text-slate-400 px-2.5 py-1 rounded-lg">
@@ -72,7 +74,7 @@ export const EditCardModal: React.FC<EditCardModalProps> = ({
               </span>
             )}
           </div>
-          <button aria-label="Schließen"
+          <button aria-label={t('upl.close')}
             onClick={onClose}
             className="p-2 text-slate-400 hover:text-rose-500 transition-colors rounded-xl"
           >
@@ -89,13 +91,13 @@ export const EditCardModal: React.FC<EditCardModalProps> = ({
             {/* Front */}
             <div className="space-y-2">
               <label className="text-[9px] font-black text-slate-400 uppercase tracking-widest ml-1">
-                Vorderseite <span className="text-slate-300">(Frage / Begriff)</span>
+                {t('ecm.front')} <span className="text-slate-300">{t('ecm.frontHint')}</span>
               </label>
               <textarea
                 ref={frontRef}
                 value={front}
                 onChange={e => setFront(e.target.value)}
-                placeholder="z.B. Was ist der Turing-Test?"
+                placeholder={t('ecm.frontPlaceholder')}
                 rows={5}
                 className="w-full p-4 bg-slate-50 dark:bg-slate-800 rounded-2xl border-2 border-transparent focus:border-indigo-500 outline-none dark:text-white font-medium resize-none text-sm leading-relaxed transition-colors"
               />
@@ -105,12 +107,12 @@ export const EditCardModal: React.FC<EditCardModalProps> = ({
             {/* Back */}
             <div className="space-y-2">
               <label className="text-[9px] font-black text-slate-400 uppercase tracking-widest ml-1">
-                Rückseite <span className="text-slate-300">(Antwort / Definition)</span>
+                {t('ecm.back')} <span className="text-slate-300">{t('ecm.backHint')}</span>
               </label>
               <textarea
                 value={back}
                 onChange={e => setBack(e.target.value)}
-                placeholder="z.B. Ein Test zur Unterscheidung von menschlicher und künstlicher Intelligenz."
+                placeholder={t('ecm.backPlaceholder')}
                 rows={5}
                 className="w-full p-4 bg-slate-50 dark:bg-slate-800 rounded-2xl border-2 border-transparent focus:border-indigo-500 outline-none dark:text-white font-medium resize-none text-sm leading-relaxed transition-colors"
               />
@@ -124,7 +126,7 @@ export const EditCardModal: React.FC<EditCardModalProps> = ({
               type="button"
               onClick={handleSwap}
               className="flex items-center gap-2 px-4 py-2 rounded-xl text-[10px] font-black uppercase tracking-widest text-slate-400 hover:text-indigo-600 hover:bg-indigo-50 dark:hover:bg-indigo-950/20 transition-all"
-              title="Vorder- und Rückseite tauschen"
+              title={t('ecm.swapTitle')}
             >
               <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
                 <polyline points="17 1 21 5 17 9"/>
@@ -132,7 +134,7 @@ export const EditCardModal: React.FC<EditCardModalProps> = ({
                 <polyline points="7 23 3 19 7 15"/>
                 <path d="M21 13v2a4 4 0 0 1-4 4H3"/>
               </svg>
-              Seiten tauschen
+              {t('ecm.swap')}
             </button>
           </div>
         </div>
@@ -144,25 +146,25 @@ export const EditCardModal: React.FC<EditCardModalProps> = ({
           {!isNew && onDelete && (
             showDeleteConfirm ? (
               <div className="flex items-center gap-2 animate-in fade-in duration-150">
-                <span className="text-[10px] font-black text-rose-500 uppercase tracking-widest">Sicher?</span>
+                <span className="text-[10px] font-black text-rose-500 uppercase tracking-widest">{t('ecm.sure')}</span>
                 <button
                   onClick={() => { onDelete(); onClose(); }}
                   className="px-3 py-2 bg-rose-500 text-white rounded-xl text-[10px] font-black uppercase tracking-widest hover:bg-rose-600 transition-colors"
                 >
-                  Löschen
+                  {t('lib.delete')}
                 </button>
                 <button
                   onClick={() => setShowDeleteConfirm(false)}
                   className="px-3 py-2 bg-slate-100 dark:bg-slate-800 text-slate-400 rounded-xl text-[10px] font-black uppercase tracking-widest"
                 >
-                  Abbrechen
+                  {t('quiz.cancel')}
                 </button>
               </div>
             ) : (
               <button
                 onClick={() => setShowDeleteConfirm(true)}
                 className="p-2.5 text-slate-300 hover:text-rose-500 hover:bg-rose-50 dark:hover:bg-rose-950/20 rounded-xl transition-all"
-                title="Karte löschen"
+                title={t('ecm.deleteCard')}
               >
                 <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
                   <polyline points="3 6 5 6 21 6"/>
@@ -178,7 +180,7 @@ export const EditCardModal: React.FC<EditCardModalProps> = ({
             onClick={onClose}
             className="px-5 py-3 bg-slate-100 dark:bg-slate-800 text-slate-500 rounded-2xl text-[10px] font-black uppercase tracking-widest hover:text-slate-700 transition-colors"
           >
-            Abbrechen
+            {t('quiz.cancel')}
           </button>
           <button
             onClick={handleSave}
@@ -186,7 +188,7 @@ export const EditCardModal: React.FC<EditCardModalProps> = ({
             className="flex items-center gap-2 px-6 py-3 rounded-2xl text-[10px] font-black uppercase tracking-widest shadow-lg hover:scale-[1.02] active:scale-95 transition-all disabled:opacity-40 disabled:scale-100"
             style={{ background: 'var(--primary)', color: 'var(--primary-text, #fff)' }}
           >
-            {isNew ? 'Hinzufügen' : 'Speichern'}
+            {isNew ? t('ecm.add') : t('common.save')}
             <span className="opacity-50 text-[8px] normal-case font-bold tracking-normal hidden sm:inline">⌘↵</span>
           </button>
         </div>
