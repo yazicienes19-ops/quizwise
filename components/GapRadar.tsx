@@ -4,6 +4,9 @@ import { TopicMetric, LearningAnalysis, ActiveTab } from '../types';
 import { EmojiImage } from './EmojiImage';
 import { analyzeLearningProgress, WrongAnswerContext } from '../services/geminiService';
 import { buildRealTopicMastery } from '../services/learningProfileService';
+import { useTranslation } from '../i18n/I18nProvider';
+import { formatDate } from '../i18n/dates';
+import { t as translate } from '../i18n';
 import { getAllResults } from '../services/quizHistoryService';
 import { getAllRecallResults } from '../services/recallHistoryService';
 import { getAllExamResults } from '../services/examHistoryService';
@@ -17,12 +20,15 @@ import {
 
 type LearnMode = 'all' | 'anki' | 'feynman' | 'quiz' | 'exam';
 
-const MODE_LABELS: Record<LearnMode, string> = {
-  all: 'Alle',
-  anki: 'Anki',
-  feynman: 'Feynman',
-  quiz: 'Quiz',
-  exam: 'Klausur',
+const MODE_ORDER: LearnMode[] = ['all', 'anki', 'feynman', 'quiz', 'exam'];
+const getModeLabel = (m: LearnMode): string => {
+  switch (m) {
+    case 'all': return translate('gr.modeAll');
+    case 'anki': return translate('lp.method.anki');
+    case 'feynman': return translate('lp.method.feynman');
+    case 'quiz': return translate('nav.quiz');
+    case 'exam': return translate('nav.exam');
+  }
 };
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
@@ -34,18 +40,16 @@ const scoreBg = (s: number) =>
   'color-mix(in srgb, #f43f5e 12%, transparent)';
 
 const confidenceLabel = (v: number) => {
-  if (v >= 85) return 'Meister-Niveau';
-  if (v >= 70) return 'Experte';
-  if (v >= 50) return 'Fortgeschritten';
-  if (v >= 30) return 'Lernender';
-  return 'Anfänger';
+  if (v >= 85) return translate('gr.confMaster');
+  if (v >= 70) return translate('gr.confExpert');
+  if (v >= 50) return translate('gr.confAdvanced');
+  if (v >= 30) return translate('gr.confLearner');
+  return translate('gr.confBeginner');
 };
 
-const fmtDate = (ts: number) =>
-  new Date(ts).toLocaleDateString('de-DE', { day: '2-digit', month: 'short', year: 'numeric' });
+const fmtDate = (ts: number) => formatDate(ts, { day: '2-digit', month: 'short', year: 'numeric' });
 
-const fmtDateShort = (ts: number) =>
-  new Date(ts).toLocaleDateString('de-DE', { day: '2-digit', month: 'short' });
+const fmtDateShort = (ts: number) => formatDate(ts, { day: '2-digit', month: 'short' });
 
 // ─── Recharts Progress Chart ───────────────────────────────────────────────────
 
@@ -123,7 +127,7 @@ const ProgressChart: React.FC<{
       }}>
         <p style={{ fontSize: 36, fontWeight: 900, color: 'var(--primary)' }}>{ankiAvg}%</p>
         <p style={{ fontSize: 9, fontWeight: 800, textTransform: 'uppercase', letterSpacing: '0.12em', color: 'var(--mute)', marginTop: 4 }}>
-          Anki Ø · Kein Zeitverlauf verfügbar
+          {translate('gr.noTimeSeries')}
         </p>
       </div>
     );
@@ -171,7 +175,7 @@ const ProgressChart: React.FC<{
               strokeWidth={1.5}
               strokeOpacity={0.7}
               label={{
-                value: `Anki Ø ${ankiAvg}%`,
+                value: translate('gr.ankiAvgValue', { n: ankiAvg }),
                 position: 'insideTopRight',
                 fontSize: 8, fontWeight: 800,
                 fill: 'var(--primary)', opacity: 0.8,
@@ -181,7 +185,7 @@ const ProgressChart: React.FC<{
 
           {/* Quiz-Linie (amber) */}
           {(selectedMode === 'all' || selectedMode === 'quiz') && quizPts.length > 0 && (
-            <Line type="monotone" dataKey="quiz" name="Quiz" stroke="#f59e0b" strokeWidth={2.5}
+            <Line type="monotone" dataKey="quiz" name={translate('nav.quiz')} stroke="#f59e0b" strokeWidth={2.5}
               dot={{ r: 3.5, fill: '#f59e0b', stroke: 'white', strokeWidth: 1.5 }}
               activeDot={{ r: 6, fill: '#f59e0b', stroke: 'white', strokeWidth: 2 }}
               connectNulls={false}
@@ -190,7 +194,7 @@ const ProgressChart: React.FC<{
 
           {/* Feynman-Linie (grün) */}
           {(selectedMode === 'all' || selectedMode === 'feynman') && feynmanPts.length > 0 && (
-            <Line type="monotone" dataKey="feynman" name="Feynman" stroke="#22c55e" strokeWidth={2.5}
+            <Line type="monotone" dataKey="feynman" name={translate('lp.method.feynman')} stroke="#22c55e" strokeWidth={2.5}
               dot={{ r: 3.5, fill: '#22c55e', stroke: 'white', strokeWidth: 1.5 }}
               activeDot={{ r: 6, fill: '#22c55e', stroke: 'white', strokeWidth: 2 }}
               connectNulls={false}
@@ -199,7 +203,7 @@ const ProgressChart: React.FC<{
 
           {/* Klausur-Linie (rot) */}
           {(selectedMode === 'all' || selectedMode === 'exam') && examPts.length > 0 && (
-            <Line type="monotone" dataKey="exam" name="Klausur" stroke="#f43f5e" strokeWidth={2.5}
+            <Line type="monotone" dataKey="exam" name={translate('nav.exam')} stroke="#f43f5e" strokeWidth={2.5}
               dot={{ r: 3.5, fill: '#f43f5e', stroke: 'white', strokeWidth: 1.5 }}
               activeDot={{ r: 6, fill: '#f43f5e', stroke: 'white', strokeWidth: 2 }}
               connectNulls={false}
@@ -237,6 +241,7 @@ interface GapRadarProps {
 }
 
 export const GapRadar: React.FC<GapRadarProps> = ({ metrics, onNavigate, onAction, hideHeader }) => {
+  const { t } = useTranslation();
   const [selectedMode, setSelectedMode] = useState<LearnMode>('all');
   const [selectedDoc, setSelectedDoc] = useState('');
   const [analysis, setAnalysis] = useState<LearningAnalysis | null>(null);
@@ -388,7 +393,7 @@ export const GapRadar: React.FC<GapRadarProps> = ({ metrics, onNavigate, onActio
 
     if (selectedMode === 'all' || selectedMode === 'exam') {
       filteredExam.filter(r => r.score < 70).slice(0, 2).forEach(r =>
-        items.push({ topic: r.docName, mode: 'Klausur', score: r.score })
+        items.push({ topic: r.docName, mode: getModeLabel('exam'), score: r.score })
       );
     }
     if (selectedMode === 'all' || selectedMode === 'anki') {
@@ -396,11 +401,11 @@ export const GapRadar: React.FC<GapRadarProps> = ({ metrics, onNavigate, onActio
         .filter(m => m.confidence < 70 || now - m.lastReviewed > 3 * 86400000)
         .sort((a, b) => a.confidence - b.confidence)
         .slice(0, 3)
-        .forEach(m => items.push({ topic: m.topic, mode: 'Anki', score: m.confidence }));
+        .forEach(m => items.push({ topic: m.topic, mode: getModeLabel('anki'), score: m.confidence }));
     }
     if (selectedMode === 'all' || selectedMode === 'feynman') {
       filteredRecall.filter(r => r.score < 70).slice(0, 1).forEach(r =>
-        items.push({ topic: r.topic || r.docName, mode: 'Feynman', score: r.score })
+        items.push({ topic: r.topic || r.docName, mode: getModeLabel('feynman'), score: r.score })
       );
     }
 
@@ -443,7 +448,7 @@ export const GapRadar: React.FC<GapRadarProps> = ({ metrics, onNavigate, onActio
       filteredQuiz.slice(0, 8).forEach(r =>
         entries.push({
           id: r.id, docName: r.docName, timestamp: r.timestamp,
-          score: r.score, mode: 'Quiz', detail: `${r.correctCount}/${r.totalCount} richtig`,
+          score: r.score, mode: getModeLabel('quiz'), detail: t('gr.detailCorrect', { correct: r.correctCount, total: r.totalCount }),
         })
       );
     }
@@ -451,7 +456,7 @@ export const GapRadar: React.FC<GapRadarProps> = ({ metrics, onNavigate, onActio
       filteredRecall.slice(0, 4).forEach(r =>
         entries.push({
           id: r.id, docName: r.topic || r.docName, timestamp: r.timestamp,
-          score: r.score, mode: 'Feynman', detail: r.docName,
+          score: r.score, mode: getModeLabel('feynman'), detail: r.docName,
         })
       );
     }
@@ -459,7 +464,7 @@ export const GapRadar: React.FC<GapRadarProps> = ({ metrics, onNavigate, onActio
       filteredExam.slice(0, 4).forEach(r =>
         entries.push({
           id: r.id, docName: r.docName, timestamp: r.timestamp,
-          score: r.score, mode: 'Klausur', detail: r.passed ? '✓ Bestanden' : '✗ Nicht bestanden',
+          score: r.score, mode: getModeLabel('exam'), detail: r.passed ? t('gr.detailPassed') : t('gr.detailNotPassed'),
         })
       );
     }
@@ -542,9 +547,9 @@ export const GapRadar: React.FC<GapRadarProps> = ({ metrics, onNavigate, onActio
       <div className="flex flex-col items-center justify-center py-32 space-y-6 opacity-30">
         <EmojiImage emoji="📊" size={64} />
         <div className="text-center space-y-2">
-          <p className="font-black text-slate-400 uppercase text-xs tracking-widest">Noch keine Daten</p>
+          <p className="font-black text-slate-400 uppercase text-xs tracking-widest">{t('gr.noData')}</p>
           <p className="text-sm text-slate-500 max-w-xs mx-auto">
-            Absolviere ein Quiz, eine Klausur oder eine Feynman-Runde, um die Analyse zu starten.
+            {t('gr.emptyHint')}
           </p>
         </div>
       </div>
@@ -558,10 +563,10 @@ export const GapRadar: React.FC<GapRadarProps> = ({ metrics, onNavigate, onActio
       {!hideHeader && (
         <div className="text-center space-y-3">
           <h1 className="text-4xl lg:text-7xl font-black text-slate-900 dark:text-white tracking-tighter">
-            Lern <span className="text-indigo-600">Radar</span> <EmojiImage emoji="📡" size={36} />
+            {t('gr.titlePre')} <span className="text-indigo-600">{t('gr.titleAccent')}</span> <EmojiImage emoji="📡" size={36} />
           </h1>
           <p className="text-base text-slate-500 dark:text-slate-400 font-medium opacity-80">
-            Alle Lernmodi auf einen Blick: Quiz, Anki, Feynman & Klausur.
+            {t('gr.subtitle')}
           </p>
         </div>
       )}
@@ -573,7 +578,7 @@ export const GapRadar: React.FC<GapRadarProps> = ({ metrics, onNavigate, onActio
           className="flex gap-1 p-1 rounded-xl"
           style={{ background: 'var(--bg-sidebar)', border: '1px solid var(--border-color)' }}
         >
-          {(Object.keys(MODE_LABELS) as LearnMode[]).map(m => (
+          {MODE_ORDER.map(m => (
             <button
               key={m}
               onClick={() => setSelectedMode(m)}
@@ -584,7 +589,7 @@ export const GapRadar: React.FC<GapRadarProps> = ({ metrics, onNavigate, onActio
                   : { color: 'var(--ink2)' }
               }
             >
-              {MODE_LABELS[m]}
+              {getModeLabel(m)}
             </button>
           ))}
         </div>
@@ -601,7 +606,7 @@ export const GapRadar: React.FC<GapRadarProps> = ({ metrics, onNavigate, onActio
               color: 'var(--ink)',
             }}
           >
-            <option value="">Alle Dokumente</option>
+            <option value="">{t('lib.allDocs')}</option>
             {allDocNames.map(n => (
               <option key={n} value={n}>{n}</option>
             ))}
@@ -613,7 +618,7 @@ export const GapRadar: React.FC<GapRadarProps> = ({ metrics, onNavigate, onActio
             onClick={() => { setSelectedDoc(''); setSelectedMode('all'); }}
             className="text-[10px] font-black uppercase tracking-wider text-rose-500 hover:text-rose-700 transition-colors"
           >
-            Filter zurücksetzen ✕
+            {t('gr.resetFilter')}
           </button>
         )}
       </div>
@@ -627,7 +632,7 @@ export const GapRadar: React.FC<GapRadarProps> = ({ metrics, onNavigate, onActio
           style={{ background: 'var(--card)' }}
         >
           <h3 className="text-[9px] font-black uppercase tracking-widest mb-4" style={{ color: 'var(--mute)' }}>
-            Gesamtfortschritt
+            {t('gr.overallProgress')}
           </h3>
           {overallScore !== null ? (
             <>
@@ -650,13 +655,13 @@ export const GapRadar: React.FC<GapRadarProps> = ({ metrics, onNavigate, onActio
                 {confidenceLabel(overallScore)}
               </p>
               <div className="mt-2 flex justify-center">
-                {trend === 'up'     && <span className="text-[9px] font-black text-emerald-500">↑ Verbesserung</span>}
-                {trend === 'down'   && <span className="text-[9px] font-black text-rose-500">↓ Rückgang</span>}
-                {trend === 'stable' && <span className="text-[9px] font-black" style={{ color: 'var(--mute)' }}>→ Stabil</span>}
+                {trend === 'up'     && <span className="text-[9px] font-black text-emerald-500">{t('gr.improvement')}</span>}
+                {trend === 'down'   && <span className="text-[9px] font-black text-rose-500">{t('gr.decline')}</span>}
+                {trend === 'stable' && <span className="text-[9px] font-black" style={{ color: 'var(--mute)' }}>{t('gr.stable')}</span>}
               </div>
             </>
           ) : (
-            <p className="text-[10px] font-bold mt-4" style={{ color: 'var(--mute)' }}>Noch keine Daten</p>
+            <p className="text-[10px] font-bold mt-4" style={{ color: 'var(--mute)' }}>{t('gr.noData')}</p>
           )}
         </div>
 
@@ -665,14 +670,14 @@ export const GapRadar: React.FC<GapRadarProps> = ({ metrics, onNavigate, onActio
           className="p-5 lg:p-8 rounded-[24px] lg:rounded-[32px] border border-l-4 border-l-rose-500 border-slate-200 dark:border-slate-800 shadow-sm"
           style={{ background: 'var(--card)' }}
         >
-          <h3 className="text-[9px] font-black uppercase tracking-widest text-rose-500 mb-3">Größte Lücke</h3>
+          <h3 className="text-[9px] font-black uppercase tracking-widest text-rose-500 mb-3">{t('gr.biggestGap')}</h3>
           {biggestGap ? (
             <>
               <p className="text-sm lg:text-lg font-black leading-tight mb-1" style={{ color: 'var(--ink)' }}>
                 {biggestGap.topic}
               </p>
               <p className="text-[10px] font-bold uppercase" style={{ color: 'var(--mute)' }}>
-                {biggestGap.score}% Score
+                {t('gr.scoreLabel', { n: biggestGap.score })}
               </p>
               <button
                 onClick={() => {
@@ -682,12 +687,12 @@ export const GapRadar: React.FC<GapRadarProps> = ({ metrics, onNavigate, onActio
                 className="mt-4 w-full py-2.5 rounded-xl text-[8px] font-black uppercase tracking-widest transition-all hover:opacity-80"
                 style={{ background: 'color-mix(in srgb, #f43f5e 12%, var(--bg-sidebar))', color: '#f43f5e', border: '1px solid color-mix(in srgb, #f43f5e 25%, transparent)' }}
               >
-                {biggestGap.action === 'exam' ? 'Klausur starten →' :
-                 biggestGap.action === 'anki' ? 'Anki-Deck lernen →' : 'Quiz starten →'}
+                {biggestGap.action === 'exam' ? t('gr.startExam') :
+                 biggestGap.action === 'anki' ? t('gr.learnAnki') : t('gr.startQuiz')}
               </button>
             </>
           ) : (
-            <p className="text-[10px] font-bold mt-3 text-emerald-500">Keine kritischen Lücken! ✓</p>
+            <p className="text-[10px] font-bold mt-3 text-emerald-500">{t('gr.noCriticalGaps')}</p>
           )}
         </div>
 
@@ -697,7 +702,7 @@ export const GapRadar: React.FC<GapRadarProps> = ({ metrics, onNavigate, onActio
           style={{ background: 'var(--card)' }}
         >
           <h3 className="text-[9px] font-black uppercase tracking-widest mb-3" style={{ color: 'var(--primary)' }}>
-            Heute lernen
+            {t('gr.learnToday')}
           </h3>
           <div className="space-y-2">
             {todayLearn.length > 0 ? (
@@ -717,7 +722,7 @@ export const GapRadar: React.FC<GapRadarProps> = ({ metrics, onNavigate, onActio
                 </div>
               ))
             ) : (
-              <p className="text-[10px] font-bold text-emerald-500">Alles im grünen Bereich ✓</p>
+              <p className="text-[10px] font-bold text-emerald-500">{t('gr.allGreen')}</p>
             )}
           </div>
         </div>
@@ -730,21 +735,21 @@ export const GapRadar: React.FC<GapRadarProps> = ({ metrics, onNavigate, onActio
       {(hasChartData || (ankiAvg !== null && (selectedMode === 'all' || selectedMode === 'anki'))) && (
         <div className="space-y-4">
           <div>
-            <h3 className="text-lg font-black" style={{ color: 'var(--ink)' }}>Verlauf</h3>
+            <h3 className="text-lg font-black" style={{ color: 'var(--ink)' }}>{t('gr.history')}</h3>
             <p className="text-xs mt-0.5" style={{ color: 'var(--mute)' }}>
-              Hover über einen Punkt für Details · Score-Entwicklung über Zeit.
+              {t('gr.historyHint')}
             </p>
           </div>
 
           {/* Legende */}
           <div className="flex flex-wrap items-center gap-4">
-            {chartQuizPts.length > 0    && <LegendDot color="#f59e0b" label="Quiz" />}
-            {chartFeynmanPts.length > 0 && <LegendDot color="#22c55e" label="Feynman" />}
-            {chartExamPts.length > 0    && <LegendDot color="#f43f5e" label="Klausur" />}
+            {chartQuizPts.length > 0    && <LegendDot color="#f59e0b" label={t('nav.quiz')} />}
+            {chartFeynmanPts.length > 0 && <LegendDot color="#22c55e" label={t('lp.method.feynman')} />}
+            {chartExamPts.length > 0    && <LegendDot color="#f43f5e" label={t('nav.exam')} />}
             {ankiAvg !== null && (selectedMode === 'all' || selectedMode === 'anki') && (
               <div className="flex items-center gap-1.5">
                 <svg width="24" height="4"><line x1="0" y1="2" x2="24" y2="2" stroke="var(--primary)" strokeWidth="2" strokeDasharray="5,3" /></svg>
-                <span className="text-[9px] font-black uppercase" style={{ color: 'var(--mute)' }}>Anki Ø</span>
+                <span className="text-[9px] font-black uppercase" style={{ color: 'var(--mute)' }}>{t('gr.ankiAvg')}</span>
               </div>
             )}
           </div>
@@ -764,9 +769,9 @@ export const GapRadar: React.FC<GapRadarProps> = ({ metrics, onNavigate, onActio
       {weakTopics.length > 0 && (
         <div className="space-y-4" ref={weakTopicsRef}>
           <div>
-            <h3 className="text-lg font-black" style={{ color: 'var(--ink)' }}>Häufige Schwachstellen</h3>
+            <h3 className="text-lg font-black" style={{ color: 'var(--ink)' }}>{t('gr.commonWeak')}</h3>
             <p className="text-xs mt-0.5" style={{ color: 'var(--mute)' }}>
-              Klick auf ein Thema, um direkt eine Lern-Aktion zu starten.
+              {t('gr.commonWeakHint')}
             </p>
           </div>
           <div className="flex flex-wrap gap-2">
@@ -798,9 +803,9 @@ export const GapRadar: React.FC<GapRadarProps> = ({ metrics, onNavigate, onActio
                       {topic}
                     </p>
                     {[
-                      { label: 'Anki-Karten abfragen', mode: 'cards' as const, icon: '🃏' },
-                      { label: 'Feynman-Erklärung', mode: 'recall' as const, icon: '🧠' },
-                      { label: 'Schnelles Quiz', mode: 'quiz' as const, icon: '⚡' },
+                      { label: t('gr.ankiQuery'), mode: 'cards' as const, icon: '🃏' },
+                      { label: t('gr.feynmanExpl'), mode: 'recall' as const, icon: '🧠' },
+                      { label: t('gr.quickQuiz'), mode: 'quiz' as const, icon: '⚡' },
                     ].map(({ label, mode, icon }) => (
                       <button
                         key={mode}
@@ -835,9 +840,9 @@ export const GapRadar: React.FC<GapRadarProps> = ({ metrics, onNavigate, onActio
       {combinedHistory.length > 0 && (
         <div className="space-y-4">
           <div>
-            <h3 className="text-lg font-black" style={{ color: 'var(--ink)' }}>Lern-Verlauf</h3>
+            <h3 className="text-lg font-black" style={{ color: 'var(--ink)' }}>{t('gr.learnHistory')}</h3>
             <p className="text-xs mt-0.5" style={{ color: 'var(--mute)' }}>
-              Letzte {combinedHistory.length} Sessions, chronologisch.
+              {t('gr.lastSessions', { n: combinedHistory.length })}
             </p>
           </div>
           <div className="space-y-2">
@@ -891,11 +896,11 @@ export const GapRadar: React.FC<GapRadarProps> = ({ metrics, onNavigate, onActio
       <div className="pt-8 border-t space-y-6" style={{ borderColor: 'var(--border-color)' }}>
         <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
           <div>
-            <h3 className="text-xl font-black" style={{ color: 'var(--ink)' }}>Fehleranalyse</h3>
+            <h3 className="text-xl font-black" style={{ color: 'var(--ink)' }}>{t('gr.errorAnalysis')}</h3>
             <p className="text-xs mt-0.5" style={{ color: 'var(--mute)' }}>
               {wrongAnswersCtx.length > 0
-                ? `KI analysiert ${wrongAnswersCtx.length} echte Fehlantworten aus deinen Quizzen.`
-                : 'Spiele mehr Quizze für eine fundierte Analyse.'}
+                ? t('gr.aiAnalyzes', { n: wrongAnswersCtx.length })
+                : t('gr.playMoreQuizzes')}
             </p>
           </div>
           <button
@@ -904,7 +909,7 @@ export const GapRadar: React.FC<GapRadarProps> = ({ metrics, onNavigate, onActio
             className="w-full sm:w-auto px-8 py-4 rounded-2xl font-black uppercase text-[10px] tracking-[0.2em] shadow-xl hover:scale-105 active:scale-95 transition-all disabled:opacity-40 shrink-0"
             style={{ background: 'var(--primary)', color: 'var(--primary-text)' }}
           >
-            {isAnalyzing ? 'Analyse läuft …' : <>Tiefenanalyse <EmojiImage emoji="✨" size={13} /></>}
+            {isAnalyzing ? t('gr.analyzing') : <>{t('gr.deepAnalysis')} <EmojiImage emoji="✨" size={13} /></>}
           </button>
         </div>
 
@@ -915,7 +920,7 @@ export const GapRadar: React.FC<GapRadarProps> = ({ metrics, onNavigate, onActio
               style={{ background: 'var(--card)', color: 'var(--ink)', borderColor: 'color-mix(in srgb, var(--primary) 25%, var(--border-color))' }}
             >
               <h2 className="text-[9px] font-black uppercase tracking-widest opacity-50 mb-3">
-                Psychologische Synthese
+                {t('gr.psychSynthesis')}
               </h2>
               <p className="text-lg lg:text-xl font-medium leading-relaxed italic opacity-90">
                 "{analysis.overallHealth}"
@@ -937,23 +942,23 @@ export const GapRadar: React.FC<GapRadarProps> = ({ metrics, onNavigate, onActio
                   >
                     <div>
                       <div className="flex flex-wrap justify-between items-start gap-2">
-                        <p className="text-[9px] font-black uppercase tracking-widest" style={{ color: '#f43f5e' }}>Hauptproblem</p>
+                        <p className="text-[9px] font-black uppercase tracking-widest" style={{ color: '#f43f5e' }}>{t('gr.mainProblem')}</p>
                         <span
                           className="text-[8px] font-black px-2.5 py-1 rounded-full uppercase tracking-widest shrink-0"
                           style={{ background: 'var(--primary)', color: 'var(--primary-text)' }}
                         >
-                          {error.count}× aufgetreten
+                          {t('gr.occurredN', { n: error.count })}
                         </span>
                       </div>
                       <h4 className="text-base font-black mt-1" style={{ color: 'var(--ink)' }}>{error.pattern}</h4>
                       <p className="text-[11px] font-medium mt-1 leading-relaxed" style={{ color: 'var(--ink2)' }}>{error.description}</p>
                     </div>
                     <div>
-                      <p className="text-[9px] font-black uppercase tracking-widest" style={{ color: 'var(--mute)' }}>Vermutete Ursache</p>
+                      <p className="text-[9px] font-black uppercase tracking-widest" style={{ color: 'var(--mute)' }}>{t('gr.probableCause')}</p>
                       <p className="text-[11px] font-medium mt-1 leading-relaxed" style={{ color: 'var(--ink2)' }}>{error.probableCause}</p>
                     </div>
                     <div className="flex-1">
-                      <p className="text-[9px] font-black uppercase tracking-widest" style={{ color: 'var(--primary)' }}>Empfehlung</p>
+                      <p className="text-[9px] font-black uppercase tracking-widest" style={{ color: 'var(--primary)' }}>{t('gr.recommendation')}</p>
                       <p className="text-sm font-black mt-1" style={{ color: 'var(--ink)' }}>{error.recommendedAction.type}</p>
                       <p className="text-[10px] italic mt-1 leading-relaxed" style={{ color: 'var(--ink2)' }}>{error.recommendedAction.reasoning}</p>
                     </div>
