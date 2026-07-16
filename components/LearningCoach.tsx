@@ -15,6 +15,10 @@ import { getAllRecallResults } from '../services/recallHistoryService';
 import { getAllExamResults } from '../services/examHistoryService';
 import { getStreak } from '../services/streakService';
 import { toast } from '../services/toast';
+import { useTranslation } from '../i18n/I18nProvider';
+import { formatDate } from '../i18n/dates';
+import { t as translate } from '../i18n';
+import type { TKey } from '../i18n';
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
 
@@ -35,9 +39,12 @@ const MIN_SESSIONS_FOR_COACH = 5;
 /** Coach-Ergebnis überlebt Tab-Wechsel; wird ungültig sobald neue Sessions dazukommen. */
 const INSIGHTS_CACHE_KEY = 'quizwise_coach_insights_v1';
 
-const TAB_ACTION_LABELS: Record<string, string> = {
-  QUIZ: 'Quiz starten', CARDS: 'Karteikarten üben', RECALL: 'Feynman starten',
-  EXAM: 'Klausur starten', EXPLAINER: 'Erklärer starten',
+const getTabActionLabel = (tab: string): string => {
+  const map: Record<string, TKey> = {
+    QUIZ: 'lc.tabQuiz', CARDS: 'lc.tabCards', RECALL: 'lc.tabRecall',
+    EXAM: 'lc.tabExam', EXPLAINER: 'lc.tabExplainer',
+  };
+  return map[tab] ? translate(map[tab]) : translate('lc.start');
 };
 
 // ─── Main Component ────────────────────────────────────────────────────────────
@@ -55,6 +62,7 @@ interface LearningCoachProps {
 }
 
 export const LearningCoach: React.FC<LearningCoachProps> = ({ metrics, decks, onNavigate, onAction, flowResult = null, examTerms = [], activeModule = null, documents = [] }) => {
+  const { t, tp } = useTranslation();
   const [insights, setInsights] = useState<CoachInsights | null>(null);
   const [isLoading, setIsLoading] = useState(false);
   const [showPrognosisInfo, setShowPrognosisInfo] = useState(false);
@@ -184,24 +192,24 @@ export const LearningCoach: React.FC<LearningCoachProps> = ({ metrics, decks, on
   // nur Panels mit einer klaren, festen Datenschwelle (keine Platzhalter für "einfach noch leer").
   const lockedPanels = [
     profile.longTermTrend === null && {
-      label: 'Deine Entwicklung seit Beginn',
-      reason: `Braucht mindestens 4 Klausuren, du hast ${examResults.length}.`,
+      label: t('lc.developmentSince'),
+      reason: t('lc.reasonExams', { n: examResults.length }),
     },
     !hasEnoughForCoach && {
-      label: 'Dein Coach',
-      reason: `Braucht mindestens ${MIN_SESSIONS_FOR_COACH} Lernsessions, du hast ${profile.volume.totalSessions}.`,
+      label: t('lc.coach'),
+      reason: t('lc.reasonSessions', { min: MIN_SESSIONS_FOR_COACH, n: profile.volume.totalSessions }),
     },
     displayTopics.length === 0 && {
-      label: 'Themen-Sicherheit',
-      reason: 'Erscheint nach deiner ersten Quiz-, Klausur- oder Karteikarten-Session.',
+      label: t('lc.topicSecurity'),
+      reason: t('lc.reasonTopics'),
     },
     wissensprofilItems.length === 0 && {
-      label: 'Wissensprofil',
-      reason: 'Erscheint nach deiner ersten Klausur oder deinem ersten Quiz.',
+      label: t('lc.knowledgeProfile'),
+      reason: t('lc.reasonKnowledge'),
     },
     learningScore.overall === null && {
-      label: 'Learning Score',
-      reason: 'Braucht mehr Daten, z.B. 2 Erklär-Sessions, 10 gelernte Karteikarten oder 2 Klausuren.',
+      label: t('lc.learningScore'),
+      reason: t('lc.reasonScore'),
     },
   ].filter((x): x is { label: string; reason: string } => Boolean(x));
 
@@ -217,7 +225,7 @@ export const LearningCoach: React.FC<LearningCoachProps> = ({ metrics, decks, on
         }));
       } catch {}
     } catch (e: any) {
-      toast.error(`Coach-Analyse fehlgeschlagen: ${e?.message || 'Unbekannter Fehler'}`);
+      toast.error(t('lc.coachFailed', { msg: e?.message || translate('es.unknownError') }));
     } finally {
       setIsLoading(false);
     }
@@ -231,15 +239,15 @@ export const LearningCoach: React.FC<LearningCoachProps> = ({ metrics, decks, on
       <div className="space-y-10">
         <div className="text-center space-y-3">
           <h1 className="text-4xl lg:text-6xl font-black tracking-tighter" style={{ color: 'var(--ink)' }}>
-            Dein <span style={{ color: 'var(--primary)' }}>Lernfortschritt</span> <EmojiImage emoji="🧭" size={36} />
+            {t('lc.titlePre')} <span style={{ color: 'var(--primary)' }}>{t('lc.titleAccent')}</span> <EmojiImage emoji="🧭" size={36} />
           </h1>
         </div>
         <div className="flex flex-col items-center justify-center py-32 space-y-6 opacity-30">
           <EmojiImage emoji="📊" size={64} />
           <div className="text-center space-y-2">
-            <p className="font-black text-slate-400 uppercase text-xs tracking-widest">Noch keine Daten</p>
+            <p className="font-black text-slate-400 uppercase text-xs tracking-widest">{t('gr.noData')}</p>
             <p className="text-sm text-slate-500 max-w-xs mx-auto">
-              Absolviere ein Quiz, eine Klausur, Feynman oder den Erklärer, damit dein Coach loslegen kann.
+              {t('lc.emptyHint')}
             </p>
           </div>
         </div>
@@ -253,17 +261,17 @@ export const LearningCoach: React.FC<LearningCoachProps> = ({ metrics, decks, on
       {/* ── Header ── */}
       <div className="text-center space-y-3">
         <h1 className="text-4xl lg:text-6xl font-black tracking-tighter" style={{ color: 'var(--ink)' }}>
-          Dein <span style={{ color: 'var(--primary)' }}>Lernfortschritt</span> <EmojiImage emoji="🧭" size={36} />
+          {t('lc.titlePre')} <span style={{ color: 'var(--primary)' }}>{t('lc.titleAccent')}</span> <EmojiImage emoji="🧭" size={36} />
         </h1>
         <p className="text-base font-medium opacity-80" style={{ color: 'var(--mute)' }}>
-          Dein persönlicher Lerncoach: alle Methoden, ein Überblick.
+          {t('lc.subtitle')}
         </p>
         {activeModule && (
           <p
             className="inline-block px-4 py-1.5 rounded-full text-[10px] font-black uppercase tracking-widest mr-2"
             style={{ background: 'color-mix(in srgb, var(--primary) 12%, transparent)', color: 'var(--primary)', border: '1px solid color-mix(in srgb, var(--primary) 30%, transparent)' }}
           >
-            {activeModule.emoji} Nur {activeModule.name} (Fach links wechselbar)
+            {t('lc.moduleOnly', { emoji: activeModule.emoji, name: activeModule.name })}
           </p>
         )}
         <p
@@ -281,7 +289,7 @@ export const LearningCoach: React.FC<LearningCoachProps> = ({ metrics, decks, on
           style={{ background: 'var(--card)', borderColor: 'color-mix(in srgb, var(--primary) 25%, var(--border-color))' }}
         >
           <h3 className="text-[9px] font-black uppercase tracking-widest" style={{ color: 'var(--primary)' }}>
-            Heute solltest du
+            {t('lc.todayYouShould')}
           </h3>
           <div className="space-y-3">
             {dailyPlan.map((step, i) => (
@@ -303,7 +311,7 @@ export const LearningCoach: React.FC<LearningCoachProps> = ({ metrics, decks, on
                       className="px-2 py-0.5 rounded-md text-[8px] font-black uppercase tracking-widest shrink-0"
                       style={{ background: 'color-mix(in srgb, var(--primary) 8%, transparent)', color: 'var(--primary)' }}
                     >
-                      {step.minutes} Min.
+                      {t('lc.minShort', { n: step.minutes })}
                     </span>
                   </span>
                   {step.why && (
@@ -318,7 +326,7 @@ export const LearningCoach: React.FC<LearningCoachProps> = ({ metrics, decks, on
             className="px-8 py-4 rounded-2xl font-black uppercase text-[10px] tracking-[0.2em] shadow-xl hover:scale-105 active:scale-95 transition-all"
             style={{ background: 'var(--primary)', color: 'var(--primary-text)' }}
           >
-            Jetzt starten →
+            {t('lc.startNow')}
           </button>
         </div>
       )}
@@ -330,35 +338,35 @@ export const LearningCoach: React.FC<LearningCoachProps> = ({ metrics, decks, on
           style={{ background: 'var(--card)', borderColor: 'var(--border-color)' }}
         >
           <h3 className="text-[9px] font-black uppercase tracking-widest mb-4" style={{ color: 'var(--mute)' }}>
-            Klausurprognose
+            {t('lc.examPrognosis')}
           </h3>
           {forecast ? (
             <>
               {forecast.preliminary && (
                 <span className="text-[8px] font-black uppercase tracking-widest px-2.5 py-1 rounded-full mb-2"
                   style={{ background: 'color-mix(in srgb, #f59e0b 15%, transparent)', color: '#f59e0b' }}>
-                  Vorläufige Prognose
+                  {t('lc.preliminary')}
                 </span>
               )}
               <p className="text-5xl font-black" style={{ color: 'var(--primary)' }}>{forecast.grade}</p>
               <p className="text-sm font-black mt-2" style={{ color: 'var(--ink)' }}>
                 {forecast.preliminary
-                  ? `${forecast.range.low}–${forecast.range.high} % erwartet`
-                  : `~${forecast.expected} % erwartet`}
+                  ? t('lc.expectedRange', { low: forecast.range.low, high: forecast.range.high })
+                  : t('lc.expectedApprox', { n: forecast.expected })}
               </p>
               <p className="text-[10px] font-bold uppercase mt-1" style={{ color: 'var(--mute)' }}>
-                Bereich {forecast.range.low}–{forecast.range.high} % · Vertrauen: {forecast.confidence}
+                {t('lc.rangeConfidence', { low: forecast.range.low, high: forecast.range.high, conf: forecast.confidence })}
               </p>
               <p className="text-[10px] font-bold uppercase mt-0.5" style={{ color: 'var(--mute)' }}>
-                {forecast.passProbability}% Bestehenswahrscheinlichkeit
+                {t('lc.passProb', { n: forecast.passProbability })}
               </p>
               <div className="w-full mt-3 space-y-1 text-left">
                 <p className="text-[10px] font-medium" style={{ color: 'var(--ink2)' }}>
-                  📈 Lerntrend: <strong>{forecast.trendAvailable ? forecast.trend : `ab ${4 - forecast.basis.exams === 1 ? 'einer weiteren Klausur' : `${4 - forecast.basis.exams} weiteren Klausuren`} sichtbar`}</strong>
+                  {t('lc.learnTrendLabel')}<strong>{forecast.trendAvailable ? forecast.trend : (4 - forecast.basis.exams === 1 ? t('lc.trendVisibleOne') : t('lc.trendVisibleN', { n: 4 - forecast.basis.exams }))}</strong>
                 </p>
                 {forecast.projection && (
                   <p className="text-[10px] font-medium" style={{ color: 'var(--ink2)' }}>
-                    📅 Bei deinem Trend bis zur Klausur am {new Date(`${forecast.projection.date}T12:00:00`).toLocaleDateString('de-DE', { day: '2-digit', month: '2-digit' })}: <strong>~{forecast.projection.value} %</strong>
+                    {t('lc.projection', { date: formatDate(`${forecast.projection.date}T12:00:00`, { day: '2-digit', month: '2-digit' }), value: forecast.projection.value })}
                   </p>
                 )}
               </div>
@@ -367,24 +375,24 @@ export const LearningCoach: React.FC<LearningCoachProps> = ({ metrics, decks, on
                 className="text-[9px] font-black uppercase tracking-widest mt-3 underline decoration-dotted underline-offset-2 transition-opacity hover:opacity-70"
                 style={{ color: 'var(--mute)' }}
               >
-                ℹ️ Wie wird diese Prognose berechnet?
+                {t('lc.howCalculated')}
               </button>
               {showPrognosisInfo && (
                 <div className="text-[10px] font-medium mt-2 leading-relaxed text-left space-y-2" style={{ color: 'var(--mute)' }}>
-                  <p><strong style={{ color: 'var(--ink2)' }}>Aktuelle Form zählt:</strong> Jedes Klausurergebnis verliert alle 14 Tage die Hälfte seines Gewichts. Deine letzten Leistungen bestimmen die Prognose, alte ziehen dich nicht ewig runter.</p>
-                  <p><strong style={{ color: 'var(--ink2)' }}>Dein Trend:</strong> Ab 4 Klausuren berechnen wir deine Entwicklung und rechnen sie bis zu deinem Klausurtermin hoch, begrenzt auf realistische Veränderungen.</p>
-                  <p><strong style={{ color: 'var(--ink2)' }}>Ehrliche Unsicherheit:</strong> Bei weniger als 4 Klausuren ist die Prognose vorläufig und zeigt einen Bereich statt eines exakten Werts.</p>
-                  <p><strong style={{ color: 'var(--ink2)' }}>Was einfließt:</strong> 60 % Klausurleistung{forecast.parts.topicShare !== null ? ` · 25 % Themensicherheit (${forecast.parts.topicShare} % deiner Themen sicher)` : ''}{forecast.parts.retentionShare !== null ? ` · 15 % Abrufstabilität (${forecast.parts.retentionShare} % deiner Karten stabil)` : ''}. Basis: {forecast.basis.exams} Klausur{forecast.basis.exams !== 1 ? 'en' : ''}, {quizResults.length} Quizze, {learnedCardsCount} gelernte Karten.</p>
+                  <p><strong style={{ color: 'var(--ink2)' }}>{t('lc.currentForm')}</strong> {t('lc.currentFormDesc')}</p>
+                  <p><strong style={{ color: 'var(--ink2)' }}>{t('lc.yourTrend')}</strong> {t('lc.yourTrendDesc')}</p>
+                  <p><strong style={{ color: 'var(--ink2)' }}>{t('lc.honestUncertainty')}</strong> {t('lc.honestUncertaintyDesc')}</p>
+                  <p><strong style={{ color: 'var(--ink2)' }}>{t('lc.whatCounts')}</strong> {t('lc.whatCountsBase')}{forecast.parts.topicShare !== null ? t('lc.topicShare', { n: forecast.parts.topicShare }) : ''}{forecast.parts.retentionShare !== null ? t('lc.retentionShare', { n: forecast.parts.retentionShare }) : ''}{t('lc.basisLine', { exams: tp('lc.examsN', forecast.basis.exams), quizzes: quizResults.length, cards: learnedCardsCount })}</p>
                 </div>
               )}
             </>
           ) : (
             <p className="text-[10px] font-bold" style={{ color: 'var(--mute)' }}>
-              Noch keine Klausur absolviert. Die Prognose folgt nach der ersten Simulation.
+              {t('lc.noExamYet')}
             </p>
           )}
           <div className="w-full mt-4 pt-3 border-t" style={{ borderColor: 'var(--border-soft)' }}>
-            <p className="text-[8px] font-black uppercase tracking-widest mb-1" style={{ color: 'var(--primary)' }}>Dein Coach meint</p>
+            <p className="text-[8px] font-black uppercase tracking-widest mb-1" style={{ color: 'var(--primary)' }}>{t('lc.coachSays')}</p>
             <p className="text-[11px] font-medium italic leading-relaxed" style={{ color: 'var(--mute)' }}>{contextMotivation}</p>
           </div>
         </div>
@@ -394,17 +402,16 @@ export const LearningCoach: React.FC<LearningCoachProps> = ({ metrics, decks, on
           style={{ background: 'var(--card)', borderColor: 'color-mix(in srgb, var(--primary) 25%, var(--border-color))' }}
         >
           <h3 className="text-[9px] font-black uppercase tracking-widest mb-3" style={{ color: 'var(--mute)' }}>
-            Dein Coach
+            {t('lc.coach')}
           </h3>
           {!hasEnoughForCoach ? (
             <p className="text-sm font-medium leading-relaxed" style={{ color: 'var(--ink2)' }}>
-              Noch nicht genügend Daten vorhanden. Nutze QuizWise weiter, damit dein persönlicher Lerncoach
-              fundierte Analysen und Empfehlungen erstellen kann.
+              {t('lc.notEnoughData')}
             </p>
           ) : !insights ? (
             <>
               <p className="text-sm font-medium mb-4" style={{ color: 'var(--ink2)' }}>
-                Lass dein Lernprofil analysieren: Verbindungen zwischen Themen, eine Prognose und konkrete nächste Schritte.
+                {t('lc.analyzeProfile')}
               </p>
               <button
                 onClick={handleRunCoach}
@@ -412,7 +419,7 @@ export const LearningCoach: React.FC<LearningCoachProps> = ({ metrics, decks, on
                 className="self-start px-8 py-4 rounded-2xl font-black uppercase text-[10px] tracking-[0.2em] shadow-xl hover:scale-105 active:scale-95 transition-all disabled:opacity-40"
                 style={{ background: 'var(--primary)', color: 'var(--primary-text)' }}
               >
-                {isLoading ? 'Analyse läuft …' : <>Coach starten <EmojiImage emoji="✨" size={13} /></>}
+                {isLoading ? t('gr.analyzing') : <>{t('lc.startCoach')} <EmojiImage emoji="✨" size={13} /></>}
               </button>
             </>
           ) : (
@@ -428,7 +435,7 @@ export const LearningCoach: React.FC<LearningCoachProps> = ({ metrics, decks, on
                 className="text-[9px] font-black uppercase tracking-widest hover:opacity-80 transition-opacity disabled:opacity-30 mt-1"
                 style={{ color: 'var(--mute)' }}
               >
-                {isLoading ? 'Analysiert…' : '↻ Neu analysieren'}
+                {isLoading ? t('lc.analyzingShort') : t('lc.reanalyze')}
               </button>
             </div>
           )}
@@ -441,7 +448,7 @@ export const LearningCoach: React.FC<LearningCoachProps> = ({ metrics, decks, on
         {/* Methodenvergleich */}
         {profile.perMethod.length > 0 && (
           <div className="p-6 lg:p-8 rounded-[24px] lg:rounded-[32px] border shadow-sm space-y-4" style={{ background: 'var(--card)', borderColor: 'var(--border-color)' }}>
-            <h3 className="text-[9px] font-black uppercase tracking-widest" style={{ color: 'var(--mute)' }}>Methodenvergleich</h3>
+            <h3 className="text-[9px] font-black uppercase tracking-widest" style={{ color: 'var(--mute)' }}>{t('lc.methodComparison')}</h3>
             <div className="space-y-3">
               {profile.perMethod.map(m => (
                 <div key={m.method} className="space-y-1">
@@ -453,7 +460,7 @@ export const LearningCoach: React.FC<LearningCoachProps> = ({ metrics, decks, on
                     <span className="flex items-center gap-2">
                       {m.improvementPerSession !== 0 && (
                         <span className="text-[9px] font-black" style={{ color: m.improvementPerSession > 0 ? '#22c55e' : '#f43f5e' }}>
-                          {m.improvementPerSession > 0 ? '+' : ''}{m.improvementPerSession}%/Session
+                          {t('lc.perSession', { sign: m.improvementPerSession > 0 ? '+' : '', n: m.improvementPerSession })}
                         </span>
                       )}
                       <span className="text-xs font-black" style={{ color: scoreColor(m.avgScore) }}>
@@ -479,7 +486,7 @@ export const LearningCoach: React.FC<LearningCoachProps> = ({ metrics, decks, on
         {learningScore.overall !== null && (
           <div className="p-6 lg:p-8 rounded-[24px] lg:rounded-[32px] border shadow-sm space-y-4" style={{ background: 'var(--card)', borderColor: 'var(--border-color)' }}>
             <div className="flex items-baseline justify-between">
-              <h3 className="text-[9px] font-black uppercase tracking-widest" style={{ color: 'var(--mute)' }}>Learning Score</h3>
+              <h3 className="text-[9px] font-black uppercase tracking-widest" style={{ color: 'var(--mute)' }}>{t('lc.learningScore')}</h3>
               <span className="text-3xl font-black" style={{ color: 'var(--primary)' }}>{learningScore.overall}</span>
             </div>
             <div className="space-y-3">
@@ -509,20 +516,20 @@ export const LearningCoach: React.FC<LearningCoachProps> = ({ metrics, decks, on
         {/* Themen-Sicherheit — echte Themen, Dokumentnamen nur als Fallback */}
         {displayTopics.length > 0 && (
           <div className="p-6 lg:p-8 rounded-[24px] lg:rounded-[32px] border shadow-sm space-y-4" style={{ background: 'var(--card)', borderColor: 'var(--border-color)' }}>
-            <h3 className="text-[9px] font-black uppercase tracking-widest" style={{ color: 'var(--mute)' }}>Themen-Sicherheit</h3>
+            <h3 className="text-[9px] font-black uppercase tracking-widest" style={{ color: 'var(--mute)' }}>{t('lc.topicSecurity')}</h3>
             <div className="flex flex-wrap gap-2">
-              {displayTopics.slice(0, 10).map(t => (
+              {displayTopics.slice(0, 10).map(dt => (
                 <button
-                  key={t.topic}
-                  onClick={() => onAction?.(t.topic, 'quiz')}
+                  key={dt.topic}
+                  onClick={() => onAction?.(dt.topic, 'quiz')}
                   className="px-3 py-2 rounded-xl text-[9px] font-black uppercase tracking-wider transition-all hover:opacity-80"
                   style={{
-                    background: `color-mix(in srgb, ${securityColor(t.security)} 10%, var(--bg-sidebar))`,
-                    color: securityColor(t.security),
-                    border: `1px solid color-mix(in srgb, ${securityColor(t.security)} 25%, transparent)`,
+                    background: `color-mix(in srgb, ${securityColor(dt.security)} 10%, var(--bg-sidebar))`,
+                    color: securityColor(dt.security),
+                    border: `1px solid color-mix(in srgb, ${securityColor(dt.security)} 25%, transparent)`,
                   }}
                 >
-                  {t.topic} · {t.security}
+                  {dt.topic} · {t((`sec.${dt.security}`) as TKey)}
                 </button>
               ))}
             </div>
@@ -532,13 +539,13 @@ export const LearningCoach: React.FC<LearningCoachProps> = ({ metrics, decks, on
         {/* Vergessensplan */}
         {profile.forgetting.length > 0 && (
           <div className="p-6 lg:p-8 rounded-[24px] lg:rounded-[32px] border shadow-sm space-y-4" style={{ background: 'var(--card)', borderColor: 'var(--border-color)' }}>
-            <h3 className="text-[9px] font-black uppercase tracking-widest" style={{ color: 'var(--mute)' }}>Vergessensplan</h3>
+            <h3 className="text-[9px] font-black uppercase tracking-widest" style={{ color: 'var(--mute)' }}>{t('lc.forgettingPlan')}</h3>
             <div className="space-y-2">
               {profile.forgetting.map(f => (
                 <div key={f.topic} className="flex justify-between items-center">
                   <span className="text-xs font-bold" style={{ color: 'var(--ink)' }}>{f.topic}</span>
                   <span className="text-[10px] font-black uppercase" style={{ color: 'var(--primary)' }}>
-                    {f.dueInDays <= 0 ? 'Heute wiederholen' : `in ${f.dueInDays} Tag${f.dueInDays !== 1 ? 'en' : ''}`}
+                    {f.dueInDays <= 0 ? t('lc.reviewToday') : tp('lc.inDaysN', f.dueInDays)}
                   </span>
                 </div>
               ))}
@@ -548,27 +555,27 @@ export const LearningCoach: React.FC<LearningCoachProps> = ({ metrics, decks, on
 
         {/* Tageszeit + Lernvolumen */}
         <div className="p-6 lg:p-8 rounded-[24px] lg:rounded-[32px] border shadow-sm space-y-4" style={{ background: 'var(--card)', borderColor: 'var(--border-color)' }}>
-          <h3 className="text-[9px] font-black uppercase tracking-widest" style={{ color: 'var(--mute)' }}>Lernrhythmus</h3>
+          <h3 className="text-[9px] font-black uppercase tracking-widest" style={{ color: 'var(--mute)' }}>{t('lc.rhythm')}</h3>
           <div className="grid grid-cols-2 gap-4">
             <div>
-              <p className="text-[9px] font-bold uppercase" style={{ color: 'var(--mute)' }}>Beste Tageszeit</p>
-              <p className="text-lg font-black" style={{ color: 'var(--ink)' }}>{profile.timeOfDay.bestPart ?? '—'}</p>
+              <p className="text-[9px] font-bold uppercase" style={{ color: 'var(--mute)' }}>{t('lc.bestTime')}</p>
+              <p className="text-lg font-black" style={{ color: 'var(--ink)' }}>{profile.timeOfDay.bestPart ? t((`tod.${profile.timeOfDay.bestPart}`) as TKey) : '—'}</p>
             </div>
             <div>
-              <p className="text-[9px] font-bold uppercase" style={{ color: 'var(--mute)' }}>Produktivster Tag</p>
-              <p className="text-lg font-black" style={{ color: 'var(--ink)' }}>{profile.dayOfWeek.bestDay ?? '—'}</p>
+              <p className="text-[9px] font-bold uppercase" style={{ color: 'var(--mute)' }}>{t('lc.mostProductiveDay')}</p>
+              <p className="text-lg font-black" style={{ color: 'var(--ink)' }}>{profile.dayOfWeek.bestDay ? t((`dow.${profile.dayOfWeek.bestDay}`) as TKey) : '—'}</p>
             </div>
             <div>
-              <p className="text-[9px] font-bold uppercase" style={{ color: 'var(--mute)' }}>Streak</p>
-              <p className="text-lg font-black" style={{ color: 'var(--ink)' }}>{profile.volume.streakCurrent} Tage</p>
-              <p className="text-[9px] font-medium" style={{ color: 'var(--mute)' }}>Rekord: {profile.volume.streakBest} Tage</p>
+              <p className="text-[9px] font-bold uppercase" style={{ color: 'var(--mute)' }}>{t('lc.streak')}</p>
+              <p className="text-lg font-black" style={{ color: 'var(--ink)' }}>{t('lc.daysN', { n: profile.volume.streakCurrent })}</p>
+              <p className="text-[9px] font-medium" style={{ color: 'var(--mute)' }}>{t('lc.recordDays', { n: profile.volume.streakBest })}</p>
             </div>
             <div>
-              <p className="text-[9px] font-bold uppercase" style={{ color: 'var(--mute)' }}>Sessions/Woche</p>
+              <p className="text-[9px] font-bold uppercase" style={{ color: 'var(--mute)' }}>{t('lc.sessionsPerWeek')}</p>
               <p className="text-lg font-black" style={{ color: 'var(--ink)' }}>{profile.volume.sessionsPerWeek}</p>
             </div>
             <div>
-              <p className="text-[9px] font-bold uppercase" style={{ color: 'var(--mute)' }}>Sessions gesamt</p>
+              <p className="text-[9px] font-bold uppercase" style={{ color: 'var(--mute)' }}>{t('lc.totalSessions')}</p>
               <p className="text-lg font-black" style={{ color: 'var(--ink)' }}>{profile.volume.totalSessions}</p>
             </div>
           </div>
@@ -577,7 +584,7 @@ export const LearningCoach: React.FC<LearningCoachProps> = ({ metrics, decks, on
         {/* Wissensprofil — Kategorien + Fragetypen vereint */}
         {wissensprofilItems.length > 0 && (
           <div className="p-6 lg:p-8 rounded-[24px] lg:rounded-[32px] border shadow-sm space-y-4" style={{ background: 'var(--card)', borderColor: 'var(--border-color)' }}>
-            <h3 className="text-[9px] font-black uppercase tracking-widest" style={{ color: 'var(--mute)' }}>Wissensprofil</h3>
+            <h3 className="text-[9px] font-black uppercase tracking-widest" style={{ color: 'var(--mute)' }}>{t('lc.knowledgeProfile')}</h3>
             <div className="flex flex-wrap gap-2">
               {wissensprofilItems.map(item => (
                 <button
@@ -600,7 +607,7 @@ export const LearningCoach: React.FC<LearningCoachProps> = ({ metrics, decks, on
         {/* Ursachenanalyse — nur wirklich ausgelöste Ursachen */}
         {profile.causeAnalysis.length > 0 && (
           <div className="p-6 lg:p-8 rounded-[24px] lg:rounded-[32px] border shadow-sm space-y-4" style={{ background: 'var(--card)', borderColor: 'var(--border-color)' }}>
-            <h3 className="text-[9px] font-black uppercase tracking-widest" style={{ color: 'var(--mute)' }}>Warum verlierst du Punkte?</h3>
+            <h3 className="text-[9px] font-black uppercase tracking-widest" style={{ color: 'var(--mute)' }}>{t('lc.whyLosePoints')}</h3>
             <div className="space-y-3">
               {profile.causeAnalysis.map(c => (
                 <div key={c.cause}>
@@ -615,7 +622,7 @@ export const LearningCoach: React.FC<LearningCoachProps> = ({ metrics, decks, on
         {/* Langzeit-Entwicklung */}
         {profile.longTermTrend && (
           <div className="p-6 lg:p-8 rounded-[24px] lg:rounded-[32px] border shadow-sm space-y-4" style={{ background: 'var(--card)', borderColor: 'var(--border-color)' }}>
-            <h3 className="text-[9px] font-black uppercase tracking-widest" style={{ color: 'var(--mute)' }}>Deine Entwicklung seit Beginn</h3>
+            <h3 className="text-[9px] font-black uppercase tracking-widest" style={{ color: 'var(--mute)' }}>{t('lc.developmentSince')}</h3>
             <div className="flex flex-wrap gap-2">
               {profile.longTermTrend.map(t => (
                 <span
@@ -638,7 +645,7 @@ export const LearningCoach: React.FC<LearningCoachProps> = ({ metrics, decks, on
       {lockedPanels.length > 0 && (
         <div className="p-5 lg:p-6 rounded-[20px] border border-dashed space-y-2" style={{ borderColor: 'var(--border-color)' }}>
           <p className="text-[9px] font-black uppercase tracking-widest flex items-center gap-1.5" style={{ color: 'var(--mute)' }}>
-            <EmojiImage emoji="🔒" size={11} /> Bald verfügbar
+            <EmojiImage emoji="🔒" size={11} /> {t('lc.comingSoon')}
           </p>
           {lockedPanels.map(l => (
             <p key={l.label} className="text-[11px] font-medium" style={{ color: 'var(--mute)' }}>
@@ -653,7 +660,7 @@ export const LearningCoach: React.FC<LearningCoachProps> = ({ metrics, decks, on
         <div className="space-y-6">
           {insights.connections.length > 0 && (
             <div className="p-6 lg:p-8 rounded-[24px] lg:rounded-[32px] border shadow-sm space-y-3" style={{ background: 'var(--card)', borderColor: 'var(--border-color)' }}>
-              <h3 className="text-[9px] font-black uppercase tracking-widest" style={{ color: 'var(--mute)' }}>Verbindungen erkannt</h3>
+              <h3 className="text-[9px] font-black uppercase tracking-widest" style={{ color: 'var(--mute)' }}>{t('lc.connectionsFound')}</h3>
               {insights.connections.map((c, i) => (
                 <p key={i} className="text-sm font-medium leading-relaxed" style={{ color: 'var(--ink2)' }}>
                   <strong style={{ color: 'var(--ink)' }}>{c.a}</strong> ↔ <strong style={{ color: 'var(--ink)' }}>{c.b}</strong>: {c.reasoning}
@@ -674,7 +681,7 @@ export const LearningCoach: React.FC<LearningCoachProps> = ({ metrics, decks, on
 
           {insights.recommendations.length > 0 && (
             <div className="space-y-3">
-              <h3 className="text-lg font-black" style={{ color: 'var(--ink)' }}>Empfehlungen</h3>
+              <h3 className="text-lg font-black" style={{ color: 'var(--ink)' }}>{t('ev.recommendations')}</h3>
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                 {[...insights.recommendations]
                   .sort((a, b) => (a.priority === 'hoch' ? 0 : a.priority === 'mittel' ? 1 : 2) - (b.priority === 'hoch' ? 0 : b.priority === 'mittel' ? 1 : 2))
@@ -687,14 +694,14 @@ export const LearningCoach: React.FC<LearningCoachProps> = ({ metrics, decks, on
                     style={{ background: 'var(--bg-sidebar)', borderColor: 'var(--border-color)', borderLeftWidth: 4, borderLeftColor: priorityColor(r.priority) }}
                   >
                     <p className="text-[8px] font-black uppercase tracking-widest mb-1" style={{ color: priorityColor(r.priority) }}>
-                      {priorityEmoji(r.priority)} {r.priority}
+                      {priorityEmoji(r.priority)} {t((`prio.${r.priority}`) as TKey)}
                     </p>
                     <p className="text-sm font-black mb-1" style={{ color: 'var(--ink)' }}>{r.action}</p>
                     <p className="text-[11px] font-medium mb-2" style={{ color: 'var(--mute)' }}>
-                      <strong style={{ color: 'var(--ink2)' }}>Grund:</strong> {r.reasoning}
+                      <strong style={{ color: 'var(--ink2)' }}>{t('lc.reason')}</strong> {r.reasoning}
                     </p>
                     <p className="text-[10px] font-black uppercase tracking-widest" style={{ color: 'var(--primary)' }}>
-                      ➡ {TAB_ACTION_LABELS[r.tab] || 'Starten'}
+                      ➡ {getTabActionLabel(r.tab)}
                     </p>
                   </button>
                 ))}
