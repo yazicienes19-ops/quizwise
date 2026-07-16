@@ -5,6 +5,9 @@ import { GenerationSource } from '../services/geminiService';
 import { GeneratedImage } from './GeneratedImage';
 import { SourceSelector } from './SourceSelector';
 import { getAllMeta, documentDisplayName } from '../services/libraryService';
+import { useTranslation } from '../i18n/I18nProvider';
+import { getTypeLabel } from '../services/learningProfileService';
+import type { TKey } from '../i18n';
 import { buildCollectionSource } from '../services/collectionSource';
 import { buildLearningProfile } from '../services/learningProfileService';
 import { getAllResults } from '../services/quizHistoryService';
@@ -30,15 +33,7 @@ interface ExamGeneratorProps {
   decks: FlashcardDeck[];
 }
 
-const EXAM_TYPE_OPTIONS: { id: ExamQuestion['type']; label: string }[] = [
-  { id: 'mc', label: 'Multiple Choice' },
-  { id: 'matching', label: 'Zuordnung' },
-  { id: 'truefalse', label: 'Wahr/Falsch' },
-  { id: 'fillblank', label: 'Lückentext' },
-  { id: 'ranking', label: 'Sortierung' },
-  { id: 'numeric', label: 'Numerisch' },
-  { id: 'open', label: 'Freitext' },
-];
+const EXAM_TYPE_IDS: ExamQuestion['type'][] = ['mc', 'matching', 'truefalse', 'fillblank', 'ranking', 'numeric', 'open'];
 
 export const ExamGenerator: React.FC<ExamGeneratorProps> = ({
   onGenerate,
@@ -51,6 +46,7 @@ export const ExamGenerator: React.FC<ExamGeneratorProps> = ({
   metrics,
   decks,
 }) => {
+  const { t } = useTranslation();
   const [contentSource, setContentSource] = useState<GenerationSource | null>(null);
   const [contentName, setContentName] = useState('');
 
@@ -89,7 +85,7 @@ export const ExamGenerator: React.FC<ExamGeneratorProps> = ({
   const [difficulty, setDifficulty] = useState<'leicht' | 'mittel' | 'schwer'>('mittel');
   const [scoringMode, setScoringMode] = useState<ScoringMode>('standard');
   const [emphases, setEmphases] = useState<ScoringProfile['emphases']>([]);
-  const [selectedTypes, setSelectedTypes] = useState<ExamQuestion['type'][]>(EXAM_TYPE_OPTIONS.map(t => t.id));
+  const [selectedTypes, setSelectedTypes] = useState<ExamQuestion['type'][]>([...EXAM_TYPE_IDS]);
   const [customMinutes, setCustomMinutes] = useState<number | null>(null);
   const [adaptiveEnabled, setAdaptiveEnabled] = useState(false);
 
@@ -186,11 +182,11 @@ export const ExamGenerator: React.FC<ExamGeneratorProps> = ({
     <div className="max-w-4xl mx-auto space-y-10 lg:space-y-16 animate-in fade-in slide-in-from-bottom-4 duration-700 py-8 sm:py-10 px-4">
       <div className="text-center space-y-3 sm:space-y-4">
         <h1 className="text-3xl sm:text-4xl lg:text-7xl font-black text-slate-900 dark:text-white tracking-tighter flex flex-wrap items-center justify-center gap-2 sm:gap-3 lg:gap-4">
-          Klausur <span className="text-indigo-600 dark:text-indigo-400">Simulator</span>
+          {t('eg.title')} <span className="text-indigo-600 dark:text-indigo-400">{t('eg.titleAccent')}</span>
           <GeneratedImage prompt="Graduation cap, academic illustration" className="w-9 h-9 sm:w-12 sm:h-12 lg:w-16 lg:h-16 rounded-2xl" />
         </h1>
         <p className="text-base sm:text-lg lg:text-xl text-slate-500 dark:text-slate-400 font-medium">
-          Erstelle neue Prüfungen basierend auf deinen Unterlagen.
+          {t('eg.subtitle')}
         </p>
       </div>
 
@@ -206,8 +202,8 @@ export const ExamGenerator: React.FC<ExamGeneratorProps> = ({
                 <GeneratedImage prompt="Academic books, minimalist illustration" className="w-full h-full object-cover" />
               </div>
               <div>
-                <h3 className="text-base font-black dark:text-white uppercase tracking-tight">Lernmaterial</h3>
-                <p className="text-[10px] text-indigo-600 uppercase font-black tracking-widest">Zwingend erforderlich</p>
+                <h3 className="text-base font-black dark:text-white uppercase tracking-tight">{t('eg.material')}</h3>
+                <p className="text-[10px] text-indigo-600 uppercase font-black tracking-widest">{t('eg.required')}</p>
               </div>
               {contentSource && (
                 <div className="ml-auto flex items-center gap-2 bg-emerald-50 dark:bg-emerald-950/20 px-3 py-1.5 rounded-xl">
@@ -235,15 +231,15 @@ export const ExamGenerator: React.FC<ExamGeneratorProps> = ({
                 <GeneratedImage prompt="Exam paper, academic illustration" className="w-full h-full object-cover" />
               </div>
               <div>
-                <h3 className="text-xl font-black dark:text-white uppercase tracking-tight">Altklausur</h3>
-                <p className="text-[10px] text-rose-500 uppercase font-black tracking-widest">Optional: Stil übernehmen</p>
+                <h3 className="text-xl font-black dark:text-white uppercase tracking-tight">{t('card.oldExam')}</h3>
+                <p className="text-[10px] text-rose-500 uppercase font-black tracking-widest">{t('eg.oldExamOptional')}</p>
               </div>
             </div>
 
             {/* Library Altklausur docs */}
             {altklausurDocs.length > 0 && (
               <div className="space-y-2">
-                <p className="text-[9px] font-black uppercase tracking-widest text-slate-400">Aus Bibliothek</p>
+                <p className="text-[9px] font-black uppercase tracking-widest text-slate-400">{t('eg.fromLibrary')}</p>
                 {altklausurDocs.map(d => (
                   <button
                     key={d.id}
@@ -273,7 +269,7 @@ export const ExamGenerator: React.FC<ExamGeneratorProps> = ({
                 ))}
                 <div className="flex items-center gap-3 my-1">
                   <div className="flex-1 h-px bg-slate-200 dark:bg-slate-700" />
-                  <p className="text-[8px] font-black uppercase tracking-widest text-slate-400">oder</p>
+                  <p className="text-[8px] font-black uppercase tracking-widest text-slate-400">{t('eg.or')}</p>
                   <div className="flex-1 h-px bg-slate-200 dark:bg-slate-700" />
                 </div>
               </div>
@@ -290,7 +286,7 @@ export const ExamGenerator: React.FC<ExamGeneratorProps> = ({
               htmlFor="style-input"
               className="w-full py-4 bg-slate-100 dark:bg-slate-800 text-slate-500 dark:text-slate-400 rounded-2xl text-[11px] font-black uppercase tracking-widest hover:bg-rose-600 hover:text-white transition-all text-center cursor-pointer shadow-sm"
             >
-              {styleFile ? 'Datei ändern' : 'Datei hochladen'}
+              {styleFile ? t('eg.changeFile') : t('eg.uploadFile')}
             </label>
             {styleFile ? (
               <div className="p-3 bg-emerald-50 dark:bg-emerald-950/20 rounded-xl flex items-center gap-3">
@@ -298,7 +294,7 @@ export const ExamGenerator: React.FC<ExamGeneratorProps> = ({
                 <button type="button" onClick={() => setStyleFile(null)} className="ml-auto text-slate-400 hover:text-rose-500 text-xs font-black">✕</button>
               </div>
             ) : !styleLibDocId ? (
-              <p className="text-[10px] text-slate-400 italic text-center">Standard-Stil verwenden</p>
+              <p className="text-[10px] text-slate-400 italic text-center">{t('eg.defaultStyle')}</p>
             ) : null}
           </div>
         </div>
@@ -306,12 +302,12 @@ export const ExamGenerator: React.FC<ExamGeneratorProps> = ({
         {/* Config Column */}
         <div className="lg:col-span-5 space-y-6">
           <div className="bg-white dark:bg-slate-900 rounded-[24px] sm:rounded-[32px] border border-slate-200 dark:border-slate-800 shadow-3d-deep p-5 sm:p-8 space-y-8 sm:space-y-10">
-            <h3 className="text-[11px] font-black uppercase tracking-[0.4em] text-indigo-500">Prüfungs-Setup</h3>
+            <h3 className="text-[11px] font-black uppercase tracking-[0.4em] text-indigo-500">{t('eg.setup')}</h3>
 
             <div className="space-y-6">
               <div className="space-y-3">
                 <div className="flex justify-between items-center text-[10px] font-black uppercase tracking-widest text-slate-400">
-                  <span>Frageanzahl</span>
+                  <span>{t('eg.questionCount')}</span>
                   <span className="text-slate-900 dark:text-white">{questionCount}</span>
                 </div>
                 <div className="flex bg-slate-50 dark:bg-slate-800 p-1 rounded-2xl border shadow-inner">
@@ -329,8 +325,8 @@ export const ExamGenerator: React.FC<ExamGeneratorProps> = ({
 
               <div className="space-y-3">
                 <div className="flex justify-between items-center text-[10px] font-black uppercase tracking-widest text-slate-400">
-                  <span>Schwierigkeit</span>
-                  <span className="text-slate-900 dark:text-white capitalize">{difficulty}</span>
+                  <span>{t('quizSetup.difficulty')}</span>
+                  <span className="text-slate-900 dark:text-white">{t((`diff.${difficulty}`) as TKey)}</span>
                 </div>
                 <div className="flex bg-slate-50 dark:bg-slate-800 p-1 rounded-2xl border shadow-inner">
                   {(['leicht', 'mittel', 'schwer'] as const).map(d => (
@@ -339,24 +335,24 @@ export const ExamGenerator: React.FC<ExamGeneratorProps> = ({
                       onClick={() => setDifficulty(d)}
                       className={`flex-1 py-3 rounded-xl text-[10px] font-black transition-all uppercase tracking-widest ${difficulty === d ? 'bg-indigo-600 text-white shadow-lg' : 'text-slate-400 hover:text-slate-600'}`}
                     >
-                      {d}
+                      {t((`diff.${d}`) as TKey)}
                     </button>
                   ))}
                 </div>
               </div>
 
               <div className="space-y-3">
-                <div className="text-[10px] font-black uppercase tracking-widest text-slate-400">Fragetypen</div>
+                <div className="text-[10px] font-black uppercase tracking-widest text-slate-400">{t('eg.questionTypes')}</div>
                 <div className="flex flex-wrap gap-2">
-                  {EXAM_TYPE_OPTIONS.map(t => {
-                    const active = selectedTypes.includes(t.id);
+                  {EXAM_TYPE_IDS.map(id => {
+                    const active = selectedTypes.includes(id);
                     return (
                       <button
-                        key={t.id}
-                        onClick={() => toggleType(t.id)}
+                        key={id}
+                        onClick={() => toggleType(id)}
                         className={`px-3 py-1.5 rounded-xl text-[9px] font-black uppercase tracking-widest border-2 transition-all ${active ? 'border-indigo-500 bg-indigo-50 dark:bg-indigo-950/20 text-indigo-600' : 'border-slate-200 dark:border-slate-700 text-slate-400 hover:border-indigo-300'}`}
                       >
-                        {active ? '✓ ' : ''}{t.label}
+                        {active ? '✓ ' : ''}{getTypeLabel(id)}
                       </button>
                     );
                   })}
@@ -366,12 +362,12 @@ export const ExamGenerator: React.FC<ExamGeneratorProps> = ({
 
             {/* Bewertungsprofil */}
             <div className="space-y-4">
-              <div className="text-[10px] font-black uppercase tracking-widest text-slate-400">Bewertungsprofil</div>
+              <div className="text-[10px] font-black uppercase tracking-widest text-slate-400">{t('eg.scoringProfile')}</div>
               <div className="flex bg-slate-50 dark:bg-slate-800 p-1 rounded-2xl border shadow-inner">
                 {([
-                  { id: 'strict',   label: 'Streng' },
-                  { id: 'standard', label: 'Standard' },
-                  { id: 'lenient',  label: 'Lernmodus' },
+                  { id: 'strict',   label: t('eg.scoreStrict') },
+                  { id: 'standard', label: t('eg.scoreStandard') },
+                  { id: 'lenient',  label: t('eg.scoreLenient') },
                 ] as { id: ScoringMode; label: string }[]).map(m => (
                   <button
                     key={m.id}
@@ -382,10 +378,10 @@ export const ExamGenerator: React.FC<ExamGeneratorProps> = ({
               </div>
               <div className="flex flex-wrap gap-2">
                 {([
-                  { id: 'terms',        label: 'Fachbegriffe' },
-                  { id: 'understanding', label: 'Verständnis' },
-                  { id: 'examples',     label: 'Beispiele' },
-                  { id: 'definitions',  label: 'Definitionen' },
+                  { id: 'terms',        label: t('eg.emphTerms') },
+                  { id: 'understanding', label: t('eg.emphUnderstanding') },
+                  { id: 'examples',     label: t('eg.emphExamples') },
+                  { id: 'definitions',  label: t('eg.emphDefinitions') },
                 ] as { id: ScoringProfile['emphases'][number]; label: string }[]).map(e => {
                   const active = emphases.includes(e.id);
                   return (
@@ -400,17 +396,17 @@ export const ExamGenerator: React.FC<ExamGeneratorProps> = ({
                 })}
               </div>
               <p className="text-[9px] text-slate-400 italic">
-                {scoringMode === 'strict'   ? 'Strenge Bewertung: Fachbegriffe und exakte Formulierungen zählen.' : ''}
-                {scoringMode === 'standard' ? 'Realistischer Hochschulmaßstab: Die Kernaussage ist entscheidend.' : ''}
-                {scoringMode === 'lenient'  ? 'Lernmodus: Verständnis wird belohnt, Formulierungen sind zweitrangig.' : ''}
+                {scoringMode === 'strict'   ? t('eg.strictHint') : ''}
+                {scoringMode === 'standard' ? t('eg.standardHint') : ''}
+                {scoringMode === 'lenient'  ? t('eg.lenientHint') : ''}
               </p>
             </div>
 
             <div className="pt-8 border-t border-slate-50 dark:border-slate-800 space-y-3">
               <div className="flex justify-between items-center text-[10px] font-black uppercase tracking-widest text-slate-400">
-                <span>Bearbeitungszeit</span>
+                <span>{t('eg.editTime')}</span>
                 {customMinutes !== null && (
-                  <button onClick={() => setCustomMinutes(null)} className="text-indigo-500 hover:text-indigo-700 normal-case tracking-normal font-bold">Zurücksetzen</button>
+                  <button onClick={() => setCustomMinutes(null)} className="text-indigo-500 hover:text-indigo-700 normal-case tracking-normal font-bold">{t('eg.reset')}</button>
                 )}
               </div>
               <div className="flex items-center gap-4">
@@ -439,8 +435,8 @@ export const ExamGenerator: React.FC<ExamGeneratorProps> = ({
                   )}
                 </div>
                 <div>
-                  <p className="text-[11px] font-black uppercase tracking-widest dark:text-white">Adaptiv anhand meines Lernprofils</p>
-                  <p className="text-[10px] text-slate-400 font-medium mt-1">Gewichtet die Klausur stärker auf deine bisher schwachen Themen und Kategorien.</p>
+                  <p className="text-[11px] font-black uppercase tracking-widest dark:text-white">{t('eg.adaptive')}</p>
+                  <p className="text-[10px] text-slate-400 font-medium mt-1">{t('eg.adaptiveHint')}</p>
                 </div>
               </button>
             )}
@@ -453,11 +449,11 @@ export const ExamGenerator: React.FC<ExamGeneratorProps> = ({
               {isLoading ? (
                 <div className="flex items-center justify-center gap-3">
                   <div className="w-4 h-4 border-2 border-slate-400 border-t-white rounded-full animate-spin"></div>
-                  Konzeption läuft...
+                  {t('eg.conception')}
                 </div>
               ) : (
                 <span className="flex items-center justify-center gap-3">
-                  Simulation Starten
+                  {t('eg.startSim')}
                   <GeneratedImage prompt="Writing pen icon, minimalist" className="w-4 h-4 rounded-full" />
                 </span>
               )}
@@ -467,7 +463,7 @@ export const ExamGenerator: React.FC<ExamGeneratorProps> = ({
           <div className="bg-rose-50 dark:bg-rose-950/20 p-6 rounded-[32px] border border-rose-100 dark:border-rose-900/30 flex items-start gap-4">
             <GeneratedImage prompt="Balance scales icon, academic minimalist" className="w-8 h-8 rounded-full shrink-0" />
             <p className="text-xs font-medium text-rose-800 dark:text-rose-400 leading-relaxed italic">
-              "Diese Simulation basiert auf akademischen Standards. Sorgen Sie für eine ruhige Umgebung ohne Ablenkung."
+              {t('eg.disclaimer')}
             </p>
           </div>
         </div>
