@@ -2,8 +2,11 @@
 import React, { useState, useEffect, useRef, useCallback, useMemo } from 'react';
 import { ExamQuestion, ActiveTab, ScoringProfile, ExamAnalysis, QuestionFeedbackType } from '../types';
 import { saveQuestionFeedback } from '../services/examFeedbackService';
-import { germanGradeFromPercentage, getCategoryLabel } from '../services/learningProfileService';
+import { germanGradeFromPercentage, getCategoryLabel, getTypeLabel } from '../services/learningProfileService';
 import { EmojiImage } from './EmojiImage';
+import { useTranslation } from '../i18n/I18nProvider';
+import { formatDate } from '../i18n/dates';
+import { t as translate } from '../i18n';
 import type { jsPDF as JsPDFType } from 'jspdf';
 
 interface ExamViewProps {
@@ -29,29 +32,20 @@ interface ExamViewProps {
 const formatTime = (s: number) =>
   `${Math.floor(s / 60).toString().padStart(2, '0')}:${(s % 60).toString().padStart(2, '0')}`;
 
-const TYPE_LABELS: Record<string, string> = {
-  mc: 'Multiple Choice',
-  truefalse: 'Wahr / Falsch',
-  matching: 'Zuordnung',
-  fillblank: 'Lückentext',
-  ranking: 'Sortierung',
-  numeric: 'Numerisch',
-  open: 'Freitext',
-};
-
 export const ExamView: React.FC<ExamViewProps> = ({
   questions, mode, onSave, onSubmit, isEvaluating,
   examDuration, onNewExam, onNavigate, onSaveExam,
   initialAnswers, onAnswersChange, onSaveProgress, examTitle,
   scoringProfile, analysis, categoryBreakdown, onAction,
 }) => {
+  const { t } = useTranslation();
   const [answers, setAnswers]           = useState<Record<string, any>>(initialAnswers ?? {});
   const [editingId, setEditingId]       = useState<string | null>(null);
   const [showSaveInput, setShowSaveInput] = useState(false);
-  const [saveName, setSaveName]         = useState('Meine Klausur');
+  const [saveName, setSaveName]         = useState(translate('ev.myExam'));
   const [examSaved, setExamSaved]       = useState(false);
   const [showProgressInput, setShowProgressInput] = useState(false);
-  const [progressName, setProgressName] = useState('Meine Klausur');
+  const [progressName, setProgressName] = useState(translate('ev.myExam'));
   const [tempQuestion, setTempQuestion] = useState<ExamQuestion | null>(null);
   const [timeLeft, setTimeLeft]         = useState<number | null>(null);
   const [timerExpired, setTimerExpired] = useState(false);
@@ -166,8 +160,8 @@ export const ExamView: React.FC<ExamViewProps> = ({
     };
 
     // Header
-    addText(examTitle || 'Klausur-Protokoll', 22, true);
-    addText(new Date().toLocaleDateString('de-DE', { day: '2-digit', month: 'long', year: 'numeric' }), 9, false, [120, 120, 120]);
+    addText(examTitle || translate('ev.pdf.title'), 22, true);
+    addText(formatDate(new Date(), { day: '2-digit', month: 'long', year: 'numeric' }), 9, false, [120, 120, 120]);
     y += 4;
 
     // Grade box line
@@ -178,11 +172,11 @@ export const ExamView: React.FC<ExamViewProps> = ({
     doc.setFontSize(18);
     doc.setFont('helvetica', 'bold');
     doc.setTextColor(...gradeColor);
-    doc.text(`Note ${gradeInfo.grade} (${gradeInfo.label})`, margin + 6, y + 8);
+    doc.text(translate('ev.pdf.grade', { grade: gradeInfo.grade, label: gradeInfo.label }), margin + 6, y + 8);
     doc.setFontSize(9);
     doc.setFont('helvetica', 'normal');
     doc.setTextColor(80, 80, 80);
-    doc.text(`${Math.round(percentage)}%  ·  ${achievedTotal}/${totalPoints} Punkte  ·  ${percentage >= 50 ? 'Bestanden' : 'Nicht Bestanden'}`, margin + 6, y + 15);
+    doc.text(translate('ev.pdf.summary', { pct: Math.round(percentage), achieved: achievedTotal, total: totalPoints, status: percentage >= 50 ? translate('ev.passed') : translate('ev.notPassed') }), margin + 6, y + 15);
     y += 27;
 
     // Questions
@@ -194,12 +188,12 @@ export const ExamView: React.FC<ExamViewProps> = ({
       let userText = '';
       let correctText = '';
       if (q.type === 'mc') {
-        userText = (userAns as number[] || []).map((idx: number) => q.options?.[idx] ?? `Option ${idx + 1}`).join(', ') || '—';
-        correctText = (q.correctIndices || []).map((idx: number) => q.options?.[idx] ?? `Option ${idx + 1}`).join(', ');
+        userText = (userAns as number[] || []).map((idx: number) => q.options?.[idx] ?? translate('ev.pdf.optionN', { n: idx + 1 })).join(', ') || '—';
+        correctText = (q.correctIndices || []).map((idx: number) => q.options?.[idx] ?? translate('ev.pdf.optionN', { n: idx + 1 })).join(', ');
       } else if (q.type === 'truefalse') {
         const ans = userAns as { tf?: boolean; reason?: number } || {};
-        userText = ans.tf === undefined ? '—' : (ans.tf ? 'Richtig' : 'Falsch');
-        correctText = q.tfCorrect ? 'Richtig' : 'Falsch';
+        userText = ans.tf === undefined ? '—' : (ans.tf ? translate('ev.answerRight') : translate('ev.answerWrong'));
+        correctText = q.tfCorrect ? translate('ev.answerRight') : translate('ev.answerWrong');
       } else if (q.type === 'open') {
         userText = String(userAns || '—');
         correctText = q.solution || '';
@@ -210,10 +204,10 @@ export const ExamView: React.FC<ExamViewProps> = ({
 
       const isCorrect = (q.achievedPoints ?? 0) === q.points;
       const pts = q.achievedPoints ?? 0;
-      addText(`Deine Antwort: ${userText}`, 9, false, isCorrect ? [16, 185, 129] : [239, 68, 68]);
-      if (!isCorrect && correctText) addText(`Korrekt: ${correctText}`, 9, false, [80, 80, 80]);
-      if (q.feedback) addText(`Feedback: ${q.feedback}`, 8, false, [120, 120, 120]);
-      addText(`Punkte: ${pts} / ${q.points}`, 8, false, [120, 120, 120]);
+      addText(translate('ev.pdf.yourAnswer', { text: userText }), 9, false, isCorrect ? [16, 185, 129] : [239, 68, 68]);
+      if (!isCorrect && correctText) addText(translate('ev.pdf.correct', { text: correctText }), 9, false, [80, 80, 80]);
+      if (q.feedback) addText(translate('ev.pdf.feedback', { text: q.feedback }), 8, false, [120, 120, 120]);
+      addText(translate('ev.pdf.points', { pts, total: q.points }), 8, false, [120, 120, 120]);
       y += 2;
     });
 
@@ -229,7 +223,7 @@ export const ExamView: React.FC<ExamViewProps> = ({
     if (q.type === 'mc' && q.options) {
       const scenarioBlock = q.scenarioText ? (
         <div className="pl-4 lg:pl-10 mb-4 p-5 bg-amber-50 dark:bg-amber-900/20 rounded-[20px] border border-amber-200 dark:border-amber-800">
-          <p className="text-[8px] font-black uppercase tracking-widest text-amber-600 dark:text-amber-400 mb-2">Fallbeispiel</p>
+          <p className="text-[8px] font-black uppercase tracking-widest text-amber-600 dark:text-amber-400 mb-2">{t('quiz.badge.scenario')}</p>
           <p className="text-sm text-slate-700 dark:text-slate-300 leading-relaxed">{q.scenarioText}</p>
         </div>
       ) : null;
@@ -275,7 +269,7 @@ export const ExamView: React.FC<ExamViewProps> = ({
       if (mode === 'solve') {
         return (
           <div className="pl-4 lg:pl-10 space-y-2">
-            <p className="text-[9px] font-black uppercase tracking-widest text-slate-400 mb-3">Bringe die Elemente in die richtige Reihenfolge</p>
+            <p className="text-[9px] font-black uppercase tracking-widest text-slate-400 mb-3">{t('quiz.rankingHint')}</p>
             {userOrder.map((item, i) => (
               <div key={item} className="flex items-center gap-3">
                 <span className="w-7 h-7 rounded-lg bg-indigo-100 dark:bg-indigo-900/30 text-indigo-600 text-[11px] font-black flex items-center justify-center shrink-0">{i + 1}</span>
@@ -326,7 +320,7 @@ export const ExamView: React.FC<ExamViewProps> = ({
                 type="number"
                 value={(ans as string) || ''}
                 onChange={e => setAnswer(q.id, e.target.value)}
-                placeholder="Zahl eingeben..."
+                placeholder={t('ev.numericPlaceholder')}
                 className="flex-1 p-4 bg-slate-50 dark:bg-slate-800 rounded-[20px] border-2 border-transparent focus:border-indigo-500 outline-none transition-all dark:text-white font-black text-xl text-center"
               />
               {q.numericTolerance ? <span className="text-[10px] text-slate-400 font-black">±{q.numericTolerance}</span> : null}
@@ -340,7 +334,7 @@ export const ExamView: React.FC<ExamViewProps> = ({
       return (
         <div className="pl-4 lg:pl-10 flex items-center gap-4">
           <span className={`text-2xl font-black ${ok ? 'text-emerald-600' : 'text-rose-600'}`}>{isNaN(user) ? '—' : user}</span>
-          {!ok && <span className="text-sm text-slate-500 dark:text-slate-400">Korrekt: <strong className="text-emerald-600">{correct}</strong>{q.numericTolerance ? ` ±${q.numericTolerance}` : ''}</span>}
+          {!ok && <span className="text-sm text-slate-500 dark:text-slate-400">{t('ev.correctPrefix')}<strong className="text-emerald-600">{correct}</strong>{q.numericTolerance ? ` ±${q.numericTolerance}` : ''}</span>}
           {ok && <span className="text-sm text-emerald-600 font-black">✓ Korrekt</span>}
         </div>
       );
@@ -371,7 +365,7 @@ export const ExamView: React.FC<ExamViewProps> = ({
           {/* Begründungsauswahl */}
           {q.tfReasonOptions && q.tfReasonOptions.length > 0 && (tfAns?.tf !== undefined || mode === 'result') && (
             <div className="space-y-2 animate-in fade-in slide-in-from-top-2 duration-300">
-              <p className="text-[9px] font-black uppercase tracking-widest text-slate-400">Begründung</p>
+              <p className="text-[9px] font-black uppercase tracking-widest text-slate-400">{t('ev.reasoning')}</p>
               {q.tfReasonOptions.map((reason, ri) => {
                 const sel = tfAns?.reason === ri;
                 const correct = mode === 'result' && ri === q.tfCorrectReasonIndex;
@@ -424,7 +418,7 @@ export const ExamView: React.FC<ExamViewProps> = ({
                     }}
                     className="flex-1 p-3 bg-white dark:bg-slate-800 rounded-2xl border-2 border-slate-200 dark:border-slate-700 text-sm font-medium dark:text-white outline-none focus:border-indigo-500 transition-colors"
                   >
-                    <option value="">Bitte wählen</option>
+                    <option value="">{t('quiz.selectOption')}</option>
                     {q.matchRight.map((right, ri) => (
                       <option key={ri} value={ri}>{right}</option>
                     ))}
@@ -516,7 +510,7 @@ export const ExamView: React.FC<ExamViewProps> = ({
             <textarea
               value={(ans as string) || ''}
               onChange={e => setAnswer(q.id, e.target.value)}
-              placeholder="Antwort hier formulieren..."
+              placeholder={t('ev.answerPlaceholder')}
               className="w-full h-40 p-6 bg-slate-50 dark:bg-slate-800 rounded-[32px] border-2 border-transparent focus:border-indigo-500 outline-none transition-all dark:text-white font-medium resize-none"
             />
           </div>
@@ -525,7 +519,7 @@ export const ExamView: React.FC<ExamViewProps> = ({
       if (mode === 'result') {
         return (
           <div className="pl-4 lg:pl-10 bg-slate-100 dark:bg-slate-800 p-6 rounded-[32px] dark:text-slate-300 italic border border-slate-200 dark:border-slate-700">
-            {q.userAnswer || 'Keine Antwort gegeben.'}
+            {q.userAnswer || t('ev.noAnswer')}
           </div>
         );
       }
@@ -545,7 +539,7 @@ export const ExamView: React.FC<ExamViewProps> = ({
       {/* Protokoll-Header */}
       <div className="flex justify-between items-end border-b-4 border-slate-900 dark:border-slate-100 pb-8">
         <div>
-          <h2 className="text-2xl sm:text-4xl font-black uppercase tracking-tighter dark:text-white">Klausurprotokoll</h2>
+          <h2 className="text-2xl sm:text-4xl font-black uppercase tracking-tighter dark:text-white">{t('ev.examProtocol')}</h2>
           <p className="text-[11px] font-mono opacity-60 uppercase tracking-[0.3em] dark:text-slate-400 mt-2">
             Prüfungseinrichtung: QuizWise AI Academic Center
           </p>
@@ -556,11 +550,11 @@ export const ExamView: React.FC<ExamViewProps> = ({
           </p>
           <div className="flex justify-end gap-6 mt-3">
             <div className="text-right">
-              <p className="text-[9px] font-black uppercase text-slate-400">Gesamtpunkte</p>
+              <p className="text-[9px] font-black uppercase text-slate-400">{t('ev.totalPoints')}</p>
               <p className="text-lg font-black">{achievedTotal} / {totalPoints}</p>
             </div>
             <div className="text-right">
-              <p className="text-[9px] font-black uppercase text-slate-400">Prozent</p>
+              <p className="text-[9px] font-black uppercase text-slate-400">{t('ev.percent')}</p>
               <p className="text-lg font-black">{Math.round(percentage)}%</p>
             </div>
           </div>
@@ -571,15 +565,15 @@ export const ExamView: React.FC<ExamViewProps> = ({
       {mode === 'result' && (
         <div className={`grid grid-cols-1 md:grid-cols-3 gap-6 sm:gap-8 ${gradeInfo.bg} dark:bg-slate-900/40 p-5 sm:p-10 rounded-[28px] sm:rounded-[40px] border-2 ${percentage >= 50 ? 'border-emerald-500' : 'border-rose-500'} animate-in zoom-in-95`}>
           <div className="flex flex-col items-center justify-center border-b md:border-b-0 md:border-r border-slate-200 dark:border-slate-800 pb-6 md:pb-0">
-            <span className="text-[10px] font-black uppercase tracking-widest text-slate-400 mb-2">Gesamtnote</span>
+            <span className="text-[10px] font-black uppercase tracking-widest text-slate-400 mb-2">{t('ev.finalGrade')}</span>
             <span className={`text-6xl sm:text-7xl font-black ${gradeInfo.color}`}>{gradeInfo.grade}</span>
             <span className={`text-xs font-black uppercase mt-2 tracking-widest ${gradeInfo.color}`}>{gradeInfo.label}</span>
           </div>
           <div className="md:col-span-2 space-y-4 flex flex-col justify-center">
             <div className="space-y-2">
               <div className="flex justify-between items-center text-[10px] font-black uppercase tracking-widest text-slate-400">
-                <span>Leistungsstand</span>
-                <span>{percentage >= 50 ? 'Bestanden' : 'Nicht Bestanden'}</span>
+                <span>{t('ev.performance')}</span>
+                <span>{percentage >= 50 ? t('ev.passed') : t('ev.notPassed')}</span>
               </div>
               <div className="h-4 bg-slate-200 dark:bg-slate-800 rounded-full overflow-hidden shadow-inner">
                 <div className={`h-full transition-all duration-1000 ${percentage >= 50 ? 'bg-emerald-500' : 'bg-rose-500'}`} style={{ width: `${percentage}%` }} />
@@ -589,26 +583,26 @@ export const ExamView: React.FC<ExamViewProps> = ({
               </div>
             </div>
             <p className="text-sm font-medium text-slate-600 dark:text-slate-400 italic">
-              {percentage >= 90 ? 'Hervorragende Leistung! Sie haben das Thema tiefgreifend verstanden.' :
-               percentage >= 70 ? 'Gute Leistung. Sie beherrschen die wesentlichen Inhalte sicher.' :
-               percentage >= 50 ? 'Bestanden. Es sind jedoch noch Lücken in der Tiefe vorhanden.' :
-               'Leider hat es diesmal nicht gereicht. Nutzen Sie die Fehleranalyse für die Nachbereitung.'}
+              {percentage >= 90 ? t('ev.perf90') :
+               percentage >= 70 ? t('ev.perf80') :
+               percentage >= 50 ? t('ev.perf50') :
+               t('ev.perfFail')}
             </p>
             {onSaveExam && (
               <div className="pt-2 border-t border-slate-200 dark:border-slate-700">
                 {examSaved ? (
                   <p className="text-emerald-600 text-[10px] font-black uppercase tracking-widest flex items-center gap-1.5">
                     <svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round"><polyline points="20 6 9 17 4 12"/></svg>
-                    Klausur gespeichert, offline abrufbar
+                    {t('ev.savedOffline')}
                   </p>
                 ) : showSaveInput ? (
                   <div className="flex gap-2 mb-2">
                     <input autoFocus value={saveName} onChange={e => setSaveName(e.target.value)}
                       className="flex-1 px-4 py-2 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-[14px] text-sm font-medium dark:text-white outline-none focus:border-indigo-500 transition-colors"
-                      placeholder="Klausur-Name..." />
-                    <button onClick={() => { onSaveExam(saveName.trim() || 'Meine Klausur'); setExamSaved(true); setShowSaveInput(false); }}
+                      placeholder={t('ev.examNamePlaceholder')} />
+                    <button onClick={() => { onSaveExam(saveName.trim() || t('ev.myExam')); setExamSaved(true); setShowSaveInput(false); }}
                       className="px-4 py-2 bg-indigo-600 text-white rounded-[14px] text-[10px] font-black uppercase tracking-widest hover:scale-105 active:scale-95 transition-all shrink-0">
-                      Speichern
+                      {t('quiz.save')}
                     </button>
                   </div>
                 ) : (
@@ -638,10 +632,10 @@ export const ExamView: React.FC<ExamViewProps> = ({
               {onNavigate && (
                 <>
                   <button onClick={() => onNavigate(ActiveTab.RADAR)} className="px-5 py-2.5 rounded-[16px] border-2 border-slate-200 dark:border-slate-700 font-black uppercase text-[9px] tracking-widest text-slate-600 dark:text-slate-300 hover:border-indigo-400 hover:text-indigo-600 transition-all">
-                    Lern-Analyse
+                    {t('ev.learnAnalysisBtn')}
                   </button>
                   <button onClick={() => onNavigate(ActiveTab.LIBRARY)} className="px-5 py-2.5 rounded-[16px] border-2 border-slate-200 dark:border-slate-700 font-black uppercase text-[9px] tracking-widest text-slate-600 dark:text-slate-300 hover:border-indigo-400 hover:text-indigo-600 transition-all">
-                    Zur Bibliothek
+                    {t('ev.toLibrary')}
                   </button>
                 </>
               )}
@@ -651,7 +645,7 @@ export const ExamView: React.FC<ExamViewProps> = ({
                   className="px-5 py-2.5 rounded-[16px] font-black uppercase text-[9px] tracking-widest text-white hover:scale-[1.02] transition-all shadow-lg"
                   style={{ background: '#f43f5e' }}
                 >
-                  {followUpMode === 'recall' ? 'Feynman' : 'Quiz'} zu „{weakestTopic.topic}" üben
+                  {t('ev.practiceTopic', { method: followUpMode === 'recall' ? t('lp.method.feynman') : t('lp.method.quiz'), topic: weakestTopic.topic })}
                 </button>
               )}
             </div>
@@ -662,13 +656,13 @@ export const ExamView: React.FC<ExamViewProps> = ({
       {/* Scoring-Profil-Badge (result) */}
       {mode === 'result' && scoringProfile && (
         <div className="flex items-center gap-2 flex-wrap px-1">
-          <span className="text-[9px] font-black uppercase tracking-widest text-slate-400">Bewertungsprofil:</span>
+          <span className="text-[9px] font-black uppercase tracking-widest text-slate-400">{t('ev.scoringProfileLabel')}</span>
           <span className={`text-[9px] font-black uppercase tracking-widest px-2.5 py-1 rounded-full ${scoringProfile.mode === 'strict' ? 'bg-rose-100 dark:bg-rose-950/20 text-rose-600' : scoringProfile.mode === 'lenient' ? 'bg-emerald-100 dark:bg-emerald-950/20 text-emerald-600' : 'bg-indigo-100 dark:bg-indigo-950/20 text-indigo-600'}`}>
-            {scoringProfile.mode === 'strict' ? 'Streng' : scoringProfile.mode === 'lenient' ? 'Lernmodus' : 'Standard'}
+            {scoringProfile.mode === 'strict' ? t('eg.scoreStrict') : scoringProfile.mode === 'lenient' ? t('eg.scoreLenient') : t('eg.scoreStandard')}
           </span>
           {scoringProfile.emphases.map(e => (
             <span key={e} className="text-[9px] font-black uppercase tracking-widest px-2.5 py-1 rounded-full bg-slate-100 dark:bg-slate-800 text-slate-500">
-              {e === 'terms' ? 'Fachbegriffe' : e === 'understanding' ? 'Verständnis' : e === 'examples' ? 'Beispiele' : 'Definitionen'}
+              {e === 'terms' ? t('eg.emphTerms') : e === 'understanding' ? t('eg.emphUnderstanding') : e === 'examples' ? t('eg.emphExamples') : t('eg.emphDefinitions')}
             </span>
           ))}
         </div>
@@ -678,8 +672,8 @@ export const ExamView: React.FC<ExamViewProps> = ({
       {mode === 'result' && categoryBreakdown && categoryBreakdown.length > 0 && (
         <div className="rounded-[24px] sm:rounded-[32px] p-5 sm:p-8 space-y-4 animate-in fade-in duration-500" style={{ background: 'var(--bg-sidebar)', border: '1px solid var(--border-color)' }}>
           <div>
-            <h3 className="text-lg font-black dark:text-white">Kategorie-Aufschlüsselung</h3>
-            <p className="text-[10px] font-black uppercase tracking-widest text-slate-400">Nicht nur die Gesamtpunktzahl: Wo genau standen die Lücken?</p>
+            <h3 className="text-lg font-black dark:text-white">{t('ev.categoryBreakdown')}</h3>
+            <p className="text-[10px] font-black uppercase tracking-widest text-slate-400">{t('ev.categoryBreakdownHint')}</p>
           </div>
           <div className="space-y-3">
             {[...categoryBreakdown].sort((a, b) => a.score - b.score).map(cb => (
@@ -704,14 +698,14 @@ export const ExamView: React.FC<ExamViewProps> = ({
       {mode === 'result' && analysis && (
         <div className="rounded-[24px] sm:rounded-[32px] p-5 sm:p-8 space-y-6 animate-in fade-in duration-700" style={{ background: 'var(--bg-sidebar)', border: '1px solid var(--border-color)' }}>
           <div>
-            <h3 className="text-lg font-black dark:text-white">Lernanalyse</h3>
-            <p className="text-[10px] font-black uppercase tracking-widest text-slate-400">Basierend auf deinen Antworten</p>
+            <h3 className="text-lg font-black dark:text-white">{t('ev.learningAnalysis')}</h3>
+            <p className="text-[10px] font-black uppercase tracking-widest text-slate-400">{t('ev.basedOnAnswers')}</p>
           </div>
 
           <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
             {analysis.strengths.length > 0 && (
               <div className="space-y-3">
-                <p className="text-[10px] font-black uppercase tracking-widest text-emerald-600">Stärken</p>
+                <p className="text-[10px] font-black uppercase tracking-widest text-emerald-600">{t('ev.strengths')}</p>
                 <ul className="space-y-2">
                   {analysis.strengths.map((s, i) => (
                     <li key={i} className="flex items-start gap-2 text-sm text-slate-700 dark:text-slate-300">
@@ -723,7 +717,7 @@ export const ExamView: React.FC<ExamViewProps> = ({
             )}
             {analysis.weaknesses.length > 0 && (
               <div className="space-y-3">
-                <p className="text-[10px] font-black uppercase tracking-widest text-rose-600">Wissenslücken</p>
+                <p className="text-[10px] font-black uppercase tracking-widest text-rose-600">{t('ev.gaps')}</p>
                 <ul className="space-y-2">
                   {analysis.weaknesses.map((w, i) => (
                     <li key={i} className="flex items-start gap-2 text-sm text-slate-700 dark:text-slate-300">
@@ -737,7 +731,7 @@ export const ExamView: React.FC<ExamViewProps> = ({
 
           {analysis.recommendations.length > 0 && (
             <div className="pt-4 border-t" style={{ borderColor: 'var(--border-color)' }}>
-              <p className="text-[10px] font-black uppercase tracking-widest text-indigo-600 mb-3">Empfehlungen</p>
+              <p className="text-[10px] font-black uppercase tracking-widest text-indigo-600 mb-3">{t('ev.recommendations')}</p>
               <div className="flex flex-wrap gap-2">
                 {analysis.recommendations.map((r, i) => (
                   <span key={i} className="px-3 py-1.5 rounded-xl text-xs font-bold bg-indigo-50 dark:bg-indigo-950/20 text-indigo-700 dark:text-indigo-300 border border-indigo-200 dark:border-indigo-800">
@@ -750,7 +744,7 @@ export const ExamView: React.FC<ExamViewProps> = ({
 
           {analysis.topicPerformance.length > 0 && (
             <div className="pt-4 border-t space-y-3" style={{ borderColor: 'var(--border-color)' }}>
-              <p className="text-[10px] font-black uppercase tracking-widest text-slate-400">Themen-Performance</p>
+              <p className="text-[10px] font-black uppercase tracking-widest text-slate-400">{t('ev.topicPerformance')}</p>
               {analysis.topicPerformance.map((tp, i) => (
                 <div key={i} className="space-y-1">
                   <div className="flex justify-between items-center text-[11px] font-bold dark:text-slate-300">
@@ -774,7 +768,7 @@ export const ExamView: React.FC<ExamViewProps> = ({
       {mode === 'result' && !analysis && (
         <div className="flex items-center gap-3 px-1 text-slate-400">
           <div className="w-4 h-4 border-2 border-slate-300 border-t-indigo-500 rounded-full animate-spin shrink-0" />
-          <span className="text-[10px] font-black uppercase tracking-widest">Lernanalyse wird erstellt…</span>
+          <span className="text-[10px] font-black uppercase tracking-widest">{t('ev.analysisCreating')}</span>
         </div>
       )}
 
@@ -801,8 +795,8 @@ export const ExamView: React.FC<ExamViewProps> = ({
                   </div>
                   <textarea value={tempQuestion.question} onChange={e => setTempQuestion({ ...tempQuestion, question: e.target.value })} className="w-full p-4 bg-slate-50 dark:bg-slate-900 rounded-2xl dark:text-white border-2 border-transparent focus:border-indigo-500 outline-none" />
                   <div className="flex justify-end gap-3">
-                    <button onClick={() => setEditingId(null)} className="text-slate-400 font-black uppercase text-[10px]">Abbrechen</button>
-                    <button onClick={saveEdit} className="bg-indigo-600 text-white px-6 py-2 rounded-xl font-black uppercase text-[10px]">Speichern</button>
+                    <button onClick={() => setEditingId(null)} className="text-slate-400 font-black uppercase text-[10px]">{t('quiz.cancel')}</button>
+                    <button onClick={saveEdit} className="bg-indigo-600 text-white px-6 py-2 rounded-xl font-black uppercase text-[10px]">{t('quiz.save')}</button>
                   </div>
                 </div>
               ) : (
@@ -811,7 +805,7 @@ export const ExamView: React.FC<ExamViewProps> = ({
                     <div className="flex items-center gap-3">
                       <span className="font-black text-xl dark:text-white">Aufgabe {idx + 1}:</span>
                       <span className="text-[8px] font-black uppercase tracking-widest bg-slate-100 dark:bg-slate-800 text-slate-400 px-2.5 py-1 rounded-lg">
-                        {TYPE_LABELS[q.type] || q.type}
+                        {getTypeLabel(q.type)}
                       </span>
                     </div>
                     <span className="text-[10px] font-mono bg-slate-100 dark:bg-slate-800 px-3 py-1 rounded-lg dark:text-slate-400 uppercase tracking-widest shrink-0">
@@ -833,11 +827,11 @@ export const ExamView: React.FC<ExamViewProps> = ({
                         <div className="flex justify-between items-center mb-4">
                           <div className="flex items-center gap-2">
                             <h4 className="text-[10px] font-black uppercase tracking-widest text-slate-400">
-                              {q.type === 'open' ? 'Korrektur' : 'Auswertung'}
+                              {q.type === 'open' ? t('ev.correction') : t('ev.evaluation')}
                             </h4>
                             {q.evaluationConfidence !== undefined && (
                               <span className={`text-[8px] font-black uppercase tracking-widest px-2 py-0.5 rounded-full ${q.evaluationConfidence >= 80 ? 'bg-emerald-100 dark:bg-emerald-900/30 text-emerald-600' : q.evaluationConfidence >= 60 ? 'bg-amber-100 dark:bg-amber-900/30 text-amber-600' : 'bg-rose-100 dark:bg-rose-900/30 text-rose-600'}`}>
-                                {q.evaluationConfidence >= 80 ? 'Sicher' : q.evaluationConfidence >= 60 ? 'Mittel' : 'Unsicher'}
+                                {q.evaluationConfidence >= 80 ? t('ev.confHigh') : q.evaluationConfidence >= 60 ? t('ev.confMid') : t('ev.confLow')}
                               </span>
                             )}
                           </div>
@@ -870,7 +864,7 @@ export const ExamView: React.FC<ExamViewProps> = ({
                         {q.feedback && <p className="text-sm font-bold dark:text-slate-200 mb-4 pt-3 border-t border-black/10 dark:border-white/10">{q.feedback}</p>}
 
                         <div className="pt-4 border-t border-slate-200 dark:border-slate-700">
-                          <p className="text-[9px] font-black uppercase text-slate-400 mb-2">Musterlösung</p>
+                          <p className="text-[9px] font-black uppercase text-slate-400 mb-2">{t('ev.masterSolution')}</p>
                           <p className="text-xs italic text-slate-500 dark:text-slate-400 leading-relaxed">{q.solution}</p>
                         </div>
                       </div>
@@ -878,13 +872,13 @@ export const ExamView: React.FC<ExamViewProps> = ({
                       {/* Feedback-Widget */}
                       {!questionFeedback[q.id] ? (
                         <div className="flex flex-wrap items-center gap-2 pt-1">
-                          <span className="text-[9px] font-black uppercase tracking-widest text-slate-300 dark:text-slate-600">Bewertung fair?</span>
+                          <span className="text-[9px] font-black uppercase tracking-widest text-slate-300 dark:text-slate-600">{t('ev.ratingFair')}</span>
                           {([
-                            { type: 'correct'             as QuestionFeedbackType, label: 'Ja',           cls: 'hover:border-emerald-400 hover:text-emerald-600' },
-                            { type: 'too_strict'          as QuestionFeedbackType, label: 'Zu streng',    cls: 'hover:border-amber-400 hover:text-amber-600' },
-                            { type: 'too_lenient'         as QuestionFeedbackType, label: 'Zu locker',    cls: 'hover:border-amber-400 hover:text-amber-600' },
-                            { type: 'incomplete_solution' as QuestionFeedbackType, label: 'Lösung fehlt', cls: 'hover:border-rose-400 hover:text-rose-600' },
-                            { type: 'unrealistic'         as QuestionFeedbackType, label: 'Unrealistisch', cls: 'hover:border-rose-400 hover:text-rose-600' },
+                            { type: 'correct'             as QuestionFeedbackType, label: t('ev.fbYes'),           cls: 'hover:border-emerald-400 hover:text-emerald-600' },
+                            { type: 'too_strict'          as QuestionFeedbackType, label: t('ev.fbTooStrict'),    cls: 'hover:border-amber-400 hover:text-amber-600' },
+                            { type: 'too_lenient'         as QuestionFeedbackType, label: t('ev.fbTooLenient'),    cls: 'hover:border-amber-400 hover:text-amber-600' },
+                            { type: 'incomplete_solution' as QuestionFeedbackType, label: t('ev.fbMissing'), cls: 'hover:border-rose-400 hover:text-rose-600' },
+                            { type: 'unrealistic'         as QuestionFeedbackType, label: t('ev.fbUnrealistic'), cls: 'hover:border-rose-400 hover:text-rose-600' },
                           ]).map(fb => (
                             <button
                               key={fb.type}
@@ -898,7 +892,7 @@ export const ExamView: React.FC<ExamViewProps> = ({
                         </div>
                       ) : (
                         <p className="text-[9px] font-black uppercase tracking-widest text-slate-300 dark:text-slate-600 pl-1">
-                          Feedback gespeichert, danke!
+                          {t('ev.fbSaved')}
                         </p>
                       )}
                     </div>
@@ -916,21 +910,21 @@ export const ExamView: React.FC<ExamViewProps> = ({
           {/* Speichern-Panel */}
           {showProgressInput && onSaveProgress && (
             <div className="bg-white dark:bg-slate-900 rounded-[20px] border border-indigo-200 dark:border-indigo-800 shadow-xl p-4 w-80 animate-in slide-in-from-bottom-4 duration-300">
-              <p className="text-[9px] font-black uppercase tracking-widest text-slate-400 mb-3">Klausur speichern</p>
+              <p className="text-[9px] font-black uppercase tracking-widest text-slate-400 mb-3">{t('ev.saveExam')}</p>
               <div className="flex gap-2">
                 <input
                   autoFocus
                   value={progressName}
                   onChange={e => setProgressName(e.target.value)}
                   onKeyDown={e => {
-                    if (e.key === 'Enter') { onSaveProgress(progressName.trim() || 'Meine Klausur'); setShowProgressInput(false); }
+                    if (e.key === 'Enter') { onSaveProgress(progressName.trim() || t('ev.myExam')); setShowProgressInput(false); }
                     if (e.key === 'Escape') setShowProgressInput(false);
                   }}
-                  placeholder="Klausur-Name..."
+                  placeholder={t('ev.examNamePlaceholder')}
                   className="flex-1 px-3 py-2 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-[12px] text-sm font-medium dark:text-white outline-none focus:border-indigo-500 transition-colors"
                 />
                 <button
-                  onClick={() => { onSaveProgress(progressName.trim() || 'Meine Klausur'); setShowProgressInput(false); }}
+                  onClick={() => { onSaveProgress(progressName.trim() || t('ev.myExam')); setShowProgressInput(false); }}
                   className="px-3 py-2 bg-indigo-600 text-white rounded-[12px] text-[10px] font-black uppercase tracking-widest hover:scale-105 active:scale-95 transition-all shrink-0"
                 >
                   OK
@@ -943,17 +937,17 @@ export const ExamView: React.FC<ExamViewProps> = ({
           <div className="flex items-center gap-3">
             {onSaveProgress && (
               <button
-                onClick={() => { setProgressName('Meine Klausur'); setShowProgressInput(v => !v); }}
+                onClick={() => { setProgressName(t('ev.myExam')); setShowProgressInput(v => !v); }}
                 className="bg-white/90 dark:bg-slate-900/90 backdrop-blur-sm border border-slate-200 dark:border-slate-700 text-slate-600 dark:text-slate-300 px-5 py-4 rounded-[24px] font-black uppercase tracking-widest text-[10px] shadow-lg hover:scale-105 active:scale-95 transition-all flex items-center gap-2"
               >
                 <svg xmlns="http://www.w3.org/2000/svg" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z"/><polyline points="17 21 17 13 7 13 7 21"/><polyline points="7 3 7 8 15 8"/></svg>
-                Speichern
+                {t('quiz.save')}
               </button>
             )}
             <button onClick={handleSubmit} disabled={isEvaluating}
               className="bg-indigo-600 text-white px-6 sm:px-10 py-5 sm:py-6 rounded-[24px] sm:rounded-[32px] font-black uppercase tracking-[0.2em] sm:tracking-[0.3em] text-[11px] shadow-3d-deep hover:scale-110 active:scale-95 transition-all flex items-center gap-3 sm:gap-4"
             >
-              {isEvaluating ? 'Korrektur läuft...' : <span>Klausur abgeben <EmojiImage emoji="📝" size={16} /></span>}
+              {isEvaluating ? t('ev.correcting') : <span>{t('ev.submit')} <EmojiImage emoji="📝" size={16} /></span>}
             </button>
           </div>
 
@@ -961,7 +955,7 @@ export const ExamView: React.FC<ExamViewProps> = ({
             <p className={`px-6 py-2 rounded-full text-[10px] font-black uppercase tracking-widest shadow-lg backdrop-blur-sm transition-all ${
               isTimeLow ? 'bg-rose-500 text-white animate-pulse' : 'bg-white/80 dark:bg-slate-900/80 text-slate-500 dark:text-slate-400'
             }`}>
-              {timeLeft === 0 ? '⏱ Zeit abgelaufen, wird eingereicht...' : `⏱ ${formatTime(timeLeft)} verbleibend`}
+              {timeLeft === 0 ? t('ev.timeExpired') : t('ev.timeLeft', { time: formatTime(timeLeft) })}
             </p>
           ) : (
             <p className="bg-white/80 dark:bg-slate-900/80 backdrop-blur-sm px-6 py-2 rounded-full text-[9px] font-black uppercase text-slate-400 tracking-widest shadow-lg">
