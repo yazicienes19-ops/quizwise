@@ -7,6 +7,8 @@ import { generateFullExam, evaluateWithRubric, analyzeExamResults, GenerationSou
 import { formatFeedbackContext } from '../services/examFeedbackService';
 import { GeneratedImage } from './GeneratedImage';
 import { toast } from '../services/toast';
+import { useTranslation } from '../i18n/I18nProvider';
+import { t as translate } from '../i18n';
 import { saveExamToStorage } from '../services/savedExamsService';
 import { interleaveQuestionsByTopic } from '../services/interleave';
 
@@ -33,13 +35,14 @@ interface ExamSystemProps {
 const DEFAULT_SCORING_PROFILE: ScoringProfile = { mode: 'standard', emphases: [] };
 
 export const ExamSystem: React.FC<ExamSystemProps> = ({ documents, collections, getDocumentSource, onSaveToLibrary, onComplete, onNavigate, onAction, initialDoc, initialQuestions, metrics, decks }) => {
+  const { t } = useTranslation();
   const [questions, setQuestions]         = useState<ExamQuestion[] | null>(initialQuestions ?? null);
   const [isLoading, setIsLoading]         = useState(false);
   const [loadingHint, setLoadingHint]     = useState('');
   const [mode, setMode]                   = useState<'edit' | 'solve' | 'result'>(() =>
     initialQuestions?.some(q => q.userAnswer !== undefined) ? 'solve' : 'edit'
   );
-  const [examDocName, setExamDocName]     = useState('Klausur');
+  const [examDocName, setExamDocName]     = useState(translate('es.examDefaultName'));
   const [examDuration, setExamDuration]   = useState<number | undefined>(undefined);
   const [showCancelConfirm, setShowCancelConfirm] = useState(false);
   const [currentAnswers, setCurrentAnswers] = useState<Record<string, any>>(() => {
@@ -80,13 +83,13 @@ export const ExamSystem: React.FC<ExamSystemProps> = ({ documents, collections, 
           setMode('edit');
           return;
         } catch (e: any) {
-          const msg = e?.message || 'Unbekannter Fehler';
+          const msg = e?.message || translate('es.unknownError');
           if (attempt < maxAttempts && isTransientError(msg)) {
-            setLoadingHint(`KI gerade ausgelastet – neuer Versuch (${attempt + 1}/${maxAttempts})…`);
+            setLoadingHint(t('es.retryHint', { attempt: attempt + 1, max: maxAttempts }));
             await new Promise(r => setTimeout(r, 2000 * attempt)); // 2s, 4s
             continue;
           }
-          toast.error(`Klausur-Generierung fehlgeschlagen: ${msg}`);
+          toast.error(t('es.genFailed', { msg }));
           return;
         }
       }
@@ -102,29 +105,29 @@ export const ExamSystem: React.FC<ExamSystemProps> = ({ documents, collections, 
 
   const autoEvaluate = (q: ExamQuestion): ExamQuestion => {
     const empty = (v: any) => v === undefined || v === null || (Array.isArray(v) && !v.filter((x: any) => x !== undefined && x !== null && x !== '' && x !== -1).length);
-    if (empty(q.userAnswer)) return { ...q, achievedPoints: 0, feedback: 'Keine Antwort gegeben.' };
+    if (empty(q.userAnswer)) return { ...q, achievedPoints: 0, feedback: t('ev.noAnswer') };
 
     if (q.type === 'mc') {
       const user: number[] = q.userAnswer || [];
       const correct: number[] = q.correctIndices || [];
-      if (!correct.length) return { ...q, achievedPoints: 0, feedback: 'Keine Auswertungsgrundlage (correctIndices fehlt).' };
+      if (!correct.length) return { ...q, achievedPoints: 0, feedback: t('es.mcNoBasis') };
       const uSet = new Set(user), cSet = new Set(correct);
       const allRight = correct.every(i => uSet.has(i));
       const noWrong  = user.every(i => cSet.has(i));
-      if (allRight && noWrong) return { ...q, achievedPoints: q.points, feedback: 'Vollständig korrekt.' };
-      if (allRight)            return { ...q, achievedPoints: Math.floor(q.points / 2), feedback: 'Alle richtigen gewählt, aber auch falsche dabei.' };
-      return { ...q, achievedPoints: 0, feedback: `Falsch. Richtig: ${correct.map(i => q.options?.[i] ?? `Option ${i + 1}`).join(', ')}.` };
+      if (allRight && noWrong) return { ...q, achievedPoints: q.points, feedback: t('es.fullyCorrect') };
+      if (allRight)            return { ...q, achievedPoints: Math.floor(q.points / 2), feedback: t('es.allRightSomeWrong') };
+      return { ...q, achievedPoints: 0, feedback: t('es.wrongCorrect', { list: correct.map(i => q.options?.[i] ?? translate('ev.pdf.optionN', { n: i + 1 })).join(', ') }) };
     }
 
     if (q.type === 'truefalse') {
       const ans: { tf?: boolean; reason?: number } = q.userAnswer || {};
-      if (ans.tf === undefined) return { ...q, achievedPoints: 0, feedback: 'Keine Antwort gegeben.' };
-      if (ans.tf !== q.tfCorrect) return { ...q, achievedPoints: 0, feedback: `Falsch. Korrekt: ${q.tfCorrect ? 'Richtig' : 'Falsch'}.` };
+      if (ans.tf === undefined) return { ...q, achievedPoints: 0, feedback: t('ev.noAnswer') };
+      if (ans.tf !== q.tfCorrect) return { ...q, achievedPoints: 0, feedback: t('es.tfWrong', { answer: q.tfCorrect ? t('ev.answerRight') : t('ev.answerWrong') }) };
       if (q.tfReasonOptions?.length && ans.reason !== undefined) {
-        if (ans.reason === q.tfCorrectReasonIndex) return { ...q, achievedPoints: q.points, feedback: 'Aussage und Begründung korrekt.' };
-        return { ...q, achievedPoints: Math.floor(q.points / 2), feedback: `Aussage korrekt, Begründung falsch. Richtig: "${q.tfReasonOptions[q.tfCorrectReasonIndex ?? 0]}".` };
+        if (ans.reason === q.tfCorrectReasonIndex) return { ...q, achievedPoints: q.points, feedback: t('es.statementReasonCorrect') };
+        return { ...q, achievedPoints: Math.floor(q.points / 2), feedback: t('es.statementCorrectReasonWrong', { reason: q.tfReasonOptions[q.tfCorrectReasonIndex ?? 0] }) };
       }
-      return { ...q, achievedPoints: q.points, feedback: 'Korrekt.' };
+      return { ...q, achievedPoints: q.points, feedback: t('es.correct') };
     }
 
     if (q.type === 'matching') {
@@ -132,7 +135,7 @@ export const ExamSystem: React.FC<ExamSystemProps> = ({ documents, collections, 
       const correct: number[] = q.matchCorrect || [];
       const hits = correct.filter((ci, i) => user[i] === ci).length;
       const pts  = correct.length ? Math.round((hits / correct.length) * q.points) : 0;
-      return { ...q, achievedPoints: pts, feedback: hits === correct.length ? 'Alle Zuordnungen korrekt.' : `${hits} von ${correct.length} Zuordnungen korrekt.` };
+      return { ...q, achievedPoints: pts, feedback: hits === correct.length ? t('es.allMatchCorrect') : t('es.matchScore', { hits, total: correct.length }) };
     }
 
     if (q.type === 'fillblank') {
@@ -140,7 +143,7 @@ export const ExamSystem: React.FC<ExamSystemProps> = ({ documents, collections, 
       const correct: string[] = q.blanks || [];
       const hits = correct.filter((b, i) => (user[i] || '').trim().toLowerCase() === b.toLowerCase()).length;
       const pts  = correct.length ? Math.round((hits / correct.length) * q.points) : 0;
-      return { ...q, achievedPoints: pts, feedback: `${hits} von ${correct.length} Lücken korrekt.` };
+      return { ...q, achievedPoints: pts, feedback: t('es.blankScore', { hits, total: correct.length }) };
     }
 
     if (q.type === 'ranking') {
@@ -148,7 +151,7 @@ export const ExamSystem: React.FC<ExamSystemProps> = ({ documents, collections, 
       const correct: string[] = q.rankingItems || [];
       const hits = correct.filter((item, i) => item === user[i]).length;
       const pts  = correct.length ? Math.round((hits / correct.length) * q.points) : 0;
-      return { ...q, achievedPoints: pts, feedback: hits === correct.length ? 'Reihenfolge vollständig korrekt.' : `${hits} von ${correct.length} Positionen korrekt. Korrekte Reihenfolge: ${correct.join(' → ')}` };
+      return { ...q, achievedPoints: pts, feedback: hits === correct.length ? t('es.rankAllCorrect') : t('es.rankScore', { hits, total: correct.length, order: correct.join(' → ') }) };
     }
 
     if (q.type === 'numeric') {
@@ -156,9 +159,9 @@ export const ExamSystem: React.FC<ExamSystemProps> = ({ documents, collections, 
       const correct = q.numericAnswer ?? 0;
       const tolerance = q.numericTolerance ?? 0;
       if (!isNaN(user) && Math.abs(user - correct) <= tolerance) {
-        return { ...q, achievedPoints: q.points, feedback: `Korrekt: ${user}` };
+        return { ...q, achievedPoints: q.points, feedback: t('es.numCorrect', { value: user }) };
       }
-      return { ...q, achievedPoints: 0, feedback: `Falsch. Korrekte Antwort: ${correct}${tolerance > 0 ? ` (±${tolerance})` : ''}` };
+      return { ...q, achievedPoints: 0, feedback: t('es.numWrong', { answer: correct, tol: tolerance > 0 ? ` (±${tolerance})` : '' }) };
     }
 
     return q;
@@ -244,7 +247,7 @@ export const ExamSystem: React.FC<ExamSystemProps> = ({ documents, collections, 
         .then(setExamAnalysis)
         .catch(() => {});
     } catch (e) {
-      toast.error('Bewertung fehlgeschlagen. Bitte versuche es erneut.');
+      toast.error(t('es.evalFailed'));
     } finally {
       setIsLoading(false);
     }
@@ -258,7 +261,7 @@ export const ExamSystem: React.FC<ExamSystemProps> = ({ documents, collections, 
           <div className="w-24 h-24 border-8 border-indigo-600 border-t-transparent rounded-full animate-spin absolute top-0 left-0"></div>
         </div>
         <div className="text-center space-y-2">
-          <p className="text-2xl font-black text-slate-800 dark:text-white uppercase tracking-tighter">Prüfung wird konzipiert...</p>
+          <p className="text-2xl font-black text-slate-800 dark:text-white uppercase tracking-tighter">{t('es.conceiving')}</p>
           <p className="text-slate-500 dark:text-slate-400 font-medium italic">"Gute Lehre braucht Zeit - auch bei KIs"</p>
           {loadingHint && (
             <p className="text-[11px] font-black uppercase tracking-widest text-amber-600 dark:text-amber-400 pt-2 animate-pulse">
@@ -288,8 +291,8 @@ export const ExamSystem: React.FC<ExamSystemProps> = ({ documents, collections, 
     <div className="space-y-10 animate-in fade-in duration-700">
       <div className="flex justify-between items-center bg-white dark:bg-slate-900 p-6 rounded-[32px] border border-slate-200 dark:border-slate-800 shadow-3d-raised">
         <div>
-          <h2 className="text-xl font-black dark:text-white">Klausur-Simulator</h2>
-          <p className="text-xs text-slate-400 font-bold uppercase tracking-widest">Status: {mode === 'edit' ? 'Bearbeitung' : mode === 'solve' ? 'Simulation' : 'Ergebnis'}</p>
+          <h2 className="text-xl font-black dark:text-white">{t('nav.exam')}</h2>
+          <p className="text-xs text-slate-400 font-bold uppercase tracking-widest">{t('es.statusLabel', { status: mode === 'edit' ? t('es.tabSolve') : mode === 'solve' ? t('es.tabSimulation') : t('es.tabResult') })}</p>
         </div>
         <div className="flex items-center gap-4">
           {mode === 'edit' && (
@@ -305,9 +308,9 @@ export const ExamSystem: React.FC<ExamSystemProps> = ({ documents, collections, 
           {/* Abbrechen — mit Bestätigung während der Simulation */}
           {mode === 'solve' && showCancelConfirm ? (
             <div className="flex items-center gap-3 bg-rose-50 dark:bg-rose-950/30 border border-rose-200 dark:border-rose-800 px-4 py-2 rounded-2xl animate-in fade-in duration-200">
-              <p className="text-[9px] font-black uppercase tracking-widest text-rose-600 dark:text-rose-400">Klausur abbrechen?</p>
-              <button onClick={resetExam} className="text-[9px] font-black uppercase tracking-widest text-rose-600 hover:text-rose-800 transition-colors">Ja</button>
-              <button onClick={() => setShowCancelConfirm(false)} className="text-[9px] font-black uppercase tracking-widest text-slate-400 hover:text-slate-600 transition-colors">Nein</button>
+              <p className="text-[9px] font-black uppercase tracking-widest text-rose-600 dark:text-rose-400">{t('es.cancelExam')}</p>
+              <button onClick={resetExam} className="text-[9px] font-black uppercase tracking-widest text-rose-600 hover:text-rose-800 transition-colors">{t('ev.fbYes')}</button>
+              <button onClick={() => setShowCancelConfirm(false)} className="text-[9px] font-black uppercase tracking-widest text-slate-400 hover:text-slate-600 transition-colors">{t('es.no')}</button>
             </div>
           ) : mode !== 'result' ? (
             <button
@@ -339,12 +342,12 @@ export const ExamSystem: React.FC<ExamSystemProps> = ({ documents, collections, 
         onSaveProgress={(name) => {
           const withAnswers = questions.map(q => ({ ...q, userAnswer: currentAnswers[q.id] }));
           saveExamToStorage({ name, docName: examDocName, questions: withAnswers });
-          toast.success('Klausur gespeichert!');
+          toast.success(t('es.examSaved'));
         }}
         onSaveExam={(name) => {
           const clean = questions.map(q => ({ ...q, userAnswer: undefined, feedback: undefined, achievedPoints: undefined }));
           saveExamToStorage({ name, docName: examDocName, questions: clean });
-          toast.success('Klausur gespeichert!');
+          toast.success(t('es.examSaved'));
         }}
       />
     </div>
