@@ -3,6 +3,9 @@ import React, { useState, useEffect, useRef, useCallback, useMemo } from 'react'
 import { ProcessedDocument, Collection, RecallChallenge, RecallEvaluation } from '../types';
 import type { GenerationSource } from '../services/geminiService';
 import { generateRecallChallenge, evaluateRecallResponse } from '../services/geminiService';
+import { useTranslation } from '../i18n/I18nProvider';
+import { localeTag } from '../i18n';
+import type { TKey } from '../i18n';
 import { GeneratedImage } from './GeneratedImage';
 import { SourceSelector } from './SourceSelector';
 import { toast } from '../services/toast';
@@ -39,6 +42,7 @@ export const ActiveRecall: React.FC<ActiveRecallProps> = ({
   initialFocusTopic,
   autoStart,
 }) => {
+  const { t } = useTranslation();
   const [activeSource, setActiveSource] = useState<GenerationSource | null>(null);
   const [activeSourceName, setActiveSourceName] = useState('');
   const [focusTopic, setFocusTopic] = useState(initialFocusTopic ?? '');
@@ -116,7 +120,7 @@ export const ActiveRecall: React.FC<ActiveRecallProps> = ({
     }
     const SR = (window as any).SpeechRecognition || (window as any).webkitSpeechRecognition;
     const rec = new SR();
-    rec.lang = 'de-DE';
+    rec.lang = localeTag();
     rec.continuous = true;
     rec.interimResults = false;
     rec.onresult = (e: any) => {
@@ -144,7 +148,7 @@ export const ActiveRecall: React.FC<ActiveRecallProps> = ({
       setChallenge(res);
     } catch (e: any) {
       console.error('Recall Start Error:', e);
-      toast.error('Herausforderung konnte nicht geladen werden. Versuche es erneut.');
+      toast.error(t('ar.challengeFailed'));
     } finally {
       setIsLoading(false);
     }
@@ -172,7 +176,7 @@ export const ActiveRecall: React.FC<ActiveRecallProps> = ({
       onComplete(res.score, focusTopic.trim() || activeSourceName || 'Recall Session', res.missingPoints ?? []);
     } catch (e: any) {
       console.error('Evaluation Error:', e);
-      toast.error('Bewertung fehlgeschlagen. Versuche es erneut.');
+      toast.error(t('ar.evalFailed'));
     } finally {
       setIsEvaluating(false);
     }
@@ -187,21 +191,21 @@ export const ActiveRecall: React.FC<ActiveRecallProps> = ({
           <button
             onClick={dismissFeynmanIntro}
             className="absolute top-4 right-4 text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 transition-colors font-black text-lg leading-none"
-            aria-label="Schließen"
+            aria-label={t('upl.close')}
           >×</button>
-          <p className="text-[9px] font-black uppercase tracking-widest mb-2" style={{ color: 'var(--primary)' }}>Feynman-Methode</p>
+          <p className="text-[9px] font-black uppercase tracking-widest mb-2" style={{ color: 'var(--primary)' }}>{t('nav.recall')}</p>
           <p className="text-sm font-medium dark:text-white leading-relaxed">
-            Du lernst am besten, wenn du erklärst: Die Feynman-Methode besagt, dass du ein Thema erst wirklich verstanden hast, wenn du es einfach erklären kannst.
+            {t('ar.introBody')}
           </p>
           <p className="text-[11px] font-black mt-3 italic" style={{ color: 'var(--primary)' }}>
-            Erkläre es so, dass es ein Zwölfjähriger versteht.
+            {t('ar.introItalic')}
           </p>
           <button
             onClick={dismissFeynmanIntro}
             className="mt-4 px-4 py-2 rounded-[14px] text-[10px] font-black uppercase tracking-widest transition-all hover:scale-105"
             style={{ background: 'var(--primary)', color: 'var(--primary-text)' }}
           >
-            Verstanden, loslegen
+            {t('ar.understood')}
           </button>
         </div>
       )}
@@ -209,10 +213,10 @@ export const ActiveRecall: React.FC<ActiveRecallProps> = ({
       {/* Header */}
       <div className="text-center space-y-3">
         <h1 className="text-4xl lg:text-7xl font-black text-slate-900 dark:text-white tracking-tighter flex items-center justify-center gap-3">
-          Feynman-<span style={{ color: 'var(--primary)' }}>Methode</span>
+          {t('ar.headerPre')}<span style={{ color: 'var(--primary)' }}>{t('ar.headerAccent')}</span>
           <GeneratedImage prompt="Human brain active recall, academic illustration" className="w-8 h-8 lg:w-12 lg:h-12 rounded-xl" />
         </h1>
-        <p className="text-base text-slate-500 dark:text-slate-400 font-medium opacity-80">Erkläre ein Thema in eigenen Worten. So merkst du, was wirklich sitzt.</p>
+        <p className="text-base text-slate-500 dark:text-slate-400 font-medium opacity-80">{t('ar.subtitle')}</p>
       </div>
 
       {/* ── Phase 1: Quellenauswahl + Start ── */}
@@ -223,7 +227,7 @@ export const ActiveRecall: React.FC<ActiveRecallProps> = ({
               <div className="flex items-center gap-3">
                 <div className="w-3 h-3 rounded-full bg-indigo-500 shrink-0" />
                 <div>
-                  <p className="text-[9px] font-black uppercase text-slate-400 tracking-widest">Aktive Quelle</p>
+                  <p className="text-[9px] font-black uppercase text-slate-400 tracking-widest">{t('ar.activeSource')}</p>
                   <p className="text-sm font-black dark:text-white break-words max-w-xs">{activeSourceName}</p>
                 </div>
               </div>
@@ -240,7 +244,7 @@ export const ActiveRecall: React.FC<ActiveRecallProps> = ({
               onSelectSource={(source, name) => { setActiveSource(source); setActiveSourceName(name); }}
               onSaveToLibrary={onSaveToLibrary}
               isLoading={isLoading}
-              label="Fokus wählen"
+              label={t('ar.chooseFocus')}
             />
           )}
 
@@ -248,30 +252,30 @@ export const ActiveRecall: React.FC<ActiveRecallProps> = ({
           {activeSource && (
             <div className="space-y-3">
               <div className="space-y-2">
-                <p className="text-[10px] font-black uppercase tracking-widest text-slate-400">Fokus-Thema (optional)</p>
+                <p className="text-[10px] font-black uppercase tracking-widest text-slate-400">{t('ar.focusTopic')}</p>
                 <input
                   type="text"
                   value={focusTopic}
                   onChange={e => setFocusTopic(e.target.value)}
-                  placeholder="z.B. Operante Konditionierung (leer lassen für freie Themenwahl)"
+                  placeholder={t('ar.focusPlaceholder')}
                   className="w-full px-5 py-4 rounded-2xl text-base font-bold outline-none transition-all"
                   style={{ background: 'var(--bg-sidebar)', border: '1px solid var(--border-color)', color: 'var(--text-main)' }}
                 />
               </div>
               {topicSuggestions.length > 0 && (
                 <div className="flex flex-wrap gap-2">
-                  {topicSuggestions.map(t => (
+                  {topicSuggestions.map(ts => (
                     <button
-                      key={t.topic}
-                      onClick={() => setFocusTopic(t.topic)}
+                      key={ts.topic}
+                      onClick={() => setFocusTopic(ts.topic)}
                       className="px-3 py-2 rounded-xl text-[9px] font-black uppercase tracking-wider transition-all hover:opacity-80"
                       style={{
-                        background: `color-mix(in srgb, ${t.security === 'kritisch' ? '#f43f5e' : '#f59e0b'} 10%, var(--bg-sidebar))`,
-                        color: t.security === 'kritisch' ? '#f43f5e' : '#f59e0b',
-                        border: `1px solid color-mix(in srgb, ${t.security === 'kritisch' ? '#f43f5e' : '#f59e0b'} 25%, transparent)`,
+                        background: `color-mix(in srgb, ${ts.security === 'kritisch' ? '#f43f5e' : '#f59e0b'} 10%, var(--bg-sidebar))`,
+                        color: ts.security === 'kritisch' ? '#f43f5e' : '#f59e0b',
+                        border: `1px solid color-mix(in srgb, ${ts.security === 'kritisch' ? '#f43f5e' : '#f59e0b'} 25%, transparent)`,
                       }}
                     >
-                      {t.topic} · {t.security}
+                      {ts.topic} · {t((`sec.${ts.security}`) as TKey)}
                     </button>
                   ))}
                 </div>
@@ -289,11 +293,11 @@ export const ActiveRecall: React.FC<ActiveRecallProps> = ({
               {isLoading ? (
                 <div className="flex items-center justify-center gap-2">
                   <div className="w-3.5 h-3.5 border-2 border-white/40 border-t-white rounded-full animate-spin"></div>
-                  Frage wird generiert...
+                  {t('ar.generating')}
                 </div>
               ) : (
                 <span className="flex items-center gap-2">
-                  Drill starten
+                  {t('ar.startDrill')}
                   <GeneratedImage prompt="Sparkles icon, minimalist" className="w-4 h-4 rounded-full" />
                 </span>
               )}
@@ -315,14 +319,14 @@ export const ActiveRecall: React.FC<ActiveRecallProps> = ({
               onClick={handleCancel}
               className="text-[10px] font-black uppercase text-slate-400 hover:text-rose-500 tracking-widest transition-colors"
             >
-              Abbrechen
+              {t('quiz.cancel')}
             </button>
           </div>
 
           {/* Frage */}
           <div className="bg-indigo-600 p-8 lg:p-12 rounded-[32px] lg:rounded-[40px] shadow-3d-deep relative overflow-hidden border border-indigo-500">
             <div className="absolute top-0 right-0 w-32 h-32 bg-white/5 blur-3xl rounded-full translate-x-12 -translate-y-12" />
-            <h3 className="text-[9px] lg:text-[10px] font-black uppercase tracking-[0.3em] mb-4" style={{ color: 'var(--primary-text)', opacity: 0.6 }}>Deine Herausforderung</h3>
+            <h3 className="text-[9px] lg:text-[10px] font-black uppercase tracking-[0.3em] mb-4" style={{ color: 'var(--primary-text)', opacity: 0.6 }}>{t('ar.challenge')}</h3>
             <p className="text-lg lg:text-2xl font-bold leading-snug tracking-tight" style={{ color: 'var(--primary-text)' }}>{challenge.question}</p>
           </div>
 
@@ -333,7 +337,7 @@ export const ActiveRecall: React.FC<ActiveRecallProps> = ({
                 autoFocus
                 value={userAnswer}
                 onChange={e => setUserAnswer(e.target.value)}
-                placeholder="Formuliere deine Erklärung hier... oder diktiere mit dem Mikrofon →"
+                placeholder={t('ar.answerPlaceholder')}
                 disabled={isEvaluating}
                 className="w-full h-64 lg:h-72 p-6 lg:p-10 rounded-[32px] lg:rounded-[40px] shadow-3d-raised outline-none focus:border-indigo-400 transition-all text-sm lg:text-base font-medium leading-relaxed disabled:opacity-60"
                 style={{ background: 'var(--bg-sidebar)', border: isListening ? '2px solid var(--primary)' : '1px solid var(--border-color)', color: 'var(--text-main)' }}
@@ -343,7 +347,7 @@ export const ActiveRecall: React.FC<ActiveRecallProps> = ({
                   type="button"
                   onClick={toggleListening}
                   disabled={isEvaluating}
-                  title={isListening ? 'Aufnahme stoppen' : 'Diktat starten (Deutsch)'}
+                  title={isListening ? t('ar.stopRecording') : t('ar.startDictation')}
                   className={`absolute bottom-4 right-4 w-10 h-10 rounded-full flex items-center justify-center transition-all shadow-lg ${
                     isListening
                       ? 'bg-rose-500 text-white animate-pulse'
@@ -361,7 +365,7 @@ export const ActiveRecall: React.FC<ActiveRecallProps> = ({
                   )}
                 </button>
               ) : (
-                <div className="absolute bottom-4 right-4 w-10 h-10 rounded-full flex items-center justify-center bg-slate-100 dark:bg-slate-800 opacity-40" title="Diktat wird von deinem Browser nicht unterstützt">
+                <div className="absolute bottom-4 right-4 w-10 h-10 rounded-full flex items-center justify-center bg-slate-100 dark:bg-slate-800 opacity-40" title={t('ar.dictationUnsupported')}>
                   <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
                     <line x1="1" y1="1" x2="23" y2="23"/><path d="M9 9v3a3 3 0 0 0 5.12 2.12M15 9.34V4a3 3 0 0 0-5.94-.6"/><path d="M17 16.95A7 7 0 0 1 5 12v-2m14 0v2a7 7 0 0 1-.11 1.23"/><line x1="12" y1="19" x2="12" y2="23"/><line x1="8" y1="23" x2="16" y2="23"/>
                   </svg>
@@ -370,12 +374,12 @@ export const ActiveRecall: React.FC<ActiveRecallProps> = ({
             </div>
             {isListening && (
               <p className="text-[10px] font-black uppercase tracking-widest text-center animate-pulse" style={{ color: 'var(--primary)' }}>
-                Aufnahme läuft, sprich jetzt auf Deutsch
+                {t('ar.recordingNow')}
               </p>
             )}
             <div className="flex flex-col sm:flex-row justify-between items-center gap-4 px-4 lg:px-6">
               <span className="text-[9px] font-black uppercase text-slate-400 tracking-widest order-2 sm:order-1">
-                {userAnswer.trim().split(/\s+/).filter(x => x).length} Wörter
+{t('ar.wordsN', { n: userAnswer.trim().split(/\s+/).filter(x => x).length })}
               </span>
               <button
                 onClick={handleEvaluate}
@@ -386,11 +390,11 @@ export const ActiveRecall: React.FC<ActiveRecallProps> = ({
                 {isEvaluating ? (
                   <>
                     <div className="w-3.5 h-3.5 border-2 border-white/40 border-t-white rounded-full animate-spin" />
-                    Analyse läuft …
+                    {t('ar.analyzing')}
                   </>
                 ) : (
                   <>
-                    Antwort abgeben
+                    {t('ar.submitAnswer')}
                     <GeneratedImage prompt="Checkmark icon, minimalist" className="w-4 h-4 rounded-full" />
                   </>
                 )}
@@ -401,7 +405,7 @@ export const ActiveRecall: React.FC<ActiveRecallProps> = ({
           {/* Lade-Overlay während Bewertung */}
           {isEvaluating && (
             <div className="rounded-[32px] p-6 text-center animate-in fade-in duration-300" style={{ background: 'var(--bg-sidebar)', border: '1px solid var(--border-color)' }}>
-              <p className="text-[10px] font-black uppercase text-slate-400 tracking-widest">Deine Antwort wird mit dem Dokument abgeglichen …</p>
+              <p className="text-[10px] font-black uppercase text-slate-400 tracking-widest">{t('ar.checkingDoc')}</p>
             </div>
           )}
         </div>
@@ -413,16 +417,16 @@ export const ActiveRecall: React.FC<ActiveRecallProps> = ({
           {/* Score + Feedback */}
           <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
             <div className="p-8 lg:p-10 rounded-[32px] lg:rounded-[40px] shadow-3d-raised flex flex-col items-center justify-center text-center" style={{ background: 'var(--bg-sidebar)', border: '1px solid var(--border-color)' }}>
-              <span className="text-[9px] font-black uppercase text-slate-400 tracking-widest mb-2">Abruf-Qualität</span>
+              <span className="text-[9px] font-black uppercase text-slate-400 tracking-widest mb-2">{t('ar.recallQuality')}</span>
               <span className={`text-5xl lg:text-6xl font-black ${evaluation.score >= 80 ? 'text-emerald-500' : evaluation.score >= 50 ? 'text-indigo-500' : 'text-rose-500'}`}>
                 {evaluation.score}%
               </span>
               <span className="text-[9px] font-black uppercase tracking-widest mt-2 text-slate-400">
-                {evaluation.score >= 86 ? 'Exzellent' : evaluation.score >= 61 ? 'Gut' : evaluation.score >= 31 ? 'Grundverständnis' : 'Wiederholen'}
+                {evaluation.score >= 86 ? t('ar.rExcellent') : evaluation.score >= 61 ? t('fc.good') : evaluation.score >= 31 ? t('ar.rBasic') : t('ar.rRepeat')}
               </span>
             </div>
             <div className="md:col-span-2 bg-indigo-600 p-8 lg:p-10 rounded-[32px] lg:rounded-[40px] shadow-3d-deep flex flex-col justify-center border border-indigo-500">
-              <h3 className="text-[9px] font-black uppercase tracking-[0.3em] mb-3" style={{ color: 'var(--primary-text)', opacity: 0.6 }}>Feedback</h3>
+              <h3 className="text-[9px] font-black uppercase tracking-[0.3em] mb-3" style={{ color: 'var(--primary-text)', opacity: 0.6 }}>{t('ar.feedback')}</h3>
               <p className="text-base lg:text-lg font-medium leading-relaxed italic" style={{ color: 'var(--primary-text)' }}>"{evaluation.feedback}"</p>
             </div>
           </div>
@@ -432,7 +436,7 @@ export const ActiveRecall: React.FC<ActiveRecallProps> = ({
             <div className="p-8 rounded-[32px]" style={{ background: 'var(--bg-sidebar)', border: '1px solid var(--border-color)' }}>
               <h4 className="text-[9px] font-black uppercase text-emerald-500 tracking-widest mb-4 flex items-center gap-2">
                 <span className="w-1.5 h-1.5 rounded-full bg-emerald-500" />
-                Gute Ansätze
+                {t('ar.goodApproaches')}
               </h4>
               {evaluation.strengths.length > 0 ? (
                 <ul className="space-y-2.5">
@@ -444,13 +448,13 @@ export const ActiveRecall: React.FC<ActiveRecallProps> = ({
                   ))}
                 </ul>
               ) : (
-                <p className="text-xs text-slate-400 italic">Noch keine klaren Stärken identifiziert. Versuch es ausführlicher.</p>
+                <p className="text-xs text-slate-400 italic">{t('ar.noStrengths')}</p>
               )}
             </div>
             <div className="p-8 rounded-[32px]" style={{ background: 'var(--bg-sidebar)', border: '1px solid var(--border-color)' }}>
               <h4 className="text-[9px] font-black uppercase text-rose-500 tracking-widest mb-4 flex items-center gap-2">
                 <span className="w-1.5 h-1.5 rounded-full bg-rose-500" />
-                Lücken identifiziert
+                {t('ar.gapsIdentified')}
               </h4>
               {evaluation.missingPoints.length > 0 ? (
                 <>
@@ -464,16 +468,16 @@ export const ActiveRecall: React.FC<ActiveRecallProps> = ({
                   </ul>
                   {onCreateCardsFromGaps && (
                     <button
-                      onClick={() => onCreateCardsFromGaps(focusTopic.trim() || activeSourceName || 'Recall', evaluation.missingPoints)}
+                      onClick={() => onCreateCardsFromGaps(focusTopic.trim() || activeSourceName || t('ar.recallFallback'), evaluation.missingPoints)}
                       className="mt-4 w-full py-3 rounded-xl text-[9px] font-black uppercase tracking-widest transition-all hover:scale-[1.02] active:scale-[0.98]"
                       style={{ background: 'color-mix(in srgb, var(--primary) 12%, transparent)', color: 'var(--primary)', border: '1px solid color-mix(in srgb, var(--primary) 30%, transparent)' }}
                     >
-                      Lücken als Karteikarten sichern →
+                      {t('ar.saveGapsAsCards')}
                     </button>
                   )}
                 </>
               ) : (
-                <p className="text-xs text-emerald-500 font-semibold">Keine Lücken gefunden, vollständige Antwort!</p>
+                <p className="text-xs text-emerald-500 font-semibold">{t('ar.noGaps')}</p>
               )}
             </div>
           </div>
@@ -481,7 +485,7 @@ export const ActiveRecall: React.FC<ActiveRecallProps> = ({
           {/* Lernempfehlung + Aktionen */}
           <div className="p-8 lg:p-10 rounded-[32px] lg:rounded-[40px] space-y-6" style={{ background: 'var(--bg-sidebar)', border: '1px dashed var(--border-color)' }}>
             <div className="space-y-1.5 text-center">
-              <h3 className="text-[9px] font-black uppercase text-indigo-500 tracking-[0.3em]">Lernempfehlung</h3>
+              <h3 className="text-[9px] font-black uppercase text-indigo-500 tracking-[0.3em]">{t('ar.learningRec')}</h3>
               <p className="text-sm lg:text-base font-bold dark:text-white leading-relaxed max-w-2xl mx-auto">{evaluation.suggestedReview}</p>
             </div>
             <div className="flex flex-col sm:flex-row gap-3 justify-center">
@@ -490,7 +494,7 @@ export const ActiveRecall: React.FC<ActiveRecallProps> = ({
                 className="bg-indigo-600 px-8 py-3 rounded-xl font-black uppercase text-[10px] tracking-widest shadow-lg hover:scale-105 transition-all flex items-center justify-center gap-2"
                 style={{ color: 'var(--primary-text)' }}
               >
-                Nächster Drill
+                {t('ar.nextDrill')}
                 <GeneratedImage prompt="Arrow right icon, minimalist" className="w-4 h-4 rounded-full" />
               </button>
               <button
@@ -498,7 +502,7 @@ export const ActiveRecall: React.FC<ActiveRecallProps> = ({
                 className="px-8 py-3 rounded-xl font-black uppercase text-[10px] tracking-widest transition-all flex items-center justify-center gap-2 text-slate-500 hover:text-slate-700 dark:hover:text-slate-300"
                 style={{ border: '1px solid var(--border-color)' }}
               >
-                Anderes Dokument
+                {t('ar.otherDoc')}
               </button>
             </div>
           </div>
