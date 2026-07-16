@@ -11,6 +11,7 @@ import { documentDisplayName } from '../services/libraryService';
 import { resolveErrorMessage } from '../services/errorMessages';
 import { renderMarkdown } from './markdownRenderer';
 import { toast } from '../services/toast';
+import { useTranslation } from '../i18n/I18nProvider';
 
 interface ChatEntry {
   concept: string;
@@ -34,6 +35,7 @@ interface PdfSplitScreenReaderProps {
  * dadurch bleiben chapterProgressService/readerLogService unverändert nutzbar.
  */
 export const PdfSplitScreenReader: React.FC<PdfSplitScreenReaderProps> = ({ doc, userId, onBack, onStartFeynman }) => {
+  const { t } = useTranslation();
   const [pdf, setPdf] = useState<PdfHandle | null>(null);
   const [loadError, setLoadError] = useState(false);
   const [pageNumber, setPageNumber] = useState(1);
@@ -58,7 +60,7 @@ export const PdfSplitScreenReader: React.FC<PdfSplitScreenReaderProps> = ({ doc,
     (async () => {
       try {
         const base64 = doc.storagePath ? await downloadPdfAsBase64(doc.storagePath) : doc.content;
-        if (!base64) throw new Error('Kein PDF-Inhalt verfügbar.');
+        if (!base64) throw new Error(t('rd.noPdfContent'));
         const handle = await loadPdf(base64);
         if (!cancelled) setPdf(handle);
       } catch {
@@ -109,7 +111,7 @@ export const PdfSplitScreenReader: React.FC<PdfSplitScreenReaderProps> = ({ doc,
 
   const handleAsk = useCallback(async () => {
     const trimmed = concept.trim();
-    if (trimmed.length <= 2 || !pdf) { toast.error('Bitte zuerst eine Frage eingeben.'); return; }
+    if (trimmed.length <= 2 || !pdf) { toast.error(t('rd.enterQuestion')); return; }
     const askedPageNumber = pageNumber;
     const askedPageIndex = askedPageNumber - 1;
     const entry: ChatEntry = { concept: trimmed, answer: null, loading: true };
@@ -141,7 +143,7 @@ export const PdfSplitScreenReader: React.FC<PdfSplitScreenReaderProps> = ({ doc,
   const handleMarkDone = () => {
     markChapterDone(doc.id, pageIndex, userId);
     setDoneIndices(getDoneChapterIndices(doc.id));
-    toast.success('Seite als gelesen markiert.');
+    toast.success(t('rd.pageMarkedRead'));
   };
 
   // Seiten-Titel ("Seite 12") taugen nicht als Feynman-Thema — chapters bleibt
@@ -157,7 +159,7 @@ export const PdfSplitScreenReader: React.FC<PdfSplitScreenReaderProps> = ({ doc,
   if (loadError) {
     return (
       <div className="max-w-3xl mx-auto py-20 px-4 text-center space-y-4">
-        <p className="text-lg font-black dark:text-white">PDF konnte nicht geladen werden.</p>
+        <p className="text-lg font-black dark:text-white">{t('rd.pdfLoadFailed')}</p>
         <button onClick={onBack} className="px-6 py-3 rounded-2xl text-[11px] font-black uppercase tracking-widest" style={{ background: 'var(--primary)', color: 'var(--primary-text)' }}>
           Zurück
         </button>
@@ -169,7 +171,7 @@ export const PdfSplitScreenReader: React.FC<PdfSplitScreenReaderProps> = ({ doc,
     return (
       <div className="flex flex-col items-center justify-center py-32 gap-4">
         <div className="w-8 h-8 border-4 border-slate-200 dark:border-slate-700 rounded-full animate-spin" style={{ borderTopColor: 'var(--primary)' }} />
-        <p className="text-[10px] font-black uppercase tracking-widest text-slate-400">PDF wird geladen …</p>
+        <p className="text-[10px] font-black uppercase tracking-widest text-slate-400">{t('rd.pdfLoading')}</p>
       </div>
     );
   }
@@ -178,12 +180,12 @@ export const PdfSplitScreenReader: React.FC<PdfSplitScreenReaderProps> = ({ doc,
     <div className="w-full space-y-3 animate-in fade-in duration-700">
       {/* Schlanker Kopf — eine Zeile, damit der Split-Screen die Fläche bekommt */}
       <div className="flex items-center gap-3">
-        <button onClick={onBack} aria-label="Zurück zur Bibliothek" className="shrink-0 text-[10px] font-black uppercase tracking-widest text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 transition-colors">
-          ← Zurück
+        <button onClick={onBack} aria-label={t('quizSetup.backToLibrary')} className="shrink-0 text-[10px] font-black uppercase tracking-widest text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 transition-colors">
+          {t('rd.back')}
         </button>
         <h1 className="min-w-0 flex-1 text-base lg:text-lg font-black tracking-tight dark:text-white truncate">{documentDisplayName(doc)}</h1>
         <p className="shrink-0 hidden sm:block text-[10px] font-medium text-slate-400">
-          {doneIndices.length} von {pdf.numPages} Seiten gelesen
+          {t('rd.pagesReadOf', { done: doneIndices.length, total: pdf.numPages })}
         </p>
         <button
           onClick={() => onStartFeynman(handoffTopic)}
@@ -191,7 +193,7 @@ export const PdfSplitScreenReader: React.FC<PdfSplitScreenReaderProps> = ({ doc,
           className="shrink-0 px-4 py-2.5 rounded-2xl text-[10px] font-black uppercase tracking-widest transition-all hover:scale-[1.02] active:scale-[0.98] disabled:opacity-30 disabled:cursor-not-allowed"
           style={{ background: 'var(--primary)', color: 'var(--primary-text)' }}
         >
-          Zur Feynman-Methode →
+          {t('rd.toFeynman')}
         </button>
       </div>
 
@@ -211,7 +213,7 @@ export const PdfSplitScreenReader: React.FC<PdfSplitScreenReaderProps> = ({ doc,
                 onChange={e => { const n = parseInt(e.target.value, 10); if (!Number.isNaN(n)) goToPage(n); }}
                 className="w-14 px-2 py-1.5 rounded-lg text-center outline-none"
                 style={{ background: 'var(--bg-main)', border: '1px solid var(--border-color)', color: 'var(--text-main)' }}
-                aria-label="Seite"
+                aria-label={t('rd.page')}
               />
               <span className="text-slate-400">/ {pdf.numPages}</span>
             </div>
@@ -219,7 +221,7 @@ export const PdfSplitScreenReader: React.FC<PdfSplitScreenReaderProps> = ({ doc,
               <button
                 onClick={() => setZoom(z => Math.max(1, Math.round((z - 0.25) * 100) / 100))}
                 disabled={zoom <= 1}
-                aria-label="Verkleinern"
+                aria-label={t('rd.zoomOut')}
                 className="w-9 h-9 rounded-xl text-sm font-black transition-all disabled:opacity-30 disabled:cursor-not-allowed"
                 style={{ background: 'var(--bg-main)', border: '1px solid var(--border-color)', color: 'var(--text-main)' }}
               >
@@ -244,7 +246,7 @@ export const PdfSplitScreenReader: React.FC<PdfSplitScreenReaderProps> = ({ doc,
                 ? { background: 'var(--bg-main)', border: '1px solid var(--border-color)', color: 'var(--text-main)', opacity: 0.7 }
                 : { background: 'color-mix(in srgb, var(--primary) 12%, transparent)', color: 'var(--primary)', border: '1px solid color-mix(in srgb, var(--primary) 30%, transparent)' }}
             >
-              {activeDone ? 'Gelesen ✓' : 'Seite fertig gelesen'}
+              {activeDone ? t('rd.pageDoneRead') : t('rd.markPageDone')}
             </button>
           </div>
 
@@ -260,7 +262,7 @@ export const PdfSplitScreenReader: React.FC<PdfSplitScreenReaderProps> = ({ doc,
             {pageNumber > 1 && (
               <button
                 onClick={() => goToPage(pageNumber - 1)}
-                aria-label="Vorherige Seite"
+                aria-label={t('rd.prevPage')}
                 className="absolute left-2 top-1/2 -translate-y-1/2 w-11 h-11 rounded-full flex items-center justify-center text-xl font-black shadow-lg transition-all hover:scale-110 active:scale-95"
                 style={{ background: 'var(--bg-sidebar)', border: '1px solid var(--border-color)', color: 'var(--text-main)' }}
               >
@@ -270,7 +272,7 @@ export const PdfSplitScreenReader: React.FC<PdfSplitScreenReaderProps> = ({ doc,
             {pageNumber < pdf.numPages && (
               <button
                 onClick={() => goToPage(pageNumber + 1)}
-                aria-label="Nächste Seite"
+                aria-label={t('rd.nextPage')}
                 className="absolute right-2 top-1/2 -translate-y-1/2 w-11 h-11 rounded-full flex items-center justify-center text-xl font-black shadow-lg transition-all hover:scale-110 active:scale-95"
                 style={{ background: 'var(--bg-sidebar)', border: '1px solid var(--border-color)', color: 'var(--text-main)' }}
               >
@@ -283,16 +285,16 @@ export const PdfSplitScreenReader: React.FC<PdfSplitScreenReaderProps> = ({ doc,
         {/* Rechts: Erklärer-Chat */}
         <div className="lg:col-span-2 rounded-[24px] p-4 lg:p-6 gap-4 flex flex-col h-[70vh] lg:h-[calc(100vh-7.5rem)]" style={{ background: 'var(--bg-sidebar)', border: '1px solid var(--border-color)' }}>
           <div>
-            <p className="text-[10px] font-black uppercase tracking-widest" style={{ color: 'var(--primary)' }}>Erklärer</p>
+            <p className="text-[10px] font-black uppercase tracking-widest" style={{ color: 'var(--primary)' }}>{t('nav.explainer')}</p>
             <p className="text-xs text-slate-400 font-medium">
-              Frag zu Seite {pageNumber} nach. Die Antwort bezieht sich nur auf diese Seite.
-              {pageText !== null && isScannedPage(pageText) && ' (Scan erkannt, die Seite wird als Bild analysiert.)'}
+              {t('rd.askPage', { n: pageNumber })}
+              {pageText !== null && isScannedPage(pageText) && t('rd.scanDetected')}
             </p>
           </div>
 
           <div className="space-y-4 flex-1 min-h-0 overflow-y-auto pr-2">
             {activeChat.length === 0 && (
-              <p className="text-xs text-slate-400 italic">Noch keine Fragen zu dieser Seite gestellt.</p>
+              <p className="text-xs text-slate-400 italic">{t('rd.noQuestionsPage')}</p>
             )}
             {activeChat.map((entry, i) => (
               <div key={i} className="space-y-2">
@@ -300,7 +302,7 @@ export const PdfSplitScreenReader: React.FC<PdfSplitScreenReaderProps> = ({ doc,
                 {entry.loading ? (
                   <div className="flex items-center gap-2 text-slate-400">
                     <div className="w-3.5 h-3.5 border-2 border-slate-300 border-t-transparent rounded-full animate-spin" />
-                    <span className="text-xs font-medium">Antwort wird geladen …</span>
+                    <span className="text-xs font-medium">{t('rd.loadingAnswer')}</span>
                   </div>
                 ) : entry.answer ? (
                   <div className="space-y-2">
@@ -310,7 +312,7 @@ export const PdfSplitScreenReader: React.FC<PdfSplitScreenReaderProps> = ({ doc,
                     {entry.quote && (
                       <div className="rounded-2xl p-3.5" style={{ background: 'color-mix(in srgb, var(--primary) 8%, transparent)', border: '1px solid color-mix(in srgb, var(--primary) 25%, transparent)' }}>
                         <p className="text-[8px] font-black uppercase tracking-widest mb-1" style={{ color: 'var(--primary)' }}>
-                          📍 Quelle · Seite {pageNumber}
+                          {t('rd.quoteSourcePage', { n: pageNumber })}
                         </p>
                         <p className="text-xs font-medium italic text-slate-600 dark:text-slate-300 break-words">„{entry.quote}"</p>
                       </div>
@@ -327,7 +329,7 @@ export const PdfSplitScreenReader: React.FC<PdfSplitScreenReaderProps> = ({ doc,
               value={concept}
               onChange={e => setConcept(e.target.value)}
               onKeyDown={e => { if (e.key === 'Enter') handleAsk(); }}
-              placeholder={`Frage zu Seite ${pageNumber} …`}
+              placeholder={t('rd.askPagePlaceholder', { n: pageNumber })}
               className="flex-1 px-4 py-3 rounded-2xl text-sm font-bold outline-none transition-all min-w-0"
               style={{ background: 'var(--bg-main)', border: '1px solid var(--border-color)', color: 'var(--text-main)' }}
             />
@@ -337,7 +339,7 @@ export const PdfSplitScreenReader: React.FC<PdfSplitScreenReaderProps> = ({ doc,
               className="shrink-0 px-5 py-3 rounded-2xl text-[10px] font-black uppercase tracking-widest transition-all disabled:opacity-30 disabled:cursor-not-allowed"
               style={{ background: 'var(--primary)', color: 'var(--primary-text)' }}
             >
-              Fragen
+              {t('rd.ask')}
             </button>
           </div>
         </div>
@@ -348,11 +350,11 @@ export const PdfSplitScreenReader: React.FC<PdfSplitScreenReaderProps> = ({ doc,
         <div className="rounded-2xl p-5 text-center" style={{ background: 'color-mix(in srgb, var(--primary) 6%, transparent)', border: '1px dashed color-mix(in srgb, var(--primary) 25%, transparent)' }}>
           {handoffTopic ? (
             <p className="text-xs font-bold dark:text-white">
-              Die Feynman-Runde startet mit einem Thema, zu dem du bereits nachgefragt hast: <span style={{ color: 'var(--primary)' }}>„{handoffTopic}"</span>
+              {t('rd.feynmanFromInteraction', { topic: handoffTopic })}
             </p>
           ) : (
             <p className="text-xs font-bold dark:text-white">
-              Frag zwischendurch beim Erklärer nach. Die Feynman-Runde startet dann direkt mit deinem Thema.
+              {t('rd.feynmanHintAsk')}
             </p>
           )}
         </div>

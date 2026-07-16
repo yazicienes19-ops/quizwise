@@ -11,6 +11,7 @@ import { findQuoteInChapter, type PassageMatch } from '../services/passageHighli
 import { renderMarkdown } from './markdownRenderer';
 import { resolveErrorMessage } from '../services/errorMessages';
 import { toast } from '../services/toast';
+import { useTranslation } from '../i18n/I18nProvider';
 import { DigestStatusBadge } from './SourceStatusBadge';
 
 interface ChatEntry {
@@ -30,6 +31,7 @@ interface SplitScreenReaderProps {
 }
 
 export const SplitScreenReader: React.FC<SplitScreenReaderProps> = ({ doc, userId, onBack, onStartFeynman, onRetryAnalysis }) => {
+  const { t } = useTranslation();
   // Text/DOCX: Originaltext direkt lesbar. PDF/Bild: kein Volltext im Browser
   // verfügbar — der KI-Lerndigest ersetzt das Original hier genau wie überall
   // sonst in der App (Quiz, Karteikarten, Erklärer nutzen ihn ebenfalls als
@@ -78,7 +80,7 @@ export const SplitScreenReader: React.FC<SplitScreenReaderProps> = ({ doc, userI
 
   const handleAsk = useCallback(async () => {
     const trimmed = concept.trim();
-    if (trimmed.length <= 2 || !activeChapter) { toast.error('Bitte zuerst eine Frage eingeben.'); return; }
+    if (trimmed.length <= 2 || !activeChapter) { toast.error(t('rd.enterQuestion')); return; }
     const chapterIndex = activeChapter.index;
     const chapterContent = activeChapter.content;
     const entry: ChatEntry = { concept: trimmed, answer: null, loading: true };
@@ -107,7 +109,7 @@ export const SplitScreenReader: React.FC<SplitScreenReaderProps> = ({ doc, userI
     if (!activeChapter) return;
     markChapterDone(doc.id, activeChapter.index, userId);
     setDoneIndices(getDoneChapterIndices(doc.id));
-    toast.success('Kapitel als gelesen markiert.');
+    toast.success(t('rd.chapterMarkedRead'));
   };
 
   const handoff = useMemo(() => buildFeynmanHandoff({
@@ -129,8 +131,8 @@ export const SplitScreenReader: React.FC<SplitScreenReaderProps> = ({ doc, userI
       return (
         <div className="max-w-3xl mx-auto py-20 px-4 text-center space-y-4">
           <DigestStatusBadge status="pending" />
-          <p className="text-lg font-black dark:text-white">Dieses Dokument wird noch analysiert.</p>
-          <p className="text-sm text-slate-400 font-medium">Der Split-Screen-Reader nutzt den Lerndigest als Textquelle. Sobald die Analyse fertig ist, kannst du direkt lesen und nachfragen.</p>
+          <p className="text-lg font-black dark:text-white">{t('rd.stillAnalyzing')}</p>
+          <p className="text-sm text-slate-400 font-medium">{t('rd.digestHint')}</p>
           <button onClick={onBack} className="px-6 py-3 rounded-2xl text-[11px] font-black uppercase tracking-widest" style={{ background: 'var(--primary)', color: 'var(--primary-text)' }}>
             Zurück
           </button>
@@ -141,8 +143,8 @@ export const SplitScreenReader: React.FC<SplitScreenReaderProps> = ({ doc, userI
       return (
         <div className="max-w-3xl mx-auto py-20 px-4 text-center space-y-4">
           <DigestStatusBadge status="error" />
-          <p className="text-lg font-black dark:text-white">Analyse fehlgeschlagen.</p>
-          <p className="text-sm text-slate-400 font-medium">Ohne Digest hat der Reader keinen lesbaren Text für dieses Dokument.</p>
+          <p className="text-lg font-black dark:text-white">{t('rd.analysisFailed')}</p>
+          <p className="text-sm text-slate-400 font-medium">{t('rd.noDigestHint')}</p>
           <div className="flex gap-3 justify-center">
             {onRetryAnalysis && (
               <button onClick={onRetryAnalysis} className="px-6 py-3 rounded-2xl text-[11px] font-black uppercase tracking-widest" style={{ background: 'var(--primary)', color: 'var(--primary-text)' }}>
@@ -158,7 +160,7 @@ export const SplitScreenReader: React.FC<SplitScreenReaderProps> = ({ doc, userI
     }
     return (
       <div className="max-w-3xl mx-auto py-20 px-4 text-center space-y-4">
-        <p className="text-lg font-black dark:text-white">Kein lesbarer Text für dieses Dokument verfügbar.</p>
+        <p className="text-lg font-black dark:text-white">{t('rd.noReadableText')}</p>
         <button onClick={onBack} className="px-6 py-3 rounded-2xl text-[11px] font-black uppercase tracking-widest" style={{ background: 'var(--primary)', color: 'var(--primary-text)' }}>
           Zurück
         </button>
@@ -169,7 +171,7 @@ export const SplitScreenReader: React.FC<SplitScreenReaderProps> = ({ doc, userI
   if (chapters.length === 0) {
     return (
       <div className="max-w-3xl mx-auto py-20 px-4 text-center space-y-4">
-        <p className="text-lg font-black dark:text-white">Kein Textinhalt verfügbar.</p>
+        <p className="text-lg font-black dark:text-white">{t('dvm.noTextContent')}</p>
         <button onClick={onBack} className="px-6 py-3 rounded-2xl text-[11px] font-black uppercase tracking-widest" style={{ background: 'var(--primary)', color: 'var(--primary-text)' }}>
           Zurück
         </button>
@@ -183,12 +185,12 @@ export const SplitScreenReader: React.FC<SplitScreenReaderProps> = ({ doc, userI
       <div className="flex items-center justify-between gap-4">
         <div className="min-w-0">
           <button onClick={onBack} className="text-[10px] font-black uppercase tracking-widest text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 transition-colors mb-1">
-            ← Zurück
+            {t('rd.back')}
           </button>
-          <h1 className="text-2xl lg:text-4xl font-black tracking-tight dark:text-white break-words">Skript lesen</h1>
+          <h1 className="text-2xl lg:text-4xl font-black tracking-tight dark:text-white break-words">{t('rd.readScript')}</h1>
           {usesDigest && (
             <p className="text-[10px] font-medium text-slate-400 mt-1">
-              Du liest den Lerndigest dieses Dokuments. Bei PDFs und Bildern gibt es keinen Volltext, der Digest fasst alle Lerninhalte vollständig zusammen.
+              {t('rd.digestSourceHint')}
             </p>
           )}
         </div>
@@ -198,7 +200,7 @@ export const SplitScreenReader: React.FC<SplitScreenReaderProps> = ({ doc, userI
           className="shrink-0 px-5 py-3 lg:px-6 lg:py-4 rounded-2xl text-[10px] lg:text-[11px] font-black uppercase tracking-widest transition-all hover:scale-[1.02] active:scale-[0.98] disabled:opacity-30 disabled:cursor-not-allowed"
           style={{ background: 'var(--primary)', color: 'var(--primary-text)' }}
         >
-          Zur Feynman-Methode →
+          {t('rd.toFeynman')}
         </button>
       </div>
 
@@ -228,7 +230,7 @@ export const SplitScreenReader: React.FC<SplitScreenReaderProps> = ({ doc, userI
               <h2 className="text-lg font-black dark:text-white break-words">{activeChapter.title}</h2>
               {activeDone && (
                 <span className="shrink-0 px-3 py-1 rounded-full text-[9px] font-black uppercase tracking-widest bg-emerald-50 dark:bg-emerald-900/20 text-emerald-600 dark:text-emerald-400">
-                  Gelesen
+                  {t('rd.read')}
                 </span>
               )}
             </div>
@@ -255,20 +257,20 @@ export const SplitScreenReader: React.FC<SplitScreenReaderProps> = ({ doc, userI
               className="w-full py-3.5 rounded-2xl text-[11px] font-black uppercase tracking-widest transition-all hover:scale-[1.02] active:scale-[0.98] disabled:opacity-40 disabled:cursor-not-allowed"
               style={{ background: activeDone ? 'var(--bg-main)' : 'color-mix(in srgb, var(--primary) 12%, transparent)', color: 'var(--primary)', border: '1px solid color-mix(in srgb, var(--primary) 30%, transparent)' }}
             >
-              {activeDone ? 'Kapitel fertig gelesen ✓' : 'Kapitel/Abschnitt fertig gelesen'}
+              {activeDone ? t('rd.chapterDoneRead') : t('rd.markChapterDone')}
             </button>
           </div>
 
           {/* Rechts: Erklärer-Chat */}
           <div className="rounded-[32px] p-6 lg:p-8 space-y-5 flex flex-col" style={{ background: 'var(--bg-sidebar)', border: '1px solid var(--border-color)' }}>
             <div>
-              <p className="text-[10px] font-black uppercase tracking-widest" style={{ color: 'var(--primary)' }}>Erklärer</p>
-              <p className="text-xs text-slate-400 font-medium">Frag zu diesem Kapitel nach. Die Antwort bezieht sich nur auf diesen Abschnitt.</p>
+              <p className="text-[10px] font-black uppercase tracking-widest" style={{ color: 'var(--primary)' }}>{t('nav.explainer')}</p>
+              <p className="text-xs text-slate-400 font-medium">{t('rd.askChapter')}</p>
             </div>
 
             <div className="space-y-4 max-h-[45vh] overflow-y-auto pr-2">
               {activeChat.length === 0 && (
-                <p className="text-xs text-slate-400 italic">Noch keine Fragen zu diesem Kapitel gestellt.</p>
+                <p className="text-xs text-slate-400 italic">{t('rd.noQuestionsChapter')}</p>
               )}
               {activeChat.map((entry, i) => (
                 <div key={i} className="space-y-2">
@@ -276,14 +278,14 @@ export const SplitScreenReader: React.FC<SplitScreenReaderProps> = ({ doc, userI
                     <p className="text-sm font-black dark:text-white break-words">{entry.concept}</p>
                     {entry.highlight && (
                       <span className="shrink-0 px-2 py-0.5 rounded-full text-[8px] font-black uppercase tracking-widest" style={{ background: 'color-mix(in srgb, var(--primary) 15%, transparent)', color: 'var(--primary)' }}>
-                        📍 Textstelle markiert
+                        {t('rd.textMarked')}
                       </span>
                     )}
                   </div>
                   {entry.loading ? (
                     <div className="flex items-center gap-2 text-slate-400">
                       <div className="w-3.5 h-3.5 border-2 border-slate-300 border-t-transparent rounded-full animate-spin" />
-                      <span className="text-xs font-medium">Antwort wird geladen …</span>
+                      <span className="text-xs font-medium">{t('rd.loadingAnswer')}</span>
                     </div>
                   ) : entry.answer ? (
                     <div className="rounded-2xl p-4" style={{ background: 'var(--bg-main)', border: '1px solid var(--border-color)' }}>
@@ -300,7 +302,7 @@ export const SplitScreenReader: React.FC<SplitScreenReaderProps> = ({ doc, userI
                 value={concept}
                 onChange={e => setConcept(e.target.value)}
                 onKeyDown={e => { if (e.key === 'Enter') handleAsk(); }}
-                placeholder="Frage zu diesem Abschnitt…"
+                placeholder={t('rd.askPlaceholder')}
                 className="flex-1 px-4 py-3 rounded-2xl text-sm font-bold outline-none transition-all min-w-0"
                 style={{ background: 'var(--bg-main)', border: '1px solid var(--border-color)', color: 'var(--text-main)' }}
               />
@@ -310,7 +312,7 @@ export const SplitScreenReader: React.FC<SplitScreenReaderProps> = ({ doc, userI
                 className="shrink-0 px-5 py-3 rounded-2xl text-[10px] font-black uppercase tracking-widest transition-all disabled:opacity-30 disabled:cursor-not-allowed"
                 style={{ background: 'var(--primary)', color: 'var(--primary-text)' }}
               >
-                Fragen
+                {t('rd.ask')}
               </button>
             </div>
           </div>
@@ -322,11 +324,11 @@ export const SplitScreenReader: React.FC<SplitScreenReaderProps> = ({ doc, userI
         <div className="rounded-2xl p-5 text-center" style={{ background: 'color-mix(in srgb, var(--primary) 6%, transparent)', border: '1px dashed color-mix(in srgb, var(--primary) 25%, transparent)' }}>
           {handoffFromInteraction ? (
             <p className="text-xs font-bold dark:text-white">
-              Die Feynman-Runde startet mit einem Thema, zu dem du bereits nachgefragt hast: <span style={{ color: 'var(--primary)' }}>„{handoffTopic}"</span>
+              {t('rd.feynmanFromInteraction', { topic: handoffTopic })}
             </p>
           ) : handoffTopic ? (
             <p className="text-xs font-bold dark:text-white">
-              Dazu hast du noch nichts gefragt. Trotzdem erklären? Vorschlag: <span style={{ color: 'var(--primary)' }}>„{handoffTopic}"</span>
+              {t('rd.feynmanSuggest', { topic: handoffTopic })}
             </p>
           ) : null}
         </div>
