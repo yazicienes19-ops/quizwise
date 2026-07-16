@@ -1,12 +1,14 @@
 
 import React, { useState, useEffect } from 'react';
 import { X, Key, Check, AlertTriangle } from 'lucide-react';
+import { useTranslation } from '../i18n/I18nProvider';
 
 interface ApiKeySettingsProps {
   onClose: () => void;
 }
 
 export const ApiKeySettings: React.FC<ApiKeySettingsProps> = ({ onClose }) => {
+  const { t } = useTranslation();
   const [inputKey, setInputKey] = useState('');
   const [saved, setSaved] = useState(false);
   const hasCurrent = true;
@@ -45,8 +47,8 @@ export const ApiKeySettings: React.FC<ApiKeySettingsProps> = ({ onClose }) => {
               <Key className="w-5 h-5 text-white" strokeWidth={1.75} />
             </div>
             <div>
-              <h2 className="text-base font-black dark:text-white uppercase tracking-tight">API-Schlüssel</h2>
-              <p className="text-[10px] text-slate-400 font-bold uppercase tracking-widest">Gemini Konfiguration</p>
+              <h2 className="text-base font-black dark:text-white uppercase tracking-tight">{t('aks.title')}</h2>
+              <p className="text-[10px] text-slate-400 font-bold uppercase tracking-widest">{t('aks.geminiConfig')}</p>
             </div>
           </div>
           <button aria-label="Schließen"
@@ -62,23 +64,23 @@ export const ApiKeySettings: React.FC<ApiKeySettingsProps> = ({ onClose }) => {
         {hasCurrent && !inputKey ? (
           <div className="flex items-center gap-3 p-4 bg-emerald-50 dark:bg-emerald-950/20 rounded-2xl border border-emerald-100 dark:border-emerald-900/30">
             <Check className="w-4 h-4 text-emerald-500 shrink-0" strokeWidth={2} />
-            <p className="text-[11px] font-bold text-emerald-700 dark:text-emerald-400">API-Schlüssel ist gesetzt und aktiv.</p>
+            <p className="text-[11px] font-bold text-emerald-700 dark:text-emerald-400">{t('aks.keySet')}</p>
           </div>
         ) : !hasCurrent ? (
           <div className="flex items-center gap-3 p-4 bg-amber-50 dark:bg-amber-950/20 rounded-2xl border border-amber-100 dark:border-amber-900/30">
             <AlertTriangle className="w-4 h-4 text-amber-500 shrink-0" strokeWidth={2} />
-            <p className="text-[11px] font-bold text-amber-700 dark:text-amber-400">Kein API-Schlüssel gesetzt. Generierungs-Funktionen sind deaktiviert.</p>
+            <p className="text-[11px] font-bold text-amber-700 dark:text-amber-400">{t('aks.keyMissing')}</p>
           </div>
         ) : null}
 
         {/* Info */}
         <div className="space-y-3 text-[11px] text-slate-500 dark:text-slate-400 leading-relaxed">
-          <p>Der Gemini-API-Schlüssel liegt sicher auf dem QuizWise-Server. Du musst hier nichts eintragen, alles läuft automatisch.</p>
+          <p>{t('aks.serverHint')}</p>
         </div>
 
         {/* Input */}
         <div className="space-y-2">
-          <label className="text-[10px] font-black uppercase tracking-widest text-slate-400">Gemini API Key</label>
+          <label className="text-[10px] font-black uppercase tracking-widest text-slate-400">{t('aks.geminiApiKey')}</label>
           <input
             type="password"
             value={inputKey}
@@ -104,7 +106,7 @@ export const ApiKeySettings: React.FC<ApiKeySettingsProps> = ({ onClose }) => {
               <span className="flex items-center justify-center gap-2">
                 <Check className="w-4 h-4" strokeWidth={2.5} /> Gespeichert
               </span>
-            ) : 'Speichern'}
+            ) : t('aks.save')}
           </button>
           {inputKey && (
             <button

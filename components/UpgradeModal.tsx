@@ -1,12 +1,14 @@
 import React, { useState } from 'react';
 import { X, Zap, Check, Loader2 } from 'lucide-react';
 import { startCheckout } from '../services/stripeService';
+import { useTranslation } from '../i18n/I18nProvider';
 
 interface UpgradeModalProps {
   onClose: () => void;
 }
 
 export const UpgradeModal: React.FC<UpgradeModalProps> = ({ onClose }) => {
+  const { t } = useTranslation();
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState('');
 
@@ -16,16 +18,16 @@ export const UpgradeModal: React.FC<UpgradeModalProps> = ({ onClose }) => {
     try {
       await startCheckout(); // leitet zu Stripe weiter
     } catch (e: any) {
-      setError(e.message || 'Fehler beim Checkout.');
+      setError(e.message || t('um.checkoutError'));
       setIsLoading(false);
     }
   };
 
   const features = [
-    'Unbegrenzte Generierungen',
-    'Alle Module freigeschaltet',
-    'Klausur-Simulator ohne Limit',
-    'Prioritäts-Support',
+    t('um.unlimited'),
+    t('um.allModules'),
+    t('um.examNoLimit'),
+    t('um.prioritySupport'),
   ];
 
   return (
@@ -41,8 +43,8 @@ export const UpgradeModal: React.FC<UpgradeModalProps> = ({ onClose }) => {
               <Zap className="w-5 h-5 text-white" strokeWidth={2} />
             </div>
             <div>
-              <h2 className="text-base font-black dark:text-white uppercase tracking-tight">QuizWise Pro</h2>
-              <p className="text-[10px] text-slate-400 font-bold uppercase tracking-widest">Unlimitiert lernen</p>
+              <h2 className="text-base font-black dark:text-white uppercase tracking-tight">{t('um.pro')}</h2>
+              <p className="text-[10px] text-slate-400 font-bold uppercase tracking-widest">{t('um.unlimitedLearn')}</p>
             </div>
           </div>
           <button aria-label="Schließen" onClick={onClose} className="text-slate-400 hover:text-slate-600 dark:hover:text-white transition-colors">
@@ -57,8 +59,8 @@ export const UpgradeModal: React.FC<UpgradeModalProps> = ({ onClose }) => {
               <p className="text-4xl font-black dark:text-white">9,99 €</p>
               <p className="text-lg font-black text-slate-300 dark:text-slate-600 line-through mb-1">14,99 €</p>
             </div>
-            <p className="text-[10px] font-black uppercase tracking-widest" style={{ color: 'var(--primary)' }}>Einführungspreis: bleibt für dich dauerhaft</p>
-            <p className="text-[11px] text-slate-400 font-bold uppercase tracking-widest">pro Monat · jederzeit kündbar</p>
+            <p className="text-[10px] font-black uppercase tracking-widest" style={{ color: 'var(--primary)' }}>{t('um.introPriceForever')}</p>
+            <p className="text-[11px] text-slate-400 font-bold uppercase tracking-widest">{t('um.perMonth')}</p>
           </div>
         </div>
 
@@ -90,12 +92,12 @@ export const UpgradeModal: React.FC<UpgradeModalProps> = ({ onClose }) => {
             style={{ background: 'var(--primary)' }}
           >
             {isLoading
-              ? <><Loader2 className="w-4 h-4 animate-spin" /> Weiterleitung...</>
-              : <><Zap className="w-4 h-4" strokeWidth={2} /> Jetzt upgraden</>
+              ? <><Loader2 className="w-4 h-4 animate-spin" /> {t('um.redirecting')}</>
+              : <><Zap className="w-4 h-4" strokeWidth={2} /> {t('um.upgradeNow')}</>
             }
           </button>
           <p className="text-center text-[10px] text-slate-400 mt-3">
-            Sichere Zahlung über Stripe · Keine versteckten Kosten
+            {t('um.securePayment')}
           </p>
         </div>
       </div>

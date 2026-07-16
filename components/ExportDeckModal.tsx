@@ -3,6 +3,7 @@ import React from 'react';
 import { FlashcardDeck } from '../types';
 import { shareDeck } from '../services/sharedDecksService';
 import { toast } from '../services/toast';
+import { useTranslation } from '../i18n/I18nProvider';
 
 interface ExportDeckModalProps {
   deck: FlashcardDeck;
@@ -11,26 +12,27 @@ interface ExportDeckModalProps {
 }
 
 export const ExportDeckModal: React.FC<ExportDeckModalProps> = ({ deck, userId, onClose }) => {
+  const { t } = useTranslation();
 
   const handleShareLink = async () => {
     if (!userId) {
-      toast.error('Bitte zuerst einloggen, um Decks zu teilen.');
+      toast.error(t('edm.loginToShare'));
       return;
     }
     try {
       const id = await shareDeck(deck.id, deck.title, deck.cards, userId);
       const url = `${window.location.origin}/shared/${id}`;
       await navigator.clipboard.writeText(url);
-      toast.success('Link kopiert! Teile ihn mit deinen Kommilitonen.');
+      toast.success(t('edm.linkCopied'));
       onClose();
     } catch (e: any) {
       if (e?.code === '23505') {
         const url = `${window.location.origin}/shared/${deck.id}`;
         await navigator.clipboard.writeText(url).catch(() => {});
-        toast.success('Link kopiert (Deck bereits geteilt)!');
+        toast.success(t('edm.linkCopiedShared'));
         onClose();
       } else {
-        toast.error('Teilen fehlgeschlagen. Bitte versuche es erneut.');
+        toast.error(t('edm.shareFailed'));
       }
     }
   };
@@ -48,7 +50,7 @@ export const ExportDeckModal: React.FC<ExportDeckModalProps> = ({ deck, userId, 
     a.download = `${deck.title.replace(/[^a-z0-9äöüß]/gi, '_')}.txt`;
     a.click();
     URL.revokeObjectURL(url);
-    toast.success('CSV exportiert. In Anki oder Quizlet importierbar.');
+    toast.success(t('edm.csvExported'));
     onClose();
   };
 
@@ -89,7 +91,7 @@ export const ExportDeckModal: React.FC<ExportDeckModalProps> = ({ deck, userId, 
     doc.setFontSize(8);
     doc.setFont('helvetica', 'normal');
     doc.setTextColor(150, 150, 150);
-    doc.text('QuizWise Karteikarten', margin, 10);
+    doc.text(t('edm.pdfTitle'), margin, 10);
 
     doc.setFontSize(18);
     doc.setFont('helvetica', 'bold');
@@ -112,8 +114,8 @@ export const ExportDeckModal: React.FC<ExportDeckModalProps> = ({ deck, userId, 
     doc.setFont('helvetica', 'bold');
     doc.setTextColor(255, 255, 255);
     doc.text('Nr.', numColX + 2, y + 1);
-    doc.text('Vorderseite', frontColX, y + 1);
-    doc.text('Rückseite', backColX, y + 1);
+    doc.text(t('edm.front'), frontColX, y + 1);
+    doc.text(t('edm.back'), backColX, y + 1);
 
     y += 10;
 
@@ -170,7 +172,7 @@ export const ExportDeckModal: React.FC<ExportDeckModalProps> = ({ deck, userId, 
     }
 
     doc.save(`${deck.title.replace(/[^a-z0-9äöüß]/gi, '_')}.pdf`);
-    toast.success('PDF erstellt.');
+    toast.success(t('edm.pdfCreated'));
     onClose();
   };
 
@@ -193,8 +195,8 @@ export const ExportDeckModal: React.FC<ExportDeckModalProps> = ({ deck, userId, 
   const options = [
     {
       key: 'link',
-      label: 'Link teilen',
-      description: 'Freunde importieren das Deck direkt in QuizWise',
+      label: t('edm.shareLink'),
+      description: t('edm.shareLinkDesc'),
       badge: null,
       icon: (
         <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
@@ -212,9 +214,9 @@ export const ExportDeckModal: React.FC<ExportDeckModalProps> = ({ deck, userId, 
     },
     {
       key: 'csv',
-      label: 'Als CSV exportieren',
-      description: 'Anki- & Quizlet-kompatibel, auch ohne QuizWise nutzbar',
-      badge: 'Anki · Quizlet',
+      label: t('edm.exportCsv'),
+      description: t('edm.exportCsvDesc'),
+      badge: t('edm.ankiQuizlet'),
       icon: (
         <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
           <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/>
@@ -232,9 +234,9 @@ export const ExportDeckModal: React.FC<ExportDeckModalProps> = ({ deck, userId, 
     },
     {
       key: 'pdf',
-      label: 'Als PDF exportieren',
-      description: 'Druckbar und tabellarisch, auch ohne App nutzbar',
-      badge: 'Drucken · Teilen',
+      label: t('edm.exportPdf'),
+      description: t('edm.exportPdfDesc'),
+      badge: t('edm.printShare'),
       icon: (
         <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
           <polyline points="6 9 6 2 18 2 18 9"/>
@@ -251,8 +253,8 @@ export const ExportDeckModal: React.FC<ExportDeckModalProps> = ({ deck, userId, 
     },
     {
       key: 'json',
-      label: 'Als JSON sichern',
-      description: 'QuizWise-Format, direkt wieder importierbar',
+      label: t('edm.exportJson'),
+      description: t('edm.exportJsonDesc'),
       badge: null,
       icon: (
         <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
@@ -282,7 +284,7 @@ export const ExportDeckModal: React.FC<ExportDeckModalProps> = ({ deck, userId, 
         {/* Header */}
         <div className="flex justify-between items-start px-8 py-6 border-b border-slate-100 dark:border-slate-800">
           <div className="min-w-0 flex-1 pr-4">
-            <p className="text-[10px] font-black uppercase tracking-widest text-slate-400 mb-1">Exportieren & Teilen</p>
+            <p className="text-[10px] font-black uppercase tracking-widest text-slate-400 mb-1">{t('edm.title')}</p>
             <h2 className="text-xl font-black dark:text-white break-words">{deck.title}</h2>
             <p className="text-[10px] font-bold text-slate-400 mt-0.5">{deck.cards.length} Karten</p>
           </div>

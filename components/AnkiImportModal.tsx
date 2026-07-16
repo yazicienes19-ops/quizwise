@@ -1,6 +1,7 @@
 import React, { useState, useMemo, useCallback } from 'react';
 import { Flashcard, FlashcardDeck } from '../types';
 import { createSrsState } from '../services/spacedRepetition';
+import { useTranslation } from '../i18n/I18nProvider';
 
 interface AnkiImportModalProps {
   decks: FlashcardDeck[];
@@ -30,11 +31,12 @@ function parseLines(text: string): { front: string; back: string }[] {
 }
 
 export const AnkiImportModal: React.FC<AnkiImportModalProps> = ({ decks, onClose, onImport }) => {
+  const { t, tp } = useTranslation();
   const [tab, setTab] = useState<'paste' | 'file'>('paste');
   const [pasteText, setPasteText] = useState('');
   const [fileText, setFileText] = useState('');
   const [targetDeckId, setTargetDeckId] = useState<string>('__new__');
-  const [newDeckName, setNewDeckName] = useState('Importiertes Deck');
+  const [newDeckName, setNewDeckName] = useState(t('aim.importedDeck'));
   const [isDragging, setIsDragging] = useState(false);
   const [fileName, setFileName] = useState('');
 
@@ -74,7 +76,7 @@ export const AnkiImportModal: React.FC<AnkiImportModalProps> = ({ decks, onClose
     onImport(
       cards,
       targetDeckId === '__new__' ? null : targetDeckId,
-      targetDeckId === '__new__' ? newDeckName.trim() || 'Importiertes Deck' : undefined
+      targetDeckId === '__new__' ? newDeckName.trim() || t('aim.importedDeck') : undefined
     );
     onClose();
   };
@@ -91,10 +93,10 @@ export const AnkiImportModal: React.FC<AnkiImportModalProps> = ({ decks, onClose
         {/* Header */}
         <div className="flex justify-between items-center px-8 py-6 border-b border-slate-100 dark:border-slate-800">
           <div>
-            <h2 className="text-xl font-black dark:text-white">Karten importieren</h2>
-            <p className="text-[10px] font-black uppercase tracking-widest text-slate-400 mt-0.5">Anki · Quizlet · CSV · TSV</p>
+            <h2 className="text-xl font-black dark:text-white">{t('aim.title')}</h2>
+            <p className="text-[10px] font-black uppercase tracking-widest text-slate-400 mt-0.5">{t('aim.subtitle')}</p>
           </div>
-          <button aria-label="Schließen" onClick={onClose} className="p-2 text-slate-400 hover:text-rose-500 transition-colors rounded-xl">
+          <button aria-label={t('upl.close')} onClick={onClose} className="p-2 text-slate-400 hover:text-rose-500 transition-colors rounded-xl">
             <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round">
               <line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/>
             </svg>
@@ -104,14 +106,14 @@ export const AnkiImportModal: React.FC<AnkiImportModalProps> = ({ decks, onClose
         <div className="px-8 py-6 space-y-6">
           {/* Tab switcher */}
           <div className="flex bg-slate-50 dark:bg-slate-800 p-1 rounded-2xl">
-            {(['paste', 'file'] as const).map(t => (
+            {(['paste', 'file'] as const).map(tab2 => (
               <button
-                key={t}
-                onClick={() => setTab(t)}
-                className={`flex-1 py-2.5 rounded-xl text-[10px] font-black uppercase tracking-widest transition-all ${tab === t ? 'bg-white dark:bg-slate-900 shadow' : 'text-slate-400 hover:text-slate-600'}`}
-                style={tab === t ? { color: 'var(--primary)' } : {}}
+                key={tab2}
+                onClick={() => setTab(tab2)}
+                className={`flex-1 py-2.5 rounded-xl text-[10px] font-black uppercase tracking-widest transition-all ${tab === tab2 ? 'bg-white dark:bg-slate-900 shadow' : 'text-slate-400 hover:text-slate-600'}`}
+                style={tab === tab2 ? { color: 'var(--primary)' } : {}}
               >
-                {t === 'paste' ? 'Text einfügen' : 'Datei hochladen'}
+                {tab2 === 'paste' ? t('aim.pasteText') : t('aim.uploadFile')}
               </button>
             ))}
           </div>
@@ -119,7 +121,7 @@ export const AnkiImportModal: React.FC<AnkiImportModalProps> = ({ decks, onClose
           {/* Input area */}
           {tab === 'paste' ? (
             <div className="space-y-2">
-              <p className="text-[9px] font-black uppercase tracking-widest text-slate-400">Eine Karte pro Zeile: Begriff [Tab/;/,] Definition</p>
+              <p className="text-[9px] font-black uppercase tracking-widest text-slate-400">{t('aim.oneCardPerLine')}</p>
               <textarea
                 autoFocus
                 value={pasteText}
@@ -153,8 +155,8 @@ export const AnkiImportModal: React.FC<AnkiImportModalProps> = ({ decks, onClose
                 <p className="font-black dark:text-white text-sm">{fileName}</p>
               ) : (
                 <>
-                  <p className="font-black dark:text-white text-sm">CSV / TSV hierher ziehen</p>
-                  <p className="text-[10px] text-slate-400 mt-1 uppercase tracking-widest">oder klicken zum Auswählen</p>
+                  <p className="font-black dark:text-white text-sm">{t('aim.dropCsv')}</p>
+                  <p className="text-[10px] text-slate-400 mt-1 uppercase tracking-widest">{t('aim.orClick')}</p>
                 </>
               )}
             </div>
@@ -164,8 +166,8 @@ export const AnkiImportModal: React.FC<AnkiImportModalProps> = ({ decks, onClose
           {preview.length > 0 && (
             <div className="space-y-2">
               <p className="text-[9px] font-black uppercase tracking-widest text-slate-400">
-                Vorschau: {parsed.length} Karte{parsed.length !== 1 ? 'n' : ''} erkannt
-                {skipped > 0 && <span className="text-amber-500 ml-2">· {skipped} übersprungen</span>}
+                {tp('aim.previewN', parsed.length)}
+                {skipped > 0 && <span className="text-amber-500 ml-2">{t('aim.skippedN', { n: skipped })}</span>}
               </p>
               <div className="space-y-1.5">
                 {preview.map((c, i) => (
@@ -184,13 +186,13 @@ export const AnkiImportModal: React.FC<AnkiImportModalProps> = ({ decks, onClose
 
           {/* Target deck */}
           <div className="space-y-2">
-            <p className="text-[9px] font-black uppercase tracking-widest text-slate-400">Ziel-Stapel</p>
+            <p className="text-[9px] font-black uppercase tracking-widest text-slate-400">{t('aim.targetDeck')}</p>
             <select
               value={targetDeckId}
               onChange={e => setTargetDeckId(e.target.value)}
               className="w-full px-4 py-3 bg-slate-50 dark:bg-slate-800 rounded-xl text-sm font-medium outline-none border-2 border-transparent focus:border-indigo-500 dark:text-white"
             >
-              <option value="__new__">+ Neuen Stapel erstellen</option>
+              <option value="__new__">{t('aim.createNewDeck')}</option>
               {decks.map(d => (
                 <option key={d.id} value={d.id}>{d.title}</option>
               ))}
@@ -200,7 +202,7 @@ export const AnkiImportModal: React.FC<AnkiImportModalProps> = ({ decks, onClose
                 type="text"
                 value={newDeckName}
                 onChange={e => setNewDeckName(e.target.value)}
-                placeholder="Name des neuen Stapels"
+                placeholder={t('aim.newDeckNamePlaceholder')}
                 className="w-full px-4 py-3 bg-slate-50 dark:bg-slate-800 rounded-xl text-sm font-medium outline-none border-2 border-transparent focus:border-indigo-500 dark:text-white"
               />
             )}
@@ -214,8 +216,8 @@ export const AnkiImportModal: React.FC<AnkiImportModalProps> = ({ decks, onClose
             style={{ background: 'var(--primary)', color: 'var(--primary-text)' }}
           >
             {parsed.length
-              ? `${parsed.length} Karte${parsed.length !== 1 ? 'n' : ''} importieren`
-              : 'Noch keine Karten erkannt'}
+              ? tp('aim.importN', parsed.length)
+              : t('aim.noCardsDetected')}
           </button>
         </div>
       </div>

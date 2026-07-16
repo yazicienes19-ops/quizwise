@@ -1,6 +1,7 @@
 import React, { useEffect, useRef, useState } from 'react';
 // @ts-ignore — virtuelles Modul von vite-plugin-pwa, erst zur Build-Zeit aufgelöst
 import { registerSW } from 'virtual:pwa-register';
+import { useTranslation } from '../i18n/I18nProvider';
 
 /**
  * Zeigt eine kleine Leiste „Neue Version verfügbar", sobald ein neuer
@@ -9,6 +10,7 @@ import { registerSW } from 'virtual:pwa-register';
  * veralteten Lazy-Chunks (404) mitten in der Sitzung auftreten.
  */
 export const PwaUpdatePrompt: React.FC = () => {
+  const { t } = useTranslation();
   const [needRefresh, setNeedRefresh] = useState(false);
   const updateRef = useRef<((reload?: boolean) => Promise<void>) | null>(null);
   const regRef = useRef<ServiceWorkerRegistration | null>(null);
@@ -64,18 +66,18 @@ export const PwaUpdatePrompt: React.FC = () => {
 
   return (
     <div className="fixed bottom-5 left-1/2 -translate-x-1/2 z-[10000] flex items-center gap-4 px-5 py-3 rounded-2xl bg-slate-900 text-white shadow-3d-deep border border-white/10 animate-in slide-in-from-bottom-4 duration-300 max-w-[calc(100vw-2rem)]">
-      <span className="text-sm font-semibold whitespace-nowrap">Neue Version verfügbar</span>
+      <span className="text-sm font-semibold whitespace-nowrap">{t('pwa.newVersion')}</span>
       <button
         onClick={applyUpdate}
         className="px-4 py-2 rounded-xl bg-indigo-600 hover:bg-indigo-500 text-[11px] font-black uppercase tracking-widest transition-colors shrink-0"
       >
-        Neu laden
+        {t('pwa.reload')}
       </button>
       <button
         onClick={() => setNeedRefresh(false)}
         className="text-white/50 hover:text-white text-xs shrink-0"
       >
-        Später
+        {t('pwa.later')}
       </button>
     </div>
   );
