@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { SearchResult } from '../types';
 import { ChevronDown, ChevronUp, ExternalLink, BookOpen, GraduationCap, Copy, Check } from 'lucide-react';
+import { useTranslation } from '../i18n/I18nProvider';
 
 interface ScholarSearchProps {
   onSearch: (query: string) => void;
@@ -24,6 +25,7 @@ export const ScholarSearch: React.FC<ScholarSearchProps> = ({
   savedResults = [],
   isSearching
 }) => {
+  const { t, tp } = useTranslation();
   const [query, setQuery] = useState('');
   const [searchMode, setSearchMode] = useState<'web' | 'scholar'>('web');
   const [lastSearchMode, setLastSearchMode] = useState<'web' | 'scholar' | null>(null);
@@ -56,7 +58,7 @@ export const ScholarSearch: React.FC<ScholarSearchProps> = ({
   };
 
   const handleCopy = (result: SearchResult, index: number) => {
-    if (!result.apaCitation) return showToast('Zitation nicht verfügbar');
+    if (!result.apaCitation) return showToast(t('sch.citationUnavailable'));
     navigator.clipboard.writeText(result.apaCitation);
     setCopiedIndex(index);
     setTimeout(() => setCopiedIndex(null), 2000);
@@ -64,7 +66,7 @@ export const ScholarSearch: React.FC<ScholarSearchProps> = ({
 
   const handleSave = (result: SearchResult) => {
     onSaveToPaper(result);
-    showToast('Quelle gesichert!');
+    showToast(t('sch.sourceSaved'));
   };
 
   const isSaved = (url: string) => savedResults.some(s => s.url === url);
@@ -84,14 +86,14 @@ export const ScholarSearch: React.FC<ScholarSearchProps> = ({
       <div className="text-center space-y-3">
         <h1 className="text-4xl lg:text-6xl font-black text-slate-900 dark:text-white tracking-tighter">
           {searchMode === 'scholar'
-            ? <><span>Akademische </span><span style={{ color: 'var(--primary)' }}>Recherche</span></>
-            : <><span>Web</span><span style={{ color: 'var(--primary)' }}>suche</span></>
+            ? <><span>{t('sch.titlePre')} </span><span style={{ color: 'var(--primary)' }}>{t('sch.titleAccent')}</span></>
+            : <><span>{t('sch.webTitle')}</span><span style={{ color: 'var(--primary)' }}>{t('sch.webTitleAccent')}</span></>
           }
         </h1>
         <p className="text-sm text-slate-500 dark:text-slate-400 font-medium">
           {searchMode === 'scholar'
-            ? 'Wissenschaftlich fundiertes Grounding aus validen Datenbanken.'
-            : 'Allgemeinwissen aus Wikipedia – für Schüler & Studenten.'}
+            ? t('sch.scientificHint')
+            : t('sch.generalHint')}
         </p>
       </div>
 
@@ -106,7 +108,7 @@ export const ScholarSearch: React.FC<ScholarSearchProps> = ({
             : { background: 'transparent', color: 'var(--text-secondary)' }
           }
         >
-          Web
+          {t('sch.web')}
         </button>
         <button
           type="button"
@@ -133,7 +135,7 @@ export const ScholarSearch: React.FC<ScholarSearchProps> = ({
           onChange={(e) => setQuery(e.target.value)}
           onFocus={() => setSearchFocused(true)}
           onBlur={() => setSearchFocused(false)}
-          placeholder={searchMode === 'scholar' ? 'Fachbegriff oder Thema recherchieren...' : 'Thema oder Begriff suchen...'}
+          placeholder={searchMode === 'scholar' ? t('sch.searchScholarPlaceholder') : t('sch.searchWebPlaceholder')}
           className="relative w-full pl-6 pr-36 py-5 bg-white dark:bg-slate-900 border-2 rounded-[28px] shadow-3d-raised outline-none transition-all text-lg text-slate-900 dark:text-white font-medium"
           style={{
             borderColor: searchFocused ? 'var(--primary)' : 'var(--border-color)',
@@ -147,7 +149,7 @@ export const ScholarSearch: React.FC<ScholarSearchProps> = ({
         >
           {isSearching ? (
             <div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" />
-          ) : 'Suchen'}
+          ) : t('sch.search')}
         </button>
       </form>
 
@@ -161,7 +163,7 @@ export const ScholarSearch: React.FC<ScholarSearchProps> = ({
               style={{ borderColor: 'var(--primary)', borderTopColor: 'transparent' }}
             />
           </div>
-          <p className="text-sm font-black uppercase tracking-widest text-slate-400">Quellen werden geprüft...</p>
+          <p className="text-sm font-black uppercase tracking-widest text-slate-400">{t('sch.checkingSources')}</p>
         </div>
       )}
 
@@ -169,7 +171,7 @@ export const ScholarSearch: React.FC<ScholarSearchProps> = ({
       {!isSearching && results.length > 0 && lastSearchMode === searchMode && (
         <div className="max-w-4xl mx-auto space-y-3">
           <p className="text-[10px] font-black uppercase text-slate-400 tracking-[0.3em] px-1">
-            {results.length} {searchMode === 'scholar' ? 'verifizierte Quellen' : 'Ergebnisse'}
+            {results.length} {searchMode === 'scholar' ? t('sch.verifiedSources') : t('sch.results')}
           </p>
 
           {results.map((result, i) => {
@@ -213,13 +215,13 @@ export const ScholarSearch: React.FC<ScholarSearchProps> = ({
                   <div className="flex items-center gap-2 shrink-0">
                     {saved && (
                       <span className="text-[8px] font-black uppercase text-emerald-500 bg-emerald-50 dark:bg-emerald-950/30 px-2 py-1 rounded-lg">
-                        Gesichert
+                        {t('sch.saved')}
                       </span>
                     )}
                     <button
                       onClick={(e) => { e.stopPropagation(); handleSave(result); }}
                       disabled={saved}
-                      title="Quelle sichern"
+                      title={t('sch.saveSource')}
                       className="w-8 h-8 rounded-xl flex items-center justify-center transition-all hover:scale-110 active:scale-95 disabled:opacity-40"
                       style={{ background: saved ? '#10b981' : 'var(--border-color)', color: saved ? 'white' : 'var(--text-main)' }}
                     >
@@ -228,7 +230,7 @@ export const ScholarSearch: React.FC<ScholarSearchProps> = ({
                     {!result.isWeb && (
                       <button
                         onClick={(e) => { e.stopPropagation(); handleCopy(result, i); }}
-                        title="APA kopieren"
+                        title={t('sch.copyApa')}
                         className="w-8 h-8 rounded-xl flex items-center justify-center transition-all hover:scale-110 active:scale-95"
                         style={{ background: 'var(--border-color)', color: copied ? '#10b981' : 'var(--text-main)' }}
                       >
@@ -241,7 +243,7 @@ export const ScholarSearch: React.FC<ScholarSearchProps> = ({
                         target="_blank"
                         rel="noopener noreferrer"
                         onClick={(e) => e.stopPropagation()}
-                        title="Link öffnen"
+                        title={t('sch.openLink')}
                         className="w-8 h-8 rounded-xl flex items-center justify-center transition-all hover:scale-110 active:scale-95"
                         style={{ background: 'var(--border-color)', color: 'var(--text-main)' }}
                       >
@@ -262,7 +264,7 @@ export const ScholarSearch: React.FC<ScholarSearchProps> = ({
 
                     {result.isWeb ? (
                       <div className="rounded-xl p-4" style={{ background: 'color-mix(in srgb, var(--border-color) 50%, var(--bg-sidebar))' }}>
-                        <p className="text-[9px] font-black uppercase text-slate-400 mb-2 tracking-widest">Zusammenfassung</p>
+                        <p className="text-[9px] font-black uppercase text-slate-400 mb-2 tracking-widest">{t('sch.summary')}</p>
                         <p className="text-xs text-slate-600 dark:text-slate-300 leading-relaxed">
                           {result.snippet}
                         </p>
@@ -271,7 +273,7 @@ export const ScholarSearch: React.FC<ScholarSearchProps> = ({
                       <>
                         {result.abstract && (
                           <div className="rounded-xl p-4" style={{ background: 'color-mix(in srgb, var(--border-color) 50%, var(--bg-sidebar))' }}>
-                            <p className="text-[9px] font-black uppercase text-slate-400 mb-2 tracking-widest">Abstract</p>
+                            <p className="text-[9px] font-black uppercase text-slate-400 mb-2 tracking-widest">{t('sch.abstract')}</p>
                             <p className="text-xs text-slate-600 dark:text-slate-300 leading-relaxed italic">
                               "{result.abstract}"
                             </p>
@@ -291,7 +293,7 @@ export const ScholarSearch: React.FC<ScholarSearchProps> = ({
                       style={{ background: 'var(--primary)' }}
                     >
                       <GraduationCap className="w-4 h-4" strokeWidth={2} />
-                      Quiz daraus generieren
+                      {t('sch.generateQuiz')}
                     </button>
                   </div>
                 )}
@@ -309,7 +311,7 @@ export const ScholarSearch: React.FC<ScholarSearchProps> = ({
             className="flex items-center gap-3 bg-emerald-600 hover:bg-emerald-700 text-white px-6 py-3.5 rounded-2xl shadow-2xl font-black uppercase text-[10px] tracking-widest transition-all hover:scale-105 active:scale-95"
           >
             <BookOpen className="w-4 h-4" strokeWidth={2.5} />
-            {savedResults.length} {savedResults.length === 1 ? 'Quelle' : 'Quellen'} gespeichert · Zur Hausarbeit
+            {tp('sch.sourceN', savedResults.length)} {t('sch.savedBannerSuffix')}
           </button>
         </div>
       )}

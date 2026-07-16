@@ -22,6 +22,8 @@ import { saveExamResult } from '../services/examHistoryService';
 import { recordActivity } from '../services/streakService';
 import { isAdmin } from '../config/admin';
 import { toast } from '../services/toast';
+import { useTranslation } from '../i18n/I18nProvider';
+import { formatDate } from '../i18n/dates';
 import {
   ActiveTab, ProcessedDocument, QuizQuestion, UserAnswer, TopicMetric,
   SearchResult, QuizType, FlashcardDeck, Collection, ExamTerm,
@@ -109,6 +111,7 @@ interface AppContentProps {
 }
 
 export const AppContent: React.FC<AppContentProps> = (p) => {
+  const { t, tp } = useTranslation();
   const {
     activeTab, setActiveTab, isLoading, setIsLoading, user, userPlan,
     documents, collections, handleFileUpload, retryAnalysis, activeModuleId, deleteDoc, addCollection, removeCollection, updateCollection, moveDoc, getDocumentSource,
@@ -150,7 +153,7 @@ export const AppContent: React.FC<AppContentProps> = (p) => {
           <div className="w-20 h-20 lg:w-24 lg:h-24 border-8 border-indigo-100 dark:border-indigo-900/30 rounded-full" />
           <div className="w-20 h-20 lg:w-24 lg:h-24 border-8 border-indigo-600 border-t-transparent rounded-full animate-spin absolute top-0 left-0" />
         </div>
-        <p className="text-2xl font-black uppercase tracking-tighter text-slate-900 dark:text-white">Einen Moment …</p>
+        <p className="text-2xl font-black uppercase tracking-tighter text-slate-900 dark:text-white">{t('ac.oneMoment')}</p>
       </div>
     );
   }
@@ -182,8 +185,8 @@ export const AppContent: React.FC<AppContentProps> = (p) => {
             <div className="w-20 h-20 border-8 border-indigo-600 border-t-transparent rounded-full animate-spin absolute top-0 left-0" />
           </div>
           <div className="text-center space-y-1">
-            <p className="text-lg font-black uppercase tracking-tighter dark:text-white">Quiz wird generiert</p>
-            <p className="text-sm text-slate-500 dark:text-slate-400">Deine Quelle wird gelesen …</p>
+            <p className="text-lg font-black uppercase tracking-tighter dark:text-white">{t('ac.generatingQuiz')}</p>
+            <p className="text-sm text-slate-500 dark:text-slate-400">{t('ac.readingSource')}</p>
           </div>
         </div>
       );
@@ -204,7 +207,7 @@ export const AppContent: React.FC<AppContentProps> = (p) => {
         onSave={(name, currentAnswers) => {
           saveQuizToStorage({ name, docName: activeQuizMeta?.docName || 'Quiz', questions, resumeAnswers: currentAnswers });
           setSavedQuizzes(getSavedQuizzes());
-          toast.success('Quiz gespeichert!');
+          toast.success(t('ac.quizSaved'));
         }}
         onCancel={() => { clearQuizProgress(); setQuizInitialAnswers(undefined); setQuestions([]); setAnswers([]); setPendingActionDoc(null); setReviewSessionItems(null); }}
       />;
@@ -229,11 +232,11 @@ export const AppContent: React.FC<AppContentProps> = (p) => {
                 }}
               >
                 <div className="min-w-0">
-                  <p className="text-[9px] font-black uppercase tracking-widest" style={{ color: 'var(--primary)' }}>Wiederholen</p>
+                  <p className="text-[9px] font-black uppercase tracking-widest" style={{ color: 'var(--primary)' }}>{t('ac.review')}</p>
                   <p className="text-sm font-black dark:text-white mt-0.5">
-                    {dueMistakes} Frage{dueMistakes !== 1 ? 'n' : ''} aus früheren Fehlern fällig
+                    {tp('ac.dueMistakesN', dueMistakes)}
                   </p>
-                  <p className="text-[10px] font-medium text-slate-400 mt-0.5">Richtig beantwortet = längeres Intervall, falsch = bald wieder dran.</p>
+                  <p className="text-[10px] font-medium text-slate-400 mt-0.5">{t('ac.reviewHint')}</p>
                 </div>
                 <button
                   onClick={handleStartMistakeReview}
@@ -247,13 +250,13 @@ export const AppContent: React.FC<AppContentProps> = (p) => {
           )}
           {savedQuizzes.length > 0 && (
             <div className="max-w-3xl mx-auto px-4 pt-6 pb-2 space-y-3">
-              <p className="text-[9px] font-black uppercase tracking-[0.3em] text-slate-400">Gespeicherte Quizze</p>
+              <p className="text-[9px] font-black uppercase tracking-[0.3em] text-slate-400">{t('ac.savedQuizzes')}</p>
               <div className="space-y-2">
                 {savedQuizzes.map(sq => (
                   <div key={sq.id} className="flex items-center gap-3 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-[20px] px-5 py-4 shadow-sm">
                     <div className="flex-1 min-w-0">
                       <p className="text-sm font-black dark:text-white break-words">{sq.name}</p>
-                      <p className="text-[9px] text-slate-400 font-medium mt-0.5">{sq.questions.length} Fragen · {new Date(sq.savedAt).toLocaleDateString('de-DE', { day: '2-digit', month: 'short', year: '2-digit' })}</p>
+                      <p className="text-[9px] text-slate-400 font-medium mt-0.5">{tp('dashboard.questionsN', sq.questions.length)} · {formatDate(sq.savedAt, { day: '2-digit', month: 'short', year: '2-digit' })}</p>
                     </div>
                     <button onClick={() => handleLoadSavedQuiz(sq)} className="flex items-center gap-1.5 px-4 py-2 text-white rounded-[14px] text-[10px] font-black uppercase tracking-widest hover:scale-105 active:scale-95 transition-all shrink-0" style={{ background: 'var(--primary)' }}>
                       <svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round"><polygon points="5 3 19 12 5 21 5 3"/></svg>
@@ -279,7 +282,7 @@ export const AppContent: React.FC<AppContentProps> = (p) => {
                 // wiederholt das zweite Quiz aus demselben Ordner die Fragen
                 const topicsKey = sourceTopicsKey(name);
                 const rawQ = await generateQuizFromDocument(source, type, { ...opts, excludeTopics: getUsedTopics(topicsKey) });
-                if (!rawQ.length) throw new Error('Daraus ließen sich keine Fragen erstellen. Bitte versuche es noch einmal.');
+                if (!rawQ.length) throw new Error(t('ac.errNoQuestions'));
                 const q = interleaveQuestionsByTopic(rawQ);
                 const meta = { docId: topicsKey, docName: name };
                 setQuestions(q); setQuizInitialAnswers(undefined); setActiveQuizMeta(meta);
@@ -292,7 +295,7 @@ export const AppContent: React.FC<AppContentProps> = (p) => {
               flushSync(() => setIsLoading(true));
               try {
                 const rawQ = await generateQuizFromFlashcards(deck);
-                if (!rawQ.length) throw new Error('Aus diesem Stapel ließ sich kein Quiz erstellen. Bitte versuche es noch einmal.');
+                if (!rawQ.length) throw new Error(t('ac.errNoQuizFromDeck'));
                 const q = interleaveQuestionsByTopic(rawQ);
                 const meta = { docId: deck.id, docName: deck.title };
                 setQuestions(q); setQuizInitialAnswers(undefined); setActiveQuizMeta(meta);
@@ -353,7 +356,7 @@ export const AppContent: React.FC<AppContentProps> = (p) => {
           const updatedDecks = [...decks, newDeck];
           setDecks(updatedDecks);
           localStorage.setItem('flashcard_decks', JSON.stringify(updatedDecks));
-          toast.success(`${cards.length} Karteikarte${cards.length !== 1 ? 'n' : ''} aus Lücken erstellt`);
+          toast.success(tp('ac.cardsFromGapsN', cards.length));
           setActiveTab(ActiveTab.CARDS);
         }}
         initialDoc={pendingActionDoc ?? undefined}
@@ -365,13 +368,13 @@ export const AppContent: React.FC<AppContentProps> = (p) => {
       <div>
         {savedExams.length > 0 && !examInitialQuestions && !pendingActionDoc && (
           <div className="max-w-3xl mx-auto px-4 pt-6 pb-2 space-y-3">
-            <p className="text-[9px] font-black uppercase tracking-[0.3em] text-slate-400">Gespeicherte Klausuren</p>
+            <p className="text-[9px] font-black uppercase tracking-[0.3em] text-slate-400">{t('ac.savedExams')}</p>
             <div className="space-y-2">
               {savedExams.map(se => (
                 <div key={se.id} className="flex items-center gap-3 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-[20px] px-5 py-4 shadow-sm">
                   <div className="flex-1 min-w-0">
                     <p className="text-sm font-black dark:text-white break-words">{se.name}</p>
-                    <p className="text-[9px] text-slate-400 font-medium mt-0.5">{se.questions.length} Fragen · {new Date(se.savedAt).toLocaleDateString('de-DE', { day: '2-digit', month: 'short', year: '2-digit' })}</p>
+                    <p className="text-[9px] text-slate-400 font-medium mt-0.5">{tp('dashboard.questionsN', se.questions.length)} · {formatDate(se.savedAt, { day: '2-digit', month: 'short', year: '2-digit' })}</p>
                   </div>
                   <button onClick={() => handleLoadSavedExam(se)} className="flex items-center gap-1.5 px-4 py-2 text-white rounded-[14px] text-[10px] font-black uppercase tracking-widest hover:scale-105 active:scale-95 transition-all shrink-0" style={{ background: 'var(--primary)' }}>
                     <svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round"><polygon points="5 3 19 12 5 21 5 3"/></svg>
@@ -398,7 +401,7 @@ export const AppContent: React.FC<AppContentProps> = (p) => {
             saveExamResult({ docName, timestamp: Date.now(), score, passed, totalPoints, achievedPoints, weakTopics, categoryBreakdown, typeBreakdown, fatigue, questions: examQuestions }, user?.id);
             // Falsche mc/truefalse-Klausurfragen in die SM-2-Wiederholungs-Queue
             const enqueued = addExamMistakes(examQuestions, { docId: `exam-${docName}`, docName }, user?.id);
-            if (enqueued > 0) toast.info(`${enqueued} Klausurfrage${enqueued !== 1 ? 'n' : ''} zur Wiederholung vorgemerkt`);
+            if (enqueued > 0) toast.info(tp('ac.examMistakesQueuedN', enqueued));
             updateMetricsAfterSession(score, docName, 'exam');
             setExamInitialQuestions(null);
             setSavedExams(getSavedExams());
@@ -454,7 +457,7 @@ export const AppContent: React.FC<AppContentProps> = (p) => {
           setIsLoading(true);
           try {
             const rawQ = await generateQuizFromFlashcards(deck);
-            if (!rawQ.length) throw new Error('Aus diesem Stapel ließ sich kein Quiz erstellen. Bitte versuche es noch einmal.');
+            if (!rawQ.length) throw new Error(t('ac.errNoQuizFromDeck'));
             const q = interleaveQuestionsByTopic(rawQ);
             const meta = { docId: deck.id, docName: deck.title };
             setQuestions(q); setQuizInitialAnswers(undefined); setActiveQuizMeta(meta);

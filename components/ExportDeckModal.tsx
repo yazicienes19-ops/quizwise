@@ -4,6 +4,7 @@ import { FlashcardDeck } from '../types';
 import { shareDeck } from '../services/sharedDecksService';
 import { toast } from '../services/toast';
 import { useTranslation } from '../i18n/I18nProvider';
+import { formatDate } from '../i18n/dates';
 
 interface ExportDeckModalProps {
   deck: FlashcardDeck;
@@ -12,7 +13,7 @@ interface ExportDeckModalProps {
 }
 
 export const ExportDeckModal: React.FC<ExportDeckModalProps> = ({ deck, userId, onClose }) => {
-  const { t } = useTranslation();
+  const { t, tp } = useTranslation();
 
   const handleShareLink = async () => {
     if (!userId) {
@@ -98,11 +99,11 @@ export const ExportDeckModal: React.FC<ExportDeckModalProps> = ({ deck, userId, 
     doc.setTextColor(15, 23, 42);
     doc.text(deck.title, margin, 20);
 
-    const dateStr = new Date().toLocaleDateString('de-DE', { day: '2-digit', month: 'long', year: 'numeric' });
+    const dateStr = formatDate(new Date(), { day: '2-digit', month: 'long', year: 'numeric' });
     doc.setFontSize(8);
     doc.setFont('helvetica', 'normal');
     doc.setTextColor(150, 150, 150);
-    doc.text(`${deck.cards.length} Karten · ${dateStr}`, pageW - margin, 10, { align: 'right' });
+    doc.text(`${tp('dashboard.cardsN', deck.cards.length)} · ${dateStr}`, pageW - margin, 10, { align: 'right' });
 
     y = 36;
 
@@ -286,7 +287,7 @@ export const ExportDeckModal: React.FC<ExportDeckModalProps> = ({ deck, userId, 
           <div className="min-w-0 flex-1 pr-4">
             <p className="text-[10px] font-black uppercase tracking-widest text-slate-400 mb-1">{t('edm.title')}</p>
             <h2 className="text-xl font-black dark:text-white break-words">{deck.title}</h2>
-            <p className="text-[10px] font-bold text-slate-400 mt-0.5">{deck.cards.length} Karten</p>
+            <p className="text-[10px] font-bold text-slate-400 mt-0.5">{tp('dashboard.cardsN', deck.cards.length)}</p>
           </div>
           <button aria-label="Schließen"
             onClick={onClose}

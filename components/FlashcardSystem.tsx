@@ -735,7 +735,7 @@ export const FlashcardSystem: React.FC<FlashcardSystemProps> = ({
                         </h4>
                         {!deck.sourceDocumentId && <span className="bg-slate-100 dark:bg-slate-800 text-[8px] font-black uppercase px-2 py-0.5 rounded text-slate-400 tracking-tighter">{t('fcs.manual')}</span>}
                       </div>
-                      <p className="text-[9px] font-bold text-slate-400 uppercase mt-1">Total: {deck.cards.length} Karten</p>
+                      <p className="text-[9px] font-bold text-slate-400 uppercase mt-1">{t('fcs.totalCards', { n: deck.cards.length })}</p>
                     </div>
 
                     <div className="flex flex-col sm:flex-row items-center gap-4 lg:gap-6 w-full sm:w-auto">

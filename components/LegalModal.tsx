@@ -1,5 +1,6 @@
 import React from 'react';
 import { X } from 'lucide-react';
+import { getLocale, t } from '../i18n';
 
 type LegalPage = 'impressum' | 'datenschutz' | 'agb';
 
@@ -214,7 +215,7 @@ export const LegalModal: React.FC<LegalModalProps> = ({ page, onClose }) => {
       >
         <div className="flex items-center justify-between p-8 pb-0 shrink-0">
           <h2 className="text-2xl font-black tracking-tight dark:text-white">{title}</h2>
-          <button aria-label="Schließen"
+          <button aria-label={t('common.close')}
             onClick={onClose}
             className="w-10 h-10 rounded-xl flex items-center justify-center text-slate-400 hover:text-slate-700 dark:hover:text-white transition-colors"
             style={{ background: 'var(--border-color)' }}
@@ -222,7 +223,14 @@ export const LegalModal: React.FC<LegalModalProps> = ({ page, onClose }) => {
             <X className="w-5 h-5" strokeWidth={2} />
           </button>
         </div>
-        <div className="overflow-y-auto p-8 scrollbar-thin">{body}</div>
+        <div className="overflow-y-auto p-8 scrollbar-thin space-y-4">
+          {getLocale() === 'tr' && (
+            <p className="text-xs font-bold text-slate-500 dark:text-slate-400 bg-slate-100 dark:bg-slate-800/50 p-3 rounded-xl">
+              {t('legal.germanNotice')}
+            </p>
+          )}
+          {body}
+        </div>
       </div>
     </div>
   );

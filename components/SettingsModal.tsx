@@ -12,6 +12,7 @@ import { changePassword, deleteAccount, exportUserData, getInvoices, cancelSubsc
 import { isPushSupported, getExistingSubscription, subscribeToPush, unsubscribeFromPush } from '../services/pushService';
 import { toast } from '../services/toast';
 import { useTranslation } from '../i18n/I18nProvider';
+import { formatDate } from '../i18n/dates';
 import type { Locale } from '../i18n';
 
 const PRESETS = [
@@ -26,19 +27,19 @@ const PRESETS = [
 ];
 
 const FONTS = [
-  { id: 'inter',        name: 'Inter',        label: 'Modern',        stack: "'Inter', system-ui, sans-serif" },
-  { id: 'garamond',     name: 'EB Garamond',  label: 'Klassisch',     stack: "'EB Garamond', Georgia, serif" },
-  { id: 'dm-sans',      name: 'DM Sans',      label: 'Klar',          stack: "'DM Sans', system-ui, sans-serif" },
-  { id: 'lato',         name: 'Lato',         label: 'Freundlich',    stack: "'Lato', system-ui, sans-serif" },
-  { id: 'nunito',       name: 'Nunito',        label: 'Rund',          stack: "'Nunito', system-ui, sans-serif" },
-  { id: 'merriweather', name: 'Merriweather', label: 'Lesetauglich',  stack: "'Merriweather', Georgia, serif" },
-];
+  { id: 'inter',        name: 'Inter',        labelKey: 'settings.font.modern',   stack: "'Inter', system-ui, sans-serif" },
+  { id: 'garamond',     name: 'EB Garamond',  labelKey: 'settings.font.classic',  stack: "'EB Garamond', Georgia, serif" },
+  { id: 'dm-sans',      name: 'DM Sans',      labelKey: 'settings.font.clear',    stack: "'DM Sans', system-ui, sans-serif" },
+  { id: 'lato',         name: 'Lato',         labelKey: 'settings.font.friendly', stack: "'Lato', system-ui, sans-serif" },
+  { id: 'nunito',       name: 'Nunito',       labelKey: 'settings.font.round',    stack: "'Nunito', system-ui, sans-serif" },
+  { id: 'merriweather', name: 'Merriweather', labelKey: 'settings.font.readable', stack: "'Merriweather', Georgia, serif" },
+] as const;
 
 const SPACING_OPTIONS = [
-  { id: '1.4', label: 'Kompakt' },
-  { id: '1.6', label: 'Normal'  },
-  { id: '1.9', label: 'Weit'    },
-];
+  { id: '1.4', labelKey: 'settings.spacing.compact' },
+  { id: '1.6', labelKey: 'settings.spacing.normal'  },
+  { id: '1.9', labelKey: 'settings.spacing.wide'    },
+] as const;
 
 function applyFont(fontId: string, userId?: string | null) {
   const font = FONTS.find(f => f.id === fontId);
@@ -106,14 +107,14 @@ export const SettingsModal: React.FC<Props> = ({ user, isDark, onToggleTheme, on
       if (pushEnabled) {
         await unsubscribeFromPush();
         setPushEnabled(false);
-        toast.info('Lern-Erinnerung deaktiviert.');
+        toast.info(t('settings.push.disabled'));
       } else {
         await subscribeToPush();
         setPushEnabled(true);
-        toast.success('Lern-Erinnerung aktiviert: täglich um 17 Uhr bei fälligen Wiederholungen.');
+        toast.success(t('settings.push.enabled'));
       }
     } catch (e: any) {
-      toast.error(e?.message || 'Benachrichtigungen konnten nicht aktiviert werden.');
+      toast.error(e?.message || t('settings.push.error'));
     } finally {
       setPushBusy(false);
     }
@@ -142,48 +143,48 @@ export const SettingsModal: React.FC<Props> = ({ user, isDark, onToggleTheme, on
     setIsSavingName(true);
     const { error } = await supabase.auth.updateUser({ data: { full_name: name.trim() } });
     setIsSavingName(false);
-    if (error) toast.error('Name konnte nicht gespeichert werden.');
-    else toast.success('Name aktualisiert.');
+    if (error) toast.error(t('settings.name.saveError'));
+    else toast.success(t('settings.name.saved'));
   };
 
   const handleChangePassword = async () => {
-    if (newPw.length < 6) return toast.error('Passwort muss mindestens 6 Zeichen haben.');
-    if (newPw !== confirmPw) return toast.error('Passwörter stimmen nicht überein.');
+    if (newPw.length < 6) return toast.error(t('settings.pw.tooShort'));
+    if (newPw !== confirmPw) return toast.error(t('settings.pw.mismatch'));
     setIsSavingPw(true);
     try {
       await changePassword(newPw);
-      toast.success('Passwort geändert.');
+      toast.success(t('settings.pw.changed'));
       setNewPw(''); setConfirmPw('');
     } catch (e: any) { toast.error(e.message); }
     finally { setIsSavingPw(false); }
   };
 
   const handleCancelSubscription = async () => {
-    if (!confirm('Abo wirklich kündigen? Du behältst Pro bis zum Ende der Laufzeit.')) return;
+    if (!confirm(t('settings.cancel.confirm'))) return;
     setIsCancelling(true);
     try {
       const endsAt = await cancelSubscription();
       setCancelledUntil(endsAt);
-      toast.success(`Abo gekündigt. Pro aktiv bis ${endsAt}.`);
+      toast.success(t('settings.cancel.success', { date: endsAt }));
     } catch (e: any) { toast.error(e.message); }
     finally { setIsCancelling(false); }
   };
 
   const handleExport = async () => {
     setIsExporting(true);
-    try { await exportUserData(); toast.success('Daten exportiert.'); }
+    try { await exportUserData(); toast.success(t('settings.export.success')); }
     catch (e: any) { toast.error(e.message); }
     finally { setIsExporting(false); }
   };
 
   const handleDeleteAccount = async () => {
-    if (deleteConfirm !== 'LÖSCHEN') return toast.error('Bitte "LÖSCHEN" eingeben um zu bestätigen.');
+    if (deleteConfirm !== 'LÖSCHEN') return toast.error(t('settings.delete.confirmError'));
     setIsDeletingAccount(true);
     try {
       await deleteAccount();
       await supabase.auth.signOut();
       onLogout(); onClose();
-      toast.success('Konto wurde gelöscht.');
+      toast.success(t('settings.delete.success'));
     } catch (e: any) { toast.error(e.message); setIsDeletingAccount(false); }
   };
 
@@ -202,18 +203,18 @@ export const SettingsModal: React.FC<Props> = ({ user, isDark, onToggleTheme, on
   };
 
   const tabs: { id: Tab; label: string; icon: React.ReactNode }[] = [
-    { id: 'profil',      label: 'Profil',      icon: <User className="w-4 h-4" strokeWidth={1.75} /> },
-    { id: 'abo',         label: 'Abo',         icon: <CreditCard className="w-4 h-4" strokeWidth={1.75} /> },
-    { id: 'design',      label: 'Design',      icon: <Palette className="w-4 h-4" strokeWidth={1.75} /> },
-    { id: 'datenschutz', label: 'Datenschutz', icon: <Shield className="w-4 h-4" strokeWidth={1.75} /> },
+    { id: 'profil',      label: t('settings.tab.profile'),      icon: <User className="w-4 h-4" strokeWidth={1.75} /> },
+    { id: 'abo',         label: t('settings.tab.subscription'), icon: <CreditCard className="w-4 h-4" strokeWidth={1.75} /> },
+    { id: 'design',      label: t('settings.tab.design'),       icon: <Palette className="w-4 h-4" strokeWidth={1.75} /> },
+    { id: 'datenschutz', label: t('settings.tab.privacy'),      icon: <Shield className="w-4 h-4" strokeWidth={1.75} /> },
     { id: 'api',         label: 'API',         icon: <Key className="w-4 h-4" strokeWidth={1.75} /> },
   ];
 
   const NotLoggedIn = () => (
     <div className="text-center py-8 space-y-2">
       <AlertTriangle className="w-8 h-8 text-amber-400 mx-auto" strokeWidth={1.75} />
-      <p className="text-sm font-bold dark:text-white">Nicht eingeloggt</p>
-      <p className="text-[11px] text-slate-400">Bitte zuerst einloggen.</p>
+      <p className="text-sm font-bold dark:text-white">{t('settings.notLoggedIn')}</p>
+      <p className="text-[11px] text-slate-400">{t('settings.pleaseLogin')}</p>
     </div>
   );
 
@@ -226,10 +227,10 @@ export const SettingsModal: React.FC<Props> = ({ user, isDark, onToggleTheme, on
         {/* Header */}
         <div className="flex items-center justify-between p-8 pb-0 shrink-0">
           <div>
-            <h2 className="text-xl font-black dark:text-white uppercase tracking-tight">Einstellungen</h2>
-            <p className="text-[10px] text-slate-400 font-bold uppercase tracking-widest mt-0.5">{user?.email || 'Nicht eingeloggt'}</p>
+            <h2 className="text-xl font-black dark:text-white uppercase tracking-tight">{t('settings.title')}</h2>
+            <p className="text-[10px] text-slate-400 font-bold uppercase tracking-widest mt-0.5">{user?.email || t('settings.notLoggedIn')}</p>
           </div>
-          <button aria-label="Schließen" onClick={onClose} className="w-9 h-9 flex items-center justify-center rounded-xl text-slate-400 hover:text-slate-700 dark:hover:text-white transition-all active:scale-95" style={{ background: 'color-mix(in srgb, var(--border-color) 60%, var(--bg-sidebar))' }}>
+          <button aria-label={t('common.close')} onClick={onClose} className="w-9 h-9 flex items-center justify-center rounded-xl text-slate-400 hover:text-slate-700 dark:hover:text-white transition-all active:scale-95" style={{ background: 'color-mix(in srgb, var(--border-color) 60%, var(--bg-sidebar))' }}>
             <X className="w-5 h-5" strokeWidth={2} />
           </button>
         </div>
@@ -259,24 +260,24 @@ export const SettingsModal: React.FC<Props> = ({ user, isDark, onToggleTheme, on
                   {(name || user.email || 'U')[0].toUpperCase()}
                 </div>
                 <div>
-                  <p className="font-black dark:text-white text-lg">{name || 'Kein Name'}</p>
+                  <p className="font-black dark:text-white text-lg">{name || t('settings.noName')}</p>
                   <p className="text-[11px] text-slate-400">{user.email}</p>
-                  <p className="text-[10px] text-slate-400 mt-0.5">Mitglied seit {new Date(user.created_at).toLocaleDateString('de-DE', { month: 'long', year: 'numeric' })}</p>
+                  <p className="text-[10px] text-slate-400 mt-0.5">{t('settings.memberSince', { date: formatDate(user.created_at, { month: 'long', year: 'numeric' }) })}</p>
                 </div>
               </div>
 
               {/* Name */}
               <div className="space-y-2">
-                <label className="text-[10px] font-black uppercase tracking-widest text-slate-400">Anzeigename</label>
+                <label className="text-[10px] font-black uppercase tracking-widest text-slate-400">{t('settings.displayName')}</label>
                 <div className="flex gap-3">
-                  <input type="text" value={name} onChange={e => setName(e.target.value)} placeholder="Dein Name" onKeyDown={e => e.key === 'Enter' && handleSaveName()}
+                  <input type="text" value={name} onChange={e => setName(e.target.value)} placeholder={t('settings.namePlaceholder')} onKeyDown={e => e.key === 'Enter' && handleSaveName()}
                     className="flex-1 px-4 py-3 rounded-2xl text-sm dark:text-white placeholder-slate-400 outline-none focus:ring-2 focus:ring-indigo-500/50 transition-all"
                     style={{ background: 'color-mix(in srgb, var(--border-color) 30%, var(--bg-main))', border: '1px solid var(--border-color)' }} />
                   <button onClick={handleSaveName} disabled={isSavingName}
                     className="px-5 py-3 rounded-2xl text-[11px] font-black uppercase tracking-widest text-white hover:scale-[1.02] active:scale-95 disabled:opacity-50 flex items-center gap-2"
                     style={{ background: 'var(--primary)' }}>
                     {isSavingName ? <Loader2 className="w-4 h-4 animate-spin" /> : <Check className="w-4 h-4" strokeWidth={2.5} />}
-                    Speichern
+                    {t('common.save')}
                   </button>
                 </div>
               </div>
@@ -284,19 +285,19 @@ export const SettingsModal: React.FC<Props> = ({ user, isDark, onToggleTheme, on
               {/* Passwort */}
               <div className="space-y-3 pt-2" style={{ borderTop: '1px solid var(--border-color)' }}>
                 <p className="text-[10px] font-black uppercase tracking-widest text-slate-400 flex items-center gap-2 pt-2">
-                  <Lock className="w-3.5 h-3.5" strokeWidth={2} /> Passwort ändern
+                  <Lock className="w-3.5 h-3.5" strokeWidth={2} /> {t('settings.changePassword')}
                 </p>
-                <input type="password" value={newPw} onChange={e => setNewPw(e.target.value)} placeholder="Neues Passwort (min. 6 Zeichen)"
+                <input type="password" value={newPw} onChange={e => setNewPw(e.target.value)} placeholder={t('settings.newPwPlaceholder')}
                   className="w-full px-4 py-3 rounded-2xl text-sm dark:text-white placeholder-slate-400 outline-none focus:ring-2 focus:ring-indigo-500/50 transition-all"
                   style={{ background: 'color-mix(in srgb, var(--border-color) 30%, var(--bg-main))', border: '1px solid var(--border-color)' }} />
-                <input type="password" value={confirmPw} onChange={e => setConfirmPw(e.target.value)} placeholder="Passwort bestätigen"
+                <input type="password" value={confirmPw} onChange={e => setConfirmPw(e.target.value)} placeholder={t('settings.confirmPwPlaceholder')}
                   className="w-full px-4 py-3 rounded-2xl text-sm dark:text-white placeholder-slate-400 outline-none focus:ring-2 focus:ring-indigo-500/50 transition-all"
                   style={{ background: 'color-mix(in srgb, var(--border-color) 30%, var(--bg-main))', border: '1px solid var(--border-color)' }} />
                 <button onClick={handleChangePassword} disabled={isSavingPw || !newPw}
                   className="px-5 py-3 rounded-2xl text-[11px] font-black uppercase tracking-widest text-white hover:scale-[1.02] active:scale-95 disabled:opacity-40 flex items-center gap-2"
                   style={{ background: 'var(--primary)' }}>
                   {isSavingPw ? <Loader2 className="w-4 h-4 animate-spin" /> : <Lock className="w-4 h-4" strokeWidth={2} />}
-                  Passwort speichern
+                  {t('settings.savePassword')}
                 </button>
               </div>
 
@@ -305,7 +306,7 @@ export const SettingsModal: React.FC<Props> = ({ user, isDark, onToggleTheme, on
                 <button onClick={() => { onLogout(); onClose(); }}
                   className="flex items-center gap-2 px-5 py-3 rounded-2xl text-[11px] font-black uppercase tracking-widest text-rose-500 hover:bg-rose-50 dark:hover:bg-rose-950/20 transition-all active:scale-95"
                   style={{ border: '1px solid var(--border-color)' }}>
-                  <LogOut className="w-4 h-4" strokeWidth={1.75} /> Ausloggen
+                  <LogOut className="w-4 h-4" strokeWidth={1.75} /> {t('settings.logout')}
                 </button>
               </div>
             </>
@@ -320,9 +321,9 @@ export const SettingsModal: React.FC<Props> = ({ user, isDark, onToggleTheme, on
               <div className="p-6 rounded-[24px] flex items-center justify-between"
                 style={{ background: profile?.plan === 'pro' ? 'color-mix(in srgb, var(--primary) 12%, transparent)' : 'color-mix(in srgb, var(--border-color) 40%, var(--bg-main))', border: `1px solid ${profile?.plan === 'pro' ? 'color-mix(in srgb, var(--primary) 30%, transparent)' : 'var(--border-color)'}` }}>
                 <div>
-                  <p className="text-[10px] font-black uppercase tracking-widest text-slate-400">Aktueller Plan</p>
+                  <p className="text-[10px] font-black uppercase tracking-widest text-slate-400">{t('settings.currentPlan')}</p>
                   <p className="text-2xl font-black dark:text-white mt-1 uppercase">{profile?.plan === 'pro' ? 'Pro' : 'Free'}</p>
-                  {cancelledUntil && <p className="text-[10px] text-amber-500 font-bold mt-1">Läuft ab am {cancelledUntil}</p>}
+                  {cancelledUntil && <p className="text-[10px] text-amber-500 font-bold mt-1">{t('settings.expiresOn', { date: cancelledUntil })}</p>}
                 </div>
                 {profile?.plan === 'pro'
                   ? <div className="w-10 h-10 bg-indigo-600 rounded-xl flex items-center justify-center"><Zap className="w-5 h-5 text-white" strokeWidth={2} /></div>
@@ -334,7 +335,7 @@ export const SettingsModal: React.FC<Props> = ({ user, isDark, onToggleTheme, on
               {profile?.usage && profile.plan !== 'pro' && (
                 <div className="space-y-2">
                   <div className="flex justify-between text-[10px] font-black uppercase tracking-widest text-slate-400">
-                    <span>Generierungen heute</span>
+                    <span>{t('settings.generationsToday')}</span>
                     <span className="dark:text-white">{profile.usage.used} / {profile.usage.limit ?? '∞'}</span>
                   </div>
                   <div className="h-2 rounded-full overflow-hidden" style={{ background: 'color-mix(in srgb, var(--border-color) 60%, var(--bg-main))' }}>
@@ -347,7 +348,7 @@ export const SettingsModal: React.FC<Props> = ({ user, isDark, onToggleTheme, on
               {/* Upgrade CTA (Free) */}
               {profile?.plan !== 'pro' && (
                 <div className="space-y-4">
-                  {['Unbegrenzte Generierungen', 'Alle Module freigeschaltet', 'Prioritäts-Support'].map(f => (
+                  {[t('settings.feat.unlimited'), t('settings.feat.allModules'), t('settings.feat.prioritySupport')].map(f => (
                     <div key={f} className="flex items-center gap-3">
                       <Check className="w-4 h-4 text-emerald-500 shrink-0" strokeWidth={2.5} />
                       <p className="text-[12px] font-bold dark:text-white">{f}</p>
@@ -357,33 +358,33 @@ export const SettingsModal: React.FC<Props> = ({ user, isDark, onToggleTheme, on
                     disabled={isCheckingOut}
                     className="w-full py-4 rounded-2xl text-[11px] font-black uppercase tracking-widest text-white flex items-center justify-center gap-2 transition-all hover:scale-[1.02] active:scale-95 disabled:opacity-50"
                     style={{ background: 'var(--primary)' }}>
-                    {isCheckingOut ? <><Loader2 className="w-4 h-4 animate-spin" /> Weiterleitung...</> : <><Zap className="w-4 h-4" strokeWidth={2} /> Upgrade auf Pro für 9,99 €/Monat</>}
+                    {isCheckingOut ? <><Loader2 className="w-4 h-4 animate-spin" /> {t('um.redirecting')}</> : <><Zap className="w-4 h-4" strokeWidth={2} /> {t('settings.upgradeCta')}</>}
                   </button>
-                  <p className="text-center text-[10px] text-slate-400">Jederzeit kündbar · Sichere Zahlung via Stripe</p>
+                  <p className="text-center text-[10px] text-slate-400">{t('settings.cancelAnytime')}</p>
                 </div>
               )}
 
               {/* Abo kündigen (Pro) */}
               {profile?.plan === 'pro' && !cancelledUntil && (
                 <div className="space-y-3 pt-2" style={{ borderTop: '1px solid var(--border-color)' }}>
-                  <p className="text-[10px] font-black uppercase tracking-widest text-slate-400 pt-2">Abo verwalten</p>
+                  <p className="text-[10px] font-black uppercase tracking-widest text-slate-400 pt-2">{t('settings.manageSubscription')}</p>
                   <button onClick={handleCancelSubscription} disabled={isCancelling}
                     className="flex items-center gap-2 px-5 py-3 rounded-2xl text-[11px] font-black uppercase tracking-widest text-amber-500 hover:bg-amber-50 dark:hover:bg-amber-950/20 transition-all active:scale-95 disabled:opacity-50"
                     style={{ border: '1px solid var(--border-color)' }}>
                     {isCancelling ? <Loader2 className="w-4 h-4 animate-spin" /> : null}
-                    Abo kündigen
+                    {t('settings.cancelSubscription')}
                   </button>
-                  <p className="text-[10px] text-slate-400">Du behältst Pro bis zum Ende der aktuellen Laufzeit.</p>
+                  <p className="text-[10px] text-slate-400">{t('settings.keepProUntilEnd')}</p>
                 </div>
               )}
 
               {/* Zahlungshistorie */}
               <div className="space-y-3 pt-2" style={{ borderTop: '1px solid var(--border-color)' }}>
-                <p className="text-[10px] font-black uppercase tracking-widest text-slate-400 pt-2">Zahlungshistorie</p>
+                <p className="text-[10px] font-black uppercase tracking-widest text-slate-400 pt-2">{t('settings.paymentHistory')}</p>
                 {isLoadingInvoices ? (
                   <div className="flex justify-center py-4"><Loader2 className="w-5 h-5 animate-spin text-indigo-400" /></div>
                 ) : invoices.length === 0 ? (
-                  <p className="text-[11px] text-slate-400 italic">Keine Zahlungen gefunden.</p>
+                  <p className="text-[11px] text-slate-400 italic">{t('settings.noPayments')}</p>
                 ) : invoices.map(inv => (
                   <div key={inv.id} className="flex items-center justify-between p-3 rounded-2xl" style={{ background: 'color-mix(in srgb, var(--border-color) 30%, var(--bg-main))' }}>
                     <div>
@@ -392,7 +393,7 @@ export const SettingsModal: React.FC<Props> = ({ user, isDark, onToggleTheme, on
                     </div>
                     <div className="flex items-center gap-3">
                       <span className={`text-[9px] font-black uppercase px-2 py-1 rounded-lg ${inv.status === 'paid' ? 'bg-emerald-100 text-emerald-600 dark:bg-emerald-900/30 dark:text-emerald-400' : 'bg-amber-100 text-amber-600'}`}>
-                        {inv.status === 'paid' ? 'Bezahlt' : inv.status}
+                        {inv.status === 'paid' ? t('settings.paid') : inv.status}
                       </span>
                       {inv.pdf && (
                         <a href={inv.pdf} target="_blank" rel="noopener noreferrer" className="text-indigo-500 hover:text-indigo-600 transition-colors">
@@ -413,7 +414,7 @@ export const SettingsModal: React.FC<Props> = ({ user, isDark, onToggleTheme, on
               {/* Tägliche Lern-Erinnerung (Web Push) */}
               {isPushSupported() && (
                 <div className="space-y-3">
-                  <p className="text-[10px] font-black uppercase tracking-widest text-slate-400">Benachrichtigungen</p>
+                  <p className="text-[10px] font-black uppercase tracking-widest text-slate-400">{t('settings.notifications')}</p>
                   <button
                     onClick={handleTogglePush}
                     disabled={pushBusy}
@@ -421,11 +422,11 @@ export const SettingsModal: React.FC<Props> = ({ user, isDark, onToggleTheme, on
                     style={{ background: 'color-mix(in srgb, var(--border-color) 30%, var(--bg-main))', border: '1px solid var(--border-color)' }}
                   >
                     <div className="min-w-0 pr-3">
-                      <p className="text-[11px] font-black uppercase tracking-widest dark:text-white">Tägliche Lern-Erinnerung</p>
+                      <p className="text-[11px] font-black uppercase tracking-widest dark:text-white">{t('settings.dailyReminder')}</p>
                       <p className="text-[10px] font-medium text-slate-400 mt-0.5">
                         {pushEnabled
-                          ? 'Aktiv: Du bekommst um 17 Uhr eine Erinnerung, wenn Karten oder Fragen fällig sind.'
-                          : 'Erinnert dich um 17 Uhr, wenn Wiederholungen fällig sind. Kein Spam, nur bei fälligen Inhalten.'}
+                          ? t('settings.reminderActive')
+                          : t('settings.reminderInactive')}
                       </p>
                     </div>
                     <div
@@ -440,7 +441,7 @@ export const SettingsModal: React.FC<Props> = ({ user, isDark, onToggleTheme, on
 
               {/* Erscheinungsbild */}
               <div className="space-y-3">
-                <p className="text-[10px] font-black uppercase tracking-widest text-slate-400">Erscheinungsbild</p>
+                <p className="text-[10px] font-black uppercase tracking-widest text-slate-400">{t('settings.appearance')}</p>
                 <div className="flex p-1 rounded-2xl gap-1" style={{ background: 'color-mix(in srgb, var(--border-color) 40%, var(--bg-main))' }}>
                   <button onClick={() => isDark && onToggleTheme()}
                     className={`flex-1 flex items-center justify-center gap-2 py-3 rounded-xl text-[11px] font-black uppercase tracking-widest transition-all ${!isDark ? 'bg-white text-slate-900 shadow-lg' : 'text-slate-400 hover:text-slate-600'}`}>
@@ -473,7 +474,7 @@ export const SettingsModal: React.FC<Props> = ({ user, isDark, onToggleTheme, on
 
               {/* Schriftart */}
               <div className="space-y-4">
-                <p className="text-[10px] font-black uppercase tracking-widest text-slate-400">Schriftart</p>
+                <p className="text-[10px] font-black uppercase tracking-widest text-slate-400">{t('settings.font')}</p>
                 <div className="grid grid-cols-2 gap-2">
                   {FONTS.map(f => {
                     const isSelected = fontChoice === f.id;
@@ -491,10 +492,10 @@ export const SettingsModal: React.FC<Props> = ({ user, isDark, onToggleTheme, on
                       >
                         <p className="text-base font-semibold dark:text-white leading-tight" style={{ fontFamily: f.stack }}>{f.name}</p>
                         <p className="text-sm mt-1 text-slate-400" style={{ fontFamily: f.stack }}>Aa Bb 123</p>
-                        <p className="text-[9px] font-black uppercase tracking-widest mt-2 text-slate-400">{f.label}</p>
+                        <p className="text-[9px] font-black uppercase tracking-widest mt-2 text-slate-400">{t(f.labelKey)}</p>
                         {isSelected && (
                           <span className="inline-flex items-center gap-1 mt-2 text-[9px] font-black uppercase tracking-wide" style={{ color: 'var(--primary)' }}>
-                            <Check className="w-3 h-3" strokeWidth={3} /> Aktiv
+                            <Check className="w-3 h-3" strokeWidth={3} /> {t('settings.active')}
                           </span>
                         )}
                       </button>
@@ -505,7 +506,7 @@ export const SettingsModal: React.FC<Props> = ({ user, isDark, onToggleTheme, on
 
               {/* Zeilenabstand */}
               <div className="space-y-3">
-                <p className="text-[10px] font-black uppercase tracking-widest text-slate-400">Zeilenabstand</p>
+                <p className="text-[10px] font-black uppercase tracking-widest text-slate-400">{t('settings.lineSpacing')}</p>
                 <div className="flex p-1 rounded-2xl gap-1" style={{ background: 'color-mix(in srgb, var(--border-color) 40%, var(--bg-main))' }}>
                   {SPACING_OPTIONS.map(s => (
                     <button
@@ -514,19 +515,19 @@ export const SettingsModal: React.FC<Props> = ({ user, isDark, onToggleTheme, on
                       className={`flex-1 py-2.5 rounded-xl text-[11px] font-black uppercase tracking-wide transition-all ${lineHeight === s.id ? '' : 'text-slate-400 hover:text-slate-600 dark:hover:text-slate-200'}`}
                       style={lineHeight === s.id ? { background: 'var(--bg-sidebar)', color: 'var(--primary)', boxShadow: '0 1px 4px rgba(0,0,0,0.08)' } : {}}
                     >
-                      {s.label}
+                      {t(s.labelKey)}
                     </button>
                   ))}
                 </div>
                 <p className="text-[10px] text-slate-400">
-                  {lineHeight === '1.4' ? 'Platzsparend, geeignet für dichte Inhalte.' : lineHeight === '1.6' ? 'Ausgewogen, empfohlen für die meisten Nutzer.' : 'Großzügig, ideal zum entspannten Lesen.'}
+                  {lineHeight === '1.4' ? t('settings.spacing.compactHint') : lineHeight === '1.6' ? t('settings.spacing.normalHint') : t('settings.spacing.wideHint')}
                 </p>
               </div>
 
               {/* Akzentfarbe */}
               <div className="space-y-4">
                 <div className="flex items-center justify-between">
-                  <p className="text-[10px] font-black uppercase tracking-widest text-slate-400">Akzentfarbe</p>
+                  <p className="text-[10px] font-black uppercase tracking-widest text-slate-400">{t('settings.accentColor')}</p>
                   <div className="w-6 h-6 rounded-lg shadow-inner border border-white/20" style={{ background: accentColor }} />
                 </div>
                 <div className="grid grid-cols-4 gap-3">
@@ -542,7 +543,7 @@ export const SettingsModal: React.FC<Props> = ({ user, isDark, onToggleTheme, on
                   style={{ background: 'color-mix(in srgb, var(--border-color) 30%, var(--bg-main))', border: '1px solid var(--border-color)' }}>
                   <input type="color" value={accentColor} onChange={e => handleAccentColor(e.target.value)} className="w-10 h-10 rounded-xl cursor-pointer border-0 bg-transparent p-0" />
                   <div>
-                    <p className="text-[11px] font-black uppercase tracking-widest dark:text-white">Eigene Farbe</p>
+                    <p className="text-[11px] font-black uppercase tracking-widest dark:text-white">{t('settings.customColor')}</p>
                     <p className="text-[10px] text-slate-400 font-mono">{accentColor}</p>
                   </div>
                 </label>
@@ -556,19 +557,19 @@ export const SettingsModal: React.FC<Props> = ({ user, isDark, onToggleTheme, on
             <div className="space-y-6">
               <div className="p-4 bg-indigo-50 dark:bg-indigo-950/20 rounded-2xl border border-indigo-100 dark:border-indigo-900/30">
                 <p className="text-[11px] font-bold text-indigo-700 dark:text-indigo-300 leading-relaxed">
-                  Gemäß DSGVO hast du das Recht auf Datenmitnahme und das Recht auf Vergessenwerden. Alle deine Daten werden ausschließlich auf europäischen Servern gespeichert.
+                  {t('settings.gdprNotice')}
                 </p>
               </div>
 
               {/* Daten exportieren */}
               <div className="space-y-3">
-                <p className="text-[10px] font-black uppercase tracking-widest text-slate-400">Daten exportieren</p>
-                <p className="text-[11px] text-slate-500 dark:text-slate-400">Lade alle deine gespeicherten Daten (Metriken, Karteikarten, Lernplan) als JSON-Datei herunter.</p>
+                <p className="text-[10px] font-black uppercase tracking-widest text-slate-400">{t('settings.exportData')}</p>
+                <p className="text-[11px] text-slate-500 dark:text-slate-400">{t('settings.exportDesc')}</p>
                 <button onClick={handleExport} disabled={isExporting}
                   className="flex items-center gap-2 px-5 py-3 rounded-2xl text-[11px] font-black uppercase tracking-widest text-white hover:scale-[1.02] active:scale-95 disabled:opacity-50 transition-all"
                   style={{ background: 'var(--primary)' }}>
                   {isExporting ? <Loader2 className="w-4 h-4 animate-spin" /> : <Download className="w-4 h-4" strokeWidth={1.75} />}
-                  Daten herunterladen
+                  {t('settings.downloadData')}
                 </button>
               </div>
 
@@ -576,15 +577,15 @@ export const SettingsModal: React.FC<Props> = ({ user, isDark, onToggleTheme, on
               <div className="space-y-4 pt-4" style={{ borderTop: '2px solid #ef4444' }}>
                 <div className="flex items-center gap-2">
                   <Trash2 className="w-4 h-4 text-rose-500" strokeWidth={2} />
-                  <p className="text-[10px] font-black uppercase tracking-widest text-rose-500">Konto löschen</p>
+                  <p className="text-[10px] font-black uppercase tracking-widest text-rose-500">{t('settings.deleteAccount')}</p>
                 </div>
                 <div className="p-4 bg-rose-50 dark:bg-rose-950/20 rounded-2xl border border-rose-200 dark:border-rose-900/30 space-y-2">
-                  <p className="text-[11px] font-bold text-rose-700 dark:text-rose-400">⚠ Diese Aktion ist unwiderruflich.</p>
-                  <p className="text-[11px] text-rose-600 dark:text-rose-400">Dein Konto, alle Lernfortschritte, Karteikarten und der Studienplan werden dauerhaft gelöscht. Ein aktives Abo wird ebenfalls gekündigt.</p>
+                  <p className="text-[11px] font-bold text-rose-700 dark:text-rose-400">{t('settings.deleteIrreversible')}</p>
+                  <p className="text-[11px] text-rose-600 dark:text-rose-400">{t('settings.deleteDesc')}</p>
                 </div>
                 <div className="space-y-2">
                   <label className="text-[10px] font-black uppercase tracking-widest text-slate-400">
-                    Tippe <span className="text-rose-500 font-mono">LÖSCHEN</span> zur Bestätigung
+                    {t('settings.typeConfirmPre')} <span className="text-rose-500 font-mono">LÖSCHEN</span> {t('settings.typeConfirmPost')}
                   </label>
                   <input
                     type="text"
@@ -601,7 +602,7 @@ export const SettingsModal: React.FC<Props> = ({ user, isDark, onToggleTheme, on
                   className="w-full py-3.5 rounded-2xl text-[11px] font-black uppercase tracking-widest text-white bg-rose-500 hover:bg-rose-600 transition-all active:scale-95 disabled:opacity-40 flex items-center justify-center gap-2"
                 >
                   {isDeletingAccount ? <Loader2 className="w-4 h-4 animate-spin" /> : <Trash2 className="w-4 h-4" strokeWidth={2} />}
-                  Konto unwiderruflich löschen
+                  {t('settings.deleteAccountButton')}
                 </button>
               </div>
             </div>
@@ -612,31 +613,31 @@ export const SettingsModal: React.FC<Props> = ({ user, isDark, onToggleTheme, on
             <div className="space-y-6">
               <div className="p-4 bg-amber-50 dark:bg-amber-950/20 rounded-2xl border border-amber-100 dark:border-amber-900/30">
                 <p className="text-[11px] font-bold text-amber-700 dark:text-amber-400 leading-relaxed">
-                  Nur für die lokale Entwicklung. In der veröffentlichten App wird der API-Key sicher auf dem Server gespeichert, Nutzer brauchen keinen eigenen Key.
+                  {t('settings.apiNotice')}
                 </p>
               </div>
               <div className="space-y-2">
-                <label className="text-[10px] font-black uppercase tracking-widest text-slate-400">Gemini API Key</label>
+                <label className="text-[10px] font-black uppercase tracking-widest text-slate-400">{t('settings.apiKeyLabel')}</label>
                 <input type="password" value={apiKey} onChange={e => setApiKey(e.target.value)} placeholder="AIza..."
                   className="w-full px-4 py-3.5 rounded-2xl text-sm font-mono dark:text-white placeholder-slate-400 outline-none focus:ring-2 focus:ring-indigo-500/50 transition-all"
                   style={{ background: 'color-mix(in srgb, var(--border-color) 30%, var(--bg-main))', border: '1px solid var(--border-color)' }}
                   onKeyDown={e => e.key === 'Enter' && handleSaveApiKey()} />
                 <a href="https://aistudio.google.com/app/apikey" target="_blank" rel="noopener noreferrer"
                   className="inline-flex items-center gap-1 text-[11px] font-bold text-indigo-500 hover:underline">
-                  Kostenlosen Key bei Google AI Studio holen →
+                  {t('settings.getFreeKey')}
                 </a>
               </div>
               <div className="flex gap-3">
                 <button onClick={handleSaveApiKey}
                   className="flex-1 py-3.5 rounded-2xl text-[11px] font-black uppercase tracking-widest text-white transition-all hover:scale-[1.02] active:scale-95"
                   style={{ background: 'var(--primary)' }}>
-                  {apiKeySaved ? <span className="flex items-center justify-center gap-2"><Check className="w-4 h-4" strokeWidth={2.5} /> Gespeichert</span> : 'Speichern'}
+                  {apiKeySaved ? <span className="flex items-center justify-center gap-2"><Check className="w-4 h-4" strokeWidth={2.5} /> {t('settings.saved')}</span> : t('common.save')}
                 </button>
                 {apiKey && (
                   <button onClick={() => { localStorage.removeItem('gemini_api_key'); setApiKey(''); }}
                     className="px-5 py-3.5 rounded-2xl text-[11px] font-black uppercase tracking-widest text-rose-500 transition-all active:scale-95"
                     style={{ border: '1px solid var(--border-color)' }}>
-                    Löschen
+                    {t('common.delete')}
                   </button>
                 )}
               </div>
