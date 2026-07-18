@@ -139,10 +139,11 @@ export const AppContent: React.FC<AppContentProps> = (p) => {
       setPendingActionDoc(doc); setPendingTopic(doc ? topic : null);
       setQuestions([]); setAnswers([]); setActiveTab(ActiveTab.QUIZ);
     } else {
-      // Kein konkretes Dokument für dieses Thema bekannt — alten pending-Kontext
+      // Kein konkretes Dokument für dieses Thema bekannt — alten pending-Doc-Kontext
       // verwerfen, sonst würde z.B. ein Feynman-Auto-Start (Reader-Handoff) auf
-      // einem völlig anderen, veralteten Dokument erneut losgehen.
-      setPendingActionDoc(null); setPendingTopic(null);
+      // einem völlig anderen, veralteten Dokument erneut losgehen. Das Thema selbst
+      // bleibt bei Recall aber erhalten und landet als Fokus-Vorbelegung im Feld.
+      setPendingActionDoc(null); setPendingTopic(mode === 'recall' ? topic : null);
       const tabMap = { cards: ActiveTab.CARDS, recall: ActiveTab.RECALL, quiz: ActiveTab.QUIZ } as const;
       setActiveTab(tabMap[mode]);
     }
@@ -336,7 +337,7 @@ export const AppContent: React.FC<AppContentProps> = (p) => {
 
     case ActiveTab.RECALL:
       return <ActiveRecall
-        key={pendingActionDoc ? `recall-${pendingActionDoc.id}-${pendingTopic ?? ''}` : `recall-${activeModuleId ?? 'all'}`}
+        key={pendingActionDoc ? `recall-${pendingActionDoc.id}-${pendingTopic ?? ''}` : `recall-${activeModuleId ?? 'all'}-${pendingTopic ?? ''}`}
         availableDocuments={documents} collections={collections}
         getDocumentSource={getDocumentSource}
         onSaveToLibrary={file => handleFileUpload(file)}
@@ -364,7 +365,7 @@ export const AppContent: React.FC<AppContentProps> = (p) => {
           setActiveTab(ActiveTab.CARDS);
         }}
         initialDoc={pendingActionDoc ?? undefined}
-        initialFocusTopic={pendingActionDoc && pendingTopic ? pendingTopic : undefined}
+        initialFocusTopic={pendingTopic ?? undefined}
         autoStart={!!(pendingActionDoc && pendingTopic)}
       />;
 
