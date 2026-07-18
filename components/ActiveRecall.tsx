@@ -14,6 +14,7 @@ import { buildRealTopicMastery } from '../services/learningProfileService';
 import { buildCollectionSource } from '../services/collectionSource';
 import { getAllResults } from '../services/quizHistoryService';
 import { getAllRecallResults } from '../services/recallHistoryService';
+import { recentRecallTopics } from '../services/recallSteering';
 import { getAllExamResults } from '../services/examHistoryService';
 
 interface ActiveRecallProps {
@@ -143,7 +144,16 @@ export const ActiveRecall: React.FC<ActiveRecallProps> = ({
     setEvaluation(null);
     setUserAnswer('');
     try {
-      const res = await generateRecallChallenge(activeSource, focusTopic.trim() || undefined);
+      // Informierte Themenwahl: kürzlich Geübtes ausschließen, Schwächen bevorzugen.
+      // Quell-/Dateinamen (Alt-Einträge ohne echtes Thema) taugen nicht als Ausschluss.
+      const excludeTopics = recentRecallTopics(getAllRecallResults(), {
+        dropNames: [activeSourceName, ...availableDocuments.map(d => documentDisplayName(d))],
+      });
+      const excluded = new Set(excludeTopics.map(x => x.toLowerCase()));
+      const res = await generateRecallChallenge(activeSource, focusTopic.trim() || undefined, {
+        excludeTopics,
+        preferTopics: topicSuggestions.map(s => s.topic).filter(x => !excluded.has(x.trim().toLowerCase())),
+      });
       if (!res || !res.question) throw new Error(t('ar.invalidResponse'));
       setChallenge(res);
     } catch (e: any) {
@@ -172,8 +182,9 @@ export const ActiveRecall: React.FC<ActiveRecallProps> = ({
     try {
       const res = await evaluateRecallResponse(challenge, userAnswer, activeSource);
       setEvaluation(res);
-      // Themen-Ebene: gewähltes Fokus-Thema als Topic speichern, sonst Quellname
-      onComplete(res.score, focusTopic.trim() || activeSourceName || 'Recall Session', res.missingPoints ?? []);
+      // Themen-Ebene: Fokus-Thema > KI-gewähltes Thema > Quellname. Das echte Thema
+      // speist Ausschlussliste und Lernprofil — der Quellname ist nur letzter Fallback.
+      onComplete(res.score, focusTopic.trim() || challenge.topic?.trim() || activeSourceName || 'Recall Session', res.missingPoints ?? []);
     } catch (e: any) {
       console.error('Evaluation Error:', e);
       toast.error(t('ar.evalFailed'));

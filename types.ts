@@ -410,6 +410,8 @@ export interface RecallChallenge {
   question: string;
   expectedKeywords: string[];
   conceptContext: string;
+  /** Das abgefragte Thema in wenigen Worten — für History/Ausschlussliste. Fehlt bei Altdaten. */
+  topic?: string;
 }
 
 export interface ExplanationEvaluation {

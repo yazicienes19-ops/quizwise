@@ -124,21 +124,36 @@ GIB IMMER NUR STRIKTES JSON ZURÜCK.`;
 
 // ─── Feature-Funktionen ──────────────────────────────────────────────────────
 
-export const generateRecallChallenge = async (source: GenerationSource, focusTopic?: string): Promise<RecallChallenge> => {
+export const generateRecallChallenge = async (
+  source: GenerationSource,
+  focusTopic?: string,
+  steering?: { excludeTopics?: string[]; preferTopics?: string[] }
+): Promise<RecallChallenge> => {
   const parts: any[] = [sourceTopart(source)];
 
   const focusLine = focusTopic?.trim()
     ? `\nFOKUS: Die Frage muss sich auf das Thema "${sanitizeUserInput(focusTopic, 120)}" beziehen. Enthält das Dokument dazu nichts, wähle das inhaltlich nächstliegende Thema aus dem Dokument.\n`
     : '';
 
+  // Themen-Steuerung nur ohne expliziten Fokus — ein gesetztes Fokus-Thema gewinnt immer.
+  const excludeTopics = focusLine ? [] : (steering?.excludeTopics ?? []);
+  const excludeLine = excludeTopics.length > 0
+    ? `\nKÜRZLICH GEÜBT — diese Themen NICHT erneut abfragen (wähle einen anderen Aspekt des Dokuments; nur wenn das Dokument sonst nichts hergibt, darfst du eines wiederverwenden):\n${excludeTopics.map(t => sanitizeUserInput(t, 80)).join(' | ')}\n`
+    : '';
+  const preferTopics = focusLine ? [] : (steering?.preferTopics ?? []);
+  const preferLine = preferTopics.length > 0
+    ? `\nSCHWÄCHEN DES NUTZERS — behandelt das Dokument eines dieser Themen, wähle bevorzugt daraus:\n${preferTopics.map(t => sanitizeUserInput(t, 80)).join(' | ')}\n`
+    : '';
+
   parts.push({ text: `Erzeuge eine Active-Recall-Herausforderung nach der Feynman-Technik.
-${focusLine}
+${focusLine}${excludeLine}${preferLine}
 STRENGE REGEL: Verwende AUSSCHLIESSLICH Inhalte aus dem oben bereitgestellten Dokument. Kein Allgemeinwissen, keine Ergänzungen aus dem Internet, keine Erfindungen. Wenn das Dokument zu einem Thema schweigt, stelle keine Frage dazu.
 
 Die Frage soll tiefes Verständnis prüfen — Zusammenhänge, Ursachen und Bedeutung, nicht bloßes Faktenwissen.
 
 Liefere:
 - question: Eine Erklärungsfrage die nur mit dem Dokument beantwortet werden kann
+- topic: Das abgefragte Thema in 2-5 Worten, als Fachbegriff wie er im Dokument steht
 - expectedKeywords: Die 6-10 zentralen Begriffe aus dem Dokument die in einer vollständigen Antwort vorkommen sollten
 - conceptContext: 4-6 Sätze was eine vollständige Antwort laut Dokument enthalten muss — Kernaussagen, Zusammenhänge, Beispiele aus dem Material${outputLangDirective()}` });
 
@@ -153,10 +168,11 @@ Liefere:
         type: Type.OBJECT,
         properties: {
           question: { type: Type.STRING },
+          topic: { type: Type.STRING },
           expectedKeywords: { type: Type.ARRAY, items: { type: Type.STRING } },
           conceptContext: { type: Type.STRING }
         },
-        required: ['question', 'expectedKeywords', 'conceptContext']
+        required: ['question', 'topic', 'expectedKeywords', 'conceptContext']
       }
     }
   });
