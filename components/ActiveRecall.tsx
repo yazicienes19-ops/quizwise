@@ -62,6 +62,7 @@ export const ActiveRecall: React.FC<ActiveRecallProps> = ({
   const [challenge, setChallenge] = useState<RecallChallenge | null>(null);
   const [userAnswer, setUserAnswer] = useState('');
   const [evaluation, setEvaluation] = useState<RecallEvaluation | null>(null);
+  const [showModelAnswer, setShowModelAnswer] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
   const [isEvaluating, setIsEvaluating] = useState(false);
   const [showFeynmanIntro, setShowFeynmanIntro] = useState(() =>
@@ -164,6 +165,7 @@ export const ActiveRecall: React.FC<ActiveRecallProps> = ({
     setIsLoading(true);
     setEvaluation(null);
     setUserAnswer('');
+    setShowModelAnswer(false);
     try {
       // Informierte Themenwahl: kürzlich Geübtes ausschließen, Schwächen bevorzugen.
       // Quell-/Dateinamen (Alt-Einträge ohne echtes Thema) taugen nicht als Ausschluss.
@@ -529,6 +531,26 @@ export const ActiveRecall: React.FC<ActiveRecallProps> = ({
             </div>
           </div>
 
+          {/* Musterlösung: der ohnehin generierte conceptContext, auf Abruf */}
+          {challenge.conceptContext && (
+            <div className="p-8 rounded-[32px] space-y-4" style={{ background: 'var(--bg-sidebar)', border: '1px solid var(--border-color)' }}>
+              <button
+                onClick={() => setShowModelAnswer(v => !v)}
+                className="w-full flex items-center justify-between text-[9px] font-black uppercase tracking-widest transition-colors"
+                style={{ color: 'var(--primary)' }}
+                aria-expanded={showModelAnswer}
+              >
+                <span>{showModelAnswer ? t('ar.hideModelAnswer') : t('ar.showModelAnswer')}</span>
+                <span className="font-black">{showModelAnswer ? '−' : '+'}</span>
+              </button>
+              {showModelAnswer && (
+                <p className="text-sm font-medium text-slate-600 dark:text-slate-300 leading-relaxed animate-in fade-in duration-300">
+                  {challenge.conceptContext}
+                </p>
+              )}
+            </div>
+          )}
+
           {/* Lernempfehlung + Aktionen */}
           <div className="p-8 lg:p-10 rounded-[32px] lg:rounded-[40px] space-y-6" style={{ background: 'var(--bg-sidebar)', border: '1px dashed var(--border-color)' }}>
             <div className="space-y-1.5 text-center">
@@ -536,6 +558,14 @@ export const ActiveRecall: React.FC<ActiveRecallProps> = ({
               <p className="text-sm lg:text-base font-bold dark:text-white leading-relaxed max-w-2xl mx-auto">{evaluation.suggestedReview}</p>
             </div>
             <div className="flex flex-col sm:flex-row gap-3 justify-center">
+              {/* Feynman-Kern: dieselbe Frage nochmal einfacher erklären */}
+              <button
+                onClick={() => { setEvaluation(null); setUserAnswer(''); setShowModelAnswer(false); }}
+                className="px-8 py-3 rounded-xl font-black uppercase text-[10px] tracking-widest transition-all hover:scale-105 flex items-center justify-center gap-2"
+                style={{ background: 'color-mix(in srgb, var(--primary) 12%, transparent)', color: 'var(--primary)', border: '1px solid color-mix(in srgb, var(--primary) 30%, transparent)' }}
+              >
+                {t('ar.retrySame')}
+              </button>
               <button
                 onClick={() => { setChallenge(null); setEvaluation(null); }}
                 className="bg-indigo-600 px-8 py-3 rounded-xl font-black uppercase text-[10px] tracking-widest shadow-lg hover:scale-105 transition-all flex items-center justify-center gap-2"
