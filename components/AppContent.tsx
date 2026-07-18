@@ -18,6 +18,8 @@ import { interleaveQuestionsByTopic } from '../services/interleave';
 import { countDueMistakes, addExamMistakes } from '../services/mistakeReviewService';
 import type { MistakeItem } from '../services/mistakeReviewService';
 import { saveRecallResult } from '../services/recallHistoryService';
+import { createSrsState } from '../services/spacedRepetition';
+import { saveDeckToSupabase } from '../services/flashcardService';
 import { saveExamResult } from '../services/examHistoryService';
 import { recordActivity } from '../services/streakService';
 import { isAdmin } from '../config/admin';
@@ -351,11 +353,13 @@ export const AppContent: React.FC<AppContentProps> = (p) => {
             back: p,
             level: 0,
             nextReview: Date.now(),
+            srs: createSrsState(),
           }));
           const newDeck: FlashcardDeck = { id: Math.random().toString(36).slice(2, 9), title: `Lücken: ${topic}`, cards };
           const updatedDecks = [...decks, newDeck];
           setDecks(updatedDecks);
           localStorage.setItem('flashcard_decks', JSON.stringify(updatedDecks));
+          if (user?.id) saveDeckToSupabase(newDeck, user.id).catch(() => {});
           toast.success(tp('ac.cardsFromGapsN', cards.length));
           setActiveTab(ActiveTab.CARDS);
         }}

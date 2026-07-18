@@ -229,7 +229,20 @@ suggestedReview: Welches Teilkonzept wiederholen und warum.` });
       }
     }
   });
-  return JSON.parse(text || '{}');
+  // Kaputte/leere Antworten dürfen nie als Evaluation in den Render gelangen
+  // (evaluation.strengths.length würde crashen) — lieber Fehler + Toast.
+  const raw = JSON.parse(text || '{}');
+  if (!raw || typeof raw.score !== 'number' || Number.isNaN(raw.score)) {
+    throw new Error('Unvollständige Bewertung erhalten');
+  }
+  const strArr = (v: unknown): string[] => Array.isArray(v) ? v.filter((x): x is string => typeof x === 'string') : [];
+  return {
+    score: Math.max(0, Math.min(100, Math.round(raw.score))),
+    feedback: typeof raw.feedback === 'string' ? raw.feedback : '',
+    missingPoints: strArr(raw.missingPoints),
+    strengths: strArr(raw.strengths),
+    suggestedReview: typeof raw.suggestedReview === 'string' ? raw.suggestedReview : '',
+  };
 };
 
 export const orchestrateLearningFlow = async (
