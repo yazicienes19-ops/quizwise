@@ -21,7 +21,6 @@ import {
   RecallEvaluation,
   ScoringProfile,
   ExamAnalysis,
-  ExplanationEvaluation,
   LearningProfile,
   CoachInsights,
 } from "../types";
@@ -1203,63 +1202,6 @@ Sei konkret und lernorientiert. Keine allgemeinen Phrasen.${outputLangDirective(
 };
 
 // ─── Feynman-Bewertung ────────────────────────────────────────────────────────
-export const evaluateStudentExplanation = async (
-  source: GenerationSource | null,
-  concept: string,
-  studentText: string
-): Promise<ExplanationEvaluation> => {
-  const parts: any[] = [];
-  if (source) parts.push(sourceTopart(source));
-
-  const safeConcept = sanitizeUserInput(concept, 200);
-  const safeText    = sanitizeUserInput(studentText, 2000);
-
-  parts.push({ text: `Du bist ein Lerncoach der Feynman-Methode.
-
-EIN STUDENT SOLL DIESES KONZEPT ERKLÄREN: "${safeConcept}"
-${source ? 'Das Referenzdokument oben enthält die korrekten Informationen dazu.' : 'Bewerte anhand von allgemeinem Fachwissen.'}
-
-DIE ERKLÄRUNG DES STUDENTEN:
-"${safeText}"
-
-BEWERTUNGSAUFGABE:
-Bewerte die Erklärung ${source ? 'AUSSCHLIESSLICH anhand des Referenzdokuments' : 'anhand von Fachwissen'}.
-Sei fair und lernorientiert — nicht entmutigend, aber präzise.
-
-Gib zurück:
-- score: 0–100 (wie viel Prozent des Konzepts wurde korrekt und vollständig erklärt?)
-- correct: Liste mit max. 3 Dingen die der Student richtig erklärt hat (konkret, 1 Satz je Punkt)
-- missing: Liste mit max. 4 wichtigen Aspekten die gefehlt haben (konkret, 1 Satz je Punkt)
-- wrong: Liste mit max. 2 Dingen die falsch oder ungenau waren (konkret, 1 Satz je Punkt) — leer wenn nichts falsch war
-- feedback: 2–3 Sätze Gesamtfeedback (was gut war, wo der Student ansetzen sollte)
-- nextSteps: 1 konkreter Satz was der Student als nächstes lernen oder wiederholen sollte
-
-Wichtig: Wenn die Erklärung leer oder sehr kurz ist, gib score=0 und erkläre warum.${outputLangDirective()}` });
-
-  const text = await callBackend({
-    complexity: 'light',
-    parts,
-    config: {
-      temperature: 0.2,
-      thinkingConfig: { thinkingBudget: 0 },
-      responseMimeType: 'application/json',
-      responseSchema: {
-        type: Type.OBJECT,
-        properties: {
-          score:     { type: Type.NUMBER },
-          correct:   { type: Type.ARRAY, items: { type: Type.STRING } },
-          missing:   { type: Type.ARRAY, items: { type: Type.STRING } },
-          wrong:     { type: Type.ARRAY, items: { type: Type.STRING } },
-          feedback:  { type: Type.STRING },
-          nextSteps: { type: Type.STRING },
-        },
-        required: ['score', 'correct', 'missing', 'wrong', 'feedback', 'nextSteps'],
-      },
-    },
-  });
-
-  return JSON.parse(text || '{"score":0,"correct":[],"missing":[],"wrong":[],"feedback":"Bewertung fehlgeschlagen.","nextSteps":""}');
-};
 
 // ─── Lern-Coach-Synthese ────────────────────────────────────────────────────────
 // Reasoniert über das bereits deterministisch berechnete LearningProfile

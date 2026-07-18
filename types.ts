@@ -414,15 +414,6 @@ export interface RecallChallenge {
   topic?: string;
 }
 
-export interface ExplanationEvaluation {
-  score: number;       // 0–100
-  correct: string[];   // Was richtig erklärt wurde
-  missing: string[];   // Was gefehlt hat
-  wrong: string[];     // Was falsch war
-  feedback: string;    // Gesamtfeedback (2–3 Sätze)
-  nextSteps: string;   // Empfehlung was als nächstes gelernt werden sollte
-}
-
 export interface RecallEvaluation {
   score: number; // 0-100
   feedback: string;

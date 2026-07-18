@@ -153,12 +153,18 @@ export const ActiveRecall: React.FC<ActiveRecallProps> = ({
         .join('');
       setUserAnswer(prev => prev ? prev + ' ' + transcript : transcript);
     };
-    rec.onerror = () => setIsListening(false);
+    rec.onerror = (e: any) => {
+      setIsListening(false);
+      // Verweigertes Mikrofon sonst = scheinbar kaputter Button
+      if (e?.error === 'not-allowed' || e?.error === 'service-not-allowed' || e?.error === 'audio-capture') {
+        toast.error(t('ar.micDenied'));
+      }
+    };
     rec.onend = () => setIsListening(false);
     speechRef.current = rec;
     rec.start();
     setIsListening(true);
-  }, [hasSpeechApi, isListening]);
+  }, [hasSpeechApi, isListening, t]);
 
   const startNewChallenge = async () => {
     if (!activeSource) return;
@@ -427,8 +433,11 @@ export const ActiveRecall: React.FC<ActiveRecallProps> = ({
               </p>
             )}
             <div className="flex flex-col sm:flex-row justify-between items-center gap-4 px-4 lg:px-6">
-              <span className="text-[9px] font-black uppercase text-slate-400 tracking-widest order-2 sm:order-1">
-{t('ar.wordsN', { n: userAnswer.trim().split(/\s+/).filter(x => x).length })}
+              <span className="text-[9px] font-black uppercase tracking-widest order-2 sm:order-1 text-slate-400">
+                {t('ar.wordsN', { n: userAnswer.trim().split(/\s+/).filter(x => x).length })}
+                {userAnswer.length > 3000 && (
+                  <span className="block mt-1 text-amber-500 normal-case font-bold">{t('ar.truncationHint')}</span>
+                )}
               </span>
               <button
                 onClick={handleEvaluate}
@@ -467,7 +476,7 @@ export const ActiveRecall: React.FC<ActiveRecallProps> = ({
           <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
             <div className="p-8 lg:p-10 rounded-[32px] lg:rounded-[40px] shadow-3d-raised flex flex-col items-center justify-center text-center" style={{ background: 'var(--bg-sidebar)', border: '1px solid var(--border-color)' }}>
               <span className="text-[9px] font-black uppercase text-slate-400 tracking-widest mb-2">{t('ar.recallQuality')}</span>
-              <span className={`text-5xl lg:text-6xl font-black ${evaluation.score >= 80 ? 'text-emerald-500' : evaluation.score >= 50 ? 'text-indigo-500' : 'text-rose-500'}`}>
+              <span className={`text-5xl lg:text-6xl font-black ${evaluation.score >= 86 ? 'text-emerald-500' : evaluation.score >= 61 ? 'text-indigo-500' : evaluation.score >= 31 ? 'text-amber-500' : 'text-rose-500'}`}>
                 {evaluation.score}%
               </span>
               <span className="text-[9px] font-black uppercase tracking-widest mt-2 text-slate-400">
