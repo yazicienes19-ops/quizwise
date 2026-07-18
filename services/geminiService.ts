@@ -127,7 +127,7 @@ GIB IMMER NUR STRIKTES JSON ZURÜCK.`;
 export const generateRecallChallenge = async (
   source: GenerationSource,
   focusTopic?: string,
-  steering?: { excludeTopics?: string[]; preferTopics?: string[] }
+  steering?: { excludeTopics?: string[]; preferTopics?: string[]; coverTopics?: string[] }
 ): Promise<RecallChallenge> => {
   const parts: any[] = [sourceTopart(source)];
 
@@ -136,17 +136,23 @@ export const generateRecallChallenge = async (
     : '';
 
   // Themen-Steuerung nur ohne expliziten Fokus — ein gesetztes Fokus-Thema gewinnt immer.
-  const excludeTopics = focusLine ? [] : (steering?.excludeTopics ?? []);
+  // Abdeckung vor Vertiefung: solange Kapitel offen sind, wird aus ihnen gewählt;
+  // die Ausschlussliste ist dann überflüssig (abgefragte Kapitel stehen nicht mehr drin).
+  const coverTopics = focusLine ? [] : (steering?.coverTopics ?? []);
+  const coverLine = coverTopics.length > 0
+    ? `\nNOCH NICHT ABGEFRAGT — wähle als Thema GENAU EINEN Eintrag aus dieser Liste und stelle deine Frage dazu; topic muss wörtlich dem gewählten Eintrag entsprechen:\n${coverTopics.slice(0, 30).map(t => sanitizeUserInput(t, 120)).join(' | ')}\n`
+    : '';
+  const excludeTopics = (focusLine || coverLine) ? [] : (steering?.excludeTopics ?? []);
   const excludeLine = excludeTopics.length > 0
     ? `\nKÜRZLICH GEÜBT — diese Themen NICHT erneut abfragen (wähle einen anderen Aspekt des Dokuments; nur wenn das Dokument sonst nichts hergibt, darfst du eines wiederverwenden):\n${excludeTopics.map(t => sanitizeUserInput(t, 80)).join(' | ')}\n`
     : '';
-  const preferTopics = focusLine ? [] : (steering?.preferTopics ?? []);
+  const preferTopics = (focusLine || coverLine) ? [] : (steering?.preferTopics ?? []);
   const preferLine = preferTopics.length > 0
     ? `\nSCHWÄCHEN DES NUTZERS — behandelt das Dokument eines dieser Themen, wähle bevorzugt daraus:\n${preferTopics.map(t => sanitizeUserInput(t, 80)).join(' | ')}\n`
     : '';
 
   parts.push({ text: `Erzeuge eine Active-Recall-Herausforderung nach der Feynman-Technik.
-${focusLine}${excludeLine}${preferLine}
+${focusLine}${coverLine}${excludeLine}${preferLine}
 STRENGE REGEL: Verwende AUSSCHLIESSLICH Inhalte aus dem oben bereitgestellten Dokument. Kein Allgemeinwissen, keine Ergänzungen aus dem Internet, keine Erfindungen. Wenn das Dokument zu einem Thema schweigt, stelle keine Frage dazu.
 
 Die Frage soll tiefes Verständnis prüfen — Zusammenhänge, Ursachen und Bedeutung, nicht bloßes Faktenwissen.

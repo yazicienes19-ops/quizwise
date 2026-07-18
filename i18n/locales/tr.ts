@@ -947,6 +947,8 @@ export const tr: Translations = {
   'ar.chooseFocus': 'Odak seç',
   'ar.focusTopic': 'Odak konusu (isteğe bağlı)',
   'ar.focusPlaceholder': 'ör. Edimsel koşullanma (serbest konu için boş bırak)',
+  'ar.coverageProgress': '{total} konudan {covered} tanesi anlatıldı',
+  'ar.coverageDone': 'Tüm konular bir kez anlatıldı: şimdi derinleşme zamanı',
   'ar.generating': 'Soru oluşturuluyor...',
   'ar.invalidResponse': 'Geçersiz yanıt',
   'ar.startDrill': 'Alıştırmayı başlat',

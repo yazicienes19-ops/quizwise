@@ -15,6 +15,8 @@ import { buildCollectionSource } from '../services/collectionSource';
 import { getAllResults } from '../services/quizHistoryService';
 import { getAllRecallResults } from '../services/recallHistoryService';
 import { recentRecallTopics } from '../services/recallSteering';
+import { getCoverage, markTopicCovered } from '../services/recallCoverageService';
+import { detectChapters, getTextForChapterDetection } from '../services/chapterService';
 import { getAllExamResults } from '../services/examHistoryService';
 
 interface ActiveRecallProps {
@@ -46,6 +48,9 @@ export const ActiveRecall: React.FC<ActiveRecallProps> = ({
   const { t } = useTranslation();
   const [activeSource, setActiveSource] = useState<GenerationSource | null>(null);
   const [activeSourceName, setActiveSourceName] = useState('');
+  /** Gesetzt nur bei Einzeldokument-Quellen — Basis für die Themen-Abdeckung. */
+  const [activeDoc, setActiveDoc] = useState<ProcessedDocument | null>(null);
+  const [coverageBump, setCoverageBump] = useState(0);
   const [focusTopic, setFocusTopic] = useState(initialFocusTopic ?? '');
 
   // Schwache echte Themen als Fokus-Vorschläge (gleiche Quelle wie der Lern-Coach)
@@ -73,6 +78,7 @@ export const ActiveRecall: React.FC<ActiveRecallProps> = ({
       try {
         setActiveSource(getDocumentSource(initialDoc));
         setActiveSourceName(documentDisplayName(initialDoc));
+        setActiveDoc(initialDoc);
       } catch (_) {}
       return;
     }
@@ -99,7 +105,22 @@ export const ActiveRecall: React.FC<ActiveRecallProps> = ({
         : { text: doc.content };
     setActiveSource(source);
     setActiveSourceName(documentDisplayName(doc));
+    setActiveDoc(doc);
   };
+
+  // Kapitel-Themen des aktiven Dokuments (Text/DOCX direkt, sonst Digest) —
+  // Grundlage für „erst alles einmal abfragen, dann vertiefen".
+  const chapterTitles = useMemo(() => {
+    if (!activeDoc) return [];
+    return detectChapters(getTextForChapterDetection(activeDoc))
+      .map(c => c.title.replace(/^#{1,6}\s*/, '').trim())
+      .filter(Boolean);
+  }, [activeDoc]);
+
+  const coverage = useMemo(
+    () => (activeDoc ? getCoverage(activeDoc.id, chapterTitles) : null),
+    [activeDoc, chapterTitles, coverageBump]
+  );
 
   const handleCancel = () => {
     setChallenge(null);
@@ -151,6 +172,9 @@ export const ActiveRecall: React.FC<ActiveRecallProps> = ({
       });
       const excluded = new Set(excludeTopics.map(x => x.toLowerCase()));
       const res = await generateRecallChallenge(activeSource, focusTopic.trim() || undefined, {
+        // Abdeckung vor Vertiefung: offene Kapitel zuerst — sind alle einmal
+        // durch, übernimmt die adaptive Steuerung (Ausschluss + Schwächen).
+        coverTopics: coverage?.uncovered ?? [],
         excludeTopics,
         preferTopics: topicSuggestions.map(s => s.topic).filter(x => !excluded.has(x.trim().toLowerCase())),
       });
@@ -184,7 +208,12 @@ export const ActiveRecall: React.FC<ActiveRecallProps> = ({
       setEvaluation(res);
       // Themen-Ebene: Fokus-Thema > KI-gewähltes Thema > Quellname. Das echte Thema
       // speist Ausschlussliste und Lernprofil — der Quellname ist nur letzter Fallback.
-      onComplete(res.score, focusTopic.trim() || challenge.topic?.trim() || activeSourceName || 'Recall Session', res.missingPoints ?? []);
+      const usedTopic = focusTopic.trim() || challenge.topic?.trim() || activeSourceName || 'Recall Session';
+      onComplete(res.score, usedTopic, res.missingPoints ?? []);
+      if (activeDoc) {
+        markTopicCovered(activeDoc.id, usedTopic);
+        setCoverageBump(b => b + 1);
+      }
     } catch (e: any) {
       console.error('Evaluation Error:', e);
       toast.error(t('ar.evalFailed'));
@@ -240,10 +269,17 @@ export const ActiveRecall: React.FC<ActiveRecallProps> = ({
                 <div>
                   <p className="text-[9px] font-black uppercase text-slate-400 tracking-widest">{t('ar.activeSource')}</p>
                   <p className="text-sm font-black dark:text-white break-words max-w-xs">{activeSourceName}</p>
+                  {coverage && coverage.total >= 2 && (
+                    <p className="text-[9px] font-black uppercase tracking-widest mt-1" style={{ color: coverage.uncovered.length === 0 ? '#10b981' : 'var(--primary)' }}>
+                      {coverage.uncovered.length === 0
+                        ? t('ar.coverageDone')
+                        : t('ar.coverageProgress', { covered: coverage.coveredCount, total: coverage.total })}
+                    </p>
+                  )}
                 </div>
               </div>
               <button
-                onClick={() => { setActiveSource(null); setActiveSourceName(''); }}
+                onClick={() => { setActiveSource(null); setActiveSourceName(''); setActiveDoc(null); }}
                 className="text-slate-300 hover:text-rose-500 transition-colors font-black text-sm"
               >✕</button>
             </div>
@@ -252,7 +288,7 @@ export const ActiveRecall: React.FC<ActiveRecallProps> = ({
               documents={availableDocuments}
               collections={collections}
               onSelectDocument={handleSelectDocument}
-              onSelectSource={(source, name) => { setActiveSource(source); setActiveSourceName(name); }}
+              onSelectSource={(source, name) => { setActiveSource(source); setActiveSourceName(name); setActiveDoc(null); }}
               onSaveToLibrary={onSaveToLibrary}
               isLoading={isLoading}
               label={t('ar.chooseFocus')}

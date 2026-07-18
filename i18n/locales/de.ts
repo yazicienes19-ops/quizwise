@@ -955,6 +955,8 @@ export const de = {
   'ar.chooseFocus': 'Fokus wählen',
   'ar.focusTopic': 'Fokus-Thema (optional)',
   'ar.focusPlaceholder': 'z.B. Operante Konditionierung (leer lassen für freie Themenwahl)',
+  'ar.coverageProgress': '{covered} von {total} Themen erklärt',
+  'ar.coverageDone': 'Alle Themen einmal erklärt: jetzt wird vertieft',
   'ar.generating': 'Frage wird generiert...',
   'ar.invalidResponse': 'Ungültige Antwort',
   'ar.startDrill': 'Drill starten',
