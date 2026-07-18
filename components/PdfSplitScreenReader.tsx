@@ -231,7 +231,7 @@ export const PdfSplitScreenReader: React.FC<PdfSplitScreenReaderProps> = ({ doc,
               <button
                 onClick={() => setZoom(z => Math.min(3, Math.round((z + 0.25) * 100) / 100))}
                 disabled={zoom >= 3}
-                aria-label="Vergrößern"
+                aria-label={t('rd.zoomIn')}
                 className="w-9 h-9 rounded-xl text-sm font-black transition-all disabled:opacity-30 disabled:cursor-not-allowed"
                 style={{ background: 'var(--bg-main)', border: '1px solid var(--border-color)', color: 'var(--text-main)' }}
               >

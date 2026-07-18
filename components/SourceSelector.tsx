@@ -5,6 +5,7 @@ import type { GenerationSource } from '../services/geminiService';
 import { documentDisplayName as docTitle } from '../services/libraryService';
 import { buildCollectionSource, collectionDocs } from '../services/collectionSource';
 import mammoth from 'mammoth';
+import { useTranslation } from '../i18n/I18nProvider';
 
 interface SourceSelectorProps {
   documents: ProcessedDocument[];
@@ -40,6 +41,7 @@ export const SourceSelector: React.FC<SourceSelectorProps> = ({
   label,
   userPlan = 'free',
 }) => {
+  const { t, tp } = useTranslation();
   const [tab, setTab] = useState<Tab>(documents.length > 0 ? 'library' : 'upload');
   const [search, setSearch] = useState('');
   // Variante C: aktives Fach (app-weiter Kontext) als Vorauswahl des Ordner-Filters
@@ -78,14 +80,14 @@ export const SourceSelector: React.FC<SourceSelectorProps> = ({
     setUploadWarning(null);
 
     if (file.size > MAX_FILE_SIZE) {
-      setUploadError(`Datei zu groß (${(file.size / 1024 / 1024).toFixed(1)} MB). Maximum ist 50 MB.`);
+      setUploadError(t('ssel.fileTooBig', { size: (file.size / 1024 / 1024).toFixed(1) }));
       if (fileInputRef.current) fileInputRef.current.value = '';
       return;
     }
 
     const isDuplicate = documents.some(d => d.name === file.name);
     if (isDuplicate) {
-      setUploadWarning(`"${file.name}" ist bereits in deiner Bibliothek, wird aber trotzdem verarbeitet.`);
+      setUploadWarning(t('ssel.duplicate', { name: file.name }));
     }
 
     setIsProcessing(true);
@@ -116,7 +118,7 @@ export const SourceSelector: React.FC<SourceSelectorProps> = ({
 
   const handleTextSubmit = () => {
     if (!pastedText.trim()) return;
-    onSelectSource({ text: pastedText.trim() }, 'Eingefügter Text');
+    onSelectSource({ text: pastedText.trim() }, t('ssel.pastedTextName'));
   };
 
   // Ordner mit Inhalten — jeder Ordner ist ein Wissensraum aus allen seinen Quellen
@@ -134,9 +136,9 @@ export const SourceSelector: React.FC<SourceSelectorProps> = ({
   };
 
   const tabs: { id: Tab; label: string; icon: React.ReactNode }[] = [
-    { id: 'library', label: 'Aus Bibliothek', icon: <BookOpen className="w-4 h-4" strokeWidth={1.75} /> },
-    { id: 'upload',  label: 'Neue Datei',     icon: <Upload className="w-4 h-4" strokeWidth={1.75} /> },
-    { id: 'text',    label: 'Text einfügen',  icon: <FileText className="w-4 h-4" strokeWidth={1.75} /> },
+    { id: 'library', label: t('ssel.tabLibrary'), icon: <BookOpen className="w-4 h-4" strokeWidth={1.75} /> },
+    { id: 'upload',  label: t('ssel.tabUpload'), icon: <Upload className="w-4 h-4" strokeWidth={1.75} /> },
+    { id: 'text',    label: t('ssel.tabText'), icon: <FileText className="w-4 h-4" strokeWidth={1.75} /> },
   ];
 
   // Ordner-Zeilen erscheinen direkt in der Bibliotheks-Liste (kein eigener Tab):
@@ -163,17 +165,17 @@ export const SourceSelector: React.FC<SourceSelectorProps> = ({
       {/* Tab-Leiste */}
       <div className="px-6 pt-5 pb-0">
         <div className="flex p-1 rounded-2xl gap-1 min-w-0" style={{ background: 'color-mix(in srgb, var(--border-color) 40%, var(--bg-main))' }}>
-          {tabs.map(t => (
+          {tabs.map(tb => (
             <button
-              key={t.id}
-              onClick={() => setTab(t.id)}
-              title={t.label}
+              key={tb.id}
+              onClick={() => setTab(tb.id)}
+              title={tb.label}
               className={`flex-1 min-w-0 flex items-center justify-center gap-2 py-2.5 rounded-xl text-[10px] font-black uppercase tracking-wider transition-all ${
-                tab === t.id ? 'bg-indigo-600 text-white shadow-lg' : 'text-slate-400 hover:text-slate-600 dark:hover:text-slate-200'
+                tab === tb.id ? 'bg-indigo-600 text-white shadow-lg' : 'text-slate-400 hover:text-slate-600 dark:hover:text-slate-200'
               }`}
             >
-              <span className="shrink-0">{t.icon}</span>
-              <span className="hidden sm:inline break-words">{t.label}</span>
+              <span className="shrink-0">{tb.icon}</span>
+              <span className="hidden sm:inline break-words">{tb.label}</span>
             </button>
           ))}
         </div>
@@ -188,12 +190,12 @@ export const SourceSelector: React.FC<SourceSelectorProps> = ({
             {documents.length === 0 ? (
               <div className="py-12 flex flex-col items-center gap-4 text-center opacity-50">
                 <span className="text-5xl">📭</span>
-                <p className="text-[11px] font-black uppercase tracking-widest dark:text-white">Bibliothek ist leer</p>
+                <p className="text-[11px] font-black uppercase tracking-widest dark:text-white">{t('ssel.emptyLibrary')}</p>
                 <button
                   onClick={() => setTab('upload')}
                   className="text-[10px] font-black uppercase tracking-widest text-indigo-600 hover:underline"
                 >
-                  Erste Datei hochladen →
+                  {t('ssel.uploadFirst')}
                 </button>
               </div>
             ) : (
@@ -205,7 +207,7 @@ export const SourceSelector: React.FC<SourceSelectorProps> = ({
                     <input
                       value={search}
                       onChange={e => setSearch(e.target.value)}
-                      placeholder="Dokument suchen..."
+                      placeholder={t('ssel.searchPlaceholder')}
                       className="w-full pl-10 pr-4 py-2.5 rounded-2xl text-sm dark:text-white placeholder-slate-400 outline-none"
                       style={{ background: 'color-mix(in srgb, var(--border-color) 30%, var(--bg-main))', border: '1px solid var(--border-color)' }}
                     />
@@ -222,7 +224,7 @@ export const SourceSelector: React.FC<SourceSelectorProps> = ({
                       className="px-3 py-2.5 rounded-2xl text-[11px] font-bold dark:text-white outline-none"
                       style={{ background: 'color-mix(in srgb, var(--border-color) 30%, var(--bg-main))', border: '1px solid var(--border-color)' }}
                     >
-                      <option value="all">Alle</option>
+                      <option value="all">{t('ssel.all')}</option>
                       {collections.map(c => (
                         <option key={c.id} value={c.id}>{c.emoji} {c.name}</option>
                       ))}
@@ -251,9 +253,9 @@ export const SourceSelector: React.FC<SourceSelectorProps> = ({
                         <div className="flex-1 min-w-0">
                           <p className="text-[12px] font-black dark:text-white break-words">{collection.emoji} {collection.name}</p>
                           <p className="text-[10px] uppercase tracking-widest mt-0.5" style={{ color: 'var(--primary)' }}>
-                            Ganzer Ordner · {count} Quelle{count !== 1 ? 'n' : ''}
-                            {ready && included < count && <> · {included} nutzbar</>}
-                            {!ready && <> · wird noch verarbeitet</>}
+                            {t('ssel.wholeFolder')} · {tp('ssel.sourcesN', count)}
+                            {ready && included < count && <> · {t('ssel.usableN', { n: included })}</>}
+                            {!ready && <> · {t('ssel.processing')}</>}
                           </p>
                         </div>
                         <ChevronRight className="w-4 h-4 shrink-0 transition-colors" style={{ color: 'var(--primary)' }} strokeWidth={2} />
@@ -261,7 +263,7 @@ export const SourceSelector: React.FC<SourceSelectorProps> = ({
                     );
                   })}
                   {filtered.length === 0 && visibleFolders.length === 0 ? (
-                    <p className="text-center text-[11px] text-slate-400 py-8 italic">Keine Treffer für „{search}"</p>
+                    <p className="text-center text-[11px] text-slate-400 py-8 italic">{t('ssel.noHits', { q: search })}</p>
                   ) : (
                     filtered.map(doc => {
                       const col = collections.find(c => c.id === doc.collectionId);
@@ -300,10 +302,10 @@ export const SourceSelector: React.FC<SourceSelectorProps> = ({
               <div className={`flex items-center justify-between px-4 py-3 rounded-2xl ${documents.length >= 5 ? 'bg-rose-50 dark:bg-rose-950/20 border border-rose-200 dark:border-rose-800' : 'bg-slate-50 dark:bg-slate-800/40 border border-slate-200 dark:border-slate-700'}`}>
                 <div>
                   <p className={`text-[11px] font-black ${documents.length >= 5 ? 'text-rose-700 dark:text-rose-400' : 'text-slate-600 dark:text-slate-300'}`}>
-                    {documents.length >= 5 ? 'Dokumenten-Limit erreicht' : `${documents.length} / 5 Dokumente`}
+                    {documents.length >= 5 ? t('ssel.docLimitReached') : t('ssel.docsCount', { n: documents.length })}
                   </p>
                   <p className="text-[10px] text-slate-400 mt-0.5">
-                    {documents.length >= 5 ? 'Pro-Plan für unbegrenzte Bibliothek' : 'Free-Plan · 5 Dokumente inkl.'}
+                    {documents.length >= 5 ? t('ssel.proUnlimited') : t('ssel.freeIncluded')}
                   </p>
                 </div>
                 <div className="flex items-center gap-1.5">
@@ -322,9 +324,9 @@ export const SourceSelector: React.FC<SourceSelectorProps> = ({
               <span className="text-4xl">{isProcessing ? '⏳' : '📂'}</span>
               <div className="text-center space-y-1">
                 <p className="text-[11px] font-black uppercase tracking-widest dark:text-white group-hover:text-indigo-600 transition-colors">
-                  {isProcessing ? 'Wird verarbeitet...' : 'Datei auswählen'}
+                  {isProcessing ? t('ssel.processingFile') : t('ssel.chooseFile')}
                 </p>
-                <p className="text-[10px] text-slate-400">PDF, DOCX oder TXT · max. 50 MB</p>
+                <p className="text-[10px] text-slate-400">{t('ssel.fileTypes')}</p>
               </div>
             </button>
             <input
@@ -358,8 +360,8 @@ export const SourceSelector: React.FC<SourceSelectorProps> = ({
                   <div className={`absolute top-0.5 w-4 h-4 bg-white rounded-full shadow transition-all ${saveToLib ? 'left-5' : 'left-0.5'}`} />
                 </div>
                 <div>
-                  <p className="text-[11px] font-black dark:text-white">Auch in Bibliothek speichern</p>
-                  <p className="text-[10px] text-slate-400">Dann in allen Modulen wiederverwendbar</p>
+                  <p className="text-[11px] font-black dark:text-white">{t('ssel.saveToLibrary')}</p>
+                  <p className="text-[10px] text-slate-400">{t('ssel.reusable')}</p>
                 </div>
               </label>
             )}
@@ -373,14 +375,14 @@ export const SourceSelector: React.FC<SourceSelectorProps> = ({
               autoFocus
               value={pastedText}
               onChange={e => setPastedText(e.target.value)}
-              placeholder="Füge hier deinen Lernstoff ein: Mitschrift, Zusammenfassung, Skript-Abschnitt..."
+              placeholder={t('ssel.textPlaceholder')}
               rows={8}
               className="w-full p-5 rounded-[24px] text-sm dark:text-white placeholder-slate-400 outline-none resize-none leading-relaxed"
               style={{ background: 'color-mix(in srgb, var(--border-color) 25%, var(--bg-main))', border: '1px solid var(--border-color)' }}
             />
             <div className="flex items-center justify-between px-1">
               <span className="text-[10px] text-slate-400">
-                {pastedText.trim().split(/\s+/).filter(Boolean).length} Wörter
+                {tp('ssel.wordsN', pastedText.trim().split(/\s+/).filter(Boolean).length)}
               </span>
               <button
                 onClick={handleTextSubmit}
@@ -388,7 +390,7 @@ export const SourceSelector: React.FC<SourceSelectorProps> = ({
                 className="px-6 py-3 rounded-2xl text-[11px] font-black uppercase tracking-widest text-white transition-all hover:scale-[1.02] active:scale-95 disabled:opacity-40"
                 style={{ background: 'var(--primary)' }}
               >
-                Weiter →
+                {t('ssel.continue')}
               </button>
             </div>
           </div>

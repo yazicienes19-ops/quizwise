@@ -144,7 +144,7 @@ export const ActiveRecall: React.FC<ActiveRecallProps> = ({
     setUserAnswer('');
     try {
       const res = await generateRecallChallenge(activeSource, focusTopic.trim() || undefined);
-      if (!res || !res.question) throw new Error('Ungültige Antwort');
+      if (!res || !res.question) throw new Error(t('ar.invalidResponse'));
       setChallenge(res);
     } catch (e: any) {
       console.error('Recall Start Error:', e);

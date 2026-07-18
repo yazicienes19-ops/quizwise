@@ -531,7 +531,7 @@ export const FlashcardSystem: React.FC<FlashcardSystemProps> = ({
             );
 
             if (filtered.length === 0) return (
-              <div className="py-12 text-center opacity-40 text-sm">Keine Karten für „{cardSearch}"</div>
+              <div className="py-12 text-center opacity-40 text-sm">{t('fcs.noCardsForSearch', { q: cardSearch })}</div>
             );
 
             return (

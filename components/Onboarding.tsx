@@ -123,10 +123,11 @@ export const Onboarding: React.FC<OnboardingProps> = ({ onComplete, onStartUploa
               {t('onboarding.step', { n: 1, total: TOTAL })}
             </p>
             <h2 className="text-xl font-black tracking-tight mb-3" style={{ color: 'var(--text-main)' }}>
-              {t('onboarding.lang.title')}
+              Wähle deine Sprache · Dilini seç
             </h2>
             <p className="text-sm text-slate-500 dark:text-slate-400 leading-relaxed mb-6">
-              {t('onboarding.lang.subtitle')}
+              In welcher Sprache möchtest du lernen?<br />
+              Hangi dilde öğrenmek istersin?
             </p>
             <div className="grid grid-cols-2 gap-3 w-full">
               {(['de', 'tr'] as Locale[]).map(l => (

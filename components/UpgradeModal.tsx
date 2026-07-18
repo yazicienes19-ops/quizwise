@@ -47,7 +47,7 @@ export const UpgradeModal: React.FC<UpgradeModalProps> = ({ onClose }) => {
               <p className="text-[10px] text-slate-400 font-bold uppercase tracking-widest">{t('um.unlimitedLearn')}</p>
             </div>
           </div>
-          <button aria-label="Schließen" onClick={onClose} className="text-slate-400 hover:text-slate-600 dark:hover:text-white transition-colors">
+          <button aria-label={t('common.close')} onClick={onClose} className="text-slate-400 hover:text-slate-600 dark:hover:text-white transition-colors">
             <X className="w-5 h-5" strokeWidth={2} />
           </button>
         </div>

@@ -2,6 +2,7 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { CheckCircle, XCircle, Info, X } from 'lucide-react';
 import { toast, type ToastType } from '../services/toast';
+import { t as translate } from '../i18n';
 
 interface ToastItem {
   id: number;
@@ -44,7 +45,7 @@ export const ToastContainer: React.FC = () => {
         >
           {icons[t.type]}
           <span className="flex-1">{t.message}</span>
-          <button onClick={() => remove(t.id)} aria-label="Meldung schließen" className="opacity-60 hover:opacity-100 transition-opacity ml-1">
+          <button onClick={() => remove(t.id)} aria-label={translate('common.close')} className="opacity-60 hover:opacity-100 transition-opacity ml-1">
             <X className="w-4 h-4" strokeWidth={2} />
           </button>
         </div>

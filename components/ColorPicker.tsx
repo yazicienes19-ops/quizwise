@@ -1,6 +1,7 @@
 
 import React, { useState } from 'react';
 import { Palette, Check } from 'lucide-react';
+import { useTranslation } from '../i18n/I18nProvider';
 
 const PRESETS = [
   { name: 'Claude Coral', value: '#D97757' },
@@ -26,6 +27,7 @@ export function applyAccentColor(color: string) {
 }
 
 export const ColorPicker: React.FC = () => {
+  const { t } = useTranslation();
   const [current, setCurrent] = useState(() =>
     localStorage.getItem('accent_color') || '#D97757'
   );
@@ -45,7 +47,7 @@ export const ColorPicker: React.FC = () => {
       >
         <span className="flex items-center gap-2">
           <span className="w-3 h-3 rounded-full shadow-inner" style={{ background: current }} />
-          Akzentfarbe
+          {t('settings.accentColor')}
         </span>
         <Palette className="w-4 h-4" strokeWidth={1.75} />
       </button>
@@ -57,7 +59,7 @@ export const ColorPicker: React.FC = () => {
             className="absolute bottom-full mb-2 left-0 right-0 rounded-2xl p-4 shadow-3d-deep z-50"
             style={{ background: 'var(--bg-sidebar)', border: '1px solid var(--border-color)' }}
           >
-            <p className="text-[9px] font-black uppercase tracking-widest text-slate-400 mb-3">Farbe wählen</p>
+            <p className="text-[9px] font-black uppercase tracking-widest text-slate-400 mb-3">{t('cp.chooseColor')}</p>
             <div className="grid grid-cols-4 gap-2 mb-4">
               {PRESETS.map(p => (
                 <button
@@ -80,7 +82,7 @@ export const ColorPicker: React.FC = () => {
                 onChange={e => select(e.target.value)}
                 className="w-9 h-9 rounded-lg cursor-pointer border-0 bg-transparent p-0"
               />
-              <span className="text-[9px] font-black uppercase text-slate-400 tracking-widest">Eigene Farbe</span>
+              <span className="text-[9px] font-black uppercase text-slate-400 tracking-widest">{t('settings.customColor')}</span>
             </label>
           </div>
         </>
