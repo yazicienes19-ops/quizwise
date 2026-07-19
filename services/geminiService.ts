@@ -29,6 +29,7 @@ import {
 import { supabase } from './supabaseClient';
 import { parseQuizQuestions } from './quizNormalize';
 import { outputLangDirective, explainerHeadings } from './aiLocale';
+import { t } from '../i18n';
 
 const BACKEND_URL = import.meta.env.VITE_BACKEND_URL || 'http://localhost:4000';
 
@@ -1040,7 +1041,7 @@ Daten: ${JSON.stringify(questions)}${outputLangDirective()}` }],
 };
 
 // ─── Rubrik-basierte Bewertung (Hauptfunktion) ────────────────────────────────
-export const evaluateWithRubric = async (
+const evaluateWithRubricOnce = async (
   questions: ExamQuestion[],
   scoringProfile: ScoringProfile,
   feedbackContexts: Record<string, string> = {}
@@ -1144,6 +1145,32 @@ Fragen: ${questionsJson}${outputLangDirective()}`
       criterionScores:      r.criterionScores,
     };
   });
+};
+
+export const evaluateWithRubric = async (
+  questions: ExamQuestion[],
+  scoringProfile: ScoringProfile,
+  feedbackContexts: Record<string, string> = {}
+): Promise<ExamQuestion[]> => {
+  let merged = await evaluateWithRubricOnce(questions, scoringProfile, feedbackContexts);
+
+  // Lässt die KI eine Frage-ID aus, bekommt der Nutzer sonst stillschweigend
+  // 0 Punkte auf eine unbewertete Aufgabe. Einmal gezielt nachbewerten …
+  const missed = merged.filter(q => q.achievedPoints === undefined);
+  if (missed.length > 0) {
+    const retried = await evaluateWithRubricOnce(missed, scoringProfile, feedbackContexts).catch(() => missed);
+    merged = merged.map(q => {
+      if (q.achievedPoints !== undefined) return q;
+      const r = retried.find(r => r.id === q.id);
+      return r && r.achievedPoints !== undefined ? r : q;
+    });
+  }
+
+  // … und was dann immer noch unbewertet ist, fliegt aus der Wertung
+  // (points 0 hält die Aufgabe aus Gesamtnote und Aufschlüsselungen heraus).
+  return merged.map(q => q.achievedPoints === undefined
+    ? { ...q, points: 0, achievedPoints: 0, feedback: t('es.evalMissing'), evaluationConfidence: 0, criterionScores: [] }
+    : q);
 };
 
 // ─── Klausur-Analyse ─────────────────────────────────────────────────────────

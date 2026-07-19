@@ -5,6 +5,8 @@ import { ExamView } from './ExamView';
 import { ExamQuestion, ProcessedDocument, Collection, ActiveTab, ScoringProfile, ExamAnalysis, TopicMetric, FlashcardDeck } from '../types';
 import { generateFullExam, evaluateWithRubric, analyzeExamResults, GenerationSource } from '../services/geminiService';
 import { formatFeedbackContext } from '../services/examFeedbackService';
+import { normalizeExamQuestions } from '../services/examNormalize';
+import { scoreMc } from '../services/examScoring';
 import { GeneratedImage } from './GeneratedImage';
 import { toast } from '../services/toast';
 import { useTranslation } from '../i18n/I18nProvider';
@@ -36,7 +38,9 @@ const DEFAULT_SCORING_PROFILE: ScoringProfile = { mode: 'standard', emphases: []
 
 export const ExamSystem: React.FC<ExamSystemProps> = ({ documents, collections, getDocumentSource, onSaveToLibrary, onComplete, onNavigate, onAction, initialDoc, initialQuestions, metrics, decks }) => {
   const { t } = useTranslation();
-  const [questions, setQuestions]         = useState<ExamQuestion[] | null>(initialQuestions ?? null);
+  // Auch gespeicherte/ältere Klausuren durch die Normalisierung schicken —
+  // unbewertbare Aufgaben dürfen nie in die Wertung zählen.
+  const [questions, setQuestions]         = useState<ExamQuestion[] | null>(initialQuestions ? normalizeExamQuestions(initialQuestions) : null);
   const [isLoading, setIsLoading]         = useState(false);
   const [loadingHint, setLoadingHint]     = useState('');
   const [mode, setMode]                   = useState<'edit' | 'solve' | 'result'>(() =>
@@ -78,7 +82,8 @@ export const ExamSystem: React.FC<ExamSystemProps> = ({ documents, collections, 
     try {
       for (let attempt = 1; attempt <= maxAttempts; attempt++) {
         try {
-          const exam = await generateFullExam(content, style, options);
+          const exam = normalizeExamQuestions(await generateFullExam(content, style, options));
+          if (exam.length === 0) throw new Error(translate('es.noValidQuestions'));
           setQuestions(interleaveQuestionsByTopic(exam));
           setMode('edit');
           return;
@@ -111,11 +116,12 @@ export const ExamSystem: React.FC<ExamSystemProps> = ({ documents, collections, 
       const user: number[] = q.userAnswer || [];
       const correct: number[] = q.correctIndices || [];
       if (!correct.length) return { ...q, achievedPoints: 0, feedback: t('es.mcNoBasis') };
-      const uSet = new Set(user), cSet = new Set(correct);
-      const allRight = correct.every(i => uSet.has(i));
-      const noWrong  = user.every(i => cSet.has(i));
-      if (allRight && noWrong) return { ...q, achievedPoints: q.points, feedback: t('es.fullyCorrect') };
-      if (allRight)            return { ...q, achievedPoints: Math.floor(q.points / 2), feedback: t('es.allRightSomeWrong') };
+      // Falsche Kreuze ziehen ab (Hochschulmaßstab): verhindert „alles ankreuzen"
+      // als Strategie und belohnt Teilwissen statt pauschal 0 zu geben.
+      const { fraction, hits, wrong, totalCorrect } = scoreMc(user, correct);
+      const pts = Math.round(fraction * q.points);
+      if (pts === q.points) return { ...q, achievedPoints: q.points, feedback: t('es.fullyCorrect') };
+      if (pts > 0)          return { ...q, achievedPoints: pts, feedback: t('es.mcPartial', { hits, total: totalCorrect, wrong }) };
       return { ...q, achievedPoints: 0, feedback: t('es.wrongCorrect', { list: correct.map(i => q.options?.[i] ?? translate('ev.pdf.optionN', { n: i + 1 })).join(', ') }) };
     }
 
