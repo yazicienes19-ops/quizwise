@@ -6,23 +6,13 @@ import App from './App';
 import { PwaUpdatePrompt } from './components/PwaUpdatePrompt';
 import { I18nProvider } from './i18n/I18nProvider';
 
-// Wenn der SW eine leere/fehlerhafte Seite liefert: automatisch alles leeren und neu laden.
-// Tritt vor allem in Safari auf wenn ein alter SW gecacht ist.
+// SW-Updates früh anstoßen. Die Leerseiten-Selbstheilung lebt in index.html
+// (mit Einmal-Bremse pro Sitzung) — der frühere ungebremste 4s-Reload hier
+// erzeugte bei Startup-Crashes eine Endlos-Schleife.
 if ('serviceWorker' in navigator) {
   navigator.serviceWorker.getRegistrations().then(regs => {
     regs.forEach(reg => reg.update());
   });
-
-  // Prüfe nach 4s ob React gemountet hat — wenn nicht, SW-Cache leeren + Reload
-  setTimeout(() => {
-    if ((document.getElementById('root')?.childElementCount ?? 0) === 0) {
-      navigator.serviceWorker.getRegistrations()
-        .then(regs => Promise.all(regs.map(r => r.unregister())))
-        .then(() => caches.keys())
-        .then(names => Promise.all(names.map(n => caches.delete(n))))
-        .then(() => window.location.reload());
-    }
-  }, 4000);
 }
 
 const rootElement = document.getElementById('root');
