@@ -1284,6 +1284,8 @@ export const de = {
   'rd.zoomIn': 'Vergrößern',
   'rd.quoteSourcePage': '📍 Quelle · Seite {n}',
   'rd.markInPdf': 'Im PDF markieren',
+  'rd.askSelection': 'Tutor fragen',
+  'rd.selectionQuestion': 'Erkläre mir diese Stelle: „{text}"',
   'rd.unmarkInPdf': 'Markierung aus',
   'rd.quoteNotFound': 'Textstelle auf der Seite nicht gefunden. Bei Scans ohne Textebene ist kein Markieren möglich.',
   'rd.askPagePlaceholder': 'Frage zu Seite {n} …',

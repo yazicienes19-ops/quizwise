@@ -1276,6 +1276,8 @@ export const tr: Translations = {
   'rd.zoomIn': 'Büyüt',
   'rd.quoteSourcePage': '📍 Kaynak · Sayfa {n}',
   'rd.markInPdf': "PDF'te işaretle",
+  'rd.askSelection': "Tutor'a sor",
+  'rd.selectionQuestion': 'Bu bölümü açıkla: „{text}"',
   'rd.unmarkInPdf': 'İşareti kaldır',
   'rd.quoteNotFound': 'Metin sayfada bulunamadı. Metin katmanı olmayan taramalarda işaretleme yapılamaz.',
   'rd.askPagePlaceholder': '{n}. sayfa hakkında soru …',

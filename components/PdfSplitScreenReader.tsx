@@ -2,7 +2,7 @@ import React, { useState, useEffect, useMemo, useCallback, useRef } from 'react'
 import { ProcessedDocument } from '../types';
 import { generateExplanation } from '../services/geminiService';
 import { downloadPdfAsBase64 } from '../services/documentService';
-import { loadPdf, getPageText, getPageTextItems, renderPageToCanvas, renderPageToJpegBase64, isScannedPage, type PdfHandle } from '../services/pdfPageService';
+import { loadPdf, getPageText, getPageTextItems, renderPageToCanvas, renderPageToJpegBase64, isScannedPage, type PdfHandle, type PositionedTextItem } from '../services/pdfPageService';
 import { findQuoteRects, type HighlightRect } from '../services/pdfHighlightService';
 import { markChapterDone, getDoneChapterIndices } from '../services/chapterProgressService';
 import { logReaderQuestion, getReaderLog } from '../services/readerLogService';
@@ -53,11 +53,16 @@ export const PdfSplitScreenReader: React.FC<PdfSplitScreenReaderProps> = ({ doc,
   /** Aktive Zitat-Markierung im PDF (Klick auf die Zitat-Karte). */
   const [highlight, setHighlight] = useState<{ page: number; quote: string } | null>(null);
   const [highlightRects, setHighlightRects] = useState<{ rects: HighlightRect[]; pageW: number; pageH: number } | null>(null);
-  /** CSS-Größe des gerenderten Canvas — Skalierungsbasis für die Overlay-Rechtecke. */
+  /** CSS-Größe des gerenderten Canvas — Skalierungsbasis für Overlays und Textebene. */
   const [canvasCss, setCanvasCss] = useState<{ w: number; h: number } | null>(null);
+  /** Textfragmente der aktuellen Seite (scale 1) — Basis für Textebene + Zitat-Markierung. */
+  const [pageItems, setPageItems] = useState<{ items: PositionedTextItem[]; pageW: number; pageH: number } | null>(null);
+  /** Aktive Maus-Textauswahl auf der Seite (Position relativ zur PDF-Fläche). */
+  const [selection, setSelection] = useState<{ text: string; x: number; y: number } | null>(null);
 
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const firstRectRef = useRef<HTMLDivElement>(null);
+  const pdfAreaRef = useRef<HTMLDivElement>(null);
   const pageBoxRef = useRef<HTMLDivElement>(null);
   const renderSeq = useRef(0);
 
@@ -120,26 +125,29 @@ export const PdfSplitScreenReader: React.FC<PdfSplitScreenReaderProps> = ({ doc,
     };
   }, [pageNumber, doc.id, userId]);
 
-  // Zitat-Markierung: Textstelle auf der aktuellen Seite verorten. Rechtecke
-  // liegen in Seiten-Koordinaten (scale 1) und werden beim Rendern auf die
-  // CSS-Größe des Canvas skaliert — Zoom-Wechsel brauchen keine Neuberechnung.
+  // Textfragmente der Seite mit Positionen laden — einmal pro Seite, genutzt
+  // von der auswählbaren Textebene UND der Zitat-Markierung.
   useEffect(() => {
-    if (!pdf || !highlight || highlight.page !== pageNumber) { setHighlightRects(null); return; }
+    if (!pdf) return;
     let cancelled = false;
-    (async () => {
-      try {
-        const { items, width, height } = await getPageTextItems(pdf, highlight.page);
-        const rects = findQuoteRects(items, highlight.quote);
-        if (cancelled) return;
-        setHighlightRects(rects ? { rects, pageW: width, pageH: height } : null);
-        if (!rects) toast.error(t('rd.quoteNotFound'));
-      } catch {
-        if (!cancelled) setHighlightRects(null);
-      }
-    })();
+    setPageItems(null);
+    setSelection(null);
+    getPageTextItems(pdf, pageNumber)
+      .then(r => { if (!cancelled) setPageItems({ items: r.items, pageW: r.width, pageH: r.height }); })
+      .catch(() => {});
     return () => { cancelled = true; };
+  }, [pdf, pageNumber]);
+
+  // Zitat-Markierung: Textstelle verorten. Rechtecke liegen in Seiten-Koordinaten
+  // (scale 1) und werden beim Rendern auf die Canvas-CSS-Größe skaliert —
+  // Zoom-Wechsel brauchen keine Neuberechnung.
+  useEffect(() => {
+    if (!highlight || highlight.page !== pageNumber || !pageItems) { setHighlightRects(null); return; }
+    const rects = findQuoteRects(pageItems.items, highlight.quote);
+    setHighlightRects(rects ? { rects, pageW: pageItems.pageW, pageH: pageItems.pageH } : null);
+    if (!rects) toast.error(t('rd.quoteNotFound'));
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [pdf, highlight, pageNumber]);
+  }, [highlight, pageNumber, pageItems]);
 
   // Markierung ins Sichtfeld holen (relevant bei Zoom > 1)
   useEffect(() => {
@@ -163,8 +171,8 @@ export const PdfSplitScreenReader: React.FC<PdfSplitScreenReaderProps> = ({ doc,
     return () => window.removeEventListener('keydown', onKey);
   }, [goToPage, pageNumber]);
 
-  const handleAsk = useCallback(async () => {
-    const trimmed = concept.trim();
+  const handleAsk = useCallback(async (questionOverride?: string) => {
+    const trimmed = (questionOverride ?? concept).trim();
     if (trimmed.length <= 2 || !pdf) { toast.error(t('rd.enterQuestion')); return; }
     const askedPageNumber = pageNumber;
     const askedPageIndex = askedPageNumber - 1;
@@ -193,6 +201,28 @@ export const PdfSplitScreenReader: React.FC<PdfSplitScreenReaderProps> = ({ doc,
       }));
     }
   }, [concept, pdf, pageNumber, doc.id, userId]);
+
+  // Maus-Auswahl auf der Textebene → schwebender „Tutor fragen"-Button
+  const handleTextSelection = useCallback(() => {
+    const sel = window.getSelection();
+    const text = sel?.toString().replace(/\s+/g, ' ').trim() ?? '';
+    if (text.length < 8 || !sel || sel.rangeCount === 0) { setSelection(null); return; }
+    const rect = sel.getRangeAt(0).getBoundingClientRect();
+    const area = pdfAreaRef.current?.getBoundingClientRect();
+    if (!area) return;
+    setSelection({
+      text: text.slice(0, 600),
+      x: Math.max(80, Math.min(rect.left - area.left + rect.width / 2, area.width - 80)),
+      y: Math.max(10, rect.top - area.top - 48),
+    });
+  }, []);
+
+  const handleAskSelection = useCallback(() => {
+    if (!selection) return;
+    handleAsk(t('rd.selectionQuestion', { text: selection.text.slice(0, 300) }));
+    setSelection(null);
+    window.getSelection()?.removeAllRanges();
+  }, [selection, handleAsk, t]);
 
   const handleMarkDone = () => {
     markChapterDone(doc.id, pageIndex, userId);
@@ -305,13 +335,42 @@ export const PdfSplitScreenReader: React.FC<PdfSplitScreenReaderProps> = ({ doc,
           </div>
 
           {/* PDF-Fläche mit Blätter-Pfeilen an den Seiten */}
-          <div className="relative flex-1 min-h-0">
+          <div ref={pdfAreaRef} className="relative flex-1 min-h-0">
             <div ref={pageBoxRef} className="h-full overflow-auto rounded-2xl" style={{ background: 'var(--bg-main)', border: '1px solid var(--border-color)' }}>
               {/* w-max + mx-auto zentriert horizontal, min-h-full + items-center vertikal —
                   beim Zoomen wird die Seite größer als der Container und er scrollt sauber */}
               <div className="w-max mx-auto max-w-none min-h-full flex items-center px-2">
                 <div className="relative my-3">
                   <canvas ref={canvasRef} className="rounded-xl shadow-lg block" />
+                  {/* Auswählbare Textebene: unsichtbare, positionsgetreue Spans über dem
+                      Canvas — macht Maus-Markieren und Kopieren möglich wie in echten PDFs.
+                      scaleX gleicht die Breite jedes Fragments an die PDF-Metrik an. */}
+                  {canvasCss && pageItems && (
+                    <div className="absolute inset-0 cursor-text" onMouseUp={handleTextSelection} style={{ userSelect: 'text', WebkitUserSelect: 'text' }}>
+                      {pageItems.items.map((it, i) => {
+                        const sx = canvasCss.w / pageItems.pageW;
+                        const sy = canvasCss.h / pageItems.pageH;
+                        return (
+                          <span
+                            key={`${pageNumber}-${i}`}
+                            style={{
+                              position: 'absolute', left: it.x * sx, top: it.y * sy,
+                              fontSize: Math.max(6, it.h * sy * 0.92), lineHeight: 1.1,
+                              whiteSpace: 'pre', color: 'transparent', transformOrigin: '0 0',
+                              fontFamily: 'sans-serif',
+                            }}
+                            ref={el => {
+                              if (!el) return;
+                              el.style.transform = '';
+                              const w = el.offsetWidth;
+                              const target = it.w * sx;
+                              if (w > 0 && target > 0) el.style.transform = `scaleX(${target / w})`;
+                            }}
+                          >{it.str}</span>
+                        );
+                      })}
+                    </div>
+                  )}
                   {canvasCss && highlightRects && highlight?.page === pageNumber && highlightRects.rects.map((r, i) => (
                     <div
                       key={i}
@@ -348,6 +407,16 @@ export const PdfSplitScreenReader: React.FC<PdfSplitScreenReaderProps> = ({ doc,
                 style={{ background: 'var(--bg-sidebar)', border: '1px solid var(--border-color)', color: 'var(--text-main)' }}
               >
                 ›
+              </button>
+            )}
+            {/* Schwebender Frage-Button an der Maus-Auswahl */}
+            {selection && (
+              <button
+                onClick={handleAskSelection}
+                className="absolute z-20 -translate-x-1/2 px-4 py-2.5 rounded-xl text-[10px] font-black uppercase tracking-widest shadow-xl transition-all hover:scale-105 active:scale-95 animate-in fade-in zoom-in-95 duration-200"
+                style={{ left: selection.x, top: selection.y, background: 'var(--primary)', color: 'var(--primary-text)' }}
+              >
+                {t('rd.askSelection')}
               </button>
             )}
           </div>
@@ -420,7 +489,7 @@ export const PdfSplitScreenReader: React.FC<PdfSplitScreenReaderProps> = ({ doc,
               style={{ background: 'var(--bg-main)', border: '1px solid var(--border-color)', color: 'var(--text-main)' }}
             />
             <button
-              onClick={handleAsk}
+              onClick={() => handleAsk()}
               disabled={concept.trim().length <= 2}
               className="shrink-0 px-5 py-3 rounded-2xl text-[10px] font-black uppercase tracking-widest transition-all disabled:opacity-30 disabled:cursor-not-allowed"
               style={{ background: 'var(--primary)', color: 'var(--primary-text)' }}
