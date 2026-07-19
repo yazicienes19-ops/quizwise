@@ -42,6 +42,14 @@ const App: React.FC = () => {
   const [showUpgradeModal, setShowUpgradeModal] = useState(false);
   const [showSettings, setShowSettings] = useState(false);
   const [showOnboarding, setShowOnboarding] = useState(() => !isOnboardingDone());
+
+  // Cloud sagt „Onboarding längst erledigt" (kommt asynchron nach dem Login,
+  // z.B. nach gelöschten Website-Daten): Overlay sofort wieder schließen.
+  useEffect(() => {
+    const close = () => setShowOnboarding(!isOnboardingDone());
+    window.addEventListener('quizwise-onboarding-done', close);
+    return () => window.removeEventListener('quizwise-onboarding-done', close);
+  }, []);
   const [decks, setDecks] = useState<FlashcardDeck[]>([]);
   const [examTerms, setExamTerms] = useState<ExamTerm[]>([]);
   const [flowResult, setFlowResult] = useState<LearningFlowResult | null>(() => {
