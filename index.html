@@ -46,6 +46,32 @@
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@300;400;500;600;700;800;900&family=EB+Garamond:ital,wght@0,400;0,500;0,600;1,400&family=Inter:wght@300;400;500;600;700;800;900&family=Lato:wght@300;400;700;900&family=Merriweather:ital,wght@0,300;0,400;0,700;1,300;1,400&family=Nunito:wght@300;400;500;600;700;800;900&display=swap" rel="stylesheet">
+    <script>
+      // Selbstheilung: Bleibt die App leer (z.B. weil ein veralteter Service
+      // Worker ein Grundgerüst ausliefert, dessen JS-Dateien nicht mehr
+      // existieren), einmal pro Sitzung Worker + Caches lösen und neu laden.
+      setTimeout(function () {
+        var root = document.getElementById('root');
+        if (root && root.childElementCount > 0) return;
+        if (sessionStorage.getItem('qw_selfheal')) return;
+        sessionStorage.setItem('qw_selfheal', '1');
+        var done = function () { location.reload(); };
+        try {
+          var jobs = [];
+          if (navigator.serviceWorker && navigator.serviceWorker.getRegistrations) {
+            jobs.push(navigator.serviceWorker.getRegistrations().then(function (rs) {
+              return Promise.all(rs.map(function (r) { return r.unregister(); }));
+            }));
+          }
+          if (window.caches && caches.keys) {
+            jobs.push(caches.keys().then(function (ks) {
+              return Promise.all(ks.map(function (k) { return caches.delete(k); }));
+            }));
+          }
+          Promise.all(jobs).then(done, done);
+        } catch (e) { done(); }
+      }, 6000);
+    </script>
 </head>
 <body>
     <div id="root"></div>
