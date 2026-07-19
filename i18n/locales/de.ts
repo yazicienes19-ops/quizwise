@@ -914,6 +914,7 @@ export const de = {
   'es.unknownError': 'Unbekannter Fehler',
   'es.mcNoBasis': 'Keine Auswertungsgrundlage (correctIndices fehlt).',
   'es.fullyCorrect': 'Vollständig korrekt.',
+  'ev.rubricTitle': 'Erwartungshorizont',
   'ea.title': 'Klausur-Archiv',
   'ea.subtitle': 'Deine letzten Klausuren zum Nachschlagen: mit Antworten, Feedback und Lösungen',
   'ea.passed': 'Bestanden',

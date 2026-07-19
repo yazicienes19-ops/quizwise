@@ -95,6 +95,15 @@ export const ExamArchive: React.FC = () => {
                       {q.feedback && (
                         <p className="text-[11px] text-slate-500 dark:text-slate-400 mt-1 italic break-words">{q.feedback}</p>
                       )}
+                      {q.criterionScores && q.criterionScores.length > 0 && (
+                        <div className="mt-1.5 space-y-0.5">
+                          {q.criterionScores.map(cs => (
+                            <p key={cs.criterionId} className="text-[10px] text-slate-500 dark:text-slate-400 break-words">
+                              {cs.status === 'full' ? '✓' : cs.status === 'partial' ? '~' : '✗'} {cs.criterionName}: {cs.pointsAwarded}/{cs.maxPoints}
+                            </p>
+                          ))}
+                        </div>
+                      )}
                       {!full && q.solution && (
                         <p className="text-[11px] text-slate-600 dark:text-slate-300 mt-1 break-words">
                           <span className="font-black uppercase text-[8px] tracking-widest">{t('ea.solutionLabel')}: </span>

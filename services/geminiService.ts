@@ -891,7 +891,7 @@ const EXAM_TYPE_BULLETS: Record<string, (n: number) => string> = {
   fillblank: n => `- ${n} Lückentext (type "fillblank"): blankText: Satz mit [LÜCKE] als Platzhalter (max. 4 Lücken). blanks[]: korrekte Füllwörter in gleicher Reihenfolge. options[]: leer. solution: kompletter Text. Punkte: 3-5.`,
   ranking: n => `- ${n} Sortierung (type "ranking"): rankingItems[]: 4-5 Konzepte/Schritte/Phasen in KORREKTER Reihenfolge. options[]: leer. solution: Begründung der Reihenfolge. Punkte: 3-5. NUR wenn das Material Prozesse, Phasen oder geordnete Abläufe enthält.`,
   numeric: n => `- ${n} Numerisch (type "numeric"): numericAnswer: korrekte Zahl. numericTolerance: akzeptabler Spielraum. options[]: leer. solution: Erklärung. Punkte: 2-3. NUR wenn das Material konkrete Zahlen/Formeln/Statistiken enthält. Wenn nicht: als "open" ersetzen.`,
-  open: n => `- ${n} Freitext/Kurzantwort (type "open"): Transfer oder 2-3-Satz-Erklärung unter Zeitdruck. options[]: leer. solution: Musterantwort mit Kernbegriffen. Punkte: 5-10.`,
+  open: n => `- ${n} Freitext/Kurzantwort (type "open"): Transfer oder 2-3-Satz-Erklärung unter Zeitdruck. options[]: leer. solution: Musterantwort mit Kernbegriffen. rubricCriteria[]: 2-4 Bewertungskriterien als Erwartungshorizont — je {name: prüfbares Teilkriterium aus der Musterlösung, maxPoints: Teilpunkte}; die Summe aller maxPoints ergibt exakt points. Punkte: 5-10.`,
 };
 
 export const generateFullExam = async (
@@ -994,6 +994,17 @@ ALLGEMEINE REGELN:
             points:               { type: Type.NUMBER },
             topic:                { type: Type.STRING },
             category:             { type: Type.STRING },
+            rubricCriteria: {
+              type: Type.ARRAY,
+              items: {
+                type: Type.OBJECT,
+                properties: {
+                  name:      { type: Type.STRING },
+                  maxPoints: { type: Type.NUMBER },
+                },
+                required: ['name', 'maxPoints'],
+              },
+            },
           },
           required: ['id', 'question', 'type', 'solution', 'points', 'topic', 'category']
         }
@@ -1066,6 +1077,7 @@ const evaluateWithRubricOnce = async (
       question: q.question,
       solution: q.solution,
       points: q.points,
+      rubricCriteria: q.rubricCriteria ?? [],
       userAnswer: q.userAnswer ?? '',
       feedbackContext: feedbackContexts[q.id] ?? '',
     }))
@@ -1081,7 +1093,8 @@ ${emphasisInstructions.length ? `\nSPEZIELLE GEWICHTUNG:\n${emphasisInstructions
 
 REGELN:
 - Bewerte AUSSCHLIESSLICH auf Basis der angegebenen Musterlösung — kein externes Wissen.
-- Erstelle für jede Frage 2–4 Bewertungskriterien basierend auf der Musterlösung.
+- Hat eine Frage rubricCriteria (Erwartungshorizont): Bewerte GENAU nach diesen Kriterien — gleiche Namen, gleiche maxPoints, in derselben Reihenfolge. Erfinde KEINE eigenen Kriterien dazu.
+- Nur wenn rubricCriteria leer ist: Erstelle selbst 2–4 Bewertungskriterien basierend auf der Musterlösung.
 - Vergib Punkte granular: nicht nur 0 oder voll, sondern auch Teilpunkte.
 - achievedPoints: nie negativ, nie größer als points.
 - evaluationConfidence: 0–100 (wie sicher bist du dir bei dieser Bewertung?).

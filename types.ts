@@ -366,6 +366,8 @@ export interface ExamQuestion {
   achievedPoints?: number;
 
   // Rubrik-Bewertung (für type="open")
+  /** Erwartungshorizont: bei der Generierung festgelegte Kriterien — die Korrektur bewertet exakt dagegen statt ad hoc. */
+  rubricCriteria?: { name: string; maxPoints: number }[];
   criterionScores?: CriterionScore[];
   evaluationConfidence?: number;     // 0–100
   questionFeedback?: QuestionFeedbackType;

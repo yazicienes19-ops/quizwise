@@ -61,6 +61,34 @@ describe('normalizeExamQuestions', () => {
     expect(normalizeExamQuestions([{ id: 'q1', question: 'Erkläre X', type: 'open', solution: 'Weil…', points: 8 }])).toHaveLength(1);
   });
 
+  const open = (rubricCriteria: unknown, points = 8) => ({
+    id: 'q1', question: 'Erkläre X', type: 'open', solution: 'Weil…', points, rubricCriteria,
+  });
+
+  it('Erwartungshorizont: Punktsumme der Kriterien ist die Autorität', () => {
+    const out = normalizeExamQuestions([open([{ name: 'Definition', maxPoints: 3 }, { name: 'Beispiel', maxPoints: 3 }], 8)]);
+    expect(out[0].rubricCriteria).toHaveLength(2);
+    expect(out[0].points).toBe(6);
+  });
+
+  it('Erwartungshorizont: kaputte Einträge werden gefiltert, max 4 Kriterien', () => {
+    const out = normalizeExamQuestions([open([
+      { name: 'A', maxPoints: 2 }, { name: '', maxPoints: 2 }, { name: 'B', maxPoints: 0 },
+      { name: 'C', maxPoints: 2 }, { name: 'D', maxPoints: 2 }, { name: 'E', maxPoints: 2 }, { name: 'F', maxPoints: 2 },
+    ])]);
+    expect(out[0].rubricCriteria!.map(c => c.name)).toEqual(['A', 'C', 'D', 'E']);
+    expect(out[0].points).toBe(8);
+  });
+
+  it('Erwartungshorizont: unter 2 brauchbaren Kriterien oder absurde Summe → Rubrik weg, Frage bleibt', () => {
+    const single = normalizeExamQuestions([open([{ name: 'A', maxPoints: 5 }])]);
+    expect(single[0].rubricCriteria).toBeUndefined();
+    expect(single[0].points).toBe(8);
+    const huge = normalizeExamQuestions([open([{ name: 'A', maxPoints: 50 }, { name: 'B', maxPoints: 50 }])]);
+    expect(huge[0].rubricCriteria).toBeUndefined();
+    expect(normalizeExamQuestions([open('kein array')])[0].rubricCriteria).toBeUndefined();
+  });
+
   it('numeric ohne Zahl fliegt raus, Toleranz-Default 0', () => {
     expect(normalizeExamQuestions([{ id: 'q1', question: '2+2?', type: 'numeric', solution: '4', points: 2 }])).toHaveLength(0);
     const out = normalizeExamQuestions([{ id: 'q1', question: '2+2?', type: 'numeric', solution: '4', points: 2, numericAnswer: 4, numericTolerance: -1 }]);

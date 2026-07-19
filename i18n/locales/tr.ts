@@ -906,6 +906,7 @@ export const tr: Translations = {
   'es.unknownError': 'Bilinmeyen hata',
   'es.mcNoBasis': 'Değerlendirme temeli yok (correctIndices eksik).',
   'es.fullyCorrect': 'Tamamen doğru.',
+  'ev.rubricTitle': 'Değerlendirme ölçütleri',
   'ea.title': 'Sınav Arşivi',
   'ea.subtitle': 'Son sınavların: cevaplar, geri bildirim ve çözümlerle',
   'ea.passed': 'Geçti',
