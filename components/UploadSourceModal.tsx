@@ -43,11 +43,13 @@ const Field: React.FC<{
 );
 
 export const UploadSourceModal: React.FC<Props> = ({ onClose, onUpload }) => {
-  const { t } = useTranslation();
+  const { t, tp } = useTranslation();
   const [mode, setMode]             = useState<'file' | 'text' | 'link'>('file');
   const [pastedText, setPastedText] = useState('');
   const [linkUrl, setLinkUrl]       = useState('');
-  const [file, setFile]             = useState<File | null>(null);
+  /** Mehrfach-Upload: jede Datei mit eigenem (vorbelegtem) Titel. */
+  const [files, setFiles]           = useState<{ file: File; title: string }[]>([]);
+  const [uploadProgress, setUploadProgress] = useState<{ done: number; total: number } | null>(null);
   const [isDragging, setIsDragging] = useState(false);
   const [isUploading, setIsUploading] = useState(false);
   const [displayTitle, setDisplayTitle] = useState('');
@@ -60,21 +62,27 @@ export const UploadSourceModal: React.FC<Props> = ({ onClose, onUpload }) => {
   const [isAltklausur, setIsAltklausur] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
-  const pickFile = useCallback((picked: File) => {
-    setFile(picked);
-    if (!displayTitle) setDisplayTitle(picked.name.replace(/\.[^/.]+$/, ''));
-  }, [displayTitle]);
+  const addFiles = useCallback((picked: FileList | File[]) => {
+    const list = Array.from(picked);
+    if (list.length === 0) return;
+    setFiles(prev => {
+      const seen = new Set(prev.map(x => `${x.file.name}|${x.file.size}`));
+      const fresh = list
+        .filter(f => !seen.has(`${f.name}|${f.size}`))
+        .map(f => ({ file: f, title: f.name.replace(/\.[^/.]+$/, '') }));
+      return [...prev, ...fresh];
+    });
+  }, []);
 
   const handleDrop = (e: React.DragEvent) => {
     e.preventDefault();
     setIsDragging(false);
-    const f = e.dataTransfer.files[0];
-    if (f) pickFile(f);
+    addFiles(e.dataTransfer.files);
   };
 
   const handleFileInput = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const f = e.target.files?.[0];
-    if (f) pickFile(f);
+    if (e.target.files) addFiles(e.target.files);
+    e.target.value = '';
   };
 
   const linkKind = detectUrlKind(linkUrl);
@@ -95,6 +103,28 @@ export const UploadSourceModal: React.FC<Props> = ({ onClose, onUpload }) => {
         status:       'ready',
       };
 
+      // Datei-Modus: alle gewählten Dateien nacheinander hochladen —
+      // gemeinsame Metadaten, Titel je Datei aus der Liste.
+      if (mode === 'file') {
+        if (files.length === 0) return;
+        let ok = 0;
+        const failed: string[] = [];
+        for (let i = 0; i < files.length; i++) {
+          setUploadProgress({ done: i + 1, total: files.length });
+          try {
+            await onUpload(files[i].file, { ...meta, displayTitle: files[i].title.trim() || undefined });
+            ok++;
+          } catch {
+            failed.push(files[i].file.name);
+          }
+        }
+        setUploadProgress(null);
+        if (failed.length > 0) toast.error(t('upl.batchPartial', { ok, list: failed.join(', ') }));
+        else if (ok > 1) toast.success(tp('upl.batchDoneN', ok));
+        if (ok > 0) onClose();
+        return;
+      }
+
       let uploadFile: File | null;
       if (mode === 'link') {
         // Link-Modus: Backend holt den Inhalt (YouTube → Lernskript,
@@ -114,7 +144,7 @@ export const UploadSourceModal: React.FC<Props> = ({ onClose, onUpload }) => {
           ? new File([pastedText.trim()], `${(displayTitle.trim() || t('upl.noteFallbackName'))}.txt`, { type: 'text/plain' })
           : null;
       } else {
-        uploadFile = file;
+        uploadFile = null;
       }
       if (!uploadFile) return;
 
@@ -127,7 +157,6 @@ export const UploadSourceModal: React.FC<Props> = ({ onClose, onUpload }) => {
     }
   };
 
-  const ext = file?.name.split('.').pop()?.toLowerCase() ?? '';
 
   return (
     <div
@@ -158,7 +187,9 @@ export const UploadSourceModal: React.FC<Props> = ({ onClose, onUpload }) => {
               <span className="text-[10px] font-black uppercase tracking-widest">
                 {mode === 'link'
                   ? (linkKind === 'youtube' ? t('upl.videoProcessing') : t('upl.pageLoading'))
-                  : t('upl.uploading')}
+                  : uploadProgress && uploadProgress.total > 1
+                    ? t('upl.uploadingBatch', { done: uploadProgress.done, total: uploadProgress.total })
+                    : t('upl.uploading')}
               </span>
             </div>
           )}
@@ -214,44 +245,70 @@ export const UploadSourceModal: React.FC<Props> = ({ onClose, onUpload }) => {
             </div>
           )}
 
-          {/* Drop Zone */}
-          {mode === 'file' && (!file ? (
-            <div
-              onDrop={handleDrop}
-              onDragOver={e => { e.preventDefault(); setIsDragging(true); }}
-              onDragLeave={() => setIsDragging(false)}
-              onClick={() => fileInputRef.current?.click()}
-              className={`border-2 border-dashed rounded-2xl p-10 text-center cursor-pointer transition-all ${
-                isDragging
-                  ? 'border-indigo-500 bg-indigo-50 dark:bg-indigo-900/20'
-                  : 'border-slate-200 dark:border-slate-700 hover:border-indigo-400 hover:bg-slate-50 dark:hover:bg-slate-800/50'
-              }`}
-            >
-              <input ref={fileInputRef} type="file" accept={ACCEPTED} className="hidden" onChange={handleFileInput} />
-              <p className="text-4xl mb-3">📂</p>
-              <p className="font-black dark:text-white text-sm">{t('upl.dropFile')}</p>
-              <p className="text-[10px] text-slate-400 mt-1 uppercase tracking-widest">{t('upl.orClick')}</p>
-              <p className="text-[9px] text-slate-300 dark:text-slate-600 mt-3">{t('upl.fileTypes')}</p>
-            </div>
-          ) : (
-            <div className="flex items-center gap-4 p-4 bg-slate-50 dark:bg-slate-800 rounded-2xl">
-              <span className="text-2xl">{FILE_EMOJI[ext] ?? '📄'}</span>
-              <div className="flex-grow min-w-0">
-                <p className="font-black dark:text-white text-sm break-words">{file.name}</p>
-                <p className="text-[10px] text-slate-400 uppercase tracking-widest">{(file.size / 1024 / 1024).toFixed(2)} MB</p>
-              </div>
-              <button type="button" onClick={() => setFile(null)} className="text-slate-400 hover:text-rose-500 transition-colors font-black text-lg leading-none">×</button>
-            </div>
-          ))}
+          {/* Drop Zone / Dateiliste (Mehrfachauswahl) */}
+          {mode === 'file' && (
+            <>
+              <input ref={fileInputRef} type="file" accept={ACCEPTED} multiple className="hidden" onChange={handleFileInput} />
+              {files.length === 0 ? (
+                <div
+                  onDrop={handleDrop}
+                  onDragOver={e => { e.preventDefault(); setIsDragging(true); }}
+                  onDragLeave={() => setIsDragging(false)}
+                  onClick={() => fileInputRef.current?.click()}
+                  className={`border-2 border-dashed rounded-2xl p-10 text-center cursor-pointer transition-all ${
+                    isDragging
+                      ? 'border-indigo-500 bg-indigo-50 dark:bg-indigo-900/20'
+                      : 'border-slate-200 dark:border-slate-700 hover:border-indigo-400 hover:bg-slate-50 dark:hover:bg-slate-800/50'
+                  }`}
+                >
+                  <p className="text-4xl mb-3">📂</p>
+                  <p className="font-black dark:text-white text-sm">{t('upl.dropFiles')}</p>
+                  <p className="text-[10px] text-slate-400 mt-1 uppercase tracking-widest">{t('upl.orClick')}</p>
+                  <p className="text-[9px] text-slate-300 dark:text-slate-600 mt-3">{t('upl.fileTypes')}</p>
+                </div>
+              ) : (
+                <div className="space-y-2" onDrop={handleDrop} onDragOver={e => e.preventDefault()}>
+                  {files.map((f, i) => {
+                    const fext = f.file.name.split('.').pop()?.toLowerCase() ?? '';
+                    return (
+                      <div key={`${f.file.name}-${f.file.size}`} className="flex items-center gap-3 p-3 bg-slate-50 dark:bg-slate-800 rounded-2xl">
+                        <span className="text-xl shrink-0">{FILE_EMOJI[fext] ?? '📄'}</span>
+                        <div className="flex-grow min-w-0 space-y-0.5">
+                          <input
+                            type="text"
+                            value={f.title}
+                            onChange={e => setFiles(prev => prev.map((x, j) => j === i ? { ...x, title: e.target.value } : x))}
+                            className="w-full bg-transparent text-sm font-black dark:text-white outline-none border-b border-transparent focus:border-indigo-400"
+                            aria-label={t('upl.titleOptional')}
+                          />
+                          <p className="text-[9px] text-slate-400 uppercase tracking-widest truncate">{f.file.name} · {(f.file.size / 1024 / 1024).toFixed(2)} MB</p>
+                        </div>
+                        <button type="button" onClick={() => setFiles(prev => prev.filter((_, j) => j !== i))} className="text-slate-400 hover:text-rose-500 transition-colors font-black text-lg leading-none shrink-0">×</button>
+                      </div>
+                    );
+                  })}
+                  <button
+                    type="button"
+                    onClick={() => fileInputRef.current?.click()}
+                    className="w-full py-3 rounded-2xl border-2 border-dashed border-slate-200 dark:border-slate-700 text-[10px] font-black uppercase tracking-widest text-slate-400 hover:border-indigo-400 hover:text-indigo-500 transition-all"
+                  >
+                    {t('upl.addMoreFiles')}
+                  </button>
+                </div>
+              )}
+            </>
+          )}
 
           {/* Metadata form */}
           <fieldset disabled={isUploading} className="space-y-4 disabled:opacity-60">
-            <Field
-              label={t('upl.titleOptional')}
-              value={displayTitle}
-              onChange={setDisplayTitle}
-              placeholder={file ? file.name.replace(/\.[^/.]+$/, '') : mode === 'link' ? t('upl.titleLinkPlaceholder') : t('upl.titlePlaceholder')}
-            />
+            {mode !== 'file' && (
+              <Field
+                label={t('upl.titleOptional')}
+                value={displayTitle}
+                onChange={setDisplayTitle}
+                placeholder={mode === 'link' ? t('upl.titleLinkPlaceholder') : t('upl.titlePlaceholder')}
+              />
+            )}
             <div className="grid grid-cols-2 gap-4">
               <Field label={t('upl.moduleLabel')}   value={module}   onChange={setModule}   placeholder={t('upl.modulePlaceholder')} />
               <Field label={t('upl.semesterLabel')}        value={semester} onChange={setSemester} placeholder={t('upl.semesterPlaceholder')} />
@@ -294,11 +351,11 @@ export const UploadSourceModal: React.FC<Props> = ({ onClose, onUpload }) => {
 
           <button
             type="submit"
-            disabled={isUploading || (mode === 'file' ? !file : mode === 'text' ? pastedText.trim().length < 20 : !linkKind)}
+            disabled={isUploading || (mode === 'file' ? files.length === 0 : mode === 'text' ? pastedText.trim().length < 20 : !linkKind)}
             className="w-full bg-indigo-600 py-4 rounded-2xl text-[11px] font-black uppercase tracking-widest shadow-lg hover:scale-[1.02] transition-all disabled:opacity-40 disabled:scale-100"
             style={{ color: 'var(--primary-text)' }}
           >
-            {isUploading ? t('upl.saving') : mode === 'text' ? t('upl.saveNote') : mode === 'link' ? t('upl.linkImport') : t('upl.uploadSource')}
+            {isUploading ? t('upl.saving') : mode === 'text' ? t('upl.saveNote') : mode === 'link' ? t('upl.linkImport') : files.length > 1 ? tp('upl.uploadSourcesN', files.length) : t('upl.uploadSource')}
           </button>
         </form>
       </div>
