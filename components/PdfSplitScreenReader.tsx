@@ -14,6 +14,10 @@ import { renderMarkdown } from './markdownRenderer';
 import { toast } from '../services/toast';
 import { useTranslation } from '../i18n/I18nProvider';
 
+/** Ab dieser Verweildauer gilt eine Seite beim Weiterblättern automatisch als gelesen —
+ *  schnelles Durchblättern zählt bewusst nicht, der Button bleibt als Abkürzung. */
+const AUTO_READ_MS = 10_000;
+
 interface ChatEntry {
   concept: string;
   answer: string | null;
@@ -101,6 +105,20 @@ export const PdfSplitScreenReader: React.FC<PdfSplitScreenReaderProps> = ({ doc,
   }, [pdf, pageNumber, zoom]);
 
   useEffect(() => { setConcept(''); }, [pageNumber]);
+
+  // Auto-Gelesen: die Verweildauer wird beim Verlassen der Seite (Blättern oder
+  // Reader schließen) ausgewertet — kein Timer nötig, kein Klick-Zwang mehr.
+  const pageEnteredAt = useRef(Date.now());
+  useEffect(() => {
+    pageEnteredAt.current = Date.now();
+    const idx = pageNumber - 1;
+    return () => {
+      if (Date.now() - pageEnteredAt.current < AUTO_READ_MS) return;
+      if (getDoneChapterIndices(doc.id).includes(idx)) return;
+      markChapterDone(doc.id, idx, userId);
+      setDoneIndices(getDoneChapterIndices(doc.id));
+    };
+  }, [pageNumber, doc.id, userId]);
 
   // Zitat-Markierung: Textstelle auf der aktuellen Seite verorten. Rechtecke
   // liegen in Seiten-Koordinaten (scale 1) und werden beim Rendern auf die
