@@ -1,6 +1,7 @@
 
 import React, { useState } from 'react';
 import { ExamGenerator } from './ExamGenerator';
+import { ExamArchive } from './ExamArchive';
 import { ExamView } from './ExamView';
 import { ExamQuestion, ProcessedDocument, Collection, ActiveTab, ScoringProfile, ExamAnalysis, TopicMetric, FlashcardDeck } from '../types';
 import { generateFullExam, evaluateWithRubric, analyzeExamResults, GenerationSource } from '../services/geminiService';
@@ -280,17 +281,20 @@ export const ExamSystem: React.FC<ExamSystemProps> = ({ documents, collections, 
   }
 
   if (!questions) {
-    return <ExamGenerator
-      onGenerate={handleGenerate}
-      isLoading={isLoading}
-      documents={documents}
-      collections={collections}
-      getDocumentSource={getDocumentSource}
-      onSaveToLibrary={onSaveToLibrary}
-      initialDoc={initialDoc}
-      metrics={metrics}
-      decks={decks}
-    />;
+    return <>
+      <ExamGenerator
+        onGenerate={handleGenerate}
+        isLoading={isLoading}
+        documents={documents}
+        collections={collections}
+        getDocumentSource={getDocumentSource}
+        onSaveToLibrary={onSaveToLibrary}
+        initialDoc={initialDoc}
+        metrics={metrics}
+        decks={decks}
+      />
+      <ExamArchive />
+    </>;
   }
 
   return (
