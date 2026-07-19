@@ -44,19 +44,48 @@ export const PwaUpdatePrompt: React.FC = () => {
     }
   }, []);
 
-  const applyUpdate = () => {
+  const applyUpdate = async () => {
+    const GUARD_KEY = 'quizwise_sw_reload_at';
+    const unregisterAll = async () => {
+      try {
+        const regs = await navigator.serviceWorker.getRegistrations();
+        await Promise.all(regs.map(r => r.unregister()));
+      } catch {}
+    };
+
+    // Reload-Schleifen-Bremse: Hat DIESES Banner vor Kurzem schon einen Reload
+    // ausgelöst und der Worker hängt immer noch fest (z.B. mehrere wartende
+    // Versionen nach mehreren Deploys), dann die Registrierung komplett lösen —
+    // der nächste Load installiert den neuesten Worker frisch, Schleife beendet.
+    const last = Number(sessionStorage.getItem(GUARD_KEY) || 0);
+    if (Date.now() - last < 20_000) {
+      await unregisterAll();
+      sessionStorage.removeItem(GUARD_KEY);
+      window.location.reload();
+      return;
+    }
+    sessionStorage.setItem(GUARD_KEY, String(Date.now()));
+
     const waiting = regRef.current?.waiting;
     if (waiting) {
       // Wartendem SW direkt skipWaiting schicken und nach der Übernahme neu
       // laden — funktioniert auch, wenn registerSW den Wechsel intern nicht
       // mitbekommen hat (der Fall „waiting aus früherem Besuch").
+      let done = false;
       navigator.serviceWorker.addEventListener(
         'controllerchange',
-        () => window.location.reload(),
+        () => { if (!done) { done = true; window.location.reload(); } },
         { once: true },
       );
       waiting.postMessage({ type: 'SKIP_WAITING' });
-      window.setTimeout(() => window.location.reload(), 2500);
+      window.setTimeout(async () => {
+        if (done) return;
+        done = true;
+        // skipWaiting kam nicht durch (festgefahrener Worker): lösen statt
+        // blind neu zu laden — sonst Banner→Reload→Banner in Endlosschleife.
+        if (regRef.current?.waiting) await unregisterAll();
+        window.location.reload();
+      }, 3000);
     } else {
       updateRef.current?.(true);
     }
