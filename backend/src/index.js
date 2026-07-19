@@ -42,6 +42,7 @@ app.use(cors({
 const globalLimiter = rateLimit({ windowMs: 60 * 1000, max: 60, standardHeaders: true, legacyHeaders: false, message: { error: 'Zu viele Anfragen. Bitte warte eine Minute.' } });
 const geminiLimiter = rateLimit({ windowMs: 60 * 1000, max: 30, standardHeaders: true, legacyHeaders: false, message: { error: 'Zu viele KI-Anfragen. Bitte warte eine Minute.' } });
 const stripeLimiter = rateLimit({ windowMs: 60 * 1000, max: 5, standardHeaders: true, legacyHeaders: false, message: { error: 'Zu viele Checkout-Anfragen. Bitte warte eine Minute.' } });
+const clientErrorLimiter = rateLimit({ windowMs: 60 * 1000, max: 10, standardHeaders: true, legacyHeaders: false, message: { error: 'Zu viele Meldungen.' } });
 
 app.use('/api/', globalLimiter);
 
@@ -67,6 +68,7 @@ app.use('/api/agents', geminiLimiter, requireAuth, checkAgentLimit, agentRoutes)
 
 // Geschützt: Login (kein Gemini-Limit, ruft externe API auf)
 app.use('/api/search', requireAuth, searchRoutes);
+app.use('/api/client-error', clientErrorLimiter, require('./routes/clientError'));
 app.use('/api/documents', requireAuth, documentRoutes);
 // Quellen-Import per Link (YouTube zählt intern als Generierung)
 app.use('/api/import', geminiLimiter, requireAuth, importRoutes);

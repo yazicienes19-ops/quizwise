@@ -1,5 +1,6 @@
 import React from 'react';
 import { t as translate } from '../i18n';
+import { reportClientError } from '../services/errorReporter';
 
 interface EBState {
   hasError: boolean;
@@ -18,6 +19,7 @@ class ErrorBoundaryImpl extends React.Component<React.PropsWithChildren<{}>, EBS
 
   componentDidCatch(error: Error, info: React.ErrorInfo) {
     console.error('ErrorBoundary:', error, info.componentStack);
+    reportClientError(error.message, `${error.stack ?? ''}\n[component] ${info.componentStack ?? ''}`, 'boundary');
   }
 
   render() {
