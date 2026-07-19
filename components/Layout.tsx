@@ -201,9 +201,11 @@ export const Layout: React.FC<LayoutProps> = ({
                     >
                       {Icon && <Icon className="w-4 h-4 shrink-0" strokeWidth={1.75} />}
                       <div className="flex-1 min-w-0">
-                        <span className="text-[11px] font-black uppercase tracking-widest block break-words">{t(item.labelKey)}</span>
+                        {/* Einzeilig in allen Schriftarten (Garamond & Co. laufen breiter):
+                            engere Laufweite statt tracking-widest, truncate als Notbremse */}
+                        <span className="text-[10px] font-black uppercase tracking-wider block truncate">{t(item.labelKey)}</span>
                         {item.hintKey && !isActive && (
-                          <span className="block text-[9px] font-medium text-slate-400 normal-case tracking-normal mt-0.5 break-words">
+                          <span className="block text-[9px] font-medium text-slate-400 normal-case tracking-normal mt-0.5 truncate">
                             {t(item.hintKey)}
                           </span>
                         )}
@@ -248,11 +250,9 @@ export const Layout: React.FC<LayoutProps> = ({
                         >Pro</span>
                       )}
                     </p>
-                    {/* Umbruch nur am @, nie mitten im Wort */}
-                    <p className="text-[9px] text-slate-400 break-words">
-                      {user.email?.includes('@')
-                        ? <>{user.email.split('@')[0]}<wbr />@{user.email.split('@').slice(1).join('@')}</>
-                        : user.email}
+                    {/* Immer eine Zeile — kein Umbruch, volle Adresse per Tooltip */}
+                    <p className="text-[9px] text-slate-400 truncate" title={user.email ?? ''}>
+                      {user.email}
                     </p>
                   </div>
                   <button onClick={onLogout} className="text-slate-400 hover:text-rose-500 transition-colors shrink-0">
