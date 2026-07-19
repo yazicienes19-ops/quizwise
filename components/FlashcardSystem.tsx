@@ -14,6 +14,7 @@ import { documentDisplayName } from '../services/libraryService';
 import { getDueCards, createSrsState, migrateLegacyCard, countDueCards, QUALITY_MAP, reviewCard } from '../services/spacedRepetition';
 import { recordActivity } from '../services/streakService';
 import { AnkiImportModal } from './AnkiImportModal';
+import { buildPrintHtml } from '../services/printDeckService';
 import { ExportDeckModal } from './ExportDeckModal';
 import { EditCardModal } from './EditCardModal';
 import { DeckStatsModal } from './DeckStatsModal';
@@ -121,6 +122,16 @@ export const FlashcardSystem: React.FC<FlashcardSystemProps> = ({
     if (userId && changedDeck) {
       saveDeckToSupabase(changedDeck, userId).catch(() => {});
     }
+  };
+
+  // Ein Klick → Druckdialog: ausschneidbare A4-Bögen, Rückseiten gespiegelt
+  // für beidseitigen Druck (Wenden an der langen Kante).
+  const handlePrintDeck = (deck: FlashcardDeck) => {
+    if (deck.cards.length === 0) { toast.error(t('fcs.printEmpty')); return; }
+    const w = window.open('', '_blank');
+    if (!w) { toast.error(t('fcs.printPopupBlocked')); return; }
+    w.document.write(buildPrintHtml(deck.title, deck.cards, { hint: t('pd.hint'), print: t('pd.print') }));
+    w.document.close();
   };
 
   const handleCreateEmptyDeck = (e: React.FormEvent) => {
@@ -773,6 +784,13 @@ export const FlashcardSystem: React.FC<FlashcardSystemProps> = ({
                           title={t('fcs.statsTitle')}
                         >
                           <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round"><line x1="18" y1="20" x2="18" y2="10"/><line x1="12" y1="20" x2="12" y2="4"/><line x1="6" y1="20" x2="6" y2="14"/></svg>
+                        </button>
+                        <button
+                          onClick={() => handlePrintDeck(deck)}
+                          className="p-3 bg-slate-50 dark:bg-slate-800 text-slate-400 hover:text-indigo-600 rounded-xl transition-all"
+                          title={t('fcs.printTitle')}
+                        >
+                          <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><polyline points="6 9 6 2 18 2 18 9"/><path d="M6 18H4a2 2 0 0 1-2-2v-5a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v5a2 2 0 0 1-2 2h-2"/><rect x="6" y="14" width="12" height="8"/></svg>
                         </button>
                         <button
                           onClick={() => setEditingDeckId(deck.id)}
