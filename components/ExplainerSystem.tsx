@@ -3,6 +3,7 @@ import React, { useState, useEffect, useMemo } from 'react';
 import { ProcessedDocument, Collection, TopicMetric, FlashcardDeck } from '../types';
 import type { GenerationSource } from '../services/geminiService';
 import { generateExplanation } from '../services/geminiService';
+import { extractSourceQuote, stripSourceQuoteLine } from '../services/sourceQuoteParser';
 import { SourceSelector } from './SourceSelector';
 import { useTranslation } from '../i18n/I18nProvider';
 import { formatDate } from '../i18n/dates';
@@ -65,6 +66,8 @@ export const ExplainerSystem: React.FC<ExplainerSystemProps> = ({
   const [useExternal, setUseExternal]     = useState(false);
   const [explanation, setExplanation]     = useState<string | null>(null);
   const [explainedConcept, setExplainedConcept] = useState('');
+  /** Wörtliches Zitat aus der Quelle, auf das sich die Erklärung stützt. */
+  const [sourceQuote, setSourceQuote]     = useState<string | null>(null);
   const [history, setHistory]             = useState<HistoryEntry[]>(loadHistory);
 
   // ── Lernprofil: schwache Themen als Vorschläge ──
@@ -116,8 +119,11 @@ export const ExplainerSystem: React.FC<ExplainerSystemProps> = ({
     setConcept(trimmed);
     setStep('loading');
     try {
-      const result = await generateExplanation(activeSource, trimmed, useExternal);
-      setExplanation(result);
+      // Quellen-Zitat nur anfordern, wenn eine echte Quelle da ist — bei reinem
+      // Allgemeinwissen gibt es nichts zu zitieren.
+      const result = await generateExplanation(activeSource, trimmed, useExternal, !!activeSource);
+      setExplanation(stripSourceQuoteLine(result));
+      setSourceQuote(activeSource ? extractSourceQuote(result) : null);
       setExplainedConcept(trimmed);
       setHistory(pushHistory({ concept: trimmed, docName: activeSourceName || 'Allgemeinwissen', timestamp: Date.now() }));
       setStep('explanation');
@@ -131,6 +137,7 @@ export const ExplainerSystem: React.FC<ExplainerSystemProps> = ({
     setConcept('');
     setExplanation(null);
     setExplainedConcept('');
+    setSourceQuote(null);
     setStep('setup');
   };
 
@@ -315,6 +322,16 @@ export const ExplainerSystem: React.FC<ExplainerSystemProps> = ({
           {explanation && (
             <div className="rounded-[32px] p-8 space-y-6" style={{ background: 'var(--bg-sidebar)', border: '1px solid var(--border-color)' }}>
               {renderMarkdown(explanation)}
+            </div>
+          )}
+
+          {/* Beleg aus der Quelle: worauf stützt sich die Erklärung? */}
+          {sourceQuote && (
+            <div className="rounded-2xl p-4" style={{ background: 'color-mix(in srgb, var(--primary) 8%, transparent)', border: '1px solid color-mix(in srgb, var(--primary) 25%, transparent)' }}>
+              <p className="text-[8px] font-black uppercase tracking-widest mb-1" style={{ color: 'var(--primary)' }}>
+                {activeSourceName ? t('ex.quoteFrom', { source: activeSourceName }) : t('ex.quoteLabel')}
+              </p>
+              <p className="text-xs font-medium italic text-slate-600 dark:text-slate-300 break-words">„{sourceQuote}"</p>
             </div>
           )}
 
