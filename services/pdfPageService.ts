@@ -109,6 +109,43 @@ export const getPageText = async (pdf: PdfHandle, pageNumber: number): Promise<s
   return text;
 };
 
+export interface PositionedTextItem {
+  str: string;
+  /** Position/Größe in Seiten-Koordinaten bei scale 1 (Ursprung oben links). */
+  x: number;
+  y: number;
+  w: number;
+  h: number;
+}
+
+/**
+ * Textfragmente einer Seite mit Positionen (scale 1, Ursprung oben links) —
+ * Grundlage für das Markieren von Zitat-Stellen direkt auf dem Canvas.
+ */
+export const getPageTextItems = async (
+  pdf: PdfHandle,
+  pageNumber: number
+): Promise<{ items: PositionedTextItem[]; width: number; height: number }> => {
+  const page = await pdf.doc.getPage(pageNumber);
+  const viewport = page.getViewport({ scale: 1 });
+  const content = await page.getTextContent();
+  const items: PositionedTextItem[] = (content.items as any[])
+    .filter(it => typeof it.str === 'string' && it.str.length > 0)
+    .map(it => {
+      const h = it.height || Math.abs(it.transform?.[3] ?? 0) || 10;
+      return {
+        str: it.str,
+        x: it.transform?.[4] ?? 0,
+        // transform[5] ist die Baseline in PDF-Koordinaten (Ursprung unten) —
+        // umrechnen auf "oben links" und die Zeichenhöhe nach oben abtragen.
+        y: viewport.height - (it.transform?.[5] ?? 0) - h,
+        w: it.width ?? 0,
+        h,
+      };
+    });
+  return { items, width: viewport.width, height: viewport.height };
+};
+
 /** Rendert eine Seite scharf (devicePixelRatio) in das Canvas, skaliert auf targetWidth CSS-Pixel. */
 export const renderPageToCanvas = async (
   pdf: PdfHandle,

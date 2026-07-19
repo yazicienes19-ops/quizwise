@@ -2,7 +2,8 @@ import React, { useState, useEffect, useMemo, useCallback, useRef } from 'react'
 import { ProcessedDocument } from '../types';
 import { generateExplanation } from '../services/geminiService';
 import { downloadPdfAsBase64 } from '../services/documentService';
-import { loadPdf, getPageText, renderPageToCanvas, renderPageToJpegBase64, isScannedPage, type PdfHandle } from '../services/pdfPageService';
+import { loadPdf, getPageText, getPageTextItems, renderPageToCanvas, renderPageToJpegBase64, isScannedPage, type PdfHandle } from '../services/pdfPageService';
+import { findQuoteRects, type HighlightRect } from '../services/pdfHighlightService';
 import { markChapterDone, getDoneChapterIndices } from '../services/chapterProgressService';
 import { logReaderQuestion, getReaderLog } from '../services/readerLogService';
 import { buildFeynmanHandoff, pickHandoffTopic } from '../services/feynmanHandoffService';
@@ -45,8 +46,14 @@ export const PdfSplitScreenReader: React.FC<PdfSplitScreenReaderProps> = ({ doc,
   const [doneIndices, setDoneIndices] = useState<number[]>(() => getDoneChapterIndices(doc.id));
   const [chatByPage, setChatByPage] = useState<Record<number, ChatEntry[]>>({});
   const [concept, setConcept] = useState('');
+  /** Aktive Zitat-Markierung im PDF (Klick auf die Zitat-Karte). */
+  const [highlight, setHighlight] = useState<{ page: number; quote: string } | null>(null);
+  const [highlightRects, setHighlightRects] = useState<{ rects: HighlightRect[]; pageW: number; pageH: number } | null>(null);
+  /** CSS-Größe des gerenderten Canvas — Skalierungsbasis für die Overlay-Rechtecke. */
+  const [canvasCss, setCanvasCss] = useState<{ w: number; h: number } | null>(null);
 
   const canvasRef = useRef<HTMLCanvasElement>(null);
+  const firstRectRef = useRef<HTMLDivElement>(null);
   const pageBoxRef = useRef<HTMLDivElement>(null);
   const renderSeq = useRef(0);
 
@@ -81,7 +88,10 @@ export const PdfSplitScreenReader: React.FC<PdfSplitScreenReaderProps> = ({ doc,
       try {
         const canvas = canvasRef.current;
         const baseWidth = (pageBoxRef.current?.clientWidth ?? 600) - 16;
-        if (canvas) await renderPageToCanvas(pdf, pageNumber, canvas, baseWidth * zoom);
+        if (canvas) {
+          await renderPageToCanvas(pdf, pageNumber, canvas, baseWidth * zoom);
+          if (renderSeq.current === seq) setCanvasCss({ w: canvas.clientWidth, h: canvas.clientHeight });
+        }
         const text = await getPageText(pdf, pageNumber);
         if (renderSeq.current === seq) setPageText(text);
       } catch {
@@ -91,6 +101,32 @@ export const PdfSplitScreenReader: React.FC<PdfSplitScreenReaderProps> = ({ doc,
   }, [pdf, pageNumber, zoom]);
 
   useEffect(() => { setConcept(''); }, [pageNumber]);
+
+  // Zitat-Markierung: Textstelle auf der aktuellen Seite verorten. Rechtecke
+  // liegen in Seiten-Koordinaten (scale 1) und werden beim Rendern auf die
+  // CSS-Größe des Canvas skaliert — Zoom-Wechsel brauchen keine Neuberechnung.
+  useEffect(() => {
+    if (!pdf || !highlight || highlight.page !== pageNumber) { setHighlightRects(null); return; }
+    let cancelled = false;
+    (async () => {
+      try {
+        const { items, width, height } = await getPageTextItems(pdf, highlight.page);
+        const rects = findQuoteRects(items, highlight.quote);
+        if (cancelled) return;
+        setHighlightRects(rects ? { rects, pageW: width, pageH: height } : null);
+        if (!rects) toast.error(t('rd.quoteNotFound'));
+      } catch {
+        if (!cancelled) setHighlightRects(null);
+      }
+    })();
+    return () => { cancelled = true; };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [pdf, highlight, pageNumber]);
+
+  // Markierung ins Sichtfeld holen (relevant bei Zoom > 1)
+  useEffect(() => {
+    if (highlightRects) firstRectRef.current?.scrollIntoView({ block: 'center', inline: 'center', behavior: 'smooth' });
+  }, [highlightRects, canvasCss]);
 
   const goToPage = useCallback((n: number) => {
     if (!pdf) return;
@@ -256,7 +292,24 @@ export const PdfSplitScreenReader: React.FC<PdfSplitScreenReaderProps> = ({ doc,
               {/* w-max + mx-auto zentriert horizontal, min-h-full + items-center vertikal —
                   beim Zoomen wird die Seite größer als der Container und er scrollt sauber */}
               <div className="w-max mx-auto max-w-none min-h-full flex items-center px-2">
-                <canvas ref={canvasRef} className="rounded-xl my-3 shadow-lg" />
+                <div className="relative my-3">
+                  <canvas ref={canvasRef} className="rounded-xl shadow-lg block" />
+                  {canvasCss && highlightRects && highlight?.page === pageNumber && highlightRects.rects.map((r, i) => (
+                    <div
+                      key={i}
+                      ref={i === 0 ? firstRectRef : undefined}
+                      className="absolute rounded-[3px] pointer-events-none animate-in fade-in duration-500"
+                      style={{
+                        left: (r.x / highlightRects.pageW) * canvasCss.w - 2,
+                        top: (r.y / highlightRects.pageH) * canvasCss.h - 2,
+                        width: (r.w / highlightRects.pageW) * canvasCss.w + 4,
+                        height: (r.h / highlightRects.pageH) * canvasCss.h + 4,
+                        background: 'color-mix(in srgb, var(--primary) 28%, transparent)',
+                        boxShadow: '0 0 0 1px color-mix(in srgb, var(--primary) 45%, transparent)',
+                      }}
+                    />
+                  ))}
+                </div>
               </div>
             </div>
             {pageNumber > 1 && (
@@ -311,9 +364,24 @@ export const PdfSplitScreenReader: React.FC<PdfSplitScreenReaderProps> = ({ doc,
                     </div>
                     {entry.quote && (
                       <div className="rounded-2xl p-3.5" style={{ background: 'color-mix(in srgb, var(--primary) 8%, transparent)', border: '1px solid color-mix(in srgb, var(--primary) 25%, transparent)' }}>
-                        <p className="text-[8px] font-black uppercase tracking-widest mb-1" style={{ color: 'var(--primary)' }}>
-                          {t('rd.quoteSourcePage', { n: pageNumber })}
-                        </p>
+                        <div className="flex items-center justify-between gap-2 mb-1">
+                          <p className="text-[8px] font-black uppercase tracking-widest" style={{ color: 'var(--primary)' }}>
+                            {t('rd.quoteSourcePage', { n: pageNumber })}
+                          </p>
+                          <button
+                            onClick={() => setHighlight(prev =>
+                              prev && prev.page === pageNumber && prev.quote === entry.quote
+                                ? null
+                                : { page: pageNumber, quote: entry.quote! }
+                            )}
+                            className="shrink-0 text-[8px] font-black uppercase tracking-widest px-2 py-1 rounded-lg transition-all hover:scale-[1.03] active:scale-95"
+                            style={highlight?.page === pageNumber && highlight?.quote === entry.quote
+                              ? { background: 'var(--primary)', color: 'var(--primary-text)' }
+                              : { border: '1px solid color-mix(in srgb, var(--primary) 40%, transparent)', color: 'var(--primary)' }}
+                          >
+                            {highlight?.page === pageNumber && highlight?.quote === entry.quote ? t('rd.unmarkInPdf') : t('rd.markInPdf')}
+                          </button>
+                        </div>
                         <p className="text-xs font-medium italic text-slate-600 dark:text-slate-300 break-words">„{entry.quote}"</p>
                       </div>
                     )}

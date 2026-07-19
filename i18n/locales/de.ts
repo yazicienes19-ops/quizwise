@@ -1281,6 +1281,9 @@ export const de = {
   'rd.zoomOut': 'Verkleinern',
   'rd.zoomIn': 'Vergrößern',
   'rd.quoteSourcePage': '📍 Quelle · Seite {n}',
+  'rd.markInPdf': 'Im PDF markieren',
+  'rd.unmarkInPdf': 'Markierung aus',
+  'rd.quoteNotFound': 'Textstelle auf der Seite nicht gefunden. Bei Scans ohne Textebene ist kein Markieren möglich.',
   'rd.askPagePlaceholder': 'Frage zu Seite {n} …',
   'rd.feynmanHintAsk': 'Frag zwischendurch beim Erklärer nach. Die Feynman-Runde startet dann direkt mit deinem Thema.',
 

@@ -1273,6 +1273,9 @@ export const tr: Translations = {
   'rd.zoomOut': 'Küçült',
   'rd.zoomIn': 'Büyüt',
   'rd.quoteSourcePage': '📍 Kaynak · Sayfa {n}',
+  'rd.markInPdf': "PDF'te işaretle",
+  'rd.unmarkInPdf': 'İşareti kaldır',
+  'rd.quoteNotFound': 'Metin sayfada bulunamadı. Metin katmanı olmayan taramalarda işaretleme yapılamaz.',
   'rd.askPagePlaceholder': '{n}. sayfa hakkında soru …',
   'rd.feynmanHintAsk': 'Arada Anlatıcıya sor. Feynman turu sonra doğrudan senin konunla başlar.',
 
