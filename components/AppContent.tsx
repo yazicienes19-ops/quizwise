@@ -419,7 +419,7 @@ export const AppContent: React.FC<AppContentProps> = (p) => {
     );
 
     case ActiveTab.RADAR:
-      return <LearningCoach metrics={metrics} decks={decks} onNavigate={setActiveTab} onAction={handleWeakTopicAction} flowResult={flowResult} examTerms={examTerms} activeModule={collections.find(c => c.id === activeModuleId) ?? null} documents={documents} />;
+      return <LearningCoach metrics={metrics} decks={decks} onNavigate={setActiveTab} onAction={handleWeakTopicAction} flowResult={flowResult} examTerms={examTerms} activeModule={collections.find(c => c.id === activeModuleId) ?? null} documents={documents} userId={user?.id} />;
 
     case ActiveTab.EXPLAINER:
       return <ExplainerSystem

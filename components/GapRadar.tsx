@@ -7,9 +7,9 @@ import { buildRealTopicMastery } from '../services/learningProfileService';
 import { useTranslation } from '../i18n/I18nProvider';
 import { formatDate } from '../i18n/dates';
 import { t as translate } from '../i18n';
-import { getAllResults } from '../services/quizHistoryService';
-import { getAllRecallResults } from '../services/recallHistoryService';
-import { getAllExamResults } from '../services/examHistoryService';
+import { getAllResults, deleteQuizResult } from '../services/quizHistoryService';
+import { getAllRecallResults, deleteRecallResult } from '../services/recallHistoryService';
+import { getAllExamResults, deleteExamResult } from '../services/examHistoryService';
 import { toast } from '../services/toast';
 import {
   LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip,
@@ -238,9 +238,11 @@ interface GapRadarProps {
   onAction?: (topic: string, mode: 'cards' | 'recall' | 'quiz') => void;
   /** Header ausblenden, wenn GapRadar unterhalb eines eigenen Titels eingebettet wird (z.B. LearningCoach). */
   hideHeader?: boolean;
+  /** Für den Cloud-Sync beim Löschen von Verlaufseinträgen. */
+  userId?: string | null;
 }
 
-export const GapRadar: React.FC<GapRadarProps> = ({ metrics, onNavigate, onAction, hideHeader }) => {
+export const GapRadar: React.FC<GapRadarProps> = ({ metrics, onNavigate, onAction, hideHeader, userId }) => {
   const { t } = useTranslation();
   const [selectedMode, setSelectedMode] = useState<LearnMode>('all');
   const [selectedDoc, setSelectedDoc] = useState('');
@@ -262,9 +264,20 @@ export const GapRadar: React.FC<GapRadarProps> = ({ metrics, onNavigate, onActio
   }, [openTopic]);
 
   // ── Raw data ────────────────────────────────────────────────────────────────
-  const allQuiz   = useMemo(() => getAllResults(), []);
-  const allRecall = useMemo(() => getAllRecallResults(), []);
-  const allExam   = useMemo(() => getAllExamResults(), []);
+  const [historyBump, setHistoryBump] = useState(0);
+  const allQuiz   = useMemo(() => getAllResults(), [historyBump]);
+  const allRecall = useMemo(() => getAllRecallResults(), [historyBump]);
+  const allExam   = useMemo(() => getAllExamResults(), [historyBump]);
+
+  // Verlaufseintrag endgültig löschen (lokal + Cloud); Statistiken rechnen neu
+  const handleDeleteSession = (kind: 'quiz' | 'feynman' | 'exam', id: string) => {
+    if (!window.confirm(t('gr.deleteConfirm'))) return;
+    if (kind === 'quiz') deleteQuizResult(id, userId);
+    else if (kind === 'feynman') deleteRecallResult(id, userId);
+    else deleteExamResult(id, userId);
+    setHistoryBump(b => b + 1);
+    toast.success(t('gr.deleted'));
+  };
 
   // ── All unique doc names ────────────────────────────────────────────────────
   const allDocNames = useMemo(() => {
@@ -441,13 +454,13 @@ export const GapRadar: React.FC<GapRadarProps> = ({ metrics, onNavigate, onActio
 
   // ── Combined history for history list ────────────────────────────────────────
   const combinedHistory = useMemo(() => {
-    type Entry = { id: string; docName: string; timestamp: number; score: number; mode: string; detail: string };
+    type Entry = { id: string; docName: string; timestamp: number; score: number; mode: string; detail: string; kind: 'quiz' | 'feynman' | 'exam' };
     const entries: Entry[] = [];
 
     if (selectedMode === 'all' || selectedMode === 'quiz') {
       filteredQuiz.slice(0, 8).forEach(r =>
         entries.push({
-          id: r.id, docName: r.docName, timestamp: r.timestamp,
+          id: r.id, docName: r.docName, timestamp: r.timestamp, kind: 'quiz',
           score: r.score, mode: getModeLabel('quiz'), detail: t('gr.detailCorrect', { correct: r.correctCount, total: r.totalCount }),
         })
       );
@@ -455,7 +468,7 @@ export const GapRadar: React.FC<GapRadarProps> = ({ metrics, onNavigate, onActio
     if (selectedMode === 'all' || selectedMode === 'feynman') {
       filteredRecall.slice(0, 4).forEach(r =>
         entries.push({
-          id: r.id, docName: r.topic || r.docName, timestamp: r.timestamp,
+          id: r.id, docName: r.topic || r.docName, timestamp: r.timestamp, kind: 'feynman',
           score: r.score, mode: getModeLabel('feynman'), detail: r.docName,
         })
       );
@@ -463,7 +476,7 @@ export const GapRadar: React.FC<GapRadarProps> = ({ metrics, onNavigate, onActio
     if (selectedMode === 'all' || selectedMode === 'exam') {
       filteredExam.slice(0, 4).forEach(r =>
         entries.push({
-          id: r.id, docName: r.docName, timestamp: r.timestamp,
+          id: r.id, docName: r.docName, timestamp: r.timestamp, kind: 'exam',
           score: r.score, mode: getModeLabel('exam'), detail: r.passed ? t('gr.detailPassed') : t('gr.detailNotPassed'),
         })
       );
@@ -885,6 +898,12 @@ export const GapRadar: React.FC<GapRadarProps> = ({ metrics, onNavigate, onActio
                   <span className="text-sm font-black w-10 text-right" style={{ color: scoreColor(entry.score) }}>
                     {entry.score}%
                   </span>
+                  <button
+                    onClick={() => handleDeleteSession(entry.kind, entry.id)}
+                    aria-label={t('gr.deleteSession')}
+                    title={t('gr.deleteSession')}
+                    className="text-slate-300 hover:text-rose-500 transition-colors font-black text-base leading-none"
+                  >×</button>
                 </div>
               </div>
             ))}

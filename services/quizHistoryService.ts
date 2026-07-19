@@ -35,6 +35,25 @@ export const getResultsForDoc = (docId: string): QuizResult[] =>
 
 export const getAllResults = (): QuizResult[] => readAll();
 
+/**
+ * Entfernt eine Quiz-Session endgültig aus Verlauf + Cloud. War es die letzte
+ * Session zu diesem Dokument, fliegen auch dessen Einträge aus der
+ * Fehler-Wiederholungs-Queue — sonst blieben verwaiste Fragen zurück.
+ */
+export const deleteQuizResult = (id: string, userId?: string | null): void => {
+  const all = readAll();
+  const target = all.find(r => r.id === id);
+  if (!target) return;
+  const updated = all.filter(r => r.id !== id);
+  localStorage.setItem(STORAGE_KEY, JSON.stringify(updated));
+  if (userId) {
+    import('./syncService').then(({ syncLearningField }) => syncLearningField(userId, 'quiz_history', updated)).catch(() => {});
+  }
+  if (!updated.some(r => r.docName === target.docName)) {
+    import('./mistakeReviewService').then(({ removeMistakesByDocName }) => removeMistakesByDocName(target.docName, userId)).catch(() => {});
+  }
+};
+
 export const getDocStats = (docId: string): {
   count: number;
   lastAt: number | null;

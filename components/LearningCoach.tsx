@@ -59,9 +59,10 @@ interface LearningCoachProps {
   /** Variante C: aktives Fach — Auswertungen werden darauf gefiltert */
   activeModule?: Collection | null;
   documents?: ProcessedDocument[];
+  userId?: string | null;
 }
 
-export const LearningCoach: React.FC<LearningCoachProps> = ({ metrics, decks, onNavigate, onAction, flowResult = null, examTerms = [], activeModule = null, documents = [] }) => {
+export const LearningCoach: React.FC<LearningCoachProps> = ({ metrics, decks, onNavigate, onAction, flowResult = null, examTerms = [], activeModule = null, documents = [], userId }) => {
   const { t, tp } = useTranslation();
   const [insights, setInsights] = useState<CoachInsights | null>(null);
   const [isLoading, setIsLoading] = useState(false);
@@ -713,7 +714,7 @@ export const LearningCoach: React.FC<LearningCoachProps> = ({ metrics, decks, on
 
       {/* ── Bestehende Verlaufs-/Fehleranalyse (unverändert, ohne eigenen Header) ── */}
       <div className="pt-8 border-t" style={{ borderColor: 'var(--border-color)' }}>
-        <GapRadar metrics={metrics} onNavigate={onNavigate} onAction={onAction} hideHeader />
+        <GapRadar metrics={metrics} onNavigate={onNavigate} onAction={onAction} hideHeader userId={userId} />
       </div>
     </div>
   );

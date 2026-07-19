@@ -29,3 +29,11 @@ export const saveRecallResult = (data: Omit<RecallResult, 'id'>, userId?: string
 };
 
 export const getAllRecallResults = (): RecallResult[] => readAll();
+
+export const deleteRecallResult = (id: string, userId?: string | null): void => {
+  const updated = readAll().filter(r => r.id !== id);
+  localStorage.setItem(STORAGE_KEY, JSON.stringify(updated));
+  if (userId) {
+    import('./syncService').then(({ syncLearningField }) => syncLearningField(userId, 'recall_history', updated)).catch(() => {});
+  }
+};

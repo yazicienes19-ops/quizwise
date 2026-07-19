@@ -39,3 +39,11 @@ export const saveExamResult = (data: Omit<ExamResult, 'id'>, userId?: string | n
 };
 
 export const getAllExamResults = (): ExamResult[] => readAll();
+
+export const deleteExamResult = (id: string, userId?: string | null): void => {
+  const updated = readAll().filter(r => r.id !== id);
+  localStorage.setItem(STORAGE_KEY, JSON.stringify(updated));
+  if (userId) {
+    import('./syncService').then(({ syncLearningField }) => syncLearningField(userId, 'exam_history', updated)).catch(() => {});
+  }
+};
