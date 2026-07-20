@@ -2,7 +2,10 @@ import React from 'react';
 import { t } from '../i18n';
 
 // Erklärer-Überschriften beider Sprachen (DE + TR) für die Block-Erkennung.
-const HEADING_RE = /^(Grundlagen|Vertiefung|Kontext|Temel Bilgiler|Derinlemesine|Bağlam|Stufe\s*\d*|Phase\s*\d*|Aşama\s*\d*)[\s:]/i;
+// Trennzeichen nach dem Überschriftswort ist optional: steht die Überschrift
+// ALLEIN auf ihrer Zeile (der Normalfall), folgt direkt das Zeilenende, kein
+// Leerzeichen/Doppelpunkt mehr — (?:[\s:]|$) deckt beides ab.
+const HEADING_RE = /^(Grundlagen|Vertiefung|Kontext|Temel Bilgiler|Derinlemesine|Bağlam|Stufe\s*\d*|Phase\s*\d*|Aşama\s*\d*)(?:[\s:]|$)/i;
 
 export function parseInline(text: string, baseKey: string): React.ReactNode[] {
   const parts: React.ReactNode[] = [];
@@ -30,8 +33,20 @@ export function renderMarkdown(text: string): React.ReactNode {
     if (line.startsWith('# '))   { blocks.push(<h2 key={key++} className="text-2xl lg:text-3xl font-black text-slate-900 dark:text-white tracking-tight mt-2">{parseInline(line.slice(2),String(key))}</h2>); i++; continue; }
     if (line.startsWith('## '))  { blocks.push(<h3 key={key++} className="text-xl lg:text-2xl font-black text-slate-900 dark:text-white tracking-tight mt-1">{parseInline(line.slice(3),String(key))}</h3>); i++; continue; }
     if (line.startsWith('### ')) { blocks.push(<h4 key={key++} className="text-base lg:text-lg font-black text-slate-700 dark:text-slate-200 uppercase tracking-wider mt-1">{parseInline(line.slice(4),String(key))}</h4>); i++; continue; }
-    if (HEADING_RE.test(line)) {
-      blocks.push(<h3 key={key++} className="text-xl lg:text-2xl font-black text-slate-900 dark:text-white tracking-tight mt-1">{parseInline(line,String(key))}</h3>); i++; continue;
+    const headingMatch = line.match(HEADING_RE);
+    if (headingMatch) {
+      // Modell setzt nicht immer verlässlich einen Zeilenumbruch nach der
+      // Überschrift ("Grundlagen Der Text geht munter weiter…") — Überschrift
+      // und Rest sauber trennen, statt den ganzen Satz in die Heading-Optik zu ziehen.
+      const rest = line.slice(headingMatch[0].length).trim();
+      blocks.push(<h3 key={key++} className="text-xl lg:text-2xl font-black text-slate-900 dark:text-white tracking-tight mt-1">{headingMatch[1]}</h3>);
+      i++;
+      if (rest) {
+        const paraLines: string[] = [rest];
+        while (i < lines.length && lines[i].trim() && !lines[i].startsWith('#') && !lines[i].match(/^[-*•]\s/) && !lines[i].match(/^\d+\.\s/) && !lines[i].startsWith('Allgemeinwissen:') && !HEADING_RE.test(lines[i])) { paraLines.push(lines[i]); i++; }
+        blocks.push(<p key={key++} className="text-base lg:text-lg font-medium text-slate-700 dark:text-slate-300 leading-relaxed">{parseInline(paraLines.join(' '),String(key))}</p>);
+      }
+      continue;
     }
     if (line.startsWith('Allgemeinwissen:')) {
       const content: string[] = [line.replace('Allgemeinwissen:','').trim()]; i++;

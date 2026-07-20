@@ -859,22 +859,34 @@ export const generateExplanation = async (
   const safeConcept = sanitizeUserInput(concept, 200);
 
   // Die Eingabe ist entweder (a) ein Begriff, der erklärt werden soll, oder
-  // (b) eine Verständnisfrage/Paraphrase ("Ist damit gemeint...", "Habe ich
-  // das richtig verstanden...", "Also bedeutet das..."), bei der der Nutzer
-  // eine Bewertung erwartet, keine neue Grunderklärung. Ohne diese Weiche
-  // ignoriert die KI genau diese Nachfragen und erklärt stur von vorne.
-  const intentInstruction = `\n\nDie Eingabe des Nutzers ist entweder ein Begriff, der erklärt werden soll, ODER eine Verständnisfrage/Paraphrase, mit der der Nutzer prüfen will, ob er es richtig verstanden hat. Erkenne den Fall:
-- BEGRIFF: Erkläre wie unten beschrieben, in 3 Stufen mit exakt diesen Überschriften: ${explainerHeadings()}. Bringe in der letzten Stufe mindestens EIN konkretes, greifbares Beispiel, das das Konzept veranschaulicht (aus dem Dokument, sonst treffend selbst gewählt) — abstrakte Definitionen allein reichen nicht.
-- VERSTÄNDNISFRAGE/PARAPHRASE: Bewerte ZUERST explizit und direkt, ob das Verständnis korrekt ist ("Ja, genau." / "Fast — ..." / "Nein, das stimmt nicht ganz, weil..."), dann korrigiere oder ergänze in 1-3 kurzen Sätzen was fehlt oder falsch war. Danach EIN kurzes konkretes Beispiel, das den Punkt festigt (besonders wichtig, wenn etwas falsch verstanden wurde). KEINE Überschriften, KEINE neue Grunderklärung von vorne — antworte direkt auf die Nachfrage.`;
+  // (b) eine Verständnisfrage/Paraphrase/Behauptung, die der Nutzer geprüft
+  // haben will. Semantische Beispiele ("Ist damit gemeint...") reichten allein
+  // nicht — kurze, holprige oder tippfehlerhafte Formulierungen wie "Das heiß
+  // X heißt nicht Y?" wurden trotzdem als BEGRIFF fehlklassifiziert. Deshalb
+  // zusätzlich eine STRUKTURELLE Regel (Länge/Satzform), die nicht auf
+  // erkannte Formulierungen angewiesen ist. Wichtig: Der äußere Prompt darf
+  // die Eingabe NICHT als "das Konzept" bezeichnen — das schiebt die KI schon
+  // vor der Weiche Richtung Begriffserklärung.
+  const intentInstruction = `\n\nENTSCHEIDE ZUERST, um welchen Fall es sich bei der Nutzereingabe handelt:
+- BEGRIFF: Die Eingabe ist NUR ein kurzer Fachbegriff oder eine kurze Nominalphrase (grob 1-4 Wörter), OHNE Satzstruktur, ohne Verb, das eine Behauptung ausdrückt, ohne Fragezeichen zu einer Aussage. Beispiel: "Falsifikationsprinzip".
+- VERSTÄNDNISFRAGE/BEHAUPTUNG: ALLES ANDERE — jede Eingabe mit Satzstruktur, jede Formulierung mit einem Verb wie "ist/heißt/bedeutet/stimmt", jede Frage die sich auf eine Aussage oder Beziehung zwischen Begriffen bezieht, auch bei Tippfehlern oder holpriger Grammatik. Im Zweifel IMMER dieser Fall, nicht BEGRIFF.
+
+Diese Einordnung ist NUR für dich intern — gib sie NICHT in der Antwort aus (keine Zeile wie "Entscheidung: ..." o.ä.). Beginne die Antwort direkt mit der Erklärung bzw. Bewertung.
+
+Verhalte dich dann so:
+- Bei BEGRIFF: Erkläre in 3 Stufen mit exakt diesen Überschriften: ${explainerHeadings()}. Jede Überschrift steht ALLEIN auf ihrer eigenen Zeile (danach sofort Zeilenumbruch, kein Text mehr in derselben Zeile) — der Fließtext beginnt erst in der nächsten Zeile. Bringe in der letzten Stufe mindestens EIN konkretes, greifbares Beispiel, das das Konzept veranschaulicht (aus dem Dokument, sonst treffend selbst gewählt) — abstrakte Definitionen allein reichen nicht.
+- Bei VERSTÄNDNISFRAGE/BEHAUPTUNG: Bewerte ZUERST explizit und direkt, ob sie korrekt ist ("Ja, genau." / "Fast — ..." / "Nein, das stimmt nicht ganz, weil..."), dann korrigiere oder ergänze in 1-3 kurzen Sätzen was fehlt oder falsch war. Danach EIN kurzes konkretes Beispiel, das den Punkt festigt (besonders wichtig bei falschem Verständnis). KEINE Überschriften, KEINE neue Grunderklärung von vorne — antworte direkt auf die Nachfrage, auch wenn die Formulierung unklar oder fehlerhaft ist.`;
 
   if (!useExternalKnowledge) {
-    parts.push({ text: `Beantworte die folgende Eingabe zum Konzept "${safeConcept}" ausschließlich basierend auf dem oben bereitgestellten Dokument.
+    parts.push({ text: `Nutzereingabe: "${safeConcept}"
+Verarbeite sie ausschließlich basierend auf dem oben bereitgestellten Dokument.
 STRENGE REGEL: Verwende NUR Inhalte aus dem Dokument. Kein Allgemeinwissen, keine externen Quellen, keine Erfindungen. Wenn das Dokument dazu nichts enthält, sage das klar.${intentInstruction}${outputLangDirective()}${sourceQuoteInstruction}` });
   } else if (source) {
-    parts.push({ text: `Beantworte die folgende Eingabe zum Konzept "${safeConcept}".
+    parts.push({ text: `Nutzereingabe: "${safeConcept}"
 Nutze das oben bereitgestellte Dokument als primäre Quelle. Ergänze mit deinem Allgemeinwissen wo das Dokument lückenhaft ist — kennzeichne solche Ergänzungen exakt mit dem Präfix "Allgemeinwissen:".${intentInstruction}${outputLangDirective()}` });
   } else {
-    parts.push({ text: `Beantworte die folgende Eingabe zum Konzept "${safeConcept}" umfassend aus deinem Allgemeinwissen.${intentInstruction}${outputLangDirective()}` });
+    parts.push({ text: `Nutzereingabe: "${safeConcept}"
+Verarbeite sie umfassend aus deinem Allgemeinwissen.${intentInstruction}${outputLangDirective()}` });
   }
 
   return callBackend({
