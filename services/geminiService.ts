@@ -864,8 +864,8 @@ export const generateExplanation = async (
   // eine Bewertung erwartet, keine neue Grunderklärung. Ohne diese Weiche
   // ignoriert die KI genau diese Nachfragen und erklärt stur von vorne.
   const intentInstruction = `\n\nDie Eingabe des Nutzers ist entweder ein Begriff, der erklärt werden soll, ODER eine Verständnisfrage/Paraphrase, mit der der Nutzer prüfen will, ob er es richtig verstanden hat. Erkenne den Fall:
-- BEGRIFF: Erkläre wie unten beschrieben, in 3 Stufen mit exakt diesen Überschriften: ${explainerHeadings()}.
-- VERSTÄNDNISFRAGE/PARAPHRASE: Bewerte ZUERST explizit und direkt, ob das Verständnis korrekt ist ("Ja, genau." / "Fast — ..." / "Nein, das stimmt nicht ganz, weil..."), dann korrigiere oder ergänze in 1-3 kurzen Sätzen was fehlt oder falsch war. KEINE Überschriften, KEINE neue Grunderklärung von vorne — antworte direkt auf die Nachfrage.`;
+- BEGRIFF: Erkläre wie unten beschrieben, in 3 Stufen mit exakt diesen Überschriften: ${explainerHeadings()}. Bringe in der letzten Stufe mindestens EIN konkretes, greifbares Beispiel, das das Konzept veranschaulicht (aus dem Dokument, sonst treffend selbst gewählt) — abstrakte Definitionen allein reichen nicht.
+- VERSTÄNDNISFRAGE/PARAPHRASE: Bewerte ZUERST explizit und direkt, ob das Verständnis korrekt ist ("Ja, genau." / "Fast — ..." / "Nein, das stimmt nicht ganz, weil..."), dann korrigiere oder ergänze in 1-3 kurzen Sätzen was fehlt oder falsch war. Danach EIN kurzes konkretes Beispiel, das den Punkt festigt (besonders wichtig, wenn etwas falsch verstanden wurde). KEINE Überschriften, KEINE neue Grunderklärung von vorne — antworte direkt auf die Nachfrage.`;
 
   if (!useExternalKnowledge) {
     parts.push({ text: `Beantworte die folgende Eingabe zum Konzept "${safeConcept}" ausschließlich basierend auf dem oben bereitgestellten Dokument.
