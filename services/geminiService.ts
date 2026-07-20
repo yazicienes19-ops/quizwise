@@ -857,17 +857,24 @@ export const generateExplanation = async (
     : '';
 
   const safeConcept = sanitizeUserInput(concept, 200);
+
+  // Die Eingabe ist entweder (a) ein Begriff, der erklärt werden soll, oder
+  // (b) eine Verständnisfrage/Paraphrase ("Ist damit gemeint...", "Habe ich
+  // das richtig verstanden...", "Also bedeutet das..."), bei der der Nutzer
+  // eine Bewertung erwartet, keine neue Grunderklärung. Ohne diese Weiche
+  // ignoriert die KI genau diese Nachfragen und erklärt stur von vorne.
+  const intentInstruction = `\n\nDie Eingabe des Nutzers ist entweder ein Begriff, der erklärt werden soll, ODER eine Verständnisfrage/Paraphrase, mit der der Nutzer prüfen will, ob er es richtig verstanden hat. Erkenne den Fall:
+- BEGRIFF: Erkläre wie unten beschrieben, in 3 Stufen mit exakt diesen Überschriften: ${explainerHeadings()}.
+- VERSTÄNDNISFRAGE/PARAPHRASE: Bewerte ZUERST explizit und direkt, ob das Verständnis korrekt ist ("Ja, genau." / "Fast — ..." / "Nein, das stimmt nicht ganz, weil..."), dann korrigiere oder ergänze in 1-3 kurzen Sätzen was fehlt oder falsch war. KEINE Überschriften, KEINE neue Grunderklärung von vorne — antworte direkt auf die Nachfrage.`;
+
   if (!useExternalKnowledge) {
-    parts.push({ text: `Erkläre das Konzept "${safeConcept}" ausschließlich basierend auf dem oben bereitgestellten Dokument.
-STRENGE REGEL: Verwende NUR Inhalte aus dem Dokument. Kein Allgemeinwissen, keine externen Quellen, keine Erfindungen. Wenn das Dokument zu "${safeConcept}" nichts enthält, sage das klar.
-Strukturiere in 3 Stufen mit exakt diesen Überschriften: ${explainerHeadings()}.${outputLangDirective()}${sourceQuoteInstruction}` });
+    parts.push({ text: `Beantworte die folgende Eingabe zum Konzept "${safeConcept}" ausschließlich basierend auf dem oben bereitgestellten Dokument.
+STRENGE REGEL: Verwende NUR Inhalte aus dem Dokument. Kein Allgemeinwissen, keine externen Quellen, keine Erfindungen. Wenn das Dokument dazu nichts enthält, sage das klar.${intentInstruction}${outputLangDirective()}${sourceQuoteInstruction}` });
   } else if (source) {
-    parts.push({ text: `Erkläre das Konzept "${safeConcept}".
-Nutze das oben bereitgestellte Dokument als primäre Quelle. Ergänze mit deinem Allgemeinwissen wo das Dokument lückenhaft ist — kennzeichne solche Ergänzungen exakt mit dem Präfix "Allgemeinwissen:".
-Strukturiere in 3 Stufen mit exakt diesen Überschriften: ${explainerHeadings()}.${outputLangDirective()}` });
+    parts.push({ text: `Beantworte die folgende Eingabe zum Konzept "${safeConcept}".
+Nutze das oben bereitgestellte Dokument als primäre Quelle. Ergänze mit deinem Allgemeinwissen wo das Dokument lückenhaft ist — kennzeichne solche Ergänzungen exakt mit dem Präfix "Allgemeinwissen:".${intentInstruction}${outputLangDirective()}` });
   } else {
-    parts.push({ text: `Erkläre das Konzept "${safeConcept}" umfassend aus deinem Allgemeinwissen.
-Strukturiere in 3 Stufen mit exakt diesen Überschriften: ${explainerHeadings()}.${outputLangDirective()}` });
+    parts.push({ text: `Beantworte die folgende Eingabe zum Konzept "${safeConcept}" umfassend aus deinem Allgemeinwissen.${intentInstruction}${outputLangDirective()}` });
   }
 
   return callBackend({
