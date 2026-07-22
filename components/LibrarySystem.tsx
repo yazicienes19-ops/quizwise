@@ -13,7 +13,7 @@ import { EmojiImage } from './EmojiImage';
 interface LibrarySystemProps {
   documents: ProcessedDocument[];
   collections: Collection[];
-  onUpload: (file: File, collectionId?: string) => Promise<string | null>;
+  onUpload: (file: File, collectionId?: string, onProgress?: (fraction: number) => void) => Promise<string | null>;
   onDelete: (id: string) => void;
   onRetryAnalysis?: (docId: string) => void;
   onAction: (tab: ActiveTab, doc: ProcessedDocument) => void;
@@ -128,9 +128,9 @@ export const LibrarySystem: React.FC<LibrarySystemProps> = ({
     return list;
   }, [documents, allMeta, search, filterType, filterModule, sortBy, activeColId]);
 
-  const handleUpload = async (file: File, meta: Partial<SourceMeta>) => {
+  const handleUpload = async (file: File, meta: Partial<SourceMeta>, onProgress?: (fraction: number) => void) => {
     const targetCol = activeColId !== 'all' && activeColId !== 'uncategorized' ? activeColId : undefined;
-    const docId = await onUpload(file, targetCol);
+    const docId = await onUpload(file, targetCol, onProgress);
     if (docId) {
       saveMeta(docId, meta);
       refreshMeta();

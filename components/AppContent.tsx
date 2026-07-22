@@ -54,7 +54,7 @@ interface AppContentProps {
   userPlan: 'free' | 'pro';
   documents: ProcessedDocument[];
   collections: Collection[];
-  handleFileUpload: (file: File, collectionId?: string) => Promise<string | null>;
+  handleFileUpload: (file: File, collectionId?: string, onProgress?: (fraction: number) => void) => Promise<string | null>;
   retryAnalysis: (docId: string) => void;
   activeModuleId?: string | null;
   deleteDoc: (id: string) => void;

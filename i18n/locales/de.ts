@@ -607,6 +607,7 @@ export const de = {
   'upl.addMoreFiles': '+ Weitere Dateien',
   'upl.uploadSourcesN': '{n} Quelle hochladen|{n} Quellen hochladen',
   'upl.uploadingBatch': 'Lade {done} von {total} …',
+  'upl.tooLargeForDigest': 'Größer als 18 MB: Quiz, Karten und Tutor werden dafür nicht automatisch vorbereitet.',
   'upl.batchDoneN': '{n} Quelle hochgeladen|{n} Quellen hochgeladen',
   'upl.batchPartial': '{ok} hochgeladen. Fehlgeschlagen: {list}',
   'upl.orClick': 'oder klicken zum Auswählen',

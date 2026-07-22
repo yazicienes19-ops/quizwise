@@ -6,11 +6,13 @@ import { useTranslation } from '../i18n/I18nProvider';
 
 interface Props {
   onClose: () => void;
-  onUpload: (file: File, meta: Partial<SourceMeta>) => Promise<void>;
+  onUpload: (file: File, meta: Partial<SourceMeta>, onProgress?: (fraction: number) => void) => Promise<void>;
 }
 
 const ACCEPTED = '.pdf,.docx,.txt,.md,.png,.jpg,.jpeg,.webp,.heic,.heif';
 const FILE_EMOJI: Record<string, string> = { pdf: '📕', docx: '📘', txt: '📄', md: '📄', png: '🖼️', jpg: '🖼️', jpeg: '🖼️', webp: '🖼️', heic: '📷', heif: '📷' };
+/** Ab hier verarbeitet das Backend Dateien nicht mehr für den KI-Lerndigest (Gemini-Inline-Limit). */
+const ANALYZE_LIMIT_BYTES = 18 * 1024 * 1024;
 
 const Field: React.FC<{
   label: string;
@@ -50,6 +52,8 @@ export const UploadSourceModal: React.FC<Props> = ({ onClose, onUpload }) => {
   /** Mehrfach-Upload: jede Datei mit eigenem (vorbelegtem) Titel. */
   const [files, setFiles]           = useState<{ file: File; title: string }[]>([]);
   const [uploadProgress, setUploadProgress] = useState<{ done: number; total: number } | null>(null);
+  /** Byte-Fortschritt (0-1) der gerade übertragenen Datei — echtes Feedback statt reinem Spinner bei großen PDFs. */
+  const [filePct, setFilePct] = useState<number | null>(null);
   const [isDragging, setIsDragging] = useState(false);
   const [isUploading, setIsUploading] = useState(false);
   const [displayTitle, setDisplayTitle] = useState('');
@@ -111,14 +115,16 @@ export const UploadSourceModal: React.FC<Props> = ({ onClose, onUpload }) => {
         const failed: string[] = [];
         for (let i = 0; i < files.length; i++) {
           setUploadProgress({ done: i + 1, total: files.length });
+          setFilePct(0);
           try {
-            await onUpload(files[i].file, { ...meta, displayTitle: files[i].title.trim() || undefined });
+            await onUpload(files[i].file, { ...meta, displayTitle: files[i].title.trim() || undefined }, setFilePct);
             ok++;
           } catch {
             failed.push(files[i].file.name);
           }
         }
         setUploadProgress(null);
+        setFilePct(null);
         if (failed.length > 0) toast.error(t('upl.batchPartial', { ok, list: failed.join(', ') }));
         else if (ok > 1) toast.success(tp('upl.batchDoneN', ok));
         if (ok > 0) onClose();
@@ -182,15 +188,26 @@ export const UploadSourceModal: React.FC<Props> = ({ onClose, onUpload }) => {
 
         <form onSubmit={handleSubmit} className="px-8 py-6 space-y-5 max-h-[70vh] overflow-y-auto">
           {isUploading && (
-            <div className="flex items-center justify-center gap-3 py-2 text-indigo-600">
-              <span className="w-4 h-4 border-2 border-indigo-200 border-t-indigo-600 rounded-full animate-spin" />
-              <span className="text-[10px] font-black uppercase tracking-widest">
-                {mode === 'link'
-                  ? (linkKind === 'youtube' ? t('upl.videoProcessing') : t('upl.pageLoading'))
-                  : uploadProgress && uploadProgress.total > 1
-                    ? t('upl.uploadingBatch', { done: uploadProgress.done, total: uploadProgress.total })
-                    : t('upl.uploading')}
-              </span>
+            <div className="space-y-2 py-2">
+              <div className="flex items-center justify-center gap-3 text-indigo-600">
+                <span className="w-4 h-4 border-2 border-indigo-200 border-t-indigo-600 rounded-full animate-spin shrink-0" />
+                <span className="text-[10px] font-black uppercase tracking-widest text-center">
+                  {mode === 'link'
+                    ? (linkKind === 'youtube' ? t('upl.videoProcessing') : t('upl.pageLoading'))
+                    : uploadProgress && uploadProgress.total > 1
+                      ? t('upl.uploadingBatch', { done: uploadProgress.done, total: uploadProgress.total })
+                      : t('upl.uploading')}
+                  {typeof filePct === 'number' && filePct > 0 && ` · ${Math.round(filePct * 100)}%`}
+                </span>
+              </div>
+              {typeof filePct === 'number' && (
+                <div className="w-full h-1.5 rounded-full bg-slate-100 dark:bg-slate-800 overflow-hidden">
+                  <div
+                    className="h-full rounded-full bg-indigo-600 transition-all duration-300"
+                    style={{ width: `${Math.max(4, Math.round(filePct * 100))}%` }}
+                  />
+                </div>
+              )}
             </div>
           )}
           {/* Modus: Datei hochladen, Text einfügen oder Link importieren */}
@@ -282,6 +299,9 @@ export const UploadSourceModal: React.FC<Props> = ({ onClose, onUpload }) => {
                             aria-label={t('upl.titleOptional')}
                           />
                           <p className="text-[9px] text-slate-400 uppercase tracking-widest truncate">{f.file.name} · {(f.file.size / 1024 / 1024).toFixed(2)} MB</p>
+                          {f.file.size > ANALYZE_LIMIT_BYTES && (
+                            <p className="text-[9px] font-bold text-amber-500">{t('upl.tooLargeForDigest')}</p>
+                          )}
                         </div>
                         <button type="button" onClick={() => setFiles(prev => prev.filter((_, j) => j !== i))} className="text-slate-400 hover:text-rose-500 transition-colors font-black text-lg leading-none shrink-0">×</button>
                       </div>

@@ -605,6 +605,7 @@ export const tr: Translations = {
   'upl.addMoreFiles': '+ Daha fazla dosya',
   'upl.uploadSourcesN': '{n} kaynak yükle|{n} kaynak yükle',
   'upl.uploadingBatch': '{total} dosyadan {done}. yükleniyor …',
+  'upl.tooLargeForDigest': "18 MB'den büyük: test, kart ve Tutor bunun için otomatik hazırlanmaz.",
   'upl.batchDoneN': '{n} kaynak yüklendi|{n} kaynak yüklendi',
   'upl.batchPartial': '{ok} yüklendi. Başarısız: {list}',
   'upl.orClick': 'ya da seçmek için tıkla',

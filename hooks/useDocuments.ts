@@ -11,6 +11,8 @@ import {
   deleteCollectionFromSupabase,
   updateDocumentCollectionInSupabase,
   triggerDocumentAnalysis,
+  UploadStalledError,
+  UploadTimeoutError,
 } from '../services/documentService';
 import { toast } from '../services/toast';
 import mammoth from 'mammoth';
@@ -143,7 +145,11 @@ export const useDocuments = ({ user, userPlan, isOffline, setIsLoading, setShowU
     throw new Error('PDF-Inhalt nicht verfügbar.');
   };
 
-  const handleFileUpload = async (fileInput: File, collectionId?: string): Promise<string | null> => {
+  const handleFileUpload = async (
+    fileInput: File,
+    collectionId?: string,
+    onProgress?: (fraction: number) => void,
+  ): Promise<string | null> => {
     let file = fileInput;
     if (isOffline) { toast.error('Hochladen ist im Offline-Modus nicht möglich.'); return null; }
 
@@ -222,7 +228,7 @@ export const useDocuments = ({ user, userPlan, isOffline, setIsLoading, setShowU
       };
 
       if (docType === 'pdf' || docType === 'image') {
-        const storagePath = await saveDocumentToSupabase(newDoc, file);
+        const storagePath = await saveDocumentToSupabase(newDoc, file, onProgress);
         const savedDoc = { ...newDoc, storagePath: storagePath ?? undefined };
         saveDocs([...documents, savedDoc]);
         if (user && storagePath) {
@@ -244,8 +250,14 @@ export const useDocuments = ({ user, userPlan, isOffline, setIsLoading, setShowU
         }
       }
       return newDoc.id;
-    } catch {
-      toast.error('Dokument konnte nicht verarbeitet werden.');
+    } catch (e) {
+      if (e instanceof UploadStalledError) {
+        toast.error(`Verbindung beim Hochladen von "${file.name}" unterbrochen. Bitte erneut versuchen (stabiles WLAN hilft bei großen Dateien).`);
+      } else if (e instanceof UploadTimeoutError) {
+        toast.error(`Hochladen von "${file.name}" dauert ungewöhnlich lange und wurde abgebrochen. Bitte erneut versuchen.`);
+      } else {
+        toast.error('Dokument konnte nicht verarbeitet werden.');
+      }
       return null;
     } finally {
       setIsLoading(false);
