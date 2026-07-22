@@ -7,6 +7,7 @@ import { buildRealTopicMastery } from '../services/learningProfileService';
 import { useTranslation } from '../i18n/I18nProvider';
 import { formatDate } from '../i18n/dates';
 import { t as translate } from '../i18n';
+import type { TKey } from '../i18n';
 import { getAllResults, deleteQuizResult } from '../services/quizHistoryService';
 import { getAllRecallResults, deleteRecallResult } from '../services/recallHistoryService';
 import { getAllExamResults, deleteExamResult } from '../services/examHistoryService';
@@ -230,6 +231,15 @@ const ERROR_ACTION_TARGET: Record<string, { mode?: 'quiz' | 'cards' | 'recall'; 
   '3 gezielte Übungsfragen':             { mode: 'quiz', tab: ActiveTab.QUIZ },
   'Erstellung von Karteikarten':         { mode: 'cards', tab: ActiveTab.CARDS },
   'Start einer geführten Study-Session': { mode: 'recall', tab: ActiveTab.RECALL },
+};
+
+// Der recommendedAction.type ist ein sprachstabiles Protokoll-Token (immer deutsch,
+// damit das Routing oben greift) — die Anzeige wird lokalisiert.
+const ERROR_ACTION_LABEL: Record<string, TKey> = {
+  'kurze Erklärung':                     'gr.action.explanation',
+  '3 gezielte Übungsfragen':             'gr.action.practice',
+  'Erstellung von Karteikarten':         'gr.action.cards',
+  'Start einer geführten Study-Session': 'gr.action.session',
 };
 
 interface GapRadarProps {
@@ -978,7 +988,7 @@ export const GapRadar: React.FC<GapRadarProps> = ({ metrics, onNavigate, onActio
                     </div>
                     <div className="flex-1">
                       <p className="text-[9px] font-black uppercase tracking-widest" style={{ color: 'var(--primary)' }}>{t('gr.recommendation')}</p>
-                      <p className="text-sm font-black mt-1" style={{ color: 'var(--ink)' }}>{error.recommendedAction.type}</p>
+                      <p className="text-sm font-black mt-1" style={{ color: 'var(--ink)' }}>{ERROR_ACTION_LABEL[error.recommendedAction.type] ? t(ERROR_ACTION_LABEL[error.recommendedAction.type]) : error.recommendedAction.type}</p>
                       <p className="text-[10px] italic mt-1 leading-relaxed" style={{ color: 'var(--ink2)' }}>{error.recommendedAction.reasoning}</p>
                     </div>
                     <button

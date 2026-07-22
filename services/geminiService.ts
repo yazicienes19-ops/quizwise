@@ -783,6 +783,11 @@ export interface WrongAnswerContext {
   docName: string;
 }
 
+/** Feste Token-Menge für recommendedAction.type — muss exakt zu ERROR_ACTION_TARGET
+ *  in components/GapRadar.tsx passen. Als Schema-enum erzwungen (nicht nur per Prompt),
+ *  damit das Routing der "Jetzt lernen"-Buttons nie auf einen unbekannten String trifft. */
+const ERROR_ACTION_TYPES = ['kurze Erklärung', '3 gezielte Übungsfragen', 'Erstellung von Karteikarten', 'Start einer geführten Study-Session'];
+
 export const analyzeLearningProgress = async (
   metrics: TopicMetric[],
   wrongAnswers: WrongAnswerContext[] = []
@@ -797,9 +802,17 @@ export const analyzeLearningProgress = async (
       ).join('\n\n')
     : '';
 
+  // Ohne konkrete Falschantworten gibt es nichts, worauf sich ein "Fehlermuster"
+  // gründen ließe — die Themen-Konfidenz allein rechtfertigt keine erfundenen
+  // Häufigkeiten/Ursachen. Diese Regel ist strukturell (nicht nur Bitte an das
+  // Modell): sie erzwingt einen leeren errorPatterns-Array im Prompt-Text selbst.
+  const groundingRule = wrongAnswers.length === 0
+    ? `\n\nWICHTIGSTE REGEL: Es liegen KEINE konkreten Falschantworten vor. Du darfst deshalb KEINE Fehlermuster erfinden — errorPatterns und topThreeTypes MÜSSEN leere Arrays [] sein. overallHealth darf sich nur auf die Themen-Konfidenz beziehen (falls vorhanden) und muss ehrlich sagen, dass für eine Fehleranalyse noch zu wenige falsch beantwortete Fragen vorliegen.`
+    : `\n\nWICHTIGSTE REGEL: Behaupte NUR, was die obigen Falschantworten wirklich hergeben. Erfinde keine Fehlermuster, Konzepte oder Häufigkeiten, die sich nicht auf mindestens eine der ${wrongAnswers.length} echten Fragen zurückführen lassen. "count" darf die Anzahl der tatsächlich vorliegenden Falschantworten nicht übersteigen. Wenn die Fragen zu unterschiedlich sind, um ein gemeinsames Muster zu bilden, liefere weniger, dafür belastbare Muster statt konstruierter Verallgemeinerungen.`;
+
   const text = await callBackend({
     complexity: 'heavy',
-    parts: [{ text: `Analysiere den Lernfortschritt eines Studenten.\n\nThemen-Konfidenz: ${metricsText}${wrongText}\n\nIdentifiziere konkrete Fehlermuster aus den echten Fragen (z.B. "Begriffsverwechslungen", "Konzeptuelle Lücken"), gib gezielte Lernempfehlungen und eine psychologische Gesamteinschätzung.${outputLangDirective()}` }],
+    parts: [{ text: `Analysiere den Lernfortschritt eines Studenten.\n\nThemen-Konfidenz: ${metricsText}${wrongText}${groundingRule}\n\nIdentifiziere konkrete Fehlermuster aus den echten Fragen (z.B. "Begriffsverwechslungen", "Konzeptuelle Lücken"), gib gezielte Lernempfehlungen und eine psychologische Gesamteinschätzung.\n\nrecommendedAction.type MUSS exakt einer dieser vier Werte sein (unabhängig von der Ausgabesprache, nie eine eigene Formulierung): ${ERROR_ACTION_TYPES.map(v => `"${v}"`).join(', ')}.${outputLangDirective()}` }],
     config: {
       thinkingConfig: { thinkingBudget: 0 },
       responseMimeType: 'application/json',
@@ -817,7 +830,10 @@ export const analyzeLearningProgress = async (
                 probableCause: { type: Type.STRING },
                 recommendedAction: {
                   type: Type.OBJECT,
-                  properties: { type: { type: Type.STRING }, reasoning: { type: Type.STRING } },
+                  properties: {
+                    type: { type: Type.STRING, format: 'enum', enum: ERROR_ACTION_TYPES },
+                    reasoning: { type: Type.STRING },
+                  },
                   required: ['type', 'reasoning']
                 }
               },
