@@ -935,6 +935,76 @@ Verarbeite sie umfassend aus deinem Allgemeinwissen.${intentInstruction}${output
   });
 };
 
+export interface GroundedExplanation {
+  answer: string;
+  /** true, wenn die übergebene (meist eng zugeschnittene) Quelle die Nutzereingabe
+   *  wirklich abdeckt. false = Aufrufer sollte mit einer breiteren Quelle (ganzes
+   *  Dokument) erneut fragen, statt dem Nutzer eine Fehlantwort zu zeigen. */
+  found: boolean;
+  sourceQuote: string | null;
+}
+
+/**
+ * Wie generateExplanation, aber für eng zugeschnittene Quellen (eine PDF-Seite,
+ * ein Kapitel) gedacht: liefert zusätzlich ein "found"-Flag, das ehrlich meldet,
+ * ob GENAU DIESER Ausschnitt die Antwort trägt — Split-Screen-Reader nutzen das,
+ * um bei false transparent mit dem GANZEN Dokument nachzufragen, statt den
+ * Nutzer mit einer Fehlantwort ("steht nicht im Dokument") abzuspeisen, nur weil
+ * der Begriff zufällig auf einer anderen Seite/einem anderen Kapitel steht.
+ * Liefert außerdem sourceQuote NUR wenn found=true — kein erfundenes Zitat als
+ * Begründung für eine Nicht-Antwort.
+ */
+export const generateGroundedExplanation = async (
+  source: GenerationSource,
+  concept: string,
+): Promise<GroundedExplanation> => {
+  const parts: any[] = [sourceTopart(source)];
+  const safeConcept = sanitizeUserInput(concept, 200);
+
+  const intentInstruction = `\n\nENTSCHEIDE ZUERST, um welchen Fall es sich bei der Nutzereingabe handelt:
+- BEGRIFF: Die Eingabe ist NUR ein kurzer Fachbegriff oder eine kurze Nominalphrase (grob 1-4 Wörter), OHNE Satzstruktur, ohne Verb, das eine Behauptung ausdrückt, ohne Fragezeichen zu einer Aussage. Beispiel: "Falsifikationsprinzip".
+- VERSTÄNDNISFRAGE/BEHAUPTUNG: ALLES ANDERE — jede Eingabe mit Satzstruktur, jede Formulierung mit einem Verb wie "ist/heißt/bedeutet/stimmt", jede Frage die sich auf eine Aussage oder Beziehung zwischen Begriffen bezieht, auch bei Tippfehlern oder holpriger Grammatik. Im Zweifel IMMER dieser Fall, nicht BEGRIFF.
+
+Diese Einordnung ist NUR für dich intern — gib sie NICHT in "answer" aus.
+
+Verhalte dich dann so:
+- Bei BEGRIFF: Erkläre in 3 Stufen mit exakt diesen Überschriften: ${explainerHeadings()}. Jede Überschrift steht ALLEIN auf ihrer eigenen Zeile. Bringe in der letzten Stufe mindestens EIN konkretes Beispiel.
+- Bei VERSTÄNDNISFRAGE/BEHAUPTUNG: Bewerte ZUERST explizit, ob sie korrekt ist, dann korrigiere/ergänze in 1-3 kurzen Sätzen. Danach ein kurzes Beispiel. KEINE Überschriften, KEINE neue Grunderklärung von vorne.`;
+
+  const groundingRule = `\n\nWICHTIGE REGEL ZU "found": Setze found=true NUR, wenn der oben bereitgestellte Ausschnitt den Begriff/die Frage inhaltlich beantwortet (auch eine knappe, aber inhaltliche Erklärung zählt). Setze found=false, wenn der Ausschnitt dazu NICHTS oder nur eine bloße beiläufige Erwähnung ohne jede Erklärung enthält — in diesem Fall bleibt "answer" ein kurzer, ehrlicher Satz, dass dieser Ausschnitt dazu nichts hergibt, und "sourceQuote" bleibt leer. Erfinde NIEMALS ein Zitat als Beleg für eine Nicht-Antwort.`;
+
+  parts.push({ text: `Nutzereingabe: "${safeConcept}"
+Verarbeite sie ausschließlich basierend auf dem oben bereitgestellten Ausschnitt.
+STRENGE REGEL: Verwende NUR Inhalte aus dem Ausschnitt. Kein Allgemeinwissen, keine externen Quellen, keine Erfindungen.${intentInstruction}${groundingRule}${outputLangDirective()}` });
+
+  const text = await callBackend({
+    complexity: 'heavy',
+    parts,
+    config: {
+      temperature: 0.4,
+      thinkingConfig: { thinkingBudget: 0 },
+      responseMimeType: 'application/json',
+      responseSchema: {
+        type: Type.OBJECT,
+        properties: {
+          found: { type: Type.BOOLEAN },
+          answer: { type: Type.STRING },
+          sourceQuote: { type: Type.STRING },
+        },
+        required: ['found', 'answer'],
+      },
+    },
+  });
+
+  const raw = JSON.parse(text || '{}') as { found?: boolean; answer?: string; sourceQuote?: string };
+  const found = raw.found === true;
+  return {
+    found,
+    answer: raw.answer ?? '',
+    sourceQuote: found && raw.sourceQuote && raw.sourceQuote.trim().length > 0 ? raw.sourceQuote.trim() : null,
+  };
+};
+
 const EXAM_TYPE_WEIGHTS: Record<string, number> = {
   mc: 0.25, matching: 0.15, truefalse: 0.15, fillblank: 0.10, ranking: 0.10, numeric: 0.05, open: 0.20,
 };

@@ -1,10 +1,11 @@
 
 import React, { useState, useEffect, useMemo, useCallback, useRef } from 'react';
 import { ProcessedDocument } from '../types';
-import { generateExplanation } from '../services/geminiService';
+import { generateExplanation, generateGroundedExplanation } from '../services/geminiService';
 import { getChaptersOrWhole, getTextForChapterDetection, type Chapter } from '../services/chapterService';
 import { markChapterDone, getDoneChapterIndices, isChapterDone } from '../services/chapterProgressService';
 import { logReaderQuestion, getReaderLog } from '../services/readerLogService';
+import { saveReaderChat, getReaderChat } from '../services/readerChatService';
 import { buildFeynmanHandoff, pickHandoffTopic } from '../services/feynmanHandoffService';
 import { extractSourceQuote } from '../services/sourceQuoteParser';
 import { findQuoteInChapter, type PassageMatch } from '../services/passageHighlight';
@@ -19,6 +20,9 @@ interface ChatEntry {
   answer: string | null;
   loading: boolean;
   highlight?: PassageMatch | null;
+  /** true, wenn dieses Kapitel allein die Frage nicht abdeckte und stattdessen
+   *  im gesamten Dokument nachgesehen wurde. */
+  expandedScope?: boolean;
 }
 
 interface SplitScreenReaderProps {
@@ -45,7 +49,22 @@ export const SplitScreenReader: React.FC<SplitScreenReaderProps> = ({ doc, userI
 
   const [activeIndex, setActiveIndex] = useState(0);
   const [doneIndices, setDoneIndices] = useState<number[]>(() => getDoneChapterIndices(doc.id));
-  const [chatByChapter, setChatByChapter] = useState<Record<number, ChatEntry[]>>({});
+  // Gespeicherten Chat wiederherstellen — sonst geht die komplette Konversation
+  // beim Verlassen und Wiederöffnen des Readers verloren (nur die reine
+  // "gefragt"-Notiz überlebte bisher über readerLogService, nicht die Antwort).
+  const [chatByChapter, setChatByChapter] = useState<Record<number, ChatEntry[]>>(() => {
+    const stored = getReaderChat(doc.id);
+    return Object.fromEntries(
+      Object.entries(stored).map(([idx, entries]) => {
+        const chapterContent = chapters.find(c => c.index === Number(idx))?.content;
+        return [idx, entries.map(e => ({
+          ...e,
+          loading: false,
+          highlight: e.quote && chapterContent ? findQuoteInChapter(e.quote, chapterContent) : null,
+        }))];
+      })
+    );
+  });
   const [askedConcepts, setAskedConcepts] = useState<Record<number, string[]>>(() => {
     const map: Record<number, string[]> = {};
     getReaderLog(doc.id).forEach(e => {
@@ -78,6 +97,21 @@ export const SplitScreenReader: React.FC<SplitScreenReaderProps> = ({ doc, userI
     }
   }, [displayedHighlight]);
 
+  // Chat persistieren (nur abgeschlossene Antworten — Lade-/Fehlerzustände
+  // sind nach einem Reload sowieso hinfällig).
+  useEffect(() => {
+    const persistable: Record<number, { concept: string; answer: string; quote: string | null; expandedScope?: boolean }[]> = {};
+    (Object.entries(chatByChapter) as [string, ChatEntry[]][]).forEach(([idx, entries]) => {
+      const done = entries.filter(e => !e.loading && e.answer !== null);
+      if (done.length > 0) {
+        persistable[Number(idx)] = done.map(e => ({
+          concept: e.concept, answer: e.answer!, quote: e.highlight?.text ?? null, expandedScope: e.expandedScope,
+        }));
+      }
+    });
+    saveReaderChat(doc.id, persistable);
+  }, [chatByChapter, doc.id]);
+
   const handleAsk = useCallback(async () => {
     const trimmed = concept.trim();
     if (trimmed.length <= 2 || !activeChapter) { toast.error(t('rd.enterQuestion')); return; }
@@ -87,12 +121,23 @@ export const SplitScreenReader: React.FC<SplitScreenReaderProps> = ({ doc, userI
     setChatByChapter(prev => ({ ...prev, [chapterIndex]: [...(prev[chapterIndex] ?? []), entry] }));
     setConcept('');
     try {
-      const answer = await generateExplanation({ text: chapterContent }, trimmed, false, true);
-      const quote = extractSourceQuote(answer);
+      // Erst nur in DIESEM Kapitel suchen. Deckt es die Frage nicht ab
+      // (found=false), steht der Begriff evtl. in einem anderen Kapitel —
+      // dann transparent im GANZEN Dokument nachsehen, statt fälschlich
+      // "steht nicht im Dokument" zu zeigen.
+      const scoped = await generateGroundedExplanation({ text: chapterContent }, trimmed);
+      let finalAnswer = scoped.answer;
+      let quote = scoped.sourceQuote;
+      let expandedScope = false;
+      if (!scoped.found) {
+        finalAnswer = await generateExplanation({ text: fullText }, trimmed, false, false);
+        quote = null;
+        expandedScope = true;
+      }
       const highlight = quote ? findQuoteInChapter(quote, chapterContent) : null;
       setChatByChapter(prev => ({
         ...prev,
-        [chapterIndex]: (prev[chapterIndex] ?? []).map(e => e === entry ? { ...e, answer, loading: false, highlight } : e),
+        [chapterIndex]: (prev[chapterIndex] ?? []).map(e => e === entry ? { ...e, answer: finalAnswer, loading: false, highlight, expandedScope } : e),
       }));
       logReaderQuestion({ docId: doc.id, chapterIndex, chapterTitle: activeChapter.title, concept: trimmed, timestamp: Date.now() }, userId);
       setAskedConcepts(prev => ({ ...prev, [chapterIndex]: [...(prev[chapterIndex] ?? []), trimmed] }));
@@ -103,7 +148,7 @@ export const SplitScreenReader: React.FC<SplitScreenReaderProps> = ({ doc, userI
         [chapterIndex]: (prev[chapterIndex] ?? []).filter(e => e !== entry),
       }));
     }
-  }, [concept, activeChapter, doc.id, userId]);
+  }, [concept, activeChapter, doc.id, userId, fullText]);
 
   const handleMarkDone = () => {
     if (!activeChapter) return;
@@ -279,6 +324,11 @@ export const SplitScreenReader: React.FC<SplitScreenReaderProps> = ({ doc, userI
                     {entry.highlight && (
                       <span className="shrink-0 px-2 py-0.5 rounded-full text-[8px] font-black uppercase tracking-widest" style={{ background: 'color-mix(in srgb, var(--primary) 15%, transparent)', color: 'var(--primary)' }}>
                         {t('rd.textMarked')}
+                      </span>
+                    )}
+                    {entry.expandedScope && (
+                      <span className="shrink-0 px-2 py-0.5 rounded-full text-[8px] font-black uppercase tracking-widest" style={{ background: 'color-mix(in srgb, var(--primary) 15%, transparent)', color: 'var(--primary)' }}>
+                        {t('rd.expandedScope')}
                       </span>
                     )}
                   </div>

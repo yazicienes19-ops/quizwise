@@ -323,6 +323,7 @@ export const AppContent: React.FC<AppContentProps> = (p) => {
           userId={user?.id}
           onBack={() => { setPendingActionDoc(null); setActiveTab(ActiveTab.LIBRARY); }}
           onStartFeynman={(topic) => { setPendingTopic(topic); setActiveTab(ActiveTab.RECALL); }}
+          getDocumentSource={getDocumentSource}
         />;
       }
       return <SplitScreenReader

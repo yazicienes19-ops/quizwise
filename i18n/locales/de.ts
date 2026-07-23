@@ -1278,6 +1278,7 @@ export const de = {
   'rd.askChapter': 'Frag zu diesem Kapitel nach. Die Antwort bezieht sich nur auf diesen Abschnitt.',
   'rd.noQuestionsChapter': 'Noch keine Fragen zu diesem Kapitel gestellt.',
   'rd.textMarked': '📍 Textstelle markiert',
+  'rd.expandedScope': '🔍 Ganzes Dokument durchsucht',
   'rd.loadingAnswer': 'Antwort wird geladen …',
   'rd.askPlaceholder': 'Frage zu diesem Abschnitt…',
   'rd.ask': 'Fragen',

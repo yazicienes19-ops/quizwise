@@ -1270,6 +1270,7 @@ export const tr: Translations = {
   'rd.askChapter': 'Bu bölüm hakkında sor. Cevap yalnızca bu kısma dayanır.',
   'rd.noQuestionsChapter': 'Bu bölüm hakkında henüz soru sorulmadı.',
   'rd.textMarked': '📍 Metin yeri işaretlendi',
+  'rd.expandedScope': '🔍 Belgenin tamamında arandı',
   'rd.loadingAnswer': 'Cevap yükleniyor …',
   'rd.askPlaceholder': 'Bu kısım hakkında soru…',
   'rd.ask': 'Sor',

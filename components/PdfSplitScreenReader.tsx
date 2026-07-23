@@ -1,11 +1,12 @@
 import React, { useState, useEffect, useMemo, useCallback, useRef } from 'react';
 import { ProcessedDocument } from '../types';
-import { generateExplanation } from '../services/geminiService';
+import { generateExplanation, generateGroundedExplanation, type GenerationSource } from '../services/geminiService';
 import { downloadPdfAsBase64 } from '../services/documentService';
 import { loadPdf, getPageText, getPageTextItems, renderPageToCanvas, renderPageToJpegBase64, isScannedPage, type PdfHandle, type PositionedTextItem } from '../services/pdfPageService';
 import { findQuoteRects, type HighlightRect } from '../services/pdfHighlightService';
 import { markChapterDone, getDoneChapterIndices } from '../services/chapterProgressService';
 import { logReaderQuestion, getReaderLog } from '../services/readerLogService';
+import { saveReaderChat, getReaderChat } from '../services/readerChatService';
 import { buildFeynmanHandoff, pickHandoffTopic } from '../services/feynmanHandoffService';
 import { extractSourceQuote, stripSourceQuoteLine } from '../services/sourceQuoteParser';
 import { documentDisplayName } from '../services/libraryService';
@@ -24,6 +25,9 @@ interface ChatEntry {
   loading: boolean;
   /** Wörtliches Zitat von der Seite, auf das sich die Antwort stützt. */
   quote?: string | null;
+  /** true, wenn diese Seite allein die Frage nicht abdeckte und stattdessen
+   *  im gesamten Dokument nachgesehen wurde. */
+  expandedScope?: boolean;
 }
 
 interface PdfSplitScreenReaderProps {
@@ -31,6 +35,7 @@ interface PdfSplitScreenReaderProps {
   userId?: string | null;
   onBack: () => void;
   onStartFeynman: (topic: string | null) => void;
+  getDocumentSource: (doc: ProcessedDocument) => GenerationSource;
 }
 
 /**
@@ -39,7 +44,7 @@ interface PdfSplitScreenReaderProps {
  * Feynman-Handoff laufen über Seiten statt Kapitel — chapterIndex = Seite-1,
  * dadurch bleiben chapterProgressService/readerLogService unverändert nutzbar.
  */
-export const PdfSplitScreenReader: React.FC<PdfSplitScreenReaderProps> = ({ doc, userId, onBack, onStartFeynman }) => {
+export const PdfSplitScreenReader: React.FC<PdfSplitScreenReaderProps> = ({ doc, userId, onBack, onStartFeynman, getDocumentSource }) => {
   const { t } = useTranslation();
   const [pdf, setPdf] = useState<PdfHandle | null>(null);
   const [loadError, setLoadError] = useState(false);
@@ -48,7 +53,15 @@ export const PdfSplitScreenReader: React.FC<PdfSplitScreenReaderProps> = ({ doc,
   /** 1 = an Spaltenbreite angepasst; >1 zoomt hinein (Container scrollt). */
   const [zoom, setZoom] = useState(1);
   const [doneIndices, setDoneIndices] = useState<number[]>(() => getDoneChapterIndices(doc.id));
-  const [chatByPage, setChatByPage] = useState<Record<number, ChatEntry[]>>({});
+  // Gespeicherten Chat wiederherstellen — sonst geht die komplette Konversation
+  // beim Verlassen und Wiederöffnen des Readers verloren (nur die reine
+  // "gefragt"-Notiz überlebte bisher über readerLogService, nicht die Antwort).
+  const [chatByPage, setChatByPage] = useState<Record<number, ChatEntry[]>>(() => {
+    const stored = getReaderChat(doc.id);
+    return Object.fromEntries(
+      Object.entries(stored).map(([idx, entries]) => [idx, entries.map(e => ({ ...e, loading: false }))])
+    );
+  });
   const [concept, setConcept] = useState('');
   /** Aktive Zitat-Markierung im PDF (Klick auf die Zitat-Karte). */
   const [highlight, setHighlight] = useState<{ page: number; quote: string } | null>(null);
@@ -154,6 +167,17 @@ export const PdfSplitScreenReader: React.FC<PdfSplitScreenReaderProps> = ({ doc,
     if (highlightRects) firstRectRef.current?.scrollIntoView({ block: 'center', inline: 'center', behavior: 'smooth' });
   }, [highlightRects, canvasCss]);
 
+  // Chat persistieren (nur abgeschlossene Antworten — Lade-/Fehlerzustände
+  // sind nach einem Reload sowieso hinfällig).
+  useEffect(() => {
+    const persistable: Record<number, ChatEntry[]> = {};
+    (Object.entries(chatByPage) as [string, ChatEntry[]][]).forEach(([idx, entries]) => {
+      const done = entries.filter(e => !e.loading && e.answer !== null);
+      if (done.length > 0) persistable[Number(idx)] = done;
+    });
+    saveReaderChat(doc.id, persistable);
+  }, [chatByPage, doc.id]);
+
   const goToPage = useCallback((n: number) => {
     if (!pdf) return;
     setPageNumber(Math.min(Math.max(1, n), pdf.numPages));
@@ -183,14 +207,26 @@ export const PdfSplitScreenReader: React.FC<PdfSplitScreenReaderProps> = ({ doc,
       const text = await getPageText(pdf, askedPageNumber);
       // Scan-Seite ohne Textebene: Seitenbild statt Text mitschicken —
       // der Chat bleibt seitengenau, auch bei abfotografierten Skripten.
-      const source = isScannedPage(text)
+      const pageSource = isScannedPage(text)
         ? { file: { data: await renderPageToJpegBase64(pdf, askedPageNumber), mimeType: 'image/jpeg' } }
         : { text };
-      const answer = await generateExplanation(source, trimmed, false, true);
-      const quote = extractSourceQuote(answer);
+      // Erst nur auf DIESER Seite suchen. Deckt sie die Frage nicht ab (found=false),
+      // steht der Begriff evtl. einfach auf einer anderen Seite — dann transparent
+      // im GANZEN Dokument nachsehen, statt fälschlich "steht nicht im Dokument" zu
+      // zeigen, nur weil die aktuelle Seite zufällig nichts dazu hergibt.
+      const scoped = await generateGroundedExplanation(pageSource, trimmed);
+      let finalAnswer = scoped.answer;
+      let quote = scoped.sourceQuote;
+      let expandedScope = false;
+      if (!scoped.found) {
+        const wholeDocAnswer = await generateExplanation(getDocumentSource(doc), trimmed, false, true);
+        finalAnswer = stripSourceQuoteLine(wholeDocAnswer);
+        quote = extractSourceQuote(wholeDocAnswer);
+        expandedScope = true;
+      }
       setChatByPage(prev => ({
         ...prev,
-        [askedPageIndex]: (prev[askedPageIndex] ?? []).map(e => e === entry ? { ...e, answer: stripSourceQuoteLine(answer), loading: false, quote } : e),
+        [askedPageIndex]: (prev[askedPageIndex] ?? []).map(e => e === entry ? { ...e, answer: finalAnswer, loading: false, quote, expandedScope } : e),
       }));
       logReaderQuestion({ docId: doc.id, chapterIndex: askedPageIndex, chapterTitle: `Seite ${askedPageNumber}`, concept: trimmed, timestamp: Date.now() }, userId);
     } catch (e) {
@@ -200,7 +236,7 @@ export const PdfSplitScreenReader: React.FC<PdfSplitScreenReaderProps> = ({ doc,
         [askedPageIndex]: (prev[askedPageIndex] ?? []).filter(e => e !== entry),
       }));
     }
-  }, [concept, pdf, pageNumber, doc.id, userId]);
+  }, [concept, pdf, pageNumber, doc, userId, getDocumentSource]);
 
   // Maus-Auswahl auf der Textebene → schwebender „Tutor fragen"-Button
   const handleTextSelection = useCallback(() => {
@@ -438,7 +474,14 @@ export const PdfSplitScreenReader: React.FC<PdfSplitScreenReaderProps> = ({ doc,
             )}
             {activeChat.map((entry, i) => (
               <div key={i} className="space-y-2">
-                <p className="text-sm font-black dark:text-white break-words">{entry.concept}</p>
+                <div className="flex items-center gap-2 flex-wrap">
+                  <p className="text-sm font-black dark:text-white break-words">{entry.concept}</p>
+                  {entry.expandedScope && (
+                    <span className="shrink-0 px-2 py-0.5 rounded-full text-[8px] font-black uppercase tracking-widest" style={{ background: 'color-mix(in srgb, var(--primary) 15%, transparent)', color: 'var(--primary)' }}>
+                      {t('rd.expandedScope')}
+                    </span>
+                  )}
+                </div>
                 {entry.loading ? (
                   <div className="flex items-center gap-2 text-slate-400">
                     <div className="w-3.5 h-3.5 border-2 border-slate-300 border-t-transparent rounded-full animate-spin" />
@@ -449,7 +492,7 @@ export const PdfSplitScreenReader: React.FC<PdfSplitScreenReaderProps> = ({ doc,
                     <div className="rounded-2xl p-4" style={{ background: 'var(--bg-main)', border: '1px solid var(--border-color)' }}>
                       {renderMarkdown(entry.answer)}
                     </div>
-                    {entry.quote && (
+                    {entry.quote && !entry.expandedScope && (
                       <div className="rounded-2xl p-3.5" style={{ background: 'color-mix(in srgb, var(--primary) 8%, transparent)', border: '1px solid color-mix(in srgb, var(--primary) 25%, transparent)' }}>
                         <div className="flex items-center justify-between gap-2 mb-1">
                           <p className="text-[8px] font-black uppercase tracking-widest" style={{ color: 'var(--primary)' }}>
