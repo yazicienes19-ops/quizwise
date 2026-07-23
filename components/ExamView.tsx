@@ -1,8 +1,10 @@
 
 import React, { useState, useEffect, useRef, useCallback, useMemo } from 'react';
-import { ExamQuestion, ActiveTab, ScoringProfile, ExamAnalysis, QuestionFeedbackType } from '../types';
+import { ExamQuestion, ActiveTab, ScoringProfile, ExamAnalysis, QuestionFeedbackType, ExamTypePreset } from '../types';
 import { saveQuestionFeedback } from '../services/examFeedbackService';
 import { germanGradeFromPercentage, getCategoryLabel, getTypeLabel } from '../services/learningProfileService';
+import { BLOOM_LEVELS, BLOOM_LEVEL_LABELS, EXAM_TYPE_BLOOM_TARGETS, computeActualBloomDistribution } from '../services/bloomPresets';
+import type { TKey } from '../i18n';
 import { EmojiImage } from './EmojiImage';
 import { useTranslation } from '../i18n/I18nProvider';
 import { formatDate } from '../i18n/dates';
@@ -27,6 +29,7 @@ interface ExamViewProps {
   analysis?: ExamAnalysis | null;
   categoryBreakdown?: { category: string; score: number }[];
   onAction?: (topic: string, mode: 'cards' | 'recall' | 'quiz') => void;
+  examTypePreset?: ExamTypePreset;
 }
 
 const formatTime = (s: number) =>
@@ -36,7 +39,7 @@ export const ExamView: React.FC<ExamViewProps> = ({
   questions, mode, onSave, onSubmit, isEvaluating,
   examDuration, onNewExam, onNavigate, onSaveExam,
   initialAnswers, onAnswersChange, onSaveProgress, examTitle,
-  scoringProfile, analysis, categoryBreakdown, onAction,
+  scoringProfile, analysis, categoryBreakdown, onAction, examTypePreset,
 }) => {
   const { t } = useTranslation();
   const [answers, setAnswers]           = useState<Record<string, any>>(initialAnswers ?? {});
@@ -136,6 +139,12 @@ export const ExamView: React.FC<ExamViewProps> = ({
   const weakestCategory = categoryBreakdown && categoryBreakdown.length > 0
     ? [...categoryBreakdown].sort((a, b) => a.score - b.score)[0]
     : null;
+
+  // Bloom-Verteilung: nur relevant wenn mind. eine Frage klassifiziert wurde
+  // (ältere Klausuren von vor Phase 2a haben kein bloomLevel).
+  const actualBloomDistribution = useMemo(() => computeActualBloomDistribution(questions), [questions]);
+  const hasBloomData = BLOOM_LEVELS.some(l => actualBloomDistribution[l] > 0);
+  const targetBloomDistribution = examTypePreset ? EXAM_TYPE_BLOOM_TARGETS[examTypePreset] : null;
   // Feynman passt inhaltlich besser zu Verständnis/Transfer-Schwächen als reines Faktenabfragen
   const followUpMode: 'recall' | 'quiz' =
     weakestCategory?.category === 'transfer' || weakestCategory?.category === 'verstaendnis' ? 'recall' : 'quiz';
@@ -703,6 +712,32 @@ export const ExamView: React.FC<ExamViewProps> = ({
         </div>
       )}
 
+      {/* Bloom-Verteilung Ist-vs-Ziel — reine Nebeneinander-Anzeige ohne Ampel-
+          Bewertung: die weiche Prompt-Gewichtung bei der Generierung hat nie eine
+          exakte Quote versprochen, eine Gut/Schlecht-Kennzeichnung wäre irreführend. */}
+      {mode === 'result' && targetBloomDistribution && hasBloomData && (
+        <div className="rounded-[24px] sm:rounded-[32px] p-5 sm:p-8 space-y-4 animate-in fade-in duration-500" style={{ background: 'var(--bg-sidebar)', border: '1px solid var(--border-color)' }}>
+          <div>
+            <h3 className="text-lg font-black dark:text-white">{t('ev.bloomBreakdownTitle')}</h3>
+            <p className="text-[10px] font-black uppercase tracking-widest text-slate-400">{t('ev.bloomBreakdownHint')}</p>
+          </div>
+          <div className="space-y-3">
+            {BLOOM_LEVELS.filter(l => targetBloomDistribution[l] > 0 || actualBloomDistribution[l] > 0).map(level => (
+              <div key={level} className="space-y-1">
+                <div className="flex justify-between items-center text-[11px] font-bold dark:text-slate-300">
+                  <span>{BLOOM_LEVEL_LABELS[level]}</span>
+                  <span className="text-slate-400">{t('ev.bloomTargetVsActual', { target: targetBloomDistribution[level], actual: actualBloomDistribution[level] })}</span>
+                </div>
+                <div className="relative h-2 bg-slate-100 dark:bg-slate-800 rounded-full overflow-hidden">
+                  <div className="absolute inset-y-0 left-0 rounded-full bg-indigo-200 dark:bg-indigo-900/40" style={{ width: `${targetBloomDistribution[level]}%` }} />
+                  <div className="absolute inset-y-0 left-0 rounded-full bg-indigo-600 transition-all duration-1000" style={{ width: `${actualBloomDistribution[level]}%` }} />
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
+
       {/* Lernanalyse */}
       {mode === 'result' && analysis && (
         <div className="rounded-[24px] sm:rounded-[32px] p-5 sm:p-8 space-y-6 animate-in fade-in duration-700" style={{ background: 'var(--bg-sidebar)', border: '1px solid var(--border-color)' }}>
@@ -778,6 +813,33 @@ export const ExamView: React.FC<ExamViewProps> = ({
         <div className="flex items-center gap-3 px-1 text-slate-400">
           <div className="w-4 h-4 border-2 border-slate-300 border-t-indigo-500 rounded-full animate-spin shrink-0" />
           <span className="text-[10px] font-black uppercase tracking-widest">{t('ev.analysisCreating')}</span>
+        </div>
+      )}
+
+      {/* Bloom-Vorschau vor Klausurstart — zeigt die ECHTE Zusammensetzung der
+          gerade generierten Klausur (bloomLevel kommt schon von classifyBloomLevels),
+          nicht nur das abstrakte Preset-Ziel. */}
+      {mode === 'edit' && hasBloomData && (
+        <div className="rounded-[24px] sm:rounded-[32px] p-5 sm:p-8 space-y-4" style={{ background: 'var(--bg-sidebar)', border: '1px solid var(--border-color)' }}>
+          <div>
+            <h3 className="text-lg font-black dark:text-white">{t('ev.bloomPreviewTitle')}</h3>
+            {examTypePreset && (
+              <p className="text-[10px] font-black uppercase tracking-widest text-slate-400">{t('ev.bloomPreviewHint', { preset: t((`eg.examType.${examTypePreset}`) as TKey) })}</p>
+            )}
+          </div>
+          <div className="space-y-3">
+            {BLOOM_LEVELS.filter(l => actualBloomDistribution[l] > 0).map(level => (
+              <div key={level} className="space-y-1">
+                <div className="flex justify-between items-center text-[11px] font-bold dark:text-slate-300">
+                  <span>{BLOOM_LEVEL_LABELS[level]}</span>
+                  <span>{actualBloomDistribution[level]}%</span>
+                </div>
+                <div className="h-2 bg-slate-100 dark:bg-slate-800 rounded-full overflow-hidden">
+                  <div className="h-full rounded-full bg-indigo-500" style={{ width: `${actualBloomDistribution[level]}%` }} />
+                </div>
+              </div>
+            ))}
+          </div>
         </div>
       )}
 

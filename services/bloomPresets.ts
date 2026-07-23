@@ -30,6 +30,23 @@ export function buildBloomTargetLine(preset: ExamTypePreset): string {
 }
 
 /**
+ * Tatsächliche Bloom-Verteilung einer generierten/abgelegten Klausur in Prozent,
+ * gerundet. Fragen ohne bloomLevel (z.B. Klassifikation fehlgeschlagen oder
+ * ältere Klausur von vor Phase 2a) zählen nicht mit — weder im Zähler noch im
+ * Nenner, damit fehlende Labels die Verteilung nicht künstlich verzerren.
+ */
+export function computeActualBloomDistribution(questions: { bloomLevel?: BloomLevel }[]): Record<BloomLevel, number> {
+  const empty = Object.fromEntries(BLOOM_LEVELS.map(l => [l, 0])) as Record<BloomLevel, number>;
+  const labeled = questions.filter(q => q.bloomLevel);
+  if (labeled.length === 0) return empty;
+  const counts = { ...empty };
+  labeled.forEach(q => { counts[q.bloomLevel as BloomLevel]++; });
+  const result = { ...empty };
+  BLOOM_LEVELS.forEach(l => { result[l] = Math.round((counts[l] / labeled.length) * 100); });
+  return result;
+}
+
+/**
  * Merged Klassifikations-Ergebnisse in die Originalfragen. Fragen ohne Treffer in
  * `labels` behalten `bloomLevel: undefined` — kein erzwungener Default, damit sie
  * einfach aus einer späteren Ist-Verteilungs-Anzeige herausfallen statt eine falsche

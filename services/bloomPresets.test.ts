@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { EXAM_TYPE_BLOOM_TARGETS, BLOOM_LEVELS, buildBloomTargetLine, mergeBloomLevels } from './bloomPresets';
+import { EXAM_TYPE_BLOOM_TARGETS, BLOOM_LEVELS, buildBloomTargetLine, mergeBloomLevels, computeActualBloomDistribution } from './bloomPresets';
 import type { ExamQuestion } from '../types';
 
 describe('EXAM_TYPE_BLOOM_TARGETS', () => {
@@ -66,5 +66,34 @@ describe('mergeBloomLevels', () => {
     const questions = [baseQ('q1')];
     mergeBloomLevels(questions, [{ id: 'q1', bloomLevel: 'bewerten' }]);
     expect(questions[0].bloomLevel).toBeUndefined();
+  });
+});
+
+describe('computeActualBloomDistribution', () => {
+  it('berechnet korrekte Prozente über alle klassifizierten Fragen', () => {
+    const dist = computeActualBloomDistribution([
+      { bloomLevel: 'anwenden' }, { bloomLevel: 'anwenden' }, { bloomLevel: 'erinnern' }, { bloomLevel: 'analysieren' },
+    ]);
+    expect(dist.anwenden).toBe(50);
+    expect(dist.erinnern).toBe(25);
+    expect(dist.analysieren).toBe(25);
+    expect(dist.verstehen).toBe(0);
+  });
+
+  it('ignoriert Fragen ohne bloomLevel komplett (weder Zähler noch Nenner)', () => {
+    const dist = computeActualBloomDistribution([
+      { bloomLevel: 'erinnern' }, {}, {},
+    ]);
+    expect(dist.erinnern).toBe(100);
+  });
+
+  it('gibt bei komplett fehlender Klassifikation alle Nullen zurück, kein Crash', () => {
+    const dist = computeActualBloomDistribution([{}, {}]);
+    expect(Object.values(dist).every(v => v === 0)).toBe(true);
+  });
+
+  it('gibt bei leerem Array alle Nullen zurück', () => {
+    const dist = computeActualBloomDistribution([]);
+    expect(Object.values(dist).every(v => v === 0)).toBe(true);
   });
 });
