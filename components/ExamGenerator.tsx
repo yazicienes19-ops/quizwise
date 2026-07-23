@@ -24,10 +24,7 @@ type ExamOptions = {
   examTypePreset?: ExamTypePreset;
 };
 
-// Phase 2a (Datenmodell + Klassifikation): Preset noch fest verdrahtet, bis Phase 2b
-// einen echten Klausurtyp-Selector in der UI ergänzt — so ist die komplette Pipeline
-// (Prompt-Gewichtung, Klassifikation, Persistenz) schon jetzt end-to-end testbar.
-const PHASE_2A_HARDCODED_EXAM_TYPE_PRESET: ExamTypePreset = 'universitaetsklausur';
+const EXAM_TYPE_PRESETS: ExamTypePreset[] = ['wissensabfrage', 'universitaetsklausur', 'transfer', 'gemischt'];
 
 interface ExamGeneratorProps {
   onGenerate: (content: GenerationSource, style?: GenerationSource, options?: ExamOptions, docName?: string, totalMinutes?: number, scoringProfile?: ScoringProfile) => void;
@@ -96,6 +93,7 @@ export const ExamGenerator: React.FC<ExamGeneratorProps> = ({
   const [selectedTypes, setSelectedTypes] = useState<ExamQuestion['type'][]>([...EXAM_TYPE_IDS]);
   const [customMinutes, setCustomMinutes] = useState<number | null>(null);
   const [adaptiveEnabled, setAdaptiveEnabled] = useState(false);
+  const [examTypePreset, setExamTypePreset] = useState<ExamTypePreset>('universitaetsklausur');
 
   const profile = useMemo(() => buildLearningProfile({
     metrics, decks,
@@ -170,7 +168,7 @@ export const ExamGenerator: React.FC<ExamGeneratorProps> = ({
       const excludeTopics = contentName ? getUsedTopics(sourceTopicsKey(contentName)) : [];
       onGenerate(
         contentSource, styleSource,
-        { count: questionCount, difficulty, types: selectedTypes, adaptive, excludeTopics, examTypePreset: PHASE_2A_HARDCODED_EXAM_TYPE_PRESET },
+        { count: questionCount, difficulty, types: selectedTypes, adaptive, excludeTopics, examTypePreset },
         contentName, effectiveMinutes, scoringProfile
       );
     } catch (e) {
@@ -368,6 +366,21 @@ export const ExamGenerator: React.FC<ExamGeneratorProps> = ({
                     );
                   })}
                 </div>
+              </div>
+              <div className="space-y-3">
+                <div className="text-[10px] font-black uppercase tracking-widest text-slate-400">{t('eg.examTypePreset')}</div>
+                <div className="grid grid-cols-2 gap-2">
+                  {EXAM_TYPE_PRESETS.map(p => (
+                    <button
+                      key={p}
+                      onClick={() => setExamTypePreset(p)}
+                      className={`py-3 px-2 rounded-xl text-[10px] font-black transition-all uppercase tracking-wide text-center border-2 ${examTypePreset === p ? 'border-indigo-500 bg-indigo-600 text-white shadow-lg' : 'border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 text-slate-400 hover:text-slate-600'}`}
+                    >
+                      {t((`eg.examType.${p}`) as TKey)}
+                    </button>
+                  ))}
+                </div>
+                <p className="text-[9px] text-slate-400 italic">{t((`eg.examTypeHint.${examTypePreset}`) as TKey)}</p>
               </div>
             </div>
 
