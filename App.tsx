@@ -16,6 +16,7 @@ import { LegalModal } from './components/LegalModal';
 import { resolveErrorMessage } from './services/errorMessages';
 import { getStreak } from './services/streakService';
 import { orchestrateLearningFlow } from './services/geminiService';
+import { updateTopicMetric } from './services/topicConfidence';
 import { toast } from './services/toast';
 import { ActiveTab, TopicMetric, SearchResult, FlashcardDeck, ExamTerm, LearningFlowResult } from './types';
 import { useAuth } from './hooks/useAuth';
@@ -128,9 +129,9 @@ const App: React.FC = () => {
     let updated: TopicMetric[];
     if (idx >= 0) {
       updated = prev;
-      updated[idx] = { ...updated[idx], confidence: Math.round((updated[idx].confidence + score) / 2), lastReviewed: Date.now(), totalAttempts: updated[idx].totalAttempts + 1, correctAttempts: updated[idx].correctAttempts + (score >= 70 ? 1 : 0) };
+      updated[idx] = updateTopicMetric(updated[idx], topicName, score, type);
     } else {
-      updated = [{ id: Math.random().toString(36).substr(2, 5), topic: topicName, confidence: score, lastReviewed: Date.now(), totalAttempts: 1, correctAttempts: score >= 70 ? 1 : 0 }, ...prev];
+      updated = [updateTopicMetric(undefined, topicName, score, type), ...prev];
     }
     setMetrics(updated);
     localStorage.setItem('quizwise_metrics', JSON.stringify(updated));

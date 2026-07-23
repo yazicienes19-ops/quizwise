@@ -30,6 +30,9 @@ import { supabase } from './supabaseClient';
 import { parseQuizQuestions } from './quizNormalize';
 import { outputLangDirective, explainerHeadings } from './aiLocale';
 import { t } from '../i18n';
+import { validateLearningAnalysis, EMPTY_ANALYSIS, ACTION_TYPES } from './analysisValidation';
+import type { RawLearningAnalysis } from './analysisValidation';
+import type { TopicCalibrationGap } from './calibrationGap';
 
 const BACKEND_URL = import.meta.env.VITE_BACKEND_URL || 'http://localhost:4000';
 
@@ -777,42 +780,52 @@ export const magicFormatCitation = async (input: string): Promise<MultiStyleCita
 };
 
 export interface WrongAnswerContext {
+  /** Eindeutig über alle drei Quellen (Quiz/Klausur/Feynman) — Grundlage für sourceErrorIds im ErrorPattern. */
+  id: string;
+  /** Session, aus der der Fehler stammt — Grundlage für die "≥2 Sessions"-Mindestschwelle. */
+  sessionId: string;
   question: string;
   topic?: string;
   explanation: string;
   docName: string;
 }
 
-/** Feste Token-Menge für recommendedAction.type — muss exakt zu ERROR_ACTION_TARGET
- *  in components/GapRadar.tsx passen. Als Schema-enum erzwungen (nicht nur per Prompt),
- *  damit das Routing der "Jetzt lernen"-Buttons nie auf einen unbekannten String trifft. */
-const ERROR_ACTION_TYPES = ['kurze Erklärung', '3 gezielte Übungsfragen', 'Erstellung von Karteikarten', 'Start einer geführten Study-Session'];
+/** Feste Ursachen-Klassifikation — entscheidet über RECOMMENDED_ACTION_BY_CAUSE
+ *  (services/analysisValidation.ts) deterministisch die Handlungsempfehlung.
+ *  Das Modell liefert nur noch die Klassifikation, nicht mehr die Aktion selbst. */
+const CAUSE_TYPES = ['concept', 'application', 'recall', 'structure'];
 
 export const analyzeLearningProgress = async (
   metrics: TopicMetric[],
-  wrongAnswers: WrongAnswerContext[] = []
+  wrongAnswers: WrongAnswerContext[] = [],
+  calibrationGaps: TopicCalibrationGap[] = [],
 ): Promise<LearningAnalysis> => {
+  // Kein einziger echter Fehler vorhanden: Es gibt strukturell nichts, worauf
+  // sich ein Muster gründen ließe. Dafür lohnt sich kein KI-Aufruf — weder
+  // Kosten noch (verbleibendes) Halluzinationsrisiko, wenn die Antwort schon
+  // vorher feststeht.
+  if (wrongAnswers.length === 0) return EMPTY_ANALYSIS;
+
+  const errorIds = wrongAnswers.map(w => w.id);
+  const realErrorIds = new Set(errorIds);
+  const sessionIdByErrorId = new Map(wrongAnswers.map(w => [w.id, w.sessionId]));
+
   const metricsText = JSON.stringify(
     metrics.map(m => ({ thema: m.topic, konfidenz: m.confidence + '%', versuche: m.totalAttempts }))
   );
-  const wrongText = wrongAnswers.length > 0
-    ? `\n\nFalsch beantwortete Fragen (${wrongAnswers.length} Stück, wichtig für Fehlermuster):\n` +
-      wrongAnswers.map((w, i) =>
-        `${i + 1}. [${w.topic || 'Allgemein'}] "${w.question}"\n   Richtige Erklärung: ${w.explanation}`
-      ).join('\n\n')
+  const wrongText = `\n\nFalsch beantwortete Fragen/Lücken (referenziere sie über ihre ID im Feld sourceErrorIds bzw. overallHealthErrorIds — NIEMALS eine ID erfinden, die hier nicht auftaucht):\n` +
+    wrongAnswers.map(w => `[${w.id}] Thema "${w.topic || 'Allgemein'}": "${w.question}"\n   Richtige Erklärung: ${w.explanation}`).join('\n\n');
+
+  const calibrationText = calibrationGaps.length > 0
+    ? `\n\nKalibrierung (Selbsteinschätzung vs. tatsächliches Ergebnis im Quiz):\n` +
+      calibrationGaps.map(g => `Thema "${g.topic}": Überschätzung in ${g.overconfidenceRate}% der "sicher"-Antworten, Unterschätzung in ${g.underconfidenceRate}% der "unsicher"-Antworten (n=${g.n}).`).join('\n')
     : '';
 
-  // Ohne konkrete Falschantworten gibt es nichts, worauf sich ein "Fehlermuster"
-  // gründen ließe — die Themen-Konfidenz allein rechtfertigt keine erfundenen
-  // Häufigkeiten/Ursachen. Diese Regel ist strukturell (nicht nur Bitte an das
-  // Modell): sie erzwingt einen leeren errorPatterns-Array im Prompt-Text selbst.
-  const groundingRule = wrongAnswers.length === 0
-    ? `\n\nWICHTIGSTE REGEL: Es liegen KEINE konkreten Falschantworten vor. Du darfst deshalb KEINE Fehlermuster erfinden — errorPatterns und topThreeTypes MÜSSEN leere Arrays [] sein. overallHealth darf sich nur auf die Themen-Konfidenz beziehen (falls vorhanden) und muss ehrlich sagen, dass für eine Fehleranalyse noch zu wenige falsch beantwortete Fragen vorliegen.`
-    : `\n\nWICHTIGSTE REGEL: Behaupte NUR, was die obigen Falschantworten wirklich hergeben. Erfinde keine Fehlermuster, Konzepte oder Häufigkeiten, die sich nicht auf mindestens eine der ${wrongAnswers.length} echten Fragen zurückführen lassen. "count" darf die Anzahl der tatsächlich vorliegenden Falschantworten nicht übersteigen. Wenn die Fragen zu unterschiedlich sind, um ein gemeinsames Muster zu bilden, liefere weniger, dafür belastbare Muster statt konstruierter Verallgemeinerungen.`;
+  const groundingRule = `\n\nWICHTIGSTE REGEL: Behaupte NUR, was die obigen ${wrongAnswers.length} Fehler/Lücken wirklich hergeben. Jedes Muster MUSS sourceErrorIds mit mindestens 2 echten IDs aus mindestens 2 unterschiedlichen Themen-Wiederholungen enthalten — erfinde keine IDs, keine Konzepte, keine Ursachen ohne Beleg. ${wrongAnswers.length < 5 ? 'Es liegen nur sehr wenige Fehler vor (unter 5) — sei besonders zurückhaltend, aggregiere nur wenn wirklich derselbe Fehlertyp mehrfach auftritt, im Zweifel lieber keine oder weniger Muster als konstruierte Verallgemeinerungen.' : 'Wenn die Fehler zu unterschiedlich sind, um ein gemeinsames Muster zu bilden, liefere weniger, dafür belastbare Muster.'} overallHealthErrorIds MUSS ebenfalls nur echte IDs enthalten, auf die sich die Einschätzung tatsächlich stützt — ohne Beleg keine Aussage über das Lernverhalten treffen.`;
 
   const text = await callBackend({
     complexity: 'heavy',
-    parts: [{ text: `Analysiere den Lernfortschritt eines Studenten.\n\nThemen-Konfidenz: ${metricsText}${wrongText}${groundingRule}\n\nIdentifiziere konkrete Fehlermuster aus den echten Fragen (z.B. "Begriffsverwechslungen", "Konzeptuelle Lücken"), gib gezielte Lernempfehlungen und eine psychologische Gesamteinschätzung.\n\nrecommendedAction.type MUSS exakt einer dieser vier Werte sein (unabhängig von der Ausgabesprache, nie eine eigene Formulierung): ${ERROR_ACTION_TYPES.map(v => `"${v}"`).join(', ')}.${outputLangDirective()}` }],
+    parts: [{ text: `Analysiere das Lernverhalten eines Studenten anhand seiner echten Fehler — sachlich, nicht spekulativ.\n\nThemen-Konfidenz: ${metricsText}${wrongText}${calibrationText}${groundingRule}\n\nIdentifiziere konkrete Fehlermuster (z.B. "Begriffsverwechslungen", "Konzeptuelle Lücken") und klassifiziere pro Muster die wahrscheinlichste Ursache (causeType): "concept" (Konzept nicht verstanden), "application" (Anwendung schwach), "recall" (Erinnerung/Abruf schwach), "structure" (Zusammenhang/Struktur fehlt). Gib außerdem eine sachliche Analyse des Lernverhaltens (overallHealth) ausschließlich basierend auf den vorliegenden Fehlerdaten — keine weitreichenden Charakteraussagen, nur was die Daten hergeben.${outputLangDirective()}` }],
     config: {
       thinkingConfig: { thinkingBudget: 0 },
       responseMimeType: 'application/json',
@@ -820,39 +833,41 @@ export const analyzeLearningProgress = async (
         type: Type.OBJECT,
         properties: {
           overallHealth: { type: Type.STRING },
+          overallHealthErrorIds: { type: Type.ARRAY, items: { type: Type.STRING } },
           errorPatterns: {
             type: Type.ARRAY,
             items: {
               type: Type.OBJECT,
               properties: {
                 pattern: { type: Type.STRING }, description: { type: Type.STRING },
-                count: { type: Type.NUMBER }, concepts: { type: Type.ARRAY, items: { type: Type.STRING } },
+                concepts: { type: Type.ARRAY, items: { type: Type.STRING } },
                 probableCause: { type: Type.STRING },
+                causeType: { type: Type.STRING, format: 'enum', enum: CAUSE_TYPES },
+                sourceErrorIds: { type: Type.ARRAY, items: { type: Type.STRING } },
                 recommendedAction: {
                   type: Type.OBJECT,
                   properties: {
-                    type: { type: Type.STRING, format: 'enum', enum: ERROR_ACTION_TYPES },
+                    type: { type: Type.STRING, format: 'enum', enum: ACTION_TYPES },
                     reasoning: { type: Type.STRING },
                   },
                   required: ['type', 'reasoning']
                 }
               },
-              required: ['pattern', 'description', 'count', 'concepts', 'probableCause', 'recommendedAction']
+              required: ['pattern', 'description', 'concepts', 'probableCause', 'causeType', 'sourceErrorIds', 'recommendedAction']
             }
           },
-          topThreeTypes: {
-            type: Type.ARRAY,
-            items: {
-              type: Type.OBJECT,
-              properties: { pattern: { type: Type.STRING }, description: { type: Type.STRING } }
-            }
-          }
         },
-        required: ['overallHealth', 'errorPatterns', 'topThreeTypes']
+        required: ['overallHealth', 'overallHealthErrorIds', 'errorPatterns']
       }
     }
   });
-  return JSON.parse(text || '{}');
+
+  const raw = JSON.parse(text || '{}') as RawLearningAnalysis;
+  return validateLearningAnalysis(
+    { overallHealth: raw.overallHealth ?? '', overallHealthErrorIds: raw.overallHealthErrorIds ?? [], errorPatterns: raw.errorPatterns ?? [] },
+    realErrorIds,
+    sessionIdByErrorId,
+  );
 };
 
 export const generateExplanation = async (

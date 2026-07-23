@@ -80,6 +80,7 @@ export async function loadAllCloudData(userId: string): Promise<AllCloudData> {
     lastReviewed: row.last_reviewed ?? Date.now(),
     totalAttempts: row.total_attempts ?? 0,
     correctAttempts: row.correct_attempts ?? 0,
+    subScores: row.sub_scores && Object.keys(row.sub_scores).length ? row.sub_scores : undefined,
   }));
 
   return {
@@ -142,9 +143,19 @@ export function syncMetrics(userId: string, metrics: TopicMetric[]): void {
     last_reviewed: m.lastReviewed,
     total_attempts: m.totalAttempts,
     correct_attempts: m.correctAttempts,
+    sub_scores: m.subScores ?? {},
   }));
   supabase.from('metrics').upsert(rows, { onConflict: 'user_id,topic' })
-    .then(({ error }) => { if (error) console.error('syncMetrics:', error.message); });
+    .then(({ error }) => {
+      if (error && /sub_scores/i.test(error.message)) {
+        // Ältere DB ohne sub_scores-Spalte: ohne das Feld erneut versuchen
+        const withoutSubScores = rows.map(({ sub_scores, ...rest }) => rest);
+        supabase.from('metrics').upsert(withoutSubScores, { onConflict: 'user_id,topic' })
+          .then(({ error: retryError }) => { if (retryError) console.error('syncMetrics:', retryError.message); });
+      } else if (error) {
+        console.error('syncMetrics:', error.message);
+      }
+    });
 }
 
 export async function migrateLocalToCloud(userId: string): Promise<void> {

@@ -1,8 +1,11 @@
 
-import React, { useState, useMemo, useRef, useEffect } from 'react';
+import React, { useState, useMemo, useRef, useEffect, useCallback } from 'react';
 import { TopicMetric, LearningAnalysis, ActiveTab } from '../types';
 import { EmojiImage } from './EmojiImage';
-import { analyzeLearningProgress, WrongAnswerContext } from '../services/geminiService';
+import { analyzeLearningProgress } from '../services/geminiService';
+import { buildErrorPool } from '../services/errorPool';
+import { computeTopicCalibrationGaps } from '../services/calibrationGap';
+import { buildCacheKey, buildTopicSnapshot, loadCachedAnalysis, saveCachedAnalysis, clearCachedAnalysis } from '../services/analysisCache';
 import { buildRealTopicMastery } from '../services/learningProfileService';
 import { useTranslation } from '../i18n/I18nProvider';
 import { formatDate } from '../i18n/dates';
@@ -279,7 +282,6 @@ export const GapRadar: React.FC<GapRadarProps> = ({ metrics, onNavigate, onActio
   const allRecall = useMemo(() => getAllRecallResults(), [historyBump]);
   const allExam   = useMemo(() => getAllExamResults(), [historyBump]);
 
-  const ANALYSIS_CACHE_KEY = 'quizwise_gap_analysis_v1';
   // Ändert sich der Verlauf NACH dem ersten Render (z.B. eine Session wird
   // gelöscht), ist eine bereits gezeigte Tiefenanalyse potenziell nicht mehr
   // vertrauenswürdig — sie könnte sich auf jetzt nicht mehr existierende
@@ -288,7 +290,7 @@ export const GapRadar: React.FC<GapRadarProps> = ({ metrics, onNavigate, onActio
   useEffect(() => {
     if (isFirstHistoryRender.current) { isFirstHistoryRender.current = false; return; }
     setAnalysis(null);
-    try { localStorage.removeItem(ANALYSIS_CACHE_KEY); } catch {}
+    clearCachedAnalysis();
   }, [historyBump]);
 
   // Verlaufseintrag endgültig löschen (lokal + Cloud); Statistiken rechnen neu
@@ -533,70 +535,58 @@ export const GapRadar: React.FC<GapRadarProps> = ({ metrics, onNavigate, onActio
 
   // ── AI analysis context ──────────────────────────────────────────────────────
   // Grundlage der Tiefenanalyse: früher nur Quiz-Fehler, obwohl Klausur- und
-  // Feynman-Lücken oft die aussagekräftigeren Fehlermuster liefern (gerade wenn
-  // ein Nutzer hauptsächlich mit diesen Methoden lernt). Alle drei Quellen
-  // fließen jetzt gemeinsam ein, nach Aktualität sortiert — nicht pro Quelle
-  // quotiert, damit die wirklich jüngsten Lücken den Vorrang behalten.
-  const wrongAnswersCtx = useMemo((): WrongAnswerContext[] => {
-    type Timed = WrongAnswerContext & { ts: number };
+  // Feynman-Lücken oft die aussagekräftigeren Fehlermuster liefern. Quotiert
+  // (services/errorPool.ts) statt rein nach Datum zu sortieren — sonst
+  // verhungert eine Quelle, die seit Wochen nicht genutzt wurde, obwohl sie
+  // die Hauptlernmethode ist. Respektiert den Dokument-Filter der Seite.
+  const wrongAnswersCtx = useMemo(
+    () => buildErrorPool({ quiz: allQuiz, exam: allExam, recall: allRecall, docFilter: selectedDoc || undefined }),
+    [allQuiz, allExam, allRecall, selectedDoc],
+  );
 
-    const fromQuiz: Timed[] = allQuiz.slice(0, 8).flatMap(result =>
-      (result.answers || [])
-        .filter(a => !a.isCorrect)
-        .slice(0, 3)
-        .map(a => {
-          const q = result.questions?.[a.questionIndex];
-          if (!q) return null;
-          return { question: q.question, topic: q.topic, explanation: q.explanation, docName: result.docName, ts: result.timestamp };
-        })
-        .filter((x): x is Timed => x !== null)
-    );
-
-    const fromExam: Timed[] = allExam.slice(0, 8).flatMap(result =>
-      (result.questions || [])
-        .filter(q => (q.achievedPoints ?? 0) < q.points)
-        .slice(0, 3)
-        .map(q => ({
-          question: q.question, topic: q.topic,
-          explanation: q.feedback || q.solution, docName: result.docName, ts: result.timestamp,
-        }))
-    );
-
-    const fromFeynman: Timed[] = allRecall.slice(0, 8).flatMap(result =>
-      (result.missingPoints || []).slice(0, 2).map(m => ({
-        question: `Erkläre: ${result.topic || result.docName}`,
-        topic: result.topic, explanation: m, docName: result.docName, ts: result.timestamp,
-      }))
-    );
-
-    return [...fromQuiz, ...fromExam, ...fromFeynman]
-      .sort((a, b) => b.ts - a.ts)
-      .slice(0, 20)
-      .map(({ ts, ...rest }) => rest);
-  }, [allQuiz, allExam, allRecall]);
+  // Kalibrierungs-Gap (Selbsteinschätzung vs. tatsächliches Ergebnis, siehe
+  // services/calibrationGap.ts) — bisher nur in ResultView sichtbar, nie in die
+  // Tiefenanalyse eingespeist, obwohl sie genau die "psychologische" Dimension
+  // liefert, die die Analyse ohnehin schon versucht zu beurteilen.
+  const calibrationGaps = useMemo(() => computeTopicCalibrationGaps(filteredQuiz), [filteredQuiz]);
 
   const hasAnyData = overallScore !== null || combinedHistory.length > 0;
 
-  // Tiefenanalyse cachen — sonst kostet jeder Coach-Besuch mit Klick einen Gemini-Call
-  const sessionStamp = allQuiz.length + allRecall.length + allExam.length;
+  // Tiefenanalyse cachen — sonst kostet jeder Coach-Besuch mit Klick einen
+  // Gemini-Call. Fingerprint (SHA-256 über Fehler-IDs + Themen-Konfidenz +
+  // Filter-Scope) statt einer Summe: zwei unterschiedliche Datenstände können
+  // rechnerisch dieselbe Summe ergeben (5 Quiz+3 Feynman = 4 Quiz+4 Feynman = 8)
+  // und würden dann eine falsche/veraltete Analyse zeigen, ohne dass es auffällt.
+  const filterScope = selectedDoc || 'global';
+  const computeFingerprint = useCallback(
+    () => buildCacheKey({ errorIds: wrongAnswersCtx.map(e => e.id), topicSnapshot: buildTopicSnapshot(metrics), filterScope }),
+    [wrongAnswersCtx, metrics, filterScope],
+  );
 
+  // Lädt bei Mount UND bei jedem Wechsel des Dokument-Filters die zum jeweiligen
+  // Scope passende gecachte Analyse (oder leert die Anzeige, wenn keine existiert
+  // — sonst bliebe nach einem Filterwechsel die Analyse des VORHERIGEN Scopes
+  // sichtbar, obwohl sie zum neuen Filter gar nicht mehr passt).
   useEffect(() => {
-    try {
-      const raw = localStorage.getItem(ANALYSIS_CACHE_KEY);
-      if (!raw) return;
-      const cached = JSON.parse(raw) as { analysis: LearningAnalysis; stamp: number };
-      if (cached?.analysis && cached.stamp === sessionStamp) setAnalysis(cached.analysis);
-    } catch {}
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
+    let cancelled = false;
+    setAnalysis(null);
+    computeFingerprint().then(key => {
+      if (cancelled) return;
+      const cached = loadCachedAnalysis(key);
+      if (cached) setAnalysis(cached);
+    });
+    return () => { cancelled = true; };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [filterScope]);
 
   const handleRunAnalysis = async () => {
     if (!hasAnyData) return;
     setIsAnalyzing(true);
     try {
-      const result = await analyzeLearningProgress(metrics, wrongAnswersCtx);
+      const result = await analyzeLearningProgress(metrics, wrongAnswersCtx, calibrationGaps);
       setAnalysis(result);
-      try { localStorage.setItem(ANALYSIS_CACHE_KEY, JSON.stringify({ analysis: result, stamp: sessionStamp })); } catch {}
+      const key = await computeFingerprint();
+      saveCachedAnalysis(key, result);
     } catch (e: any) {
       toast.error(`Analyse fehlgeschlagen: ${e?.message || 'Unbekannter Fehler'}`);
     } finally {
@@ -1030,6 +1020,11 @@ export const GapRadar: React.FC<GapRadarProps> = ({ metrics, onNavigate, onActio
                       <p className="text-[9px] font-black uppercase tracking-widest" style={{ color: 'var(--primary)' }}>{t('gr.recommendation')}</p>
                       <p className="text-sm font-black mt-1" style={{ color: 'var(--ink)' }}>{ERROR_ACTION_LABEL[error.recommendedAction.type] ? t(ERROR_ACTION_LABEL[error.recommendedAction.type]) : error.recommendedAction.type}</p>
                       <p className="text-[10px] italic mt-1 leading-relaxed" style={{ color: 'var(--ink2)' }}>{error.recommendedAction.reasoning}</p>
+                      {error.recommendedAction.secondaryType && (
+                        <p className="text-[9px] mt-1.5" style={{ color: 'var(--mute)' }}>
+                          {t('gr.modelSuggested')}: {ERROR_ACTION_LABEL[error.recommendedAction.secondaryType] ? t(ERROR_ACTION_LABEL[error.recommendedAction.secondaryType]) : error.recommendedAction.secondaryType}
+                        </p>
+                      )}
                     </div>
                     <button
                       onClick={handleLearn}

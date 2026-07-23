@@ -6,22 +6,30 @@ export interface Collection {
   color: string;
 }
 
+export type RecommendedActionType = 'kurze Erklärung' | '3 gezielte Übungsfragen' | 'Erstellung von Karteikarten' | 'Start einer geführten Study-Session';
+
 export interface ErrorPattern {
   pattern: string;
   description: string;
+  /** Wird NIE vom Modell übernommen — clientseitig aus sourceErrorIds.length berechnet. */
   count: number;
   concepts: string[];
   probableCause: string;
-  textReference: string;
+  /** Deterministische Ursachen-Klassifikation der KI — legt über ein festes Mapping die Handlungsempfehlung fest (nicht die freie Wahl des Modells). */
+  causeType: 'concept' | 'application' | 'recall' | 'structure';
+  /** IDs der zugrunde liegenden Fehler (aus wrongAnswersCtx) — gegen die echte Fehlerliste geprüft, Grundlage für count und die Mindestschwelle. */
+  sourceErrorIds: string[];
   recommendedAction: {
-    type: 'kurze Erklärung' | '3 gezielte Übungsfragen' | 'Erstellung von Karteikarten' | 'Start einer geführten Study-Session';
+    /** Deterministisch über RECOMMENDED_ACTION_BY_CAUSE aus causeType abgeleitet — nie die freie Modellwahl. */
+    type: RecommendedActionType;
+    /** Nur gesetzt, wenn das Modell selbst einen anderen Typ vorschlug als das Mapping — Mapping gewinnt für `type`, der Modellvorschlag bleibt hier sichtbar. */
+    secondaryType?: RecommendedActionType;
     reasoning: string;
   };
 }
 
 export interface LearningAnalysis {
   errorPatterns: ErrorPattern[];
-  topThreeTypes: ErrorPattern[];
   overallHealth: string;
 }
 
@@ -190,14 +198,19 @@ export interface ProcessedDocument {
   digestStatus?: 'pending' | 'ready' | 'error';
 }
 
+export type MetricSource = 'quiz' | 'exam' | 'recall' | 'cards';
+
 export interface TopicMetric {
   id: string;
   topic: string;
   subject?: string;
+  /** Gewichtetes Aggregat der subScores (nach n je Quelle) — für Anzeige/Rückwärtskompatibilität. */
   confidence: number;
   lastReviewed: number;
   totalAttempts: number;
   correctAttempts: number;
+  /** Pro Lernmethode ein eigener, adaptiv gewichteter Wert (α = 1/(n+1)); `confidence` ist deren gewichtetes Mittel. */
+  subScores?: Partial<Record<MetricSource, { value: number; n: number }>>;
 }
 
 export enum ActiveTab {
