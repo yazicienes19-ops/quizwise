@@ -4,10 +4,12 @@ import { ActiveTab, FlashcardDeck, Collection } from '../types';
 import { countDueCards, migrateLegacyCard } from '../services/spacedRepetition';
 import { countDueMistakes } from '../services/mistakeReviewService';
 import { getStreak } from '../services/streakService';
+import { usePersistentState } from '../hooks/usePersistentState';
 import {
   Home, BookOpen, HelpCircle, Calendar, Brain, GraduationCap,
   Layers, Lightbulb, BarChart2, Search, FileText, Moon, Sun,
-  X, Menu, KeyRound, LogIn, LogOut, Zap, Settings, Flame, type LucideIcon
+  X, Menu, KeyRound, LogIn, LogOut, Zap, Settings, Flame,
+  PanelLeftClose, PanelLeftOpen, type LucideIcon
 } from 'lucide-react';
 import type { User } from '@supabase/supabase-js';
 import { ColorPicker } from './ColorPicker';
@@ -59,6 +61,9 @@ export const Layout: React.FC<LayoutProps> = ({
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
   const [showApiSettings, setShowApiSettings] = useState(false);
   const [legalPage, setLegalPage] = useState<'impressum' | 'datenschutz' | 'agb' | null>(null);
+  // Nur die breite Desktop-Sidebar (≥1024px) betroffen — Tablet-Icon-Leiste und
+  // Mobile-Menü bleiben unverändert, dort ist Platz ohnehin schon knapp bemessen.
+  const [sidebarCollapsed, setSidebarCollapsed] = usePersistentState('quizwise_sidebar_collapsed', false);
 
 
 
@@ -113,7 +118,8 @@ export const Layout: React.FC<LayoutProps> = ({
   return (
     <div className="min-h-screen flex transition-colors duration-300 overflow-hidden bg-transparent">
 
-      {/* ── DESKTOP SIDEBAR (≥ 1024px) ── */}
+      {/* ── DESKTOP SIDEBAR (≥ 1024px) — einklappbar, Zustand persistiert ── */}
+      {!sidebarCollapsed && (
       <aside
         className="w-72 hidden lg:flex flex-col h-screen sticky top-0 shadow-[4px_0_24px_rgba(0,0,0,0.05)] z-20"
         style={{ background: 'var(--bg-sidebar)', borderRight: '1px solid var(--border-color)' }}
@@ -125,6 +131,14 @@ export const Layout: React.FC<LayoutProps> = ({
               style={{ background: 'var(--primary)', color: 'var(--primary-text)', boxShadow: '0 4px 12px color-mix(in srgb, var(--primary) 40%, transparent)' }}
             >QW</div>
             <span className="text-xl font-black tracking-tighter text-slate-900 dark:text-white uppercase truncate flex-1">QuizWise</span>
+            <button
+              onClick={() => setSidebarCollapsed(true)}
+              aria-label={t('layout.collapseSidebar')}
+              title={t('layout.collapseSidebar')}
+              className="shrink-0 text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 transition-colors"
+            >
+              <PanelLeftClose className="w-4 h-4" strokeWidth={1.75} />
+            </button>
             {streak.current > 0 && (
               <div className="flex items-center gap-1 shrink-0" title={t('layout.streakTitle', { n: streak.current })}>
                 <Flame
@@ -307,6 +321,20 @@ export const Layout: React.FC<LayoutProps> = ({
           </div>
         </div>
       </aside>
+      )}
+
+      {/* Wieder einblenden — nur sichtbar, wenn die Desktop-Sidebar eingeklappt ist */}
+      {sidebarCollapsed && (
+        <button
+          onClick={() => setSidebarCollapsed(false)}
+          aria-label={t('layout.expandSidebar')}
+          title={t('layout.expandSidebar')}
+          className="hidden lg:flex fixed top-4 left-4 z-30 w-9 h-9 rounded-xl items-center justify-center shadow-lg transition-all hover:scale-105 active:scale-95"
+          style={{ background: 'var(--bg-sidebar)', border: '1px solid var(--border-color)', color: 'var(--text-main)' }}
+        >
+          <PanelLeftOpen className="w-4 h-4" strokeWidth={1.75} />
+        </button>
+      )}
 
       {/* ── TABLET SIDEBAR (768px – 1023px) ── */}
       <aside
@@ -569,10 +597,12 @@ export const Layout: React.FC<LayoutProps> = ({
       )}
 
       {/* ── MAIN CONTENT ── */}
-      {/* Reader füllt die Fläche (Split-Screen braucht jeden Pixel), alle anderen Tabs behalten den zentrierten Lesebreiten-Container */}
+      {/* Reader füllt die Fläche (Split-Screen braucht jeden Pixel), alle anderen Tabs behalten den zentrierten Lesebreiten-Container.
+          Bei eingeklappter Sidebar zusätzlicher linker Platz (nur ≥1024px, wo der Einblenden-Button schwebt) —
+          sonst überlappt er knapp bemessene Header-Zeilen wie im Reader ("← Zurück" sitzt sonst genau darunter). */}
       <main className={`flex-grow overflow-y-auto w-full relative ${activeTab === ActiveTab.READER
         ? 'pt-16 pb-20 px-2 sm:px-4 md:pt-4 md:pb-4 md:px-4'
-        : 'pt-16 pb-24 px-4 sm:px-6 md:pt-8 md:pb-8 md:px-8 lg:pt-16 lg:pb-16 lg:px-16'}`}>
+        : 'pt-16 pb-24 px-4 sm:px-6 md:pt-8 md:pb-8 md:px-8 lg:pt-16 lg:pb-16 lg:px-16'} ${sidebarCollapsed ? 'lg:pl-14' : ''}`}>
         <div className={`relative z-10 ${activeTab === ActiveTab.READER ? 'w-full' : 'max-w-6xl mx-auto'}`}>{children}</div>
       </main>
 

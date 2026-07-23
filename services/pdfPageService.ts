@@ -146,17 +146,42 @@ export const getPageTextItems = async (
   return { items, width: viewport.width, height: viewport.height };
 };
 
-/** Rendert eine Seite scharf (devicePixelRatio) in das Canvas, skaliert auf targetWidth CSS-Pixel. */
+/**
+ * Begrenzt targetWidth so, dass eine Seite mit dem Seitenverhältnis
+ * baseWidth/baseHeight bei dieser Breite nicht höher als maxHeight wird.
+ * Reine Rechenfunktion (kein pdf.js/Canvas nötig) — deshalb eigenständig
+ * exportiert und direkt testbar.
+ */
+export function constrainWidthToHeight(
+  targetWidth: number,
+  baseWidth: number,
+  baseHeight: number,
+  maxHeight?: number
+): number {
+  if (!maxHeight || baseHeight <= 0) return targetWidth;
+  const widthForMaxHeight = maxHeight * (baseWidth / baseHeight);
+  return Math.min(targetWidth, widthForMaxHeight);
+}
+
+/**
+ * Rendert eine Seite scharf (devicePixelRatio) in das Canvas, skaliert auf
+ * targetWidth CSS-Pixel. Optionales maxHeight begrenzt die Skalierung zusätzlich
+ * über die Höhe — ohne das würde eine hochformatige Seite in einer breiten,
+ * aber niedrigen Spalte über den sichtbaren Bereich hinausragen und Scrollen
+ * erzwingen, obwohl "100%" eigentlich "ganze Seite ohne Scrollen" bedeuten soll.
+ */
 export const renderPageToCanvas = async (
   pdf: PdfHandle,
   pageNumber: number,
   canvas: HTMLCanvasElement,
-  targetWidth: number
+  targetWidth: number,
+  maxHeight?: number
 ): Promise<void> => {
   const page = await pdf.doc.getPage(pageNumber);
   const baseViewport = page.getViewport({ scale: 1 });
   const dpr = window.devicePixelRatio || 1;
-  const scale = (targetWidth / baseViewport.width) * dpr;
+  const effectiveWidth = constrainWidthToHeight(targetWidth, baseViewport.width, baseViewport.height, maxHeight);
+  const scale = (effectiveWidth / baseViewport.width) * dpr;
   const viewport = page.getViewport({ scale });
   canvas.width = viewport.width;
   canvas.height = viewport.height;

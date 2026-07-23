@@ -3,6 +3,8 @@ import { ProcessedDocument } from '../types';
 import { generateGroundedExplanation, type GenerationSource } from '../services/geminiService';
 import { downloadPdfAsBase64 } from '../services/documentService';
 import { loadPdf, getPageText, getPageTextItems, renderPageToCanvas, renderPageToJpegBase64, isScannedPage, type PdfHandle, type PositionedTextItem } from '../services/pdfPageService';
+import { buildPdfOutline, type PdfTocEntry } from '../services/pdfOutlineService';
+import { TocList } from './DocTocList';
 import { findQuoteRects, type HighlightRect } from '../services/pdfHighlightService';
 import { markChapterDone, getDoneChapterIndices } from '../services/chapterProgressService';
 import { logReaderQuestion, getReaderLog } from '../services/readerLogService';
@@ -71,6 +73,10 @@ export const PdfSplitScreenReader: React.FC<PdfSplitScreenReaderProps> = ({ doc,
   const [pageItems, setPageItems] = useState<{ items: PositionedTextItem[]; pageW: number; pageH: number } | null>(null);
   /** Aktive Maus-Textauswahl auf der Seite (Position relativ zur PDF-Fläche). */
   const [selection, setSelection] = useState<{ text: string; x: number; y: number } | null>(null);
+  /** Dokument-Inhaltsverzeichnis — null = wird noch im Hintergrund ermittelt. */
+  const [toc, setToc] = useState<PdfTocEntry[] | null>(null);
+  const [tocOpen, setTocOpen] = useState(false);
+  const [expandedToc, setExpandedToc] = useState<Set<string>>(new Set());
 
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const firstRectRef = useRef<HTMLDivElement>(null);
@@ -102,6 +108,18 @@ export const PdfSplitScreenReader: React.FC<PdfSplitScreenReaderProps> = ({ doc,
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [doc.id]);
 
+  // Inhaltsverzeichnis im Hintergrund aufbauen — die eingebettete PDF-Gliederung
+  // ist bei aus Folien exportierten Skripten meist nur "Folie 1, Folie 2, ..."
+  // (siehe services/pdfOutlineService.ts), deshalb Erkennung über Schriftgröße
+  // + Textmenge pro Seite. Läuft einmal, blockiert das Lesen der ersten Seite nicht.
+  useEffect(() => {
+    if (!pdf) return;
+    let cancelled = false;
+    setToc(null);
+    buildPdfOutline(pdf).then(result => { if (!cancelled) setToc(result); }).catch(() => { if (!cancelled) setToc([]); });
+    return () => { cancelled = true; };
+  }, [pdf]);
+
   // Aktuelle Seite rendern + Text extrahieren; renderSeq verwirft veraltete
   // Ergebnisse bei schnellem Blättern oder Zoom-Wechsel.
   useEffect(() => {
@@ -113,7 +131,11 @@ export const PdfSplitScreenReader: React.FC<PdfSplitScreenReaderProps> = ({ doc,
         const canvas = canvasRef.current;
         const baseWidth = (pageBoxRef.current?.clientWidth ?? 600) - 16;
         if (canvas) {
-          await renderPageToCanvas(pdf, pageNumber, canvas, baseWidth * zoom);
+          // Bei 100% soll die ganze Seite ohne Scrollen sichtbar sein — dafür zusätzlich
+          // auf die verfügbare Höhe begrenzen. Ab Zoom > 1 ist Scrollen gewollt (Nutzer
+          // zoomt bewusst über die Fit-Größe hinaus), deshalb keine Höhenbegrenzung dann.
+          const maxHeight = zoom === 1 ? (pageBoxRef.current?.clientHeight ?? undefined) : undefined;
+          await renderPageToCanvas(pdf, pageNumber, canvas, baseWidth * zoom, maxHeight ? maxHeight - 16 : undefined);
           if (renderSeq.current === seq) setCanvasCss({ w: canvas.clientWidth, h: canvas.clientHeight });
         }
         const text = await getPageText(pdf, pageNumber);
@@ -297,6 +319,37 @@ export const PdfSplitScreenReader: React.FC<PdfSplitScreenReaderProps> = ({ doc,
 
   const handoffTopic = pickHandoffTopic(handoff);
 
+  // Flache Liste aller TOC-Einträge in Lesereihenfolge — Basis für "aktiver Eintrag"
+  // (der letzte Eintrag, dessen Seite <= der aktuell offenen Seite liegt).
+  const flatToc = useMemo(() => {
+    const out: PdfTocEntry[] = [];
+    const walk = (entries: PdfTocEntry[]) => entries.forEach(e => { out.push(e); walk(e.children); });
+    walk(toc ?? []);
+    return out;
+  }, [toc]);
+  const activeTocPage = useMemo(() => {
+    const eligible = flatToc.filter(e => e.page <= pageNumber);
+    return eligible.length ? Math.max(...eligible.map(e => e.page)) : null;
+  }, [flatToc, pageNumber]);
+  const activeTocEntry = useMemo(
+    () => (activeTocPage !== null ? flatToc.find(e => e.page === activeTocPage) ?? null : null),
+    [flatToc, activeTocPage]
+  );
+
+  const tocKey = (e: PdfTocEntry) => `${e.page}-${e.title}`;
+  const toggleTocEntry = (e: PdfTocEntry) => {
+    setExpandedToc(prev => {
+      const next = new Set(prev);
+      const key = tocKey(e);
+      next.has(key) ? next.delete(key) : next.add(key);
+      return next;
+    });
+  };
+  const jumpToTocEntry = (e: PdfTocEntry) => {
+    goToPage(e.page);
+    setTocOpen(false);
+  };
+
   if (loadError) {
     return (
       <div className="max-w-3xl mx-auto py-20 px-4 text-center space-y-4">
@@ -321,13 +374,39 @@ export const PdfSplitScreenReader: React.FC<PdfSplitScreenReaderProps> = ({ doc,
     <div className="w-full space-y-3 animate-in fade-in duration-700">
       {/* Schlanker Kopf — eine Zeile, damit der Split-Screen die Fläche bekommt */}
       <div className="flex items-center gap-3">
+        <button
+          onClick={() => setTocOpen(v => !v)}
+          aria-label={t('rd.tocToggle')}
+          aria-expanded={tocOpen}
+          title={t('rd.tocToggle')}
+          className="shrink-0 w-8 h-8 rounded-xl flex items-center justify-center transition-all"
+          style={tocOpen
+            ? { background: 'color-mix(in srgb, var(--primary) 15%, transparent)', color: 'var(--primary)' }
+            : { color: 'var(--text-main)', opacity: 0.7 }}
+        >
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
+            <path d="M6 4h9l3 3v13H6z"/><path d="M15 4v3h3"/><path d="M9 12h6M9 16h6"/>
+          </svg>
+        </button>
         <button onClick={onBack} aria-label={t('quizSetup.backToLibrary')} className="shrink-0 text-[10px] font-black uppercase tracking-widest text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 transition-colors">
           {t('rd.back')}
         </button>
-        <h1 className="min-w-0 flex-1 text-base lg:text-lg font-black tracking-tight dark:text-white truncate">{documentDisplayName(doc)}</h1>
-        <p className="shrink-0 hidden sm:block text-[10px] font-medium text-slate-400">
-          {t('rd.pagesReadOf', { done: doneIndices.length, total: pdf.numPages })}
-        </p>
+        <div className="min-w-0 flex-1">
+          <h1 className="text-base lg:text-lg font-black tracking-tight dark:text-white truncate leading-tight">{documentDisplayName(doc)}</h1>
+          {/* Aktueller Abschnitt aus dem erkannten Inhaltsverzeichnis — echte, sich
+              beim Blättern mitändernde Angabe, kein statischer Titel. */}
+          {activeTocEntry && (
+            <p className="text-[11px] font-medium text-slate-400 truncate leading-tight mt-0.5">{activeTocEntry.title}</p>
+          )}
+        </div>
+        <div className="hidden sm:flex items-center gap-2 shrink-0">
+          <div className="w-16 h-1 rounded-full overflow-hidden" style={{ background: 'var(--border-color)' }}>
+            <div className="h-full rounded-full" style={{ width: `${Math.round((doneIndices.length / pdf.numPages) * 100)}%`, background: 'var(--primary)' }} />
+          </div>
+          <p className="text-[10px] font-medium text-slate-400 whitespace-nowrap">
+            {t('rd.pagesReadOf', { done: doneIndices.length, total: pdf.numPages })}
+          </p>
+        </div>
         <button
           onClick={() => onStartFeynman(handoffTopic)}
           disabled={doneIndices.length === 0}
@@ -338,11 +417,44 @@ export const PdfSplitScreenReader: React.FC<PdfSplitScreenReaderProps> = ({ doc,
         </button>
       </div>
 
-      {/* Split-Screen füllt die restliche Fensterhöhe; PDF bekommt bewusst mehr Breite (3/5).
+      {/* Split-Screen füllt die restliche Fensterhöhe; PDF bekommt bewusst mehr Breite (7/10) —
+          die Seite rendert dadurch bei 100% automatisch größer (Basisbreite kommt aus der
+          Container-Breite), ohne dass Zoom nötig ist und die Gesamtseite verloren geht.
           Höhe liegt auf den Panes selbst — Grid-Zeilen dehnen sich sonst am Inhalt. */}
-      <div className="grid grid-cols-1 lg:grid-cols-5 gap-4">
+      <div className="grid grid-cols-1 lg:grid-cols-10 gap-4">
         {/* Links: PDF-Seite */}
-        <div className="lg:col-span-3 rounded-[24px] p-3 lg:p-4 flex flex-col gap-3 h-[75vh] lg:h-[calc(100vh-7.5rem)]" style={{ background: 'var(--bg-sidebar)', border: '1px solid var(--border-color)' }}>
+        <div className="relative lg:col-span-7 rounded-[24px] p-3 lg:p-4 flex flex-col gap-3 h-[80vh] lg:h-[calc(100vh-6rem)]" style={{ background: 'var(--bg-sidebar)', border: '1px solid var(--border-color)' }}>
+          {/* Inhaltsverzeichnis-Overlay: reine Dokument-Navigation, keine App-Funktionen
+              (Bibliothek/Einstellungen/etc.) — legt sich nur über diese Spalte, der
+              Tutor rechts bleibt unberührt und unabgedunkelt. */}
+          <div
+            onClick={() => setTocOpen(false)}
+            className="absolute inset-0 rounded-[20px] transition-opacity duration-200 z-10"
+            style={{ background: 'rgba(15,17,23,0.36)', opacity: tocOpen ? 1 : 0, pointerEvents: tocOpen ? 'auto' : 'none' }}
+          />
+          <nav
+            aria-hidden={!tocOpen}
+            className="absolute inset-y-0 left-0 w-[280px] max-w-[80%] rounded-l-[20px] flex flex-col z-20 shadow-2xl transition-transform duration-200"
+            style={{ background: 'var(--bg-main)', borderRight: '1px solid var(--border-color)', transform: tocOpen ? 'translateX(0)' : 'translateX(-100%)' }}
+          >
+            <div className="shrink-0 px-5 py-4 flex items-center gap-2 text-[10px] font-black uppercase tracking-[0.12em]" style={{ color: 'var(--text-main)', opacity: 0.55, borderBottom: '1px solid var(--border-color)' }}>
+              <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><path d="M4 6h16M4 12h16M4 18h10"/></svg>
+              {t('rd.tocTitle')}
+            </div>
+            <div className="flex-1 overflow-y-auto px-2.5 py-3">
+              {toc === null && (
+                <p className="px-3 py-4 text-[11px] font-medium text-slate-400">{t('rd.tocLoading')}</p>
+              )}
+              {toc !== null && toc.length === 0 && (
+                <p className="px-3 py-4 text-[11px] font-medium text-slate-400">{t('rd.tocEmpty')}</p>
+              )}
+              {toc !== null && toc.length > 0 && (
+                <TocList entries={toc} depth={0} expanded={expandedToc} activePage={activeTocPage}
+                  onToggle={toggleTocEntry} onJump={jumpToTocEntry} tocKey={tocKey} />
+              )}
+            </div>
+          </nav>
+
           {/* Kompakte Werkzeugleiste: Seite, Zoom, Gelesen-Status */}
           <div className="flex items-center justify-between gap-2 flex-wrap">
             <div className="flex items-center gap-1.5 text-[11px] font-black dark:text-white">
@@ -480,7 +592,7 @@ export const PdfSplitScreenReader: React.FC<PdfSplitScreenReaderProps> = ({ doc,
         </div>
 
         {/* Rechts: Erklärer-Chat */}
-        <div className="lg:col-span-2 rounded-[24px] p-4 lg:p-6 gap-4 flex flex-col h-[70vh] lg:h-[calc(100vh-7.5rem)]" style={{ background: 'var(--bg-sidebar)', border: '1px solid var(--border-color)' }}>
+        <div className="lg:col-span-3 rounded-[24px] p-4 lg:p-6 gap-4 flex flex-col h-[80vh] lg:h-[calc(100vh-6rem)]" style={{ background: 'var(--bg-sidebar)', border: '1px solid var(--border-color)' }}>
           <div>
             <p className="text-[10px] font-black uppercase tracking-widest" style={{ color: 'var(--primary)' }}>{t('nav.explainer')}</p>
             <p className="text-xs text-slate-400 font-medium">
@@ -581,3 +693,4 @@ export const PdfSplitScreenReader: React.FC<PdfSplitScreenReaderProps> = ({ doc,
     </div>
   );
 };
+
