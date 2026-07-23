@@ -393,8 +393,10 @@ export interface ExamQuestion {
   achievedPoints?: number;
 
   // Rubrik-Bewertung (für type="open")
-  /** Erwartungshorizont: bei der Generierung festgelegte Kriterien — die Korrektur bewertet exakt dagegen statt ad hoc. */
-  rubricCriteria?: { name: string; maxPoints: number }[];
+  /** Erwartungshorizont: bei der Generierung festgelegte Kriterien — die Korrektur bewertet exakt dagegen statt ad hoc.
+   *  sourceReference: kurzer Beleg aus dem Material, der dieses Kriterium stützt (Phase 3 Klausursimulator 2.0) —
+   *  optional, da nicht jedes Material eine saubere Textstelle für jedes Kriterium hergibt. */
+  rubricCriteria?: { name: string; maxPoints: number; sourceReference?: string }[];
   criterionScores?: CriterionScore[];
   evaluationConfidence?: number;     // 0–100
   questionFeedback?: QuestionFeedbackType;

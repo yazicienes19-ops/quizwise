@@ -1027,7 +1027,24 @@ const EXAM_TYPE_BULLETS: Record<string, (n: number) => string> = {
   fillblank: n => `- ${n} Lückentext (type "fillblank"): blankText: Satz mit [LÜCKE] als Platzhalter (max. 4 Lücken). blanks[]: korrekte Füllwörter in gleicher Reihenfolge. options[]: leer. solution: kompletter Text. Punkte: 3-5.`,
   ranking: n => `- ${n} Sortierung (type "ranking"): rankingItems[]: 4-5 Konzepte/Schritte/Phasen in KORREKTER Reihenfolge. options[]: leer. solution: Begründung der Reihenfolge. Punkte: 3-5. NUR wenn das Material Prozesse, Phasen oder geordnete Abläufe enthält.`,
   numeric: n => `- ${n} Numerisch (type "numeric"): numericAnswer: korrekte Zahl. numericTolerance: akzeptabler Spielraum. options[]: leer. solution: Erklärung. Punkte: 2-3. NUR wenn das Material konkrete Zahlen/Formeln/Statistiken enthält. Wenn nicht: als "open" ersetzen.`,
-  open: n => `- ${n} Freitext/Kurzantwort (type "open"): Transfer oder 2-3-Satz-Erklärung unter Zeitdruck. options[]: leer. solution: Musterantwort mit Kernbegriffen. rubricCriteria[]: 2-4 Bewertungskriterien als Erwartungshorizont — je {name: prüfbares Teilkriterium aus der Musterlösung, maxPoints: Teilpunkte}; die Summe aller maxPoints ergibt exakt points. Punkte: 5-10.`,
+  open: n => `- ${n} Freitext/Kurzantwort (type "open"): Transfer oder 2-3-Satz-Erklärung unter Zeitdruck. options[]: leer. solution: Musterantwort mit Kernbegriffen. rubricCriteria[]: 2-4 Bewertungskriterien als Erwartungshorizont — je {name: prüfbares Teilkriterium aus der Musterlösung, maxPoints: Teilpunkte, sourceReference: PFLICHTFELD, fülle es IMMER mit dem Satz oder der Textstelle aus dem Material, die dieses Kriterium stützt (Paraphrase reicht, kein wörtliches Zitat nötig) — NUR wenn das Kriterium wirklich rein abstrakt ohne jeden Bezug im Material ist (seltener Ausnahmefall), Feld weglassen statt zu erfinden}; die Summe aller maxPoints ergibt exakt points. Punkte: 5-10.`,
+};
+
+// "Akademischer Mindestanspruch" pro Fragetyp (Klausursimulator 2.0 Phase 3, wörtlich aus
+// der Spec) — verhindert reine Trivia-/Faktenabfrage unterhalb des Hochschulniveaus.
+// "ranking" bewusst NICHT enthalten: die bestehende "NUR wenn das Material einen echten
+// Prozess/eine Methodenabfolge hergibt"-Klausel in EXAM_TYPE_BULLETS erfüllt dieses
+// Kriterium schon, keine neue Regel nötig. "numeric" ebenfalls nicht in der Spec-Tabelle.
+// "open": bloomLevel steht bei der Generierung noch nicht fest (erst classifyBloomLevels
+// danach) — daher keine Bedingung auf ein zu diesem Zeitpunkt nicht existierendes Feld,
+// stattdessen generische Mischungs-Vorgabe; die Ziel-Verteilung oben steuert den
+// Bloom-Schwerpunkt ohnehin schon indirekt.
+const EXAM_TYPE_ACADEMIC_MINIMUM: Record<string, string> = {
+  mc: 'MC muss mindestens ein Fallbeispiel, eine Anwendungssituation oder einen Theorievergleich enthalten — keine reine Faktenabfrage ("Wer hat X gesagt").',
+  truefalse: 'Wahr/Falsch-Aussage muss eine Theoriebehauptung, Kausalannahme oder Methodenaussage sein, keine biografische Trivia.',
+  matching: 'Zuordnung-Paare müssen Theorie↔Grundannahme, Modell↔Anwendungsfall oder Begriff↔Abgrenzung sein, nicht Bild↔Label.',
+  fillblank: 'Lückentext nur zulässig für Fachterminologie in einem erklärenden Kontextsatz, nie für isolierte Einzelwörter ohne Begründungscharakter.',
+  open: 'Freitext: erzeuge sowohl Definitions-/Konzepterklärungs- als auch Anwendungs-/Fallanalyse-/Bewertungs-Freitextfragen, in einer Mischung passend zur Ziel-Verteilung oben — nicht ausschließlich reine Definitionsfragen.',
 };
 
 export const generateFullExam = async (
@@ -1094,12 +1111,20 @@ Gewichte die Fragenverteilung stärker auf diese Kategorien und bevorzuge Fragen
 
   const bloomTargetLine = options?.examTypePreset ? buildBloomTargetLine(options.examTypePreset) : '';
 
+  const academicMinimumLines = EXAM_ALL_TYPES
+    .filter(t => typeCounts[t] > 0 && EXAM_TYPE_ACADEMIC_MINIMUM[t])
+    .map(t => `- ${EXAM_TYPE_ACADEMIC_MINIMUM[t]}`)
+    .join('\n');
+  const academicMinimumBlock = academicMinimumLines
+    ? `\nAKADEMISCHER MINDESTANSPRUCH (verhindert reine Trivia-/Faktenabfrage unterhalb des Hochschulniveaus):\n${academicMinimumLines}\n`
+    : '';
+
   parts.push({ text: `Erstelle eine akademische Klausur mit genau ${count} Aufgaben auf Niveau "${difficulty}".
 Zufalls-Seed: ${seed}
 
 FRAGETYPEN-VERTEILUNG (zwingend einhalten, Summe = ${count}):
 ${typeBullets}
-${excludeLine}${bloomTargetLine}
+${excludeLine}${bloomTargetLine}${academicMinimumBlock}
 ALLGEMEINE REGELN:
 - Jede Aufgabe deckt einen ANDEREN Aspekt des Materials ab
 - id: fortlaufend "q1", "q2", ...
@@ -1149,10 +1174,11 @@ ALLGEMEINE REGELN:
               items: {
                 type: Type.OBJECT,
                 properties: {
-                  name:      { type: Type.STRING },
-                  maxPoints: { type: Type.NUMBER },
+                  name:            { type: Type.STRING },
+                  maxPoints:       { type: Type.NUMBER },
+                  sourceReference: { type: Type.STRING },
                 },
-                required: ['name', 'maxPoints'],
+                required: ['name', 'maxPoints', 'sourceReference'],
               },
             },
           },
@@ -1292,6 +1318,7 @@ const evaluateWithRubricOnce = async (
       rubricCriteria: q.rubricCriteria ?? [],
       userAnswer: q.userAnswer ?? '',
       feedbackContext: feedbackContexts[q.id] ?? '',
+      bloomLevel: q.bloomLevel ?? null,
     }))
   );
 
@@ -1307,6 +1334,7 @@ REGELN:
 - Bewerte AUSSCHLIESSLICH auf Basis der angegebenen Musterlösung — kein externes Wissen.
 - Hat eine Frage rubricCriteria (Erwartungshorizont): Bewerte GENAU nach diesen Kriterien — gleiche Namen, gleiche maxPoints, in derselben Reihenfolge. Erfinde KEINE eigenen Kriterien dazu.
 - Nur wenn rubricCriteria leer ist: Erstelle selbst 2–4 Bewertungskriterien basierend auf der Musterlösung.
+- Argumentationsqualität (nur wenn bloomLevel "bewerten", "analysieren" oder "erschaffen" ist): Bewerte bei JEDEM Kriterium zusätzlich, ob begründet argumentiert statt nur aufgezählt wird — eine Antwort, die Fakten korrekt nennt aber Position, Gegenargumente oder Kausalzusammenhänge nicht gegeneinander abwägt, bekommt bei diesen Kriterien höchstens 60% der jeweiligen maxPoints. KEIN zusätzliches Kriterium erfinden — die bestehenden Kriterien werden nur strenger im Sinne der Argumentationsqualität bewertet, die Summe der maxPoints bleibt unverändert.
 - Vergib Punkte granular: nicht nur 0 oder voll, sondern auch Teilpunkte.
 - achievedPoints: nie negativ, nie größer als points.
 - evaluationConfidence: 0–100 (wie sicher bist du dir bei dieser Bewertung?).

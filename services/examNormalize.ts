@@ -83,7 +83,11 @@ export function normalizeExamQuestions(raw: unknown): ExamQuestion[] {
         const rubric = (Array.isArray(q.rubricCriteria) ? q.rubricCriteria : [])
           .filter((c: any) => c && typeof c.name === 'string' && c.name.trim() && typeof c.maxPoints === 'number' && c.maxPoints > 0)
           .slice(0, 4)
-          .map((c: any) => ({ name: c.name.trim(), maxPoints: Math.round(c.maxPoints) }));
+          .map((c: any) => ({
+            name: c.name.trim(),
+            maxPoints: Math.round(c.maxPoints),
+            ...(typeof c.sourceReference === 'string' && c.sourceReference.trim() ? { sourceReference: c.sourceReference.trim() } : {}),
+          }));
         const rubricSum = rubric.reduce((s: number, c: { maxPoints: number }) => s + c.maxPoints, 0);
         if (rubric.length >= 2 && rubricSum > 0 && rubricSum <= 20) {
           out.push({ ...base, rubricCriteria: rubric, points: rubricSum });

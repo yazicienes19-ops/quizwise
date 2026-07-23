@@ -935,6 +935,7 @@ export const tr: Translations = {
   'es.mcNoBasis': 'Değerlendirme temeli yok (correctIndices eksik).',
   'es.fullyCorrect': 'Tamamen doğru.',
   'ev.rubricTitle': 'Değerlendirme ölçütleri',
+  'ev.criterionSource': 'Kanıt: {text}',
   'ev.blankTolerant': 'yazım hatası toleransıyla kabul edildi',
   'ea.title': 'Sınav Arşivi',
   'ea.subtitle': 'Son sınavların: cevaplar, geri bildirim ve çözümlerle',

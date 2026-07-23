@@ -89,6 +89,23 @@ describe('normalizeExamQuestions', () => {
     expect(normalizeExamQuestions([open('kein array')])[0].rubricCriteria).toBeUndefined();
   });
 
+  it('Erwartungshorizont: sourceReference bleibt erhalten statt beim Rebuild verworfen zu werden (Phase-3-Regression)', () => {
+    const out = normalizeExamQuestions([open([
+      { name: 'Definition', maxPoints: 3, sourceReference: 'Kapitel 2, Absatz zur Reizkopplung' },
+      { name: 'Beispiel', maxPoints: 3 },
+    ], 8)]);
+    expect(out[0].rubricCriteria![0].sourceReference).toBe('Kapitel 2, Absatz zur Reizkopplung');
+    expect(out[0].rubricCriteria![1].sourceReference).toBeUndefined();
+  });
+
+  it('Erwartungshorizont: leerer/blank sourceReference wird zu undefined statt leerem String', () => {
+    const out = normalizeExamQuestions([open([
+      { name: 'Definition', maxPoints: 3, sourceReference: '   ' },
+      { name: 'Beispiel', maxPoints: 3 },
+    ], 8)]);
+    expect(out[0].rubricCriteria![0].sourceReference).toBeUndefined();
+  });
+
   it('numeric ohne Zahl fliegt raus, Toleranz-Default 0', () => {
     expect(normalizeExamQuestions([{ id: 'q1', question: '2+2?', type: 'numeric', solution: '4', points: 2 }])).toHaveLength(0);
     const out = normalizeExamQuestions([{ id: 'q1', question: '2+2?', type: 'numeric', solution: '4', points: 2, numericAnswer: 4, numericTolerance: -1 }]);

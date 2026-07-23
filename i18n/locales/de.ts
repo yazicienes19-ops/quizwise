@@ -943,6 +943,7 @@ export const de = {
   'es.mcNoBasis': 'Keine Auswertungsgrundlage (correctIndices fehlt).',
   'es.fullyCorrect': 'Vollständig korrekt.',
   'ev.rubricTitle': 'Erwartungshorizont',
+  'ev.criterionSource': 'Beleg: {text}',
   'ev.blankTolerant': 'mit Tippfehler-Toleranz akzeptiert',
   'ea.title': 'Klausur-Archiv',
   'ea.subtitle': 'Deine letzten Klausuren zum Nachschlagen: mit Antworten, Feedback und Lösungen',

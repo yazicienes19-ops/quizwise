@@ -913,7 +913,11 @@ export const ExamView: React.FC<ExamViewProps> = ({
                         {q.criterionScores && q.criterionScores.length > 0 && (
                           <div className="space-y-2 mb-4">
                             <p className="text-[9px] font-black uppercase tracking-[0.2em] text-slate-400">{t('ev.rubricTitle')}</p>
-                            {q.criterionScores.map(cs => (
+                            {q.criterionScores.map((cs, csIdx) => {
+                              // Rubrik-Reihenfolge ist per Prompt-Regel identisch zu rubricCriteria
+                              // (evaluateWithRubricOnce), daher Index-Zuordnung statt Namensabgleich.
+                              const sourceReference = q.rubricCriteria?.[csIdx]?.sourceReference;
+                              return (
                               <div key={cs.criterionId} className="flex items-start gap-3 text-sm">
                                 <span className={`shrink-0 mt-0.5 w-5 h-5 rounded-lg flex items-center justify-center text-[10px] font-black ${cs.status === 'full' ? 'bg-emerald-500 text-white' : cs.status === 'partial' ? 'bg-amber-400 text-white' : 'bg-slate-300 dark:bg-slate-600 text-white'}`}>
                                   {cs.status === 'full' ? '✓' : cs.status === 'partial' ? '~' : '✗'}
@@ -926,9 +930,13 @@ export const ExamView: React.FC<ExamViewProps> = ({
                                     </span>
                                   </div>
                                   <p className="text-[10px] text-slate-500 dark:text-slate-400 mt-0.5">{cs.explanation}</p>
+                                  {sourceReference && (
+                                    <p className="text-[9px] text-slate-400 dark:text-slate-500 italic mt-1">{t('ev.criterionSource', { text: sourceReference })}</p>
+                                  )}
                                 </div>
                               </div>
-                            ))}
+                              );
+                            })}
                           </div>
                         )}
 
