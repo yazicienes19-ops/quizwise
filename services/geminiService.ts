@@ -788,6 +788,10 @@ export interface WrongAnswerContext {
   topic?: string;
   explanation: string;
   docName: string;
+  /** Gesetzt vom errorPool-Kontingent "wiederkehrende Themen" (services/errorPool.ts) —
+   *  das Thema trat über ≥2 verschiedene Sessions hinweg wiederholt als Fehler auf,
+   *  unabhängig davon, wie lange dieser konkrete Fehler schon zurückliegt. */
+  isRecurringTopic?: boolean;
 }
 
 /** Feste Ursachen-Klassifikation — entscheidet über RECOMMENDED_ACTION_BY_CAUSE
@@ -814,14 +818,18 @@ export const analyzeLearningProgress = async (
     metrics.map(m => ({ thema: m.topic, konfidenz: m.confidence + '%', versuche: m.totalAttempts }))
   );
   const wrongText = `\n\nFalsch beantwortete Fragen/Lücken (referenziere sie über ihre ID im Feld sourceErrorIds bzw. overallHealthErrorIds — NIEMALS eine ID erfinden, die hier nicht auftaucht):\n` +
-    wrongAnswers.map(w => `[${w.id}] Thema "${w.topic || 'Allgemein'}": "${w.question}"\n   Richtige Erklärung: ${w.explanation}`).join('\n\n');
+    wrongAnswers.map(w => `[${w.id}]${w.isRecurringTopic ? ' [WIEDERKEHREND: dieses Thema trat bereits in mehreren früheren, unabhängigen Sessions als Fehler auf]' : ''} Thema "${w.topic || 'Allgemein'}": "${w.question}"\n   Richtige Erklärung: ${w.explanation}`).join('\n\n');
 
   const calibrationText = calibrationGaps.length > 0
     ? `\n\nKalibrierung (Selbsteinschätzung vs. tatsächliches Ergebnis im Quiz):\n` +
       calibrationGaps.map(g => `Thema "${g.topic}": Überschätzung in ${g.overconfidenceRate}% der "sicher"-Antworten, Unterschätzung in ${g.underconfidenceRate}% der "unsicher"-Antworten (n=${g.n}).`).join('\n')
     : '';
 
-  const groundingRule = `\n\nWICHTIGSTE REGEL: Behaupte NUR, was die obigen ${wrongAnswers.length} Fehler/Lücken wirklich hergeben. Jedes Muster MUSS sourceErrorIds mit mindestens 2 echten IDs aus mindestens 2 unterschiedlichen Themen-Wiederholungen enthalten — erfinde keine IDs, keine Konzepte, keine Ursachen ohne Beleg. ${wrongAnswers.length < 5 ? 'Es liegen nur sehr wenige Fehler vor (unter 5) — sei besonders zurückhaltend, aggregiere nur wenn wirklich derselbe Fehlertyp mehrfach auftritt, im Zweifel lieber keine oder weniger Muster als konstruierte Verallgemeinerungen.' : 'Wenn die Fehler zu unterschiedlich sind, um ein gemeinsames Muster zu bilden, liefere weniger, dafür belastbare Muster.'} overallHealthErrorIds MUSS ebenfalls nur echte IDs enthalten, auf die sich die Einschätzung tatsächlich stützt — ohne Beleg keine Aussage über das Lernverhalten treffen.`;
+  const hasRecurring = wrongAnswers.some(w => w.isRecurringTopic);
+  const recurringRule = hasRecurring
+    ? ` Fehler mit dem Marker [WIEDERKEHREND] sind KEINE akuten Einzelfehler, sondern belegen eine über mehrere Sessions hinweg bestehende, hartnäckige Schwäche — behandle sie in deiner Einschätzung entsprechend gewichtiger als einen isolierten Ausrutscher und mache diese Unterscheidung (akuter Einzelfehler vs. hartnäckige Schwäche) in probableCause/description erkennbar, wo es zutrifft.`
+    : '';
+  const groundingRule = `\n\nWICHTIGSTE REGEL: Behaupte NUR, was die obigen ${wrongAnswers.length} Fehler/Lücken wirklich hergeben. Jedes Muster MUSS sourceErrorIds mit mindestens 2 echten IDs aus mindestens 2 unterschiedlichen Themen-Wiederholungen enthalten — erfinde keine IDs, keine Konzepte, keine Ursachen ohne Beleg. ${wrongAnswers.length < 5 ? 'Es liegen nur sehr wenige Fehler vor (unter 5) — sei besonders zurückhaltend, aggregiere nur wenn wirklich derselbe Fehlertyp mehrfach auftritt, im Zweifel lieber keine oder weniger Muster als konstruierte Verallgemeinerungen.' : 'Wenn die Fehler zu unterschiedlich sind, um ein gemeinsames Muster zu bilden, liefere weniger, dafür belastbare Muster.'}${recurringRule} overallHealthErrorIds MUSS ebenfalls nur echte IDs enthalten, auf die sich die Einschätzung tatsächlich stützt — ohne Beleg keine Aussage über das Lernverhalten treffen.`;
 
   const text = await callBackend({
     complexity: 'heavy',

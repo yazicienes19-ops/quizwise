@@ -89,4 +89,60 @@ describe('buildErrorPool', () => {
     const pool = buildErrorPool({ quiz, exam: [], recall: [] });
     expect(pool[0].topic).toBe('B');
   });
+
+  describe('wiederkehrende Themen (Kontingent A)', () => {
+    it('ein Thema aus >=2 Sessions überlebt trotz alten letzten Fehlers, verdrängt durch reine Recency', () => {
+      // "Wiederkehrend" tauchte vor 10 und 8 Tagen auf (2 Sessions) - alt, aber wiederholt.
+      // 20 ganz frische Einzel-Fehler zu anderen, jeweils einmaligen Themen würden bei reiner
+      // Quotierung/Recency die alte Dauerschwäche komplett aus den 10 Plätzen verdrängen.
+      const oldRecurring = [
+        mkQuiz('old1', 'Doc', now - 10 * 24 * HOUR, ['Wiederkehrend']),
+        mkQuiz('old2', 'Doc', now - 8 * 24 * HOUR, ['Wiederkehrend']),
+      ];
+      const freshUnique = Array.from({ length: 6 }, (_, i) =>
+        mkQuiz(`fresh${i}`, 'Doc', now - i * HOUR, [`Einmalig${i}`]));
+      const pool = buildErrorPool({ quiz: [...oldRecurring, ...freshUnique], exam: [], recall: [], limit: 10 });
+      const recurringEntry = pool.find(e => e.topic === 'Wiederkehrend');
+      expect(recurringEntry).toBeDefined();
+      expect(recurringEntry?.isRecurringTopic).toBe(true);
+    });
+
+    it('ein Thema, das nur innerhalb einer einzigen Session mehrfach auftaucht, gilt NICHT als wiederkehrend', () => {
+      const quiz = [mkQuiz('q1', 'Doc', now, ['Einmalsession', 'Einmalsession'])];
+      const pool = buildErrorPool({ quiz, exam: [], recall: [], limit: 10 });
+      expect(pool.every(e => !e.isRecurringTopic)).toBe(true);
+    });
+
+    it('Themen ohne Angabe können nie als wiederkehrend markiert werden', () => {
+      const quiz = [
+        mkQuiz('q1', 'Doc', now - 10 * 24 * HOUR, ['']),
+        mkQuiz('q2', 'Doc', now - 8 * 24 * HOUR, ['']),
+      ];
+      const pool = buildErrorPool({ quiz, exam: [], recall: [], limit: 10 });
+      expect(pool.every(e => !e.isRecurringTopic)).toBe(true);
+    });
+
+    it('keine doppelte Zählung: ein als wiederkehrend gewähltes Item taucht nicht zusätzlich im Recency-Kontingent auf', () => {
+      const oldRecurring = [
+        mkQuiz('old1', 'Doc', now - 10 * 24 * HOUR, ['Wiederkehrend']),
+        mkQuiz('old2', 'Doc', now - 8 * 24 * HOUR, ['Wiederkehrend']),
+      ];
+      const freshUnique = Array.from({ length: 6 }, (_, i) =>
+        mkQuiz(`fresh${i}`, 'Doc', now - i * HOUR, [`Einmalig${i}`]));
+      const pool = buildErrorPool({ quiz: [...oldRecurring, ...freshUnique], exam: [], recall: [], limit: 10 });
+      const ids = pool.map(e => e.id);
+      expect(new Set(ids).size).toBe(ids.length);
+    });
+
+    it('Gesamtlimit wird trotz zweier Kontingente weiterhin respektiert', () => {
+      const oldRecurring = [
+        mkQuiz('old1', 'Doc', now - 10 * 24 * HOUR, ['Wiederkehrend']),
+        mkQuiz('old2', 'Doc', now - 8 * 24 * HOUR, ['Wiederkehrend']),
+      ];
+      const freshUnique = Array.from({ length: 10 }, (_, i) =>
+        mkQuiz(`fresh${i}`, 'Doc', now - i * HOUR, [`Einmalig${i}`]));
+      const pool = buildErrorPool({ quiz: [...oldRecurring, ...freshUnique], exam: [], recall: [], limit: 10 });
+      expect(pool.length).toBeLessThanOrEqual(10);
+    });
+  });
 });
