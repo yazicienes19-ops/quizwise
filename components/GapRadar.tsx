@@ -279,6 +279,18 @@ export const GapRadar: React.FC<GapRadarProps> = ({ metrics, onNavigate, onActio
   const allRecall = useMemo(() => getAllRecallResults(), [historyBump]);
   const allExam   = useMemo(() => getAllExamResults(), [historyBump]);
 
+  const ANALYSIS_CACHE_KEY = 'quizwise_gap_analysis_v1';
+  // Ändert sich der Verlauf NACH dem ersten Render (z.B. eine Session wird
+  // gelöscht), ist eine bereits gezeigte Tiefenanalyse potenziell nicht mehr
+  // vertrauenswürdig — sie könnte sich auf jetzt nicht mehr existierende
+  // Sessions stützen. Lieber leer als möglicherweise falsch/veraltet.
+  const isFirstHistoryRender = useRef(true);
+  useEffect(() => {
+    if (isFirstHistoryRender.current) { isFirstHistoryRender.current = false; return; }
+    setAnalysis(null);
+    try { localStorage.removeItem(ANALYSIS_CACHE_KEY); } catch {}
+  }, [historyBump]);
+
   // Verlaufseintrag endgültig löschen (lokal + Cloud); Statistiken rechnen neu
   const handleDeleteSession = (kind: 'quiz' | 'feynman' | 'exam', id: string) => {
     if (!window.confirm(t('gr.deleteConfirm'))) return;
@@ -520,24 +532,52 @@ export const GapRadar: React.FC<GapRadarProps> = ({ metrics, onNavigate, onActio
   const hasChartData = chartQuizPts.length > 0 || chartFeynmanPts.length > 0 || chartExamPts.length > 0;
 
   // ── AI analysis context ──────────────────────────────────────────────────────
-  const wrongAnswersCtx = useMemo((): WrongAnswerContext[] =>
-    allQuiz.slice(0, 5).flatMap(result =>
+  // Grundlage der Tiefenanalyse: früher nur Quiz-Fehler, obwohl Klausur- und
+  // Feynman-Lücken oft die aussagekräftigeren Fehlermuster liefern (gerade wenn
+  // ein Nutzer hauptsächlich mit diesen Methoden lernt). Alle drei Quellen
+  // fließen jetzt gemeinsam ein, nach Aktualität sortiert — nicht pro Quelle
+  // quotiert, damit die wirklich jüngsten Lücken den Vorrang behalten.
+  const wrongAnswersCtx = useMemo((): WrongAnswerContext[] => {
+    type Timed = WrongAnswerContext & { ts: number };
+
+    const fromQuiz: Timed[] = allQuiz.slice(0, 8).flatMap(result =>
       (result.answers || [])
         .filter(a => !a.isCorrect)
-        .slice(0, 4)
+        .slice(0, 3)
         .map(a => {
           const q = result.questions?.[a.questionIndex];
           if (!q) return null;
-          return { question: q.question, topic: q.topic, explanation: q.explanation, docName: result.docName };
+          return { question: q.question, topic: q.topic, explanation: q.explanation, docName: result.docName, ts: result.timestamp };
         })
-        .filter((x): x is WrongAnswerContext => x !== null)
-    ).slice(0, 15),
-  [allQuiz]);
+        .filter((x): x is Timed => x !== null)
+    );
+
+    const fromExam: Timed[] = allExam.slice(0, 8).flatMap(result =>
+      (result.questions || [])
+        .filter(q => (q.achievedPoints ?? 0) < q.points)
+        .slice(0, 3)
+        .map(q => ({
+          question: q.question, topic: q.topic,
+          explanation: q.feedback || q.solution, docName: result.docName, ts: result.timestamp,
+        }))
+    );
+
+    const fromFeynman: Timed[] = allRecall.slice(0, 8).flatMap(result =>
+      (result.missingPoints || []).slice(0, 2).map(m => ({
+        question: `Erkläre: ${result.topic || result.docName}`,
+        topic: result.topic, explanation: m, docName: result.docName, ts: result.timestamp,
+      }))
+    );
+
+    return [...fromQuiz, ...fromExam, ...fromFeynman]
+      .sort((a, b) => b.ts - a.ts)
+      .slice(0, 20)
+      .map(({ ts, ...rest }) => rest);
+  }, [allQuiz, allExam, allRecall]);
 
   const hasAnyData = overallScore !== null || combinedHistory.length > 0;
 
   // Tiefenanalyse cachen — sonst kostet jeder Coach-Besuch mit Klick einen Gemini-Call
-  const ANALYSIS_CACHE_KEY = 'quizwise_gap_analysis_v1';
   const sessionStamp = allQuiz.length + allRecall.length + allExam.length;
 
   useEffect(() => {

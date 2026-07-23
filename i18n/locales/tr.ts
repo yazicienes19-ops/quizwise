@@ -1075,7 +1075,7 @@ export const tr: Translations = {
   'gr.learnHistory': 'Öğrenme geçmişi',
   'gr.lastSessions': 'Son {n} oturum, kronolojik.',
   'gr.errorAnalysis': 'Hata analizi',
-  'gr.aiAnalyzes': 'QuizWise testlerinden {n} gerçek yanlış cevabı analiz ediyor.',
+  'gr.aiAnalyzes': 'QuizWise, test, sınav ve Feynman\'dan {n} gerçek eksiği analiz ediyor.',
   'gr.playMoreQuizzes': 'Sağlam bir analiz için daha çok test çöz.',
   'gr.analyzing': 'Analiz ediliyor …',
   'gr.deepAnalysis': 'Derin analiz',

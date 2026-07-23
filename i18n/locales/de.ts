@@ -1083,7 +1083,7 @@ export const de = {
   'gr.learnHistory': 'Lern-Verlauf',
   'gr.lastSessions': 'Letzte {n} Sessions, chronologisch.',
   'gr.errorAnalysis': 'Fehleranalyse',
-  'gr.aiAnalyzes': 'QuizWise analysiert {n} echte Fehlantworten aus deinen Quizzen.',
+  'gr.aiAnalyzes': 'QuizWise analysiert {n} echte Lücken aus Quiz, Klausur und Feynman.',
   'gr.playMoreQuizzes': 'Spiele mehr Quizze für eine fundierte Analyse.',
   'gr.analyzing': 'Analyse läuft …',
   'gr.deepAnalysis': 'Tiefenanalyse',
