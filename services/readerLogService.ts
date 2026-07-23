@@ -5,11 +5,24 @@ const MAX_ENTRIES = 500;
 export interface ReaderLogEntry {
   id: string;
   docId: string;
+  /** Für den Dokument-Filter der Fehleranalyse (services/errorPool.ts) — dort
+   *  wird wie bei Quiz/Klausur/Feynman nach docName gefiltert, nicht docId.
+   *  Optional, damit ältere, bereits gespeicherte Einträge ohne dieses Feld
+   *  nicht brechen (kommen dann nur beim kontoweiten Blick vor, nicht gefiltert). */
+  docName?: string;
   chapterIndex: number;
   chapterTitle: string;
   concept: string;
   timestamp: number;
   sourceQuote?: string;
+  /** Die tatsächlich gegebene Tutor-Antwort — Grundlage für die Fehleranalyse
+   *  (Fehleranalyse-Punkt 11), wenn wasEscalated true ist. */
+  answer?: string;
+  /** true, wenn die Seite/das Kapitel allein die Frage nicht abdeckte und im
+   *  gesamten Dokument nachgesehen werden musste (generateGroundedExplanation
+   *  found:false beim ersten Versuch) — stärkeres Lücken-Signal als eine
+   *  gewöhnliche Verständnisfrage, siehe Fehleranalyse-Punkt 11. */
+  wasEscalated?: boolean;
 }
 
 const readAll = (): ReaderLogEntry[] => {
@@ -37,6 +50,12 @@ export function logReaderQuestion(entry: Omit<ReaderLogEntry, 'id'>, userId?: st
 
 export function getReaderLog(docId: string): ReaderLogEntry[] {
   return readAll().filter(e => e.docId === docId).sort((a, b) => b.timestamp - a.timestamp);
+}
+
+/** Kontoweiter Log über alle Dokumente — Grundlage für das Tutor-Fehlersignal
+ *  in der Fehleranalyse (services/errorPool.ts), die dokumentübergreifend pooled. */
+export function getAllReaderLog(): ReaderLogEntry[] {
+  return readAll().sort((a, b) => b.timestamp - a.timestamp);
 }
 
 export function getAskedChaptersForDoc(docId: string): number[] {

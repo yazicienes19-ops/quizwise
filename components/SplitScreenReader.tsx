@@ -13,6 +13,7 @@ import { findQuoteInChapter, type PassageMatch } from '../services/passageHighli
 import { renderMarkdown } from './markdownRenderer';
 import { resolveErrorMessage } from '../services/errorMessages';
 import { toast } from '../services/toast';
+import { documentDisplayName } from '../services/libraryService';
 import { useTranslation } from '../i18n/I18nProvider';
 import { DigestStatusBadge } from './SourceStatusBadge';
 
@@ -166,7 +167,11 @@ export const SplitScreenReader: React.FC<SplitScreenReaderProps> = ({ doc, userI
         ...prev,
         [chapterIndex]: (prev[chapterIndex] ?? []).map(e => e === entry ? { ...e, answer: finalAnswer, loading: false, highlight, expandedScope } : e),
       }));
-      logReaderQuestion({ docId: doc.id, chapterIndex, chapterTitle: activeChapter.title, concept: trimmed, timestamp: Date.now() }, userId);
+      logReaderQuestion({
+        docId: doc.id, docName: documentDisplayName(doc), chapterIndex,
+        chapterTitle: activeChapter.title, concept: trimmed, timestamp: Date.now(),
+        answer: finalAnswer, wasEscalated: expandedScope,
+      }, userId);
       setHandoffVersion(v => v + 1);
     } catch (e) {
       toast.error(resolveErrorMessage(e));

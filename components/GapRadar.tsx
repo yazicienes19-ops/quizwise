@@ -14,6 +14,7 @@ import type { TKey } from '../i18n';
 import { getAllResults, deleteQuizResult } from '../services/quizHistoryService';
 import { getAllRecallResults, deleteRecallResult } from '../services/recallHistoryService';
 import { getAllExamResults, deleteExamResult } from '../services/examHistoryService';
+import { getAllReaderLog } from '../services/readerLogService';
 import { toast } from '../services/toast';
 import {
   LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip,
@@ -281,6 +282,7 @@ export const GapRadar: React.FC<GapRadarProps> = ({ metrics, onNavigate, onActio
   const allQuiz   = useMemo(() => getAllResults(), [historyBump]);
   const allRecall = useMemo(() => getAllRecallResults(), [historyBump]);
   const allExam   = useMemo(() => getAllExamResults(), [historyBump]);
+  const allTutorLog = useMemo(() => getAllReaderLog(), [historyBump]);
 
   // Ändert sich der Verlauf NACH dem ersten Render (z.B. eine Session wird
   // gelöscht), ist eine bereits gezeigte Tiefenanalyse potenziell nicht mehr
@@ -540,8 +542,8 @@ export const GapRadar: React.FC<GapRadarProps> = ({ metrics, onNavigate, onActio
   // verhungert eine Quelle, die seit Wochen nicht genutzt wurde, obwohl sie
   // die Hauptlernmethode ist. Respektiert den Dokument-Filter der Seite.
   const wrongAnswersCtx = useMemo(
-    () => buildErrorPool({ quiz: allQuiz, exam: allExam, recall: allRecall, docFilter: selectedDoc || undefined }),
-    [allQuiz, allExam, allRecall, selectedDoc],
+    () => buildErrorPool({ quiz: allQuiz, exam: allExam, recall: allRecall, tutorLog: allTutorLog, docFilter: selectedDoc || undefined }),
+    [allQuiz, allExam, allRecall, allTutorLog, selectedDoc],
   );
 
   // Kalibrierungs-Gap (Selbsteinschätzung vs. tatsächliches Ergebnis, siehe

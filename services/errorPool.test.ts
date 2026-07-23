@@ -3,9 +3,16 @@ import { buildErrorPool } from './errorPool';
 import type { QuizResult } from './quizHistoryService';
 import type { ExamResult } from './examHistoryService';
 import type { RecallResult } from './recallHistoryService';
+import type { ReaderLogEntry } from './readerLogService';
 
 const HOUR = 3_600_000;
+const DAY = 24 * HOUR;
 const now = Date.now();
+
+const mkTutorEntry = (id: string, docId: string, docName: string, ts: number, concept: string, wasEscalated: boolean): ReaderLogEntry => ({
+  id, docId, docName, chapterIndex: 0, chapterTitle: `Thema ${concept}`, concept,
+  timestamp: ts, answer: `Antwort zu ${concept}`, wasEscalated,
+});
 
 const mkQuiz = (id: string, docName: string, ts: number, wrongTopics: string[]): QuizResult => ({
   id, docId: 'd', docName, timestamp: ts, score: 0, correctCount: 0, totalCount: wrongTopics.length,
@@ -143,6 +150,58 @@ describe('buildErrorPool', () => {
         mkQuiz(`fresh${i}`, 'Doc', now - i * HOUR, [`Einmalig${i}`]));
       const pool = buildErrorPool({ quiz: [...oldRecurring, ...freshUnique], exam: [], recall: [], limit: 10 });
       expect(pool.length).toBeLessThanOrEqual(10);
+    });
+  });
+
+  describe('Tutor-Fragen als viertes Fehlersignal (Punkt 11)', () => {
+    it('eskalierte Tutor-Fragen fließen in den Pool ein', () => {
+      const tutorLog = [mkTutorEntry('t1', 'd1', 'Doc', now, 'Signifikanztest', true)];
+      const pool = buildErrorPool({ quiz: [], exam: [], recall: [], tutorLog, limit: 10 });
+      expect(pool.some(e => e.id === 't1')).toBe(true);
+      expect(pool.find(e => e.id === 't1')?.topic).toBe('Thema Signifikanztest');
+    });
+
+    it('nicht eskalierte (reine Neugier-)Fragen zählen NICHT als Fehler', () => {
+      const tutorLog = [mkTutorEntry('t1', 'd1', 'Doc', now, 'Neugierfrage', false)];
+      const pool = buildErrorPool({ quiz: [], exam: [], recall: [], tutorLog, limit: 10 });
+      expect(pool.some(e => e.id === 't1')).toBe(false);
+    });
+
+    it('mehrere eskalierte Fragen am selben Lesetag zählen als EINE Sitzung (Pseudo-Session Dokument+Tag)', () => {
+      const tutorLog = [
+        mkTutorEntry('t1', 'd1', 'Doc', now, 'Thema A', true),
+        mkTutorEntry('t2', 'd1', 'Doc', now - HOUR, 'Thema A', true),
+      ];
+      const pool = buildErrorPool({ quiz: [], exam: [], recall: [], tutorLog, limit: 20 });
+      // Beide Fragen kommen rein (Kontingent reicht), aber sie gelten NICHT als
+      // wiederkehrend (nur 1 Sitzung) — kein isRecurringTopic-Flag.
+      expect(pool.filter(e => e.topic === 'Thema A').every(e => !e.isRecurringTopic)).toBe(true);
+    });
+
+    it('dieselbe Frage an unterschiedlichen Lesetagen zählt als 2 Sitzungen -> wiederkehrend möglich', () => {
+      const tutorLog = [
+        mkTutorEntry('t1', 'd1', 'Doc', now, 'Signifikanztest', true),
+        mkTutorEntry('t2', 'd1', 'Doc', now - 10 * DAY, 'Signifikanztest', true),
+      ];
+      const freshUnique = Array.from({ length: 6 }, (_, i) =>
+        mkQuiz(`fresh${i}`, 'Doc', now - i * HOUR, [`Einmalig${i}`]));
+      const pool = buildErrorPool({ quiz: freshUnique, exam: [], recall: [], tutorLog, limit: 10 });
+      const recurring = pool.find(e => e.topic === 'Thema Signifikanztest');
+      expect(recurring?.isRecurringTopic).toBe(true);
+    });
+
+    it('respektiert den Dokument-Filter wie die anderen drei Quellen', () => {
+      const tutorLog = [
+        mkTutorEntry('t1', 'd1', 'Statistik', now, 'Thema A', true),
+        mkTutorEntry('t2', 'd2', 'Psychologie', now, 'Thema B', true),
+      ];
+      const pool = buildErrorPool({ quiz: [], exam: [], recall: [], tutorLog, docFilter: 'Statistik', limit: 10 });
+      expect(pool.map(e => e.id)).toEqual(['t1']);
+    });
+
+    it('ohne tutorLog-Parameter (bestehende Aufrufer) bleibt der Pool unverändert nutzbar', () => {
+      const pool = buildErrorPool({ quiz: [mkQuiz('q1', 'Doc', now, ['A'])], exam: [], recall: [] });
+      expect(pool).toHaveLength(1);
     });
   });
 });

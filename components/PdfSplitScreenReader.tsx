@@ -279,7 +279,11 @@ export const PdfSplitScreenReader: React.FC<PdfSplitScreenReaderProps> = ({ doc,
         ...prev,
         [askedPageIndex]: (prev[askedPageIndex] ?? []).map(e => e === entry ? { ...e, answer: finalAnswer, loading: false, quote, expandedScope } : e),
       }));
-      logReaderQuestion({ docId: doc.id, chapterIndex: askedPageIndex, chapterTitle: `Seite ${askedPageNumber}`, concept: trimmed, timestamp: Date.now() }, userId);
+      logReaderQuestion({
+        docId: doc.id, docName: documentDisplayName(doc), chapterIndex: askedPageIndex,
+        chapterTitle: `Seite ${askedPageNumber}`, concept: trimmed, timestamp: Date.now(),
+        answer: finalAnswer, wasEscalated: expandedScope,
+      }, userId);
     } catch (e) {
       toast.error(resolveErrorMessage(e));
       setChatByPage(prev => ({

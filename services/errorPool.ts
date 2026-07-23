@@ -1,13 +1,15 @@
 import type { QuizResult } from './quizHistoryService';
 import type { ExamResult } from './examHistoryService';
 import type { RecallResult } from './recallHistoryService';
+import type { ReaderLogEntry } from './readerLogService';
 import type { WrongAnswerContext } from './geminiService';
 
 const SESSIONS_PER_SOURCE = 8;
-const MAX_PER_SESSION = { quiz: 3, exam: 3, feynman: 2 } as const;
+const MAX_PER_SESSION = { quiz: 3, exam: 3, feynman: 2, tutor: 2 } as const;
 /** Startwert, bewusst keine "wissenschaftlich hergeleitete" Zahl — Klausur und Quiz
- *  sind der Kernnachweis, Feynman ergänzt. Anpassbar, falls sich das als falsch erweist. */
-const QUOTA = { quiz: 0.4, exam: 0.4, feynman: 0.2 } as const;
+ *  sind der Kernnachweis, Feynman und Tutor-Eskalationen ergänzen. Anpassbar,
+ *  falls sich das als falsch erweist (Fehleranalyse-Punkt 11). */
+const QUOTA = { quiz: 0.3, exam: 0.3, feynman: 0.2, tutor: 0.2 } as const;
 /** Anteil der Plätze für wiederkehrende Themen — ebenfalls eine Produktentscheidung,
  *  kein berechneter Wert (analog zu QUOTA). */
 const RECURRING_SHARE = 0.3;
@@ -23,17 +25,21 @@ export interface ErrorPoolInput {
   quiz: QuizResult[];
   exam: ExamResult[];
   recall: RecallResult[];
+  /** Eskalierte Tutor-Fragen aus dem Split-Screen-Reader (Fehleranalyse-Punkt 11) —
+   *  optional, damit bestehende Aufrufer/Tests ohne diesen Parameter weiterlaufen. */
+  tutorLog?: ReaderLogEntry[];
   /** Entspricht dem Dokument-Filter der Seite (selectedDoc) — leer/undefined = kontoweit. */
   docFilter?: string;
   limit?: number;
 }
 
-const bySource = (docFilter: string | undefined, quiz: QuizResult[], exam: ExamResult[], recall: RecallResult[]) => {
-  const matches = (docName: string) => !docFilter || docName === docFilter;
+const bySource = (docFilter: string | undefined, quiz: QuizResult[], exam: ExamResult[], recall: RecallResult[], tutorLog: ReaderLogEntry[]) => {
+  const matches = (docName: string | undefined) => !docFilter || docName === docFilter;
   return {
     quiz: quiz.filter(r => matches(r.docName)),
     exam: exam.filter(r => matches(r.docName)),
     recall: recall.filter(r => matches(r.docName)),
+    tutorLog: tutorLog.filter(r => matches(r.docName)),
   };
 };
 
@@ -81,6 +87,45 @@ function fromFeynman(results: RecallResult[]): Timed[] {
       question: `Erkläre: ${result.topic || result.docName}`, topic: result.topic, explanation: m,
       docName: result.docName, ts: result.timestamp,
     }))
+  );
+}
+
+/**
+ * Eskalierte Tutor-Fragen (generateGroundedExplanation lieferte beim ersten,
+ * eng zugeschnittenen Versuch found:false — die Seite/das Kapitel beantwortete
+ * die eigene Frage des Nutzers nicht) als viertes Fehlersignal, Fehleranalyse-
+ * Punkt 11. Reine Neugier-Fragen ohne Eskalation zählen bewusst NICHT als
+ * Fehler. Anders als Quiz/Klausur/Feynman hat der Reader keine natürliche
+ * "Sitzung" — als Pseudo-Sitzung dient Dokument+Kalendertag, damit mehrere
+ * eskalierte Fragen am selben Lesetag nicht wie mehrere unabhängige Belege für
+ * eine wiederkehrende Schwäche zählen (Abschnitt 10).
+ */
+function fromTutor(entries: ReaderLogEntry[]): Timed[] {
+  const escalated = entries.filter(e => e.wasEscalated);
+  const bySession = new Map<string, ReaderLogEntry[]>();
+  for (const e of escalated) {
+    const day = new Date(e.timestamp).toISOString().slice(0, 10);
+    const key = `${e.docId}:${day}`;
+    const list = bySession.get(key) ?? [];
+    list.push(e);
+    bySession.set(key, list);
+  }
+  const sessions = [...bySession.entries()]
+    .sort((a, b) => Math.max(...b[1].map(e => e.timestamp)) - Math.max(...a[1].map(e => e.timestamp)))
+    .slice(0, SESSIONS_PER_SOURCE);
+
+  return sessions.flatMap(([sessionId, sessionEntries]) =>
+    [...sessionEntries]
+      .sort((a, b) => b.timestamp - a.timestamp)
+      .slice(0, MAX_PER_SESSION.tutor)
+      .map(e => ({
+        id: e.id, sessionId, source: 'tutor' as const,
+        // chapterTitle ist bei PDF-Seiten nur "Seite N" (keine echte Themen-
+        // Bezeichnung) — dieselbe bekannte Einschränkung wie beim Feynman-
+        // Handoff (siehe dortiger Kommentar), kein neues Problem.
+        question: e.concept, topic: e.chapterTitle, explanation: e.answer || '',
+        docName: e.docName ?? '', ts: e.timestamp,
+      }))
   );
 }
 
@@ -151,12 +196,13 @@ function findRecurringRepresentatives(allTimed: Timed[], count: number): Timed[]
  */
 export function buildErrorPool(input: ErrorPoolInput): WrongAnswerContext[] {
   const limit = input.limit ?? 20;
-  const filtered = bySource(input.docFilter, input.quiz, input.exam, input.recall);
+  const filtered = bySource(input.docFilter, input.quiz, input.exam, input.recall, input.tutorLog ?? []);
 
   const pools: Record<Source, Timed[]> = {
     quiz: fromQuiz(filtered.quiz),
     exam: fromExam(filtered.exam),
     feynman: fromFeynman(filtered.recall),
+    tutor: fromTutor(filtered.tutorLog),
   };
 
   const allTimed = (Object.keys(QUOTA) as Source[]).flatMap(source => pools[source]);
@@ -167,6 +213,7 @@ export function buildErrorPool(input: ErrorPoolInput): WrongAnswerContext[] {
     quiz: pools.quiz.filter(e => !alreadyRecurring.has(e.id)),
     exam: pools.exam.filter(e => !alreadyRecurring.has(e.id)),
     feynman: pools.feynman.filter(e => !alreadyRecurring.has(e.id)),
+    tutor: pools.tutor.filter(e => !alreadyRecurring.has(e.id)),
   };
   const recent = quotaFill(poolsWithoutRecurring, limit - recurring.length);
 
