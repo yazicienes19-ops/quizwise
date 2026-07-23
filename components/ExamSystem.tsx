@@ -7,13 +7,14 @@ import { ExamQuestion, ProcessedDocument, Collection, ActiveTab, ScoringProfile,
 import { generateFullExam, evaluateWithRubric, analyzeExamResults, GenerationSource } from '../services/geminiService';
 import { formatFeedbackContext } from '../services/examFeedbackService';
 import { normalizeExamQuestions } from '../services/examNormalize';
-import { scoreMc } from '../services/examScoring';
+import { scoreMc, scoreFillblank, scoreRanking } from '../services/examScoring';
 import { GeneratedImage } from './GeneratedImage';
 import { toast } from '../services/toast';
 import { useTranslation } from '../i18n/I18nProvider';
 import { t as translate } from '../i18n';
 import { saveExamToStorage } from '../services/savedExamsService';
 import { interleaveQuestionsByTopic } from '../services/interleave';
+import { sourceTopicsKey, saveUsedTopics } from '../hooks/useQuizState';
 
 interface ExamSystemProps {
   documents: ProcessedDocument[];
@@ -70,7 +71,7 @@ export const ExamSystem: React.FC<ExamSystemProps> = ({ documents, collections, 
 
   const handleGenerate = async (
     content: GenerationSource, style?: GenerationSource,
-    options?: { count: number; difficulty: string; types?: string[]; adaptive?: { weakCategories: string[]; weakTopics: string[] } },
+    options?: { count: number; difficulty: string; types?: string[]; adaptive?: { weakCategories: string[]; weakTopics: string[] }; excludeTopics?: string[] },
     docName?: string, totalMinutes?: number, profile?: ScoringProfile
   ) => {
     if (docName) setExamDocName(docName.replace(/\.[^/.]+$/, ''));
@@ -85,6 +86,7 @@ export const ExamSystem: React.FC<ExamSystemProps> = ({ documents, collections, 
         try {
           const exam = normalizeExamQuestions(await generateFullExam(content, style, options));
           if (exam.length === 0) throw new Error(translate('es.noValidQuestions'));
+          if (docName) saveUsedTopics(sourceTopicsKey(docName), exam);
           setQuestions(interleaveQuestionsByTopic(exam));
           setMode('edit');
           return;
@@ -148,17 +150,21 @@ export const ExamSystem: React.FC<ExamSystemProps> = ({ documents, collections, 
     if (q.type === 'fillblank') {
       const user: string[] = q.userAnswer || [];
       const correct: string[] = q.blanks || [];
-      const hits = correct.filter((b, i) => (user[i] || '').trim().toLowerCase() === b.toLowerCase()).length;
-      const pts  = correct.length ? Math.round((hits / correct.length) * q.points) : 0;
-      return { ...q, achievedPoints: pts, feedback: t('es.blankScore', { hits, total: correct.length }) };
+      // Levenshtein-Toleranz statt Exaktvergleich: ein einzelner Tippfehler soll
+      // nicht 0 Punkte für die ganze Lücke bedeuten (services/examScoring.ts).
+      const { results, hits, fraction } = scoreFillblank(user, correct);
+      const pts = correct.length ? Math.round(fraction * q.points) : 0;
+      return { ...q, achievedPoints: pts, blankMatchResults: results, feedback: t('es.blankScore', { hits, total: correct.length }) };
     }
 
     if (q.type === 'ranking') {
       const user: string[] = q.userAnswer || [];
       const correct: string[] = q.rankingItems || [];
-      const hits = correct.filter((item, i) => item === user[i]).length;
-      const pts  = correct.length ? Math.round((hits / correct.length) * q.points) : 0;
-      return { ...q, achievedPoints: pts, feedback: hits === correct.length ? t('es.rankAllCorrect') : t('es.rankScore', { hits, total: correct.length, order: correct.join(' → ') }) };
+      // Kendall-Tau (Paar-Konkordanz) statt exakter Positionsprüfung: eine nur
+      // leicht verschobene Reihenfolge bekommt Teilpunkte statt fast 0.
+      const { concordantPairs, totalPairs, fraction } = scoreRanking(user, correct);
+      const pts = totalPairs ? Math.round(fraction * q.points) : 0;
+      return { ...q, achievedPoints: pts, feedback: concordantPairs === totalPairs ? t('es.rankAllCorrect') : t('es.rankScore', { hits: concordantPairs, total: totalPairs, order: correct.join(' → ') }) };
     }
 
     if (q.type === 'numeric') {

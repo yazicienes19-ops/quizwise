@@ -14,11 +14,13 @@ import { getAllResults } from '../services/quizHistoryService';
 import { getAllRecallResults } from '../services/recallHistoryService';
 import { getAllExamResults } from '../services/examHistoryService';
 import { getStreak } from '../services/streakService';
+import { sourceTopicsKey, getUsedTopics } from '../hooks/useQuizState';
 
 type ExamOptions = {
   count: number; difficulty: string;
   types?: string[];
   adaptive?: { weakCategories: string[]; weakTopics: string[] };
+  excludeTopics?: string[];
 };
 
 interface ExamGeneratorProps {
@@ -157,9 +159,12 @@ export const ExamGenerator: React.FC<ExamGeneratorProps> = ({
         weakCategories: profile.categoryMastery.filter(c => c.avgScore < 60).map(c => c.category),
         weakTopics: profile.topicMastery.filter(t => t.security !== 'sicher').slice(0, 5).map(t => t.topic),
       } : undefined;
+      // Wiederholungsgefahr wie beim Quiz: kürzlich aus derselben Quelle geprüfte
+      // Themen nicht gleich nochmal abfragen (services/hooks/useQuizState.ts).
+      const excludeTopics = contentName ? getUsedTopics(sourceTopicsKey(contentName)) : [];
       onGenerate(
         contentSource, styleSource,
-        { count: questionCount, difficulty, types: selectedTypes, adaptive },
+        { count: questionCount, difficulty, types: selectedTypes, adaptive, excludeTopics },
         contentName, effectiveMinutes, scoringProfile
       );
     } catch (e) {

@@ -384,6 +384,10 @@ export interface ExamQuestion {
   criterionScores?: CriterionScore[];
   evaluationConfidence?: number;     // 0–100
   questionFeedback?: QuestionFeedbackType;
+
+  /** Pro Lücke (type="fillblank"): ob exakt, mit Tippfehler-Toleranz oder gar
+   *  nicht getroffen — services/examScoring.ts scoreFillblank(). */
+  blankMatchResults?: ('exact' | 'tolerant' | 'none')[];
 }
 
 // --- Rubrik & Bewertungsprofil ---

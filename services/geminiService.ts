@@ -1034,6 +1034,7 @@ export const generateFullExam = async (
     count: number; difficulty: string;
     types?: string[];
     adaptive?: { weakCategories: string[]; weakTopics: string[] };
+    excludeTopics?: string[];
   }
 ): Promise<ExamQuestion[]> => {
   const parts: any[] = [sourceTopart(content)];
@@ -1079,12 +1080,20 @@ Bisher schwache Themen: ${options.adaptive.weakTopics.join(', ') || '—'}.
 Gewichte die Fragenverteilung stärker auf diese Kategorien und bevorzuge Fragen zu diesen Themen, SOFERN das Lernmaterial dazu Inhalte hergibt. Ignoriere dies, wenn das Material keinen Bezug dazu hat — erfinde keine Fragen zu Themen, die nicht im Material stehen.`;
   }
 
+  // Wiederholungsgefahr wie beim Quiz: ohne das würde dieselbe Klausur-Quelle bei
+  // mehrfacher Generierung dieselben Themen erneut prüfen (services/hooks/useQuizState.ts
+  // trackt dasselbe schon für Quiz/Feynman über getUsedTopics/saveUsedTopics).
+  const excludeTopics = options?.excludeTopics ?? [];
+  const excludeLine = excludeTopics.length > 0
+    ? `\nBEREITS GEPRÜFT — diese Themen NICHT erneut verwenden (wähle andere Aspekte des Materials; nur wenn das Material sonst nichts hergibt, darfst du eines wiederverwenden):\n${excludeTopics.slice(-40).map(t => sanitizeUserInput(t, 80)).join(' | ')}\n`
+    : '';
+
   parts.push({ text: `Erstelle eine akademische Klausur mit genau ${count} Aufgaben auf Niveau "${difficulty}".
 Zufalls-Seed: ${seed}
 
 FRAGETYPEN-VERTEILUNG (zwingend einhalten, Summe = ${count}):
 ${typeBullets}
-
+${excludeLine}
 ALLGEMEINE REGELN:
 - Jede Aufgabe deckt einen ANDEREN Aspekt des Materials ab
 - id: fortlaufend "q1", "q2", ...

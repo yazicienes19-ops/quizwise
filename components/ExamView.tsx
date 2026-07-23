@@ -478,14 +478,23 @@ export const ExamView: React.FC<ExamViewProps> = ({
             {parts.map((part, pi) => {
               const userBlank    = (q.userAnswer as string[])?.[pi] || '';
               const correctBlank = q.blanks?.[pi] || '';
-              const ok = userBlank.trim().toLowerCase() === correctBlank.toLowerCase();
+              // Der tatsächliche Bewertungs-Match (mit Tippfehler-Toleranz, s.
+              // services/examScoring.ts) statt eines eigenen Exaktvergleichs hier —
+              // sonst würde die Anzeige einer echten Toleranz-Wertung widersprechen.
+              const match = q.blankMatchResults?.[pi] ?? (userBlank.trim().toLowerCase() === correctBlank.toLowerCase() ? 'exact' : 'none');
+              const colorClass = match === 'exact' ? 'bg-emerald-100 dark:bg-emerald-900/30 text-emerald-700'
+                : match === 'tolerant' ? 'bg-amber-100 dark:bg-amber-900/30 text-amber-700'
+                : 'bg-rose-100 dark:bg-rose-900/30 text-rose-700';
               return (
                 <React.Fragment key={pi}>
                   {part}
                   {pi < parts.length - 1 && (
-                    <span className={`mx-1 inline-flex items-center gap-1 px-2 py-0.5 rounded font-bold ${ok ? 'bg-emerald-100 dark:bg-emerald-900/30 text-emerald-700' : 'bg-rose-100 dark:bg-rose-900/30 text-rose-700'}`}>
+                    <span className={`mx-1 inline-flex items-center gap-1 px-2 py-0.5 rounded font-bold ${colorClass}`}>
                       {userBlank || '—'}
-                      {!ok && <span className="text-emerald-600 dark:text-emerald-400">→ {correctBlank}</span>}
+                      {match === 'tolerant' && (
+                        <span className="text-[9px] font-black uppercase tracking-wide opacity-80">{t('ev.blankTolerant')}</span>
+                      )}
+                      {match === 'none' && <span className="text-emerald-600 dark:text-emerald-400">→ {correctBlank}</span>}
                     </span>
                   )}
                 </React.Fragment>

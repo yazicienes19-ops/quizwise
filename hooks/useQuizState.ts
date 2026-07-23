@@ -48,7 +48,9 @@ export const getUsedTopics = (key: string): string[] => {
   try { return JSON.parse(localStorage.getItem(`quizwise_topics_${key}`) || '[]'); } catch { return []; }
 };
 
-export const saveUsedTopics = (key: string, qs: QuizQuestion[]): void => {
+/** Nimmt bewusst nur `{ topic? }` statt QuizQuestion — so lässt sich derselbe
+ *  Tracker auch für ExamQuestion[] wiederverwenden (Klausur-excludeTopics). */
+export const saveUsedTopics = (key: string, qs: { topic?: string }[]): void => {
   const newTopics = qs.map(q => q.topic).filter(Boolean) as string[];
   if (!newTopics.length) return;
   const merged = [...getUsedTopics(key), ...newTopics].slice(-60);
