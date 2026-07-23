@@ -1,6 +1,6 @@
 
 import React, { useState, useMemo, useEffect } from 'react';
-import { ProcessedDocument, Collection, ScoringProfile, ScoringMode, ExamQuestion, TopicMetric, FlashcardDeck } from '../types';
+import { ProcessedDocument, Collection, ScoringProfile, ScoringMode, ExamQuestion, TopicMetric, FlashcardDeck, ExamTypePreset } from '../types';
 import { GenerationSource } from '../services/geminiService';
 import { GeneratedImage } from './GeneratedImage';
 import { SourceSelector } from './SourceSelector';
@@ -21,7 +21,13 @@ type ExamOptions = {
   types?: string[];
   adaptive?: { weakCategories: string[]; weakTopics: string[] };
   excludeTopics?: string[];
+  examTypePreset?: ExamTypePreset;
 };
+
+// Phase 2a (Datenmodell + Klassifikation): Preset noch fest verdrahtet, bis Phase 2b
+// einen echten Klausurtyp-Selector in der UI ergänzt — so ist die komplette Pipeline
+// (Prompt-Gewichtung, Klassifikation, Persistenz) schon jetzt end-to-end testbar.
+const PHASE_2A_HARDCODED_EXAM_TYPE_PRESET: ExamTypePreset = 'universitaetsklausur';
 
 interface ExamGeneratorProps {
   onGenerate: (content: GenerationSource, style?: GenerationSource, options?: ExamOptions, docName?: string, totalMinutes?: number, scoringProfile?: ScoringProfile) => void;
@@ -164,7 +170,7 @@ export const ExamGenerator: React.FC<ExamGeneratorProps> = ({
       const excludeTopics = contentName ? getUsedTopics(sourceTopicsKey(contentName)) : [];
       onGenerate(
         contentSource, styleSource,
-        { count: questionCount, difficulty, types: selectedTypes, adaptive, excludeTopics },
+        { count: questionCount, difficulty, types: selectedTypes, adaptive, excludeTopics, examTypePreset: PHASE_2A_HARDCODED_EXAM_TYPE_PRESET },
         contentName, effectiveMinutes, scoringProfile
       );
     } catch (e) {

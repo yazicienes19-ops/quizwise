@@ -1,4 +1,4 @@
-import type { ExamQuestion } from '../types';
+import type { ExamQuestion, ExamTypePreset } from '../types';
 
 const STORAGE_KEY = 'quizwise_exam_history';
 
@@ -20,6 +20,9 @@ export interface ExamResult {
   fatigue?: { earlyScore: number; lateScore: number };
   /** Bewertete Fragen inkl. userAnswer/achievedPoints — nur bei den neuesten Klausuren vorhanden. */
   questions?: ExamQuestion[];
+  /** Gewähltes Klausurtyp-Preset bei der Generierung — Grundlage für die spätere
+   *  Ist-vs-Ziel-Bloom-Verteilungsanzeige (services/bloomPresets.ts). */
+  examTypePreset?: ExamTypePreset;
 }
 
 const readAll = (): ExamResult[] => {

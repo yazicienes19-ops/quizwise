@@ -3,8 +3,8 @@ import React, { useState } from 'react';
 import { ExamGenerator } from './ExamGenerator';
 import { ExamArchive } from './ExamArchive';
 import { ExamView } from './ExamView';
-import { ExamQuestion, ProcessedDocument, Collection, ActiveTab, ScoringProfile, ExamAnalysis, TopicMetric, FlashcardDeck } from '../types';
-import { generateFullExam, evaluateWithRubric, analyzeExamResults, GenerationSource } from '../services/geminiService';
+import { ExamQuestion, ProcessedDocument, Collection, ActiveTab, ScoringProfile, ExamAnalysis, TopicMetric, FlashcardDeck, ExamTypePreset } from '../types';
+import { generateFullExam, evaluateWithRubric, analyzeExamResults, classifyBloomLevels, GenerationSource } from '../services/geminiService';
 import { formatFeedbackContext } from '../services/examFeedbackService';
 import { normalizeExamQuestions } from '../services/examNormalize';
 import { scoreMc, scoreFillblank, scoreRanking } from '../services/examScoring';
@@ -27,6 +27,7 @@ interface ExamSystemProps {
     typeBreakdown: { type: string; score: number }[];
     fatigue?: { earlyScore: number; lateScore: number };
     questions: ExamQuestion[];
+    examTypePreset?: ExamTypePreset;
   }) => void;
   onNavigate?: (tab: ActiveTab) => void;
   onAction?: (topic: string, mode: 'cards' | 'recall' | 'quiz') => void;
@@ -50,6 +51,7 @@ export const ExamSystem: React.FC<ExamSystemProps> = ({ documents, collections, 
   );
   const [examDocName, setExamDocName]     = useState(translate('es.examDefaultName'));
   const [examDuration, setExamDuration]   = useState<number | undefined>(undefined);
+  const [examTypePreset, setExamTypePreset] = useState<ExamTypePreset | undefined>(undefined);
   const [showCancelConfirm, setShowCancelConfirm] = useState(false);
   const [currentAnswers, setCurrentAnswers] = useState<Record<string, any>>(() => {
     if (!initialQuestions) return {};
@@ -71,12 +73,13 @@ export const ExamSystem: React.FC<ExamSystemProps> = ({ documents, collections, 
 
   const handleGenerate = async (
     content: GenerationSource, style?: GenerationSource,
-    options?: { count: number; difficulty: string; types?: string[]; adaptive?: { weakCategories: string[]; weakTopics: string[] }; excludeTopics?: string[] },
+    options?: { count: number; difficulty: string; types?: string[]; adaptive?: { weakCategories: string[]; weakTopics: string[] }; excludeTopics?: string[]; examTypePreset?: ExamTypePreset },
     docName?: string, totalMinutes?: number, profile?: ScoringProfile
   ) => {
     if (docName) setExamDocName(docName.replace(/\.[^/.]+$/, ''));
     if (totalMinutes) setExamDuration(totalMinutes);
     if (profile) setScoringProfile(profile);
+    setExamTypePreset(options?.examTypePreset);
     setIsLoading(true);
     setLoadingHint('');
 
@@ -87,7 +90,11 @@ export const ExamSystem: React.FC<ExamSystemProps> = ({ documents, collections, 
           const exam = normalizeExamQuestions(await generateFullExam(content, style, options));
           if (exam.length === 0) throw new Error(translate('es.noValidQuestions'));
           if (docName) saveUsedTopics(sourceTopicsKey(docName), exam);
-          setQuestions(interleaveQuestionsByTopic(exam));
+          // Zweistufig: Bloom-Stufe erst NACH der Generierung, in einem eigenen,
+          // unabhängigen Call vergeben (services/geminiService.ts classifyBloomLevels)
+          // — verhindert das Selbst-Überschätzungs-Muster beim Selbst-Labeling.
+          const withBloom = await classifyBloomLevels(exam).catch(() => exam);
+          setQuestions(interleaveQuestionsByTopic(withBloom));
           setMode('edit');
           return;
         } catch (e: any) {
@@ -252,7 +259,7 @@ export const ExamSystem: React.FC<ExamSystemProps> = ({ documents, collections, 
         ? { earlyScore: scoreOf(withPoints.slice(0, mid)), lateScore: scoreOf(withPoints.slice(mid)) }
         : undefined;
 
-      onComplete?.({ score, docName: examDocName, passed: score >= 50, totalPoints, achievedPoints, weakTopics, categoryBreakdown, typeBreakdown, fatigue, questions: evaluated });
+      onComplete?.({ score, docName: examDocName, passed: score >= 50, totalPoints, achievedPoints, weakTopics, categoryBreakdown, typeBreakdown, fatigue, questions: evaluated, examTypePreset });
       setCategoryBreakdown(categoryBreakdown);
 
       // Analyse asynchron im Hintergrund (kein Blocker)

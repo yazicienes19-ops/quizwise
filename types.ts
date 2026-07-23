@@ -337,6 +337,13 @@ export interface StudyEvent {
   intervalStep?: number; // 1 | 3 | 7 (nur sourceKind 'topic')
 }
 
+/** Kognitive Bloom-Taxonomie-Stufe — wird NIE aus difficulty abgeleitet und umgekehrt,
+ *  beides sind unabhängige Achsen (services/bloomPresets.ts). */
+export type BloomLevel = 'erinnern' | 'verstehen' | 'anwenden' | 'analysieren' | 'bewerten' | 'erschaffen';
+
+/** Klausurtyp-Preset mit eigenem Bloom-Zielprofil (services/bloomPresets.ts EXAM_TYPE_BLOOM_TARGETS). */
+export type ExamTypePreset = 'wissensabfrage' | 'universitaetsklausur' | 'transfer' | 'gemischt';
+
 export interface ExamQuestion {
   id: string;
   question: string;
@@ -374,6 +381,13 @@ export interface ExamQuestion {
   topic?: string;
   /** Fachliche Kategorie — Grundlage für die Kategorie-Aufschlüsselung nach der Klausur */
   category?: 'definition' | 'verstaendnis' | 'transfer' | 'beispiel' | 'rechnung' | 'fachbegriff';
+  /** Tatsächliche Schwierigkeit DIESER Aufgabe — unabhängig vom Exam-weiten Ziel-Niveau,
+   *  von der KI direkt bei der Generierung vergeben (generateFullExam). */
+  difficulty?: 'leicht' | 'mittel' | 'schwer';
+  /** Kognitive Bloom-Stufe — NICHT bei der Generierung vergeben, sondern erst danach über
+   *  einen zweiten, unabhängigen Klassifikations-Call (geminiService.classifyBloomLevels),
+   *  damit die KI sich nicht selbst beim Einordnen der eigenen Fragen überschätzt. */
+  bloomLevel?: BloomLevel;
   userAnswer?: any;
   feedback?: string;
   achievedPoints?: number;

@@ -23,11 +23,14 @@ import {
   ExamAnalysis,
   LearningProfile,
   CoachInsights,
+  BloomLevel,
+  ExamTypePreset,
 } from "../types";
 
 // ─── Backend-Verbindung ──────────────────────────────────────────────────────
 import { supabase } from './supabaseClient';
 import { parseQuizQuestions } from './quizNormalize';
+import { BLOOM_LEVELS, buildBloomTargetLine, mergeBloomLevels } from './bloomPresets';
 import { outputLangDirective, explainerHeadings } from './aiLocale';
 import { t } from '../i18n';
 import { validateLearningAnalysis, EMPTY_ANALYSIS, ACTION_TYPES } from './analysisValidation';
@@ -1035,6 +1038,7 @@ export const generateFullExam = async (
     types?: string[];
     adaptive?: { weakCategories: string[]; weakTopics: string[] };
     excludeTopics?: string[];
+    examTypePreset?: ExamTypePreset;
   }
 ): Promise<ExamQuestion[]> => {
   const parts: any[] = [sourceTopart(content)];
@@ -1088,17 +1092,20 @@ Gewichte die Fragenverteilung stärker auf diese Kategorien und bevorzuge Fragen
     ? `\nBEREITS GEPRÜFT — diese Themen NICHT erneut verwenden (wähle andere Aspekte des Materials; nur wenn das Material sonst nichts hergibt, darfst du eines wiederverwenden):\n${excludeTopics.slice(-40).map(t => sanitizeUserInput(t, 80)).join(' | ')}\n`
     : '';
 
+  const bloomTargetLine = options?.examTypePreset ? buildBloomTargetLine(options.examTypePreset) : '';
+
   parts.push({ text: `Erstelle eine akademische Klausur mit genau ${count} Aufgaben auf Niveau "${difficulty}".
 Zufalls-Seed: ${seed}
 
 FRAGETYPEN-VERTEILUNG (zwingend einhalten, Summe = ${count}):
 ${typeBullets}
-${excludeLine}
+${excludeLine}${bloomTargetLine}
 ALLGEMEINE REGELN:
 - Jede Aufgabe deckt einen ANDEREN Aspekt des Materials ab
 - id: fortlaufend "q1", "q2", ...
 - topic: das fachliche Thema der Aufgabe in 1-3 Worten (z.B. "Kognitive Dissonanz"), konsistent benannt wenn mehrere Aufgaben dasselbe Thema betreffen
 - category: die am besten passende Kategorie — "definition" (Begriffsdefinition), "verstaendnis" (Verständnisfrage), "transfer" (Anwendung auf neue Situation/Fallbeispiel), "beispiel" (konkretes Beispiel nennen/erkennen), "rechnung" (Berechnung/Formel), "fachbegriff" (Fachterminologie)
+- difficulty: die TATSÄCHLICHE Schwierigkeit DIESER EINEN Aufgabe — "leicht", "mittel" oder "schwer". Unabhängig vom allgemeinen Klausur-Niveau: auch in einer insgesamt "${difficulty}"-Klausur können einzelne Aufgaben objektiv leichter oder schwerer sein, bewerte jede für sich.
 - Alle Arrays die nicht für den Typ relevant sind: als leeres Array [] angeben
 - Nicht relevante Felder weglassen oder mit 0/false/null als Default
 - Die category-Werte (definition, verstaendnis, transfer, beispiel, rechnung, fachbegriff) bleiben immer exakt diese Tokens, unabhängig von der Sprache${adaptiveBlock}${outputLangDirective()}` });
@@ -1136,6 +1143,7 @@ ALLGEMEINE REGELN:
             points:               { type: Type.NUMBER },
             topic:                { type: Type.STRING },
             category:             { type: Type.STRING },
+            difficulty:           { type: Type.STRING, format: 'enum', enum: ['leicht', 'mittel', 'schwer'] },
             rubricCriteria: {
               type: Type.ARRAY,
               items: {
@@ -1148,12 +1156,74 @@ ALLGEMEINE REGELN:
               },
             },
           },
-          required: ['id', 'question', 'type', 'solution', 'points', 'topic', 'category']
+          required: ['id', 'question', 'type', 'solution', 'points', 'topic', 'category', 'difficulty']
         }
       }
     }
   });
   return JSON.parse(text || '[]');
+};
+
+// ─── Bloom-Taxonomie-Klassifikation (zweistufig, s. Phase 2) ─────────────────
+// Bewusst GETRENNT von generateFullExam: eine KI, die ihre eigenen Fragen
+// gerade selbst geschrieben hat, überschätzt beim Selbst-Labeling systematisch
+// (z.B. "Analysieren" für das, was eigentlich nur "Verstehen" ist). Dieser
+// Klassifikations-Call bekommt nur Frage+Lösung, keinen Hinweis auf Autorschaft.
+const classifyBloomLevelsOnce = async (
+  questions: { id: string; question: string; solution: string }[]
+): Promise<{ id: string; bloomLevel?: BloomLevel }[]> => {
+  const text = await callBackend({
+    complexity: 'heavy',
+    parts: [{
+      text: `Du bist ein unabhängiger Prüfungsgutachter. Du hast die folgenden Prüfungsfragen NICHT selbst verfasst — du bekommst sie nur zur nachträglichen Einstufung vorgelegt.
+
+AUFGABE: Stufe für jede Frage die kognitive Bloom-Taxonomie-Stufe ein, die zur Beantwortung NOTWENDIG ist. Bewerte ausschließlich anhand dessen, was die Frage kognitiv wirklich verlangt — nicht anhand von Fragetyp oder Länge.
+
+STUFEN (nur diese exakten Tokens):
+- erinnern: reines Abrufen von Fakten/Begriffen/Definitionen
+- verstehen: erklären, zusammenfassen, in eigenen Worten wiedergeben
+- anwenden: eine bekannte Methode/Regel auf einen neuen, konkreten Fall anwenden
+- analysieren: Zusammenhänge/Struktur zerlegen, Ursache von Wirkung trennen, vergleichen
+- bewerten: begründet urteilen, Argumente gegeneinander abwägen, Kritik üben
+- erschaffen: etwas eigenständig Neues entwerfen/konstruieren
+
+Fragen: ${JSON.stringify(questions)}${outputLangDirective()}`
+    }],
+    config: {
+      temperature: 0,
+      thinkingConfig: { thinkingBudget: 0 },
+      responseMimeType: 'application/json',
+      responseSchema: {
+        type: Type.ARRAY,
+        items: {
+          type: Type.OBJECT,
+          properties: {
+            id:         { type: Type.STRING },
+            bloomLevel: { type: Type.STRING, format: 'enum', enum: BLOOM_LEVELS },
+          },
+          required: ['id', 'bloomLevel'],
+        }
+      }
+    }
+  });
+  return JSON.parse(text || '[]');
+};
+
+export const classifyBloomLevels = async (questions: ExamQuestion[]): Promise<ExamQuestion[]> => {
+  const stripped = questions.map(q => ({ id: q.id, question: q.question, solution: q.solution }));
+  let labels = await classifyBloomLevelsOnce(stripped).catch(() => []);
+
+  // Gleiches Nachbewertungs-Muster wie evaluateWithRubric: eine fehlende ID
+  // einmal gezielt nachfragen, statt die ganze Klausur zu blockieren.
+  const labeledIds = new Set(labels.map(l => l.id));
+  const missing = stripped.filter(q => !labeledIds.has(q.id));
+  if (missing.length > 0) {
+    const retried = await classifyBloomLevelsOnce(missing).catch(() => []);
+    labels = [...labels, ...retried];
+  }
+  // Weiterhin fehlende Fragen bleiben bewusst ohne bloomLevel (kein erzwungener
+  // Default) — sie fallen einfach aus einer späteren Ist-Verteilungs-Anzeige heraus.
+  return mergeBloomLevels(questions, labels);
 };
 
 // Nur für type="open" — alle anderen werden clientseitig ausgewertet
