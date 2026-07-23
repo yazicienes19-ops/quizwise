@@ -14,11 +14,24 @@ import { documentDisplayName } from '../services/libraryService';
 import { resolveErrorMessage } from '../services/errorMessages';
 import { renderMarkdown } from './markdownRenderer';
 import { toast } from '../services/toast';
+import { EmojiImage } from './EmojiImage';
+import { detectSelectionAction, type SelectionAction } from '../services/selectionAction';
 import { useTranslation } from '../i18n/I18nProvider';
+import type { TKey } from '../i18n';
 
 /** Ab dieser Verweildauer gilt eine Seite beim Weiterblättern automatisch als gelesen —
  *  schnelles Durchblättern zählt bewusst nicht, der Button bleibt als Abkürzung. */
 const AUTO_READ_MS = 10_000;
+
+/** Mindest-Freiraum über der Markierung, damit der Button dort noch passt —
+ *  sonst rutscht er unter die Markierung (wie bei nativer macOS/iOS-Auswahl). */
+const SELECTION_BUTTON_CLEARANCE = 46;
+
+const SELECTION_ACTION_META: Record<SelectionAction, { emoji: string; labelKey: TKey }> = {
+  term: { emoji: '💡', labelKey: 'rd.actionExplainTerm' },
+  ask: { emoji: '🧠', labelKey: 'rd.actionAskTutor' },
+  summarize: { emoji: '📝', labelKey: 'rd.actionSummarize' },
+};
 
 interface ChatEntry {
   concept: string;
@@ -71,8 +84,10 @@ export const PdfSplitScreenReader: React.FC<PdfSplitScreenReaderProps> = ({ doc,
   const [canvasCss, setCanvasCss] = useState<{ w: number; h: number } | null>(null);
   /** Textfragmente der aktuellen Seite (scale 1) — Basis für Textebene + Zitat-Markierung. */
   const [pageItems, setPageItems] = useState<{ items: PositionedTextItem[]; pageW: number; pageH: number } | null>(null);
-  /** Aktive Maus-Textauswahl auf der Seite (Position relativ zur PDF-Fläche). */
-  const [selection, setSelection] = useState<{ text: string; x: number; y: number } | null>(null);
+  /** Aktive Maus-Textauswahl auf der Seite (Position relativ zur PDF-Fläche).
+   *  `placement` bestimmt, ob der schwebende Button ÜBER oder UNTER der
+   *  Markierung sitzt (siehe handleTextSelection). */
+  const [selection, setSelection] = useState<{ text: string; x: number; y: number; action: SelectionAction; placement: 'above' | 'below' } | null>(null);
   /** Dokument-Inhaltsverzeichnis — null = wird noch im Hintergrund ermittelt. */
   const [toc, setToc] = useState<PdfTocEntry[] | null>(null);
   const [tocOpen, setTocOpen] = useState(false);
@@ -274,7 +289,10 @@ export const PdfSplitScreenReader: React.FC<PdfSplitScreenReaderProps> = ({ doc,
     }
   }, [concept, pdf, pageNumber, doc, userId, getDocumentSource]);
 
-  // Maus-Auswahl auf der Textebene → schwebender „Tutor fragen"-Button
+  // Maus-Auswahl auf der Textebene → schwebende Aktions-Leiste, die sich wie die
+  // native Textauswahl unter macOS/iOS verhält: sitzt ÜBER der Markierung (und
+  // verdeckt sie damit nie), springt aber automatisch UNTER die Markierung,
+  // wenn oben nicht genug Platz ist (z.B. ganz oben auf der Seite).
   const handleTextSelection = useCallback(() => {
     const sel = window.getSelection();
     const text = sel?.toString().replace(/\s+/g, ' ').trim() ?? '';
@@ -282,10 +300,14 @@ export const PdfSplitScreenReader: React.FC<PdfSplitScreenReaderProps> = ({ doc,
     const rect = sel.getRangeAt(0).getBoundingClientRect();
     const area = pdfAreaRef.current?.getBoundingClientRect();
     if (!area) return;
+    const spaceAbove = rect.top - area.top;
+    const placement: 'above' | 'below' = spaceAbove >= SELECTION_BUTTON_CLEARANCE ? 'above' : 'below';
     setSelection({
       text: text.slice(0, 600),
-      x: Math.max(80, Math.min(rect.left - area.left + rect.width / 2, area.width - 80)),
-      y: Math.max(10, rect.top - area.top - 48),
+      action: detectSelectionAction(text),
+      placement,
+      x: Math.max(90, Math.min(rect.left - area.left + rect.width / 2, area.width - 90)),
+      y: placement === 'above' ? rect.top - area.top - 10 : rect.bottom - area.top + 10,
     });
   }, []);
 
@@ -298,7 +320,12 @@ export const PdfSplitScreenReader: React.FC<PdfSplitScreenReaderProps> = ({ doc,
 
   const handleAskSelection = useCallback(() => {
     if (!selection) return;
-    handleAsk(t('rd.selectionQuestion', { text: selection.text.slice(0, 300) }));
+    const question = selection.action === 'term'
+      ? t('rd.explainTermQuestion', { term: selection.text })
+      : selection.action === 'summarize'
+        ? t('rd.summarizeSelectionQuestion', { text: selection.text })
+        : t('rd.selectionQuestion', { text: selection.text.slice(0, 300) });
+    handleAsk(question);
     setSelection(null);
     window.getSelection()?.removeAllRanges();
   }, [selection, handleAsk, t]);
@@ -578,15 +605,29 @@ export const PdfSplitScreenReader: React.FC<PdfSplitScreenReaderProps> = ({ doc,
                 ›
               </button>
             )}
-            {/* Schwebender Frage-Button an der Maus-Auswahl */}
+            {/* Schwebende Aktions-Leiste an der Maus-Auswahl — Aktion richtet sich
+                nach dem Umfang der Markierung (siehe detectSelectionAction), Position
+                weicht wie bei nativer Textauswahl nach oben ODER unten aus, verdeckt
+                den markierten Text also nie. */}
             {selection && (
-              <button
-                onClick={handleAskSelection}
-                className="absolute z-20 -translate-x-1/2 px-4 py-2.5 rounded-xl text-[10px] font-black uppercase tracking-widest shadow-xl transition-all hover:scale-105 active:scale-95 animate-in fade-in zoom-in-95 duration-200"
-                style={{ left: selection.x, top: selection.y, background: 'var(--primary)', color: 'var(--primary-text)' }}
+              <div
+                className="absolute z-20 animate-in fade-in duration-150"
+                style={{
+                  left: selection.x,
+                  top: selection.y,
+                  transform: `translate(-50%, ${selection.placement === 'above' ? '-100%' : '0'})`,
+                  transformOrigin: selection.placement === 'above' ? 'bottom center' : 'top center',
+                }}
               >
-                {t('rd.askSelection')}
-              </button>
+                <button
+                  onClick={handleAskSelection}
+                  className="flex items-center gap-1.5 px-3.5 py-2 rounded-full text-[10px] font-black uppercase tracking-wide shadow-lg transition-transform hover:scale-105 active:scale-95"
+                  style={{ background: 'var(--primary)', color: 'var(--primary-text)' }}
+                >
+                  <EmojiImage emoji={SELECTION_ACTION_META[selection.action].emoji} size={13} />
+                  {t(SELECTION_ACTION_META[selection.action].labelKey)}
+                </button>
+              </div>
             )}
           </div>
         </div>

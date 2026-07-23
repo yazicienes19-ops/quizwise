@@ -959,16 +959,21 @@ export const generateGroundedExplanation = async (
   concept: string,
 ): Promise<GroundedExplanation> => {
   const parts: any[] = [sourceTopart(source)];
-  const safeConcept = sanitizeUserInput(concept, 200);
+  // 600 statt 200 — die Textauswahl-Aktion "Zusammenfassen" (PdfSplitScreenReader)
+  // bettet eine ganze markierte Passage (bis zu 600 Zeichen) in die Eingabe ein,
+  // 200 hätte sie mitten im Zitat abgeschnitten.
+  const safeConcept = sanitizeUserInput(concept, 600);
 
   const intentInstruction = `\n\nENTSCHEIDE ZUERST, um welchen Fall es sich bei der Nutzereingabe handelt:
 - BEGRIFF: Die Eingabe ist NUR ein kurzer Fachbegriff oder eine kurze Nominalphrase (grob 1-4 Wörter), OHNE Satzstruktur, ohne Verb, das eine Behauptung ausdrückt, ohne Fragezeichen zu einer Aussage. Beispiel: "Falsifikationsprinzip".
+- ZUSAMMENFASSUNG: Die Eingabe ist eine Aufforderung, einen mitgelieferten Abschnitt zusammenzufassen (beginnt z.B. mit "Fasse" oder "Zusammenfassung von").
 - VERSTÄNDNISFRAGE/BEHAUPTUNG: ALLES ANDERE — jede Eingabe mit Satzstruktur, jede Formulierung mit einem Verb wie "ist/heißt/bedeutet/stimmt", jede Frage die sich auf eine Aussage oder Beziehung zwischen Begriffen bezieht, auch bei Tippfehlern oder holpriger Grammatik. Im Zweifel IMMER dieser Fall, nicht BEGRIFF.
 
 Diese Einordnung ist NUR für dich intern — gib sie NICHT in "answer" aus.
 
 Verhalte dich dann so:
 - Bei BEGRIFF: Erkläre in 3 Stufen mit exakt diesen Überschriften: ${explainerHeadings()}. Jede Überschrift steht ALLEIN auf ihrer eigenen Zeile. Bringe in der letzten Stufe mindestens EIN konkretes Beispiel.
+- Bei ZUSAMMENFASSUNG: Fasse NUR den mitgelieferten Abschnitt in 2-4 prägnanten Sätzen zusammen, konzentriert auf die Kernaussagen. KEINE neue Erklärung des ganzen Konzepts von Grund auf, KEINE Überschriften — nur die Zusammenfassung selbst.
 - Bei VERSTÄNDNISFRAGE/BEHAUPTUNG: Bewerte ZUERST explizit, ob sie korrekt ist, dann korrigiere/ergänze in 1-3 kurzen Sätzen. Danach ein kurzes Beispiel. KEINE Überschriften, KEINE neue Grunderklärung von vorne.`;
 
   const groundingRule = `\n\nWICHTIGE REGEL ZU "found": Setze found=true NUR, wenn der oben bereitgestellte Ausschnitt den Begriff/die Frage inhaltlich beantwortet (auch eine knappe, aber inhaltliche Erklärung zählt). Setze found=false, wenn der Ausschnitt dazu NICHTS oder nur eine bloße beiläufige Erwähnung ohne jede Erklärung enthält — in diesem Fall bleibt "answer" ein kurzer, ehrlicher Satz, dass dieser Ausschnitt dazu nichts hergibt, und "sourceQuote" bleibt leer. Erfinde NIEMALS ein Zitat als Beleg für eine Nicht-Antwort.`;
