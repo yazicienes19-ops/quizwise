@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useMemo, useCallback, useRef } from 'react';
 import { ProcessedDocument } from '../types';
-import { generateExplanation, generateGroundedExplanation, type GenerationSource } from '../services/geminiService';
+import { generateGroundedExplanation, type GenerationSource } from '../services/geminiService';
 import { downloadPdfAsBase64 } from '../services/documentService';
 import { loadPdf, getPageText, getPageTextItems, renderPageToCanvas, renderPageToJpegBase64, isScannedPage, type PdfHandle, type PositionedTextItem } from '../services/pdfPageService';
 import { findQuoteRects, type HighlightRect } from '../services/pdfHighlightService';
@@ -8,7 +8,6 @@ import { markChapterDone, getDoneChapterIndices } from '../services/chapterProgr
 import { logReaderQuestion, getReaderLog } from '../services/readerLogService';
 import { saveReaderChat, getReaderChat } from '../services/readerChatService';
 import { buildFeynmanHandoff, pickHandoffTopic } from '../services/feynmanHandoffService';
-import { extractSourceQuote, stripSourceQuoteLine } from '../services/sourceQuoteParser';
 import { documentDisplayName } from '../services/libraryService';
 import { resolveErrorMessage } from '../services/errorMessages';
 import { renderMarkdown } from './markdownRenderer';
@@ -78,6 +77,9 @@ export const PdfSplitScreenReader: React.FC<PdfSplitScreenReaderProps> = ({ doc,
   const pdfAreaRef = useRef<HTMLDivElement>(null);
   const pageBoxRef = useRef<HTMLDivElement>(null);
   const renderSeq = useRef(0);
+  /** Cache für Scan-Seiten-JPEGs — ohne das würde jede weitere Frage im selben
+   *  Chat dieselbe Seite erneut rendern und mitschicken (unnötige Kosten/Latenz). */
+  const scanImageCache = useRef<Map<number, string>>(new Map());
 
   const pageIndex = pageNumber - 1;
   const activeChat = chatByPage[pageIndex] ?? [];
@@ -207,9 +209,18 @@ export const PdfSplitScreenReader: React.FC<PdfSplitScreenReaderProps> = ({ doc,
       const text = await getPageText(pdf, askedPageNumber);
       // Scan-Seite ohne Textebene: Seitenbild statt Text mitschicken —
       // der Chat bleibt seitengenau, auch bei abfotografierten Skripten.
-      const pageSource = isScannedPage(text)
-        ? { file: { data: await renderPageToJpegBase64(pdf, askedPageNumber), mimeType: 'image/jpeg' } }
-        : { text };
+      // Gecacht, damit eine zweite Frage zur selben Seite nicht erneut rendert+sendet.
+      let pageSource: { text: string } | { file: { data: string; mimeType: string } };
+      if (isScannedPage(text)) {
+        let jpeg = scanImageCache.current.get(askedPageNumber);
+        if (!jpeg) {
+          jpeg = await renderPageToJpegBase64(pdf, askedPageNumber);
+          scanImageCache.current.set(askedPageNumber, jpeg);
+        }
+        pageSource = { file: { data: jpeg, mimeType: 'image/jpeg' } };
+      } else {
+        pageSource = { text };
+      }
       // Erst nur auf DIESER Seite suchen. Deckt sie die Frage nicht ab (found=false),
       // steht der Begriff evtl. einfach auf einer anderen Seite — dann transparent
       // im GANZEN Dokument nachsehen, statt fälschlich "steht nicht im Dokument" zu
@@ -219,9 +230,12 @@ export const PdfSplitScreenReader: React.FC<PdfSplitScreenReaderProps> = ({ doc,
       let quote = scoped.sourceQuote;
       let expandedScope = false;
       if (!scoped.found) {
-        const wholeDocAnswer = await generateExplanation(getDocumentSource(doc), trimmed, false, true);
-        finalAnswer = stripSourceQuoteLine(wholeDocAnswer);
-        quote = extractSourceQuote(wholeDocAnswer);
+        // Auch hier die grounded Variante nutzen, nicht die einfache generateExplanation
+        // — sonst fordert der alte Prompt weiterhin IMMER ein Zitat an und erfindet
+        // eines, wenn das Dokument die Frage am Ende doch nirgends beantwortet.
+        const wholeDoc = await generateGroundedExplanation(getDocumentSource(doc), trimmed);
+        finalAnswer = wholeDoc.answer;
+        quote = wholeDoc.sourceQuote;
         expandedScope = true;
       }
       setChatByPage(prev => ({
@@ -252,6 +266,13 @@ export const PdfSplitScreenReader: React.FC<PdfSplitScreenReaderProps> = ({ doc,
       y: Math.max(10, rect.top - area.top - 48),
     });
   }, []);
+
+  // Touch-Geräte: Selection-API ist dieselbe wie bei der Maus, aber der native
+  // Auswahl-Vorgang (Long-Press + Ziehen) ist bei touchend oft noch nicht fertig
+  // eingerastet — kurze Verzögerung, sonst wird eine unvollständige Auswahl gelesen.
+  const handleTextSelectionTouch = useCallback(() => {
+    setTimeout(handleTextSelection, 50);
+  }, [handleTextSelection]);
 
   const handleAskSelection = useCallback(() => {
     if (!selection) return;
@@ -382,7 +403,7 @@ export const PdfSplitScreenReader: React.FC<PdfSplitScreenReaderProps> = ({ doc,
                       Canvas — macht Maus-Markieren und Kopieren möglich wie in echten PDFs.
                       scaleX gleicht die Breite jedes Fragments an die PDF-Metrik an. */}
                   {canvasCss && pageItems && (
-                    <div className="absolute inset-0 cursor-text" onMouseUp={handleTextSelection} style={{ userSelect: 'text', WebkitUserSelect: 'text' }}>
+                    <div className="absolute inset-0 cursor-text" onMouseUp={handleTextSelection} onTouchEnd={handleTextSelectionTouch} style={{ userSelect: 'text', WebkitUserSelect: 'text' }}>
                       {pageItems.items.map((it, i) => {
                         const sx = canvasCss.w / pageItems.pageW;
                         const sy = canvasCss.h / pageItems.pageH;

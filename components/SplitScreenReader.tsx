@@ -1,13 +1,12 @@
 
 import React, { useState, useEffect, useMemo, useCallback, useRef } from 'react';
 import { ProcessedDocument } from '../types';
-import { generateExplanation, generateGroundedExplanation } from '../services/geminiService';
+import { generateGroundedExplanation } from '../services/geminiService';
 import { getChaptersOrWhole, getTextForChapterDetection, type Chapter } from '../services/chapterService';
 import { markChapterDone, getDoneChapterIndices, isChapterDone } from '../services/chapterProgressService';
 import { logReaderQuestion, getReaderLog } from '../services/readerLogService';
 import { saveReaderChat, getReaderChat } from '../services/readerChatService';
 import { buildFeynmanHandoff, pickHandoffTopic } from '../services/feynmanHandoffService';
-import { extractSourceQuote } from '../services/sourceQuoteParser';
 import { findQuoteInChapter, type PassageMatch } from '../services/passageHighlight';
 import { renderMarkdown } from './markdownRenderer';
 import { resolveErrorMessage } from '../services/errorMessages';
@@ -65,13 +64,11 @@ export const SplitScreenReader: React.FC<SplitScreenReaderProps> = ({ doc, userI
       })
     );
   });
-  const [askedConcepts, setAskedConcepts] = useState<Record<number, string[]>>(() => {
-    const map: Record<number, string[]> = {};
-    getReaderLog(doc.id).forEach(e => {
-      map[e.chapterIndex] = [...(map[e.chapterIndex] ?? []), e.concept];
-    });
-    return map;
-  });
+  // Reiner Recompute-Trigger für den Feynman-Handoff unten (getReaderLog() liest
+  // frisch von localStorage, useMemo braucht aber einen sich ändernden Wert in
+  // den Dependencies, um nach jeder neuen Frage neu zu berechnen) — bewusst kein
+  // Speicher der Fragen selbst, das übernimmt bereits readerLogService.
+  const [handoffVersion, setHandoffVersion] = useState(0);
   const [concept, setConcept] = useState('');
 
   const activeChapter: Chapter | undefined = chapters[activeIndex];
@@ -130,8 +127,11 @@ export const SplitScreenReader: React.FC<SplitScreenReaderProps> = ({ doc, userI
       let quote = scoped.sourceQuote;
       let expandedScope = false;
       if (!scoped.found) {
-        finalAnswer = await generateExplanation({ text: fullText }, trimmed, false, false);
-        quote = null;
+        // Auch hier die grounded Variante nutzen — sonst könnte ein erfundenes
+        // Zitat als Beleg für eine Nicht-Antwort auftauchen (s. Audit-Fund 3).
+        const wholeDoc = await generateGroundedExplanation({ text: fullText }, trimmed);
+        finalAnswer = wholeDoc.answer;
+        quote = wholeDoc.sourceQuote;
         expandedScope = true;
       }
       const highlight = quote ? findQuoteInChapter(quote, chapterContent) : null;
@@ -140,7 +140,7 @@ export const SplitScreenReader: React.FC<SplitScreenReaderProps> = ({ doc, userI
         [chapterIndex]: (prev[chapterIndex] ?? []).map(e => e === entry ? { ...e, answer: finalAnswer, loading: false, highlight, expandedScope } : e),
       }));
       logReaderQuestion({ docId: doc.id, chapterIndex, chapterTitle: activeChapter.title, concept: trimmed, timestamp: Date.now() }, userId);
-      setAskedConcepts(prev => ({ ...prev, [chapterIndex]: [...(prev[chapterIndex] ?? []), trimmed] }));
+      setHandoffVersion(v => v + 1);
     } catch (e) {
       toast.error(resolveErrorMessage(e));
       setChatByChapter(prev => ({
@@ -161,7 +161,7 @@ export const SplitScreenReader: React.FC<SplitScreenReaderProps> = ({ doc, userI
     doneChapterIndices: doneIndices,
     chapters,
     readerLog: getReaderLog(doc.id),
-  }), [doneIndices, chapters, doc.id, askedConcepts]);
+  }), [doneIndices, chapters, doc.id, handoffVersion]);
 
   const handoffTopic = pickHandoffTopic(handoff);
   const handoffFromInteraction = handoff.primary.length > 0;
