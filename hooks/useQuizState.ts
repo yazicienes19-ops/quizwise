@@ -9,7 +9,7 @@ import { getMeta, saveMeta, documentDisplayName } from '../services/libraryServi
 import { saveQuizResult, getDocStats } from '../services/quizHistoryService';
 import { addMistakes, getDueMistakes, rateMistake, MistakeItem } from '../services/mistakeReviewService';
 import { interleaveByKey, interleaveQuestionsByTopic } from '../services/interleave';
-import { countDueCards, migrateLegacyCard } from '../services/spacedRepetition';
+import { countDueCards, migrateLegacyCard, createSrsState } from '../services/spacedRepetition';
 import { recordActivity } from '../services/streakService';
 import { toast } from '../services/toast';
 
@@ -298,7 +298,7 @@ export const useQuizState = (params: UseQuizStateParams) => {
     const cards: Flashcard[] = wrongQuestions.map(q => {
       const correctAnswerText = q.options.length > 0 ? (q.correctAnswerIndices || []).map(i => q.options[i]).filter(Boolean).join(' / ') : '';
       const back = correctAnswerText ? correctAnswerText + (q.explanation ? `\n\n${q.explanation}` : '') : q.explanation || '';
-      return { id: Math.random().toString(36).slice(2, 9), front: q.question, back, level: 0, nextReview: Date.now() };
+      return { id: Math.random().toString(36).slice(2, 9), front: q.question, back, level: 0, nextReview: Date.now(), srs: createSrsState() };
     });
 
     const newDeck: FlashcardDeck = {
