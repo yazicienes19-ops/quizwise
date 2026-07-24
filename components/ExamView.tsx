@@ -52,6 +52,17 @@ export const ExamView: React.FC<ExamViewProps> = ({
   const [progressName, setProgressName] = useState(translate('ev.myExam'));
   const [tempQuestion, setTempQuestion] = useState<ExamQuestion | null>(null);
   const [timeLeft, setTimeLeft]         = useState<number | null>(null);
+  // Ranking/Sortierung: solange eine Frage unberührt ist, EINMAL pro Mount eine
+  // zufällige Startreihenfolge einfrieren statt bei jedem Re-Render neu zu mischen
+  // (Nebenfund Phase 1 — ohne useMemo/State änderte sich die angezeigte Reihenfolge
+  // sichtbar, sobald z.B. an anderer Stelle der Seite getippt wurde).
+  const [initialRankingOrders] = useState<Record<string, string[]>>(() =>
+    Object.fromEntries(
+      questions
+        .filter(q => q.type === 'ranking' && q.rankingItems?.length)
+        .map(q => [q.id, [...q.rankingItems!].sort(() => Math.random() - 0.5)])
+    )
+  );
   const [timerExpired, setTimerExpired] = useState(false);
   const [questionFeedback, setQuestionFeedback] = useState<Record<string, QuestionFeedbackType>>({});
 
@@ -275,7 +286,7 @@ export const ExamView: React.FC<ExamViewProps> = ({
 
     /* ── Ranking / Sortierung ── */
     if (q.type === 'ranking' && q.rankingItems) {
-      const userOrder: string[] = (ans as string[]) || [...q.rankingItems].sort(() => Math.random() - 0.5);
+      const userOrder: string[] = (ans as string[]) || initialRankingOrders[q.id] || q.rankingItems;
       if (mode === 'solve') {
         return (
           <div className="pl-4 lg:pl-10 space-y-2">
