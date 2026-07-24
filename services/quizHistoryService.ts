@@ -39,6 +39,10 @@ export const getAllResults = (): QuizResult[] => readAll();
  * Entfernt eine Quiz-Session endgültig aus Verlauf + Cloud. War es die letzte
  * Session zu diesem Dokument, fliegen auch dessen Einträge aus der
  * Fehler-Wiederholungs-Queue — sonst blieben verwaiste Fragen zurück.
+ * Matching über docId, nicht docName: bei Multi-Dokument-Quiz teilen sich
+ * unterschiedliche Dokument-Kombinationen sonst denselben generischen Namen
+ * ("N Dokumente") und würden sich gegenseitig die Queue fälschlich (nicht)
+ * leeren.
  */
 export const deleteQuizResult = (id: string, userId?: string | null): void => {
   const all = readAll();
@@ -49,8 +53,8 @@ export const deleteQuizResult = (id: string, userId?: string | null): void => {
   if (userId) {
     import('./syncService').then(({ syncLearningField }) => syncLearningField(userId, 'quiz_history', updated)).catch(() => {});
   }
-  if (!updated.some(r => r.docName === target.docName)) {
-    import('./mistakeReviewService').then(({ removeMistakesByDocName }) => removeMistakesByDocName(target.docName, userId)).catch(() => {});
+  if (!updated.some(r => r.docId === target.docId)) {
+    import('./mistakeReviewService').then(({ removeMistakesByDocId }) => removeMistakesByDocId(target.docId, userId)).catch(() => {});
   }
 };
 

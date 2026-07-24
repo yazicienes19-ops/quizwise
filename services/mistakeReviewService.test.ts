@@ -1,6 +1,6 @@
 import { describe, it, expect, beforeEach } from 'vitest';
 import type { QuizQuestion } from '../types';
-import { getMistakeQueue, getDueMistakes, countDueMistakes, addMistakes, rateMistake, removeMistake, examQuestionToQuizQuestion, addExamMistakes } from './mistakeReviewService';
+import { getMistakeQueue, getDueMistakes, countDueMistakes, addMistakes, rateMistake, removeMistake, removeMistakesByDocId, examQuestionToQuizQuestion, addExamMistakes } from './mistakeReviewService';
 import type { ExamQuestion } from '../types';
 
 const mkQ = (text: string): QuizQuestion => ({
@@ -89,6 +89,18 @@ describe('mistakeReviewService', () => {
     const n = addMistakes([mkQ('   ')], META);
     expect(n).toBe(0);
     expect(getMistakeQueue()).toHaveLength(0);
+  });
+
+  it('removeMistakesByDocId entfernt nur Items der passenden docId, nicht die eines gleichnamigen anderen Dokuments', () => {
+    // Zwei verschiedene Multi-Doc-Kombinationen können denselben generischen
+    // docName ("2 Dokumente") tragen — das Matching muss trotzdem über die
+    // (eindeutige) docId laufen, nicht über diesen Namen.
+    addMistakes([mkQ('Frage A')], { docId: 'docA+docB', docName: '2 Dokumente' });
+    addMistakes([mkQ('Frage C')], { docId: 'docC+docD', docName: '2 Dokumente' });
+    removeMistakesByDocId('docA+docB');
+    const remaining = getMistakeQueue();
+    expect(remaining).toHaveLength(1);
+    expect(remaining[0].question.question).toBe('Frage C');
   });
 });
 

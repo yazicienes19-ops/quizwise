@@ -45,9 +45,12 @@ const write = (items: MistakeItem[], userId?: string | null): void => {
 
 export const getMistakeQueue = (): MistakeItem[] => readAll();
 
-/** Entfernt alle Queue-Einträge eines Dokuments (Kaskade beim Löschen der letzten Session). */
-export const removeMistakesByDocName = (docName: string, userId?: string | null): void => {
-  const remaining = readAll().filter(m => m.docName !== docName);
+/** Entfernt alle Queue-Einträge eines Dokuments (Kaskade beim Löschen der
+ *  letzten Session). Matching über docId statt des generischen docName-Strings
+ *  ("N Dokumente") — sonst könnten zwei verschiedene Multi-Dokument-Kombinationen
+ *  denselben Namen teilen und sich beim Löschen gegenseitig die Queue leeren. */
+export const removeMistakesByDocId = (docId: string, userId?: string | null): void => {
+  const remaining = readAll().filter(m => m.docId !== docId);
   write(remaining, userId);
 };
 

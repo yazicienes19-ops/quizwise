@@ -57,6 +57,35 @@ export const saveUsedTopics = (key: string, qs: { topic?: string }[]): void => {
   localStorage.setItem(`quizwise_topics_${key}`, JSON.stringify(merged));
 };
 
+// ── Fragetext-Tracking (Klausur, ergänzt excludeTopics) ─────────────────────
+// excludeTopics wirkt nur auf Themenebene — bei mehreren Klausuren zum selben
+// Modul können trotz unterschiedlicher Themen inhaltlich sehr ähnliche
+// Einzelfragen entstehen. Deshalb zusätzlich die vollen Fragetexte der
+// letzten Klausuren merken. Kappung bei 30 (statt 60 wie bei Themen): Fragen
+// sind viel länger als Themen-Labels, 30 entspricht ungefähr den letzten 1-2
+// Klausurversuchen bei den üblichen 15-20 Fragen pro Klausur.
+const EXAM_QUESTION_HISTORY_CAP = 30;
+
+export const getUsedExamQuestions = (key: string): string[] => {
+  try { return JSON.parse(localStorage.getItem(`quizwise_examq_${key}`) || '[]'); } catch { return []; }
+};
+
+export const saveUsedExamQuestions = (key: string, qs: { question?: string }[]): void => {
+  const newQuestions = qs.map(q => q.question).filter(Boolean) as string[];
+  if (!newQuestions.length) return;
+  const merged = [...getUsedExamQuestions(key), ...newQuestions].slice(-EXAM_QUESTION_HISTORY_CAP);
+  localStorage.setItem(`quizwise_examq_${key}`, JSON.stringify(merged));
+};
+
+/** Stabile Identität für Multi-Dokument-Quiz-Sessions: sortierte, verkettete
+ *  Einzel-Doc-IDs statt der ID des einen "primären" Dokuments (pendingActionDoc).
+ *  Sonst werden Ergebnis/Statistik/excludeTopics/Fehler-Queue einer Mehrfach-
+ *  Dokument-Session fälschlich dem primären Dokument allein zugerechnet, und
+ *  zwei unterschiedliche Dokument-Kombinationen teilen sich denselben
+ *  generischen docName ("N Dokumente") in der Fehler-Queue-Bereinigung.
+ *  Sortierung macht die ID unabhängig von der Auswahlreihenfolge. */
+export const multiDocId = (docIds: string[]): string => [...docIds].sort().join('+');
+
 export const useQuizState = (params: UseQuizStateParams) => {
   const [questions, setQuestions] = useState<QuizQuestion[]>([]);
   const [answers, setAnswers] = useState<UserAnswer[]>([]);
@@ -170,6 +199,7 @@ export const useQuizState = (params: UseQuizStateParams) => {
 
       let source: GenerationSource;
       let metaName: string;
+      let metaDocId: string;
       if (selectedDocs.length > 1) {
         const combined = selectedDocs.map(d => {
           const txt = d.digestText || (d.type === 'text' ? d.content : '');
@@ -177,16 +207,20 @@ export const useQuizState = (params: UseQuizStateParams) => {
         }).join('\n\n---\n\n');
         source = { text: combined };
         metaName = `${selectedDocs.length} Dokumente`;
+        metaDocId = multiDocId(selectedDocs.map(d => d.id));
       } else {
         source = params.getDocumentSource(params.pendingActionDoc!);
         metaName = documentDisplayName(params.pendingActionDoc!);
+        metaDocId = params.pendingActionDoc!.id;
       }
 
-      setActiveQuizMeta({ docId: params.pendingActionDoc!.id, docName: metaName });
+      setActiveQuizMeta({ docId: metaDocId, docName: metaName });
+      // Fokus-Auswahl bezieht sich bewusst immer aufs Primärdokument — QuizSetup
+      // zeigt/berechnet "schwache Themen" ausschließlich aus dessen Stats.
       const stats = getDocStats(params.pendingActionDoc!.id);
       const customFocus = config.focus === 'weak' && stats.weakTopics.length > 0
         ? `Fokus auf schwache Themen: ${stats.weakTopics.join(', ')}` : undefined;
-      const excludeTopics = getUsedTopics(params.pendingActionDoc!.id);
+      const excludeTopics = getUsedTopics(metaDocId);
       const rawQuiz = await generateQuizFromDocument(source, QuizType.CUSTOM, {
         customCount: config.questionCount,
         customDifficulty: config.difficulty,
@@ -198,8 +232,8 @@ export const useQuizState = (params: UseQuizStateParams) => {
       const quiz = interleaveQuestionsByTopic(rawQuiz);
       setQuestions(quiz);
       setQuizInitialAnswers(undefined);
-      saveUsedTopics(params.pendingActionDoc!.id, quiz);
-      saveQuizProgress(quiz, [], { docId: params.pendingActionDoc!.id, docName: metaName });
+      saveUsedTopics(metaDocId, quiz);
+      saveQuizProgress(quiz, [], { docId: metaDocId, docName: metaName });
     } catch (e) { params.handleApiError(e); } finally { params.setIsLoading(false); }
   };
 
