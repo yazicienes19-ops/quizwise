@@ -39,6 +39,24 @@ export const normalizeQuizQuestions = (raw: unknown): QuizQuestion[] => {
     // MC-artige Fragen brauchen Optionen + mind. eine korrekte Antwort, sonst nicht spielbar
     if (isMcLike && (options.length < 2 || correctAnswerIndices.length === 0)) return acc;
 
+    // Matching/Ranking/Numeric hatten bisher keinen Vollständigkeits-Schutz:
+    // leere matchPairs/rankingItems werten in QuizPlayer.tsx per .every() auf
+    // leerem Array fälschlich als "richtig" (Matching) bzw. sperren dort den
+    // "Antwort prüfen"-Button dauerhaft (Ranking, kein Cloze-artiger Fallback).
+    if (questionType === 'matching') {
+      const validPairs = Array.isArray(q.matchPairs)
+        ? q.matchPairs.filter((p: any) => p && typeof p.left === 'string' && typeof p.right === 'string')
+        : [];
+      if (validPairs.length === 0) return acc;
+    }
+    if (questionType === 'ranking') {
+      const validItems = Array.isArray(q.rankingItems) ? q.rankingItems.filter((r: any) => typeof r === 'string') : [];
+      if (validItems.length === 0) return acc;
+    }
+    // typeof-Check statt `?? 0`: 0 ist eine valide echte Antwort, "Feld fehlt"
+    // darf damit nicht verwechselt werden.
+    if (questionType === 'numeric' && typeof q.numericAnswer !== 'number') return acc;
+
     acc.push({
       question,
       options,

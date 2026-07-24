@@ -60,6 +60,55 @@ describe('normalizeQuizQuestions', () => {
     expect(normalizeQuizQuestions({})).toEqual([]);
     expect(normalizeQuizQuestions(undefined)).toEqual([]);
   });
+
+  it('verwirft Matching-Fragen mit leerem matchPairs-Array', () => {
+    const result = normalizeQuizQuestions([
+      { question: 'Ordne zu.', questionType: 'matching', matchPairs: [] },
+    ]);
+    expect(result).toEqual([]);
+  });
+
+  it('verwirft Matching-Fragen ohne matchPairs-Feld', () => {
+    const result = normalizeQuizQuestions([
+      { question: 'Ordne zu.', questionType: 'matching' },
+    ]);
+    expect(result).toEqual([]);
+  });
+
+  it('behält eine vollständige Matching-Frage', () => {
+    const [q] = normalizeQuizQuestions([
+      { question: 'Ordne zu.', questionType: 'matching', matchPairs: [{ left: 'A', right: 'B' }] },
+    ]);
+    expect(q.matchPairs).toEqual([{ left: 'A', right: 'B' }]);
+  });
+
+  it('verwirft Ranking-Fragen mit leerem rankingItems-Array', () => {
+    const result = normalizeQuizQuestions([
+      { question: 'Sortiere.', questionType: 'ranking', rankingItems: [] },
+    ]);
+    expect(result).toEqual([]);
+  });
+
+  it('behält eine vollständige Ranking-Frage', () => {
+    const [q] = normalizeQuizQuestions([
+      { question: 'Sortiere.', questionType: 'ranking', rankingItems: ['1', '2', '3'] },
+    ]);
+    expect(q.rankingItems).toEqual(['1', '2', '3']);
+  });
+
+  it('verwirft Numeric-Fragen ohne numericAnswer-Feld', () => {
+    const result = normalizeQuizQuestions([
+      { question: 'Wie viele?', questionType: 'numeric' },
+    ]);
+    expect(result).toEqual([]);
+  });
+
+  it('behält eine Numeric-Frage mit numericAnswer 0 (echte valide Antwort, kein Fallback-Verwechsler)', () => {
+    const [q] = normalizeQuizQuestions([
+      { question: 'Wie viele Fehler?', questionType: 'numeric', numericAnswer: 0 },
+    ]);
+    expect(q.numericAnswer).toBe(0);
+  });
 });
 
 describe('parseQuizQuestions', () => {

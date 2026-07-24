@@ -2,6 +2,7 @@ import React, { useState, useEffect, useMemo, useCallback } from 'react';
 import { QuizQuestion, UserAnswer } from '../types';
 import { EmojiImage } from './EmojiImage';
 import { useTranslation } from '../i18n/I18nProvider';
+import { matchBlank } from '../services/blankMatch';
 
 interface QuizPlayerProps {
   questions: QuizQuestion[];
@@ -113,9 +114,10 @@ export const QuizPlayer: React.FC<QuizPlayerProps> = ({
     if (isCloze) {
       const ca = currentQuestion.clozeAnswers || [];
       if (ca.length === 0) return false;
-      return ca.every(
-        (a, i) => (clozeAnswer[i] || '').trim().toLowerCase() === (a || '').toLowerCase()
-      );
+      // Levenshtein-Toleranz statt Exaktvergleich — dieselbe Regel wie beim
+      // Klausur-Lückentext (services/blankMatch.ts): ein Tippfehler soll
+      // nicht als komplett falsch zählen.
+      return ca.every((a, i) => matchBlank(clozeAnswer[i] || '', a || '') !== 'none');
     }
     if (isRanking) {
       return (currentQuestion.rankingItems || []).every((item, i) => item === rankingOrder[i]);
@@ -398,7 +400,9 @@ export const QuizPlayer: React.FC<QuizPlayerProps> = ({
             {parts.map((part, pi) => {
               const userBlank    = clozeAnswer[pi] || '';
               const correctBlank = currentQuestion.clozeAnswers?.[pi] || '';
-              const ok = showResult && userBlank.trim().toLowerCase() === correctBlank.toLowerCase();
+              // Anzeige folgt derselben Toleranzregel wie checkCorrectness,
+              // sonst würde eine tolerant gewertete Lücke fälschlich rot markiert.
+              const ok = showResult && matchBlank(userBlank, correctBlank) !== 'none';
               const wrong = showResult && !ok && pi < parts.length - 1;
               return (
                 <React.Fragment key={pi}>
