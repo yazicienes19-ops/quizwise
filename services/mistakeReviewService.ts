@@ -128,9 +128,11 @@ export const removeMistake = (id: string, userId?: string | null): void => {
 // ─── Klausur-Fehler → Wiederholungs-Queue ────────────────────────────────────
 
 /**
- * Wandelt eine Klausurfrage in eine replaybare QuizQuestion um.
- * Nur mc und einfaches truefalse sind verlustfrei abbildbar — open/matching/
- * ranking/fillblank/numeric und TF-mit-Begründung liefern null (bewusst).
+ * Wandelt eine Klausurfrage in eine replaybare QuizQuestion um — für ALLE 7
+ * Klausur-Fragetypen (Phase 4 Klausursimulator 2.0; vorher nur mc und
+ * reduktionsfreies truefalse). QuizPlayer.tsx unterstützt matching/cloze/
+ * ranking/numeric/open bereits vollständig (eigenständiges Multi-Typ-Quiz-
+ * Feature), diese Funktion nutzt exakt dieselben Feldformen.
  */
 export const examQuestionToQuizQuestion = (q: ExamQuestion): QuizQuestion | null => {
   if (q.type === 'mc' && q.options?.length && q.correctIndices?.length) {
@@ -147,7 +149,10 @@ export const examQuestionToQuizQuestion = (q: ExamQuestion): QuizQuestion | null
       ...(q.scenarioText ? { scenarioText: q.scenarioText } : {}),
     };
   }
-  if (q.type === 'truefalse' && typeof q.tfCorrect === 'boolean' && !q.tfReasonOptions?.length) {
+  if (q.type === 'truefalse' && typeof q.tfCorrect === 'boolean') {
+    // TF-mit-Begründung: nur die Kernaussage requeuen, Begründungsoptionen
+    // bewusst fallenlassen — die Wiederholung prüft den Fakt, nicht die
+    // ursprüngliche Mehrfachauswahl-Begründung.
     return {
       question: q.question,
       options: [t('tf.true'), t('tf.false')],
@@ -158,6 +163,83 @@ export const examQuestionToQuizQuestion = (q: ExamQuestion): QuizQuestion | null
       sourceReference: '',
       topic: q.topic,
       questionType: 'truefalse',
+    };
+  }
+  if (q.type === 'matching' && q.matchLeft?.length && q.matchRight?.length && q.matchCorrect?.length) {
+    const matchPairs = q.matchLeft
+      .map((left, i) => ({ left, right: q.matchRight![q.matchCorrect![i]] }))
+      .filter(p => typeof p.right === 'string');
+    if (matchPairs.length !== q.matchLeft.length) return null;
+    return {
+      question: q.question,
+      options: [],
+      correctAnswerIndices: [],
+      isMultipleChoice: false,
+      explanation: q.solution || '',
+      distractorExplanations: [],
+      sourceReference: '',
+      topic: q.topic,
+      questionType: 'matching',
+      matchPairs,
+    };
+  }
+  if (q.type === 'fillblank' && q.blankText && q.blanks?.length) {
+    return {
+      question: q.question,
+      options: [],
+      correctAnswerIndices: [],
+      isMultipleChoice: false,
+      explanation: q.solution || '',
+      distractorExplanations: [],
+      sourceReference: '',
+      topic: q.topic,
+      questionType: 'cloze',
+      clozeText: q.blankText.split('[LÜCKE]').join('__LÜCKE__'),
+      clozeAnswers: q.blanks,
+    };
+  }
+  if (q.type === 'ranking' && q.rankingItems?.length) {
+    return {
+      question: q.question,
+      options: [],
+      correctAnswerIndices: [],
+      isMultipleChoice: false,
+      explanation: q.solution || '',
+      distractorExplanations: [],
+      sourceReference: '',
+      topic: q.topic,
+      questionType: 'ranking',
+      rankingItems: q.rankingItems,
+    };
+  }
+  if (q.type === 'numeric' && typeof q.numericAnswer === 'number') {
+    return {
+      question: q.question,
+      options: [],
+      correctAnswerIndices: [],
+      isMultipleChoice: false,
+      explanation: q.solution || '',
+      distractorExplanations: [],
+      sourceReference: '',
+      topic: q.topic,
+      questionType: 'numeric',
+      numericAnswer: q.numericAnswer,
+      numericTolerance: q.numericTolerance ?? 0,
+    };
+  }
+  if (q.type === 'open' && q.solution?.trim()) {
+    // Selbsteinschätzung wie beim regulären Multi-Typ-Quiz (QuizPlayer.tsx
+    // isOpen-Zweig) — keine automatische Bewertung bei der Wiederholung.
+    return {
+      question: q.question,
+      options: [],
+      correctAnswerIndices: [],
+      isMultipleChoice: false,
+      explanation: q.solution,
+      distractorExplanations: [],
+      sourceReference: '',
+      topic: q.topic,
+      questionType: 'open',
     };
   }
   return null;

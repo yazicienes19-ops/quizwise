@@ -109,21 +109,74 @@ describe('Klausur-Fehler → Queue', () => {
     expect(q.topic).toBe('Zellbiologie');
   });
 
-  it('mappt einfaches truefalse; TF mit Begründungsoptionen wird übersprungen', () => {
+  it('mappt einfaches truefalse; TF mit Begründungsoptionen requeued nur die Kernaussage (Phase 4)', () => {
     const tf: ExamQuestion = { id: 'e2', question: 'Aussage X', type: 'truefalse', tfCorrect: false, solution: '', points: 2 };
     expect(examQuestionToQuizQuestion(tf)?.correctAnswerIndices).toEqual([1]);
     const tfReason: ExamQuestion = { ...tf, tfReasonOptions: ['Weil A', 'Weil B'] };
-    expect(examQuestionToQuizQuestion(tfReason)).toBeNull();
+    const mapped = examQuestionToQuizQuestion(tfReason);
+    expect(mapped?.correctAnswerIndices).toEqual([1]);
+    expect(mapped?.questionType).toBe('truefalse');
   });
 
-  it('open/matching liefern null', () => {
-    const open: ExamQuestion = { id: 'e3', question: 'Erkläre …', type: 'open', solution: '', points: 5 };
-    expect(examQuestionToQuizQuestion(open)).toBeNull();
+  it('mappt matching auf matchPairs', () => {
+    const matching: ExamQuestion = {
+      id: 'e3', question: 'Ordne zu', type: 'matching',
+      matchLeft: ['Pawlow', 'Skinner'], matchRight: ['Operante Konditionierung', 'Klassische Konditionierung'],
+      matchCorrect: [1, 0], solution: '', points: 4,
+    };
+    const q = examQuestionToQuizQuestion(matching)!;
+    expect(q.questionType).toBe('matching');
+    expect(q.matchPairs).toEqual([
+      { left: 'Pawlow', right: 'Klassische Konditionierung' },
+      { left: 'Skinner', right: 'Operante Konditionierung' },
+    ]);
   });
 
-  it('addExamMistakes reiht nur Fragen unter 50% der Punkte ein', () => {
-    const n = addExamMistakes([mcQ(0), mcQ(3), { id: 'e4', question: 'Offen', type: 'open', solution: '', points: 5, achievedPoints: 0 }], { docId: 'x', docName: 'Klausur' });
-    expect(n).toBe(1); // nur die falsche mc-Frage; volle Punkte + open fallen raus
-    expect(getMistakeQueue()).toHaveLength(1);
+  it('mappt fillblank auf cloze ([LÜCKE] → __LÜCKE__)', () => {
+    const fillblank: ExamQuestion = {
+      id: 'e4', question: 'Vervollständige', type: 'fillblank',
+      blankText: 'Ein [LÜCKE] löst eine [LÜCKE] aus.', blanks: ['Reiz', 'Reaktion'],
+      solution: '', points: 4,
+    };
+    const q = examQuestionToQuizQuestion(fillblank)!;
+    expect(q.questionType).toBe('cloze');
+    expect(q.clozeText).toBe('Ein __LÜCKE__ löst eine __LÜCKE__ aus.');
+    expect(q.clozeAnswers).toEqual(['Reiz', 'Reaktion']);
+  });
+
+  it('mappt ranking direkt (gleiche Feldform)', () => {
+    const ranking: ExamQuestion = { id: 'e5', question: 'Sortiere', type: 'ranking', rankingItems: ['A', 'B', 'C'], solution: '', points: 3 };
+    expect(examQuestionToQuizQuestion(ranking)?.rankingItems).toEqual(['A', 'B', 'C']);
+    expect(examQuestionToQuizQuestion(ranking)?.questionType).toBe('ranking');
+  });
+
+  it('mappt numeric direkt (gleiche Feldform)', () => {
+    const numeric: ExamQuestion = { id: 'e6', question: 'Wie viel?', type: 'numeric', numericAnswer: 42, numericTolerance: 2, solution: '', points: 2 };
+    const q = examQuestionToQuizQuestion(numeric)!;
+    expect(q.numericAnswer).toBe(42);
+    expect(q.numericTolerance).toBe(2);
+    expect(q.questionType).toBe('numeric');
+  });
+
+  it('mappt open als Selbsteinschätzungs-Frage (kein Bewertungs-Call bei Wiederholung)', () => {
+    const open: ExamQuestion = { id: 'e7', question: 'Erkläre …', type: 'open', solution: 'Musterantwort', points: 5 };
+    const q = examQuestionToQuizQuestion(open)!;
+    expect(q.questionType).toBe('open');
+    expect(q.explanation).toBe('Musterantwort');
+    expect(q.options).toEqual([]);
+  });
+
+  it('unvollständige Daten liefern weiterhin null statt kaputter Objekte', () => {
+    expect(examQuestionToQuizQuestion({ id: 'x', question: 'Q', type: 'matching', solution: '', points: 4 })).toBeNull();
+    expect(examQuestionToQuizQuestion({ id: 'x', question: 'Q', type: 'fillblank', solution: '', points: 4 })).toBeNull();
+    expect(examQuestionToQuizQuestion({ id: 'x', question: 'Q', type: 'ranking', solution: '', points: 4 })).toBeNull();
+    expect(examQuestionToQuizQuestion({ id: 'x', question: 'Q', type: 'numeric', solution: '', points: 4 })).toBeNull();
+    expect(examQuestionToQuizQuestion({ id: 'x', question: 'Q', type: 'open', solution: '', points: 4 })).toBeNull();
+  });
+
+  it('addExamMistakes reiht jetzt auch nicht-mc-Fragen unter 50% der Punkte ein', () => {
+    const n = addExamMistakes([mcQ(0), mcQ(3), { id: 'e8', question: 'Offen', type: 'open', solution: 'Antwort', points: 5, achievedPoints: 0 }], { docId: 'x', docName: 'Klausur' });
+    expect(n).toBe(2); // falsche mc-Frage + offene Frage; volle Punkte fallen raus
+    expect(getMistakeQueue()).toHaveLength(2);
   });
 });

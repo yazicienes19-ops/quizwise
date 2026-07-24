@@ -62,8 +62,9 @@ export const ExamSystem: React.FC<ExamSystemProps> = ({ documents, collections, 
   const [scoringProfile, setScoringProfile] = useState<ScoringProfile>(DEFAULT_SCORING_PROFILE);
   const [examAnalysis, setExamAnalysis]     = useState<ExamAnalysis | null>(null);
   const [categoryBreakdown, setCategoryBreakdown] = useState<{ category: string; score: number }[]>([]);
+  const [fatigue, setFatigue] = useState<{ earlyScore: number; lateScore: number } | undefined>(undefined);
 
-  const resetExam = () => { setQuestions(null); setMode('edit'); setShowCancelConfirm(false); setExamDuration(undefined); setExamAnalysis(null); setCategoryBreakdown([]); };
+  const resetExam = () => { setQuestions(null); setMode('edit'); setShowCancelConfirm(false); setExamDuration(undefined); setExamAnalysis(null); setCategoryBreakdown([]); setFatigue(undefined); };
 
   // Vorübergehende KI-Überlastung: clientseitig erneut versuchen. Das Backend
   // wiederholt selbst schon kurz — hier fangen wir längere Aussetzer ab und
@@ -261,6 +262,7 @@ export const ExamSystem: React.FC<ExamSystemProps> = ({ documents, collections, 
 
       onComplete?.({ score, docName: examDocName, passed: score >= 50, totalPoints, achievedPoints, weakTopics, categoryBreakdown, typeBreakdown, fatigue, questions: evaluated, examTypePreset });
       setCategoryBreakdown(categoryBreakdown);
+      setFatigue(fatigue);
 
       // Analyse asynchron im Hintergrund (kein Blocker)
       analyzeExamResults(evaluated)
@@ -363,6 +365,7 @@ export const ExamSystem: React.FC<ExamSystemProps> = ({ documents, collections, 
         categoryBreakdown={categoryBreakdown}
         onAction={onAction}
         examTypePreset={examTypePreset}
+        fatigue={fatigue}
         onSaveProgress={(name) => {
           const withAnswers = questions.map(q => ({ ...q, userAnswer: currentAnswers[q.id] }));
           saveExamToStorage({ name, docName: examDocName, questions: withAnswers });

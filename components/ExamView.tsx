@@ -30,6 +30,7 @@ interface ExamViewProps {
   categoryBreakdown?: { category: string; score: number }[];
   onAction?: (topic: string, mode: 'cards' | 'recall' | 'quiz') => void;
   examTypePreset?: ExamTypePreset;
+  fatigue?: { earlyScore: number; lateScore: number };
 }
 
 const formatTime = (s: number) =>
@@ -39,7 +40,7 @@ export const ExamView: React.FC<ExamViewProps> = ({
   questions, mode, onSave, onSubmit, isEvaluating,
   examDuration, onNewExam, onNavigate, onSaveExam,
   initialAnswers, onAnswersChange, onSaveProgress, examTitle,
-  scoringProfile, analysis, categoryBreakdown, onAction, examTypePreset,
+  scoringProfile, analysis, categoryBreakdown, onAction, examTypePreset, fatigue,
 }) => {
   const { t } = useTranslation();
   const [answers, setAnswers]           = useState<Record<string, any>>(initialAnswers ?? {});
@@ -735,6 +736,31 @@ export const ExamView: React.FC<ExamViewProps> = ({
               </div>
             ))}
           </div>
+        </div>
+      )}
+
+      {/* Fatigue-Signal: Score erste vs. zweite Hälfte (ExamSystem.tsx). Wurde
+          bisher berechnet+gespeichert, aber nirgends angezeigt (Phase 4). */}
+      {mode === 'result' && fatigue && (
+        <div className="rounded-[24px] sm:rounded-[32px] p-5 sm:p-8 space-y-4 animate-in fade-in duration-500" style={{ background: 'var(--bg-sidebar)', border: '1px solid var(--border-color)' }}>
+          <div>
+            <h3 className="text-lg font-black dark:text-white">{t('ev.fatigueTitle')}</h3>
+            <p className="text-[10px] font-black uppercase tracking-widest text-slate-400">{t('ev.fatigueHint')}</p>
+          </div>
+          <div className="grid grid-cols-2 gap-4">
+            <div>
+              <p className="text-[9px] font-black uppercase tracking-widest text-slate-400 mb-1">{t('ev.fatigueEarly')}</p>
+              <p className="text-2xl font-black dark:text-white">{fatigue.earlyScore}%</p>
+            </div>
+            <div>
+              <p className="text-[9px] font-black uppercase tracking-widest text-slate-400 mb-1">{t('ev.fatigueLate')}</p>
+              <p className="text-2xl font-black dark:text-white">{fatigue.lateScore}%</p>
+            </div>
+          </div>
+          {/* Gleicher Schwellenwert wie learningProfileService.ts (fatigueExams-Filter) */}
+          {fatigue.earlyScore - fatigue.lateScore >= 15 && (
+            <p className="text-xs font-bold text-amber-600 dark:text-amber-400 pt-3 border-t border-slate-200 dark:border-slate-700">{t('ev.fatigueWarning')}</p>
+          )}
         </div>
       )}
 
