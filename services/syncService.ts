@@ -18,6 +18,8 @@ export interface CloudSavedContent {
   study_templates: any[];
   reading_progress: Record<string, any>;
   reader_log: any[];
+  recurring_sessions: any[];
+  calendar_sessions: any[];
 }
 
 export interface CloudPreferences {
@@ -56,6 +58,8 @@ const EMPTY_SAVED: CloudSavedContent = {
   study_templates: [],
   reading_progress: {},
   reader_log: [],
+  recurring_sessions: [],
+  calendar_sessions: [],
 };
 
 async function ensureRows(userId: string): Promise<void> {
@@ -100,6 +104,8 @@ export async function loadAllCloudData(userId: string): Promise<AllCloudData> {
       study_templates: savedRes.data.study_templates ?? [],
       reading_progress: savedRes.data.reading_progress ?? {},
       reader_log: savedRes.data.reader_log ?? [],
+      recurring_sessions: savedRes.data.recurring_sessions ?? [],
+      calendar_sessions: savedRes.data.calendar_sessions ?? [],
     } : null,
     preferences: (profileRes.data?.preferences as CloudPreferences) ?? {},
     metrics,
@@ -191,8 +197,10 @@ export async function migrateLocalToCloud(userId: string): Promise<void> {
   const studyTemplates = readLocal('study_templates');
   const readingProgress = readLocal('quizwise_reading_progress');
   const readerLog = readLocal('quizwise_reader_log');
+  const recurringSessions = readLocal('quizwise_recurring_sessions');
+  const calendarSessions = readLocal('quizwise_calendar_sessions');
 
-  if (savedQuizzes || savedExams || libMeta || studyEvents || studyTemplates || readingProgress || readerLog) {
+  if (savedQuizzes || savedExams || libMeta || studyEvents || studyTemplates || readingProgress || readerLog || recurringSessions || calendarSessions) {
     await supabase.from('user_saved_content').update({
       ...(savedQuizzes ? { saved_quizzes: savedQuizzes } : {}),
       ...(savedExams ? { saved_exams: savedExams } : {}),
@@ -201,6 +209,8 @@ export async function migrateLocalToCloud(userId: string): Promise<void> {
       ...(studyTemplates ? { study_templates: studyTemplates } : {}),
       ...(readingProgress ? { reading_progress: readingProgress } : {}),
       ...(readerLog ? { reader_log: readerLog } : {}),
+      ...(recurringSessions ? { recurring_sessions: recurringSessions } : {}),
+      ...(calendarSessions ? { calendar_sessions: calendarSessions } : {}),
       updated_at: new Date().toISOString(),
     }).eq('user_id', userId);
   }

@@ -450,7 +450,7 @@ export const AppContent: React.FC<AppContentProps> = (p) => {
       />;
 
     case ActiveTab.PLANNER:
-      return <StudyPlanner metrics={metrics} decks={decks} examTerms={examTerms} onUpdateExams={saveExamTerms} userId={user?.id} />;
+      return <StudyPlanner metrics={metrics} decks={decks} examTerms={examTerms} onUpdateExams={saveExamTerms} userId={user?.id} collections={collections} onUpdateCollection={updateCollection} />;
 
     case ActiveTab.CARDS:
       return <FlashcardSystem

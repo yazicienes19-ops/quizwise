@@ -337,6 +337,35 @@ export interface StudyEvent {
   intervalStep?: number; // 1 | 3 | 7 (nur sourceKind 'topic')
 }
 
+/** Feste, wöchentlich wiederkehrende Lernsession (z.B. "jeden Montag Statistik").
+ *  Bezieht sich per moduleId auf eine Collection aus der Bibliothek, oder trägt
+ *  einen freien Fachnamen (customSubject), falls kein Modul gewählt wurde.
+ *  skipDates unterdrückt einzelne Vorkommen, ohne die Regel selbst zu ändern
+ *  (punktuelle Überschreibung eines Tages, s. CalendarStudySession). */
+export interface RecurringStudySession {
+  id: string;
+  weekday: number; // 0=So..6=Sa (Date.getDay())
+  moduleId?: string;
+  customSubject?: string;
+  topic: string;
+  startTime: string;
+  endTime: string;
+  skipDates?: string[]; // YYYY-MM-DD
+}
+
+/** Einmalige, an ein echtes Datum gebundene Lernsession — entweder frei angelegt,
+ *  oder als punktuelle Überschreibung eines einzelnen Vorkommens einer
+ *  RecurringStudySession (deren Datum dann zusätzlich in deren skipDates steht). */
+export interface CalendarStudySession {
+  id: string;
+  date: string; // YYYY-MM-DD
+  moduleId?: string;
+  customSubject?: string;
+  topic: string;
+  startTime: string;
+  endTime: string;
+}
+
 /** Kognitive Bloom-Taxonomie-Stufe — wird NIE aus difficulty abgeleitet und umgekehrt,
  *  beides sind unabhängige Achsen (services/bloomPresets.ts). */
 export type BloomLevel = 'erinnern' | 'verstehen' | 'anwenden' | 'analysieren' | 'bewerten' | 'erschaffen';

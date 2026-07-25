@@ -98,6 +98,8 @@ const App: React.FC = () => {
         if (cloud.saved.study_templates.length) localStorage.setItem('study_templates', JSON.stringify(cloud.saved.study_templates));
         if (Object.keys(cloud.saved.reading_progress).length) localStorage.setItem('quizwise_reading_progress', JSON.stringify(cloud.saved.reading_progress));
         if (cloud.saved.reader_log.length) localStorage.setItem('quizwise_reader_log', JSON.stringify(cloud.saved.reader_log));
+        if (cloud.saved.recurring_sessions.length) localStorage.setItem('quizwise_recurring_sessions', JSON.stringify(cloud.saved.recurring_sessions));
+        if (cloud.saved.calendar_sessions.length) localStorage.setItem('quizwise_calendar_sessions', JSON.stringify(cloud.saved.calendar_sessions));
       }
       if (!cloud.learning && !cloud.metrics.length) {
         const hasLocal = localStorage.getItem('quizwise_metrics') || localStorage.getItem('quizwise_streak') || localStorage.getItem('quizwise_quiz_history');
