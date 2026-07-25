@@ -14,7 +14,7 @@ import { useTranslation } from '../i18n/I18nProvider';
 import { t as translate } from '../i18n';
 import { saveExamToStorage } from '../services/savedExamsService';
 import { interleaveQuestionsByTopic } from '../services/interleave';
-import { sourceTopicsKey, saveUsedTopics } from '../hooks/useQuizState';
+import { sourceTopicsKey, saveUsedTopics, saveUsedExamQuestions } from '../hooks/useQuizState';
 
 interface ExamSystemProps {
   documents: ProcessedDocument[];
@@ -74,7 +74,7 @@ export const ExamSystem: React.FC<ExamSystemProps> = ({ documents, collections, 
 
   const handleGenerate = async (
     content: GenerationSource, style?: GenerationSource,
-    options?: { count: number; difficulty: string; types?: string[]; adaptive?: { weakCategories: string[]; weakTopics: string[] }; excludeTopics?: string[]; examTypePreset?: ExamTypePreset },
+    options?: { count: number; difficulty: string; types?: string[]; adaptive?: { weakCategories: string[]; weakTopics: string[] }; excludeTopics?: string[]; recentQuestions?: string[]; examTypePreset?: ExamTypePreset },
     docName?: string, totalMinutes?: number, profile?: ScoringProfile
   ) => {
     if (docName) setExamDocName(docName.replace(/\.[^/.]+$/, ''));
@@ -90,7 +90,10 @@ export const ExamSystem: React.FC<ExamSystemProps> = ({ documents, collections, 
         try {
           const exam = normalizeExamQuestions(await generateFullExam(content, style, options));
           if (exam.length === 0) throw new Error(translate('es.noValidQuestions'));
-          if (docName) saveUsedTopics(sourceTopicsKey(docName), exam);
+          if (docName) {
+            saveUsedTopics(sourceTopicsKey(docName), exam);
+            saveUsedExamQuestions(sourceTopicsKey(docName), exam);
+          }
           // Zweistufig: Bloom-Stufe erst NACH der Generierung, in einem eigenen,
           // unabhängigen Call vergeben (services/geminiService.ts classifyBloomLevels)
           // — verhindert das Selbst-Überschätzungs-Muster beim Selbst-Labeling.

@@ -1055,6 +1055,7 @@ export const generateFullExam = async (
     types?: string[];
     adaptive?: { weakCategories: string[]; weakTopics: string[] };
     excludeTopics?: string[];
+    recentQuestions?: string[];
     examTypePreset?: ExamTypePreset;
   }
 ): Promise<ExamQuestion[]> => {
@@ -1109,6 +1110,16 @@ Gewichte die Fragenverteilung stärker auf diese Kategorien und bevorzuge Fragen
     ? `\nBEREITS GEPRÜFT — diese Themen NICHT erneut verwenden (wähle andere Aspekte des Materials; nur wenn das Material sonst nichts hergibt, darfst du eines wiederverwenden):\n${excludeTopics.slice(-40).map(t => sanitizeUserInput(t, 80)).join(' | ')}\n`
     : '';
 
+  // Ergänzt excludeLine auf Fragenebene: excludeTopics verhindert nur die
+  // Wiederholung ganzer Themen, aber innerhalb eines erlaubten Themas können
+  // trotzdem inhaltlich fast identische Einzelfragen entstehen (andere Zahlen/
+  // Beispiele, gleicher Kern). Deshalb zusätzlich die vollen Fragetexte der
+  // letzten Klausuren zu diesem Material mitgeben.
+  const recentQuestions = options?.recentQuestions ?? [];
+  const recentQuestionsLine = recentQuestions.length > 0
+    ? `\nBEREITS GESTELLTE FRAGEN ZU DIESEM STOFF — generiere KEINE inhaltlich äquivalenten oder nur leicht umformulierten Fragen dazu (auch nicht mit anderen Zahlen, Namen oder Beispielen, wenn der fachliche Kern derselbe bleibt):\n${recentQuestions.slice(-30).map(q => `- ${sanitizeUserInput(q, 200)}`).join('\n')}\n`
+    : '';
+
   const bloomTargetLine = options?.examTypePreset ? buildBloomTargetLine(options.examTypePreset) : '';
 
   const academicMinimumLines = EXAM_ALL_TYPES
@@ -1124,7 +1135,7 @@ Zufalls-Seed: ${seed}
 
 FRAGETYPEN-VERTEILUNG (zwingend einhalten, Summe = ${count}):
 ${typeBullets}
-${excludeLine}${bloomTargetLine}${academicMinimumBlock}
+${excludeLine}${recentQuestionsLine}${bloomTargetLine}${academicMinimumBlock}
 ALLGEMEINE REGELN:
 - Jede Aufgabe deckt einen ANDEREN Aspekt des Materials ab
 - id: fortlaufend "q1", "q2", ...

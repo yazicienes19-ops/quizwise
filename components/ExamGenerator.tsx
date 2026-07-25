@@ -14,13 +14,14 @@ import { getAllResults } from '../services/quizHistoryService';
 import { getAllRecallResults } from '../services/recallHistoryService';
 import { getAllExamResults } from '../services/examHistoryService';
 import { getStreak } from '../services/streakService';
-import { sourceTopicsKey, getUsedTopics } from '../hooks/useQuizState';
+import { sourceTopicsKey, getUsedTopics, getUsedExamQuestions } from '../hooks/useQuizState';
 
 type ExamOptions = {
   count: number; difficulty: string;
   types?: string[];
   adaptive?: { weakCategories: string[]; weakTopics: string[] };
   excludeTopics?: string[];
+  recentQuestions?: string[];
   examTypePreset?: ExamTypePreset;
 };
 
@@ -166,9 +167,13 @@ export const ExamGenerator: React.FC<ExamGeneratorProps> = ({
       // Wiederholungsgefahr wie beim Quiz: kürzlich aus derselben Quelle geprüfte
       // Themen nicht gleich nochmal abfragen (services/hooks/useQuizState.ts).
       const excludeTopics = contentName ? getUsedTopics(sourceTopicsKey(contentName)) : [];
+      // Ergänzt excludeTopics auf Fragenebene: verhindert inhaltlich äquivalente
+      // Einzelfragen aus früheren Klausuren zu diesem Modul, die excludeTopics
+      // allein (nur Themen-Labels) durchrutschen lässt.
+      const recentQuestions = contentName ? getUsedExamQuestions(sourceTopicsKey(contentName)) : [];
       onGenerate(
         contentSource, styleSource,
-        { count: questionCount, difficulty, types: selectedTypes, adaptive, excludeTopics, examTypePreset },
+        { count: questionCount, difficulty, types: selectedTypes, adaptive, excludeTopics, recentQuestions, examTypePreset },
         contentName, effectiveMinutes, scoringProfile
       );
     } catch (e) {
