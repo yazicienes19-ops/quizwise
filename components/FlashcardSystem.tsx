@@ -277,11 +277,14 @@ export const FlashcardSystem: React.FC<FlashcardSystemProps> = ({
 
 
   const handleExportAll = () => {
+    // srs mit exportieren: sonst verliert "Alle sichern" trotz des Namens den
+    // gesamten Lernfortschritt bei jedem Restore (Re-Import erzeugt sonst
+    // immer einen frischen SRS-Zustand, siehe handleImport).
     const data = {
       exportedAt: new Date().toISOString(),
       decks: decks.map(deck => ({
         title: deck.title,
-        cards: deck.cards.map(c => ({ front: c.front, back: c.back }))
+        cards: deck.cards.map(c => ({ front: c.front, back: c.back, srs: c.srs }))
       }))
     };
     const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' });
@@ -302,35 +305,34 @@ export const FlashcardSystem: React.FC<FlashcardSystemProps> = ({
         const json = JSON.parse(ev.target?.result as string);
         let imported: FlashcardDeck[] = [];
 
+        // srs übernehmen wenn im Export vorhanden (eigenes Backup) — sonst
+        // (fremde/handgeschriebene JSON ohne srs-Feld) frischer Zustand.
+        const toCard = (c: { front: string; back: string; srs?: any }): Flashcard => {
+          const srs = c.srs ?? createSrsState();
+          return {
+            id: Math.random().toString(36).substr(2, 9),
+            front: c.front,
+            back: c.back,
+            level: srs.repetitions ?? 0,
+            nextReview: srs.nextReview ?? Date.now(),
+            lastInterval: srs.interval ?? 0,
+            srs,
+          };
+        };
+
         if (Array.isArray(json.decks)) {
           // Alle-sichern Format
-          imported = json.decks.map((d: { title: string; cards: { front: string; back: string }[] }) => ({
+          imported = json.decks.map((d: { title: string; cards: { front: string; back: string; srs?: any }[] }) => ({
             id: Math.random().toString(36).substr(2, 9),
             title: d.title,
-            cards: d.cards.map((c: { front: string; back: string }) => ({
-              id: Math.random().toString(36).substr(2, 9),
-              front: c.front,
-              back: c.back,
-              level: 0,
-              nextReview: Date.now(),
-              lastInterval: 0,
-              srs: createSrsState(),
-            }))
+            cards: d.cards.map(toCard),
           }));
         } else if (json.title && Array.isArray(json.cards)) {
           // Einzelnes Deck Format
           imported = [{
             id: Math.random().toString(36).substr(2, 9),
             title: json.title,
-            cards: json.cards.map((c: { front: string; back: string }) => ({
-              id: Math.random().toString(36).substr(2, 9),
-              front: c.front,
-              back: c.back,
-              level: 0,
-              nextReview: Date.now(),
-              lastInterval: 0,
-              srs: createSrsState(),
-            }))
+            cards: json.cards.map(toCard),
           }];
         } else {
           toast.error(t('fcs.importInvalidFormat'));
@@ -815,6 +817,7 @@ export const FlashcardSystem: React.FC<FlashcardSystemProps> = ({
                         </button>
                         <button
                           onClick={() => {
+                            if (!window.confirm(t('fcs.deleteDeckConfirm', { title: deck.title, n: deck.cards.length }))) return;
                             const filtered = decks.filter(d => d.id !== deck.id);
                             setDecks(filtered);
                             localStorage.setItem('flashcard_decks', JSON.stringify(filtered));

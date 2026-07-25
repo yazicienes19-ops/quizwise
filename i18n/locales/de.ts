@@ -506,6 +506,7 @@ export const de = {
   'fcs.exportShareTitle': 'Exportieren & Teilen',
   'fcs.totalCards': 'Gesamt: {n} Karten',
   'fcs.noCardsForSearch': 'Keine Karten für „{q}"',
+  'fcs.deleteDeckConfirm': '„{title}" mit {n} Karten endgültig löschen? Der gesamte Lernfortschritt (SRS-Zustand) geht dabei verloren. Diese Aktion kann nicht rückgängig gemacht werden.',
 
   // library
   'lib.title': 'Bibliothek',
@@ -1366,7 +1367,6 @@ export const de = {
   // export deck modal
   'edm.loginToShare': 'Bitte zuerst einloggen, um Decks zu teilen.',
   'edm.linkCopied': 'Link kopiert! Teile ihn mit deinen Kommilitonen.',
-  'edm.linkCopiedShared': 'Link kopiert (Deck bereits geteilt)!',
   'edm.shareFailed': 'Teilen fehlgeschlagen. Bitte versuche es erneut.',
   'edm.csvExported': 'CSV exportiert. In Anki oder Quizlet importierbar.',
   'edm.pdfTitle': 'QuizWise Karteikarten',

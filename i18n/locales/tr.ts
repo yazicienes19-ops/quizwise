@@ -504,6 +504,7 @@ export const tr: Translations = {
   'fcs.exportShareTitle': 'Dışa aktar & Paylaş',
   'fcs.totalCards': 'Toplam: {n} kart',
   'fcs.noCardsForSearch': '„{q}" için kart yok',
+  'fcs.deleteDeckConfirm': '„{title}" ({n} kart) kalıcı olarak silinsin mi? Tüm öğrenme ilerlemesi (SRS durumu) kaybolur. Bu işlem geri alınamaz.',
 
   // library
   'lib.title': 'Kütüphane',
@@ -1358,7 +1359,6 @@ export const tr: Translations = {
   // export deck modal
   'edm.loginToShare': 'Desteleri paylaşmak için önce giriş yap.',
   'edm.linkCopied': 'Bağlantı kopyalandı! Arkadaşlarınla paylaş.',
-  'edm.linkCopiedShared': 'Bağlantı kopyalandı (deste zaten paylaşıldı)!',
   'edm.shareFailed': 'Paylaşma başarısız. Lütfen tekrar dene.',
   'edm.csvExported': 'CSV dışa aktarıldı. Anki ya da Quizlet’e aktarılabilir.',
   'edm.pdfTitle': 'QuizWise Kartları',

@@ -15,16 +15,48 @@ function detectSeparator(line: string): '\t' | ';' | ',' {
   return ',';
 }
 
+/** Erste NICHT in Anführungszeichen stehende Trenner-Position — sonst würde
+ *  ein Komma-Trenner bei einem Quizlet-Export wie
+ *  `"Klassische, operante Konditionierung","Lernen durch Verstärkung"`
+ *  mitten im zitierten Begriff splitten statt am Feldende. */
+function findUnquotedSeparator(line: string, sep: string): number {
+  let inQuotes = false;
+  let quoteChar = '';
+  for (let i = 0; i < line.length; i++) {
+    const ch = line[i];
+    if (inQuotes) {
+      if (ch === quoteChar) {
+        if (line[i + 1] === quoteChar) { i++; continue; } // "" = escapetes Anführungszeichen
+        inQuotes = false;
+      }
+    } else if (ch === '"' || ch === "'") {
+      inQuotes = true;
+      quoteChar = ch;
+    } else if (ch === sep) {
+      return i;
+    }
+  }
+  return -1;
+}
+
+function unquoteField(raw: string): string {
+  const s = raw.trim();
+  if (s.length >= 2 && (s[0] === '"' || s[0] === "'") && s[s.length - 1] === s[0]) {
+    return s.slice(1, -1).split(s[0] + s[0]).join(s[0]);
+  }
+  return s;
+}
+
 function parseLines(text: string): { front: string; back: string }[] {
   const lines = text.split('\n').map(l => l.trim()).filter(Boolean);
   if (!lines.length) return [];
   const sep = detectSeparator(lines[0]);
   return lines
     .map(line => {
-      const idx = line.indexOf(sep);
+      const idx = findUnquotedSeparator(line, sep);
       if (idx === -1) return null;
-      const front = line.slice(0, idx).trim().replace(/^["']|["']$/g, '');
-      const back = line.slice(idx + 1).trim().replace(/^["']|["']$/g, '');
+      const front = unquoteField(line.slice(0, idx));
+      const back = unquoteField(line.slice(idx + 1));
       return front && back ? { front, back } : null;
     })
     .filter((c): c is { front: string; back: string } => c !== null);

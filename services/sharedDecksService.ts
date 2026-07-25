@@ -9,6 +9,11 @@ export interface SharedDeck {
   created_at: string;
 }
 
+/** Upsert statt Insert: erneutes Teilen (z.B. nach neuen/bearbeiteten Karten)
+ *  aktualisiert die bestehende Zeile unter demselben Link, statt am
+ *  Unique-Constraint zu scheitern und den Link stumm auf einem veralteten
+ *  Stand einzufrieren. Braucht die UPDATE-Policy aus
+ *  migration_shared_decks_update.sql (nur INSERT existierte bisher). */
 export const shareDeck = async (
   deckId: string,
   name: string,
@@ -18,7 +23,7 @@ export const shareDeck = async (
   const cleanCards = cards.map(({ id, front, back }) => ({ id, front, back }));
   const { data, error } = await supabase
     .from('shared_decks')
-    .insert({ id: deckId, owner_id: userId, name, cards: cleanCards })
+    .upsert({ id: deckId, owner_id: userId, name, cards: cleanCards }, { onConflict: 'id' })
     .select('id')
     .single();
   if (error) throw error;

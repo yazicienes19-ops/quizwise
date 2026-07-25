@@ -21,20 +21,16 @@ export const ExportDeckModal: React.FC<ExportDeckModalProps> = ({ deck, userId, 
       return;
     }
     try {
+      // shareDeck() upsert't unter derselben id — erneutes Teilen nach
+      // Karten-Änderungen aktualisiert den bestehenden Link statt ihn
+      // auf dem alten Stand einzufrieren.
       const id = await shareDeck(deck.id, deck.title, deck.cards, userId);
       const url = `${window.location.origin}/shared/${id}`;
       await navigator.clipboard.writeText(url);
       toast.success(t('edm.linkCopied'));
       onClose();
-    } catch (e: any) {
-      if (e?.code === '23505') {
-        const url = `${window.location.origin}/shared/${deck.id}`;
-        await navigator.clipboard.writeText(url).catch(() => {});
-        toast.success(t('edm.linkCopiedShared'));
-        onClose();
-      } else {
-        toast.error(t('edm.shareFailed'));
-      }
+    } catch {
+      toast.error(t('edm.shareFailed'));
     }
   };
 
@@ -178,10 +174,12 @@ export const ExportDeckModal: React.FC<ExportDeckModalProps> = ({ deck, userId, 
   };
 
   const handleJsonExport = () => {
+    // srs mit exportieren, sonst verliert ein Restore über FlashcardSystem
+    // (handleImport, "Einzelnes Deck Format") den Lernfortschritt.
     const data = {
       title: deck.title,
       exportedAt: new Date().toISOString(),
-      cards: deck.cards.map(c => ({ front: c.front, back: c.back })),
+      cards: deck.cards.map(c => ({ front: c.front, back: c.back, srs: c.srs })),
     };
     const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' });
     const url = URL.createObjectURL(blob);
