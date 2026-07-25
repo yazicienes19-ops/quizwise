@@ -4,6 +4,10 @@ import {
   applySessionSave,
   resolveModuleColor,
   toDateStr,
+  nextDateForWeekday,
+  fixedWeekdaysFromRecurring,
+  mapSmartPlanToCalendarSessions,
+  daysUntilDate,
 } from './calendarSessions';
 import type { RecurringStudySession, CalendarStudySession, Collection } from '../types';
 
@@ -139,5 +143,91 @@ describe('applySessionSave', () => {
     );
     expect(res.recurring).toHaveLength(1);
     expect(res.oneOff).toHaveLength(0);
+  });
+});
+
+describe('nextDateForWeekday', () => {
+  it('gibt heute zurück, wenn heute schon der gesuchte Wochentag ist', () => {
+    const monday = new Date(2026, 7, 3); // Montag
+    expect(toDateStr(nextDateForWeekday(monday, 1))).toBe('2026-08-03');
+  });
+  it('springt auf den nächsten passenden Wochentag in dieser Woche', () => {
+    const monday = new Date(2026, 7, 3);
+    expect(toDateStr(nextDateForWeekday(monday, 3))).toBe('2026-08-05'); // Mittwoch derselben Woche
+  });
+  it('springt in die nächste Woche, wenn der Wochentag diese Woche schon vorbei ist', () => {
+    const wednesday = new Date(2026, 7, 5);
+    expect(toDateStr(nextDateForWeekday(wednesday, 1))).toBe('2026-08-10'); // nächster Montag
+  });
+});
+
+describe('fixedWeekdaysFromRecurring', () => {
+  it('löst moduleId zu Modulnamen auf und Wochentag-Index zu deutschem Namen', () => {
+    const rule: RecurringStudySession = { id: 'r1', weekday: 1, moduleId: 'psych', topic: 'x', startTime: '16:00', endTime: '17:00' };
+    const result = fixedWeekdaysFromRecurring([rule], collections);
+    expect(result).toEqual([{ day: 'Montag', subject: 'Allgemeine Psychologie I' }]);
+  });
+  it('fällt auf customSubject zurück, wenn kein Modul gesetzt ist', () => {
+    const rule: RecurringStudySession = { id: 'r1', weekday: 3, customSubject: 'Latein', topic: 'x', startTime: '16:00', endTime: '17:00' };
+    expect(fixedWeekdaysFromRecurring([rule], collections)).toEqual([{ day: 'Mittwoch', subject: 'Latein' }]);
+  });
+});
+
+describe('mapSmartPlanToCalendarSessions', () => {
+  const monday = new Date(2026, 7, 3);
+  const genId = (() => { let n = 0; return () => `id-${n++}`; })();
+
+  it('bildet Wochentag-Namen auf konkrete Daten ab und gleicht das Fach gegen ein Modul ab', () => {
+    const result = mapSmartPlanToCalendarSessions(
+      [{ day: 'Mittwoch', subject: 'Allgemeine Psychologie I', topic: 'Wahrnehmung', startTime: '10:00', endTime: '11:00' }],
+      monday, collections, [], genId
+    );
+    expect(result).toHaveLength(1);
+    expect(result[0].date).toBe('2026-08-05');
+    expect(result[0].moduleId).toBe('psych');
+    expect(result[0].customSubject).toBeUndefined();
+  });
+
+  it('nutzt customSubject, wenn kein Modul mit passendem Namen existiert', () => {
+    const result = mapSmartPlanToCalendarSessions(
+      [{ day: 'Freitag', subject: 'Unbekanntes Fach', topic: 'x', startTime: '10:00', endTime: '11:00' }],
+      monday, collections, [], genId
+    );
+    expect(result[0].moduleId).toBeUndefined();
+    expect(result[0].customSubject).toBe('Unbekanntes Fach');
+  });
+
+  it('überspringt Wochentage, die bereits eine feste Wiederholung haben, unabhängig vom KI-Vorschlag', () => {
+    const rule: RecurringStudySession = { id: 'r1', weekday: 1, moduleId: 'psych', topic: 'x', startTime: '16:00', endTime: '17:00' };
+    const result = mapSmartPlanToCalendarSessions(
+      [
+        { day: 'Montag', subject: 'Trotzdem vorgeschlagen', topic: 'x', startTime: '09:00', endTime: '10:00' },
+        { day: 'Dienstag', subject: 'Statistik', topic: 'y', startTime: '09:00', endTime: '10:00' },
+      ],
+      monday, collections, [rule], genId
+    );
+    expect(result).toHaveLength(1);
+    expect(result[0].date).toBe('2026-08-04');
+  });
+});
+
+describe('daysUntilDate (Liste-Ansicht Off-by-one-Fix)', () => {
+  it('Termin HEUTE ergibt 0, egal ob vormittags oder abends geöffnet', () => {
+    const morning = new Date(2026, 6, 25, 8, 0, 0);
+    const evening = new Date(2026, 6, 25, 20, 0, 0);
+    expect(daysUntilDate('2026-07-25', morning)).toBe(0);
+    expect(daysUntilDate('2026-07-25', evening)).toBe(0);
+  });
+
+  it('Termin MORGEN ergibt 1, egal ob vormittags oder abends geöffnet (alte Formel lieferte hier 2 am Vormittag)', () => {
+    const morning = new Date(2026, 6, 25, 8, 0, 0);
+    const evening = new Date(2026, 6, 25, 20, 0, 0);
+    expect(daysUntilDate('2026-07-26', morning)).toBe(1);
+    expect(daysUntilDate('2026-07-26', evening)).toBe(1);
+  });
+
+  it('ein vergangenes Datum ergibt einen negativen Wert', () => {
+    const now = new Date(2026, 6, 25, 12, 0, 0);
+    expect(daysUntilDate('2026-07-24', now)).toBe(-1);
   });
 });

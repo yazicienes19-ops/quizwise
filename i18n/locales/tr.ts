@@ -1283,7 +1283,7 @@ export const tr: Translations = {
   'sp2.subjectLabel': 'Ders',
   'sp2.customSubjectOption': '+ kendi dersin',
   'sp2.customSubjectInputPlaceholder': 'kendi dersini gir...',
-  'sp2.topicLabel': 'Konu',
+  'sp2.topicLabel': 'Konu (opsiyonel)',
   'sp2.topicInputPlaceholder': 'örn. Algı, sınav hazırlığı...',
   'sp2.repeatLabel': 'Tekrar',
   'sp2.repeatOnce': 'Sadece bu gün',
@@ -1300,6 +1300,7 @@ export const tr: Translations = {
   'sp2.skipOccurrence': 'Sadece bu günü atla',
   'sp2.deleteRule': 'Tüm tekrarı sil',
   'sp2.deleteRuleConfirm': 'Bu tekrarlayan çalışma oturumu tamamen silinsin mi? Bu, gelecekteki tüm haftaları etkiler.',
+  'sp2.sessionLegend': 'Çalışma oturumu',
 
   // reader (split-screen + PDF)
   'rd.enterQuestion': 'Lütfen önce bir soru gir.',

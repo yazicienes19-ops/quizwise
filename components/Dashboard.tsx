@@ -7,6 +7,7 @@ import { Layers, Flame } from 'lucide-react';
 import { countDueCards, migrateLegacyCard } from '../services/spacedRepetition';
 import { countDueMistakes } from '../services/mistakeReviewService';
 import { getStreak } from '../services/streakService';
+import { daysUntilDate } from '../services/calendarSessions';
 import { useTranslation } from '../i18n/I18nProvider';
 import type { TKey } from '../i18n';
 
@@ -93,14 +94,14 @@ export const Dashboard: React.FC<DashboardProps> = ({ onTabChange, flowResult, d
 
   const nextExam = useMemo(() => {
     try {
-      const terms: Array<{ date: string; subject: string }> = JSON.parse(localStorage.getItem('quizwise_exam_terms') || '[]');
+      const terms: Array<{ date: string; title: string }> = JSON.parse(localStorage.getItem('quizwise_exam_terms') || '[]');
+      const now = new Date();
       const future = terms
-        .map(t => ({ ...t, ms: new Date(t.date).getTime() }))
-        .filter(t => t.ms > Date.now())
-        .sort((a, b) => a.ms - b.ms);
+        .map(t => ({ ...t, days: daysUntilDate(t.date, now) }))
+        .filter(t => t.days >= 0)
+        .sort((a, b) => a.days - b.days);
       if (!future.length) return null;
-      const days = Math.ceil((future[0].ms - Date.now()) / (1000 * 60 * 60 * 24));
-      return { subject: future[0].subject, days };
+      return { title: future[0].title, days: future[0].days };
     } catch { return null; }
   }, []);
 
@@ -259,7 +260,7 @@ export const Dashboard: React.FC<DashboardProps> = ({ onTabChange, flowResult, d
               </div>
               <div>
                 <p className="text-[11px] font-black uppercase tracking-widest" style={{ color: nextExam.days <= 7 ? '#f43f5e' : undefined }}>{tp('dashboard.daysLeft', nextExam.days)}</p>
-                <p className="text-[9px] text-slate-400 break-words max-w-[140px]">{nextExam.subject}</p>
+                <p className="text-[9px] text-slate-400 break-words max-w-[140px]">{nextExam.title}</p>
               </div>
             </div>
           )}

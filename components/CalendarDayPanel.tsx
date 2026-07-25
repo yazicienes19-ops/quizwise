@@ -82,7 +82,6 @@ export const CalendarDayPanel: React.FC<CalendarDayPanelProps> = ({
   };
 
   const handleSave = () => {
-    if (!topic.trim()) return;
     if (!useCustom && !moduleId) return;
     const input: SessionFormInput = {
       editing,
@@ -157,11 +156,21 @@ export const CalendarDayPanel: React.FC<CalendarDayPanelProps> = ({
               <BookOpen size={16} style={{ color: s.color }} />
             </div>
             <div className="flex-1 min-w-0">
-              {s.subjectLabel && <p className="text-[9px] font-black uppercase tracking-widest text-slate-400">{s.subjectLabel}</p>}
-              <p className="text-sm font-black break-words leading-tight" style={{ color: 'var(--text-main)' }}>{s.topic}</p>
-              <p className="text-[10px] font-bold text-slate-400 mt-0.5 flex items-center gap-1">
-                {s.recurring ? <Repeat size={10} /> : <Clock size={10} />}
-                {s.recurring ? t('sp2.recurringLabel', { day: weekdayName }) : t('sp2.onceLabel')}
+              {s.topic ? (
+                <>
+                  {s.subjectLabel && <p className="text-[9px] font-black uppercase tracking-widest text-slate-400">{s.subjectLabel}</p>}
+                  <p className="text-sm font-black break-words leading-tight" style={{ color: 'var(--text-main)' }}>{s.topic}</p>
+                </>
+              ) : (
+                <p className="text-sm font-black break-words leading-tight" style={{ color: 'var(--text-main)' }}>{s.subjectLabel}</p>
+              )}
+              <p className="text-[10px] font-bold text-slate-400 mt-0.5 flex items-center gap-1.5 flex-wrap">
+                <span className="font-mono tabular-nums">{s.startTime}–{s.endTime}</span>
+                <span className="opacity-50">·</span>
+                <span className="flex items-center gap-1">
+                  {s.recurring ? <Repeat size={10} /> : <Clock size={10} />}
+                  {s.recurring ? t('sp2.recurringLabel', { day: weekdayName }) : t('sp2.onceLabel')}
+                </span>
               </p>
             </div>
             <div className="flex items-center gap-1 shrink-0">
@@ -219,7 +228,7 @@ export const CalendarDayPanel: React.FC<CalendarDayPanelProps> = ({
                   const color = resolveModuleColor(col.color);
                   const selected = !useCustom && moduleId === col.id;
                   return (
-                    <div key={col.id} className="relative flex items-stretch rounded-xl border-[1.5px]" style={{ borderColor: selected ? 'var(--primary)' : 'var(--border-color)', background: selected ? 'color-mix(in srgb, var(--primary) 10%, transparent)' : 'transparent' }}>
+                    <div key={col.id} className="flex items-stretch rounded-xl border-[1.5px]" style={{ borderColor: selected ? 'var(--primary)' : 'var(--border-color)', background: selected ? 'color-mix(in srgb, var(--primary) 10%, transparent)' : 'transparent' }}>
                       <button
                         type="button"
                         aria-label={t('sp2.changeColorFor', { module: col.name })}
@@ -237,29 +246,6 @@ export const CalendarDayPanel: React.FC<CalendarDayPanelProps> = ({
                         <BookOpen size={13} style={{ color }} />
                         {col.name}
                       </button>
-
-                      {openColorFor === col.id && (
-                        <>
-                          <div className="fixed inset-0 z-40" onClick={() => setOpenColorFor(null)} />
-                          <div
-                            className="absolute top-full mt-1.5 left-0 z-50 rounded-2xl p-2.5 grid grid-cols-4 gap-2 shadow-3d-deep"
-                            style={{ background: 'var(--bg-sidebar)', border: '1px solid var(--border-color)' }}
-                          >
-                            {MODULE_COLOR_SWATCHES.map(sw => (
-                              <button
-                                key={sw}
-                                type="button"
-                                aria-label={sw}
-                                onClick={() => { onUpdateCollectionColor(col.id, sw); setOpenColorFor(null); }}
-                                className="w-6 h-6 rounded-full flex items-center justify-center transition-transform hover:scale-110"
-                                style={{ background: sw }}
-                              >
-                                {sw.toLowerCase() === color.toLowerCase() && <Check size={12} className="text-white" strokeWidth={3} />}
-                              </button>
-                            ))}
-                          </div>
-                        </>
-                      )}
                     </div>
                   );
                 })}
@@ -273,6 +259,38 @@ export const CalendarDayPanel: React.FC<CalendarDayPanelProps> = ({
                 </button>
               </div>
               <p className="text-[10px] text-slate-400 mt-2">{t('sp2.colorPickerHint')}</p>
+
+              {openColorFor && (() => {
+                const col = collections.find(c => c.id === openColorFor);
+                if (!col) return null;
+                const color = resolveModuleColor(col.color);
+                return (
+                  <div className="mt-2 rounded-2xl p-3 flex items-center gap-2 flex-wrap" style={{ background: 'var(--bg-sidebar)', border: '1px solid var(--border-color)' }}>
+                    <span className="text-[10px] font-bold mr-1" style={{ color: 'var(--text-main)' }}>{t('sp2.changeColorFor', { module: col.name })}</span>
+                    {MODULE_COLOR_SWATCHES.map(sw => (
+                      <button
+                        key={sw}
+                        type="button"
+                        aria-label={sw}
+                        onClick={() => { onUpdateCollectionColor(col.id, sw); setOpenColorFor(null); }}
+                        className="w-6 h-6 rounded-full flex items-center justify-center transition-transform hover:scale-110 shrink-0"
+                        style={{ background: sw }}
+                      >
+                        {sw.toLowerCase() === color.toLowerCase() && <Check size={12} className="text-white" strokeWidth={3} />}
+                      </button>
+                    ))}
+                    <button
+                      type="button"
+                      onClick={() => setOpenColorFor(null)}
+                      className="w-6 h-6 flex items-center justify-center rounded-full text-slate-400 hover:text-rose-500 transition-colors ml-auto shrink-0"
+                      aria-label={t('common.cancel')}
+                    >
+                      <X size={13} />
+                    </button>
+                  </div>
+                );
+              })()}
+
               {useCustom && (
                 <input
                   autoFocus
@@ -334,7 +352,7 @@ export const CalendarDayPanel: React.FC<CalendarDayPanelProps> = ({
 
             <button
               onClick={handleSave}
-              disabled={!topic.trim() || (!useCustom && !moduleId) || (useCustom && !customSubject.trim())}
+              disabled={(!useCustom && !moduleId) || (useCustom && !customSubject.trim())}
               className="w-full py-3.5 rounded-2xl text-[11px] font-black uppercase tracking-widest transition-opacity disabled:opacity-40"
               style={{ background: 'var(--primary)', color: 'var(--primary-text, white)' }}
             >

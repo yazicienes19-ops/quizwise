@@ -28,6 +28,19 @@ export function toDateStr(d: Date): string {
   return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
 }
 
+/**
+ * Anzahl Kalendertage zwischen "today" und dem gegebenen Datum (0 = heute).
+ * Normalisiert BEIDE Seiten auf lokale Mitternacht, bevor differenziert wird —
+ * Vergleich einer exakten Uhrzeit ("today" hat z.B. 08:00) gegen ein auf 12:00
+ * verankertes Zieldatum ergibt sonst je nach Tageszeit ein Off-by-one (ein
+ * Termin für HEUTE zeigt vormittags fälschlich "morgen").
+ */
+export function daysUntilDate(dateStr: string, today: Date): number {
+  const target = new Date(dateStr + 'T00:00:00');
+  const todayMidnight = new Date(today.getFullYear(), today.getMonth(), today.getDate());
+  return Math.round((target.getTime() - todayMidnight.getTime()) / (1000 * 60 * 60 * 24));
+}
+
 export interface ResolvedSession {
   id: string;
   topic: string;
@@ -171,4 +184,77 @@ export function applySessionSave(
     recurring,
     oneOff: [...oneOff, { id: genId(), date: dateStr, ...base }],
   };
+}
+
+const GERMAN_DAY_TO_WEEKDAY: Record<string, number> = {
+  Sonntag: 0, Montag: 1, Dienstag: 2, Mittwoch: 3, Donnerstag: 4, Freitag: 5, Samstag: 6,
+};
+
+/** Nächstes Datum (inkl. heute) für einen gegebenen Wochentag (0=So..6=Sa). */
+export function nextDateForWeekday(from: Date, weekday: number): Date {
+  const fromWeekday = from.getDay();
+  let diff = weekday - fromWeekday;
+  if (diff < 0) diff += 7;
+  return new Date(from.getFullYear(), from.getMonth(), from.getDate() + diff);
+}
+
+/** Wochentage (0=So..6=Sa), an denen bereits eine feste RecurringStudySession liegt —
+ *  Kontext für den Smart-Plan-Prompt UND deterministischer Ausschluss danach (verlässt
+ *  sich nicht allein darauf, dass die KI die Prompt-Anweisung befolgt). */
+export function fixedWeekdaysFromRecurring(
+  recurring: RecurringStudySession[],
+  collections: Collection[]
+): { day: string; subject: string }[] {
+  const dayNames = Object.entries(GERMAN_DAY_TO_WEEKDAY).reduce<Record<number, string>>((acc, [name, idx]) => {
+    acc[idx] = name;
+    return acc;
+  }, {});
+  return recurring.map(r => {
+    const mod = r.moduleId ? collections.find(c => c.id === r.moduleId) : undefined;
+    return { day: dayNames[r.weekday], subject: mod?.name ?? r.customSubject ?? '' };
+  });
+}
+
+export interface SmartPlanEntry {
+  day: string;
+  subject: string;
+  topic: string;
+  startTime: string;
+  endTime: string;
+}
+
+/**
+ * Bildet den Gemini-Wochenplan (Wochentag-Namen, kein Datum) auf konkrete
+ * CalendarStudySession-Einträge ab: nächstes passendes Datum ab "today",
+ * Fach wird gegen vorhandene Module abgeglichen (exakter Namenstreffer),
+ * Tage mit bereits fester Wiederholung werden komplett übersprungen
+ * (unabhängig davon, ob die KI die Prompt-Anweisung befolgt hat).
+ */
+export function mapSmartPlanToCalendarSessions(
+  entries: SmartPlanEntry[],
+  today: Date,
+  collections: Collection[],
+  recurring: RecurringStudySession[],
+  genId: () => string
+): CalendarStudySession[] {
+  const blockedWeekdays = new Set(recurring.map(r => r.weekday));
+  const result: CalendarStudySession[] = [];
+
+  for (const entry of entries) {
+    const weekday = GERMAN_DAY_TO_WEEKDAY[entry.day];
+    if (weekday === undefined || blockedWeekdays.has(weekday)) continue;
+    const date = nextDateForWeekday(today, weekday);
+    const match = collections.find(c => c.name.trim().toLowerCase() === entry.subject.trim().toLowerCase());
+    result.push({
+      id: genId(),
+      date: toDateStr(date),
+      moduleId: match?.id,
+      customSubject: match ? undefined : entry.subject,
+      topic: entry.topic,
+      startTime: entry.startTime,
+      endTime: entry.endTime,
+    });
+  }
+
+  return result;
 }

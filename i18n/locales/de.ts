@@ -1291,7 +1291,7 @@ export const de = {
   'sp2.subjectLabel': 'Fach',
   'sp2.customSubjectOption': '+ eigenes Fach',
   'sp2.customSubjectInputPlaceholder': 'eigenes Fach eintragen...',
-  'sp2.topicLabel': 'Thema',
+  'sp2.topicLabel': 'Thema (optional)',
   'sp2.topicInputPlaceholder': 'z. B. Wahrnehmung, Klausurvorbereitung...',
   'sp2.repeatLabel': 'Wiederholung',
   'sp2.repeatOnce': 'Nur dieser Tag',
@@ -1308,6 +1308,7 @@ export const de = {
   'sp2.skipOccurrence': 'Nur diesen Tag überspringen',
   'sp2.deleteRule': 'Ganze Wiederholung löschen',
   'sp2.deleteRuleConfirm': 'Diese wiederkehrende Lernsession komplett löschen? Das betrifft alle zukünftigen Wochen.',
+  'sp2.sessionLegend': 'Lernsession',
 
   // reader (split-screen + PDF)
   'rd.enterQuestion': 'Bitte zuerst eine Frage eingeben.',
