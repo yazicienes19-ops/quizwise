@@ -1,5 +1,5 @@
 import { describe, it, expect, beforeEach } from 'vitest';
-import type { FlashcardDeck, ExamTerm, StudyEvent } from '../types';
+import type { FlashcardDeck, ExamTerm, StudyEvent, RecurringStudySession, CalendarStudySession } from '../types';
 import { buildDueForecast, buildSpacedPlan, applySpacedPlan, toDateStr, getSpacedSettings, saveSpacedSettings } from './spacedPlanningService';
 import { createSrsState } from './spacedRepetition';
 import type { MistakeItem } from './mistakeReviewService';
@@ -105,6 +105,39 @@ describe('buildSpacedPlan', () => {
     const plan = buildSpacedPlan({ ...baseInput, existingEvents: manual, recentQuizzes: [{ docName: 'A', timestamp: TODAY.getTime() }] });
     expect(plan.filter(e => e.date === dayStr(1))).toHaveLength(0);
     expect(plan.some(e => e.date === dayStr(2))).toBe(true);
+  });
+
+  it('voller Tag durch feste Lernsessions (calendarSessions) → Auto-Event weicht aus', () => {
+    const fixed: CalendarStudySession[] = [
+      { id: 'f1', date: dayStr(1), topic: 'A', startTime: '08:00', endTime: '09:00' },
+      { id: 'f2', date: dayStr(1), topic: 'B', startTime: '09:00', endTime: '10:00' },
+      { id: 'f3', date: dayStr(1), topic: 'C', startTime: '10:00', endTime: '11:00' },
+    ];
+    const plan = buildSpacedPlan({ ...baseInput, calendarSessions: fixed, recentQuizzes: [{ docName: 'A', timestamp: TODAY.getTime() }] });
+    expect(plan.filter(e => e.date === dayStr(1))).toHaveLength(0);
+    expect(plan.some(e => e.date === dayStr(2))).toBe(true);
+  });
+
+  it('wiederkehrende feste Session zählt zur Tages-Belegung über den ganzen Planungshorizont', () => {
+    const weekday1 = new Date(2026, 6, 16).getDay();
+    const rule: RecurringStudySession = { id: 'r1', weekday: weekday1, topic: 'Fix', startTime: '08:00', endTime: '09:00' };
+    const manual: StudyEvent[] = [
+      { id: 'm1', title: 'X', date: dayStr(1), type: 'reminder' },
+      { id: 'm2', title: 'Y', date: dayStr(1), type: 'reminder' },
+    ];
+    const plan = buildSpacedPlan({ ...baseInput, recurringSessions: [rule], existingEvents: manual, recentQuizzes: [{ docName: 'A', timestamp: TODAY.getTime() }] });
+    expect(plan.filter(e => e.date === dayStr(1))).toHaveLength(0);
+  });
+
+  it('übersprungene Vorkommen (skipDates) einer wiederkehrenden Session blockieren den Tag nicht', () => {
+    const weekday1 = new Date(2026, 6, 16).getDay();
+    const rule: RecurringStudySession = { id: 'r1', weekday: weekday1, topic: 'Fix', startTime: '08:00', endTime: '09:00', skipDates: [dayStr(1)] };
+    const manual: StudyEvent[] = [
+      { id: 'm1', title: 'X', date: dayStr(1), type: 'reminder' },
+      { id: 'm2', title: 'Y', date: dayStr(1), type: 'reminder' },
+    ];
+    const plan = buildSpacedPlan({ ...baseInput, recurringSessions: [rule], existingEvents: manual, recentQuizzes: [{ docName: 'A', timestamp: TODAY.getTime() }] });
+    expect(plan.some(e => e.date === dayStr(1))).toBe(true);
   });
 
   it('Regeneration ist idempotent (identische IDs)', () => {
