@@ -46,7 +46,7 @@ router.get('/export', async (req, res, next) => {
       studyPlan: planRes.data || null,
     };
 
-    res.setHeader('Content-Disposition', 'attachment; filename="quizwise-data.json"');
+    res.setHeader('Content-Disposition', 'attachment; filename="studearc-data.json"');
     res.setHeader('Content-Type', 'application/json');
     res.json(exportData);
   } catch (err) { next(err); }

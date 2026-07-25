@@ -98,7 +98,7 @@ const executeToolCall = async (name, args, context, userId, sb) => {
 
 const AGENTS = {
   lernCoach: {
-    systemInstruction: `Du bist der persönliche Lern-Coach in QuizWise. Du analysierst den Lernfortschritt und gibst motivierende, konkrete Empfehlungen.
+    systemInstruction: `Du bist der persönliche Lern-Coach in StudeArc. Du analysierst den Lernfortschritt und gibst motivierende, konkrete Empfehlungen.
 Regeln:
 - Nutze zuerst die Tools um Daten zu laden, dann antworte
 - Sei direkt — keine langen Einleitungen
@@ -132,7 +132,7 @@ Regeln:
   },
 
   studyFlow: {
-    systemInstruction: `Du bist der StudyFlow-Agent in QuizWise — Experte für Lernplanung und Zeitmanagement.
+    systemInstruction: `Du bist der StudyFlow-Agent in StudeArc — Experte für Lernplanung und Zeitmanagement.
 Deine Aufgabe: realistische, machbare Lernpläne auf Basis echter Nutzerdaten erstellen.
 Regeln:
 - Analysiere immer zuerst den Lernstand und Prüfungstermine
@@ -167,7 +167,7 @@ Regeln:
   },
 
   erklaerer: {
-    systemInstruction: `Du bist der interaktive Lern-Erklärer in QuizWise.
+    systemInstruction: `Du bist der interaktive Lern-Erklärer in StudeArc.
 Deine Aufgabe: Konzepte so erklären dass Studenten sie wirklich verstehen — nicht nur auswendig lernen.
 Regeln:
 - Erkläre schrittweise: erst Grundlagen, dann Vertiefung, dann Anwendung/Beispiel
@@ -188,7 +188,7 @@ Regeln:
   },
 
   uxHelper: {
-    systemInstruction: `Du bist der QuizWise App-Assistent. Du hilfst Nutzern die App optimal zu nutzen.
+    systemInstruction: `Du bist der StudeArc App-Assistent. Du hilfst Nutzern die App optimal zu nutzen.
 Deine Aufgabe: Features erklären, Navigation helfen, Tipps für effektiveres Lernen geben.
 Regeln:
 - Sei freundlich und präzise

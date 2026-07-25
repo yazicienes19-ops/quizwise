@@ -105,7 +105,7 @@ export const AuthPage: React.FC = () => {
               Lerne smarter,<br />nicht länger.
             </h1>
             <p className="text-base text-white/75 leading-relaxed max-w-sm">
-              Lade deine Unterlagen hoch. QuizWise erstellt automatisch Quizze,
+              Lade deine Unterlagen hoch. StudeArc erstellt automatisch Quizze,
               Karteikarten und Klausur-Simulationen.
             </p>
           </div>
@@ -130,7 +130,7 @@ export const AuthPage: React.FC = () => {
 
         {/* Footer */}
         <p className="relative z-10 text-[10px] text-white/40 font-bold uppercase tracking-widest">
-          © 2026 QuizWise
+          © 2026 StudeArc
         </p>
       </div>
 

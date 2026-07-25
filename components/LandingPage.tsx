@@ -61,8 +61,8 @@ export const LandingPage: React.FC<LandingPageProps> = ({ onAuthClick }) => {
       <nav className="sticky top-0 z-40 bg-white/80 dark:bg-slate-950/80 backdrop-blur-xl border-b border-slate-100 dark:border-slate-800">
         <div className="max-w-6xl mx-auto px-6 h-16 flex items-center justify-between">
           <div className="flex items-center gap-2">
-            <span className="text-xl font-black tracking-tight" style={{ color: 'var(--primary)' }}>Quiz</span>
-            <span className="text-xl font-black tracking-tight dark:text-white">Wise</span>
+            <span className="text-xl font-black tracking-tight" style={{ color: 'var(--primary)' }}>Stude</span>
+            <span className="text-xl font-black tracking-tight dark:text-white">Arc</span>
           </div>
           <div className="flex items-center gap-3">
             <LanguageToggle />
@@ -228,7 +228,7 @@ export const LandingPage: React.FC<LandingPageProps> = ({ onAuthClick }) => {
       <footer className="border-t border-slate-100 dark:border-slate-800 py-8">
         <div className="max-w-6xl mx-auto px-6 flex flex-col sm:flex-row justify-between items-center gap-4">
           <p className="text-[11px] font-black tracking-widest text-slate-400 uppercase">
-            © {new Date().getFullYear()} QuizWise
+            © {new Date().getFullYear()} StudeArc
           </p>
           <div className="flex gap-6">
             {(['landing.footer.privacy', 'landing.footer.imprint', 'landing.footer.terms'] as TKey[]).map(l => (

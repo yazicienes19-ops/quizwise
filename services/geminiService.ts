@@ -122,7 +122,7 @@ Nutze für die Recherche ausschließlich reale Daten, die du über das Grounding
 Wenn du keine 10 Ergebnisse findest, gib nur die real existierenden zurück.
 Antworte bei Recherchen ausschließlich im vorgegebenen JSON-Format.`;
 
-const ORCHESTRATOR_INSTRUCTION = `Du bist der Lernfluss-Orchestrator von QuizWise.
+const ORCHESTRATOR_INSTRUCTION = `Du bist der Lernfluss-Orchestrator von StudeArc.
 Ziel: Verbinde die Module so, dass nach jeder Nutzeraktion automatisch die sinnvollsten nächsten Schritte entstehen.
 Priorisiere Active Recall + Spaced Repetition + Fehleranalyse.
 Nutze ausschließlich bereitgestellte Daten.
@@ -1514,7 +1514,7 @@ export const generateCoachInsights = async (
   const text = await callBackend({
     complexity: 'heavy',
     parts: [{
-      text: `Du bist der persönliche Lerncoach von QuizWise. Analysiere das folgende, bereits berechnete Lernprofil eines Studenten.
+      text: `Du bist der persönliche Lerncoach von StudeArc. Analysiere das folgende, bereits berechnete Lernprofil eines Studenten.
 
 WICHTIGSTE REGEL: Behaupte NUR, was die Daten unten wirklich hergeben. Erfinde keine Muster, Zusammenhänge oder Zahlen, die sich nicht aus dem Profil ableiten lassen. Wenn eine Kategorie zu wenig Daten hat, sage das statt zu spekulieren.
 

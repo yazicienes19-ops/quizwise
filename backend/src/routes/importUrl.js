@@ -137,7 +137,7 @@ router.post('/web', async (req, res) => {
   try {
     const response = await fetchWithTimeout(url.href, {
       headers: {
-        'User-Agent': 'Mozilla/5.0 (compatible; QuizWiseBot/1.0; +https://quizwise-kappa.vercel.app)',
+        'User-Agent': 'Mozilla/5.0 (compatible; StudeArcBot/1.0; +https://www.studearc.com)',
         'Accept': 'text/html,text/plain;q=0.9,*/*;q=0.5',
         'Accept-Language': 'de,en;q=0.8',
       },

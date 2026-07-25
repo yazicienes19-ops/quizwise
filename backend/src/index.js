@@ -27,6 +27,8 @@ const allowedOrigins = [
   'http://localhost:3001',
   'http://localhost:5173',
   'capacitor://localhost', // native iOS-App (Capacitor-WebView)
+  'https://www.studearc.com',
+  'https://studearc.com',
   process.env.FRONTEND_URL,
 ].filter(Boolean);
 

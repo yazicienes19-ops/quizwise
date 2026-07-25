@@ -56,7 +56,7 @@ const CONTENT: Record<LegalPage, { title: string; body: React.ReactNode }> = {
         <div>
           <p className="font-bold text-slate-900 dark:text-white">2. Erhobene Daten</p>
           <p>
-            Bei der Registrierung und Nutzung von QuizWise werden folgende personenbezogene Daten
+            Bei der Registrierung und Nutzung von StudeArc werden folgende personenbezogene Daten
             erhoben: E-Mail-Adresse (für Authentifizierung und Kommunikation), Nutzungsdaten
             (Anzahl der KI-Anfragen zur Umsetzung des Freemium-Modells) sowie Zahlungsdaten, die
             ausschließlich über den Zahlungsdienstleister Stripe verarbeitet und nicht direkt bei
@@ -103,7 +103,7 @@ const CONTENT: Record<LegalPage, { title: string; body: React.ReactNode }> = {
         <div>
           <p className="font-bold text-slate-900 dark:text-white">7. Cookies & lokale Speicherung</p>
           <p>
-            QuizWise verwendet ausschließlich technisch notwendige Cookies für die Authentifizierung
+            StudeArc verwendet ausschließlich technisch notwendige Cookies für die Authentifizierung
             (Supabase Session). Darüber hinaus werden Nutzerdaten (Dokumente, Einstellungen)
             im lokalen Speicher des Browsers (localStorage) gespeichert. Eine Einwilligung nach
             § 25 TTDSG ist nicht erforderlich, da es sich um technisch notwendige Speicherungen handelt.
@@ -119,7 +119,7 @@ const CONTENT: Record<LegalPage, { title: string; body: React.ReactNode }> = {
         <div>
           <p className="font-bold text-slate-900 dark:text-white">§ 1 Geltungsbereich</p>
           <p>
-            Diese Allgemeinen Geschäftsbedingungen gelten für die Nutzung der Web-App QuizWise,
+            Diese Allgemeinen Geschäftsbedingungen gelten für die Nutzung der Web-App StudeArc,
             betrieben von Enes Yazici, [Straße Hausnummer, PLZ Ort], Deutschland
             (nachfolgend „Anbieter"). Mit der Registrierung akzeptierst du diese AGB.
           </p>
@@ -127,7 +127,7 @@ const CONTENT: Record<LegalPage, { title: string; body: React.ReactNode }> = {
         <div>
           <p className="font-bold text-slate-900 dark:text-white">§ 2 Leistungsbeschreibung</p>
           <p>
-            QuizWise ist eine KI-gestützte Lernplattform für Schüler und Studierende. Der Anbieter
+            StudeArc ist eine KI-gestützte Lernplattform für Schüler und Studierende. Der Anbieter
             bietet zwei Tarife an:
           </p>
           <ul className="list-disc pl-4 mt-1 space-y-1">
@@ -160,7 +160,7 @@ const CONTENT: Record<LegalPage, { title: string; body: React.ReactNode }> = {
         <div>
           <p className="font-bold text-slate-900 dark:text-white">§ 5 Pflichten des Nutzers</p>
           <p>
-            Du verpflichtest dich, QuizWise ausschließlich für legale Zwecke zu nutzen und keine
+            Du verpflichtest dich, StudeArc ausschließlich für legale Zwecke zu nutzen und keine
             Inhalte hochzuladen, an denen du keine Rechte hältst. Eine kommerzielle Weiterverwendung
             KI-generierter Inhalte ohne Genehmigung ist untersagt.
           </p>
@@ -170,7 +170,7 @@ const CONTENT: Record<LegalPage, { title: string; body: React.ReactNode }> = {
           <p>
             Die KI-generierten Inhalte (Quiz-Fragen, Erklärungen, Karteikarten) dienen
             ausschließlich zu Lernzwecken. Der Anbieter übernimmt keine Garantie für die
-            inhaltliche Korrektheit. QuizWise haftet nicht für Schäden, die durch fehlerhafte
+            inhaltliche Korrektheit. StudeArc haftet nicht für Schäden, die durch fehlerhafte
             KI-Ausgaben entstehen. Die Haftung für Vorsatz und grobe Fahrlässigkeit bleibt
             unberührt.
           </p>

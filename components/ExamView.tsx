@@ -232,7 +232,7 @@ export const ExamView: React.FC<ExamViewProps> = ({
       y += 2;
     });
 
-    doc.save(`QuizWise_Klausur_${new Date().toISOString().slice(0, 10)}.pdf`);
+    doc.save(`StudeArc_Klausur_${new Date().toISOString().slice(0, 10)}.pdf`);
   }, [questions, percentage, gradeInfo, achievedTotal, totalPoints, examTitle]);
 
   // ─── Question Body ─────────────────────────────────────────────────────────
@@ -571,7 +571,7 @@ export const ExamView: React.FC<ExamViewProps> = ({
         <div>
           <h2 className="text-2xl sm:text-4xl font-black uppercase tracking-tighter dark:text-white">{t('ev.examProtocol')}</h2>
           <p className="text-[11px] font-mono opacity-60 uppercase tracking-[0.3em] dark:text-slate-400 mt-2">
-            Prüfungseinrichtung: QuizWise AI Academic Center
+            Prüfungseinrichtung: StudeArc AI Academic Center
           </p>
         </div>
         <div className="text-right dark:text-white">

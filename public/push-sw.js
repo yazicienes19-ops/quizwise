@@ -3,7 +3,7 @@ self.addEventListener('push', (event) => {
   let data = {};
   try { data = event.data ? event.data.json() : {}; } catch (e) {}
   event.waitUntil(
-    self.registration.showNotification(data.title || 'QuizWise', {
+    self.registration.showNotification(data.title || 'StudeArc', {
       body: data.body || 'Zeit für eine kurze Lernsession.',
       icon: '/icon-192.svg',
       badge: '/icon-192.svg',

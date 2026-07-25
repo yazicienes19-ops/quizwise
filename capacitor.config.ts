@@ -2,7 +2,7 @@ import type { CapacitorConfig } from '@capacitor/cli';
 
 const config: CapacitorConfig = {
   appId: 'com.quizwise.app',
-  appName: 'QuizWise',
+  appName: 'StudeArc',
   webDir: 'dist',
   ios: {
     contentInset: 'automatic',

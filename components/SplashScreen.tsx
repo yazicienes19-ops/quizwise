@@ -3,7 +3,7 @@ import { useTranslation } from '../i18n/I18nProvider';
 
 /**
  * SplashScreen — ersetzt das `return null` während des Auth-Checks.
- * Zeigt das QuizWise-Branding statt eines weißen Bildschirms.
+ * Zeigt das StudeArc-Branding statt eines weißen Bildschirms.
  */
 export const SplashScreen: React.FC = () => {
   const { t } = useTranslation();
@@ -16,7 +16,7 @@ export const SplashScreen: React.FC = () => {
             className="w-20 h-20 rounded-[24px] flex items-center justify-center shadow-lg"
             style={{ background: 'var(--primary, #4f46e5)' }}
           >
-            <span className="text-3xl font-black text-white tracking-tighter">QW</span>
+            <span className="text-3xl font-black text-white tracking-tighter">SA</span>
           </div>
           {/* Puls-Ring */}
           <div
@@ -27,7 +27,7 @@ export const SplashScreen: React.FC = () => {
 
         <div className="text-center space-y-1">
           <p className="text-xl font-black uppercase tracking-tighter text-slate-900 dark:text-white">
-            Quiz<span style={{ color: 'var(--primary, #4f46e5)' }}>Wise</span>
+            Stude<span style={{ color: 'var(--primary, #4f46e5)' }}>Arc</span>
           </p>
           <p className="text-[9px] font-bold uppercase tracking-[0.3em] text-slate-400">
             {t('splash.tagline')}

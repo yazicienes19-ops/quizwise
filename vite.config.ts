@@ -20,8 +20,8 @@ export default defineConfig(() => {
           injectRegister: false,
           includeAssets: ['icon-192.svg', 'icon-512.svg'],
           manifest: {
-            name: 'QuizWise — KI-Lern-App',
-            short_name: 'QuizWise',
+            name: 'StudeArc — KI-Lern-App',
+            short_name: 'StudeArc',
             description: 'KI-gestützte Lern-App für Studierende',
             theme_color: '#6366f1',
             background_color: '#0f172a',

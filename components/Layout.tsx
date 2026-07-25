@@ -130,7 +130,7 @@ export const Layout: React.FC<LayoutProps> = ({
               className="w-10 h-10 rounded-xl flex items-center justify-center font-black transform rotate-3 shrink-0"
               style={{ background: 'var(--primary)', color: 'var(--primary-text)', boxShadow: '0 4px 12px color-mix(in srgb, var(--primary) 40%, transparent)' }}
             >QW</div>
-            <span className="text-xl font-black tracking-tighter text-slate-900 dark:text-white uppercase truncate flex-1">QuizWise</span>
+            <span className="text-xl font-black tracking-tighter text-slate-900 dark:text-white uppercase truncate flex-1">StudeArc</span>
             <button
               onClick={() => setSidebarCollapsed(true)}
               aria-label={t('layout.collapseSidebar')}
@@ -410,7 +410,7 @@ export const Layout: React.FC<LayoutProps> = ({
             className="w-8 h-8 rounded-xl flex items-center justify-center font-black text-[9px] transform rotate-3 shrink-0"
             style={{ background: 'var(--primary)', color: 'var(--primary-text)' }}
           >QW</div>
-          <span className="text-[11px] font-black uppercase tracking-widest text-slate-900 dark:text-white">QuizWise</span>
+          <span className="text-[11px] font-black uppercase tracking-widest text-slate-900 dark:text-white">StudeArc</span>
         </div>
 
         <span className="absolute left-1/2 -translate-x-1/2 text-[9px] font-black uppercase tracking-widest text-slate-400 pointer-events-none max-w-[60vw] truncate">
