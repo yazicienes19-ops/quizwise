@@ -6,7 +6,7 @@
 //   2. Login mountet die App (Konto-Daten-Klasse)
 //   3. App startet auch mit VOLLEM localStorage (QuotaExceeded-Klasse, 19.07.2026)
 
-const URL = process.env.SMOKE_URL || 'https://quizwise-kappa.vercel.app/';
+const URL = process.env.SMOKE_URL || 'https://www.studearc.com/';
 const USER = process.env.SMOKE_USER || 'demo@quizwise.app';
 const PASS = process.env.SMOKE_PASS || 'QuizWise2026!';
 
