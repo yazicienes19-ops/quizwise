@@ -117,7 +117,13 @@ export const Dashboard: React.FC<DashboardProps> = ({ onTabChange, flowResult, d
   };
 
   const handleAcceptSuggestion = (suggestion: any) => {
-    const plan = JSON.parse(localStorage.getItem('study_plan') || '[]');
+    let plan: unknown[];
+    try {
+      plan = JSON.parse(localStorage.getItem('study_plan') || '[]');
+      if (!Array.isArray(plan)) plan = [];
+    } catch {
+      plan = [];
+    }
     const [h, m] = (suggestion.start_time as string).split(':').map(Number);
     const endTotalMin = h * 60 + m + (suggestion.duration_minutes || 60);
     const endTime = `${String(Math.floor(endTotalMin / 60) % 24).padStart(2, '0')}:${String(endTotalMin % 60).padStart(2, '0')}`;

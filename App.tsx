@@ -54,27 +54,35 @@ const App: React.FC = () => {
   const [decks, setDecks] = useState<FlashcardDeck[]>([]);
   const [examTerms, setExamTerms] = useState<ExamTerm[]>([]);
   const [flowResult, setFlowResult] = useState<LearningFlowResult | null>(() => {
-    const saved = localStorage.getItem('studearc_flow_result');
-    return saved ? JSON.parse(saved) : null;
+    try {
+      const saved = localStorage.getItem('studearc_flow_result');
+      return saved ? JSON.parse(saved) : null;
+    } catch { return null; }
   });
   const [metrics, setMetrics] = useState<TopicMetric[]>([]);
   const [searchResults, setSearchResults] = useState<SearchResult[]>([]);
   const [savedSources, setSavedSources] = useState<SearchResult[]>([]);
   const [isSearching, setIsSearching] = useState(false);
   const [streakDismissed, setStreakDismissed] = useState(false);
-  const [cookieConsent, setCookieConsent] = useState(() => localStorage.getItem('cookie_consent') === 'accepted');
+  const [cookieConsent, setCookieConsent] = useState(() => !!localStorage.getItem('cookie_consent'));
   const [legalPage, setLegalPage] = useState<'impressum' | 'datenschutz' | 'agb' | null>(null);
 
   useEffect(() => {
     const handleStatus = () => setIsOffline(!navigator.onLine);
     window.addEventListener('online', handleStatus);
     window.addEventListener('offline', handleStatus);
-    const savedMetrics = localStorage.getItem('studearc_metrics');
-    if (savedMetrics) setMetrics(JSON.parse(savedMetrics));
-    const savedDecks = localStorage.getItem('flashcard_decks');
-    if (savedDecks) setDecks(JSON.parse(savedDecks));
-    const savedExamTerms = localStorage.getItem('studearc_exam_terms');
-    if (savedExamTerms) setExamTerms(JSON.parse(savedExamTerms));
+    try {
+      const savedMetrics = localStorage.getItem('studearc_metrics');
+      if (savedMetrics) setMetrics(JSON.parse(savedMetrics));
+    } catch {}
+    try {
+      const savedDecks = localStorage.getItem('flashcard_decks');
+      if (savedDecks) setDecks(JSON.parse(savedDecks));
+    } catch {}
+    try {
+      const savedExamTerms = localStorage.getItem('studearc_exam_terms');
+      if (savedExamTerms) setExamTerms(JSON.parse(savedExamTerms));
+    } catch {}
     return () => { window.removeEventListener('online', handleStatus); window.removeEventListener('offline', handleStatus); };
   }, []);
 
@@ -197,7 +205,11 @@ const App: React.FC = () => {
       <ToastContainer />
       <LandingPage onAuthClick={() => auth.setShowAuthModal(true)} />
       {auth.showAuthModal && <AuthModal onClose={() => auth.setShowAuthModal(false)} />}
-      {!cookieConsent && <CookieBanner onAccept={() => { setCookieConsent(true); localStorage.setItem('cookie_consent', 'accepted'); }} onShowPrivacy={() => setLegalPage('datenschutz')} />}
+      {!cookieConsent && <CookieBanner
+        onAccept={() => { setCookieConsent(true); localStorage.setItem('cookie_consent', 'accepted'); }}
+        onDecline={() => { setCookieConsent(true); localStorage.setItem('cookie_consent', 'declined'); }}
+        onShowPrivacy={() => setLegalPage('datenschutz')}
+      />}
       {legalPage && <LegalModal page={legalPage} onClose={() => setLegalPage(null)} />}
     </>
   );
@@ -279,7 +291,11 @@ const App: React.FC = () => {
         </React.Suspense>
         </ErrorBoundary>
       </Layout>
-      {!cookieConsent && <CookieBanner onAccept={() => { setCookieConsent(true); localStorage.setItem('cookie_consent', 'accepted'); }} onShowPrivacy={() => setLegalPage('datenschutz')} />}
+      {!cookieConsent && <CookieBanner
+        onAccept={() => { setCookieConsent(true); localStorage.setItem('cookie_consent', 'accepted'); }}
+        onDecline={() => { setCookieConsent(true); localStorage.setItem('cookie_consent', 'declined'); }}
+        onShowPrivacy={() => setLegalPage('datenschutz')}
+      />}
       {legalPage && <LegalModal page={legalPage} onClose={() => setLegalPage(null)} />}
     </>
   );

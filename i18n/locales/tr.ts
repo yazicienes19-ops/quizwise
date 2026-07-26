@@ -171,6 +171,7 @@ export const tr: Translations = {
   'cookie.text': 'StudeArc yalnızca kimlik doğrulama ve uygulama işlevi için teknik olarak gerekli çerezleri kullanır. Takip veya reklam çerezi yoktur.',
   'cookie.privacyLink': 'Gizlilik politikası',
   'cookie.accept': 'Anladım',
+  'cookie.decline': 'Reddet',
 
   // errors
   'errors.limitReached': 'Günlük sınıra ulaşıldı (20 istek). Yarın devam edebilirsin. Ya da sınırsız öğrenme için Pro al.',

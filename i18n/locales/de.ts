@@ -173,6 +173,7 @@ export const de = {
   'cookie.text': 'StudeArc nutzt ausschließlich technisch notwendige Cookies für Authentifizierung und App-Funktionalität. Keine Tracking- oder Werbe-Cookies.',
   'cookie.privacyLink': 'Datenschutzerklärung',
   'cookie.accept': 'Verstanden',
+  'cookie.decline': 'Ablehnen',
 
   // errors
   'errors.limitReached': 'Tageslimit erreicht (20 Anfragen). Morgen geht es weiter. Oder hol dir Pro für unbegrenztes Lernen.',

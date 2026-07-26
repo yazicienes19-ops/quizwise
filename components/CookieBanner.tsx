@@ -3,10 +3,11 @@ import { useTranslation } from '../i18n/I18nProvider';
 
 interface CookieBannerProps {
   onAccept: () => void;
+  onDecline: () => void;
   onShowPrivacy: () => void;
 }
 
-export const CookieBanner: React.FC<CookieBannerProps> = ({ onAccept, onShowPrivacy }) => {
+export const CookieBanner: React.FC<CookieBannerProps> = ({ onAccept, onDecline, onShowPrivacy }) => {
   const { t } = useTranslation();
   return (
   <div className="fixed bottom-0 left-0 right-0 z-[9999] p-4 md:p-6 animate-in fade-in duration-500">
@@ -25,13 +26,22 @@ export const CookieBanner: React.FC<CookieBannerProps> = ({ onAccept, onShowPriv
           </button>
         </p>
       </div>
-      <button
-        onClick={onAccept}
-        className="px-5 py-2.5 rounded-xl text-[10px] font-black uppercase tracking-widest text-white shrink-0 hover:scale-105 active:scale-95 transition-transform"
-        style={{ background: 'var(--primary)' }}
-      >
-        {t('cookie.accept')}
-      </button>
+      <div className="flex items-center gap-2 shrink-0">
+        <button
+          onClick={onDecline}
+          className="px-4 py-2.5 rounded-xl text-[10px] font-black uppercase tracking-widest hover:scale-105 active:scale-95 transition-transform"
+          style={{ color: 'var(--text-main)', background: 'var(--border-color)' }}
+        >
+          {t('cookie.decline')}
+        </button>
+        <button
+          onClick={onAccept}
+          className="px-5 py-2.5 rounded-xl text-[10px] font-black uppercase tracking-widest text-white hover:scale-105 active:scale-95 transition-transform"
+          style={{ background: 'var(--primary)' }}
+        >
+          {t('cookie.accept')}
+        </button>
+      </div>
     </div>
   </div>
   );
