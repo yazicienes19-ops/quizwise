@@ -217,6 +217,20 @@ body {
     .animate-card-enter { animation: none; }
 }
 
+/* ── Scroll-Reveal (Landingpage-Storytelling-Sektionen) ── */
+.reveal {
+    opacity: 0;
+    transform: translateY(28px);
+    transition: opacity 0.9s cubic-bezier(.2,.7,.2,1), transform 0.9s cubic-bezier(.2,.7,.2,1);
+}
+.reveal.in { opacity: 1; transform: translateY(0); }
+@keyframes drawArc { to { stroke-dashoffset: 0; } }
+.draw-arc { animation: drawArc 2.2s 0.3s ease-out forwards; }
+@media (prefers-reduced-motion: reduce) {
+    .reveal { opacity: 1; transform: none; transition: none; }
+    .draw-arc { animation: none; stroke-dashoffset: 0; }
+}
+
 /* ── Globaler Button-Press-Effekt: leichtes Einsinken + Glow beim Klick ── */
 button:not(:disabled) {
     transition: transform 120ms ease, box-shadow 200ms ease;
