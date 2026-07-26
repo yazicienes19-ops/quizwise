@@ -231,7 +231,7 @@ const App: React.FC = () => {
         {showStreakWarning && (
           <div className="mb-4 p-4 bg-amber-50 dark:bg-amber-950/30 border border-amber-300 dark:border-amber-700 rounded-2xl flex items-center justify-between gap-4 animate-in slide-in-from-top-2 duration-300">
             <div className="flex items-center gap-3">
-              <span className="text-xl">🔥</span>
+              <span className="text-xl">⭐</span>
               <p className="text-[11px] font-bold text-amber-800 dark:text-amber-300">
                 Deine <strong>{streak.current}-Tage-Streak</strong> endet heute, noch {totalDueCards} Karte{totalDueCards !== 1 ? 'n' : ''} fällig!
               </p>

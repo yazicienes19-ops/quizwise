@@ -8,7 +8,7 @@ import { usePersistentState } from '../hooks/usePersistentState';
 import {
   Home, BookOpen, HelpCircle, Calendar, Brain, GraduationCap,
   Layers, Lightbulb, BarChart2, Search, FileText, Moon, Sun,
-  X, Menu, KeyRound, LogIn, LogOut, Zap, Settings, Flame,
+  X, Menu, KeyRound, LogIn, LogOut, Zap, Settings, Star,
   PanelLeftClose, PanelLeftOpen, type LucideIcon
 } from 'lucide-react';
 import type { User } from '@supabase/supabase-js';
@@ -151,7 +151,7 @@ export const Layout: React.FC<LayoutProps> = ({
             </button>
             {streak.current > 0 && (
               <div className="flex items-center gap-1 shrink-0" title={t('layout.streakTitle', { n: streak.current })}>
-                <Flame
+                <Star
                   className="w-4 h-4"
                   style={{ color: streak.todayDone ? 'var(--primary)' : '#94a3b8' }}
                   fill={streak.todayDone ? 'var(--primary)' : 'none'}
@@ -423,7 +423,7 @@ export const Layout: React.FC<LayoutProps> = ({
         <div className="flex items-center gap-1.5 shrink-0">
           {streak.current > 0 && (
             <div className="flex items-center gap-0.5 px-2">
-              <Flame
+              <Star
                 className="w-4 h-4"
                 style={{ color: streak.todayDone ? 'var(--primary)' : '#94a3b8' }}
                 fill={streak.todayDone ? 'var(--primary)' : 'none'}

@@ -3,7 +3,7 @@ import React, { useState, useMemo } from 'react';
 import { ActiveTab, LearningFlowResult, StudyEntry, FlashcardDeck, ProcessedDocument } from '../types';
 import { GeneratedImage } from './GeneratedImage';
 import { toast } from '../services/toast';
-import { Layers, Flame } from 'lucide-react';
+import { Layers, Star } from 'lucide-react';
 import { countDueCards, migrateLegacyCard } from '../services/spacedRepetition';
 import { countDueMistakes } from '../services/mistakeReviewService';
 import { getStreak } from '../services/streakService';
@@ -243,7 +243,7 @@ export const Dashboard: React.FC<DashboardProps> = ({ onTabChange, flowResult, d
               style={{ background: 'var(--bg-sidebar)', border: '1px solid var(--border-color)' }}
             >
               <div className="w-9 h-9 rounded-xl flex items-center justify-center shrink-0" style={{ background: streak.todayDone ? 'color-mix(in srgb, var(--primary) 15%, transparent)' : 'var(--bg-main)' }}>
-                <Flame size={16} style={{ color: streak.todayDone ? 'var(--primary)' : '#94a3b8' }} fill={streak.todayDone ? 'var(--primary)' : 'none'} strokeWidth={2} />
+                <Star size={16} style={{ color: streak.todayDone ? 'var(--primary)' : '#94a3b8' }} fill={streak.todayDone ? 'var(--primary)' : 'none'} strokeWidth={2} />
               </div>
               <div>
                 <p className="text-[11px] font-black uppercase tracking-widest" style={{ color: streak.todayDone ? 'var(--primary)' : undefined }}>{t('layout.streakTitle', { n: streak.current })}</p>
