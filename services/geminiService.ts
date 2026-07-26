@@ -30,6 +30,7 @@ import {
 // ─── Backend-Verbindung ──────────────────────────────────────────────────────
 import { supabase } from './supabaseClient';
 import { parseQuizQuestions } from './quizNormalize';
+import { parseCoachInsights } from './coachInsightsNormalize';
 import { BLOOM_LEVELS, buildBloomTargetLine, mergeBloomLevels } from './bloomPresets';
 import { outputLangDirective, explainerHeadings } from './aiLocale';
 import { t } from '../i18n';
@@ -1579,8 +1580,9 @@ Die Ziel-Tab-Werte (QUIZ, CARDS, RECALL, EXAM, EXPLAINER) und die Notenskala ble
     },
   });
 
-  const parsed = JSON.parse(text || '{"synthesis":[],"connections":[],"prognosis":{"grade":"—","passProbability":0,"reasoning":""},"forwardPrediction":"","methodInsight":"","recommendations":[]}');
-  // Defensiv: Schema erzwingt kein Array-Limit, KI hält sich nicht immer exakt an "maximal 3"
-  if (Array.isArray(parsed.recommendations)) parsed.recommendations = parsed.recommendations.slice(0, 3);
-  return parsed;
+  // Gemini lässt trotz responseSchema gelegentlich Felder weg oder liefert falsche
+  // Typen (bekannte Fehlerklasse, siehe quizNormalize.ts) — parseCoachInsights
+  // füllt das defensiv mit sicheren Leerwerten auf, bevor es in den Component-
+  // State gelangt (sonst crasht LearningCoach.tsx beim Rendern).
+  return parseCoachInsights(text);
 };

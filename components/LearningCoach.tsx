@@ -40,6 +40,12 @@ const MIN_SESSIONS_FOR_COACH = 5;
 /** Coach-Ergebnis überlebt Tab-Wechsel; wird ungültig sobald neue Sessions dazukommen. */
 const INSIGHTS_CACHE_KEY = 'studearc_coach_insights_v1';
 
+/** Cache pro Fach (Variante C) getrennt — sonst würde nach einem Reload die
+ *  Analyse eines anderen Fachs geladen, sobald zufällig dieselbe Session-Anzahl
+ *  vorliegt. `undefined`/`null` = "Alle Fächer". */
+const insightsCacheKey = (moduleId: string | null | undefined): string =>
+  `${INSIGHTS_CACHE_KEY}:${moduleId ?? 'all'}`;
+
 const getTabActionLabel = (tab: string): string => {
   const map: Record<string, TKey> = {
     QUIZ: 'lc.tabQuiz', CARDS: 'lc.tabCards', RECALL: 'lc.tabRecall',
@@ -172,18 +178,26 @@ export const LearningCoach: React.FC<LearningCoachProps> = ({ metrics, decks, on
     });
   }, [examResults, displayTopics, decks, examTerms]);
 
-  // Gecachtes Coach-Ergebnis laden — nur wenn seitdem keine neuen Sessions dazukamen
+  // Fach-Wechsel (Variante C) invalidiert eine ggf. angezeigte Coach-Analyse des
+  // vorherigen Fachs sofort — sonst bliebe die Analyse von Fach A stehen, während
+  // die restlichen Panels schon Fach B zeigen. Danach wird — falls vorhanden — die
+  // zum neuen Fach passende, gecachte Analyse geladen (nur wenn seitdem keine
+  // neuen Sessions dazukamen).
   useEffect(() => {
+    setInsights(null);
     try {
-      const raw = localStorage.getItem(INSIGHTS_CACHE_KEY);
+      const raw = localStorage.getItem(insightsCacheKey(activeModule?.id));
       if (!raw) return;
       const cached = JSON.parse(raw) as { insights: CoachInsights; totalSessions: number };
       if (cached?.insights && cached.totalSessions === profile.volume.totalSessions) {
         setInsights(cached.insights);
       }
     } catch {}
+  // profile ändert sich bei jeder neuen Session — das soll für sich genommen
+  // NICHT zurücksetzen (nur ein Fach-Wechsel soll das), daher bewusst nicht in
+  // den Deps.
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
+  }, [activeModule?.id]);
 
   const wissensprofilItems = [
     ...profile.categoryMastery.map(c => ({ key: `cat-${c.category}`, label: getCategoryLabel(c.category), avgScore: c.avgScore })),
@@ -222,7 +236,7 @@ export const LearningCoach: React.FC<LearningCoachProps> = ({ metrics, decks, on
       const result = await generateCoachInsights(profile, wrongAnswersCtx);
       setInsights(result);
       try {
-        localStorage.setItem(INSIGHTS_CACHE_KEY, JSON.stringify({
+        localStorage.setItem(insightsCacheKey(activeModule?.id), JSON.stringify({
           insights: result, totalSessions: profile.volume.totalSessions, savedAt: Date.now(),
         }));
       } catch {}
