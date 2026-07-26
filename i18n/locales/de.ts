@@ -344,12 +344,9 @@ export const de = {
   'dashboard.addToCalendar': 'In Kalender eintragen',
   'dashboard.addedToPlan': 'Im Lernplan eingetragen!',
   'dashboard.card.recall.desc': 'Erkläre Themen in eigenen Worten und erhalte sofort Feedback.',
-  'dashboard.card.recall.badge': 'Feynman',
   'dashboard.card.library.desc': 'Verwalte deine PDF-Sammlung und Quellen.',
   'dashboard.card.quiz.desc': 'Teste dich mit Fragen aus deinen Unterlagen.',
-  'dashboard.card.quiz.badge': 'Aus deinen Unterlagen',
   'dashboard.card.exam.desc': 'Simuliere echte Prüfungen unter Zeitdruck.',
-  'dashboard.card.exam.badge': 'Prüfungsnah',
   'dashboard.card.cards.desc': 'Wiederholen genau im richtigen Moment.',
   'dashboard.card.radar.desc': 'Sieh, wo du stehst und was als Nächstes dran ist.',
 

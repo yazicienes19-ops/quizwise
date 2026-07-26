@@ -43,14 +43,13 @@ interface ActionCard {
   descKey: TKey;
   prompt: string;
   color: string;
-  badgeKey?: TKey;
 }
 
 const BASE_CARDS: ActionCard[] = [
-  { id: ActiveTab.RECALL, titleKey: 'nav.recall', descKey: 'dashboard.card.recall.desc', prompt: 'Human brain active recall, academic illustration', color: 'text-indigo-600', badgeKey: 'dashboard.card.recall.badge' },
+  { id: ActiveTab.RECALL, titleKey: 'nav.recall', descKey: 'dashboard.card.recall.desc', prompt: 'Human brain active recall, academic illustration', color: 'text-indigo-600' },
   { id: ActiveTab.LIBRARY, titleKey: 'nav.library', descKey: 'dashboard.card.library.desc', prompt: 'Academic library books, minimalist illustration', color: 'text-blue-500' },
-  { id: ActiveTab.QUIZ, titleKey: 'nav.quiz', descKey: 'dashboard.card.quiz.desc', prompt: 'Target bullseye icon, academic minimalist illustration', color: 'text-indigo-500', badgeKey: 'dashboard.card.quiz.badge' },
-  { id: ActiveTab.EXAM, titleKey: 'nav.exam', descKey: 'dashboard.card.exam.desc', prompt: 'Exam paper graduation cap, academic illustration', color: 'text-rose-500', badgeKey: 'dashboard.card.exam.badge' },
+  { id: ActiveTab.QUIZ, titleKey: 'nav.quiz', descKey: 'dashboard.card.quiz.desc', prompt: 'Target bullseye icon, academic minimalist illustration', color: 'text-indigo-500' },
+  { id: ActiveTab.EXAM, titleKey: 'nav.exam', descKey: 'dashboard.card.exam.desc', prompt: 'Exam paper graduation cap, academic illustration', color: 'text-rose-500' },
   { id: ActiveTab.CARDS, titleKey: 'nav.cards', descKey: 'dashboard.card.cards.desc', prompt: 'Flashcards study deck, minimalist illustration', color: 'text-violet-500' },
   { id: ActiveTab.RADAR, titleKey: 'nav.radar', descKey: 'dashboard.card.radar.desc', prompt: 'Data analysis radar chart, academic illustration', color: 'text-emerald-500' }
 ];
@@ -372,27 +371,14 @@ export const Dashboard: React.FC<DashboardProps> = ({ onTabChange, flowResult, d
                 style={{ background: isHovered ? 'rgba(255,255,255,0.15)' : 'transparent', opacity: isHovered ? 1 : 0 }}
               />
               <div className="relative z-10 space-y-6">
-                <div className="flex justify-between items-start">
-                  <div
-                    className="w-12 h-12 lg:w-16 lg:h-16 rounded-2xl flex items-center justify-center group-hover:scale-110 transition-all duration-300"
-                    style={isHovered
-                      ? { background: 'rgba(255,255,255,0.2)', color: 'var(--primary-text)' }
-                      : { background: 'color-mix(in srgb, var(--primary) 12%, var(--bg-sidebar))', color: 'var(--primary)' }
-                    }
-                  >
-                    <GeneratedImage prompt={card.prompt} className="w-7 h-7 lg:w-9 lg:h-9" />
-                  </div>
-                  {card.badgeKey && (
-                    <span
-                      className="text-[9px] font-black uppercase tracking-widest px-3 py-1.5 rounded-full transition-colors duration-300"
-                      style={isHovered
-                        ? { background: 'rgba(255,255,255,0.2)', color: 'var(--primary-text)', border: '1px solid rgba(255,255,255,0.3)' }
-                        : { background: 'var(--p50)', color: 'var(--primary)', border: '1px solid var(--p100)' }
-                      }
-                    >
-                      {t(card.badgeKey)}
-                    </span>
-                  )}
+                <div
+                  className="w-12 h-12 lg:w-16 lg:h-16 rounded-2xl flex items-center justify-center group-hover:scale-110 transition-all duration-300"
+                  style={isHovered
+                    ? { background: 'rgba(255,255,255,0.2)', color: 'var(--primary-text)' }
+                    : { background: 'color-mix(in srgb, var(--primary) 12%, var(--bg-sidebar))', color: 'var(--primary)' }
+                  }
+                >
+                  <GeneratedImage prompt={card.prompt} className="w-7 h-7 lg:w-9 lg:h-9" />
                 </div>
                 <div className="space-y-2">
                   <h3

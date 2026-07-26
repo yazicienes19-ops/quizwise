@@ -342,12 +342,9 @@ export const tr: Translations = {
   'dashboard.addToCalendar': 'Takvime ekle',
   'dashboard.addedToPlan': 'Çalışma planına eklendi!',
   'dashboard.card.recall.desc': 'Konuları kendi kelimelerinle anlat ve anında geri bildirim al.',
-  'dashboard.card.recall.badge': 'Feynman',
   'dashboard.card.library.desc': 'PDF koleksiyonunu ve kaynaklarını yönet.',
   'dashboard.card.quiz.desc': 'Belgelerinden sorularla kendini test et.',
-  'dashboard.card.quiz.badge': 'Belgelerinden',
   'dashboard.card.exam.desc': 'Zaman baskısı altında gerçek sınavları simüle et.',
-  'dashboard.card.exam.badge': 'Sınava yakın',
   'dashboard.card.cards.desc': 'Tam doğru anda tekrar et.',
   'dashboard.card.radar.desc': 'Nerede olduğunu ve sırada ne olduğunu gör.',
 
