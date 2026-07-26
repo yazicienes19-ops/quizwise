@@ -255,9 +255,16 @@ interface GapRadarProps {
   hideHeader?: boolean;
   /** Für den Cloud-Sync beim Löschen von Verlaufseinträgen. */
   userId?: string | null;
+  /** Variante C: aktives Fach — Quiz-/Klausur-/Feynman-/Tutor-Verlauf wird darauf gefiltert (null = alle Fächer). */
+  moduleFilter?: { ids: Set<string>; names: Set<string> } | null;
+  /** Nur für Cache-Scoping der Tiefenanalyse und die kompakte „Alle Fächer"-Ansicht. */
+  moduleId?: string | null;
 }
 
-export const GapRadar: React.FC<GapRadarProps> = ({ metrics, onNavigate, onAction, hideHeader, userId }) => {
+export const GapRadar: React.FC<GapRadarProps> = ({ metrics, onNavigate, onAction, hideHeader, userId, moduleFilter = null, moduleId = null }) => {
+  // „Alle Fächer": bewusst kompaktere Ansicht mit nur den wichtigsten Kennzahlen
+  // statt Verlaufs-Chart, Schwachstellen-Liste, Session-Historie und Tiefenanalyse.
+  const compact = !moduleId;
   const { t } = useTranslation();
   const [selectedMode, setSelectedMode] = useState<LearnMode>('all');
   const [selectedDoc, setSelectedDoc] = useState('');
@@ -278,12 +285,26 @@ export const GapRadar: React.FC<GapRadarProps> = ({ metrics, onNavigate, onActio
     return () => document.removeEventListener('mousedown', handler);
   }, [openTopic]);
 
-  // ── Raw data ────────────────────────────────────────────────────────────────
+  // ── Raw data (bereits auf das aktive Fach gefiltert, siehe moduleFilter) ──────
   const [historyBump, setHistoryBump] = useState(0);
-  const allQuiz   = useMemo(() => getAllResults(), [historyBump]);
-  const allRecall = useMemo(() => getAllRecallResults(), [historyBump]);
-  const allExam   = useMemo(() => getAllExamResults(), [historyBump]);
-  const allTutorLog = useMemo(() => getAllReaderLog(), [historyBump]);
+  const allQuiz = useMemo(() => {
+    const all = getAllResults();
+    return moduleFilter ? all.filter(r => moduleFilter.ids.has(r.docId) || moduleFilter.names.has(r.docName)) : all;
+  }, [historyBump, moduleFilter]);
+  const allRecall = useMemo(() => {
+    const all = getAllRecallResults();
+    return moduleFilter ? all.filter(r => moduleFilter.names.has(r.docName) || moduleFilter.names.has(r.topic)) : all;
+  }, [historyBump, moduleFilter]);
+  const allExam = useMemo(() => {
+    const all = getAllExamResults();
+    return moduleFilter ? all.filter(r => moduleFilter.names.has(r.docName)) : all;
+  }, [historyBump, moduleFilter]);
+  const allTutorLog = useMemo(() => {
+    const all = getAllReaderLog();
+    return moduleFilter
+      ? all.filter(r => (r.docId && moduleFilter.ids.has(r.docId)) || (r.docName && moduleFilter.names.has(r.docName)))
+      : all;
+  }, [historyBump, moduleFilter]);
 
   // Ändert sich der Verlauf NACH dem ersten Render (z.B. eine Session wird
   // gelöscht), ist eine bereits gezeigte Tiefenanalyse potenziell nicht mehr
@@ -560,7 +581,7 @@ export const GapRadar: React.FC<GapRadarProps> = ({ metrics, onNavigate, onActio
   // Filter-Scope) statt einer Summe: zwei unterschiedliche Datenstände können
   // rechnerisch dieselbe Summe ergeben (5 Quiz+3 Feynman = 4 Quiz+4 Feynman = 8)
   // und würden dann eine falsche/veraltete Analyse zeigen, ohne dass es auffällt.
-  const filterScope = selectedDoc || 'global';
+  const filterScope = `${moduleId ?? 'all'}:${selectedDoc || 'global'}`;
   const computeFingerprint = useCallback(
     () => buildCacheKey({ errorIds: wrongAnswersCtx.map(e => e.id), topicSnapshot: buildTopicSnapshot(metrics), filterScope }),
     [wrongAnswersCtx, metrics, filterScope],
@@ -786,6 +807,15 @@ export const GapRadar: React.FC<GapRadarProps> = ({ metrics, onNavigate, onActio
         {/* „Nächste Session"-Kachel entfernt — die „Heute solltest du"-Karte
             im LearningCoach beantwortet dieselbe Frage (eine Quelle statt drei). */}
       </div>
+
+      {/* ── „Alle Fächer": Hinweis statt Verlauf/Schwachstellen/Tiefenanalyse ── */}
+      {compact && (
+        <p className="text-center text-[10px] font-bold uppercase tracking-wider" style={{ color: 'var(--mute)' }}>
+          {t('gr.compactHint')}
+        </p>
+      )}
+
+      {!compact && <>
 
       {/* ── Progress Chart ── */}
       {(hasChartData || (ankiAvg !== null && (selectedMode === 'all' || selectedMode === 'anki'))) && (
@@ -1040,6 +1070,8 @@ export const GapRadar: React.FC<GapRadarProps> = ({ metrics, onNavigate, onActio
           </div>
         )}
       </div>
+
+      </>}
     </div>
   );
 };

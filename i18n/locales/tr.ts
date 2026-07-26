@@ -1087,6 +1087,7 @@ export const tr: Translations = {
   'gr.confBeginner': 'Başlangıç',
   'gr.noData': 'Henüz veri yok',
   'gr.emptyHint': 'Analizi başlatmak için bir test, sınav ya da Feynman turu tamamla.',
+  'gr.compactHint': 'Bu ders için geçmişi, zayıf noktaları ve derin analizi görmek üzere bir modül seç.',
   'gr.titlePre': 'Öğrenme',
   'gr.titleAccent': 'Radarı',
   'gr.subtitle': 'Tüm öğrenme modları tek bakışta: Test, Anki, Feynman & Sınav.',

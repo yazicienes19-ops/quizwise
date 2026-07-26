@@ -729,9 +729,18 @@ export const LearningCoach: React.FC<LearningCoachProps> = ({ metrics, decks, on
         </div>
       )}
 
-      {/* ── Bestehende Verlaufs-/Fehleranalyse (unverändert, ohne eigenen Header) ── */}
+      {/* ── Bestehende Verlaufs-/Fehleranalyse, respektiert dieselbe Modul-Filterung wie der Rest der Seite ── */}
       <div className="pt-8 border-t" style={{ borderColor: 'var(--border-color)' }}>
-        <GapRadar metrics={metrics} onNavigate={onNavigate} onAction={onAction} hideHeader userId={userId} />
+        <GapRadar
+          key={activeModule?.id ?? 'all'}
+          metrics={metrics}
+          onNavigate={onNavigate}
+          onAction={onAction}
+          hideHeader
+          userId={userId}
+          moduleFilter={moduleFilter}
+          moduleId={activeModule?.id ?? null}
+        />
       </div>
     </div>
   );

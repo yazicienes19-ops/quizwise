@@ -1095,6 +1095,7 @@ export const de = {
   'gr.confBeginner': 'Anfänger',
   'gr.noData': 'Noch keine Daten',
   'gr.emptyHint': 'Absolviere ein Quiz, eine Klausur oder eine Feynman-Runde, um die Analyse zu starten.',
+  'gr.compactHint': 'Wähle ein Modul aus, um Verlauf, Schwachstellen und Tiefenanalyse für dieses Fach zu sehen.',
   'gr.titlePre': 'Lern',
   'gr.titleAccent': 'Radar',
   'gr.subtitle': 'Alle Lernmodi auf einen Blick: Quiz, Anki, Feynman & Klausur.',
