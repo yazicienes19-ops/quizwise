@@ -124,7 +124,7 @@ export const tr: Translations = {
 
   // layout
   'layout.activeSubject': 'Aktif ders',
-  'layout.allSubjects': '🎓 Tüm dersler',
+  'layout.allSubjects': 'Tüm dersler',
   'layout.subjectHint': 'Derse göre öğrenmek için kütüphanede klasör oluştur',
   'layout.selectSubject': 'Aktif dersi seç',
   'layout.collapseSidebar': 'Kenar çubuğunu daralt',

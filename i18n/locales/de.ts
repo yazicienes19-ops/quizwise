@@ -126,7 +126,7 @@ export const de = {
 
   // layout
   'layout.activeSubject': 'Aktives Fach',
-  'layout.allSubjects': '🎓 Alle Fächer',
+  'layout.allSubjects': 'Alle Fächer',
   'layout.subjectHint': 'Lege in der Bibliothek Ordner an, um nach Fach zu lernen',
   'layout.selectSubject': 'Aktives Fach wählen',
   'layout.collapseSidebar': 'Seitenleiste einklappen',

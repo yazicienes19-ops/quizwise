@@ -3,6 +3,7 @@ import React, { useState, useMemo, useEffect } from 'react';
 import { TopicMetric, ActiveTab, CoachInsights, FlashcardDeck, LearningFlowResult, ExamTerm, Collection, ProcessedDocument } from '../types';
 import { EmojiImage } from './EmojiImage';
 import { GapRadar } from './GapRadar';
+import { CountUp } from './CountUp';
 import { generateCoachInsights, WrongAnswerContext } from '../services/geminiService';
 import { buildLearningProfile, buildRealTopicMastery, buildDailyPlan, buildMethodCommentary, buildContextMotivation, getCategoryLabel, getMethodLabel } from '../services/learningProfileService';
 import { buildLearningScore } from '../services/learningScoreService';
@@ -349,7 +350,9 @@ export const LearningCoach: React.FC<LearningCoachProps> = ({ metrics, decks, on
                   {t('lc.preliminary')}
                 </span>
               )}
-              <p className="text-5xl font-black" style={{ color: 'var(--primary)' }}>{forecast.grade}</p>
+              <p className="text-5xl font-black" style={{ color: 'var(--primary)' }}>
+                <CountUp value={parseFloat(forecast.grade)} from={5} decimals={1} finalText={forecast.grade} />
+              </p>
               <p className="text-sm font-black mt-2" style={{ color: 'var(--ink)' }}>
                 {forecast.preliminary
                   ? t('lc.expectedRange', { low: forecast.range.low, high: forecast.range.high })

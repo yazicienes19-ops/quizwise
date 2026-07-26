@@ -2,6 +2,7 @@
 import React, { useState, useMemo, useRef, useEffect, useCallback } from 'react';
 import { TopicMetric, LearningAnalysis, ActiveTab } from '../types';
 import { EmojiImage } from './EmojiImage';
+import { AnimatedBar } from './AnimatedBar';
 import { analyzeLearningProgress } from '../services/geminiService';
 import { buildErrorPool } from '../services/errorPool';
 import { computeTopicCalibrationGaps } from '../services/calibrationGap';
@@ -932,10 +933,7 @@ export const GapRadar: React.FC<GapRadarProps> = ({ metrics, onNavigate, onActio
 
                 <div className="flex items-center gap-3 shrink-0">
                   <div className="w-20 h-1.5 rounded-full overflow-hidden" style={{ background: 'var(--border-color)' }}>
-                    <div
-                      className="h-full rounded-full transition-all"
-                      style={{ width: `${entry.score}%`, background: scoreColor(entry.score) }}
-                    />
+                    <AnimatedBar percent={entry.score} className="h-full rounded-full" style={{ background: scoreColor(entry.score) }} />
                   </div>
                   <span className="text-sm font-black w-10 text-right" style={{ color: scoreColor(entry.score) }}>
                     {entry.score}%

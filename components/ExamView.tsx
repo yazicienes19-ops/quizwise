@@ -6,6 +6,8 @@ import { germanGradeFromPercentage, getCategoryLabel, getTypeLabel } from '../se
 import { BLOOM_LEVELS, BLOOM_LEVEL_LABELS, EXAM_TYPE_BLOOM_TARGETS, computeActualBloomDistribution } from '../services/bloomPresets';
 import type { TKey } from '../i18n';
 import { EmojiImage } from './EmojiImage';
+import { AnimatedBar } from './AnimatedBar';
+import { CountUp } from './CountUp';
 import { useTranslation } from '../i18n/I18nProvider';
 import { formatDate } from '../i18n/dates';
 import { t as translate } from '../i18n';
@@ -596,7 +598,9 @@ export const ExamView: React.FC<ExamViewProps> = ({
         <div className={`grid grid-cols-1 md:grid-cols-3 gap-6 sm:gap-8 ${gradeInfo.bg} dark:bg-slate-900/40 p-5 sm:p-10 rounded-[28px] sm:rounded-[40px] border-2 ${percentage >= 50 ? 'border-emerald-500' : 'border-rose-500'} animate-in zoom-in-95`}>
           <div className="flex flex-col items-center justify-center border-b md:border-b-0 md:border-r border-slate-200 dark:border-slate-800 pb-6 md:pb-0">
             <span className="text-[10px] font-black uppercase tracking-widest text-slate-400 mb-2">{t('ev.finalGrade')}</span>
-            <span className={`text-6xl sm:text-7xl font-black ${gradeInfo.color}`}>{gradeInfo.grade}</span>
+            <span className={`text-6xl sm:text-7xl font-black ${gradeInfo.color}`}>
+              <CountUp value={parseFloat(gradeInfo.grade)} from={5} decimals={1} duration={900} finalText={gradeInfo.grade} />
+            </span>
             <span className={`text-xs font-black uppercase mt-2 tracking-widest ${gradeInfo.color}`}>{gradeInfo.label}</span>
           </div>
           <div className="md:col-span-2 space-y-4 flex flex-col justify-center">
@@ -606,7 +610,7 @@ export const ExamView: React.FC<ExamViewProps> = ({
                 <span>{percentage >= 50 ? t('ev.passed') : t('ev.notPassed')}</span>
               </div>
               <div className="h-4 bg-slate-200 dark:bg-slate-800 rounded-full overflow-hidden shadow-inner">
-                <div className={`h-full transition-all duration-1000 ${percentage >= 50 ? 'bg-emerald-500' : 'bg-rose-500'}`} style={{ width: `${percentage}%` }} />
+                <AnimatedBar percent={percentage} className={`h-full ${percentage >= 50 ? 'bg-emerald-500' : 'bg-rose-500'}`} duration={1000} />
               </div>
               <div className="flex justify-between text-[9px] font-bold text-slate-400">
                 <span>0%</span><span className="text-amber-500">50% Bestanden</span><span>100%</span>
@@ -713,9 +717,10 @@ export const ExamView: React.FC<ExamViewProps> = ({
                   <span className={cb.score >= 70 ? 'text-emerald-600' : cb.score >= 50 ? 'text-amber-600' : 'text-rose-600'}>{cb.score}%</span>
                 </div>
                 <div className="h-2 bg-slate-100 dark:bg-slate-800 rounded-full overflow-hidden">
-                  <div
-                    className={`h-full rounded-full transition-all duration-1000 ${cb.score >= 70 ? 'bg-emerald-500' : cb.score >= 50 ? 'bg-amber-400' : 'bg-rose-500'}`}
-                    style={{ width: `${cb.score}%` }}
+                  <AnimatedBar
+                    percent={cb.score}
+                    className={`h-full rounded-full ${cb.score >= 70 ? 'bg-emerald-500' : cb.score >= 50 ? 'bg-amber-400' : 'bg-rose-500'}`}
+                    duration={1000}
                   />
                 </div>
               </div>
@@ -742,7 +747,7 @@ export const ExamView: React.FC<ExamViewProps> = ({
                 </div>
                 <div className="relative h-2 bg-slate-100 dark:bg-slate-800 rounded-full overflow-hidden">
                   <div className="absolute inset-y-0 left-0 rounded-full bg-indigo-200 dark:bg-indigo-900/40" style={{ width: `${targetBloomDistribution[level]}%` }} />
-                  <div className="absolute inset-y-0 left-0 rounded-full bg-indigo-600 transition-all duration-1000" style={{ width: `${actualBloomDistribution[level]}%` }} />
+                  <AnimatedBar percent={actualBloomDistribution[level]} className="absolute inset-y-0 left-0 rounded-full bg-indigo-600" duration={1000} />
                 </div>
               </div>
             ))}
@@ -833,9 +838,10 @@ export const ExamView: React.FC<ExamViewProps> = ({
                     <span className={tp.score >= 70 ? 'text-emerald-600' : tp.score >= 50 ? 'text-amber-600' : 'text-rose-600'}>{tp.score}%</span>
                   </div>
                   <div className="h-2 bg-slate-100 dark:bg-slate-800 rounded-full overflow-hidden">
-                    <div
-                      className={`h-full rounded-full transition-all duration-1000 ${tp.score >= 70 ? 'bg-emerald-500' : tp.score >= 50 ? 'bg-amber-400' : 'bg-rose-500'}`}
-                      style={{ width: `${tp.score}%` }}
+                    <AnimatedBar
+                      percent={tp.score}
+                      className={`h-full rounded-full ${tp.score >= 70 ? 'bg-emerald-500' : tp.score >= 50 ? 'bg-amber-400' : 'bg-rose-500'}`}
+                      duration={1000}
                     />
                   </div>
                 </div>
@@ -872,7 +878,7 @@ export const ExamView: React.FC<ExamViewProps> = ({
                   <span>{actualBloomDistribution[level]}%</span>
                 </div>
                 <div className="h-2 bg-slate-100 dark:bg-slate-800 rounded-full overflow-hidden">
-                  <div className="h-full rounded-full bg-indigo-500" style={{ width: `${actualBloomDistribution[level]}%` }} />
+                  <AnimatedBar percent={actualBloomDistribution[level]} className="h-full rounded-full bg-indigo-500" duration={1000} />
                 </div>
               </div>
             ))}

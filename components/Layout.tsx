@@ -119,16 +119,28 @@ export const Layout: React.FC<LayoutProps> = ({
   return (
     <div className="min-h-screen flex transition-colors duration-300 overflow-hidden bg-transparent">
 
-      {/* ── DESKTOP SIDEBAR (≥ 1024px) — einklappbar, Zustand persistiert ── */}
-      {!sidebarCollapsed && (
+      {/* ── DESKTOP SIDEBAR (≥ 1024px) — einklappbar, Zustand persistiert ──
+          Breite/Opacity animiert statt hart weg-/hinzugemountet; der innere
+          Inhalt behält seine volle Breite (w-72) und wird vom schrumpfenden
+          äußeren Container nur zunehmend abgeschnitten + nach links geschoben
+          — dadurch wirkt es wie ein weiches Einklappen statt eines harten Cuts. */}
       <aside
-        className="w-72 hidden lg:flex flex-col h-screen sticky top-0 shadow-[4px_0_24px_rgba(0,0,0,0.05)] z-20"
-        style={{ background: 'var(--bg-sidebar)', borderRight: '1px solid var(--border-color)' }}
+        className="hidden lg:flex flex-col h-screen sticky top-0 shadow-[4px_0_24px_rgba(0,0,0,0.05)] z-20 overflow-hidden transition-[width,opacity] duration-300 ease-[cubic-bezier(0.16,1,0.3,1)]"
+        style={{
+          background: 'var(--bg-sidebar)',
+          borderRight: '1px solid var(--border-color)',
+          width: sidebarCollapsed ? '0px' : '18rem',
+          opacity: sidebarCollapsed ? 0 : 1,
+        }}
+        aria-hidden={sidebarCollapsed}
       >
-        <div className="p-10 flex flex-col h-full">
+        <div
+          className="p-10 flex flex-col h-full w-72 shrink-0 transition-transform duration-300 ease-[cubic-bezier(0.16,1,0.3,1)]"
+          style={{ transform: sidebarCollapsed ? 'translateX(-24px)' : 'translateX(0)' }}
+        >
           <div className="flex items-center gap-4 mb-12">
             <div
-              className="w-10 h-10 rounded-xl flex items-center justify-center transform rotate-3 shrink-0"
+              className="w-10 h-10 rounded-xl flex items-center justify-center shrink-0"
               style={{ background: '#1B2A4A', boxShadow: '0 4px 12px rgba(27,42,74,0.4)' }}
             ><BrandMark size={24} strokeColor="#FBF9F4" peakColor="#D9A94E" /></div>
             <span className="text-xl font-black tracking-tighter uppercase truncate flex-1" style={{ color: 'var(--text-main)' }}>Stude<span style={{ color: '#A9772C' }}>Arc</span></span>
@@ -186,7 +198,7 @@ export const Layout: React.FC<LayoutProps> = ({
               >
                 <option value="">{t('layout.allSubjects')}</option>
                 {collections.map(c => (
-                  <option key={c.id} value={c.id}>{c.emoji} {c.name}</option>
+                  <option key={c.id} value={c.id}>{c.name}</option>
                 ))}
               </select>
             </div>
@@ -322,7 +334,6 @@ export const Layout: React.FC<LayoutProps> = ({
           </div>
         </div>
       </aside>
-      )}
 
       {/* Wieder einblenden — nur sichtbar, wenn die Desktop-Sidebar eingeklappt ist */}
       {sidebarCollapsed && (
@@ -330,8 +341,8 @@ export const Layout: React.FC<LayoutProps> = ({
           onClick={() => setSidebarCollapsed(false)}
           aria-label={t('layout.expandSidebar')}
           title={t('layout.expandSidebar')}
-          className="hidden lg:flex fixed top-4 left-4 z-30 w-9 h-9 rounded-xl items-center justify-center shadow-lg transition-all hover:scale-105 active:scale-95"
-          style={{ background: 'var(--bg-sidebar)', border: '1px solid var(--border-color)', color: 'var(--text-main)' }}
+          className="hidden lg:flex fixed top-4 left-4 z-30 w-9 h-9 rounded-xl items-center justify-center shadow-lg transition-all hover:scale-105 active:scale-95 animate-in fade-in"
+          style={{ background: 'var(--bg-sidebar)', border: '1px solid var(--border-color)', color: 'var(--text-main)', animationDelay: '200ms', animationDuration: '250ms' }}
         >
           <PanelLeftOpen className="w-4 h-4" strokeWidth={1.75} />
         </button>
@@ -345,7 +356,7 @@ export const Layout: React.FC<LayoutProps> = ({
         {/* Scrollable top: logo + all nav items */}
         <div className="flex-1 overflow-y-auto scrollbar-hide flex flex-col items-center gap-1 pt-4 pb-2">
           <div
-            className="w-10 h-10 rounded-xl flex items-center justify-center mb-5 shrink-0 transform rotate-3"
+            className="w-10 h-10 rounded-xl flex items-center justify-center mb-5 shrink-0"
             style={{ background: '#1B2A4A', boxShadow: '0 4px 12px rgba(27,42,74,0.4)' }}
           ><BrandMark size={24} strokeColor="#FBF9F4" peakColor="#D9A94E" /></div>
 
@@ -408,7 +419,7 @@ export const Layout: React.FC<LayoutProps> = ({
       >
         <div className="flex items-center gap-2 shrink-0">
           <div
-            className="w-8 h-8 rounded-xl flex items-center justify-center transform rotate-3 shrink-0"
+            className="w-8 h-8 rounded-xl flex items-center justify-center shrink-0"
             style={{ background: '#1B2A4A' }}
           ><BrandMark size={19} strokeColor="#FBF9F4" peakColor="#D9A94E" /></div>
           <span className="text-[11px] font-black uppercase tracking-widest" style={{ color: 'var(--text-main)' }}>Stude<span style={{ color: '#A9772C' }}>Arc</span></span>

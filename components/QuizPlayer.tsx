@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useMemo, useCallback } from 'react';
 import { QuizQuestion, UserAnswer } from '../types';
 import { EmojiImage } from './EmojiImage';
+import { AnimatedBar } from './AnimatedBar';
 import { useTranslation } from '../i18n/I18nProvider';
 import { matchBlank } from '../services/blankMatch';
 
@@ -547,7 +548,7 @@ export const QuizPlayer: React.FC<QuizPlayerProps> = ({
           aria-valuemax={questions.length}
           aria-label={t('quiz.progressLabel', { n: currentIndex + 1, total: questions.length })}
         >
-          <div className="h-full transition-all duration-700 ease-out" style={{ width: `${progress}%`, background: 'var(--primary)' }} />
+          <AnimatedBar percent={progress} className="h-full" style={{ background: 'var(--primary)' }} duration={700} />
         </div>
         {currentQuestion.topic && (
           <p className="text-[9px] font-black uppercase tracking-widest text-slate-400 break-words">{t('quiz.topic', { topic: currentQuestion.topic })}</p>

@@ -353,7 +353,7 @@ export const Dashboard: React.FC<DashboardProps> = ({ onTabChange, flowResult, d
 
       {/* Standard Navigation Grid */}
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6 lg:gap-8 max-w-6xl mx-auto w-full">
-        {cards.map((card) => {
+        {cards.map((card, i) => {
           const isHovered = hovered === card.id;
           return (
             <button
@@ -361,18 +361,20 @@ export const Dashboard: React.FC<DashboardProps> = ({ onTabChange, flowResult, d
               onClick={() => handleCardClick(card.id)}
               onMouseEnter={() => setHovered(card.id)}
               onMouseLeave={() => setHovered(null)}
-              className="group relative rounded-[28px] lg:rounded-[48px] p-6 sm:p-8 lg:p-12 text-left shadow-3d-raised hover:shadow-3d-deep hover:-translate-y-2 transition-all duration-300 overflow-hidden active:scale-[0.98]"
-              style={isHovered
-                ? { background: 'var(--primary)', border: '1px solid var(--primary)', boxShadow: '0 20px 40px color-mix(in srgb, var(--primary) 35%, transparent)' }
-                : { background: 'var(--bg-sidebar)', border: '1px solid var(--border-color)' }
-              }
+              className="group relative rounded-[28px] lg:rounded-[48px] p-6 sm:p-8 lg:p-12 text-left shadow-3d-raised hover:shadow-3d-deep hover:-translate-y-2 hover:scale-[1.02] transition-all duration-300 overflow-hidden active:scale-[0.98] animate-card-enter"
+              style={{
+                ...(isHovered
+                  ? { background: 'var(--primary)', border: '1px solid var(--primary)', boxShadow: '0 20px 40px color-mix(in srgb, var(--primary) 35%, transparent)' }
+                  : { background: 'var(--bg-sidebar)', border: '1px solid var(--border-color)' }),
+                ['--stagger-i' as string]: i,
+              }}
             >
               <div className="absolute top-0 right-0 w-40 h-40 rounded-full blur-3xl transition-opacity duration-300 pointer-events-none"
                 style={{ background: isHovered ? 'rgba(255,255,255,0.15)' : 'transparent', opacity: isHovered ? 1 : 0 }}
               />
               <div className="relative z-10 space-y-6">
                 <div
-                  className="w-12 h-12 lg:w-16 lg:h-16 rounded-2xl flex items-center justify-center group-hover:scale-110 transition-all duration-300"
+                  className="w-12 h-12 lg:w-16 lg:h-16 rounded-2xl flex items-center justify-center group-hover:scale-110 group-hover:rotate-3 transition-all duration-300"
                   style={isHovered
                     ? { background: 'rgba(255,255,255,0.2)', color: 'var(--primary-text)' }
                     : { background: 'color-mix(in srgb, var(--primary) 12%, var(--bg-sidebar))', color: 'var(--primary)' }
