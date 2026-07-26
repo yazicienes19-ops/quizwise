@@ -100,10 +100,17 @@ export const LearningCoach: React.FC<LearningCoachProps> = ({ metrics, decks, on
     moduleFilter ? allRecallResults.filter(r => moduleFilter.names.has(r.docName) || moduleFilter.names.has(r.topic)) : allRecallResults,
   [allRecallResults, moduleFilter]);
 
+  // Anki-Konfidenz (TopicMetric) hat keine Dokument-/Modul-Zuordnung (siehe
+  // services/topicConfidence.ts). Bei aktivem Fach lässt sie sich also nicht
+  // korrekt zuordnen — statt sie fälschlich als "für dieses Fach" auszugeben
+  // (z.B. Themen eines ganz anderen Fachs als "kritisch" zeigen), blenden wir
+  // sie dort lieber ganz aus: keine Werte statt falscher Werte.
+  const moduleScopedMetrics = useMemo(() => activeModule ? [] : metrics, [activeModule, metrics]);
+
   const profile = useMemo(() => buildLearningProfile({
-    metrics, quizResults, recallResults, examResults, decks,
+    metrics: moduleScopedMetrics, quizResults, recallResults, examResults, decks,
     streak: { current: streak.current, best: streak.best },
-  }), [metrics, quizResults, recallResults, examResults, decks, streak]);
+  }), [moduleScopedMetrics, quizResults, recallResults, examResults, decks, streak]);
 
   // Echte KI-Subthemen (z.B. "Klassische Konditionierung") statt Dokumentnamen;
   // Fallback auf die docname-basierten Metriken wenn noch keine Themen erkannt wurden.
@@ -147,8 +154,8 @@ export const LearningCoach: React.FC<LearningCoachProps> = ({ metrics, decks, on
   const methodCommentary = insights?.methodInsight ?? buildMethodCommentary(profile.perMethod);
 
   const learningScore = useMemo(
-    () => buildLearningScore({ quizResults, examResults, recallResults, metrics, decks, streakCurrent: streak.current }),
-    [quizResults, examResults, recallResults, metrics, decks, streak],
+    () => buildLearningScore({ quizResults, examResults, recallResults, metrics: moduleScopedMetrics, decks, streakCurrent: streak.current }),
+    [quizResults, examResults, recallResults, moduleScopedMetrics, decks, streak],
   );
 
   // Datenbasierte Motivation (unter der Prognose) + Datenbasis für die Transparenz-Aufklappung
@@ -733,7 +740,7 @@ export const LearningCoach: React.FC<LearningCoachProps> = ({ metrics, decks, on
       <div className="pt-8 border-t" style={{ borderColor: 'var(--border-color)' }}>
         <GapRadar
           key={activeModule?.id ?? 'all'}
-          metrics={metrics}
+          metrics={moduleScopedMetrics}
           onNavigate={onNavigate}
           onAction={onAction}
           hideHeader
