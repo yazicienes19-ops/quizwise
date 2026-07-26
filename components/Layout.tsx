@@ -125,7 +125,7 @@ export const Layout: React.FC<LayoutProps> = ({
           äußeren Container nur zunehmend abgeschnitten + nach links geschoben
           — dadurch wirkt es wie ein weiches Einklappen statt eines harten Cuts. */}
       <aside
-        className="hidden lg:flex flex-col h-screen sticky top-0 shadow-[4px_0_24px_rgba(0,0,0,0.05)] z-20 overflow-hidden transition-[width,opacity] duration-300 ease-[cubic-bezier(0.16,1,0.3,1)]"
+        className="hidden lg:flex flex-col h-screen sticky top-0 shrink-0 shadow-[4px_0_24px_rgba(0,0,0,0.05)] z-20 overflow-hidden transition-[width,opacity] duration-300 ease-[cubic-bezier(0.16,1,0.3,1)]"
         style={{
           background: 'var(--bg-sidebar)',
           borderRight: '1px solid var(--border-color)',
