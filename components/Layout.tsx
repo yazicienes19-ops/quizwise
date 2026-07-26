@@ -138,11 +138,8 @@ export const Layout: React.FC<LayoutProps> = ({
           className="p-10 flex flex-col h-full w-72 shrink-0 transition-transform duration-300 ease-[cubic-bezier(0.16,1,0.3,1)]"
           style={{ transform: sidebarCollapsed ? 'translateX(-24px)' : 'translateX(0)' }}
         >
-          <div className="flex items-center gap-4 mb-12">
-            <div
-              className="w-10 h-10 rounded-xl flex items-center justify-center shrink-0"
-              style={{ background: 'var(--mark-bg)', border: '1px solid var(--border-color)', boxShadow: '0 4px 12px rgba(27,42,74,0.4)' }}
-            ><BrandMark size={24} strokeColor="var(--mark-stroke)" peakColor="var(--mark-peak)" /></div>
+          <div className="flex items-center gap-3 mb-12">
+            <BrandMark size={26} strokeColor="var(--mark-stroke)" peakColor="var(--mark-peak)" className="shrink-0" />
             <span className="text-xl font-black tracking-tighter uppercase truncate flex-1" style={{ color: 'var(--text-main)' }}>Stude<span style={{ color: '#A9772C' }}>Arc</span></span>
             <button
               onClick={() => setSidebarCollapsed(true)}
@@ -355,10 +352,7 @@ export const Layout: React.FC<LayoutProps> = ({
       >
         {/* Scrollable top: logo + all nav items */}
         <div className="flex-1 overflow-y-auto scrollbar-hide flex flex-col items-center gap-1 pt-4 pb-2">
-          <div
-            className="w-10 h-10 rounded-xl flex items-center justify-center mb-5 shrink-0"
-            style={{ background: 'var(--mark-bg)', border: '1px solid var(--border-color)', boxShadow: '0 4px 12px rgba(27,42,74,0.4)' }}
-          ><BrandMark size={24} strokeColor="var(--mark-stroke)" peakColor="var(--mark-peak)" /></div>
+          <BrandMark size={26} strokeColor="var(--mark-stroke)" peakColor="var(--mark-peak)" className="mb-5 shrink-0" />
 
           {allNavItems.map(item => {
             const isActive = activeTab === item.tab;
@@ -418,10 +412,7 @@ export const Layout: React.FC<LayoutProps> = ({
         style={{ background: 'color-mix(in srgb, var(--bg-sidebar) 95%, transparent)', borderBottom: '1px solid var(--border-color)' }}
       >
         <div className="flex items-center gap-2 shrink-0">
-          <div
-            className="w-8 h-8 rounded-xl flex items-center justify-center shrink-0"
-            style={{ background: 'var(--mark-bg)', border: '1px solid var(--border-color)' }}
-          ><BrandMark size={19} strokeColor="var(--mark-stroke)" peakColor="var(--mark-peak)" /></div>
+          <BrandMark size={20} strokeColor="var(--mark-stroke)" peakColor="var(--mark-peak)" className="shrink-0" />
           <span className="text-[11px] font-black uppercase tracking-widest" style={{ color: 'var(--text-main)' }}>Stude<span style={{ color: '#A9772C' }}>Arc</span></span>
         </div>
 

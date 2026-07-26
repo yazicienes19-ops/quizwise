@@ -12,28 +12,15 @@ export const SplashScreen: React.FC = () => {
     <div className="fixed inset-0 z-[100] flex flex-col items-center justify-center bg-white dark:bg-slate-950">
       <div className="flex flex-col items-center gap-6 animate-in fade-in zoom-in-95 duration-500">
         {/* Logo */}
-        <div className="relative">
-          <div
-            className="w-20 h-20 rounded-[24px] flex items-center justify-center shadow-lg"
-            style={{ background: 'var(--mark-bg)', border: '1px solid var(--border-color)' }}
-          >
-            <BrandMark size={44} strokeColor="var(--mark-stroke)" peakColor="var(--mark-peak)" />
-          </div>
-          {/* Puls-Ring */}
-          <div
-            className="absolute inset-0 rounded-[24px] animate-ping opacity-20"
-            style={{ background: 'var(--mark-peak)' }}
-          />
-        </div>
-
-        <div className="text-center space-y-1">
-          <p className="text-xl font-black uppercase tracking-tighter text-slate-900 dark:text-white">
+        <div className="flex items-center gap-3">
+          <BrandMark size={40} strokeColor="var(--mark-stroke)" peakColor="var(--mark-peak)" className="shrink-0" />
+          <p className="text-2xl font-black uppercase tracking-tighter text-slate-900 dark:text-white">
             Stude<span style={{ color: 'var(--mark-peak)' }}>Arc</span>
           </p>
-          <p className="text-[9px] font-bold uppercase tracking-[0.3em] text-slate-400">
-            {t('splash.tagline')}
-          </p>
         </div>
+        <p className="text-[9px] font-bold uppercase tracking-[0.3em] text-slate-400 -mt-4">
+          {t('splash.tagline')}
+        </p>
 
         {/* Lade-Indikator */}
         <div className="flex gap-1.5 mt-2">
