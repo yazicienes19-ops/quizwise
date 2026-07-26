@@ -22,7 +22,7 @@ export interface SourceMeta {
   weakTopics?: string[];
 }
 
-const STORAGE_KEY = 'quizwise_lib_meta';
+const STORAGE_KEY = 'studearc_lib_meta';
 
 const readAll = (): Record<string, SourceMeta> => {
   try { return JSON.parse(localStorage.getItem(STORAGE_KEY) || '{}'); }

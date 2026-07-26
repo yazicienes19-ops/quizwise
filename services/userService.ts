@@ -33,7 +33,7 @@ export const exportUserData = async (): Promise<void> => {
   const url = URL.createObjectURL(blob);
   const a = document.createElement('a');
   a.href = url;
-  a.download = 'quizwise-daten.json';
+  a.download = 'studearc-daten.json';
   a.click();
   URL.revokeObjectURL(url);
 };

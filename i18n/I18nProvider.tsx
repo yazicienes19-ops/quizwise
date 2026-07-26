@@ -22,7 +22,7 @@ export const I18nProvider: React.FC<{ children: React.ReactNode }> = ({ children
   }, []);
 
   const changeLocale = useCallback((l: Locale, userId?: string | null) => {
-    localStorage.setItem('quizwise_language', l);
+    localStorage.setItem('studearc_language', l);
     setLocale(l); // benachrichtigt den Listener → setLocaleState
     if (userId) {
       import('../services/syncService')

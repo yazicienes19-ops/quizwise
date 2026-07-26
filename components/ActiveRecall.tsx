@@ -66,7 +66,7 @@ export const ActiveRecall: React.FC<ActiveRecallProps> = ({
   const [isLoading, setIsLoading] = useState(false);
   const [isEvaluating, setIsEvaluating] = useState(false);
   const [showFeynmanIntro, setShowFeynmanIntro] = useState(() =>
-    !localStorage.getItem('quizwise_feynman_intro_done')
+    !localStorage.getItem('studearc_feynman_intro_done')
   );
   const [isListening, setIsListening] = useState(false);
   const speechRef = useRef<any>(null);
@@ -84,7 +84,7 @@ export const ActiveRecall: React.FC<ActiveRecallProps> = ({
       return;
     }
     // Aktives Fach: Quelle direkt vorbelegen — kein Quellen-Klick nötig
-    const moduleId = localStorage.getItem('quizwise_active_module');
+    const moduleId = localStorage.getItem('studearc_active_module');
     const col = moduleId ? collections.find(c => c.id === moduleId) : null;
     if (col) {
       const result = buildCollectionSource(col, availableDocuments);
@@ -130,7 +130,7 @@ export const ActiveRecall: React.FC<ActiveRecallProps> = ({
   };
 
   const dismissFeynmanIntro = () => {
-    localStorage.setItem('quizwise_feynman_intro_done', '1');
+    localStorage.setItem('studearc_feynman_intro_done', '1');
     setShowFeynmanIntro(false);
   };
 

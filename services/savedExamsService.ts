@@ -8,7 +8,7 @@ export interface SavedExam {
   savedAt: number;
 }
 
-const KEY = 'quizwise_saved_exams';
+const KEY = 'studearc_saved_exams';
 const MAX_SAVED = 20;
 
 export const getSavedExams = (): SavedExam[] => {

@@ -14,7 +14,7 @@ import { t } from '../i18n';
  * verschoben oder verändert.
  */
 
-export const SPACED_PLANNING_KEY = 'quizwise_spaced_planning';
+export const SPACED_PLANNING_KEY = 'studearc_spaced_planning';
 
 export interface SpacedPlanningSettings {
   enabled: boolean;

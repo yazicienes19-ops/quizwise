@@ -1,6 +1,6 @@
 import type { QuizQuestion, UserAnswer } from '../types';
 
-const STORAGE_KEY = 'quizwise_quiz_history';
+const STORAGE_KEY = 'studearc_quiz_history';
 
 export interface QuizResult {
   id: string;

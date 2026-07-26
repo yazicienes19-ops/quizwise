@@ -46,7 +46,7 @@ export const SourceSelector: React.FC<SourceSelectorProps> = ({
   const [search, setSearch] = useState('');
   // Variante C: aktives Fach (app-weiter Kontext) als Vorauswahl des Ordner-Filters
   const [filterCol, setFilterCol] = useState<string>(() => {
-    const active = localStorage.getItem('quizwise_active_module');
+    const active = localStorage.getItem('studearc_active_module');
     return active && collections.some(c => c.id === active) ? active : 'all';
   });
   const [pastedText, setPastedText] = useState('');

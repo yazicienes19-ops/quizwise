@@ -6,7 +6,7 @@ interface FeedbackEntry {
   timestamp: number;
 }
 
-const KEY = 'quizwise_question_feedback';
+const KEY = 'studearc_question_feedback';
 const MAX_ENTRIES = 1000;
 
 function hash(question: string): string {

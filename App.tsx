@@ -29,11 +29,11 @@ const App: React.FC = () => {
   const auth = useAuth();
   const [activeTab, setActiveTab] = useState<ActiveTab>(ActiveTab.DASHBOARD);
   // Fach-Kontext (Variante C): gewähltes Modul gilt app-weit als Vorauswahl
-  const [activeModuleId, setActiveModuleIdState] = useState<string | null>(() => localStorage.getItem('quizwise_active_module'));
+  const [activeModuleId, setActiveModuleIdState] = useState<string | null>(() => localStorage.getItem('studearc_active_module'));
   const setActiveModuleId = (id: string | null) => {
     setActiveModuleIdState(id);
-    if (id) localStorage.setItem('quizwise_active_module', id);
-    else localStorage.removeItem('quizwise_active_module');
+    if (id) localStorage.setItem('studearc_active_module', id);
+    else localStorage.removeItem('studearc_active_module');
   };
   const [pendingActionDoc, setPendingActionDoc] = useState<import('./types').ProcessedDocument | null>(null);
   const [pendingTopic, setPendingTopic] = useState<string | null>(null);
@@ -48,13 +48,13 @@ const App: React.FC = () => {
   // z.B. nach gelöschten Website-Daten): Overlay sofort wieder schließen.
   useEffect(() => {
     const close = () => setShowOnboarding(!isOnboardingDone());
-    window.addEventListener('quizwise-onboarding-done', close);
-    return () => window.removeEventListener('quizwise-onboarding-done', close);
+    window.addEventListener('studearc-onboarding-done', close);
+    return () => window.removeEventListener('studearc-onboarding-done', close);
   }, []);
   const [decks, setDecks] = useState<FlashcardDeck[]>([]);
   const [examTerms, setExamTerms] = useState<ExamTerm[]>([]);
   const [flowResult, setFlowResult] = useState<LearningFlowResult | null>(() => {
-    const saved = localStorage.getItem('quizwise_flow_result');
+    const saved = localStorage.getItem('studearc_flow_result');
     return saved ? JSON.parse(saved) : null;
   });
   const [metrics, setMetrics] = useState<TopicMetric[]>([]);
@@ -69,11 +69,11 @@ const App: React.FC = () => {
     const handleStatus = () => setIsOffline(!navigator.onLine);
     window.addEventListener('online', handleStatus);
     window.addEventListener('offline', handleStatus);
-    const savedMetrics = localStorage.getItem('quizwise_metrics');
+    const savedMetrics = localStorage.getItem('studearc_metrics');
     if (savedMetrics) setMetrics(JSON.parse(savedMetrics));
     const savedDecks = localStorage.getItem('flashcard_decks');
     if (savedDecks) setDecks(JSON.parse(savedDecks));
-    const savedExamTerms = localStorage.getItem('quizwise_exam_terms');
+    const savedExamTerms = localStorage.getItem('studearc_exam_terms');
     if (savedExamTerms) setExamTerms(JSON.parse(savedExamTerms));
     return () => { window.removeEventListener('online', handleStatus); window.removeEventListener('offline', handleStatus); };
   }, []);
@@ -82,27 +82,27 @@ const App: React.FC = () => {
     if (!auth.user || isOffline) return;
     loadAllCloudData(auth.user.id).then(cloud => {
       if (cloud.learning) {
-        if (cloud.learning.exam_terms.length) { setExamTerms(cloud.learning.exam_terms); localStorage.setItem('quizwise_exam_terms', JSON.stringify(cloud.learning.exam_terms)); }
-        if (cloud.learning.streak.lastDay) localStorage.setItem('quizwise_streak', JSON.stringify(cloud.learning.streak));
-        if (cloud.learning.quiz_history.length) localStorage.setItem('quizwise_quiz_history', JSON.stringify(cloud.learning.quiz_history));
-        if (cloud.learning.exam_history.length) localStorage.setItem('quizwise_exam_history', JSON.stringify(cloud.learning.exam_history));
-        if (cloud.learning.recall_history.length) localStorage.setItem('quizwise_recall_history', JSON.stringify(cloud.learning.recall_history));
-        if (cloud.learning.mistake_queue.length) localStorage.setItem('quizwise_mistake_queue', JSON.stringify(cloud.learning.mistake_queue));
+        if (cloud.learning.exam_terms.length) { setExamTerms(cloud.learning.exam_terms); localStorage.setItem('studearc_exam_terms', JSON.stringify(cloud.learning.exam_terms)); }
+        if (cloud.learning.streak.lastDay) localStorage.setItem('studearc_streak', JSON.stringify(cloud.learning.streak));
+        if (cloud.learning.quiz_history.length) localStorage.setItem('studearc_quiz_history', JSON.stringify(cloud.learning.quiz_history));
+        if (cloud.learning.exam_history.length) localStorage.setItem('studearc_exam_history', JSON.stringify(cloud.learning.exam_history));
+        if (cloud.learning.recall_history.length) localStorage.setItem('studearc_recall_history', JSON.stringify(cloud.learning.recall_history));
+        if (cloud.learning.mistake_queue.length) localStorage.setItem('studearc_mistake_queue', JSON.stringify(cloud.learning.mistake_queue));
       }
-      if (cloud.metrics.length) { setMetrics(cloud.metrics); localStorage.setItem('quizwise_metrics', JSON.stringify(cloud.metrics)); }
+      if (cloud.metrics.length) { setMetrics(cloud.metrics); localStorage.setItem('studearc_metrics', JSON.stringify(cloud.metrics)); }
       if (cloud.saved) {
-        if (cloud.saved.saved_quizzes.length) localStorage.setItem('quizwise_saved_quizzes', JSON.stringify(cloud.saved.saved_quizzes));
-        if (cloud.saved.saved_exams.length) localStorage.setItem('quizwise_saved_exams', JSON.stringify(cloud.saved.saved_exams));
-        if (Object.keys(cloud.saved.lib_meta).length) localStorage.setItem('quizwise_lib_meta', JSON.stringify(cloud.saved.lib_meta));
+        if (cloud.saved.saved_quizzes.length) localStorage.setItem('studearc_saved_quizzes', JSON.stringify(cloud.saved.saved_quizzes));
+        if (cloud.saved.saved_exams.length) localStorage.setItem('studearc_saved_exams', JSON.stringify(cloud.saved.saved_exams));
+        if (Object.keys(cloud.saved.lib_meta).length) localStorage.setItem('studearc_lib_meta', JSON.stringify(cloud.saved.lib_meta));
         if (cloud.saved.study_events.length) localStorage.setItem('study_events', JSON.stringify(cloud.saved.study_events));
         if (cloud.saved.study_templates.length) localStorage.setItem('study_templates', JSON.stringify(cloud.saved.study_templates));
-        if (Object.keys(cloud.saved.reading_progress).length) localStorage.setItem('quizwise_reading_progress', JSON.stringify(cloud.saved.reading_progress));
-        if (cloud.saved.reader_log.length) localStorage.setItem('quizwise_reader_log', JSON.stringify(cloud.saved.reader_log));
-        if (cloud.saved.recurring_sessions.length) localStorage.setItem('quizwise_recurring_sessions', JSON.stringify(cloud.saved.recurring_sessions));
-        if (cloud.saved.calendar_sessions.length) localStorage.setItem('quizwise_calendar_sessions', JSON.stringify(cloud.saved.calendar_sessions));
+        if (Object.keys(cloud.saved.reading_progress).length) localStorage.setItem('studearc_reading_progress', JSON.stringify(cloud.saved.reading_progress));
+        if (cloud.saved.reader_log.length) localStorage.setItem('studearc_reader_log', JSON.stringify(cloud.saved.reader_log));
+        if (cloud.saved.recurring_sessions.length) localStorage.setItem('studearc_recurring_sessions', JSON.stringify(cloud.saved.recurring_sessions));
+        if (cloud.saved.calendar_sessions.length) localStorage.setItem('studearc_calendar_sessions', JSON.stringify(cloud.saved.calendar_sessions));
       }
       if (!cloud.learning && !cloud.metrics.length) {
-        const hasLocal = localStorage.getItem('quizwise_metrics') || localStorage.getItem('quizwise_streak') || localStorage.getItem('quizwise_quiz_history');
+        const hasLocal = localStorage.getItem('studearc_metrics') || localStorage.getItem('studearc_streak') || localStorage.getItem('studearc_quiz_history');
         if (hasLocal) migrateLocalToCloud(auth.user!.id).catch(() => {});
       }
     }).catch(() => {});
@@ -116,12 +116,12 @@ const App: React.FC = () => {
 
   const saveFlowResult = (res: LearningFlowResult) => {
     setFlowResult(res);
-    localStorage.setItem('quizwise_flow_result', JSON.stringify(res));
+    localStorage.setItem('studearc_flow_result', JSON.stringify(res));
   };
 
   const saveExamTerms = (terms: ExamTerm[]) => {
     setExamTerms(terms);
-    localStorage.setItem('quizwise_exam_terms', JSON.stringify(terms));
+    localStorage.setItem('studearc_exam_terms', JSON.stringify(terms));
     if (auth.user) syncLearningField(auth.user.id, 'exam_terms', terms);
   };
 
@@ -136,18 +136,18 @@ const App: React.FC = () => {
       updated = [updateTopicMetric(undefined, topicName, score, type), ...prev];
     }
     setMetrics(updated);
-    localStorage.setItem('quizwise_metrics', JSON.stringify(updated));
+    localStorage.setItem('studearc_metrics', JSON.stringify(updated));
     if (auth.user) syncMetrics(auth.user.id, updated);
 
     // KI-Flow max. 1x pro Tag — sonst kostet jede einzelne Session einen Gemini-Call,
     // obwohl sich die Empfehlungen innerhalb eines Tages kaum ändern.
     const d = new Date();
     const todayStr = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
-    if (localStorage.getItem('quizwise_flow_last_run') === todayStr) return;
+    if (localStorage.getItem('studearc_flow_last_run') === todayStr) return;
     try {
       const flow = await orchestrateLearningFlow({ type, result: { score } }, updated, { entries: JSON.parse(localStorage.getItem('study_plan') || '[]'), exams: examTerms });
       saveFlowResult(flow);
-      localStorage.setItem('quizwise_flow_last_run', todayStr);
+      localStorage.setItem('studearc_flow_last_run', todayStr);
     } catch (e) { console.error('Flow error', e); }
   };
 

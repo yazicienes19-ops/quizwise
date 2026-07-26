@@ -37,7 +37,7 @@ const priorityEmoji = (p: 'hoch' | 'mittel' | 'niedrig') =>
 const MIN_SESSIONS_FOR_COACH = 5;
 
 /** Coach-Ergebnis überlebt Tab-Wechsel; wird ungültig sobald neue Sessions dazukommen. */
-const INSIGHTS_CACHE_KEY = 'quizwise_coach_insights_v1';
+const INSIGHTS_CACHE_KEY = 'studearc_coach_insights_v1';
 
 const getTabActionLabel = (tab: string): string => {
   const map: Record<string, TKey> = {

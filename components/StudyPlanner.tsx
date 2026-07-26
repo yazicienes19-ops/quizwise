@@ -177,8 +177,8 @@ export const StudyPlanner: React.FC<StudyPlannerProps> = ({ metrics, decks, exam
     // Regenerierung unten würde sonst mit leeren Arrays rechnen.
     let freshRecurring: RecurringStudySession[] = [];
     let freshCalendarSessions: CalendarStudySession[] = [];
-    try { const s = localStorage.getItem('quizwise_recurring_sessions'); if (s) freshRecurring = JSON.parse(s); } catch {}
-    try { const s = localStorage.getItem('quizwise_calendar_sessions'); if (s) freshCalendarSessions = JSON.parse(s); } catch {}
+    try { const s = localStorage.getItem('studearc_recurring_sessions'); if (s) freshRecurring = JSON.parse(s); } catch {}
+    try { const s = localStorage.getItem('studearc_calendar_sessions'); if (s) freshCalendarSessions = JSON.parse(s); } catch {}
     setRecurringSessions(freshRecurring);
     setCalendarSessions(freshCalendarSessions);
     let evs: StudyEvent[] = [];
@@ -204,7 +204,7 @@ export const StudyPlanner: React.FC<StudyPlannerProps> = ({ metrics, decks, exam
 
   const saveRecurringSessions = (list: RecurringStudySession[]) => {
     setRecurringSessions(list);
-    try { localStorage.setItem('quizwise_recurring_sessions', JSON.stringify(list)); } catch {}
+    try { localStorage.setItem('studearc_recurring_sessions', JSON.stringify(list)); } catch {}
     if (userId) {
       import('../services/syncService').then(({ syncSavedField }) => syncSavedField(userId, 'recurring_sessions', list)).catch(() => {});
     }
@@ -212,7 +212,7 @@ export const StudyPlanner: React.FC<StudyPlannerProps> = ({ metrics, decks, exam
 
   const saveCalendarSessions = (list: CalendarStudySession[]) => {
     setCalendarSessions(list);
-    try { localStorage.setItem('quizwise_calendar_sessions', JSON.stringify(list)); } catch {}
+    try { localStorage.setItem('studearc_calendar_sessions', JSON.stringify(list)); } catch {}
     if (userId) {
       import('../services/syncService').then(({ syncSavedField }) => syncSavedField(userId, 'calendar_sessions', list)).catch(() => {});
     }

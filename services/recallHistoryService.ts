@@ -1,5 +1,5 @@
 
-const STORAGE_KEY = 'quizwise_recall_history';
+const STORAGE_KEY = 'studearc_recall_history';
 
 export interface RecallResult {
   id: string;

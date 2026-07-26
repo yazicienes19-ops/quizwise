@@ -24,7 +24,7 @@ describe('recordActivity', () => {
     const yesterday = new Date(today.getTime() - 24 * 60 * 60 * 1000);
     const yStr = `${yesterday.getFullYear()}-${String(yesterday.getMonth() + 1).padStart(2, '0')}-${String(yesterday.getDate()).padStart(2, '0')}`;
 
-    localStorage.setItem('quizwise_streak', JSON.stringify({
+    localStorage.setItem('studearc_streak', JSON.stringify({
       current: 3, best: 5, lastDay: yStr,
     }));
 
@@ -34,7 +34,7 @@ describe('recordActivity', () => {
   });
 
   it('resettet Streak nach Lücke', () => {
-    localStorage.setItem('quizwise_streak', JSON.stringify({
+    localStorage.setItem('studearc_streak', JSON.stringify({
       current: 10, best: 10, lastDay: '2020-01-01',
     }));
 
@@ -59,7 +59,7 @@ describe('getStreak', () => {
   });
 
   it('setzt Streak auf 0 bei gebrochener Streak', () => {
-    localStorage.setItem('quizwise_streak', JSON.stringify({
+    localStorage.setItem('studearc_streak', JSON.stringify({
       current: 5, best: 5, lastDay: '2020-01-01',
     }));
     const result = getStreak();

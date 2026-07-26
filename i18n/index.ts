@@ -10,10 +10,10 @@ const DICTS: Record<Locale, Translations> = { de, tr };
 // --- Modul-State: von React UND von Services (ohne React) geteilt ---
 function detectInitial(): Locale {
   try {
-    const stored = localStorage.getItem('quizwise_language');
+    const stored = localStorage.getItem('studearc_language');
     if (stored === 'de' || stored === 'tr') return stored;
     const detected: Locale = navigator.language?.toLowerCase().startsWith('tr') ? 'tr' : 'de';
-    localStorage.setItem('quizwise_language', detected);
+    localStorage.setItem('studearc_language', detected);
     return detected;
   } catch {
     return 'de';

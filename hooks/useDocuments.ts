@@ -35,9 +35,9 @@ export const useDocuments = ({ user, userPlan, isOffline, setIsLoading, setShowU
   const triggeredDigestsRef = useRef<Set<string>>(new Set());
 
   useEffect(() => {
-    const saved = localStorage.getItem('quizwise_docs');
+    const saved = localStorage.getItem('studearc_docs');
     if (saved) setDocuments(JSON.parse(saved));
-    const savedCols = localStorage.getItem('quizwise_collections');
+    const savedCols = localStorage.getItem('studearc_collections');
     if (savedCols) setCollections(JSON.parse(savedCols));
   }, []);
 
@@ -63,7 +63,7 @@ export const useDocuments = ({ user, userPlan, isOffline, setIsLoading, setShowU
         setDocuments(prev => {
           const cloudIds = new Set(cloudDocs.map(d => d.id));
           const merged = [...cloudDocs, ...prev.filter(d => !cloudIds.has(d.id))];
-          localStorage.setItem('quizwise_docs', JSON.stringify(merged));
+          localStorage.setItem('studearc_docs', JSON.stringify(merged));
           return merged;
         });
 
@@ -87,7 +87,7 @@ export const useDocuments = ({ user, userPlan, isOffline, setIsLoading, setShowU
 
     load(true);
     loadCollectionsFromSupabase()
-      .then(cols => { if (!cancelled) { setCollections(cols); localStorage.setItem('quizwise_collections', JSON.stringify(cols)); } })
+      .then(cols => { if (!cancelled) { setCollections(cols); localStorage.setItem('studearc_collections', JSON.stringify(cols)); } })
       .catch(() => {});
 
     return () => { cancelled = true; };
@@ -96,12 +96,12 @@ export const useDocuments = ({ user, userPlan, isOffline, setIsLoading, setShowU
 
   const saveDocs = (docs: ProcessedDocument[]) => {
     setDocuments(docs);
-    localStorage.setItem('quizwise_docs', JSON.stringify(docs));
+    localStorage.setItem('studearc_docs', JSON.stringify(docs));
   };
 
   const saveCollections = (cols: Collection[]) => {
     setCollections(cols);
-    localStorage.setItem('quizwise_collections', JSON.stringify(cols));
+    localStorage.setItem('studearc_collections', JSON.stringify(cols));
   };
 
   const addCollection = (col: Collection) => {
@@ -270,7 +270,7 @@ export const useDocuments = ({ user, userPlan, isOffline, setIsLoading, setShowU
     triggerDocumentAnalysis(docId);
     setDocuments(prev => {
       const updated = prev.map(d => d.id === docId ? { ...d, digestStatus: 'pending' as const } : d);
-      localStorage.setItem('quizwise_docs', JSON.stringify(updated));
+      localStorage.setItem('studearc_docs', JSON.stringify(updated));
       return updated;
     });
     setRefreshTick(t => t + 1);

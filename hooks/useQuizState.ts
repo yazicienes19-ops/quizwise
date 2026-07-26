@@ -30,7 +30,7 @@ interface UseQuizStateParams {
   updateMetricsAfterSession: (score: number, name: string, type: 'quiz' | 'exam' | 'recall' | 'cards') => Promise<void>;
 }
 
-const PROGRESS_KEY = 'quizwise_quiz_progress';
+const PROGRESS_KEY = 'studearc_quiz_progress';
 
 /** Meta-docId für Wiederholungs-Sessions aus der Fehler-Queue. */
 export const MISTAKE_REVIEW_DOC_ID = 'mistake-review';
@@ -45,7 +45,7 @@ export const sourceTopicsKey = (name: string): string =>
   `src-${name.toLowerCase().replace(/[^a-z0-9äöüß]+/gi, '-').replace(/^-+|-+$/g, '').slice(0, 40)}`;
 
 export const getUsedTopics = (key: string): string[] => {
-  try { return JSON.parse(localStorage.getItem(`quizwise_topics_${key}`) || '[]'); } catch { return []; }
+  try { return JSON.parse(localStorage.getItem(`studearc_topics_${key}`) || '[]'); } catch { return []; }
 };
 
 /** Nimmt bewusst nur `{ topic? }` statt QuizQuestion — so lässt sich derselbe
@@ -54,7 +54,7 @@ export const saveUsedTopics = (key: string, qs: { topic?: string }[]): void => {
   const newTopics = qs.map(q => q.topic).filter(Boolean) as string[];
   if (!newTopics.length) return;
   const merged = [...getUsedTopics(key), ...newTopics].slice(-60);
-  localStorage.setItem(`quizwise_topics_${key}`, JSON.stringify(merged));
+  localStorage.setItem(`studearc_topics_${key}`, JSON.stringify(merged));
 };
 
 // ── Fragetext-Tracking (Klausur, ergänzt excludeTopics) ─────────────────────
@@ -67,14 +67,14 @@ export const saveUsedTopics = (key: string, qs: { topic?: string }[]): void => {
 const EXAM_QUESTION_HISTORY_CAP = 30;
 
 export const getUsedExamQuestions = (key: string): string[] => {
-  try { return JSON.parse(localStorage.getItem(`quizwise_examq_${key}`) || '[]'); } catch { return []; }
+  try { return JSON.parse(localStorage.getItem(`studearc_examq_${key}`) || '[]'); } catch { return []; }
 };
 
 export const saveUsedExamQuestions = (key: string, qs: { question?: string }[]): void => {
   const newQuestions = qs.map(q => q.question).filter(Boolean) as string[];
   if (!newQuestions.length) return;
   const merged = [...getUsedExamQuestions(key), ...newQuestions].slice(-EXAM_QUESTION_HISTORY_CAP);
-  localStorage.setItem(`quizwise_examq_${key}`, JSON.stringify(merged));
+  localStorage.setItem(`studearc_examq_${key}`, JSON.stringify(merged));
 };
 
 /** Stabile Identität für Multi-Dokument-Quiz-Sessions: sortierte, verkettete

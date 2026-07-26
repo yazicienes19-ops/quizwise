@@ -1,6 +1,6 @@
 import type { ExamQuestion, ExamTypePreset } from '../types';
 
-const STORAGE_KEY = 'quizwise_exam_history';
+const STORAGE_KEY = 'studearc_exam_history';
 
 /** Volle Fragen nur für die neuesten Klausuren behalten — Speicher-/Sync-Größe im Griff. */
 const KEEP_QUESTIONS_FOR = 10;

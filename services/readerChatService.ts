@@ -1,4 +1,4 @@
-const STORAGE_KEY = 'quizwise_reader_chat_v1';
+const STORAGE_KEY = 'studearc_reader_chat_v1';
 /** Chat-Antworten sind deutlich größer als reine Log-Einträge (readerLogService)
  *  — enger begrenzt als dort, um localStorage nicht unnötig zu belasten (s.
  *  QuotaExceededError-Vorfall: große Accounts sprengten das Browser-Limit). */

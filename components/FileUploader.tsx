@@ -36,7 +36,7 @@ export const FileUploader: React.FC<FileUploaderProps> = ({
   // 'Andere Quelle wählen' blendet den normalen Wähler ein.
   const [moduleOverride, setModuleOverride] = useState(false);
   const activeModule = useMemo(() => {
-    const id = localStorage.getItem('quizwise_active_module');
+    const id = localStorage.getItem('studearc_active_module');
     return id ? collections.find(c => c.id === id) ?? null : null;
   }, [collections]);
   const folderResult = useMemo(

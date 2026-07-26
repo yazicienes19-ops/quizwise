@@ -70,7 +70,7 @@ export const ExamGenerator: React.FC<ExamGeneratorProps> = ({
       return;
     }
     // Aktives Fach: Quelle direkt vorbelegen — kein Quellen-Klick nötig
-    const moduleId = localStorage.getItem('quizwise_active_module');
+    const moduleId = localStorage.getItem('studearc_active_module');
     const col = moduleId ? collections.find(c => c.id === moduleId) : null;
     if (col) {
       const result = buildCollectionSource(col, documents);

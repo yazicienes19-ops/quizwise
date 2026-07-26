@@ -10,7 +10,7 @@ import React, { useState, useEffect, useRef } from 'react';
  * - SSR-safe
  *
  * Verwendung:
- *   const [docs, setDocs] = usePersistentState<ProcessedDocument[]>('quizwise_docs', []);
+ *   const [docs, setDocs] = usePersistentState<ProcessedDocument[]>('studearc_docs', []);
  *   // statt: useState + localStorage.setItem überall verstreut
  */
 export function usePersistentState<T>(

@@ -11,7 +11,7 @@
  *   const { current, best, todayDone } = getStreak();
  */
 
-const STREAK_KEY = 'quizwise_streak';
+const STREAK_KEY = 'studearc_streak';
 
 interface StreakData {
   /** Aktuelle Streak in Tagen */

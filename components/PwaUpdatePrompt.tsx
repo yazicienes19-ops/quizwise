@@ -45,7 +45,7 @@ export const PwaUpdatePrompt: React.FC = () => {
   }, []);
 
   const applyUpdate = async () => {
-    const GUARD_KEY = 'quizwise_sw_reload_at';
+    const GUARD_KEY = 'studearc_sw_reload_at';
     const unregisterAll = async () => {
       try {
         const regs = await navigator.serviceWorker.getRegistrations();

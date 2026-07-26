@@ -8,7 +8,7 @@ self.addEventListener('push', (event) => {
       icon: '/icon-192.svg',
       badge: '/icon-192.svg',
       data: { url: data.url || '/' },
-      tag: 'quizwise-reminder',
+      tag: 'studearc-reminder',
     })
   );
 });

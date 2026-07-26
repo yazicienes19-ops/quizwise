@@ -171,12 +171,12 @@ export async function migrateLocalToCloud(userId: string): Promise<void> {
     try { return JSON.parse(localStorage.getItem(key) || 'null'); } catch { return null; }
   };
 
-  const streak = readLocal('quizwise_streak');
-  const examTerms = readLocal('quizwise_exam_terms');
-  const quizHistory = readLocal('quizwise_quiz_history');
-  const examHistory = readLocal('quizwise_exam_history');
-  const recallHistory = readLocal('quizwise_recall_history');
-  const mistakeQueue = readLocal('quizwise_mistake_queue');
+  const streak = readLocal('studearc_streak');
+  const examTerms = readLocal('studearc_exam_terms');
+  const quizHistory = readLocal('studearc_quiz_history');
+  const examHistory = readLocal('studearc_exam_history');
+  const recallHistory = readLocal('studearc_recall_history');
+  const mistakeQueue = readLocal('studearc_mistake_queue');
 
   if (streak || examTerms || quizHistory || examHistory || recallHistory || mistakeQueue) {
     await supabase.from('user_learning_data').update({
@@ -190,15 +190,15 @@ export async function migrateLocalToCloud(userId: string): Promise<void> {
     }).eq('user_id', userId);
   }
 
-  const savedQuizzes = readLocal('quizwise_saved_quizzes');
-  const savedExams = readLocal('quizwise_saved_exams');
-  const libMeta = readLocal('quizwise_lib_meta');
+  const savedQuizzes = readLocal('studearc_saved_quizzes');
+  const savedExams = readLocal('studearc_saved_exams');
+  const libMeta = readLocal('studearc_lib_meta');
   const studyEvents = readLocal('study_events');
   const studyTemplates = readLocal('study_templates');
-  const readingProgress = readLocal('quizwise_reading_progress');
-  const readerLog = readLocal('quizwise_reader_log');
-  const recurringSessions = readLocal('quizwise_recurring_sessions');
-  const calendarSessions = readLocal('quizwise_calendar_sessions');
+  const readingProgress = readLocal('studearc_reading_progress');
+  const readerLog = readLocal('studearc_reader_log');
+  const recurringSessions = readLocal('studearc_recurring_sessions');
+  const calendarSessions = readLocal('studearc_calendar_sessions');
 
   if (savedQuizzes || savedExams || libMeta || studyEvents || studyTemplates || readingProgress || readerLog || recurringSessions || calendarSessions) {
     await supabase.from('user_saved_content').update({
@@ -215,7 +215,7 @@ export async function migrateLocalToCloud(userId: string): Promise<void> {
     }).eq('user_id', userId);
   }
 
-  const localMetrics: TopicMetric[] = readLocal('quizwise_metrics') || [];
+  const localMetrics: TopicMetric[] = readLocal('studearc_metrics') || [];
   if (localMetrics.length) syncMetrics(userId, localMetrics);
 
   const prefs: CloudPreferences = {};
@@ -227,11 +227,11 @@ export async function migrateLocalToCloud(userId: string): Promise<void> {
   if (accent) prefs.accent_color = accent;
   if (font) prefs.font_choice = font;
   if (lh) prefs.line_height = lh;
-  const lang = localStorage.getItem('quizwise_language');
+  const lang = localStorage.getItem('studearc_language');
   if (lang) prefs.language = lang;
-  if (localStorage.getItem('quizwise_onboarding_done')) prefs.onboarding_done = true;
-  if (localStorage.getItem('quizwise_feynman_intro_v1')) prefs.feynman_intro_done = true;
-  if (localStorage.getItem('quizwise_feynman_intro_done')) prefs.recall_intro_done = true;
+  if (localStorage.getItem('studearc_onboarding_done')) prefs.onboarding_done = true;
+  if (localStorage.getItem('studearc_feynman_intro_v1')) prefs.feynman_intro_done = true;
+  if (localStorage.getItem('studearc_feynman_intro_done')) prefs.recall_intro_done = true;
 
   if (Object.keys(prefs).length) syncPreferences(userId, prefs);
 }

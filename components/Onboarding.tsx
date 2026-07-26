@@ -2,7 +2,7 @@ import React, { useState } from 'react';
 import { useTranslation } from '../i18n/I18nProvider';
 import type { TKey, Locale } from '../i18n';
 
-const ONBOARDING_KEY = 'quizwise_onboarding_done';
+const ONBOARDING_KEY = 'studearc_onboarding_done';
 
 export const isOnboardingDone = () => localStorage.getItem(ONBOARDING_KEY) === 'true';
 export const resetOnboarding = () => localStorage.removeItem(ONBOARDING_KEY);

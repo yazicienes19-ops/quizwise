@@ -63,7 +63,7 @@ export const Layout: React.FC<LayoutProps> = ({
   const [legalPage, setLegalPage] = useState<'impressum' | 'datenschutz' | 'agb' | null>(null);
   // Nur die breite Desktop-Sidebar (≥1024px) betroffen — Tablet-Icon-Leiste und
   // Mobile-Menü bleiben unverändert, dort ist Platz ohnehin schon knapp bemessen.
-  const [sidebarCollapsed, setSidebarCollapsed] = usePersistentState('quizwise_sidebar_collapsed', false);
+  const [sidebarCollapsed, setSidebarCollapsed] = usePersistentState('studearc_sidebar_collapsed', false);
 
 
 

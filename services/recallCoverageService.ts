@@ -3,7 +3,7 @@
 // KI aus den offenen Kapiteln — erst danach übernimmt die adaptive Vertiefung
 // (Schwächen zuerst). localStorage-first wie überall, kein Cloud-Sync (v1).
 
-const STORAGE_KEY = 'quizwise_recall_coverage_v1';
+const STORAGE_KEY = 'studearc_recall_coverage_v1';
 const MAX_TOPICS_PER_DOC = 200;
 
 type CoverageMap = Record<string, string[]>;

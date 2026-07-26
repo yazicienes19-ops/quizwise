@@ -81,7 +81,7 @@ describe('mistakeReviewService', () => {
   });
 
   it('kaputtes JSON im Storage → leere Queue', () => {
-    localStorage.setItem('quizwise_mistake_queue', '{nicht-json');
+    localStorage.setItem('studearc_mistake_queue', '{nicht-json');
     expect(getMistakeQueue()).toEqual([]);
   });
 

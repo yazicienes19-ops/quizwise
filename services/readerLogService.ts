@@ -1,5 +1,5 @@
 
-const STORAGE_KEY = 'quizwise_reader_log';
+const STORAGE_KEY = 'studearc_reader_log';
 const MAX_ENTRIES = 500;
 
 export interface ReaderLogEntry {

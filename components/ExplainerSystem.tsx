@@ -20,7 +20,7 @@ import { renderMarkdown } from './markdownRenderer';
 
 // ─── Verlauf (lokal) ──────────────────────────────────────────────────────────
 
-const HISTORY_KEY = 'quizwise_explainer_history_v2';
+const HISTORY_KEY = 'studearc_explainer_history_v2';
 const HISTORY_MAX = 8;
 
 interface HistoryEntry { concept: string; docName: string; timestamp: number; }
@@ -91,7 +91,7 @@ export const ExplainerSystem: React.FC<ExplainerSystemProps> = ({
       return;
     }
     // Aktives Fach: Quelle direkt vorbelegen — kein Quellen-Klick nötig
-    const moduleId = localStorage.getItem('quizwise_active_module');
+    const moduleId = localStorage.getItem('studearc_active_module');
     const col = moduleId ? collections.find(c => c.id === moduleId) : null;
     if (col) {
       const result = buildCollectionSource(col, availableDocuments);

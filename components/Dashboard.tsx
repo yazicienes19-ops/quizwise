@@ -11,7 +11,7 @@ import { daysUntilDate } from '../services/calendarSessions';
 import { useTranslation } from '../i18n/I18nProvider';
 import type { TKey } from '../i18n';
 
-const USAGE_KEY = 'quizwise_feature_usage';
+const USAGE_KEY = 'studearc_feature_usage';
 
 function getUsageCounts(): Record<string, number> {
   try {
@@ -74,7 +74,7 @@ export const Dashboard: React.FC<DashboardProps> = ({ onTabChange, flowResult, d
   const weiterlernCard = useMemo(() => {
     // Last saved quiz progress
     try {
-      const raw = localStorage.getItem('quizwise_quiz_progress');
+      const raw = localStorage.getItem('studearc_quiz_progress');
       if (raw) {
         const { meta, timestamp } = JSON.parse(raw);
         if (meta && timestamp && Date.now() - timestamp < 7 * 24 * 60 * 60 * 1000) {
@@ -94,7 +94,7 @@ export const Dashboard: React.FC<DashboardProps> = ({ onTabChange, flowResult, d
 
   const nextExam = useMemo(() => {
     try {
-      const terms: Array<{ date: string; title: string }> = JSON.parse(localStorage.getItem('quizwise_exam_terms') || '[]');
+      const terms: Array<{ date: string; title: string }> = JSON.parse(localStorage.getItem('studearc_exam_terms') || '[]');
       const now = new Date();
       const future = terms
         .map(t => ({ ...t, days: daysUntilDate(t.date, now) }))

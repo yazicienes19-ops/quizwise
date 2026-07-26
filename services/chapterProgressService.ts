@@ -1,5 +1,5 @@
 
-const STORAGE_KEY = 'quizwise_reading_progress';
+const STORAGE_KEY = 'studearc_reading_progress';
 
 export interface ChapterReadState {
   done: boolean;

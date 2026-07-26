@@ -9,7 +9,7 @@ export interface SavedQuiz {
   resumeAnswers?: UserAnswer[];
 }
 
-const KEY = 'quizwise_saved_quizzes';
+const KEY = 'studearc_saved_quizzes';
 
 export const getSavedQuizzes = (): SavedQuiz[] => {
   try { return JSON.parse(localStorage.getItem(KEY) || '[]'); }

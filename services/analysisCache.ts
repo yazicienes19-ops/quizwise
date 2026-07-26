@@ -1,6 +1,6 @@
 import type { TopicMetric, LearningAnalysis } from '../types';
 
-const CACHE_KEY = 'quizwise_gap_analysis_v2';
+const CACHE_KEY = 'studearc_gap_analysis_v2';
 
 export interface CacheFingerprint {
   /** IDs aller in die Analyse eingeflossenen Fehler (aus errorPool). */

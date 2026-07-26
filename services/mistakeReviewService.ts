@@ -23,7 +23,7 @@ export interface MistakeItem {
   srs: SrsState;
 }
 
-const STORAGE_KEY = 'quizwise_mistake_queue';
+const STORAGE_KEY = 'studearc_mistake_queue';
 const MAX_ITEMS = 200;
 const GRADUATE_REPETITIONS = 3;
 const GRADUATE_INTERVAL_DAYS = 30;

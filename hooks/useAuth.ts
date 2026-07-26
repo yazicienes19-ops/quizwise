@@ -42,16 +42,16 @@ export const useAuth = () => {
           if (pr.accent_color) { document.documentElement.style.setProperty('--primary', pr.accent_color); localStorage.setItem('accent_color', pr.accent_color); }
           if (pr.font_choice) localStorage.setItem('font_choice', pr.font_choice);
           if (pr.line_height) localStorage.setItem('line_height', pr.line_height);
-          if (pr.language === 'de' || pr.language === 'tr') { localStorage.setItem('quizwise_language', pr.language); setLocale(pr.language); }
+          if (pr.language === 'de' || pr.language === 'tr') { localStorage.setItem('studearc_language', pr.language); setLocale(pr.language); }
           // Einmal-Flags aus der Cloud wiederherstellen — sonst hält die App
           // Bestandsnutzer nach gelöschten Website-Daten für Neulinge und
           // blockiert den Login mit dem Onboarding-Overlay.
           if (pr.onboarding_done) {
-            localStorage.setItem('quizwise_onboarding_done', 'true');
-            window.dispatchEvent(new Event('quizwise-onboarding-done'));
+            localStorage.setItem('studearc_onboarding_done', 'true');
+            window.dispatchEvent(new Event('studearc-onboarding-done'));
           }
-          if (pr.feynman_intro_done) localStorage.setItem('quizwise_feynman_intro_v1', 'true');
-          if (pr.recall_intro_done) localStorage.setItem('quizwise_feynman_intro_done', '1');
+          if (pr.feynman_intro_done) localStorage.setItem('studearc_feynman_intro_v1', 'true');
+          if (pr.recall_intro_done) localStorage.setItem('studearc_feynman_intro_done', '1');
         }
       })
       .catch(() => {});

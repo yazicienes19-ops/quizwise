@@ -8,6 +8,28 @@
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
     <title>StudeArc - AI Document Quizzer</title>
     <script>
+        // Einmalige Migration: alte quizwise_*/quizwise-* localStorage-Keys auf
+        // studearc_*/studearc-* umziehen (Rebrand 26.07.2026). Muss als ALLERERSTES
+        // laufen, vor jedem anderen Zugriff auf diese Keys weiter unten.
+        (function () {
+            try {
+                if (localStorage.getItem('studearc_legacy_keys_migrated_v1')) return;
+                var keys = Object.keys(localStorage);
+                for (var i = 0; i < keys.length; i++) {
+                    var oldKey = keys[i];
+                    var newKey = null;
+                    if (oldKey.indexOf('quizwise_') === 0) newKey = 'studearc_' + oldKey.slice('quizwise_'.length);
+                    else if (oldKey.indexOf('quizwise-') === 0) newKey = 'studearc-' + oldKey.slice('quizwise-'.length);
+                    if (newKey) {
+                        if (localStorage.getItem(newKey) === null) {
+                            localStorage.setItem(newKey, localStorage.getItem(oldKey));
+                        }
+                        localStorage.removeItem(oldKey);
+                    }
+                }
+                localStorage.setItem('studearc_legacy_keys_migrated_v1', '1');
+            } catch (e) {}
+        })();
         // Theme (vor React, verhindert FOUC)
         if (localStorage.getItem('theme') === 'light') {
             document.documentElement.classList.remove('dark');
@@ -70,8 +92,8 @@
       setTimeout(function () {
         var root = document.getElementById('root');
         if (root && root.childElementCount > 0) return;
-        if (sessionStorage.getItem('qw_selfheal')) return;
-        sessionStorage.setItem('qw_selfheal', '1');
+        if (sessionStorage.getItem('sa_selfheal')) return;
+        sessionStorage.setItem('sa_selfheal', '1');
         var done = function () { location.reload(); };
         try {
           var jobs = [];
