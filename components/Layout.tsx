@@ -141,8 +141,8 @@ export const Layout: React.FC<LayoutProps> = ({
           <div className="flex items-center gap-4 mb-12">
             <div
               className="w-10 h-10 rounded-xl flex items-center justify-center shrink-0"
-              style={{ background: '#1B2A4A', boxShadow: '0 4px 12px rgba(27,42,74,0.4)' }}
-            ><BrandMark size={24} strokeColor="#FBF9F4" peakColor="#D9A94E" /></div>
+              style={{ background: 'var(--mark-bg)', border: '1px solid var(--border-color)', boxShadow: '0 4px 12px rgba(27,42,74,0.4)' }}
+            ><BrandMark size={24} strokeColor="var(--mark-stroke)" peakColor="var(--mark-peak)" /></div>
             <span className="text-xl font-black tracking-tighter uppercase truncate flex-1" style={{ color: 'var(--text-main)' }}>Stude<span style={{ color: '#A9772C' }}>Arc</span></span>
             <button
               onClick={() => setSidebarCollapsed(true)}
@@ -357,8 +357,8 @@ export const Layout: React.FC<LayoutProps> = ({
         <div className="flex-1 overflow-y-auto scrollbar-hide flex flex-col items-center gap-1 pt-4 pb-2">
           <div
             className="w-10 h-10 rounded-xl flex items-center justify-center mb-5 shrink-0"
-            style={{ background: '#1B2A4A', boxShadow: '0 4px 12px rgba(27,42,74,0.4)' }}
-          ><BrandMark size={24} strokeColor="#FBF9F4" peakColor="#D9A94E" /></div>
+            style={{ background: 'var(--mark-bg)', border: '1px solid var(--border-color)', boxShadow: '0 4px 12px rgba(27,42,74,0.4)' }}
+          ><BrandMark size={24} strokeColor="var(--mark-stroke)" peakColor="var(--mark-peak)" /></div>
 
           {allNavItems.map(item => {
             const isActive = activeTab === item.tab;
@@ -420,8 +420,8 @@ export const Layout: React.FC<LayoutProps> = ({
         <div className="flex items-center gap-2 shrink-0">
           <div
             className="w-8 h-8 rounded-xl flex items-center justify-center shrink-0"
-            style={{ background: '#1B2A4A' }}
-          ><BrandMark size={19} strokeColor="#FBF9F4" peakColor="#D9A94E" /></div>
+            style={{ background: 'var(--mark-bg)', border: '1px solid var(--border-color)' }}
+          ><BrandMark size={19} strokeColor="var(--mark-stroke)" peakColor="var(--mark-peak)" /></div>
           <span className="text-[11px] font-black uppercase tracking-widest" style={{ color: 'var(--text-main)' }}>Stude<span style={{ color: '#A9772C' }}>Arc</span></span>
         </div>
 

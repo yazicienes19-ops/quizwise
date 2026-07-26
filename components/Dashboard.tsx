@@ -178,7 +178,7 @@ export const Dashboard: React.FC<DashboardProps> = ({ onTabChange, flowResult, d
       <div className="text-center space-y-6">
         <div className="space-y-2">
             <div className="flex items-center justify-center gap-3 sm:gap-5">
-                <BrandMark size={44} strokeColor="#1B2A4A" peakColor="#A9772C" className="w-9 h-9 sm:w-14 sm:h-14 lg:w-20 lg:h-20 shrink-0" />
+                <BrandMark size={44} strokeColor="var(--mark-stroke)" peakColor="var(--mark-peak)" className="w-9 h-9 sm:w-14 sm:h-14 lg:w-20 lg:h-20 shrink-0" />
                 <h1 className="text-5xl sm:text-7xl lg:text-9xl font-light tracking-tighter leading-none" style={{ color: 'var(--text-main)' }}>
                     Stude<span className="font-bold" style={{ color: '#A9772C' }}>Arc</span>
                 </h1>

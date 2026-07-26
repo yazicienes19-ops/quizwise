@@ -15,20 +15,20 @@ export const SplashScreen: React.FC = () => {
         <div className="relative">
           <div
             className="w-20 h-20 rounded-[24px] flex items-center justify-center shadow-lg"
-            style={{ background: '#1B2A4A' }}
+            style={{ background: 'var(--mark-bg)', border: '1px solid var(--border-color)' }}
           >
-            <BrandMark size={44} strokeColor="#FBF9F4" peakColor="#D9A94E" />
+            <BrandMark size={44} strokeColor="var(--mark-stroke)" peakColor="var(--mark-peak)" />
           </div>
           {/* Puls-Ring */}
           <div
             className="absolute inset-0 rounded-[24px] animate-ping opacity-20"
-            style={{ background: '#1B2A4A' }}
+            style={{ background: 'var(--mark-peak)' }}
           />
         </div>
 
         <div className="text-center space-y-1">
           <p className="text-xl font-black uppercase tracking-tighter text-slate-900 dark:text-white">
-            Stude<span style={{ color: '#A9772C' }}>Arc</span>
+            Stude<span style={{ color: 'var(--mark-peak)' }}>Arc</span>
           </p>
           <p className="text-[9px] font-bold uppercase tracking-[0.3em] text-slate-400">
             {t('splash.tagline')}
@@ -42,7 +42,7 @@ export const SplashScreen: React.FC = () => {
               key={i}
               className="w-1.5 h-1.5 rounded-full animate-bounce"
               style={{
-                background: '#A9772C',
+                background: 'var(--mark-peak)',
                 animationDelay: `${i * 150}ms`,
               }}
             />

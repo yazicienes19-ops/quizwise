@@ -62,8 +62,8 @@ export const AuthModal: React.FC<AuthModalProps> = ({ onClose, onSuccess }) => {
         {/* Header */}
         <div className="p-8 pb-0 flex items-center justify-between">
           <div className="flex items-center gap-3">
-            <div className="w-10 h-10 rounded-xl flex items-center justify-center shadow-lg" style={{ background: '#1B2A4A' }}>
-              <BrandMark size={24} strokeColor="#FBF9F4" peakColor="#D9A94E" />
+            <div className="w-10 h-10 rounded-xl flex items-center justify-center shadow-lg" style={{ background: 'var(--mark-bg)', border: '1px solid var(--border-color)' }}>
+              <BrandMark size={24} strokeColor="var(--mark-stroke)" peakColor="var(--mark-peak)" />
             </div>
             <div>
               <h2 className="text-base font-black dark:text-white uppercase tracking-tight">StudeArc</h2>

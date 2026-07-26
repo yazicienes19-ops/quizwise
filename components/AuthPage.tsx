@@ -138,9 +138,9 @@ export const AuthPage: React.FC = () => {
 
         {/* Mobile-Wordmark */}
         <div className="lg:hidden flex items-center gap-2 mb-10">
-          <BrandMark size={32} strokeColor="#1B2A4A" peakColor="#A9772C" />
+          <BrandMark size={32} strokeColor="var(--mark-stroke)" peakColor="var(--mark-peak)" />
           <span className="text-lg font-black uppercase tracking-tighter text-slate-900 dark:text-white">
-            Stude<span style={{ color: '#A9772C' }}>Arc</span>
+            Stude<span style={{ color: 'var(--mark-peak)' }}>Arc</span>
           </span>
         </div>
 

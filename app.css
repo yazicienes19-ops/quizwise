@@ -17,6 +17,13 @@
     --mute:            #8A8172;
     --card:            #FBF9F4;
     --accent:          #A9772C;
+    /* Logo-Mark (BrandMark): Icon-Badges drehen sich mit dem Theme —
+       hell = weißer Kasten/Navy-Kurve, dunkel = Navy-Kasten/helle Kurve.
+       Der Goldstern bleibt in beiden Modi Gold, nur der Farbton wechselt
+       für genug Kontrast (dunkler auf hell, heller auf dunkel). */
+    --mark-bg:         #FFFFFF;
+    --mark-stroke:     #1B2A4A;
+    --mark-peak:       #A9772C;
     --font-app:        'Inter', system-ui, sans-serif;
     --line-height-app: 1.6;
 }
@@ -32,6 +39,9 @@
     --mute:          #8296B8;
     --card:          #0F1E35;
     --accent:        #D9A94E;
+    --mark-bg:       #1B2A4A;
+    --mark-stroke:   #FBF9F4;
+    --mark-peak:     #D9A94E;
     --primary-soft: color-mix(in srgb, var(--primary) 18%, transparent);
     --primary-soft-text: color-mix(in srgb, var(--primary) 60%, white);
 }
