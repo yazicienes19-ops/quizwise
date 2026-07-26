@@ -201,6 +201,10 @@ export const de = {
   'auth.errInvalid': 'E-Mail oder Passwort falsch.',
   'auth.errExists': 'Diese E-Mail ist bereits registriert.',
   'auth.errShortPw': 'Passwort muss mindestens 6 Zeichen haben.',
+  'auth.continueWithGoogle': 'Mit Google fortfahren',
+  'auth.continueWithApple': 'Mit Apple fortfahren',
+  'auth.orDivider': 'oder',
+  'auth.errOAuth': 'Anmeldung fehlgeschlagen. Bitte versuche es erneut.',
 
   // settings (nur die Sprach-Sektion; restliche Settings-Strings folgen in einem späteren Batch)
   'settings.language.title': 'Sprache',

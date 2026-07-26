@@ -199,6 +199,10 @@ export const tr: Translations = {
   'auth.errInvalid': 'E-posta veya şifre yanlış.',
   'auth.errExists': 'Bu e-posta zaten kayıtlı.',
   'auth.errShortPw': 'Şifre en az 6 karakter olmalı.',
+  'auth.continueWithGoogle': 'Google ile devam et',
+  'auth.continueWithApple': 'Apple ile devam et',
+  'auth.orDivider': 'veya',
+  'auth.errOAuth': 'Giriş başarısız. Lütfen tekrar dene.',
 
   // settings
   'settings.language.title': 'Dil',
