@@ -129,7 +129,7 @@ export const Layout: React.FC<LayoutProps> = ({
             <div
               className="w-10 h-10 rounded-xl flex items-center justify-center font-black transform rotate-3 shrink-0"
               style={{ background: 'var(--primary)', color: 'var(--primary-text)', boxShadow: '0 4px 12px color-mix(in srgb, var(--primary) 40%, transparent)' }}
-            >QW</div>
+            >SA</div>
             <span className="text-xl font-black tracking-tighter text-slate-900 dark:text-white uppercase truncate flex-1">StudeArc</span>
             <button
               onClick={() => setSidebarCollapsed(true)}
@@ -346,7 +346,7 @@ export const Layout: React.FC<LayoutProps> = ({
           <div
             className="w-10 h-10 rounded-xl flex items-center justify-center font-black text-[10px] mb-5 shrink-0 transform rotate-3"
             style={{ background: 'var(--primary)', color: 'var(--primary-text)', boxShadow: '0 4px 12px color-mix(in srgb, var(--primary) 40%, transparent)' }}
-          >QW</div>
+          >SA</div>
 
           {allNavItems.map(item => {
             const isActive = activeTab === item.tab;
@@ -409,7 +409,7 @@ export const Layout: React.FC<LayoutProps> = ({
           <div
             className="w-8 h-8 rounded-xl flex items-center justify-center font-black text-[9px] transform rotate-3 shrink-0"
             style={{ background: 'var(--primary)', color: 'var(--primary-text)' }}
-          >QW</div>
+          >SA</div>
           <span className="text-[11px] font-black uppercase tracking-widest text-slate-900 dark:text-white">StudeArc</span>
         </div>
 

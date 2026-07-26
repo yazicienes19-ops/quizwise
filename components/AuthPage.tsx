@@ -88,10 +88,10 @@ export const AuthPage: React.FC = () => {
         {/* Wordmark */}
         <div className="relative z-10 flex items-center gap-3">
           <div className="w-10 h-10 bg-white/20 rounded-[14px] flex items-center justify-center">
-            <span className="text-base font-black text-white tracking-tighter">QW</span>
+            <span className="text-base font-black text-white tracking-tighter">SA</span>
           </div>
           <span className="text-xl font-black uppercase tracking-tighter text-white">
-            Quiz<span className="opacity-70">Wise</span>
+            Stude<span className="opacity-70">Arc</span>
           </span>
         </div>
 
@@ -143,10 +143,10 @@ export const AuthPage: React.FC = () => {
             className="w-9 h-9 rounded-[12px] flex items-center justify-center"
             style={{ background: 'var(--primary, #D97757)' }}
           >
-            <span className="text-sm font-black text-white tracking-tighter">QW</span>
+            <span className="text-sm font-black text-white tracking-tighter">SA</span>
           </div>
           <span className="text-lg font-black uppercase tracking-tighter text-slate-900 dark:text-white">
-            Quiz<span style={{ color: 'var(--primary, #D97757)' }}>Wise</span>
+            Stude<span style={{ color: 'var(--primary, #D97757)' }}>Arc</span>
           </span>
         </div>
 
