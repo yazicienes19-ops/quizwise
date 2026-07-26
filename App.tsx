@@ -17,6 +17,8 @@ import { resolveErrorMessage } from './services/errorMessages';
 import { getStreak } from './services/streakService';
 import { orchestrateLearningFlow } from './services/geminiService';
 import { updateTopicMetric } from './services/topicConfidence';
+import { documentDisplayName } from './services/libraryService';
+import { getAllRecallResults } from './services/recallHistoryService';
 import { toast } from './services/toast';
 import { ActiveTab, TopicMetric, SearchResult, FlashcardDeck, ExamTerm, LearningFlowResult } from './types';
 import { useAuth } from './hooks/useAuth';
@@ -159,7 +161,51 @@ const App: React.FC = () => {
     } catch (e) { console.error('Flow error', e); }
   };
 
-  const { saveDocs: _saveDocs, ...docs } = useDocuments({ user: auth.user, userPlan: auth.userPlan, isOffline, setIsLoading, setShowUpgradeModal });
+  // TopicMetric (Anki-Konfidenz) speichert kein docId, aber Quiz/Klausur legen
+  // ihren Eintrag unter dem Dokument-/Ordnernamen als "Thema" an (siehe
+  // updateMetricsAfterSession-Aufrufe unten). Beim Löschen eines Dokuments/
+  // Ordners räumen wir diese Einträge deshalb explizit mit auf — sonst bleibt
+  // die "Themen-Sicherheit" für längst gelöschte Quellen stehen.
+  const removeMetricsForTopics = (topics: string[]) => {
+    const topicSet = new Set(topics.filter(Boolean));
+    if (topicSet.size === 0) return;
+    const updated = metrics.filter(m => !topicSet.has(m.topic));
+    if (updated.length === metrics.length) return;
+    setMetrics(updated);
+    localStorage.setItem('studearc_metrics', JSON.stringify(updated));
+    if (auth.user) syncMetrics(auth.user.id, updated);
+  };
+
+  const { saveDocs: _saveDocs, deleteDoc: deleteDocRaw, removeCollection: removeCollectionRaw, ...docs } = useDocuments({ user: auth.user, userPlan: auth.userPlan, isOffline, setIsLoading, setShowUpgradeModal });
+
+  // Feynman-Themen (RecallResult.topic) sind Konzeptnamen, keine Dokument-
+  // namen — vor dem eigentlichen Löschen merken, welche Themen an diesem
+  // Dokument/Ordner hängen, danach nur die entfernen, die kein noch
+  // existierendes Dokument mehr referenziert (sonst reißt man geteilte
+  // Themen anderer, weiterhin vorhandener Quellen mit heraus).
+  const deleteDoc = (id: string) => {
+    const doc = docs.documents.find(d => d.id === id);
+    const docName = doc ? documentDisplayName(doc) : null;
+    const topicsFromDoc = docName
+      ? getAllRecallResults().filter(r => r.docName === docName).map(r => r.topic)
+      : [];
+    deleteDocRaw(id);
+    if (!docName) return;
+    const stillUsed = new Set(getAllRecallResults().map(r => r.topic));
+    removeMetricsForTopics([docName, ...topicsFromDoc.filter(t => !stillUsed.has(t))]);
+  };
+
+  const removeCollection = (id: string) => {
+    const col = docs.collections.find(c => c.id === id);
+    const folderName = col ? `Ordner: ${col.name}` : null;
+    const topicsFromFolder = folderName
+      ? getAllRecallResults().filter(r => r.docName === folderName).map(r => r.topic)
+      : [];
+    removeCollectionRaw(id);
+    if (!folderName) return;
+    const stillUsed = new Set(getAllRecallResults().map(r => r.topic));
+    removeMetricsForTopics([folderName, ...topicsFromFolder.filter(t => !stillUsed.has(t))]);
+  };
 
   const quiz = useQuizState({
     userId: auth.user?.id,
@@ -274,6 +320,8 @@ const App: React.FC = () => {
             isLoading={isLoading} setIsLoading={setIsLoading}
             user={auth.user} userPlan={auth.userPlan}
             {...docs}
+            deleteDoc={deleteDoc}
+            removeCollection={removeCollection}
             {...quiz}
             pendingActionDoc={pendingActionDoc} setPendingActionDoc={setPendingActionDoc}
             pendingTopic={pendingTopic} setPendingTopic={setPendingTopic}

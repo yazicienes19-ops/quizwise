@@ -15,6 +15,7 @@ import { getAllResults } from '../services/quizHistoryService';
 import { getAllRecallResults } from '../services/recallHistoryService';
 import { getAllExamResults } from '../services/examHistoryService';
 import { getStreak } from '../services/streakService';
+import { getDismissedTopics, dismissTopic } from '../services/dismissedTopicsService';
 import { toast } from '../services/toast';
 import { useTranslation } from '../i18n/I18nProvider';
 import { formatDate } from '../i18n/dates';
@@ -74,6 +75,12 @@ export const LearningCoach: React.FC<LearningCoachProps> = ({ metrics, decks, on
   const [insights, setInsights] = useState<CoachInsights | null>(null);
   const [isLoading, setIsLoading] = useState(false);
   const [showPrognosisInfo, setShowPrognosisInfo] = useState(false);
+  const [dismissBump, setDismissBump] = useState(0);
+  const dismissedTopics = useMemo(() => getDismissedTopics(), [dismissBump]);
+  const handleDismissTopic = (topic: string) => {
+    dismissTopic(topic);
+    setDismissBump(b => b + 1);
+  };
 
   const allQuizResults   = useMemo(() => getAllResults(), []);
   const allRecallResults = useMemo(() => getAllRecallResults(), []);
@@ -118,7 +125,8 @@ export const LearningCoach: React.FC<LearningCoachProps> = ({ metrics, decks, on
     () => buildRealTopicMastery(quizResults, examResults, recallResults),
     [quizResults, examResults, recallResults],
   );
-  const displayTopics = realTopics.length > 0 ? realTopics : profile.topicMastery;
+  const displayTopics = (realTopics.length > 0 ? realTopics : profile.topicMastery)
+    .filter(dt => !dismissedTopics.has(dt.topic));
 
   const dailyPlan = useMemo(
     () => buildDailyPlan({ flowResult, realTopics, decks, profile }),
@@ -544,18 +552,26 @@ export const LearningCoach: React.FC<LearningCoachProps> = ({ metrics, decks, on
             <h3 className="text-[9px] font-black uppercase tracking-widest" style={{ color: 'var(--mute)' }}>{t('lc.topicSecurity')}</h3>
             <div className="flex flex-wrap gap-2">
               {displayTopics.slice(0, 10).map(dt => (
-                <button
-                  key={dt.topic}
-                  onClick={() => onAction?.(dt.topic, 'quiz')}
-                  className="px-3 py-2 rounded-xl text-[9px] font-black uppercase tracking-wider transition-all hover:opacity-80"
-                  style={{
-                    background: `color-mix(in srgb, ${securityColor(dt.security)} 10%, var(--bg-sidebar))`,
-                    color: securityColor(dt.security),
-                    border: `1px solid color-mix(in srgb, ${securityColor(dt.security)} 25%, transparent)`,
-                  }}
-                >
-                  {dt.topic} · {t((`sec.${dt.security}`) as TKey)}
-                </button>
+                <div key={dt.topic} className="relative group">
+                  <button
+                    onClick={() => onAction?.(dt.topic, 'quiz')}
+                    className="px-3 py-2 pr-6 rounded-xl text-[9px] font-black uppercase tracking-wider transition-all hover:opacity-80"
+                    style={{
+                      background: `color-mix(in srgb, ${securityColor(dt.security)} 10%, var(--bg-sidebar))`,
+                      color: securityColor(dt.security),
+                      border: `1px solid color-mix(in srgb, ${securityColor(dt.security)} 25%, transparent)`,
+                    }}
+                  >
+                    {dt.topic} · {t((`sec.${dt.security}`) as TKey)}
+                  </button>
+                  <button
+                    onClick={(e) => { e.stopPropagation(); handleDismissTopic(dt.topic); }}
+                    aria-label={t('lc.dismissTopic')}
+                    title={t('lc.dismissTopic')}
+                    className="absolute top-1/2 right-1.5 -translate-y-1/2 w-3.5 h-3.5 flex items-center justify-center rounded-full text-[9px] font-black leading-none opacity-0 group-hover:opacity-60 hover:!opacity-100 transition-opacity"
+                    style={{ color: securityColor(dt.security) }}
+                  >×</button>
+                </div>
               ))}
             </div>
           </div>

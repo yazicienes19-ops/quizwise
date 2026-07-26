@@ -1198,6 +1198,7 @@ export const tr: Translations = {
   'lc.perSession': '{sign}%{n}/oturum',
   'lc.learningScore': 'Öğrenme skoru',
   'lc.topicSecurity': 'Konu güvenliği',
+  'lc.dismissTopic': 'Konuyu gizle',
   'lc.forgettingPlan': 'Unutma planı',
   'lc.reviewToday': 'Bugün tekrar et',
   'lc.inDaysN': '{n} gün sonra',

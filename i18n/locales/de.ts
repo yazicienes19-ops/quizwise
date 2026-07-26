@@ -1206,6 +1206,7 @@ export const de = {
   'lc.perSession': '{sign}{n}%/Session',
   'lc.learningScore': 'Learning Score',
   'lc.topicSecurity': 'Themen-Sicherheit',
+  'lc.dismissTopic': 'Thema ausblenden',
   'lc.forgettingPlan': 'Vergessensplan',
   'lc.reviewToday': 'Heute wiederholen',
   'lc.inDaysN': 'in {n} Tag|in {n} Tagen',
