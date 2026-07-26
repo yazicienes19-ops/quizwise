@@ -168,6 +168,7 @@ export const AppContent: React.FC<AppContentProps> = (p) => {
     case ActiveTab.LIBRARY:
       return <LibrarySystem
         documents={documents} collections={collections}
+        isAdminUser={isAdmin(user?.id)}
         onUpload={handleFileUpload} onDelete={deleteDoc}
         onRetryAnalysis={retryAnalysis}
         onAction={(tab, doc) => {

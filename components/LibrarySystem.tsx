@@ -13,6 +13,8 @@ import { EmojiImage } from './EmojiImage';
 interface LibrarySystemProps {
   documents: ProcessedDocument[];
   collections: Collection[];
+  /** Labor-Features (Hausarbeit) im Aktionen-Menü nur für Admins zeigen — siehe config/admin.ts */
+  isAdminUser?: boolean;
   onUpload: (file: File, collectionId?: string, onProgress?: (fraction: number) => void) => Promise<string | null>;
   onDelete: (id: string) => void;
   onRetryAnalysis?: (docId: string) => void;
@@ -52,6 +54,7 @@ const IconUpload = () => (
 export const LibrarySystem: React.FC<LibrarySystemProps> = ({
   documents,
   collections,
+  isAdminUser = false,
   onUpload,
   onDelete,
   onRetryAnalysis,
@@ -188,6 +191,7 @@ export const LibrarySystem: React.FC<LibrarySystemProps> = ({
         <SourceDetailPage
           doc={viewDoc}
           meta={allMeta[viewDoc.id] ?? {}}
+          isAdminUser={isAdminUser}
           onBack={() => setViewDocId(null)}
           onAction={onAction}
           onViewDocument={(d) => setViewerDocId(d.id)}

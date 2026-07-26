@@ -5,7 +5,6 @@ const helmet = require('helmet');
 const rateLimit = require('express-rate-limit');
 
 const geminiRoutes = require('./routes/gemini');
-const agentRoutes = require('./routes/agents');
 const userRoutes = require('./routes/user');
 const stripeRoutes = require('./routes/stripe');
 const searchRoutes = require('./routes/search');
@@ -15,7 +14,7 @@ const { router: pushRoutes, vapidConfigured } = require('./routes/push');
 const { startReminderCron } = require('./push/reminderCron');
 const { requireAuth } = require('./middleware/auth');
 const { checkUsageLimit } = require('./middleware/limits');
-const { checkAgentLimit } = require('./middleware/agentLimits');
+const { requireAdmin } = require('./middleware/requireAdmin');
 
 const app = express();
 const PORT = process.env.PORT || 4000;
@@ -43,13 +42,21 @@ app.use(cors({
 
 const globalLimiter = rateLimit({ windowMs: 60 * 1000, max: 60, standardHeaders: true, legacyHeaders: false, message: { error: 'Zu viele Anfragen. Bitte warte eine Minute.' } });
 const geminiLimiter = rateLimit({ windowMs: 60 * 1000, max: 30, standardHeaders: true, legacyHeaders: false, message: { error: 'Zu viele KI-Anfragen. Bitte warte eine Minute.' } });
-const stripeLimiter = rateLimit({ windowMs: 60 * 1000, max: 5, standardHeaders: true, legacyHeaders: false, message: { error: 'Zu viele Checkout-Anfragen. Bitte warte eine Minute.' } });
+// Webhook bekommt sein eigenes, großzügigeres Limit (s.u.) statt sich das strenge
+// Checkout-Limit zu teilen — sonst würden Stripe-Event-Bursts fälschlich mit 429
+// abgewiesen und Plan-Up-/Downgrades blieben aus.
+const stripeLimiter = rateLimit({
+  windowMs: 60 * 1000, max: 5, standardHeaders: true, legacyHeaders: false,
+  message: { error: 'Zu viele Checkout-Anfragen. Bitte warte eine Minute.' },
+  skip: (req) => req.path === '/webhook',
+});
+const stripeWebhookLimiter = rateLimit({ windowMs: 60 * 1000, max: 120, standardHeaders: true, legacyHeaders: false, message: { error: 'Zu viele Webhook-Anfragen.' } });
 const clientErrorLimiter = rateLimit({ windowMs: 60 * 1000, max: 10, standardHeaders: true, legacyHeaders: false, message: { error: 'Zu viele Meldungen.' } });
 
 app.use('/api/', globalLimiter);
 
 // Stripe Webhook muss VOR express.json eingebunden werden
-app.use('/api/stripe/webhook', express.raw({ type: 'application/json' }));
+app.use('/api/stripe/webhook', stripeWebhookLimiter, express.raw({ type: 'application/json' }));
 
 app.use(express.json({ limit: '10mb' }));
 
@@ -66,10 +73,9 @@ app.use('/api/user', requireAuth, userRoutes);
 
 // Geschützt: Login + Nutzungslimit + Rate-Limit
 app.use('/api/gemini', geminiLimiter, requireAuth, checkUsageLimit, geminiRoutes);
-app.use('/api/agents', geminiLimiter, requireAuth, checkAgentLimit, agentRoutes);
 
-// Geschützt: Login (kein Gemini-Limit, ruft externe API auf)
-app.use('/api/search', requireAuth, searchRoutes);
+// Geschützt: Login + Admin (Labor-Feature "Recherche", noch nicht für alle Nutzer freigegeben)
+app.use('/api/search', requireAuth, requireAdmin, searchRoutes);
 app.use('/api/client-error', clientErrorLimiter, require('./routes/clientError'));
 app.use('/api/documents', requireAuth, documentRoutes);
 // Quellen-Import per Link (YouTube zählt intern als Generierung)

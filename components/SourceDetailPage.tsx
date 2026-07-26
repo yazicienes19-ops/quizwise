@@ -38,12 +38,14 @@ const ACTIONS: Action[] = [
 interface Props {
   doc: ProcessedDocument;
   meta: SourceMeta;
+  /** Hausarbeit-Aktion ist ein Labor-Feature — nur für Admins zeigen, siehe config/admin.ts */
+  isAdminUser?: boolean;
   onBack: () => void;
   onAction: (tab: ActiveTab, doc: ProcessedDocument) => void;
   onViewDocument: (doc: ProcessedDocument) => void;
 }
 
-export const SourceDetailPage: React.FC<Props> = ({ doc, meta, onBack, onAction, onViewDocument }) => {
+export const SourceDetailPage: React.FC<Props> = ({ doc, meta, isAdminUser = false, onBack, onAction, onViewDocument }) => {
   const { t } = useTranslation();
   const title     = meta.displayTitle || doc.name.replace(/\.[^/.]+$/, '');
   const status    = meta.status ?? 'ready';
@@ -226,7 +228,7 @@ export const SourceDetailPage: React.FC<Props> = ({ doc, meta, onBack, onAction,
         )}
 
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-          {ACTIONS.filter(a => !a.docTypes || a.docTypes.includes(doc.type)).map(action => (
+          {ACTIONS.filter(a => (!a.docTypes || a.docTypes.includes(doc.type)) && (a.tab !== ActiveTab.PAPER || isAdminUser)).map(action => (
             <ActionCard
               key={action.tab}
               action={action}

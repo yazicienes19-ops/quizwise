@@ -1,6 +1,9 @@
 const express = require('express');
+const Stripe = require('stripe');
 const { supabaseAdmin } = require('../middleware/auth');
 const router = express.Router();
+
+const stripe = new Stripe(process.env.STRIPE_SECRET_KEY);
 
 // GET /api/user/profile
 router.get('/profile', async (req, res, next) => {
@@ -57,6 +60,22 @@ router.get('/export', async (req, res, next) => {
 router.delete('/account', async (req, res, next) => {
   try {
     const userId = req.user.id;
+
+    // Aktives Stripe-Abo zuerst SOFORT kündigen (nicht erst zum Periodenende
+    // wie beim freiwilligen /api/stripe/cancel) — sonst wird der Nutzer nach
+    // der Konto-Löschung weiter belastet, obwohl er die Pro-Features nicht
+    // mehr nutzen kann und sein Abo nicht mehr selbst verwalten könnte.
+    try {
+      const customers = await stripe.customers.list({ email: req.user.email, limit: 1 });
+      const customer = customers.data[0];
+      if (customer) {
+        const subscriptions = await stripe.subscriptions.list({ customer: customer.id, status: 'active', limit: 10 });
+        await Promise.all(subscriptions.data.map(sub => stripe.subscriptions.cancel(sub.id)));
+      }
+    } catch (stripeErr) {
+      console.error('Stripe-Kündigung bei Konto-Löschung fehlgeschlagen:', stripeErr.message);
+      return res.status(502).json({ error: 'Konto konnte nicht gelöscht werden: Aktives Abo ließ sich nicht kündigen. Bitte versuche es erneut oder kontaktiere den Support.' });
+    }
 
     // Supabase Admin API: löscht User aus auth.users
     // Dank CASCADE werden auch profiles, metrics, decks etc. gelöscht

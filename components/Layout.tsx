@@ -99,15 +99,18 @@ export const Layout: React.FC<LayoutProps> = ({
     { tab: ActiveTab.PLANNER,   shortKey: 'nav.planner' },
   ];
 
-  // Mobile "Mehr"-Sheet: alle anderen Tabs
+  // Mobile "Mehr"-Sheet: alle anderen Tabs. SEARCH/PAPER sind Labor-Features
+  // (siehe navConfig.ts LABOR_GROUP) und daher nur für Admins sichtbar.
   const mobileSheetItems: { tab: ActiveTab; labelKey: TKey; icon: LucideIcon }[] = [
     { tab: ActiveTab.CARDS,     labelKey: 'nav.cards',     icon: Layers },
     { tab: ActiveTab.RECALL,    labelKey: 'nav.recall',    icon: Brain },
     { tab: ActiveTab.EXAM,      labelKey: 'nav.exam',      icon: GraduationCap },
     { tab: ActiveTab.RADAR,     labelKey: 'nav.radar',     icon: BarChart2 },
     { tab: ActiveTab.EXPLAINER, labelKey: 'nav.explainer', icon: Lightbulb },
-    { tab: ActiveTab.SEARCH,    labelKey: 'nav.search',    icon: Search },
-    { tab: ActiveTab.PAPER,     labelKey: 'nav.paper',     icon: FileText },
+    ...(isAdmin(user?.id) ? [
+      { tab: ActiveTab.SEARCH, labelKey: 'nav.search' as TKey, icon: Search },
+      { tab: ActiveTab.PAPER,  labelKey: 'nav.paper'  as TKey, icon: FileText },
+    ] : []),
   ];
   const userInitial = (user?.user_metadata?.full_name || user?.email || 'U')[0].toUpperCase();
 

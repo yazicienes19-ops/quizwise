@@ -4,16 +4,36 @@ const { GoogleGenAI } = require('@google/genai');
 const router = express.Router();
 const ai = new GoogleGenAI({ apiKey: process.env.GEMINI_API_KEY });
 
-const resolveStorageRef = async (part, userId, sb) => {
-  if (!part.storageRef) return part;
-  const { path, mimeType } = part.storageRef;
-  if (!path.startsWith(`${userId}/`)) {
-    throw new Error('Zugriff verweigert: Ungültiger Dateipfad.');
+// Aggregiertes Limit über ALLE storageRef-Parts einer Anfrage (analog zum
+// 18-MB-Cap in documents.js) — ohne das ließen sich bis zu 20 Parts aus
+// Supabase Storage ungeprüft laden, base64-kodieren und im RAM halten, bevor
+// überhaupt ein Gemini-Call versucht wird (Speicher-/Kosten-Risiko).
+const MAX_TOTAL_STORAGE_BYTES = 18 * 1024 * 1024;
+
+// Sequenziell statt Promise.all: bricht ab, sobald die Summe das Limit
+// überschreitet, statt erst alle Downloads komplett abzuschließen.
+const resolveStorageRefs = async (parts, userId, sb) => {
+  let totalBytes = 0;
+  const resolved = [];
+  for (const part of parts) {
+    if (!part.storageRef) { resolved.push(part); continue; }
+    const { path, mimeType } = part.storageRef;
+    if (!path.startsWith(`${userId}/`)) {
+      throw new Error('Zugriff verweigert: Ungültiger Dateipfad.');
+    }
+    const { data, error } = await sb.storage.from('document-files').download(path);
+    if (error) throw new Error(`Supabase Download-Fehler: ${error.message}`);
+    const buffer = Buffer.from(await data.arrayBuffer());
+    totalBytes += buffer.length;
+    if (totalBytes > MAX_TOTAL_STORAGE_BYTES) {
+      const err = new Error(`Angehängte Dateien zu groß (max. ${Math.round(MAX_TOTAL_STORAGE_BYTES / 1024 / 1024)} MB insgesamt).`);
+      err.statusCode = 400;
+      err.expose = true;
+      throw err;
+    }
+    resolved.push({ inlineData: { data: buffer.toString('base64'), mimeType } });
   }
-  const { data, error } = await sb.storage.from('document-files').download(path);
-  if (error) throw new Error(`Supabase Download-Fehler: ${error.message}`);
-  const buffer = Buffer.from(await data.arrayBuffer());
-  return { inlineData: { data: buffer.toString('base64'), mimeType } };
+  return resolved;
 };
 
 // Wählt das passende Gemini-Modell basierend auf User-Plan und Aufgaben-Komplexität.
@@ -85,7 +105,7 @@ router.post('/generate', async (req, res, next) => {
     const userPlan = profile?.plan || 'free';
     const selectedModel = selectModel(userPlan, complexity || 'light');
 
-    const resolvedParts = await Promise.all(parts.map(part => resolveStorageRef(part, userId, sb)));
+    const resolvedParts = await resolveStorageRefs(parts, userId, sb);
 
     const generationConfig = {
       temperature: config?.temperature ?? 0.7,
