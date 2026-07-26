@@ -178,7 +178,7 @@ export const Dashboard: React.FC<DashboardProps> = ({ onTabChange, flowResult, d
       <div className="text-center space-y-6">
         <div className="space-y-2">
             <h1 className="text-5xl sm:text-7xl lg:text-9xl font-light tracking-tighter leading-none" style={{ color: 'var(--text-main)' }}>
-                Stude<span className="font-bold" style={{ color: 'var(--primary)' }}>Arc</span>
+                Stude<span className="font-bold" style={{ color: '#A9772C' }}>Arc</span>
             </h1>
             <p className="text-[9px] sm:text-xs font-black uppercase tracking-[0.3em] sm:tracking-[1em] text-slate-400 dark:text-white/30 sm:pl-4 text-center break-words">
                 {t('splash.tagline')}

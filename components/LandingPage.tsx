@@ -61,8 +61,8 @@ export const LandingPage: React.FC<LandingPageProps> = ({ onAuthClick }) => {
       <nav className="sticky top-0 z-40 bg-white/80 dark:bg-slate-950/80 backdrop-blur-xl border-b border-slate-100 dark:border-slate-800">
         <div className="max-w-6xl mx-auto px-6 h-16 flex items-center justify-between">
           <div className="flex items-center gap-2">
-            <span className="text-xl font-black tracking-tight" style={{ color: 'var(--primary)' }}>Stude</span>
-            <span className="text-xl font-black tracking-tight dark:text-white">Arc</span>
+            <span className="text-xl font-black tracking-tight" style={{ color: 'var(--text-main)' }}>Stude</span>
+            <span className="text-xl font-black tracking-tight" style={{ color: '#A9772C' }}>Arc</span>
           </div>
           <div className="flex items-center gap-3">
             <LanguageToggle />

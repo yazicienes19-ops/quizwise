@@ -23,8 +23,8 @@ export default defineConfig(() => {
             name: 'StudeArc — KI-Lern-App',
             short_name: 'StudeArc',
             description: 'KI-gestützte Lern-App für Studierende',
-            theme_color: '#6366f1',
-            background_color: '#0f172a',
+            theme_color: '#1B2A4A',
+            background_color: '#1B2A4A',
             display: 'standalone',
             start_url: '/',
             icons: [

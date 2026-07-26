@@ -1,7 +1,8 @@
 import React, { useState } from 'react';
-import { X, Mail, Lock, User, Loader2, GraduationCap } from 'lucide-react';
+import { X, Mail, Lock, User, Loader2 } from 'lucide-react';
 import { supabase } from '../services/supabaseClient';
 import { useTranslation } from '../i18n/I18nProvider';
+import { BrandMark } from './BrandMark';
 
 interface AuthModalProps {
   onClose: () => void;
@@ -61,8 +62,8 @@ export const AuthModal: React.FC<AuthModalProps> = ({ onClose, onSuccess }) => {
         {/* Header */}
         <div className="p-8 pb-0 flex items-center justify-between">
           <div className="flex items-center gap-3">
-            <div className="w-10 h-10 bg-indigo-600 rounded-xl flex items-center justify-center shadow-lg">
-              <GraduationCap className="w-5 h-5 text-white" strokeWidth={1.75} />
+            <div className="w-10 h-10 rounded-xl flex items-center justify-center shadow-lg" style={{ background: '#1B2A4A' }}>
+              <BrandMark size={24} strokeColor="#FBF9F4" peakColor="#D9A94E" />
             </div>
             <div>
               <h2 className="text-base font-black dark:text-white uppercase tracking-tight">StudeArc</h2>

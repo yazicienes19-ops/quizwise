@@ -16,6 +16,7 @@ import { ColorPicker } from './ColorPicker';
 import { ApiKeySettings } from './ApiKeySettings';
 import { LegalModal } from './LegalModal';
 import { NAV_GROUPS, LABOR_GROUP } from './navConfig';
+import { BrandMark } from './BrandMark';
 import { isAdmin } from '../config/admin';
 import { useTranslation } from '../i18n/I18nProvider';
 import type { TKey } from '../i18n';
@@ -127,10 +128,10 @@ export const Layout: React.FC<LayoutProps> = ({
         <div className="p-10 flex flex-col h-full">
           <div className="flex items-center gap-4 mb-12">
             <div
-              className="w-10 h-10 rounded-xl flex items-center justify-center font-black transform rotate-3 shrink-0"
-              style={{ background: 'var(--primary)', color: 'var(--primary-text)', boxShadow: '0 4px 12px color-mix(in srgb, var(--primary) 40%, transparent)' }}
-            >SA</div>
-            <span className="text-xl font-black tracking-tighter text-slate-900 dark:text-white uppercase truncate flex-1">StudeArc</span>
+              className="w-10 h-10 rounded-xl flex items-center justify-center transform rotate-3 shrink-0"
+              style={{ background: '#1B2A4A', boxShadow: '0 4px 12px rgba(27,42,74,0.4)' }}
+            ><BrandMark size={24} strokeColor="#FBF9F4" peakColor="#D9A94E" /></div>
+            <span className="text-xl font-black tracking-tighter uppercase truncate flex-1" style={{ color: 'var(--text-main)' }}>Stude<span style={{ color: '#A9772C' }}>Arc</span></span>
             <button
               onClick={() => setSidebarCollapsed(true)}
               aria-label={t('layout.collapseSidebar')}
@@ -344,9 +345,9 @@ export const Layout: React.FC<LayoutProps> = ({
         {/* Scrollable top: logo + all nav items */}
         <div className="flex-1 overflow-y-auto scrollbar-hide flex flex-col items-center gap-1 pt-4 pb-2">
           <div
-            className="w-10 h-10 rounded-xl flex items-center justify-center font-black text-[10px] mb-5 shrink-0 transform rotate-3"
-            style={{ background: 'var(--primary)', color: 'var(--primary-text)', boxShadow: '0 4px 12px color-mix(in srgb, var(--primary) 40%, transparent)' }}
-          >SA</div>
+            className="w-10 h-10 rounded-xl flex items-center justify-center mb-5 shrink-0 transform rotate-3"
+            style={{ background: '#1B2A4A', boxShadow: '0 4px 12px rgba(27,42,74,0.4)' }}
+          ><BrandMark size={24} strokeColor="#FBF9F4" peakColor="#D9A94E" /></div>
 
           {allNavItems.map(item => {
             const isActive = activeTab === item.tab;
@@ -407,10 +408,10 @@ export const Layout: React.FC<LayoutProps> = ({
       >
         <div className="flex items-center gap-2 shrink-0">
           <div
-            className="w-8 h-8 rounded-xl flex items-center justify-center font-black text-[9px] transform rotate-3 shrink-0"
-            style={{ background: 'var(--primary)', color: 'var(--primary-text)' }}
-          >SA</div>
-          <span className="text-[11px] font-black uppercase tracking-widest text-slate-900 dark:text-white">StudeArc</span>
+            className="w-8 h-8 rounded-xl flex items-center justify-center transform rotate-3 shrink-0"
+            style={{ background: '#1B2A4A' }}
+          ><BrandMark size={19} strokeColor="#FBF9F4" peakColor="#D9A94E" /></div>
+          <span className="text-[11px] font-black uppercase tracking-widest" style={{ color: 'var(--text-main)' }}>Stude<span style={{ color: '#A9772C' }}>Arc</span></span>
         </div>
 
         <span className="absolute left-1/2 -translate-x-1/2 text-[9px] font-black uppercase tracking-widest text-slate-400 pointer-events-none max-w-[60vw] truncate">

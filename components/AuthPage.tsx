@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { Mail, Lock, User, Loader2 } from 'lucide-react';
 import { supabase } from '../services/supabaseClient';
+import { BrandMark } from './BrandMark';
 
 const DEMO_EMAIL = 'demo@quizwise.app';
 const DEMO_PASSWORD = 'QuizWise2026!';
@@ -77,7 +78,7 @@ export const AuthPage: React.FC = () => {
       {/* ── Linke Branding-Seite (nur Desktop) ── */}
       <div
         className="hidden lg:flex lg:w-1/2 flex-col justify-between p-12 relative overflow-hidden"
-        style={{ background: 'var(--primary, #D97757)' }}
+        style={{ background: '#1B2A4A' }}
       >
         {/* Hintergrundmuster */}
         <div className="absolute inset-0 opacity-10">
@@ -87,11 +88,9 @@ export const AuthPage: React.FC = () => {
 
         {/* Wordmark */}
         <div className="relative z-10 flex items-center gap-3">
-          <div className="w-10 h-10 bg-white/20 rounded-[14px] flex items-center justify-center">
-            <span className="text-base font-black text-white tracking-tighter">SA</span>
-          </div>
+          <BrandMark size={36} strokeColor="#FBF9F4" peakColor="#D9A94E" />
           <span className="text-xl font-black uppercase tracking-tighter text-white">
-            Stude<span className="opacity-70">Arc</span>
+            Stude<span style={{ color: '#D9A94E' }}>Arc</span>
           </span>
         </div>
 
@@ -139,14 +138,9 @@ export const AuthPage: React.FC = () => {
 
         {/* Mobile-Wordmark */}
         <div className="lg:hidden flex items-center gap-2 mb-10">
-          <div
-            className="w-9 h-9 rounded-[12px] flex items-center justify-center"
-            style={{ background: 'var(--primary, #D97757)' }}
-          >
-            <span className="text-sm font-black text-white tracking-tighter">SA</span>
-          </div>
+          <BrandMark size={32} strokeColor="#1B2A4A" peakColor="#A9772C" />
           <span className="text-lg font-black uppercase tracking-tighter text-slate-900 dark:text-white">
-            Stude<span style={{ color: 'var(--primary, #D97757)' }}>Arc</span>
+            Stude<span style={{ color: '#A9772C' }}>Arc</span>
           </span>
         </div>
 
@@ -195,7 +189,7 @@ export const AuthPage: React.FC = () => {
                     placeholder="Dein Name"
                     required
                     className="w-full pl-11 pr-4 py-3.5 rounded-2xl text-sm bg-slate-100 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-slate-900 dark:text-white placeholder-slate-400 outline-none focus:ring-2 transition-all"
-                    style={{ '--tw-ring-color': 'var(--primary, #D97757)' } as React.CSSProperties}
+                    style={{ '--tw-ring-color': 'var(--primary, #A9772C)' } as React.CSSProperties}
                   />
                 </div>
               </div>
@@ -248,7 +242,7 @@ export const AuthPage: React.FC = () => {
               type="submit"
               disabled={isLoading}
               className="w-full py-4 rounded-2xl text-[11px] font-black uppercase tracking-widest text-white transition-all hover:opacity-90 active:scale-95 shadow-lg disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
-              style={{ background: 'var(--primary, #D97757)' }}
+              style={{ background: 'var(--primary, #A9772C)' }}
             >
               {isLoading
                 ? <><Loader2 className="w-4 h-4 animate-spin" /> Bitte warten...</>
@@ -268,7 +262,7 @@ export const AuthPage: React.FC = () => {
             onClick={handleDemoLogin}
             disabled={isDemoLoading || isLoading}
             className="w-full py-3.5 rounded-2xl text-[11px] font-black uppercase tracking-widest transition-all hover:opacity-80 active:scale-95 disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2 border-2"
-            style={{ borderColor: 'var(--primary, #D97757)', color: 'var(--primary, #D97757)' }}
+            style={{ borderColor: 'var(--primary, #A9772C)', color: 'var(--primary, #A9772C)' }}
           >
             {isDemoLoading
               ? <><Loader2 className="w-4 h-4 animate-spin" /> Bitte warten...</>

@@ -4,19 +4,19 @@
 
 /* ── Base variables ── */
 :root {
-    --bg-main:         #FFFFFF;
-    --bg-sidebar:      #F8FAFF;
-    --border-color:    #E2E9F8;
-    --border-soft:     #EDF1FA;
-    --text-main:       #0F1E3A;
-    --text-secondary:  #64748B;
+    --bg-main:         #EDE8DE;
+    --bg-sidebar:      #FBF9F4;
+    --border-color:    #E4DFD2;
+    --border-soft:     #EEE8DC;
+    --text-main:       #1B2A4A;
+    --text-secondary:  #8A8172;
     /* Semantische Text-/Flächen-Token — wurden in Coach/Radar benutzt,
        waren aber nie definiert (unsichtbare Buttons, transparente Karten) */
-    --ink:             #0F1E3A;
-    --ink2:            #3D5175;
-    --mute:            #7C8DB0;
-    --card:            #FFFFFF;
-    --accent:          #D97757;
+    --ink:             #1B2A4A;
+    --ink2:            #4A5A7A;
+    --mute:            #8A8172;
+    --card:            #FBF9F4;
+    --accent:          #A9772C;
     --font-app:        'Inter', system-ui, sans-serif;
     --line-height-app: 1.6;
 }
@@ -31,7 +31,7 @@
     --ink2:          #B9C7E0;
     --mute:          #8296B8;
     --card:          #0F1E35;
-    --accent:        #818cf8;
+    --accent:        #D9A94E;
     --primary-soft: color-mix(in srgb, var(--primary) 18%, transparent);
     --primary-soft-text: color-mix(in srgb, var(--primary) 60%, white);
 }
@@ -47,11 +47,11 @@ body {
 }
 ::-webkit-scrollbar { width: 6px; height: 6px; }
 ::-webkit-scrollbar-track { background: transparent; }
-::-webkit-scrollbar-thumb { background: color-mix(in srgb, var(--primary, #D97757) 50%, transparent); border-radius: 10px; }
+::-webkit-scrollbar-thumb { background: color-mix(in srgb, var(--primary, #A9772C) 50%, transparent); border-radius: 10px; }
 
 /* ── Dynamic accent color palette ── */
 :root {
-    --primary:      #6366f1;
+    --primary:      #A9772C;
     --primary-text: #ffffff;
     --primary-soft: color-mix(in srgb, var(--primary) 12%, white);
     --primary-soft-text: color-mix(in srgb, var(--primary) 85%, #2d0f06);
@@ -66,6 +66,14 @@ body {
     --p800: color-mix(in srgb, var(--primary) 60%, black);
     --p900: color-mix(in srgb, var(--primary) 35%, black);
     --p950: color-mix(in srgb, var(--primary) 18%, black);
+}
+/* Dunkler Modus: hellere Gold-Variante für Kontrast auf Navy-Hintergrund
+   (muss NACH dem :root-Block stehen — gleiche Selektor-Spezifität, bei
+   Gleichstand gewinnt die spätere Regel in der Kaskade). Nur Standardwert;
+   eine vom Nutzer gewählte accent_color überschreibt beides per Inline-Style. */
+.dark {
+    --primary:      #D9A94E;
+    --primary-text: #1a1a2e;
 }
 
 /* ── bg solid ── */

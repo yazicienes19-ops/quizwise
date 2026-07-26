@@ -16,14 +16,14 @@ import { formatDate } from '../i18n/dates';
 import type { Locale } from '../i18n';
 
 const PRESETS = [
-  { name: 'Claude Coral', value: '#D97757' },
-  { name: 'Indigo',       value: '#6366F1' },
-  { name: 'Blau',         value: '#3B82F6' },
-  { name: 'Teal',         value: '#14B8A6' },
-  { name: 'Grün',         value: '#22C55E' },
-  { name: 'Rose',         value: '#F43F5E' },
-  { name: 'Violet',       value: '#8B5CF6' },
-  { name: 'Amber',        value: '#F59E0B' },
+  { name: 'StudeArc Gold', value: '#A9772C' },
+  { name: 'Navy',          value: '#1B2A4A' },
+  { name: 'Indigo',        value: '#6366F1' },
+  { name: 'Blau',          value: '#3B82F6' },
+  { name: 'Teal',          value: '#14B8A6' },
+  { name: 'Grün',          value: '#22C55E' },
+  { name: 'Rose',          value: '#F43F5E' },
+  { name: 'Violet',        value: '#8B5CF6' },
 ];
 
 const FONTS = [
@@ -88,7 +88,7 @@ export const SettingsModal: React.FC<Props> = ({ user, isDark, onToggleTheme, on
   const [isCheckingOut, setIsCheckingOut] = useState(false);
 
   // Design
-  const [accentColor, setAccentColor] = useState(() => localStorage.getItem('accent_color') || '#D97757');
+  const [accentColor, setAccentColor] = useState(() => localStorage.getItem('accent_color') || '#A9772C');
   const [fontChoice, setFontChoice] = useState(() => localStorage.getItem('font_choice') || 'inter');
   const [lineHeight, setLineHeight] = useState(() => localStorage.getItem('line_height') || '1.6');
 

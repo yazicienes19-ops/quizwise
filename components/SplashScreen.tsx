@@ -1,5 +1,6 @@
 import React from 'react';
 import { useTranslation } from '../i18n/I18nProvider';
+import { BrandMark } from './BrandMark';
 
 /**
  * SplashScreen — ersetzt das `return null` während des Auth-Checks.
@@ -14,20 +15,20 @@ export const SplashScreen: React.FC = () => {
         <div className="relative">
           <div
             className="w-20 h-20 rounded-[24px] flex items-center justify-center shadow-lg"
-            style={{ background: 'var(--primary, #4f46e5)' }}
+            style={{ background: '#1B2A4A' }}
           >
-            <span className="text-3xl font-black text-white tracking-tighter">SA</span>
+            <BrandMark size={44} strokeColor="#FBF9F4" peakColor="#D9A94E" />
           </div>
           {/* Puls-Ring */}
           <div
             className="absolute inset-0 rounded-[24px] animate-ping opacity-20"
-            style={{ background: 'var(--primary, #4f46e5)' }}
+            style={{ background: '#1B2A4A' }}
           />
         </div>
 
         <div className="text-center space-y-1">
           <p className="text-xl font-black uppercase tracking-tighter text-slate-900 dark:text-white">
-            Stude<span style={{ color: 'var(--primary, #4f46e5)' }}>Arc</span>
+            Stude<span style={{ color: '#A9772C' }}>Arc</span>
           </p>
           <p className="text-[9px] font-bold uppercase tracking-[0.3em] text-slate-400">
             {t('splash.tagline')}
@@ -41,7 +42,7 @@ export const SplashScreen: React.FC = () => {
               key={i}
               className="w-1.5 h-1.5 rounded-full animate-bounce"
               style={{
-                background: 'var(--primary, #4f46e5)',
+                background: '#A9772C',
                 animationDelay: `${i * 150}ms`,
               }}
             />

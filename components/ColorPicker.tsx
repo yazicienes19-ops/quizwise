@@ -4,14 +4,14 @@ import { Palette, Check } from 'lucide-react';
 import { useTranslation } from '../i18n/I18nProvider';
 
 const PRESETS = [
-  { name: 'Claude Coral', value: '#D97757' },
-  { name: 'Indigo',       value: '#6366F1' },
-  { name: 'Blau',         value: '#3B82F6' },
-  { name: 'Teal',         value: '#14B8A6' },
-  { name: 'Grün',         value: '#22C55E' },
-  { name: 'Rose',         value: '#F43F5E' },
-  { name: 'Violet',       value: '#8B5CF6' },
-  { name: 'Amber',        value: '#F59E0B' },
+  { name: 'StudeArc Gold', value: '#A9772C' },
+  { name: 'Navy',          value: '#1B2A4A' },
+  { name: 'Indigo',        value: '#6366F1' },
+  { name: 'Blau',          value: '#3B82F6' },
+  { name: 'Teal',          value: '#14B8A6' },
+  { name: 'Grün',          value: '#22C55E' },
+  { name: 'Rose',          value: '#F43F5E' },
+  { name: 'Violet',        value: '#8B5CF6' },
 ];
 
 export function applyAccentColor(color: string) {
@@ -29,7 +29,7 @@ export function applyAccentColor(color: string) {
 export const ColorPicker: React.FC = () => {
   const { t } = useTranslation();
   const [current, setCurrent] = useState(() =>
-    localStorage.getItem('accent_color') || '#D97757'
+    localStorage.getItem('accent_color') || '#A9772C'
   );
   const [open, setOpen] = useState(false);
 
