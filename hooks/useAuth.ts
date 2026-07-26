@@ -39,7 +39,19 @@ export const useAuth = () => {
         if (p.preferences) {
           const pr = p.preferences;
           if (pr.theme) { const dark = pr.theme === 'dark'; setIsDark(dark); document.documentElement.classList.toggle('dark', dark); localStorage.setItem('theme', pr.theme); }
-          if (pr.accent_color) { document.documentElement.style.setProperty('--primary', pr.accent_color); localStorage.setItem('accent_color', pr.accent_color); }
+          // Einmaliger Reset auf die neue Logo-Farbe (Gold) für JEDEN Account,
+          // unabhängig davon, was vorher als Akzentfarbe gespeichert war —
+          // Auswahl in den Einstellungen bleibt danach normal frei änderbar.
+          if (!localStorage.getItem('studearc_accent_reset_v1')) {
+            document.documentElement.style.setProperty('--primary', '#A9772C');
+            document.documentElement.style.setProperty('--primary-text', '#ffffff');
+            localStorage.setItem('accent_color', '#A9772C');
+            localStorage.setItem('studearc_accent_reset_v1', '1');
+            import('../services/syncService').then(({ syncPreferences }) => syncPreferences(user.id, { accent_color: '#A9772C' })).catch(() => {});
+          } else if (pr.accent_color) {
+            document.documentElement.style.setProperty('--primary', pr.accent_color);
+            localStorage.setItem('accent_color', pr.accent_color);
+          }
           if (pr.font_choice) localStorage.setItem('font_choice', pr.font_choice);
           if (pr.line_height) localStorage.setItem('line_height', pr.line_height);
           if (pr.language === 'de' || pr.language === 'tr') { localStorage.setItem('studearc_language', pr.language); setLocale(pr.language); }
