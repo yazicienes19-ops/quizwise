@@ -205,7 +205,7 @@ const App: React.FC = () => {
       <ToastContainer />
       <LandingPage onAuthClick={() => auth.setShowAuthModal(true)} />
       {auth.showAuthModal && <AuthModal onClose={() => auth.setShowAuthModal(false)} />}
-      {!cookieConsent && <CookieBanner
+      {!cookieConsent && !auth.showAuthModal && <CookieBanner
         onAccept={() => { setCookieConsent(true); localStorage.setItem('cookie_consent', 'accepted'); }}
         onDecline={() => { setCookieConsent(true); localStorage.setItem('cookie_consent', 'declined'); }}
         onShowPrivacy={() => setLegalPage('datenschutz')}
@@ -291,7 +291,7 @@ const App: React.FC = () => {
         </React.Suspense>
         </ErrorBoundary>
       </Layout>
-      {!cookieConsent && <CookieBanner
+      {!cookieConsent && !auth.showAuthModal && <CookieBanner
         onAccept={() => { setCookieConsent(true); localStorage.setItem('cookie_consent', 'accepted'); }}
         onDecline={() => { setCookieConsent(true); localStorage.setItem('cookie_consent', 'declined'); }}
         onShowPrivacy={() => setLegalPage('datenschutz')}
