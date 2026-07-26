@@ -568,7 +568,7 @@ export const LearningCoach: React.FC<LearningCoachProps> = ({ metrics, decks, on
                     onClick={(e) => { e.stopPropagation(); handleDismissTopic(dt.topic); }}
                     aria-label={t('lc.dismissTopic')}
                     title={t('lc.dismissTopic')}
-                    className="absolute top-1/2 right-1.5 -translate-y-1/2 w-3.5 h-3.5 flex items-center justify-center rounded-full text-[9px] font-black leading-none opacity-0 group-hover:opacity-60 hover:!opacity-100 transition-opacity"
+                    className="absolute top-1/2 right-1.5 -translate-y-1/2 w-3.5 h-3.5 flex items-center justify-center rounded-full text-[10px] font-black leading-none opacity-70 hover:opacity-100 transition-opacity"
                     style={{ color: securityColor(dt.security) }}
                   >×</button>
                 </div>
