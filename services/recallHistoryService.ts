@@ -37,3 +37,19 @@ export const deleteRecallResult = (id: string, userId?: string | null): void => 
     import('./syncService').then(({ syncLearningField }) => syncLearningField(userId, 'recall_history', updated)).catch(() => {});
   }
 };
+
+/**
+ * Löscht den kompletten Feynman-/Erklärer-Verlauf zu einem Dokument-/Ordner-
+ * namen (kein docId vorhanden, siehe RecallResult) — z.B. beim Löschen des
+ * Dokuments oder Ordners, damit verwaiste Sessions nicht in der Lernanalyse
+ * stehen bleiben.
+ */
+export const deleteResultsForDocName = (docName: string, userId?: string | null): void => {
+  const all = readAll();
+  const updated = all.filter(r => r.docName !== docName);
+  if (updated.length === all.length) return;
+  localStorage.setItem(STORAGE_KEY, JSON.stringify(updated));
+  if (userId) {
+    import('./syncService').then(({ syncLearningField }) => syncLearningField(userId, 'recall_history', updated)).catch(() => {});
+  }
+};

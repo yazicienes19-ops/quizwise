@@ -62,3 +62,11 @@ export function getAskedChaptersForDoc(docId: string): number[] {
   const chapters = new Set(getReaderLog(docId).map(e => e.chapterIndex));
   return Array.from(chapters).sort((a, b) => a - b);
 }
+
+/** Löscht den Tutor-Log zu einem Dokument, z.B. beim Löschen des Dokuments selbst. */
+export function deleteLogForDoc(docId: string, userId?: string | null): void {
+  const all = readAll();
+  const updated = all.filter(e => e.docId !== docId);
+  if (updated.length === all.length) return;
+  writeAll(updated, userId);
+}

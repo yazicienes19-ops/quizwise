@@ -15,6 +15,12 @@ import {
   UploadTimeoutError,
 } from '../services/documentService';
 import { toast } from '../services/toast';
+import { documentDisplayName } from '../services/libraryService';
+import { deleteResultsForDoc as deleteQuizResultsForDoc } from '../services/quizHistoryService';
+import { deleteResultsForDocName as deleteExamResultsForDocName } from '../services/examHistoryService';
+import { deleteResultsForDocName as deleteRecallResultsForDocName } from '../services/recallHistoryService';
+import { deleteLogForDoc } from '../services/readerLogService';
+import { removeMistakesByDocId } from '../services/mistakeReviewService';
 import mammoth from 'mammoth';
 import heic2any from 'heic2any';
 
@@ -110,8 +116,18 @@ export const useDocuments = ({ user, userPlan, isOffline, setIsLoading, setShowU
   };
 
   const removeCollection = (id: string) => {
+    const col = collections.find(c => c.id === id);
     saveCollections(collections.filter(c => c.id !== id));
     if (user) deleteCollectionFromSupabase(id).catch(() => {});
+    // Der Ordner selbst kann als Quelle für Klausur/Feynman über den gesamten
+    // Ordner gedient haben ("Ordner: <Name>", siehe collectionSource.ts) — die
+    // enthaltenen Dokumente bleiben zwar erhalten, aber diese Ordner-weite
+    // Lernanalyse gehört zu einem jetzt nicht mehr existierenden Ordner.
+    if (col) {
+      const folderName = `Ordner: ${col.name}`;
+      deleteExamResultsForDocName(folderName, user?.id);
+      deleteRecallResultsForDocName(folderName, user?.id);
+    }
   };
 
   const updateCollection = (updated: Collection) => {
@@ -123,6 +139,17 @@ export const useDocuments = ({ user, userPlan, isOffline, setIsLoading, setShowU
     const doc = documents.find(d => d.id === id);
     saveDocs(documents.filter(d => d.id !== id));
     if (user && doc) deleteDocumentFromSupabase(doc).catch(() => {});
+    // Ein gelöschtes Dokument braucht niemand mehr in der Lernanalyse — sonst
+    // bleiben Quiz-/Klausur-/Feynman-/Tutor-Sessions zu einer nicht mehr
+    // existierenden Quelle als Karteileichen sichtbar (Themen, Verlauf, Scores).
+    if (doc) {
+      const docName = documentDisplayName(doc);
+      deleteQuizResultsForDoc(id, user?.id);
+      deleteExamResultsForDocName(docName, user?.id);
+      deleteRecallResultsForDocName(docName, user?.id);
+      deleteLogForDoc(id, user?.id);
+      removeMistakesByDocId(id, user?.id);
+    }
   };
 
   const moveDoc = (docId: string, collectionId: string | undefined) => {

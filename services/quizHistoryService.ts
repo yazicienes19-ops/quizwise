@@ -58,6 +58,21 @@ export const deleteQuizResult = (id: string, userId?: string | null): void => {
   }
 };
 
+/**
+ * Löscht den kompletten Quiz-Verlauf zu einem Dokument (z.B. beim Löschen des
+ * Dokuments selbst) — verwaiste Sessions zu nicht mehr existierenden Quellen
+ * sollen nicht in der Lernanalyse stehen bleiben.
+ */
+export const deleteResultsForDoc = (docId: string, userId?: string | null): void => {
+  const all = readAll();
+  const updated = all.filter(r => r.docId !== docId);
+  if (updated.length === all.length) return;
+  localStorage.setItem(STORAGE_KEY, JSON.stringify(updated));
+  if (userId) {
+    import('./syncService').then(({ syncLearningField }) => syncLearningField(userId, 'quiz_history', updated)).catch(() => {});
+  }
+};
+
 export const getDocStats = (docId: string): {
   count: number;
   lastAt: number | null;

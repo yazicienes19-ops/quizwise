@@ -50,3 +50,18 @@ export const deleteExamResult = (id: string, userId?: string | null): void => {
     import('./syncService').then(({ syncLearningField }) => syncLearningField(userId, 'exam_history', updated)).catch(() => {});
   }
 };
+
+/**
+ * Löscht den kompletten Klausur-Verlauf zu einem Dokument-/Ordnernamen (kein
+ * docId vorhanden, siehe ExamResult) — z.B. beim Löschen des Dokuments oder
+ * Ordners, damit verwaiste Klausuren nicht in der Lernanalyse stehen bleiben.
+ */
+export const deleteResultsForDocName = (docName: string, userId?: string | null): void => {
+  const all = readAll();
+  const updated = all.filter(r => r.docName !== docName);
+  if (updated.length === all.length) return;
+  localStorage.setItem(STORAGE_KEY, JSON.stringify(updated));
+  if (userId) {
+    import('./syncService').then(({ syncLearningField }) => syncLearningField(userId, 'exam_history', updated)).catch(() => {});
+  }
+};
