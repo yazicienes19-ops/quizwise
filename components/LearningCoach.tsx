@@ -97,22 +97,37 @@ export const LearningCoach: React.FC<LearningCoachProps> = ({ metrics, decks, on
     return { ids, names };
   }, [activeModule, documents]);
 
-  const quizResults = useMemo(() =>
-    moduleFilter ? allQuizResults.filter(r => moduleFilter.ids.has(r.docId) || moduleFilter.names.has(r.docName)) : allQuizResults,
-  [allQuizResults, moduleFilter]);
-  const examResults = useMemo(() =>
-    moduleFilter ? allExamResults.filter(r => moduleFilter.names.has(r.docName)) : allExamResults,
-  [allExamResults, moduleFilter]);
-  const recallResults = useMemo(() =>
-    moduleFilter ? allRecallResults.filter(r => moduleFilter.names.has(r.docName) || moduleFilter.names.has(r.topic)) : allRecallResults,
-  [allRecallResults, moduleFilter]);
+  // Sowohl auf das aktive Fach beschränkt (moduleFilter) als auch um manuell
+  // ausgeblendete Themen bereinigt (dismissedTopics, z.B. Karteileichen eines
+  // längst gelöschten Dokuments) — einmal hier gefiltert, wirkt es automatisch
+  // in allem, was daraus abgeleitet wird (Profil, Learning Score, Prognose, …).
+  const quizResults = useMemo(() => {
+    const scoped = moduleFilter ? allQuizResults.filter(r => moduleFilter.ids.has(r.docId) || moduleFilter.names.has(r.docName)) : allQuizResults;
+    return scoped
+      .filter(r => !dismissedTopics.has(r.docName))
+      .map(r => r.weakTopics.some(t => dismissedTopics.has(t)) ? { ...r, weakTopics: r.weakTopics.filter(t => !dismissedTopics.has(t)) } : r);
+  }, [allQuizResults, moduleFilter, dismissedTopics]);
+  const examResults = useMemo(() => {
+    const scoped = moduleFilter ? allExamResults.filter(r => moduleFilter.names.has(r.docName)) : allExamResults;
+    return scoped
+      .filter(r => !dismissedTopics.has(r.docName))
+      .map(r => r.weakTopics.some(t => dismissedTopics.has(t)) ? { ...r, weakTopics: r.weakTopics.filter(t => !dismissedTopics.has(t)) } : r);
+  }, [allExamResults, moduleFilter, dismissedTopics]);
+  const recallResults = useMemo(() => {
+    const scoped = moduleFilter ? allRecallResults.filter(r => moduleFilter.names.has(r.docName) || moduleFilter.names.has(r.topic)) : allRecallResults;
+    return scoped.filter(r => !dismissedTopics.has(r.docName) && !dismissedTopics.has(r.topic));
+  }, [allRecallResults, moduleFilter, dismissedTopics]);
 
   // Anki-Konfidenz (TopicMetric) hat keine Dokument-/Modul-Zuordnung (siehe
   // services/topicConfidence.ts). Bei aktivem Fach lässt sie sich also nicht
   // korrekt zuordnen — statt sie fälschlich als "für dieses Fach" auszugeben
   // (z.B. Themen eines ganz anderen Fachs als "kritisch" zeigen), blenden wir
-  // sie dort lieber ganz aus: keine Werte statt falscher Werte.
-  const moduleScopedMetrics = useMemo(() => activeModule ? [] : metrics, [activeModule, metrics]);
+  // sie dort lieber ganz aus: keine Werte statt falscher Werte. Zusätzlich um
+  // manuell ausgeblendete Themen bereinigt.
+  const moduleScopedMetrics = useMemo(
+    () => (activeModule ? [] : metrics).filter(m => !dismissedTopics.has(m.topic)),
+    [activeModule, metrics, dismissedTopics],
+  );
 
   const profile = useMemo(() => buildLearningProfile({
     metrics: moduleScopedMetrics, quizResults, recallResults, examResults, decks,
