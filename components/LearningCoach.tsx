@@ -763,6 +763,7 @@ export const LearningCoach: React.FC<LearningCoachProps> = ({ metrics, decks, on
           userId={userId}
           moduleFilter={moduleFilter}
           moduleId={activeModule?.id ?? null}
+          dismissedTopics={dismissedTopics}
         />
       </div>
     </div>

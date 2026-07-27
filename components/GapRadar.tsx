@@ -259,9 +259,15 @@ interface GapRadarProps {
   moduleFilter?: { ids: Set<string>; names: Set<string> } | null;
   /** Nur für Cache-Scoping der Tiefenanalyse und die kompakte „Alle Fächer"-Ansicht. */
   moduleId?: string | null;
+  /** Manuell ausgeblendete Themen (services/dismissedTopicsService.ts) — z.B.
+   *  Karteileichen von längst gelöschten Dokumenten, deren Verlauf zu alt ist,
+   *  um noch in der Session-Historie zu erscheinen und dort gelöscht zu werden. */
+  dismissedTopics?: Set<string>;
 }
 
-export const GapRadar: React.FC<GapRadarProps> = ({ metrics, onNavigate, onAction, hideHeader, userId, moduleFilter = null, moduleId = null }) => {
+const EMPTY_DISMISSED = new Set<string>();
+
+export const GapRadar: React.FC<GapRadarProps> = ({ metrics, onNavigate, onAction, hideHeader, userId, moduleFilter = null, moduleId = null, dismissedTopics = EMPTY_DISMISSED }) => {
   // „Alle Fächer": bewusst kompaktere Ansicht mit nur den wichtigsten Kennzahlen
   // statt Verlaufs-Chart, Schwachstellen-Liste, Session-Historie und Tiefenanalyse.
   const compact = !moduleId;
@@ -285,26 +291,35 @@ export const GapRadar: React.FC<GapRadarProps> = ({ metrics, onNavigate, onActio
     return () => document.removeEventListener('mousedown', handler);
   }, [openTopic]);
 
-  // ── Raw data (bereits auf das aktive Fach gefiltert, siehe moduleFilter) ──────
+  // ── Raw data (bereits auf das aktive Fach gefiltert, siehe moduleFilter, und
+  //    um manuell ausgeblendete Themen bereinigt, siehe dismissedTopics) ──────
   const [historyBump, setHistoryBump] = useState(0);
   const allQuiz = useMemo(() => {
     const all = getAllResults();
-    return moduleFilter ? all.filter(r => moduleFilter.ids.has(r.docId) || moduleFilter.names.has(r.docName)) : all;
-  }, [historyBump, moduleFilter]);
+    const scoped = moduleFilter ? all.filter(r => moduleFilter.ids.has(r.docId) || moduleFilter.names.has(r.docName)) : all;
+    return scoped
+      .filter(r => !dismissedTopics.has(r.docName))
+      .map(r => r.weakTopics.some(t => dismissedTopics.has(t)) ? { ...r, weakTopics: r.weakTopics.filter(t => !dismissedTopics.has(t)) } : r);
+  }, [historyBump, moduleFilter, dismissedTopics]);
   const allRecall = useMemo(() => {
     const all = getAllRecallResults();
-    return moduleFilter ? all.filter(r => moduleFilter.names.has(r.docName) || moduleFilter.names.has(r.topic)) : all;
-  }, [historyBump, moduleFilter]);
+    const scoped = moduleFilter ? all.filter(r => moduleFilter.names.has(r.docName) || moduleFilter.names.has(r.topic)) : all;
+    return scoped.filter(r => !dismissedTopics.has(r.docName) && !dismissedTopics.has(r.topic));
+  }, [historyBump, moduleFilter, dismissedTopics]);
   const allExam = useMemo(() => {
     const all = getAllExamResults();
-    return moduleFilter ? all.filter(r => moduleFilter.names.has(r.docName)) : all;
-  }, [historyBump, moduleFilter]);
+    const scoped = moduleFilter ? all.filter(r => moduleFilter.names.has(r.docName)) : all;
+    return scoped
+      .filter(r => !dismissedTopics.has(r.docName))
+      .map(r => r.weakTopics.some(t => dismissedTopics.has(t)) ? { ...r, weakTopics: r.weakTopics.filter(t => !dismissedTopics.has(t)) } : r);
+  }, [historyBump, moduleFilter, dismissedTopics]);
   const allTutorLog = useMemo(() => {
     const all = getAllReaderLog();
-    return moduleFilter
+    const scoped = moduleFilter
       ? all.filter(r => (r.docId && moduleFilter.ids.has(r.docId)) || (r.docName && moduleFilter.names.has(r.docName)))
       : all;
-  }, [historyBump, moduleFilter]);
+    return scoped.filter(r => !(r.docName && dismissedTopics.has(r.docName)));
+  }, [historyBump, moduleFilter, dismissedTopics]);
 
   // Ändert sich der Verlauf NACH dem ersten Render (z.B. eine Session wird
   // gelöscht), ist eine bereits gezeigte Tiefenanalyse potenziell nicht mehr
@@ -350,7 +365,7 @@ export const GapRadar: React.FC<GapRadarProps> = ({ metrics, onNavigate, onActio
   [allExam, selectedDoc]);
 
   // Anki metrics are not filtered by doc (no docId link available)
-  const filteredMetrics = useMemo(() => metrics, [metrics]);
+  const filteredMetrics = useMemo(() => metrics.filter(m => !dismissedTopics.has(m.topic)), [metrics, dismissedTopics]);
 
   // ── Global trend ────────────────────────────────────────────────────────────
   const trend = useMemo((): 'up' | 'down' | 'stable' => {
