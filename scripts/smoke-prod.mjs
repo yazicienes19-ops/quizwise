@@ -18,7 +18,10 @@ const fail = (msg) => { console.error('❌ SMOKE FAIL:', msg); process.exitCode 
 const ok = (msg) => console.log('✅', msg);
 
 const browser = await chromium.launch();
-const page = await browser.newPage();
+// locale: 'de-DE' fest — sonst übernimmt Playwright den Standard 'en-US' als
+// navigator.language, die App (seit EN/TR/DE-Support) würde dann automatisch
+// auf Englisch starten und die deutschen Text-Selektoren unten liefen ins Leere.
+const page = await browser.newPage({ locale: 'de-DE' });
 const errors = [];
 page.on('pageerror', e => errors.push(e.message));
 
