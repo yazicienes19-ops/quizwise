@@ -958,9 +958,38 @@ export interface GroundedExplanation {
  * Liefert außerdem sourceQuote NUR wenn found=true — kein erfundenes Zitat als
  * Begründung für eine Nicht-Antwort.
  */
+export interface GroundedExplanationContext {
+  subject?: string;
+  chapterTitle?: string;
+  page?: number;
+}
+
+// Der eigentliche Erklär-Prompt für den Fall "Student hat eine unverständliche
+// Stelle markiert" (MARKIERUNG) — Rollenbeschreibung/Struktur/Ton/Qualitäts-
+// kontrolle stammen aus der User-Spec für den Tutor-Splitscreen. Gilt bewusst
+// NUR für diesen Fall, NICHT für VERSTÄNDNISFRAGE/BEHAUPTUNG weiter unten —
+// dort bleibt das am 20.07. gefixte Verdikt-zuerst-Verhalten ("Ja, genau." /
+// "Fast — ...") unverändert, sonst würde der damalige Bug (Tutor ignoriert
+// Ja/Nein-Nachfragen) wieder auftreten.
+const MARKIERUNG_STRATEGY = `- Bei MARKIERUNG: Du bist ein außergewöhnlich guter Universitätsdozent — geduldig, präzise, verständlich. Ziel: Der Student soll danach sagen können "Jetzt verstehe ich, was damit gemeint ist." Es reicht NICHT, den markierten Text umzuschreiben oder zusammenzufassen — erkläre die IDEE dahinter, nicht nur die Formulierung.
+  Beginne NIEMALS mit "Das ist richtig.", "Genau.", "Korrekt.", "Diese Aussage beschreibt...", "Das bedeutet...", "Wie bereits erwähnt..." oder "Zusammenfassend...". Wiederhole niemals einfach den markierten Satz. Schreibe niemals eine Definition ohne Erklärung.
+  Erkenne zuerst die Art der Stelle (Definition / Fachbegriff / Theorie / Experiment / Modell / Zusammenhang / Ursache-Wirkung / Formel / Statistik / Beispiel / Argument) und wähle die passende Strategie:
+  · Definition: der Gedanke dahinter, warum man diese Definition braucht, ein Beispiel.
+  · Fachbegriff: einfache Definition in Alltagssprache, dann ein Beispiel.
+  · Theorie/Modell: Grundidee, die einzelnen Bestandteile, warum sie wichtig ist, ein Beispiel.
+  · Zusammenhang/Ursache-Wirkung: die Ursache, die Wirkung, weshalb dieser Zusammenhang besteht.
+  · Experiment: Fragestellung, Aufbau, Ergebnis, Bedeutung.
+  · Formel/Statistik/Beispiel/Argument: sinngemäß nach demselben Prinzip — was es aussagt, warum es so ist, ein konkretes Beispiel.
+  Struktur, wenn passend (nicht erzwingen, soll sich natürlich lesen, nicht jeder Punkt ist immer nötig): 1. Kernaussage 2. einfache Erklärung 3. konkretes Beispiel/Alltagsanalogie (z.B. "Stell dir vor..." oder "Man kann sich das vorstellen wie...") 4. warum das wichtig ist. Erkläre nicht nur WAS etwas ist, sondern WARUM/WIESO/WOFÜR.
+  Ton: wie ein freundlicher Universitätsdozent, nicht wie ein Lexikon oder eine Suchmaschine, nicht übertrieben locker, nicht übertrieben wissenschaftlich — verständlich für ein Erstsemester.
+  Länge: 150-300 Wörter, bei einfachen Fragen kürzer.
+  Beziehe dich immer zuerst auf den bereitgestellten Ausschnitt. Falls ergänzendes Allgemeinwissen wirklich hilfreich ist, kennzeichne es ausdrücklich mit dem Präfix "Hintergrundwissen:" — erfinde nie Zitate oder Seitenzahlen.
+  Prüfe gedanklich vor der Antwort: Habe ich nur umformuliert statt erklärt? Habe ich gesagt, warum es wichtig ist? Gibt es ein Beispiel? Würde ein Erstsemester das verstehen? Falls nein, überarbeite die Antwort.`;
+
 export const generateGroundedExplanation = async (
   source: GenerationSource,
   concept: string,
+  context?: GroundedExplanationContext,
 ): Promise<GroundedExplanation> => {
   const parts: any[] = [sourceTopart(source)];
   // 600 statt 200 — die Textauswahl-Aktion "Zusammenfassen" (PdfSplitScreenReader)
@@ -968,23 +997,30 @@ export const generateGroundedExplanation = async (
   // 200 hätte sie mitten im Zitat abgeschnitten.
   const safeConcept = sanitizeUserInput(concept, 600);
 
+  const contextLine = context && (context.subject || context.chapterTitle || context.page)
+    ? `\nKontext: ${[
+        context.subject && `Fach: ${context.subject}`,
+        context.chapterTitle && `Kapitel/Thema: ${context.chapterTitle}`,
+        context.page && `Seite: ${context.page}`,
+      ].filter(Boolean).join(' · ')}`
+    : '';
+
   const intentInstruction = `\n\nENTSCHEIDE ZUERST, um welchen Fall es sich bei der Nutzereingabe handelt:
-- BEGRIFF: Die Eingabe ist NUR ein kurzer Fachbegriff oder eine kurze Nominalphrase (grob 1-4 Wörter), OHNE Satzstruktur, ohne Verb, das eine Behauptung ausdrückt, ohne Fragezeichen zu einer Aussage. Beispiel: "Falsifikationsprinzip".
+- MARKIERUNG: Der Student hat eine Textstelle markiert, weil sie unverständlich formuliert ist (Fachbegriff, Definition, Theorie, Satz, Passage) — es geht darum, den Inhalt zu verstehen, nicht um eine eigene Interpretation zu prüfen.
 - ZUSAMMENFASSUNG: Die Eingabe ist eine Aufforderung, einen mitgelieferten Abschnitt zusammenzufassen (beginnt z.B. mit "Fasse" oder "Zusammenfassung von").
-- VERSTÄNDNISFRAGE/BEHAUPTUNG: ALLES ANDERE — jede Eingabe mit Satzstruktur, jede Formulierung mit einem Verb wie "ist/heißt/bedeutet/stimmt", jede Frage die sich auf eine Aussage oder Beziehung zwischen Begriffen bezieht, auch bei Tippfehlern oder holpriger Grammatik. Im Zweifel IMMER dieser Fall, nicht BEGRIFF.
+- VERSTÄNDNISFRAGE/BEHAUPTUNG: Der Student formuliert eine EIGENE Interpretation/Paraphrase und will wissen, ob sie richtig ist (z.B. "Ist damit gemeint, dass...", "Heißt das...", "Also ist X gleich Y?"), auch bei Tippfehlern oder holpriger Grammatik.
 
 Diese Einordnung ist NUR für dich intern — gib sie NICHT in "answer" aus.
 
 Verhalte dich dann so:
-- Bei BEGRIFF: Erkläre in 3 Stufen mit exakt diesen Überschriften: ${explainerHeadings()}. Jede Überschrift steht ALLEIN auf ihrer eigenen Zeile. Bringe in der letzten Stufe mindestens EIN konkretes Beispiel.
+${MARKIERUNG_STRATEGY}
 - Bei ZUSAMMENFASSUNG: Fasse NUR den mitgelieferten Abschnitt in 2-4 prägnanten Sätzen zusammen, konzentriert auf die Kernaussagen. KEINE neue Erklärung des ganzen Konzepts von Grund auf, KEINE Überschriften — nur die Zusammenfassung selbst.
-- Bei VERSTÄNDNISFRAGE/BEHAUPTUNG: Bewerte ZUERST explizit, ob sie korrekt ist, dann korrigiere/ergänze in 1-3 kurzen Sätzen. Danach ein kurzes Beispiel. KEINE Überschriften, KEINE neue Grunderklärung von vorne.`;
+- Bei VERSTÄNDNISFRAGE/BEHAUPTUNG: Bewerte ZUERST explizit, ob sie korrekt ist ("Ja, genau." / "Fast — ..." / "Nein, das stimmt nicht ganz, weil..."), dann korrigiere/ergänze in 1-3 kurzen Sätzen. Danach ein kurzes Beispiel. KEINE Überschriften, KEINE neue Grunderklärung von vorne.`;
 
-  const groundingRule = `\n\nWICHTIGE REGEL ZU "found": Setze found=true NUR, wenn der oben bereitgestellte Ausschnitt den Begriff/die Frage inhaltlich beantwortet (auch eine knappe, aber inhaltliche Erklärung zählt). Setze found=false, wenn der Ausschnitt dazu NICHTS oder nur eine bloße beiläufige Erwähnung ohne jede Erklärung enthält — in diesem Fall bleibt "answer" ein kurzer, ehrlicher Satz, dass dieser Ausschnitt dazu nichts hergibt, und "sourceQuote" bleibt leer. Erfinde NIEMALS ein Zitat als Beleg für eine Nicht-Antwort.`;
+  const groundingRule = `\n\nWICHTIGE REGEL ZU "found": Setze found=true NUR, wenn der oben bereitgestellte Ausschnitt den Begriff/die Frage inhaltlich beantwortet (auch eine knappe, aber inhaltliche Erklärung zählt) — optionales, ausdrücklich als "Hintergrundwissen:" gekennzeichnetes Zusatzwissen ändert daran nichts. Setze found=false, wenn der Ausschnitt dazu NICHTS oder nur eine bloße beiläufige Erwähnung ohne jede Erklärung enthält — in diesem Fall bleibt "answer" ein kurzer, ehrlicher Satz, dass dieser Ausschnitt dazu nichts hergibt, und "sourceQuote" bleibt leer. Erfinde NIEMALS ein Zitat als Beleg für eine Nicht-Antwort.`;
 
-  parts.push({ text: `Nutzereingabe: "${safeConcept}"
-Verarbeite sie ausschließlich basierend auf dem oben bereitgestellten Ausschnitt.
-STRENGE REGEL: Verwende NUR Inhalte aus dem Ausschnitt. Kein Allgemeinwissen, keine externen Quellen, keine Erfindungen.${intentInstruction}${groundingRule}${outputLangDirective()}` });
+  parts.push({ text: `Nutzereingabe: "${safeConcept}"${contextLine}
+Verarbeite sie primär basierend auf dem oben bereitgestellten Ausschnitt.${intentInstruction}${groundingRule}${outputLangDirective()}` });
 
   const text = await callBackend({
     complexity: 'heavy',

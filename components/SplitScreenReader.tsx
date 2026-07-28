@@ -150,14 +150,15 @@ export const SplitScreenReader: React.FC<SplitScreenReaderProps> = ({ doc, userI
       // (found=false), steht der Begriff evtl. in einem anderen Kapitel —
       // dann transparent im GANZEN Dokument nachsehen, statt fälschlich
       // "steht nicht im Dokument" zu zeigen.
-      const scoped = await generateGroundedExplanation({ text: chapterContent }, trimmed);
+      const context = { subject: doc.subject, chapterTitle: activeChapter.title };
+      const scoped = await generateGroundedExplanation({ text: chapterContent }, trimmed, context);
       let finalAnswer = scoped.answer;
       let quote = scoped.sourceQuote;
       let expandedScope = false;
       if (!scoped.found) {
         // Auch hier die grounded Variante nutzen — sonst könnte ein erfundenes
         // Zitat als Beleg für eine Nicht-Antwort auftauchen (s. Audit-Fund 3).
-        const wholeDoc = await generateGroundedExplanation({ text: fullText }, trimmed);
+        const wholeDoc = await generateGroundedExplanation({ text: fullText }, trimmed, context);
         finalAnswer = wholeDoc.answer;
         quote = wholeDoc.sourceQuote;
         expandedScope = true;

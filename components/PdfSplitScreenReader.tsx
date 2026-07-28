@@ -262,7 +262,8 @@ export const PdfSplitScreenReader: React.FC<PdfSplitScreenReaderProps> = ({ doc,
       // steht der Begriff evtl. einfach auf einer anderen Seite — dann transparent
       // im GANZEN Dokument nachsehen, statt fälschlich "steht nicht im Dokument" zu
       // zeigen, nur weil die aktuelle Seite zufällig nichts dazu hergibt.
-      const scoped = await generateGroundedExplanation(pageSource, trimmed);
+      const context = { subject: doc.subject, chapterTitle: `Seite ${askedPageNumber}`, page: askedPageNumber };
+      const scoped = await generateGroundedExplanation(pageSource, trimmed, context);
       let finalAnswer = scoped.answer;
       let quote = scoped.sourceQuote;
       let expandedScope = false;
@@ -270,7 +271,7 @@ export const PdfSplitScreenReader: React.FC<PdfSplitScreenReaderProps> = ({ doc,
         // Auch hier die grounded Variante nutzen, nicht die einfache generateExplanation
         // — sonst fordert der alte Prompt weiterhin IMMER ein Zitat an und erfindet
         // eines, wenn das Dokument die Frage am Ende doch nirgends beantwortet.
-        const wholeDoc = await generateGroundedExplanation(getDocumentSource(doc), trimmed);
+        const wholeDoc = await generateGroundedExplanation(getDocumentSource(doc), trimmed, context);
         finalAnswer = wholeDoc.answer;
         quote = wholeDoc.sourceQuote;
         expandedScope = true;
