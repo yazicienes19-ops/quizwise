@@ -8,12 +8,8 @@ import { generateCoachInsights, WrongAnswerContext } from '../services/geminiSer
 import { buildLearningProfile, buildRealTopicMastery, buildDailyPlan, buildMethodCommentary, buildContextMotivation, getCategoryLabel, getMethodLabel } from '../services/learningProfileService';
 import { buildLearningScore } from '../services/learningScoreService';
 import { buildExamForecast } from '../services/examForecastService';
-import { collectionDocs } from '../services/collectionSource';
-import { documentDisplayName } from '../services/libraryService';
 import type { DailyPlanStep } from '../services/learningProfileService';
-import { getAllResults } from '../services/quizHistoryService';
-import { getAllRecallResults } from '../services/recallHistoryService';
-import { getAllExamResults } from '../services/examHistoryService';
+import { useModuleScopedActivity } from '../hooks/useModuleScopedActivity';
 import { getStreak } from '../services/streakService';
 import { getDismissedTopics, dismissTopic } from '../services/dismissedTopicsService';
 import { toast } from '../services/toast';
@@ -82,41 +78,12 @@ export const LearningCoach: React.FC<LearningCoachProps> = ({ metrics, decks, on
     setDismissBump(b => b + 1);
   };
 
-  const allQuizResults   = useMemo(() => getAllResults(), []);
-  const allRecallResults = useMemo(() => getAllRecallResults(), []);
-  const allExamResults   = useMemo(() => getAllExamResults(), []);
-  const streak           = useMemo(() => getStreak(), []);
+  const streak = useMemo(() => getStreak(), []);
 
   // Variante C: bei aktivem Fach zählen nur Ergebnisse aus diesem Ordner
-  // (per Dokument-ID, Anzeigename oder Ordner-Quelle "Ordner: <Name>")
-  const moduleFilter = useMemo(() => {
-    if (!activeModule) return null;
-    const docs = collectionDocs(activeModule, documents);
-    const ids = new Set(docs.map(d => d.id));
-    const names = new Set([...docs.map(d => documentDisplayName(d)), `Ordner: ${activeModule.name}`]);
-    return { ids, names };
-  }, [activeModule, documents]);
-
-  // Sowohl auf das aktive Fach beschränkt (moduleFilter) als auch um manuell
-  // ausgeblendete Themen bereinigt (dismissedTopics, z.B. Karteileichen eines
-  // längst gelöschten Dokuments) — einmal hier gefiltert, wirkt es automatisch
-  // in allem, was daraus abgeleitet wird (Profil, Learning Score, Prognose, …).
-  const quizResults = useMemo(() => {
-    const scoped = moduleFilter ? allQuizResults.filter(r => moduleFilter.ids.has(r.docId) || moduleFilter.names.has(r.docName)) : allQuizResults;
-    return scoped
-      .filter(r => !dismissedTopics.has(r.docName))
-      .map(r => r.weakTopics.some(t => dismissedTopics.has(t)) ? { ...r, weakTopics: r.weakTopics.filter(t => !dismissedTopics.has(t)) } : r);
-  }, [allQuizResults, moduleFilter, dismissedTopics]);
-  const examResults = useMemo(() => {
-    const scoped = moduleFilter ? allExamResults.filter(r => moduleFilter.names.has(r.docName)) : allExamResults;
-    return scoped
-      .filter(r => !dismissedTopics.has(r.docName))
-      .map(r => r.weakTopics.some(t => dismissedTopics.has(t)) ? { ...r, weakTopics: r.weakTopics.filter(t => !dismissedTopics.has(t)) } : r);
-  }, [allExamResults, moduleFilter, dismissedTopics]);
-  const recallResults = useMemo(() => {
-    const scoped = moduleFilter ? allRecallResults.filter(r => moduleFilter.names.has(r.docName) || moduleFilter.names.has(r.topic)) : allRecallResults;
-    return scoped.filter(r => !dismissedTopics.has(r.docName) && !dismissedTopics.has(r.topic));
-  }, [allRecallResults, moduleFilter, dismissedTopics]);
+  // (per Dokument-ID, Anzeigename oder Ordner-Quelle "Ordner: <Name>") —
+  // gemeinsame Logik mit dem Dashboard, s. hooks/useModuleScopedActivity.
+  const { quizResults, examResults, recallResults, moduleFilter } = useModuleScopedActivity(activeModule, documents, dismissedTopics);
 
   // Anki-Konfidenz (TopicMetric) hat keine Dokument-/Modul-Zuordnung (siehe
   // services/topicConfidence.ts). Bei aktivem Fach lässt sie sich also nicht
@@ -158,10 +125,10 @@ export const LearningCoach: React.FC<LearningCoachProps> = ({ metrics, decks, on
       (result.answers || [])
         .filter(a => !a.isCorrect)
         .slice(0, 4)
-        .map(a => {
+        .map((a): WrongAnswerContext | null => {
           const q = result.questions?.[a.questionIndex];
           if (!q) return null;
-          return { question: q.question, topic: q.topic, explanation: q.explanation, docName: result.docName };
+          return { id: `${result.id}:q${a.questionIndex}`, sessionId: result.id, question: q.question, topic: q.topic, explanation: q.explanation, docName: result.docName };
         })
         .filter((x): x is WrongAnswerContext => x !== null)
     ).slice(0, 15),

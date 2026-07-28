@@ -357,7 +357,7 @@ export const TermPaperSystem: React.FC<TermPaperSystemProps> = ({
     const existing = new Set(sources.map(p => p.url));
     const newOnes: AcademicSource[] = initialSources
       .filter(s => !existing.has(s.url))
-      .map((s, i) => ({ ...s, id: `init-${i}-${timestamp}`, type: 'article' as const }));
+      .map((s, i) => ({ ...s, id: `init-${i}-${timestamp}`, type: (s.isWeb ? 'other' : 'article') as AcademicSource['type'] }));
     if (!newOnes.length) return;
     setSources(prev => [...prev, ...newOnes]);
     newOnes.forEach(src => {

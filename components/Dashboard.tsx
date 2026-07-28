@@ -10,7 +10,7 @@ import { getStreak } from '../services/streakService';
 import { daysUntilDate } from '../services/calendarSessions';
 import { useTranslation } from '../i18n/I18nProvider';
 import type { TKey } from '../i18n';
-import { BrandMark } from './BrandMark';
+import { greetingKind } from '../services/dashboardService';
 
 const USAGE_KEY = 'studearc_feature_usage';
 
@@ -35,6 +35,7 @@ interface DashboardProps {
   documents?: ProcessedDocument[];
   /** Startet die Wiederholungs-Session fälliger Fehlerfragen (Quiz-Tab). */
   onStartMistakeReview?: () => void;
+  user?: { email?: string | null; user_metadata?: { full_name?: string } } | null;
 }
 
 interface ActionCard {
@@ -51,13 +52,18 @@ const BASE_CARDS: ActionCard[] = [
   { id: ActiveTab.QUIZ, titleKey: 'nav.quiz', descKey: 'dashboard.card.quiz.desc', prompt: 'Target bullseye icon, academic minimalist illustration', color: 'text-indigo-500' },
   { id: ActiveTab.EXAM, titleKey: 'nav.exam', descKey: 'dashboard.card.exam.desc', prompt: 'Exam paper graduation cap, academic illustration', color: 'text-rose-500' },
   { id: ActiveTab.CARDS, titleKey: 'nav.cards', descKey: 'dashboard.card.cards.desc', prompt: 'Flashcards study deck, minimalist illustration', color: 'text-violet-500' },
-  { id: ActiveTab.RADAR, titleKey: 'nav.radar', descKey: 'dashboard.card.radar.desc', prompt: 'Data analysis radar chart, academic illustration', color: 'text-emerald-500' }
+  { id: ActiveTab.RADAR, titleKey: 'nav.radar', descKey: 'dashboard.card.radar.desc', prompt: 'Data analysis radar chart, academic illustration', color: 'text-emerald-500' },
+  { id: ActiveTab.MINDMAP, titleKey: 'nav.mindmap', descKey: 'dashboard.card.mindmap.desc', prompt: 'Mindmap brainstorming tree, academic minimalist illustration', color: 'text-amber-500' }
 ];
 
-export const Dashboard: React.FC<DashboardProps> = ({ onTabChange, flowResult, documents = [], onStartMistakeReview }) => {
+export const Dashboard: React.FC<DashboardProps> = ({ onTabChange, flowResult, documents = [], onStartMistakeReview, user = null }) => {
   const { t, tp } = useTranslation();
   const [hovered, setHovered] = useState<ActiveTab | null>(null);
   const [usageCounts, setUsageCounts] = useState<Record<string, number>>(getUsageCounts);
+
+  const firstName = user?.user_metadata?.full_name?.trim().split(/\s+/)[0] || user?.email?.split('@')[0] || null;
+  const greetingBase = t(`dashboard.greeting.${greetingKind(new Date().getHours())}` as TKey);
+  const greeting = firstName ? `${greetingBase}, ${firstName}` : greetingBase;
 
   const dueCardsCount = useMemo(() => {
     try {
@@ -180,19 +186,14 @@ export const Dashboard: React.FC<DashboardProps> = ({ onTabChange, flowResult, d
 
   return (
     <div className="space-y-12 lg:space-y-24 py-12 px-4 animate-in fade-in duration-1000">
-      {/* Hero Section */}
-      <div className="text-center space-y-6">
-        <div className="space-y-2">
-            <div className="flex items-center justify-center gap-3 sm:gap-5">
-                <BrandMark size={44} strokeColor="var(--mark-stroke)" peakColor="var(--mark-peak)" className="w-9 h-9 sm:w-14 sm:h-14 lg:w-20 lg:h-20 shrink-0" />
-                <h1 className="text-5xl sm:text-7xl lg:text-9xl font-light tracking-tighter leading-none" style={{ color: 'var(--text-main)' }}>
-                    Stude<span className="font-bold" style={{ color: '#A9772C' }}>Arc</span>
-                </h1>
-            </div>
-            <p className="text-[9px] sm:text-xs font-black uppercase tracking-[0.3em] sm:tracking-[1em] text-slate-400 dark:text-white/30 sm:pl-4 text-center break-words">
-                {t('splash.tagline')}
-            </p>
-        </div>
+      {/* Hero Section: dynamische Begrüßung statt großem Logo (Logo bleibt klein in der Sidebar) */}
+      <div className="text-center space-y-2">
+        <h1 className="text-4xl sm:text-6xl lg:text-7xl font-light tracking-tighter leading-none" style={{ color: 'var(--text-main)' }}>
+          {greeting}
+        </h1>
+        <p className="text-[9px] sm:text-xs font-black uppercase tracking-[0.3em] sm:tracking-[1em] text-slate-400 dark:text-white/30 text-center break-words">
+          {t('splash.tagline')}
+        </p>
       </div>
 
       {/* Top-Banner: Heute fällig (Karten + Fehlerfragen) + Streak + Exam Countdown */}

@@ -44,6 +44,7 @@ const LearningCoach = React.lazy(() => import('./LearningCoach').then(m => ({ de
 const ExplainerSystem = React.lazy(() => import('./ExplainerSystem').then(m => ({ default: m.ExplainerSystem })));
 const StudyPlanner = React.lazy(() => import('./StudyPlanner').then(m => ({ default: m.StudyPlanner })));
 const FlashcardSystem = React.lazy(() => import('./FlashcardSystem').then(m => ({ default: m.FlashcardSystem })));
+const MindmapSystem = React.lazy(() => import('./MindmapSystem').then(m => ({ default: m.MindmapSystem })));
 
 interface AppContentProps {
   activeTab: ActiveTab;
@@ -163,7 +164,7 @@ export const AppContent: React.FC<AppContentProps> = (p) => {
 
   switch (activeTab) {
     case ActiveTab.DASHBOARD:
-      return <Dashboard onTabChange={setActiveTab} flowResult={flowResult} onAcceptFlow={saveFlowResult} documents={documents} onStartMistakeReview={handleStartMistakeReview} />;
+      return <Dashboard onTabChange={setActiveTab} flowResult={flowResult} onAcceptFlow={saveFlowResult} documents={documents} onStartMistakeReview={handleStartMistakeReview} user={user} />;
 
     case ActiveTab.LIBRARY:
       return <LibrarySystem
@@ -173,7 +174,7 @@ export const AppContent: React.FC<AppContentProps> = (p) => {
         onRetryAnalysis={retryAnalysis}
         onAction={(tab, doc) => {
           if (tab === ActiveTab.QUIZ) { setPendingActionDoc(doc); setQuestions([]); setAnswers([]); setActiveTab(ActiveTab.QUIZ); }
-          else if (tab === ActiveTab.EXPLAINER || tab === ActiveTab.CARDS || tab === ActiveTab.RECALL || tab === ActiveTab.EXAM || tab === ActiveTab.READER) { setPendingActionDoc(doc); setActiveTab(tab); }
+          else if (tab === ActiveTab.EXPLAINER || tab === ActiveTab.CARDS || tab === ActiveTab.RECALL || tab === ActiveTab.EXAM || tab === ActiveTab.READER || tab === ActiveTab.MINDMAP) { setPendingActionDoc(doc); setActiveTab(tab); }
           else { setPendingActionDoc(null); setActiveTab(tab); }
         }}
         onAddCollection={addCollection} onDeleteCollection={removeCollection}
@@ -314,7 +315,7 @@ export const AppContent: React.FC<AppContentProps> = (p) => {
     }
 
     case ActiveTab.READER: {
-      if (!pendingActionDoc) return <Dashboard onTabChange={setActiveTab} flowResult={flowResult} onAcceptFlow={saveFlowResult} documents={documents} onStartMistakeReview={handleStartMistakeReview} />;
+      if (!pendingActionDoc) return <Dashboard onTabChange={setActiveTab} flowResult={flowResult} onAcceptFlow={saveFlowResult} documents={documents} onStartMistakeReview={handleStartMistakeReview} user={user} />;
       // PDFs bekommen die echte Seitenansicht (pdf.js) statt des Digest-Fließtexts —
       // der Digest-Reader bleibt Fallback für Bilder und PDFs ohne Dateiinhalt.
       if (pendingActionDoc.type === 'pdf' && (pendingActionDoc.storagePath || pendingActionDoc.content)) {
@@ -434,11 +435,11 @@ export const AppContent: React.FC<AppContentProps> = (p) => {
       />;
 
     case ActiveTab.PAPER:
-      if (!isAdmin(user?.id)) return <Dashboard onTabChange={setActiveTab} flowResult={flowResult} onAcceptFlow={saveFlowResult} documents={documents} onStartMistakeReview={handleStartMistakeReview} />;
+      if (!isAdmin(user?.id)) return <Dashboard onTabChange={setActiveTab} flowResult={flowResult} onAcceptFlow={saveFlowResult} documents={documents} onStartMistakeReview={handleStartMistakeReview} user={user} />;
       return <TermPaperSystem availableDocuments={documents} onUploadNew={handleFileUpload} initialSources={savedSources} getDocumentSource={getDocumentSource} />;
 
     case ActiveTab.SEARCH:
-      if (!isAdmin(user?.id)) return <Dashboard onTabChange={setActiveTab} flowResult={flowResult} onAcceptFlow={saveFlowResult} documents={documents} onStartMistakeReview={handleStartMistakeReview} />;
+      if (!isAdmin(user?.id)) return <Dashboard onTabChange={setActiveTab} flowResult={flowResult} onAcceptFlow={saveFlowResult} documents={documents} onStartMistakeReview={handleStartMistakeReview} user={user} />;
       return <ScholarSearch
         results={searchResults}
         onSearch={async (q) => { setIsSearching(true); const { results } = await searchScholar(q); setSearchResults(results); setIsSearching(false); }}
@@ -474,7 +475,14 @@ export const AppContent: React.FC<AppContentProps> = (p) => {
         initialDoc={pendingActionDoc ?? undefined}
       />;
 
+    case ActiveTab.MINDMAP:
+      return <MindmapSystem
+        key={pendingActionDoc ? `mindmap-${pendingActionDoc.id}` : `mindmap-${activeModuleId ?? 'all'}`}
+        availableDocuments={documents} collections={collections} userId={user?.id}
+        initialDoc={pendingActionDoc ?? undefined}
+      />;
+
     default:
-      return <Dashboard onTabChange={setActiveTab} flowResult={flowResult} onAcceptFlow={saveFlowResult} documents={documents} onStartMistakeReview={handleStartMistakeReview} />;
+      return <Dashboard onTabChange={setActiveTab} flowResult={flowResult} onAcceptFlow={saveFlowResult} documents={documents} onStartMistakeReview={handleStartMistakeReview} user={user} />;
   }
 };

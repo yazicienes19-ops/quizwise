@@ -706,86 +706,57 @@ export const formatCitation = async (source: AcademicSource, style: CitationStyl
   return text;
 };
 
+/**
+ * Formatiert eine gespeicherte Quelle über die echte CSL-Zitier-Engine
+ * (citeprocService, citeproc-rs mit den Original-Zotero-Stildateien) statt
+ * über Gemini — die Felder von AcademicSource sind bereits strukturiert genug,
+ * ein LLM-Aufruf ist hier nicht mehr nötig (deterministische Formatierung,
+ * kein Rate-Risiko bei Interpunktion/et-al-Regeln).
+ */
 export const formatCitationFull = async (source: AcademicSource): Promise<MultiStyleCitation> => {
-  const sourceText = [
-    `Autoren: ${source.authors}`,
-    `Titel: ${source.title}`,
-    `Jahr: ${source.year}`,
-    source.journal ? `Journal/Verlag: ${source.journal}` : '',
-    source.url ? `URL/DOI: ${source.url}` : '',
-  ].filter(Boolean).join('\n');
-
-  const text = await callBackend({
-    parts: [{ text: `Erstelle vollständige Zitierformen für folgende Quelle:\n\n${sourceText}\n\nHalte dich exakt an APA 7th, MLA 9th, Harvard, Chicago 17th. Gib für jeden Stil den Literaturverzeichnis-Eintrag UND alle Kurzbelege für den Fließtext zurück.` }],
-    config: {
-      thinkingConfig: { thinkingBudget: 0 },
-      responseMimeType: 'application/json',
-      responseSchema: {
-        type: Type.OBJECT,
-        properties: {
-          apa: {
-            type: Type.OBJECT,
-            properties: { entry: { type: Type.STRING }, inTextKlammer: { type: Type.STRING }, inTextNarrativ: { type: Type.STRING } },
-            required: ['entry', 'inTextKlammer', 'inTextNarrativ']
-          },
-          mla: {
-            type: Type.OBJECT,
-            properties: { entry: { type: Type.STRING }, inText: { type: Type.STRING } },
-            required: ['entry', 'inText']
-          },
-          harvard: {
-            type: Type.OBJECT,
-            properties: { entry: { type: Type.STRING }, inText: { type: Type.STRING }, direct: { type: Type.STRING } },
-            required: ['entry', 'inText', 'direct']
-          },
-          chicago: {
-            type: Type.OBJECT,
-            properties: { fullNote: { type: Type.STRING }, shortNote: { type: Type.STRING }, bibliography: { type: Type.STRING } },
-            required: ['fullNote', 'shortNote', 'bibliography']
-          }
-        },
-        required: ['apa', 'mla', 'harvard', 'chicago']
-      }
-    }
+  const { formatAllStyles } = await import('./citeprocService');
+  return formatAllStyles({
+    authors: source.authors,
+    title: source.title,
+    year: source.year,
+    journal: source.journal,
+    url: source.url,
+    doi: source.doi,
+    type: source.type,
+    isWeb: source.isWeb,
   });
-  return JSON.parse(text || '{}');
 };
 
+/**
+ * Gemini übernimmt hier nur noch die Extraktion bibliographischer Rohdaten aus
+ * unformatiertem Freitext (das können LLMs gut) — die eigentliche Formatierung
+ * läuft danach über dieselbe citeprocService-Pipeline wie formatCitationFull,
+ * damit beide Wege konsistent dieselben Regeln anwenden.
+ */
 export const magicFormatCitation = async (input: string): Promise<MultiStyleCitation> => {
   const text = await callBackend({
-    parts: [{ text: `Extrahiere bibliographische Informationen aus diesem Textfragment und erstelle Zitationen in verschiedenen Stilen: "${sanitizeUserInput(input, 1000)}"` }],
+    parts: [{ text: `Extrahiere bibliographische Rohdaten aus diesem Textfragment: "${sanitizeUserInput(input, 1000)}"` }],
     config: {
       thinkingConfig: { thinkingBudget: 0 },
       responseMimeType: 'application/json',
       responseSchema: {
         type: Type.OBJECT,
         properties: {
-          apa: {
-            type: Type.OBJECT,
-            properties: { entry: { type: Type.STRING }, inTextKlammer: { type: Type.STRING }, inTextNarrativ: { type: Type.STRING } },
-            required: ['entry', 'inTextKlammer', 'inTextNarrativ']
-          },
-          mla: {
-            type: Type.OBJECT,
-            properties: { entry: { type: Type.STRING }, inText: { type: Type.STRING } },
-            required: ['entry', 'inText']
-          },
-          harvard: {
-            type: Type.OBJECT,
-            properties: { entry: { type: Type.STRING }, inText: { type: Type.STRING }, direct: { type: Type.STRING } },
-            required: ['entry', 'inText', 'direct']
-          },
-          chicago: {
-            type: Type.OBJECT,
-            properties: { fullNote: { type: Type.STRING }, shortNote: { type: Type.STRING }, bibliography: { type: Type.STRING } },
-            required: ['fullNote', 'shortNote', 'bibliography']
-          }
+          authors: { type: Type.STRING, description: 'Alle Autor:innen als "Vorname Nachname, Vorname2 Nachname2"' },
+          title: { type: Type.STRING },
+          year: { type: Type.STRING, description: 'Erscheinungsjahr, nur die 4 Ziffern' },
+          journal: { type: Type.STRING, description: 'Journal/Verlag, falls vorhanden' },
+          url: { type: Type.STRING, description: 'URL oder DOI, falls vorhanden' },
+          type: { type: Type.STRING, enum: ['article', 'book', 'other'] },
+          isWeb: { type: Type.BOOLEAN, description: 'true wenn es sich um eine reine Webseite ohne Journal/Verlag handelt' },
         },
-        required: ['apa', 'mla', 'harvard', 'chicago']
+        required: ['authors', 'title', 'year', 'type']
       }
     }
   });
-  return JSON.parse(text || '{}');
+  const extracted = JSON.parse(text || '{}');
+  const { formatAllStyles } = await import('./citeprocService');
+  return formatAllStyles(extracted);
 };
 
 export interface WrongAnswerContext {

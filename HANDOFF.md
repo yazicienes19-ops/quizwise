@@ -1,5 +1,29 @@
-# QuizWise — Session Handoff
-**Stand: 22. Juni 2026 (Session 18 — Stabilität, Analyse-Umsetzung, Bot-Entfernung, Mobile-Überarbeitung)**
+# QuizWise (StudeArc) — Session Handoff
+**Stand: 28. Juli 2026 (Claude-Code-Session — echte Zitier-Engine + Mindmap-Feature)**
+
+⚠️ Diese Datei wurde zwischen Session 18 (22.06.2026) und heute nicht gepflegt — die Memory-Datei des Assistenten (`~/.claude/projects/-Users-enesyazici/memory/project_quizwise.md`) enthält den vollständigen Verlauf der dazwischenliegenden Sessions (Rebrand zu StudeArc, Klausursimulator 2.0, Fehleranalyse-Überarbeitung, Tutor-Fixes u.v.m.). Die Tabelle unten unter "Ordnerstruktur"/"Tech Stack" ist entsprechend veraltet (kein Tailwind CDN mehr Thema, viele neue Features fehlen) — bei Bedarf dort nachschlagen statt hier zu vertrauen.
+
+---
+
+## Was heute (28.07.2026) erledigt wurde
+
+### 1. Echte Zitier-Engine (citeproc-rs) statt Gemini-Formatierung — DEPLOYED
+`components/TermPaperSystem.tsx`s Zitierfunktion (APA/MLA/Harvard/Chicago) ließ bisher Gemini die Formatierung frei erledigen (fehleranfällig bei Interpunktion/et-al-Regeln). Neu: **`services/citeprocService.ts`** nutzt `@citeproc-rs/wasm` (dieselbe Engine wie die echte Zotero-App) mit den Original-Zotero-Stildateien (`public/csl/styles/`, auf eine mit der Engine-Version kompatible Revision gepinnt — aktuelle Zotero-Dateien nutzen neuere CSL-Features, die diese Engine-Version nicht versteht) + deutscher Locale (`public/csl/locales/`, ebenfalls gepinnt). `services/geminiService.ts`s `formatCitationFull` läuft jetzt OHNE Gemini-Call (Felder sind schon strukturiert genug); `magicFormatCitation` extrahiert nur noch Rohdaten per Gemini und formatiert dann ebenfalls über citeproc. `markmap-lib/-view/-toolbar` durch `d3` ersetzt (für ein zwischenzeitliches Canvas-Experiment, s.u.) — Bundle-Chunk dadurch von ~915 KB auf ~53 KB geschrumpft. `vite-plugin-wasm` + `vite-plugin-top-level-await` neu für den Produktions-Build. Live getestet (Autor-Format "Nachname, Initiale & Nachname2, Initiale2" korrekt geparst, deutsche Begriffe "und"/"S." korrekt) — **User hat deployed**.
+
+### 2. Mindmap-Feature fertiggestellt + Fach-Zuordnung — DEPLOYED
+Das Mindmap-Feature war bei Sessionbeginn unfertig: `MindmapEditor`/`MindmapSystem`/`mindmapService.ts` existierten uncommitted, aber `AppContent.tsx` hatte keinen `case ActiveTab.MINDMAP` (Klick auf "Mindmap" landete auf dem Dashboard). Fehlenden Case ergänzt, dann mehrere Nutzer-Feedback-Runden live:
+- **V1 (verworfen):** Direktes Klick-Bearbeiten auf der Mindmap-Karte selbst (SVG + foreignObject + d3-zoom + Drag&Drop) — live getestet, zu fragil (Klicks/Bearbeiten funktionierten nicht zuverlässig).
+- **V2 (aktuell, live):** **`components/MindmapOutlineEditor.tsx`** — saubere Gliederungsliste links (ein Textfeld pro Punkt, keine sichtbaren `#`-Hashtags), Enter=neue Zeile, Tab/Shift+Tab=ein-/ausrücken (rückt unter die tatsächlich vorherige — auch tiefer verschachtelte — Zeile ein, nicht nur unter das direkte Geschwister, sonst lassen sich Äste nicht beliebig tief fortsetzen), „+" pro Zeile verlängert genau diesen Ast direkt. **`components/MindmapCanvas.tsx`** rechts — reine, nicht editierbare Vorschau (d3-hierarchy-Layout, Zoom/Pan, PNG-Export unverändert wiederverwendbar weil alles ein einziges SVG bleibt), aber mit zwei Interaktionen: Äste einzeln ein-/ausklappen (▾/▸-Button pro Knoten) und **jeder einzelne Knoten frei färbbar** (natives Farbrad direkt am Knoten in der Vorschau, nicht in der Liste — Farbe vererbt sich standardmäßig an Unterpunkte, bis ein Nachfahre selbst überschrieben wird).
+- **Datenmodell:** `services/mindmapTree.ts` — `MindmapNode {id, text, children, color?, collapsed?}`, reine Baum-Mutationen (`addChild`/`deleteNode`/`moveNode`/`indentNode`/`outdentNode`/`addSiblingAfter`/`updateNodeColor`/`toggleCollapsed`/`pruneCollapsed`), 29 Tests. **Persistenzformat gewechselt**: `MindmapItem.markdown` ist trotz Feldname jetzt JSON (`serializeMindmap`/`deserializeMindmap`) statt rohem Heading-Markdown — mit Rückwärtskompatibilität (alte Bestandsmindmaps im Heading-Format werden weiterhin korrekt geparst, bekommen erst beim nächsten Speichern das neue JSON-Format).
+- **Fach-Zuordnung (User-Wunsch):** `MindmapItem.collectionId?: string` (neue Spalte `mindmaps.collection_id`, Migration `backend/migration_mindmaps_collection_id.sql` — **User hat sie ausgeführt**). Beim Anlegen vorausgewählt mit dem aktuell aktiven Fach (gleiches "Variante C"-Muster wie `SourceSelector.tsx`), nachträglich änderbar im Editor, Liste filtert automatisch nach aktivem Fach (`key={mindmap-${activeModuleId}}`-Remount-Muster wie bei Quiz/Exam/Explainer in `AppContent.tsx`). Migration `backend/migration_mindmaps_table.sql` (Basis-Tabelle) wurde bereits in einer früheren Session-Runde heute ausgeführt.
+
+### ⚠️ Offener Punkt — vom User bewusst vertagt, nächstes Mal weitermachen
+**Admin-Gating von Mindmap ungeklärt.** `components/navConfig.ts` hat `ActiveTab.MINDMAP` aktuell in der allgemeinen "Lernen"-Gruppe (**für ALLE Nutzer sichtbar**), nicht in `LABOR_GROUP` (admin-only, wie Hausarbeit/Recherche). Ich hatte das explizit als Frage gestellt ("soll Mindmap für alle sichtbar bleiben oder erstmal admin-only wie die anderen Labor-Features?") — der User ist direkt ins Feedback zur Bedienung gesprungen, ohne das zu beantworten. Vor einem "richtigen" Rollout an alle Nutzer nochmal aufgreifen: Ist das Feature schon reif genug für alle, oder soll es erstmal (wie Hausarbeit/Recherche) nur der Admin-Account sehen?
+
+**Sonstiges, das noch nicht ausprobiert/verifiziert wurde:**
+- Drag & Drop zum freien Umhängen von Ästen (über Tab/Shift+Tab hinaus) wurde zwar geplant, aber nach dem gescheiterten Klick-Editor-Versuch nicht in die finale Gliederungslisten-Version übernommen — aktuell nur Tab/Shift+Tab zum Umstrukturieren.
+- PNG-Export der Mindmap mit Farben/eingeklappten Ästen wurde noch nicht live getestet (nur die Grundfunktion vor den Farb-/Einklapp-Änderungen).
+- Mehrere Mindmaps mit unterschiedlichen Fächern im Alltag noch nicht über einen längeren Zeitraum getestet.
 
 ---
 

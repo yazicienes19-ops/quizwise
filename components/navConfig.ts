@@ -47,6 +47,7 @@ export const NAV_GROUPS: NavGroup[] = [
       { tab: ActiveTab.RECALL, labelKey: 'nav.recall', hintKey: 'nav.recall.hint' },
       { tab: ActiveTab.EXAM, labelKey: 'nav.exam', hintKey: 'nav.exam.hint' },
       { tab: ActiveTab.EXPLAINER, labelKey: 'nav.explainer', hintKey: 'nav.explainer.hint' },
+      { tab: ActiveTab.MINDMAP, labelKey: 'nav.mindmap', hintKey: 'nav.mindmap.hint' },
     ],
   },
   {

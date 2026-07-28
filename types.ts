@@ -185,6 +185,15 @@ export interface FlashcardDeck {
   sourceDocumentId?: string;
 }
 
+export interface MindmapItem {
+  id: string;
+  title: string;
+  markdown: string;
+  sourceDocumentId?: string;
+  collectionId?: string;
+  updatedAt: number;
+}
+
 export interface ProcessedDocument {
   id: string;
   name: string;
@@ -225,7 +234,8 @@ export enum ActiveTab {
   EXPLAINER = 'EXPLAINER',
   EXAM = 'EXAM',
   RECALL = 'RECALL',
-  READER = 'READER'
+  READER = 'READER',
+  MINDMAP = 'MINDMAP'
 }
 
 export enum QuizType {
