@@ -9,7 +9,7 @@ import {
   Home, BookOpen, HelpCircle, Calendar, Brain, GraduationCap,
   Layers, Lightbulb, BarChart2, Search, FileText, Moon, Sun,
   X, Menu, KeyRound, LogIn, LogOut, Zap, Settings, Star,
-  PanelLeftClose, PanelLeftOpen, type LucideIcon
+  PanelLeftClose, PanelLeftOpen, Network, type LucideIcon
 } from 'lucide-react';
 import type { User } from '@supabase/supabase-js';
 import { ColorPicker } from './ColorPicker';
@@ -51,6 +51,7 @@ const ICONS: Partial<Record<ActiveTab, LucideIcon>> = {
   [ActiveTab.RADAR]:     BarChart2,
   [ActiveTab.SEARCH]:    Search,
   [ActiveTab.PAPER]:     FileText,
+  [ActiveTab.MINDMAP]:   Network,
 };
 
 export const Layout: React.FC<LayoutProps> = ({
@@ -107,6 +108,7 @@ export const Layout: React.FC<LayoutProps> = ({
     { tab: ActiveTab.EXAM,      labelKey: 'nav.exam',      icon: GraduationCap },
     { tab: ActiveTab.RADAR,     labelKey: 'nav.radar',     icon: BarChart2 },
     { tab: ActiveTab.EXPLAINER, labelKey: 'nav.explainer', icon: Lightbulb },
+    { tab: ActiveTab.MINDMAP,   labelKey: 'nav.mindmap',   icon: Network },
     ...(isAdmin(user?.id) ? [
       { tab: ActiveTab.SEARCH, labelKey: 'nav.search' as TKey, icon: Search },
       { tab: ActiveTab.PAPER,  labelKey: 'nav.paper'  as TKey, icon: FileText },

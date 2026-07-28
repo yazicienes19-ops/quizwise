@@ -6,7 +6,7 @@ import {
   AlertTriangle, X, Menu, Sparkles, Check, Scale, ArrowRight,
   Zap, Rocket, Globe, Download, Mail, Radio, Archive, Link2,
   Clipboard, Settings, Keyboard, Trophy, Star, TrendingUp, Plus,
-  Map, Trash2, Target, Microscope, Building2, FlaskConical,
+  Map, Trash2, Target, Microscope, Building2, FlaskConical, Network,
   type LucideIcon
 } from 'lucide-react';
 
@@ -15,6 +15,10 @@ const iconMappings: { keywords: string[]; icon: LucideIcon }[] = [
   { keywords: ['library', 'books', 'academic book'], icon: BookOpen },
   { keywords: ['quiz', 'question mark'], icon: HelpCircle },
   { keywords: ['calendar', 'planner', 'study flow'], icon: Calendar },
+  // Muss VOR der brain/recall/mind-Regel stehen: "mindmap brainstorming" enthält
+  // sonst "brain" als Teilwort und würde fälschlich das Brain-Icon treffen (matcht
+  // dann dasselbe Icon wie Feynman-Methode/Recall statt eines eigenen).
+  { keywords: ['mindmap', 'mind map'], icon: Network },
   { keywords: ['brain', 'recall', 'mind'], icon: Brain },
   { keywords: ['graduation', 'cap', 'exam paper', 'academic illustration'], icon: GraduationCap },
   { keywords: ['flashcard', 'deck', 'study deck', 'anki'], icon: Layers },
