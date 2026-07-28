@@ -2,6 +2,7 @@ import { describe, it, expect, beforeAll, vi } from 'vitest';
 import { readFileSync } from 'fs';
 import { join } from 'path';
 import { parseAuthorNames, mapSourceType, buildCslItem, formatAllStyles } from './citeprocService';
+import { setLocale } from '../i18n';
 
 describe('parseAuthorNames', () => {
   it('parst einen einzelnen Namen', () => {
@@ -95,6 +96,11 @@ describe('buildCslItem', () => {
 
 describe('formatAllStyles (echter citeproc-rs-Treiber mit den gebündelten CSL-Dateien)', () => {
   beforeAll(() => {
+    // Diese Tests prüfen explizit deutsche Locale-Begriffe ("S." statt "p.") — die
+    // Zitier-Locale hängt inzwischen an getLocale() (EN/TR-Support), Default in jsdom
+    // wäre sonst 'en' und würde diese Tests am eigentlich unveränderten Verhalten
+    // für deutsche Nutzer vorbeitesten lassen.
+    setLocale('de');
     const originalFetch = global.fetch;
     global.fetch = vi.fn(async (input: RequestInfo | URL) => {
       const url = typeof input === 'string' ? input : input.toString();

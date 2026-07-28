@@ -1,4 +1,5 @@
 import type { MultiStyleCitation } from '../types';
+import { getLocale } from '../i18n';
 
 export interface CitationSourceInput {
   authors: string;
@@ -36,7 +37,9 @@ const STYLE_FILES = {
 
 type StyleKey = keyof typeof STYLE_FILES;
 
-const CITATION_LOCALE = 'de-DE';
+/** Kein türkisches CSL-Locale verfügbar — deutscher Fallback (unverändertes bisheriges Verhalten für TR). */
+const CITATION_LOCALES: Record<string, string> = { en: 'en-US' };
+const citationLocale = (): string => CITATION_LOCALES[getLocale()] ?? 'de-DE';
 
 function parseFirstLastName(name: string): CslPerson {
   const parts = name.trim().split(/\s+/).filter(Boolean);
@@ -136,7 +139,7 @@ async function createDriver(styleKey: StyleKey) {
   const driver = new Driver({
     style,
     format: 'plain',
-    localeOverride: CITATION_LOCALE,
+    localeOverride: citationLocale(),
     fetcher: { fetchLocale: fetchLocaleFile as (lang: string) => Promise<string> },
   });
   await driver.fetchLocales();

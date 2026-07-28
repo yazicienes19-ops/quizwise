@@ -19,6 +19,7 @@ export const tr: Translations = {
   'language.label': 'Dil',
   'language.german': 'Almanca',
   'language.turkish': 'Türkçe',
+  'language.english': 'İngilizce',
 
   // landing
   'landing.nav.act1': 'Düşük nokta',

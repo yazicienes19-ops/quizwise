@@ -3,6 +3,7 @@ import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { render, screen, fireEvent, waitFor } from '@testing-library/react';
 import { LearningCoach } from './LearningCoach';
 import { I18nProvider } from '../i18n/I18nProvider';
+import { setLocale } from '../i18n';
 import type { Collection } from '../types';
 
 // generateCoachInsights ruft das Backend (Gemini) auf — für den Regressionstest
@@ -48,6 +49,10 @@ const renderCoach = (activeModule: Collection | null) =>
 describe('LearningCoach — Fach-Wechsel (regression)', () => {
   beforeEach(() => {
     localStorage.clear();
+    // Test sucht gezielt deutsche UI-Strings — jsdom hat standardmäßig navigator.language
+    // 'en-US', worüber die App inzwischen (EN/TR-Support) sonst automatisch auf Englisch
+    // erkennen würde.
+    setLocale('de');
     vi.mocked(generateCoachInsights).mockReset();
   });
 

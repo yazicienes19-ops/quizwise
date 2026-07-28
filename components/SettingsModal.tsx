@@ -458,14 +458,14 @@ export const SettingsModal: React.FC<Props> = ({ user, isDark, onToggleTheme, on
               <div className="space-y-3">
                 <p className="text-[10px] font-black uppercase tracking-widest text-slate-400">{t('settings.language.title')}</p>
                 <div className="flex p-1 rounded-2xl gap-1" style={{ background: 'color-mix(in srgb, var(--border-color) 40%, var(--bg-main))' }}>
-                  {(['de', 'tr'] as Locale[]).map(l => (
+                  {(['de', 'tr', 'en'] as Locale[]).map(l => (
                     <button
                       key={l}
                       onClick={() => changeLocale(l, user?.id)}
                       className={`flex-1 py-2.5 rounded-xl text-[11px] font-black uppercase tracking-widest transition-all ${locale === l ? '' : 'text-slate-400 hover:text-slate-600 dark:hover:text-slate-200'}`}
                       style={locale === l ? { background: 'var(--bg-sidebar)', color: 'var(--primary)', boxShadow: '0 1px 4px rgba(0,0,0,0.08)' } : {}}
                     >
-                      {l === 'de' ? '🇩🇪 ' + t('language.german') : '🇹🇷 ' + t('language.turkish')}
+                      {l === 'de' ? '🇩🇪 ' + t('language.german') : l === 'tr' ? '🇹🇷 ' + t('language.turkish') : '🇬🇧 ' + t('language.english')}
                     </button>
                   ))}
                 </div>

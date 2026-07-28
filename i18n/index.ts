@@ -1,18 +1,20 @@
 import { de } from './locales/de';
 import { tr } from './locales/tr';
+import { en } from './locales/en';
 
-export type Locale = 'de' | 'tr';
+export type Locale = 'de' | 'tr' | 'en';
 export type TKey = keyof typeof de;
 export type Translations = Record<TKey, string>;
 
-const DICTS: Record<Locale, Translations> = { de, tr };
+const DICTS: Record<Locale, Translations> = { de, tr, en };
 
 // --- Modul-State: von React UND von Services (ohne React) geteilt ---
 function detectInitial(): Locale {
   try {
     const stored = localStorage.getItem('studearc_language');
-    if (stored === 'de' || stored === 'tr') return stored;
-    const detected: Locale = navigator.language?.toLowerCase().startsWith('tr') ? 'tr' : 'de';
+    if (stored === 'de' || stored === 'tr' || stored === 'en') return stored;
+    const lang = navigator.language?.toLowerCase();
+    const detected: Locale = lang?.startsWith('tr') ? 'tr' : lang?.startsWith('en') ? 'en' : 'de';
     localStorage.setItem('studearc_language', detected);
     return detected;
   } catch {
@@ -37,7 +39,8 @@ export const setLocale = (l: Locale): void => {
   listener?.(l);
 };
 
-export const localeTag = (): string => (current === 'tr' ? 'tr-TR' : 'de-DE');
+const LOCALE_TAGS: Record<Locale, string> = { tr: 'tr-TR', en: 'en-US', de: 'de-DE' };
+export const localeTag = (): string => LOCALE_TAGS[current];
 
 function interpolate(template: string, vars?: Record<string, string | number>): string {
   if (!vars) return template;

@@ -8,17 +8,23 @@ import { getLocale } from '../i18n';
  * WICHTIG: Struktur-Tokens (__LÜCKE__, [LÜCKE], Kategorie-Enums, **Quelle:**,
  * Allgemeinwissen:) bleiben sprachunabhängig — sie sind Protokoll, keine UI.
  */
-export const outputLanguageName = (): string => (getLocale() === 'tr' ? 'Türkisch' : 'Deutsch');
+const LANGUAGE_NAMES: Record<string, string> = { tr: 'Türkisch', en: 'Englisch' };
+export const outputLanguageName = (): string => LANGUAGE_NAMES[getLocale()] ?? 'Deutsch';
 
 /** Anweisung, die an einen Prompt angehängt wird. Für Deutsch leer (Default-Verhalten). */
-export const outputLangDirective = (): string =>
-  getLocale() === 'tr'
-    ? '\n\nWICHTIG: Alle für den Nutzer sichtbaren Texte (Fragen, Antworten, Erklärungen, Feedback, Titel, Zusammenfassungen) auf Türkisch verfassen. Alle Struktur-Tokens, JSON-Schlüssel und vorgegebenen Kategorie-Werte bleiben exakt unverändert wie vorgegeben.'
+export const outputLangDirective = (): string => {
+  const lang = LANGUAGE_NAMES[getLocale()];
+  return lang
+    ? `\n\nWICHTIG: Alle für den Nutzer sichtbaren Texte (Fragen, Antworten, Erklärungen, Feedback, Titel, Zusammenfassungen) auf ${lang} verfassen. Alle Struktur-Tokens, JSON-Schlüssel und vorgegebenen Kategorie-Werte bleiben exakt unverändert wie vorgegeben.`
     : '';
+};
 
 /**
- * Erklärer-Abschnittsüberschriften je Sprache. Der markdownRenderer erkennt beide
+ * Erklärer-Abschnittsüberschriften je Sprache. Der markdownRenderer erkennt alle
  * Varianten; der Prompt gibt der KI die passende Menge vor.
  */
-export const explainerHeadings = (): string =>
-  getLocale() === 'tr' ? 'Temel Bilgiler, Derinlemesine ve Bağlam' : 'Grundlagen, Vertiefung und Kontext';
+const EXPLAINER_HEADINGS: Record<string, string> = {
+  tr: 'Temel Bilgiler, Derinlemesine ve Bağlam',
+  en: 'Basics, Deep Dive and Context',
+};
+export const explainerHeadings = (): string => EXPLAINER_HEADINGS[getLocale()] ?? 'Grundlagen, Vertiefung und Kontext';

@@ -224,7 +224,7 @@ export const LegalModal: React.FC<LegalModalProps> = ({ page, onClose }) => {
           </button>
         </div>
         <div className="overflow-y-auto p-8 scrollbar-thin space-y-4">
-          {getLocale() === 'tr' && (
+          {getLocale() !== 'de' && (
             <p className="text-xs font-bold text-slate-500 dark:text-slate-400 bg-slate-100 dark:bg-slate-800/50 p-3 rounded-xl">
               {t('legal.germanNotice')}
             </p>

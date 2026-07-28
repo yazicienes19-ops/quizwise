@@ -54,7 +54,7 @@ export const useAuth = () => {
           }
           if (pr.font_choice) localStorage.setItem('font_choice', pr.font_choice);
           if (pr.line_height) localStorage.setItem('line_height', pr.line_height);
-          if (pr.language === 'de' || pr.language === 'tr') { localStorage.setItem('studearc_language', pr.language); setLocale(pr.language); }
+          if (pr.language === 'de' || pr.language === 'tr' || pr.language === 'en') { localStorage.setItem('studearc_language', pr.language); setLocale(pr.language); }
           // Einmal-Flags aus der Cloud wiederherstellen — sonst hält die App
           // Bestandsnutzer nach gelöschten Website-Daten für Neulinge und
           // blockiert den Login mit dem Onboarding-Overlay.

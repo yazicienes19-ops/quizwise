@@ -21,6 +21,7 @@ export const de = {
   'language.label': 'Sprache',
   'language.german': 'Deutsch',
   'language.turkish': 'Türkisch',
+  'language.english': 'Englisch',
 
   // landing
   'landing.nav.act1': 'Der Tiefpunkt',

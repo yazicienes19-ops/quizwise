@@ -651,7 +651,7 @@ export const generatePaperFramework = async (
   const parts: any[] = [];
   sources.forEach(s => parts.push(sourceTopart(s)));
   const wordCount = pageCount * 350;
-  parts.push({ text: `Erstelle ein vollständiges Hausarbeit-Framework auf Deutsch.
+  parts.push({ text: `Erstelle ein vollständiges Hausarbeit-Framework.
 Thema: "${sanitizeUserInput(topic, 200)}"
 Fragestellung/Fokus: "${focus ? sanitizeUserInput(focus, 400) : 'noch offen — schlage eine sinnvolle Fragestellung vor'}"
 Umfang: ${pageCount} Seiten (ca. ${wordCount} Wörter)
@@ -670,7 +670,7 @@ Liefere:
    - description: Was dieser Abschnitt leisten soll (2-3 Sätze)
    - wordCount: Empfohlene Wortzahl für diesen Abschnitt (Summe aller = ${wordCount})
    - keyPoints: 2-4 konkrete Punkte die in diesem Abschnitt behandelt werden müssen
-   - subsections: Unterkapitel (nur für Hauptkapitel, leer für Einleitung/Fazit/Unterkapitel)` });
+   - subsections: Unterkapitel (nur für Hauptkapitel, leer für Einleitung/Fazit/Unterkapitel)${outputLangDirective()}` });
 
   const subsectionSchema = {
     type: Type.OBJECT,
@@ -1564,7 +1564,7 @@ Erstelle:
 - methodInsight: 1 Satz Vergleich der Lernmethoden (perMethod) — welche wirkt aktuell am besten
 - recommendations: GENAU 1 BIS MAXIMAL 3 konkrete, priorisierte nächste Schritte (nicht mehr!) mit Ziel-Tab (QUIZ, CARDS, RECALL, EXAM oder EXPLAINER). Jede reasoning muss eine kurze, konkrete, datengestützte Begründung sein (z.B. "Transferfehler in drei Klausuren"), keine generische Floskel.
 
-Die Ziel-Tab-Werte (QUIZ, CARDS, RECALL, EXAM, EXPLAINER) und die Notenskala bleiben unverändert; nur die Fließtexte in der Zielsprache.${outputLangDirective()}` }],
+Die Ziel-Tab-Werte (QUIZ, CARDS, RECALL, EXAM, EXPLAINER), die priority-Werte (hoch, mittel, niedrig) und die Notenskala bleiben unverändert; nur die Fließtexte in der Zielsprache.${outputLangDirective()}` }],
     config: {
       temperature: 0,
       thinkingConfig: { thinkingBudget: 0 },

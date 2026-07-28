@@ -123,14 +123,15 @@ export const Onboarding: React.FC<OnboardingProps> = ({ onComplete, onStartUploa
               {t('onboarding.step', { n: 1, total: TOTAL })}
             </p>
             <h2 className="text-xl font-black tracking-tight mb-3" style={{ color: 'var(--text-main)' }}>
-              Wähle deine Sprache · Dilini seç
+              Wähle deine Sprache · Dilini seç · Choose your language
             </h2>
             <p className="text-sm text-slate-500 dark:text-slate-400 leading-relaxed mb-6">
               In welcher Sprache möchtest du lernen?<br />
-              Hangi dilde öğrenmek istersin?
+              Hangi dilde öğrenmek istersin?<br />
+              Which language do you want to learn in?
             </p>
-            <div className="grid grid-cols-2 gap-3 w-full">
-              {(['de', 'tr'] as Locale[]).map(l => (
+            <div className="grid grid-cols-3 gap-3 w-full">
+              {(['de', 'tr', 'en'] as Locale[]).map(l => (
                 <button
                   key={l}
                   onClick={() => changeLocale(l)}
@@ -139,7 +140,7 @@ export const Onboarding: React.FC<OnboardingProps> = ({ onComplete, onStartUploa
                     ? { background: 'var(--primary)', color: 'var(--primary-text)', border: '2px solid var(--primary)' }
                     : { background: 'var(--bg-main)', color: 'var(--text-main)', border: '2px solid var(--border-color)' }}
                 >
-                  {l === 'de' ? '🇩🇪 Deutsch' : '🇹🇷 Türkçe'}
+                  {l === 'de' ? '🇩🇪 Deutsch' : l === 'tr' ? '🇹🇷 Türkçe' : '🇬🇧 English'}
                 </button>
               ))}
             </div>

@@ -23,17 +23,17 @@ export const LanguageToggle: React.FC<{ className?: string }> = ({ className }) 
   const { locale, changeLocale } = useTranslation();
   return (
     <div className={`inline-flex items-center rounded-xl border border-slate-200 dark:border-slate-700 overflow-hidden ${className ?? ''}`}>
-      {(['de', 'tr'] as const).map(l => (
+      {(['de', 'tr', 'en'] as const).map(l => (
         <button
           key={l}
           onClick={() => changeLocale(l)}
-          aria-label={l === 'de' ? 'Deutsch' : 'Türkçe'}
+          aria-label={l === 'de' ? 'Deutsch' : l === 'tr' ? 'Türkçe' : 'English'}
           className="px-2.5 py-1.5 text-[10px] font-black uppercase tracking-widest transition-colors"
           style={locale === l
             ? { background: 'var(--primary)', color: 'var(--primary-text)' }
             : { color: 'var(--text-secondary, #94a3b8)' }}
         >
-          {l === 'de' ? 'DE' : 'TR'}
+          {l === 'de' ? 'DE' : l === 'tr' ? 'TR' : 'EN'}
         </button>
       ))}
     </div>

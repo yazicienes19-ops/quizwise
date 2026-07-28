@@ -5,7 +5,7 @@ import { t } from '../i18n';
 // Trennzeichen nach dem Überschriftswort ist optional: steht die Überschrift
 // ALLEIN auf ihrer Zeile (der Normalfall), folgt direkt das Zeilenende, kein
 // Leerzeichen/Doppelpunkt mehr — (?:[\s:]|$) deckt beides ab.
-const HEADING_RE = /^(Grundlagen|Vertiefung|Kontext|Temel Bilgiler|Derinlemesine|Bağlam|Stufe\s*\d*|Phase\s*\d*|Aşama\s*\d*)(?:[\s:]|$)/i;
+const HEADING_RE = /^(Grundlagen|Vertiefung|Kontext|Temel Bilgiler|Derinlemesine|Bağlam|Basics|Deep Dive|Context|Stufe\s*\d*|Phase\s*\d*|Aşama\s*\d*|Level\s*\d*)(?:[\s:]|$)/i;
 
 export function parseInline(text: string, baseKey: string): React.ReactNode[] {
   const parts: React.ReactNode[] = [];
