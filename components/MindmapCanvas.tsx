@@ -66,14 +66,16 @@ export const MindmapCanvas: React.FC<MindmapCanvasProps> = ({ tree, onToggleColl
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [positioned]);
 
-  // Bei jeder Baumänderung sanft neu einpassen, damit neue/gelöschte Punkte
-  // aus dem Gliederungs-Editor sichtbar bleiben, ohne die Zoomstufe komplett
-  // zurückzusetzen wenn der Nutzer gerade selbst gezoomt/verschoben hat.
+  // Nur neu einpassen, wenn sich die Zahl der SICHTBAREN Knoten ändert (neue/
+  // gelöschte Punkte, Ein-/Ausklappen) — nicht bei reinen Farbwechseln. Ein
+  // Re-Fit bei jedem Klick auf den Farbwähler verschiebt die Ansicht unter dem
+  // Mauszeiger genau während des Klicks und macht Buttons in der Nähe (×,
+  // Ein-/Ausklappen) unzuverlässig treffbar.
   useEffect(() => {
     if (!didInitialFit.current) return;
     fitView();
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [tree]);
+  }, [positioned.length]);
 
   const zoomBy = (factor: number) => {
     if (!svgRef.current || !zoomBehaviorRef.current) return;
@@ -117,6 +119,8 @@ export const MindmapCanvas: React.FC<MindmapCanvasProps> = ({ tree, onToggleColl
                       type="color"
                       value={effectiveColor || '#94a3b8'}
                       onChange={e => onColorChange(p.node.id, e.target.value)}
+                      onMouseDown={e => e.stopPropagation()}
+                      onPointerDown={e => e.stopPropagation()}
                       title={t('mm.color')}
                       className="shrink-0 ml-1 w-5 h-5 rounded border-0 cursor-pointer bg-transparent p-0"
                     />
@@ -124,6 +128,8 @@ export const MindmapCanvas: React.FC<MindmapCanvasProps> = ({ tree, onToggleColl
                       <button
                         data-interactive="true"
                         onClick={() => onColorChange(p.node.id, undefined)}
+                        onMouseDown={e => e.stopPropagation()}
+                        onPointerDown={e => e.stopPropagation()}
                         title={t('mm.colorReset')}
                         className="shrink-0 ml-0.5 w-4 h-4 flex items-center justify-center rounded-full bg-slate-200 dark:bg-slate-700 text-slate-500 dark:text-slate-300 text-[8px]"
                       >×</button>
@@ -132,6 +138,8 @@ export const MindmapCanvas: React.FC<MindmapCanvasProps> = ({ tree, onToggleColl
                       <button
                         data-interactive="true"
                         onClick={() => onToggleCollapse(p.node.id)}
+                        onMouseDown={e => e.stopPropagation()}
+                        onPointerDown={e => e.stopPropagation()}
                         title={p.node.collapsed ? t('mm.expand') : t('mm.collapse')}
                         className="shrink-0 ml-1 w-4 h-4 flex items-center justify-center rounded-full bg-slate-200 dark:bg-slate-700 text-slate-500 dark:text-slate-300 text-[9px]"
                       >
