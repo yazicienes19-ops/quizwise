@@ -1,5 +1,6 @@
 
 import React, { useState, useEffect, useMemo } from 'react';
+import { MessageCircle, BookOpen, Search, ChevronRight } from 'lucide-react';
 import { ProcessedDocument, Collection, TopicMetric, FlashcardDeck } from '../types';
 import type { GenerationSource } from '../services/geminiService';
 import { generateExplanation } from '../services/geminiService';
@@ -41,7 +42,7 @@ function pushHistory(entry: HistoryEntry): HistoryEntry[] {
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
-type Step = 'setup' | 'loading' | 'explanation';
+type Step = 'landing' | 'picker' | 'setup' | 'loading' | 'explanation';
 
 interface ExplainerSystemProps {
   availableDocuments: ProcessedDocument[];
@@ -51,15 +52,20 @@ interface ExplainerSystemProps {
   initialDoc?: ProcessedDocument;
   metrics: TopicMetric[];
   decks: FlashcardDeck[];
+  /** Öffnet das gewählte Dokument im Splitscreen-Reader (Nav-Ebene, außerhalb dieser Komponente). */
+  onOpenReader?: (doc: ProcessedDocument) => void;
 }
 
 // ─── Hauptkomponente ──────────────────────────────────────────────────────────
 
 export const ExplainerSystem: React.FC<ExplainerSystemProps> = ({
-  availableDocuments, collections, getDocumentSource, onSaveToLibrary, initialDoc, metrics, decks,
+  availableDocuments, collections, getDocumentSource, onSaveToLibrary, initialDoc, metrics, decks, onOpenReader,
 }) => {
   const { t } = useTranslation();
-  const [step, setStep]                   = useState<Step>('setup');
+  // Kommt die Komponente über die Bibliothek mit einem konkreten Dokument (initialDoc),
+  // soll sofort wie bisher die Frage-Eingabe erscheinen — die Landing-Auswahl ist nur
+  // für den generischen Einstieg über den Nav-Punkt "Tutor" gedacht.
+  const [step, setStep]                   = useState<Step>(initialDoc ? 'setup' : 'landing');
   const [activeSource, setActiveSource]   = useState<GenerationSource | null>(null);
   const [activeSourceName, setActiveSourceName] = useState('');
   const [concept, setConcept]             = useState('');
@@ -69,6 +75,7 @@ export const ExplainerSystem: React.FC<ExplainerSystemProps> = ({
   /** Wörtliches Zitat aus der Quelle, auf das sich die Erklärung stützt. */
   const [sourceQuote, setSourceQuote]     = useState<string | null>(null);
   const [history, setHistory]             = useState<HistoryEntry[]>(loadHistory);
+  const [readerSearch, setReaderSearch]   = useState('');
 
   // ── Lernprofil: schwache Themen als Vorschläge ──
   const profile = useMemo(() => buildLearningProfile({
@@ -107,6 +114,12 @@ export const ExplainerSystem: React.FC<ExplainerSystemProps> = ({
     setActiveSource(source);
     setActiveSourceName(documentDisplayName(doc));
   };
+
+  const filteredReaderDocs = useMemo(() => {
+    const q = readerSearch.trim().toLowerCase();
+    if (!q) return availableDocuments;
+    return availableDocuments.filter(d => documentDisplayName(d).toLowerCase().includes(q));
+  }, [availableDocuments, readerSearch]);
 
   const canStart = concept.trim().length > 2 && (!!activeSource || useExternal);
 
@@ -156,9 +169,87 @@ export const ExplainerSystem: React.FC<ExplainerSystemProps> = ({
         </p>
       </div>
 
+      {/* ── LANDING ── */}
+      {step === 'landing' && (
+        <div className="grid sm:grid-cols-2 gap-4 animate-in fade-in duration-500">
+          <button onClick={() => setStep('setup')}
+            className="text-left p-8 rounded-[32px] transition-all hover:scale-[1.01] active:scale-[0.99] space-y-4"
+            style={{ background: 'var(--bg-sidebar)', border: '1px solid var(--border-color)' }}
+          >
+            <div className="w-12 h-12 rounded-2xl flex items-center justify-center" style={{ background: 'color-mix(in srgb, var(--primary) 12%, transparent)' }}>
+              <MessageCircle size={22} style={{ color: 'var(--primary)' }} strokeWidth={1.75} />
+            </div>
+            <div className="space-y-1">
+              <p className="text-lg font-black dark:text-white">{t('ex.landing.askTitle')}</p>
+              <p className="text-sm text-slate-400 font-medium">{t('ex.landing.askDesc')}</p>
+            </div>
+          </button>
+          <button onClick={() => setStep('picker')}
+            className="text-left p-8 rounded-[32px] transition-all hover:scale-[1.01] active:scale-[0.99] space-y-4"
+            style={{ background: 'var(--bg-sidebar)', border: '1px solid var(--border-color)' }}
+          >
+            <div className="w-12 h-12 rounded-2xl flex items-center justify-center" style={{ background: 'color-mix(in srgb, var(--primary) 12%, transparent)' }}>
+              <BookOpen size={22} style={{ color: 'var(--primary)' }} strokeWidth={1.75} />
+            </div>
+            <div className="space-y-1">
+              <p className="text-lg font-black dark:text-white">{t('ex.landing.readerTitle')}</p>
+              <p className="text-sm text-slate-400 font-medium">{t('ex.landing.readerDesc')}</p>
+            </div>
+          </button>
+        </div>
+      )}
+
+      {/* ── PICKER: Dokument fürs Splitscreen öffnen ── */}
+      {step === 'picker' && (
+        <div className="space-y-4 animate-in fade-in duration-300">
+          <button onClick={() => setStep('landing')} className="text-[10px] font-black uppercase tracking-widest text-slate-400 hover:text-slate-600 dark:hover:text-slate-300 transition-colors">
+            {t('ex.landing.back')}
+          </button>
+          {availableDocuments.length === 0 ? (
+            <p className="text-center text-slate-400 text-sm py-12">{t('ex.landing.noDocs')}</p>
+          ) : (
+            <>
+              <div className="relative">
+                <Search className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" strokeWidth={1.75} />
+                <input
+                  value={readerSearch}
+                  onChange={e => setReaderSearch(e.target.value)}
+                  placeholder={t('ssel.searchPlaceholder')}
+                  className="w-full pl-11 pr-4 py-3.5 rounded-2xl text-sm dark:text-white placeholder-slate-400 outline-none"
+                  style={{ background: 'var(--bg-sidebar)', border: '1px solid var(--border-color)' }}
+                  autoFocus
+                />
+              </div>
+              <div className="space-y-2 max-h-[28rem] overflow-y-auto pr-1">
+                {filteredReaderDocs.map(doc => (
+                  <button
+                    key={doc.id}
+                    onClick={() => onOpenReader?.(doc)}
+                    className="w-full flex items-center gap-4 px-5 py-4 rounded-2xl text-left transition-all hover:scale-[1.01] active:scale-[0.99]"
+                    style={{ background: 'var(--bg-sidebar)', border: '1px solid var(--border-color)' }}
+                  >
+                    <BookOpen size={18} className="shrink-0" style={{ color: 'var(--primary)' }} strokeWidth={1.75} />
+                    <span className="flex-1 min-w-0 text-sm font-black dark:text-white break-words">{documentDisplayName(doc)}</span>
+                    <ChevronRight className="w-4 h-4 text-slate-300 shrink-0" strokeWidth={2} />
+                  </button>
+                ))}
+                {filteredReaderDocs.length === 0 && (
+                  <p className="text-center text-[11px] text-slate-400 py-8 italic">{t('ssel.noHits', { q: readerSearch })}</p>
+                )}
+              </div>
+            </>
+          )}
+        </div>
+      )}
+
       {/* ── SETUP ── */}
       {step === 'setup' && (
         <div className="space-y-5">
+          {!initialDoc && (
+            <button onClick={() => setStep('landing')} className="text-[10px] font-black uppercase tracking-widest text-slate-400 hover:text-slate-600 dark:hover:text-slate-300 transition-colors">
+              {t('ex.landing.back')}
+            </button>
+          )}
 
           {/* Dokument */}
           {activeSource ? (
