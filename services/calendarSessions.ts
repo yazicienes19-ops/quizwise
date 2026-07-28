@@ -70,6 +70,7 @@ export function sessionsForDate(
 
   for (const rule of recurring) {
     if (rule.weekday !== weekday) continue;
+    if (rule.startDate && dateStr < rule.startDate) continue;
     if (rule.skipDates?.includes(dateStr)) continue;
     const mod = rule.moduleId ? collections.find(c => c.id === rule.moduleId) : undefined;
     result.push({
@@ -156,7 +157,7 @@ export function applySessionSave(
         oneOff,
       };
     }
-    const newRule: RecurringStudySession = { id: genId(), weekday, ...base };
+    const newRule: RecurringStudySession = { id: genId(), weekday, startDate: dateStr, ...base };
     return {
       recurring: [...recurring, newRule],
       oneOff: editing?.kind === 'oneoff' ? oneOff.filter(s => s.id !== editing.id) : oneOff,

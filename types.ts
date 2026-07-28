@@ -361,6 +361,11 @@ export interface RecurringStudySession {
   startTime: string;
   endTime: string;
   skipDates?: string[]; // YYYY-MM-DD
+  /** Erstes Datum (YYYY-MM-DD), ab dem die Regel Vorkommen erzeugt — verhindert,
+   *  dass eine neu angelegte Regel rückwirkend auch für bereits vergangene
+   *  Wochentage Sessions zeigt. Undefined bei Altbestand vor diesem Feld =
+   *  keine Einschränkung (bisheriges Verhalten bleibt erhalten). */
+  startDate?: string;
 }
 
 /** Einmalige, an ein echtes Datum gebundene Lernsession — entweder frei angelegt,

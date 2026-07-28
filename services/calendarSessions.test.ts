@@ -67,6 +67,30 @@ describe('sessionsForDate', () => {
     expect(sessionsForDate(new Date(2026, 7, 13), [], [s], collections)).toHaveLength(0);
   });
 
+  it('zeigt eine wiederkehrende Session NICHT vor ihrem startDate (verhindert rückwirkende Vorkommen)', () => {
+    const pastMonday = new Date(2026, 6, 27); // Montag, vor dem startDate
+    const rule: RecurringStudySession = {
+      id: 'r1', weekday: 1, topic: 'Wahrnehmung', startTime: '16:00', endTime: '17:30',
+      startDate: '2026-08-03',
+    };
+    expect(sessionsForDate(pastMonday, [rule], [], collections)).toHaveLength(0);
+  });
+
+  it('zeigt eine wiederkehrende Session AB ihrem startDate (inklusive)', () => {
+    const startMonday = new Date(2026, 7, 3);
+    const rule: RecurringStudySession = {
+      id: 'r1', weekday: 1, topic: 'Wahrnehmung', startTime: '16:00', endTime: '17:30',
+      startDate: '2026-08-03',
+    };
+    expect(sessionsForDate(startMonday, [rule], [], collections)).toHaveLength(1);
+  });
+
+  it('zeigt eine wiederkehrende Session OHNE startDate weiterhin für jeden passenden Wochentag (Rückwärtskompatibilität für Altbestand)', () => {
+    const pastMonday = new Date(2026, 6, 27);
+    const rule: RecurringStudySession = { id: 'r1', weekday: 1, topic: 'Wahrnehmung', startTime: '16:00', endTime: '17:30' };
+    expect(sessionsForDate(pastMonday, [rule], [], collections)).toHaveLength(1);
+  });
+
   it('sortiert mehrere Sessions am selben Tag nach Startzeit', () => {
     const monday = new Date(2026, 7, 3);
     const rule: RecurringStudySession = { id: 'r1', weekday: 1, topic: 'Spät', startTime: '18:00', endTime: '19:00' };
@@ -99,6 +123,14 @@ describe('applySessionSave', () => {
     expect(res.recurring).toHaveLength(1);
     expect(res.recurring[0].weekday).toBe(weekday);
     expect(res.oneOff).toHaveLength(0);
+  });
+
+  it('setzt startDate der neuen wöchentlichen Regel auf den angeklickten Tag (verhindert rückwirkende Vorkommen)', () => {
+    const res = applySessionSave(
+      { topic: 'Wahrnehmung', startTime: '16:00', endTime: '17:00', repeat: 'weekly', moduleId: 'psych' },
+      dateStr, weekday, [], [], genId
+    );
+    expect(res.recurring[0].startDate).toBe(dateStr);
   });
 
   it('aktualisiert eine bestehende Regel in place, wenn wöchentlich bearbeitet wird', () => {
