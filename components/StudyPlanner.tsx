@@ -1,6 +1,6 @@
 
-import React, { useState, useEffect, useRef, useMemo } from 'react';
-import { StudyEntry, StudyEvent, TopicMetric, FlashcardDeck, ExamTerm, Collection, RecurringStudySession, CalendarStudySession } from '../types';
+import React, { useState, useEffect, useMemo } from 'react';
+import { StudyEvent, TopicMetric, FlashcardDeck, ExamTerm, Collection, RecurringStudySession, CalendarStudySession } from '../types';
 import { GeneratedImage } from './GeneratedImage';
 import { CalendarDayPanel } from './CalendarDayPanel';
 import { generateSmartStudyPlan } from '../services/geminiService';
@@ -8,7 +8,7 @@ import { countDueCards, migrateLegacyCard } from '../services/spacedRepetition';
 import { getMistakeQueue } from '../services/mistakeReviewService';
 import { getAllResults } from '../services/quizHistoryService';
 import { getSpacedSettings, saveSpacedSettings, buildSpacedPlan, applySpacedPlan, buildDueForecast } from '../services/spacedPlanningService';
-import { sessionsForDate, applySessionSave, SessionFormInput, fixedWeekdaysFromRecurring, mapSmartPlanToCalendarSessions, daysUntilDate } from '../services/calendarSessions';
+import { sessionsForDate, applySessionSave, SessionFormInput, fixedWeekdaysFromRecurring, mapSmartPlanToCalendarSessions, migrateStudyEntriesToRecurring, daysUntilDate } from '../services/calendarSessions';
 import { toast } from '../services/toast';
 import { useTranslation } from '../i18n/I18nProvider';
 import { formatDate } from '../i18n/dates';
@@ -16,7 +16,7 @@ import { localeTag } from '../i18n';
 import type { TKey } from '../i18n';
 import { ChevronLeft, ChevronRight, X, Plus, Repeat as RepeatIcon, Clock, CalendarX as CalendarXIcon } from 'lucide-react';
 
-type ViewMode = 'monat' | 'woche' | 'liste';
+type ViewMode = 'monat' | 'liste';
 
 interface CalendarItem {
   id: string;
@@ -34,27 +34,9 @@ interface MonthCell {
   items: CalendarItem[];
 }
 
-const HOURS = Array.from({ length: 18 }, (_, i) => i + 7);
-const DAYS = ['Montag', 'Dienstag', 'Mittwoch', 'Donnerstag', 'Freitag', 'Samstag', 'Sonntag'];
 const WEEK_DAYS_SHORT = ['Mo', 'Di', 'Mi', 'Do', 'Fr', 'Sa', 'So'];
 /** Index = Date.getDay() (0=So..6=Sa), zum Übersetzen von Wochentag-Indizes über dow.* */
 const WEEKDAY_KEYS = ['Sonntag', 'Montag', 'Dienstag', 'Mittwoch', 'Donnerstag', 'Freitag', 'Samstag'];
-const HOUR_HEIGHT = 80;
-const STEP = 15;
-
-interface StudyTemplate {
-  id: string;
-  subject: string;
-  topic: string;
-  color: string;
-}
-
-const COLORS = [
-  { id: 'emerald', label: 'Grün', bg: 'bg-emerald-500', text: 'text-emerald-600', border: 'border-emerald-500' },
-  { id: 'blue', label: 'Blau', bg: 'bg-blue-500', text: 'text-blue-600', border: 'border-blue-500' },
-  { id: 'purple', label: 'Lila', bg: 'bg-purple-500', text: 'text-purple-600', border: 'border-purple-500' },
-  { id: 'rose', label: 'Rot', bg: 'bg-rose-500', text: 'text-rose-600', border: 'border-rose-500' },
-];
 
 interface StudyPlannerProps {
   metrics: TopicMetric[];
@@ -116,13 +98,7 @@ export const StudyPlanner: React.FC<StudyPlannerProps> = ({ metrics, decks, exam
   const [calendarSessions, setCalendarSessions] = useState<CalendarStudySession[]>([]);
   const [selectedDate, setSelectedDate] = useState<Date | null>(null);
 
-  // Weekly view
-  const [entries, setEntries] = useState<StudyEntry[]>([]);
   const [isGenerating, setIsGenerating] = useState(false);
-  const [selectedDay, setSelectedDay] = useState(DAYS[0]);
-  const [templates, setTemplates] = useState<StudyTemplate[]>([]);
-  const [showTplInput, setShowTplInput] = useState(false);
-  const [tplInputValue, setTplInputValue] = useState('');
 
   // Forms
   const [showExamForm, setShowExamForm] = useState(false);
@@ -134,20 +110,6 @@ export const StudyPlanner: React.FC<StudyPlannerProps> = ({ metrics, decks, exam
   const [newEventDate, setNewEventDate] = useState('');
   const [newEventType, setNewEventType] = useState<'study' | 'reminder'>('study');
   const [newEventDesc, setNewEventDesc] = useState('');
-
-  // Mobile quick-add
-  const [showQuickAdd, setShowQuickAdd] = useState(false);
-  const [qaSubject, setQaSubject] = useState('');
-  const [qaTopic, setQaTopic] = useState('');
-  const [qaStart, setQaStart] = useState('08:00');
-  const [qaEnd, setQaEnd] = useState('09:30');
-  const [qaColor, setQaColor] = useState('indigo');
-
-  // Resize
-  const [resizingId, setResizingId] = useState<string | null>(null);
-  const resizeStateRef = useRef({ id: null as string | null, initialY: 0, initialDuration: 0, startTimeMinutes: 0 });
-  const entriesRef = useRef(entries);
-  useEffect(() => { entriesRef.current = entries; }, [entries]);
 
   // Spaced-Modus (Opt-in): automatische, zeitversetzte Wiederholungs-Sessions
   const [spacedEnabled, setSpacedEnabled] = useState(() => getSpacedSettings().enabled);
@@ -170,8 +132,6 @@ export const StudyPlanner: React.FC<StudyPlannerProps> = ({ metrics, decks, exam
   };
 
   useEffect(() => {
-    try { const s = localStorage.getItem('study_plan'); if (s) setEntries(JSON.parse(s)); } catch {}
-    try { const s = localStorage.getItem('study_templates'); if (s) setTemplates(JSON.parse(s)); } catch {}
     // Frisch geparst statt aus dem State gelesen: setRecurringSessions/setCalendarSessions
     // sind an dieser Stelle noch nicht geflusht (React batcht State-Updates), die
     // Regenerierung unten würde sonst mit leeren Arrays rechnen.
@@ -179,6 +139,28 @@ export const StudyPlanner: React.FC<StudyPlannerProps> = ({ metrics, decks, exam
     let freshCalendarSessions: CalendarStudySession[] = [];
     try { const s = localStorage.getItem('studearc_recurring_sessions'); if (s) freshRecurring = JSON.parse(s); } catch {}
     try { const s = localStorage.getItem('studearc_calendar_sessions'); if (s) freshCalendarSessions = JSON.parse(s); } catch {}
+
+    // Einmalige Migration des entfernten manuellen Wochenplan-Tabs (StudyEntry, wochentag-
+    // basiert, localStorage 'study_plan') ins neue datumsechte System — ohne das wären
+    // bestehende manuell angelegte Blöcke nach dem Tab-Wegfall unsichtbar verloren.
+    if (!localStorage.getItem('studearc_weekplan_migrated_v1')) {
+      try {
+        const raw = localStorage.getItem('study_plan');
+        const oldEntries = raw ? JSON.parse(raw) : [];
+        if (Array.isArray(oldEntries) && oldEntries.length > 0) {
+          const migrated = migrateStudyEntriesToRecurring(oldEntries, () => Math.random().toString(36).substr(2, 9));
+          if (migrated.length > 0) {
+            freshRecurring = [...freshRecurring, ...migrated];
+            localStorage.setItem('studearc_recurring_sessions', JSON.stringify(freshRecurring));
+            if (userId) {
+              import('../services/syncService').then(({ syncSavedField }) => syncSavedField(userId, 'recurring_sessions', freshRecurring)).catch(() => {});
+            }
+          }
+        }
+      } catch {}
+      localStorage.setItem('studearc_weekplan_migrated_v1', 'true');
+    }
+
     setRecurringSessions(freshRecurring);
     setCalendarSessions(freshCalendarSessions);
     let evs: StudyEvent[] = [];
@@ -240,6 +222,14 @@ export const StudyPlanner: React.FC<StudyPlannerProps> = ({ metrics, decks, exam
     saveCalendarSessions(calendarSessions.filter(s => s.id !== id));
   };
 
+  const handleUpdateExam = (exam: ExamTerm) => {
+    onUpdateExams(examTerms.map(e => (e.id === exam.id ? exam : e)));
+  };
+
+  const handleUpdateEvent = (ev: StudyEvent) => {
+    saveEvents(events.map(e => (e.id === ev.id ? ev : e)));
+  };
+
   const handleUpdateCollectionColor = (collectionId: string, color: string) => {
     const col = collections.find(c => c.id === collectionId);
     if (col) onUpdateCollection({ ...col, color });
@@ -270,8 +260,6 @@ export const StudyPlanner: React.FC<StudyPlannerProps> = ({ metrics, decks, exam
     saveSpacedSettings({ enabled: true, lastRunDay: todayStr }, userId);
     toast.success(t('sp2.redistributed', { n: next.filter(e => e.isAutoGenerated).length }));
   };
-  const savePlan = (e: StudyEntry[]) => { setEntries(e); localStorage.setItem('study_plan', JSON.stringify(e)); };
-
   const monthCells = useMemo(
     () => buildMonthCells(calYear, calMonth, examTerms, events, recurringSessions, calendarSessions, collections),
     [calYear, calMonth, examTerms, events, recurringSessions, calendarSessions, collections]
@@ -315,9 +303,6 @@ export const StudyPlanner: React.FC<StudyPlannerProps> = ({ metrics, decks, exam
       .sort((a, b) => a.date.localeCompare(b.date) || ('time' in a ? a.time : '').localeCompare('time' in b ? b.time : ''));
   }, [examTerms, events, todayStr, recurringSessions, calendarSessions, collections, today]);
 
-  const parseTimeToMinutes = (t: string) => { const [h, m] = t.split(':').map(Number); return h * 60 + m; };
-  const minutesToTime = (total: number) => `${String(Math.floor(total / 60)).padStart(2, '0')}:${String(total % 60).padStart(2, '0')}`;
-
   const handleSmartPlan = async () => {
     setIsGenerating(true);
     try {
@@ -331,55 +316,6 @@ export const StudyPlanner: React.FC<StudyPlannerProps> = ({ metrics, decks, exam
       setViewMode('monat');
     } catch { toast.error(t('sp2.smartPlanFailed')); }
     finally { setIsGenerating(false); }
-  };
-
-  const handleResizeStart = (e: React.MouseEvent, entry: StudyEntry) => {
-    e.preventDefault(); e.stopPropagation();
-    const startMin = parseTimeToMinutes(entry.startTime);
-    resizeStateRef.current = { id: entry.id, initialY: e.clientY, initialDuration: parseTimeToMinutes(entry.endTime) - startMin, startTimeMinutes: startMin };
-    setResizingId(entry.id);
-  };
-
-  useEffect(() => {
-    const handleMouseMove = (e: MouseEvent) => {
-      const state = resizeStateRef.current;
-      if (!state.id) return;
-      const deltaMinutes = Math.round((((e.clientY - state.initialY) / HOUR_HEIGHT) * 60) / STEP) * STEP;
-      const newEndTime = minutesToTime(state.startTimeMinutes + Math.max(STEP, state.initialDuration + deltaMinutes));
-      setEntries(prev => prev.map(entry => entry.id === state.id ? { ...entry, endTime: newEndTime } : entry));
-    };
-    const handleMouseUp = () => {
-      if (resizeStateRef.current.id) {
-        localStorage.setItem('study_plan', JSON.stringify(entriesRef.current));
-        resizeStateRef.current.id = null;
-        setResizingId(null);
-        document.body.style.cursor = 'default';
-        document.body.style.userSelect = 'auto';
-      }
-    };
-    if (resizingId) {
-      window.addEventListener('mousemove', handleMouseMove);
-      window.addEventListener('mouseup', handleMouseUp);
-      document.body.style.cursor = 'ns-resize';
-      document.body.style.userSelect = 'none';
-    }
-    return () => { window.removeEventListener('mousemove', handleMouseMove); window.removeEventListener('mouseup', handleMouseUp); };
-  }, [resizingId]);
-
-  const onDrop = (e: React.DragEvent, day: string) => {
-    e.preventDefault();
-    if (e.dataTransfer.getData('type') !== 'template') return;
-    const rect = e.currentTarget.getBoundingClientRect();
-    const gridMinutes = Math.round((((e.clientY - rect.top) / HOUR_HEIGHT) * 60) / STEP) * STEP;
-    const clampedStart = Math.min(Math.max(7 * 60 + gridMinutes, 7 * 60), 23 * 60 + 45);
-    const t: StudyTemplate = JSON.parse(e.dataTransfer.getData('data'));
-    savePlan([...entries, { id: Math.random().toString(36).substr(2, 9), day, subject: t.subject, topic: t.topic, color: t.color, startTime: minutesToTime(clampedStart), endTime: minutesToTime(clampedStart + 90), completed: false }]);
-  };
-
-  const calculatePosition = (start: string, end: string) => {
-    const s = parseTimeToMinutes(start);
-    const e = parseTimeToMinutes(end);
-    return { top: ((s - 7 * 60) / 60) * HOUR_HEIGHT, height: ((e - s) / 60) * HOUR_HEIGHT };
   };
 
   const knowledgeGaps = metrics.filter(m => m.confidence < 70);
@@ -549,7 +485,7 @@ export const StudyPlanner: React.FC<StudyPlannerProps> = ({ metrics, decks, exam
       {/* ── View Toggle ── */}
       <div className="max-w-5xl mx-auto">
         <div className="inline-flex bg-slate-100 dark:bg-slate-800/60 rounded-2xl p-1 gap-1">
-          {([['monat', t('sp2.month')], ['liste', t('sp2.list')], ['woche', t('sp2.weekPlan')]] as [ViewMode, string][]).map(([mode, label]) => (
+          {([['monat', t('sp2.month')], ['liste', t('sp2.list')]] as [ViewMode, string][]).map(([mode, label]) => (
             <button
               key={mode}
               onClick={() => setViewMode(mode)}
@@ -696,6 +632,8 @@ export const StudyPlanner: React.FC<StudyPlannerProps> = ({ metrics, decks, exam
               sessions={sessionsForDate(selectedDate, recurringSessions, calendarSessions, collections)}
               collections={collections}
               onUpdateCollectionColor={handleUpdateCollectionColor}
+              onUpdateExam={handleUpdateExam}
+              onUpdateEvent={handleUpdateEvent}
               onDeleteExam={id => onUpdateExams(examTerms.filter(e => e.id !== id))}
               onDeleteEvent={id => saveEvents(events.filter(ev => ev.id !== id))}
               onDeleteOneOffSession={handleDeleteOneOffSession}
@@ -772,247 +710,6 @@ export const StudyPlanner: React.FC<StudyPlannerProps> = ({ metrics, decks, exam
               );
             })
           )}
-        </div>
-      )}
-
-      {/* ── WOCHE VIEW ── */}
-      {viewMode === 'woche' && (
-        <div className="max-w-5xl mx-auto space-y-6">
-
-          {/* Day Nav — short names on mobile, full on desktop */}
-          <div className="flex gap-2 overflow-x-auto pb-1 scrollbar-none -mx-4 px-4 md:flex-wrap md:justify-center md:overflow-visible md:mx-0 md:px-0">
-            {DAYS.map((day, i) => (
-              <button
-                key={day}
-                onClick={() => setSelectedDay(day)}
-                className={`shrink-0 px-4 md:px-5 py-3 rounded-2xl text-[10px] font-black uppercase tracking-widest transition-all ${selectedDay === day ? 'bg-indigo-600 text-white shadow-lg' : 'text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800'}`}
-              >
-                <span className="md:hidden">{t((`dowShort.${WEEK_DAYS_SHORT[i]}`) as TKey)}</span>
-                <span className="hidden md:inline">{t((`dow.${day}`) as TKey)}</span>
-              </button>
-            ))}
-          </div>
-
-          {/* ── MOBILE: Liste + Schnell-Hinzufügen ── */}
-          <div className="md:hidden space-y-4">
-            {/* Entries for selected day */}
-            {entries.filter(e => e.day === selectedDay).length === 0 ? (
-              <div className="py-10 text-center text-slate-400 rounded-[24px] border border-dashed border-slate-200 dark:border-slate-700">
-                <p className="text-[10px] font-black uppercase tracking-widest">{t('sp2.noBlocksFor', { day: t((`dow.${selectedDay}`) as TKey) })}</p>
-              </div>
-            ) : (
-              <div className="space-y-3">
-                {entries
-                  .filter(e => e.day === selectedDay)
-                  .sort((a, b) => a.startTime.localeCompare(b.startTime))
-                  .map(entry => {
-                    const c = COLORS.find(x => x.id === entry.color) || COLORS[0];
-                    return (
-                      <div key={entry.id} className={`flex items-center gap-4 px-5 py-4 bg-white dark:bg-slate-900 rounded-[20px] border-2 shadow-sm ${entry.completed ? 'opacity-40' : c.border} border-opacity-40`}>
-                        <span className={`w-2.5 h-2.5 rounded-full shrink-0 ${c.bg}`} />
-                        <div className="flex-1 min-w-0">
-                          <p className="text-[9px] font-black uppercase tracking-widest text-slate-400">{entry.subject}</p>
-                          <p className="text-sm font-black dark:text-white break-words">{entry.topic}</p>
-                          <p className="text-[10px] font-mono text-slate-400 mt-0.5">{entry.startTime} – {entry.endTime}</p>
-                        </div>
-                        <button
-                          onClick={() => savePlan(entries.map(x => x.id === entry.id ? { ...x, completed: !x.completed } : x))}
-                          className={`w-8 h-8 rounded-xl border-2 flex items-center justify-center shrink-0 transition-all text-xs font-black ${entry.completed ? 'bg-emerald-500 border-emerald-500 text-white' : 'border-slate-200 dark:border-slate-700'}`}
-                        >
-                          {entry.completed ? '✓' : ''}
-                        </button>
-                        <button
-                          onClick={() => savePlan(entries.filter(x => x.id !== entry.id))}
-                          className="text-slate-300 hover:text-rose-500 transition-colors shrink-0"
-                        >
-                          <X size={14} />
-                        </button>
-                      </div>
-                    );
-                  })
-                }
-              </div>
-            )}
-
-            {/* Quick-add form */}
-            {showQuickAdd ? (
-              <form
-                onSubmit={e => {
-                  e.preventDefault();
-                  if (!qaSubject.trim()) return;
-                  savePlan([...entries, {
-                    id: Math.random().toString(36).substr(2, 9),
-                    day: selectedDay,
-                    subject: qaSubject.trim(),
-                    topic: qaTopic.trim() || qaSubject.trim(),
-                    color: qaColor,
-                    startTime: qaStart,
-                    endTime: qaEnd,
-                    completed: false,
-                  }]);
-                  setQaSubject(''); setQaTopic(''); setQaStart('08:00'); setQaEnd('09:30');
-                  setShowQuickAdd(false);
-                }}
-                className="bg-white dark:bg-slate-900 rounded-[24px] border border-slate-100 dark:border-slate-800 p-5 space-y-4 animate-in zoom-in-95 duration-200"
-              >
-                <p className="text-[9px] font-black uppercase tracking-widest text-indigo-600">{t('sp2.addBlockDay', { day: t((`dow.${selectedDay}`) as TKey) })}</p>
-                <div className="grid grid-cols-2 gap-3">
-                  <input
-                    autoFocus
-                    value={qaSubject}
-                    onChange={e => setQaSubject(e.target.value)}
-                    placeholder={t('sp2.subjectPlaceholder')}
-                    className="col-span-2 p-3 bg-slate-50 dark:bg-slate-800 rounded-xl border-2 border-transparent focus:border-indigo-500 outline-none dark:text-white text-sm font-bold transition-colors"
-                  />
-                  <input
-                    value={qaTopic}
-                    onChange={e => setQaTopic(e.target.value)}
-                    placeholder={t('sp2.topicPlaceholder')}
-                    className="col-span-2 p-3 bg-slate-50 dark:bg-slate-800 rounded-xl border-2 border-transparent focus:border-indigo-500 outline-none dark:text-white text-sm transition-colors"
-                  />
-                  <div className="space-y-1">
-                    <label className="text-[9px] font-black text-slate-400 uppercase ml-1">{t('sp2.from')}</label>
-                    <input type="time" value={qaStart} onChange={e => setQaStart(e.target.value)} className="w-full p-3 bg-slate-50 dark:bg-slate-800 rounded-xl border-2 border-transparent focus:border-indigo-500 outline-none dark:text-white text-sm font-bold" />
-                  </div>
-                  <div className="space-y-1">
-                    <label className="text-[9px] font-black text-slate-400 uppercase ml-1">{t('sp2.to')}</label>
-                    <input type="time" value={qaEnd} onChange={e => setQaEnd(e.target.value)} className="w-full p-3 bg-slate-50 dark:bg-slate-800 rounded-xl border-2 border-transparent focus:border-indigo-500 outline-none dark:text-white text-sm font-bold" />
-                  </div>
-                </div>
-                {/* Color picker */}
-                <div className="flex gap-2">
-                  {COLORS.map(c => (
-                    <button
-                      key={c.id}
-                      type="button"
-                      onClick={() => setQaColor(c.id)}
-                      className={`w-8 h-8 rounded-full ${c.bg} transition-all ${qaColor === c.id ? 'ring-2 ring-offset-2 ring-indigo-500 scale-110' : 'opacity-50 hover:opacity-100'}`}
-                    />
-                  ))}
-                </div>
-                <div className="flex gap-2">
-                  <button type="submit" disabled={!qaSubject.trim()} className="flex-1 py-3 bg-indigo-600 text-white rounded-xl text-[10px] font-black uppercase tracking-widest disabled:opacity-50 transition-all">
-                    {t('sp2.add')}
-                  </button>
-                  <button type="button" onClick={() => setShowQuickAdd(false)} className="px-4 py-3 bg-slate-100 dark:bg-slate-800 text-slate-400 rounded-xl text-[10px] font-black uppercase">
-                    {t('quiz.cancel')}
-                  </button>
-                </div>
-              </form>
-            ) : (
-              <button
-                onClick={() => setShowQuickAdd(true)}
-                className="w-full py-4 rounded-[20px] border-2 border-dashed border-slate-200 dark:border-slate-700 text-slate-400 hover:border-indigo-400 hover:text-indigo-500 transition-all flex items-center justify-center gap-2 font-black text-[10px] uppercase tracking-widest"
-              >
-                <Plus size={14} /> {t('sp2.addBlock')}
-              </button>
-            )}
-          </div>
-
-          {/* ── DESKTOP: Templates + Zeitgitter ── */}
-          <div className="hidden md:block space-y-6">
-            {/* Templates */}
-            <div className="flex flex-col items-center gap-4 py-2">
-              <p className="text-[9px] font-black uppercase tracking-[0.3em] text-slate-400">{t('sp2.templates')}</p>
-              <div className="flex flex-wrap justify-center gap-3">
-                {templates.map(t => (
-                  <div
-                    key={t.id}
-                    draggable
-                    onDragStart={e => { e.dataTransfer.setData('type', 'template'); e.dataTransfer.setData('data', JSON.stringify(t)); }}
-                    className={`px-6 py-3 bg-white dark:bg-slate-900 border-2 rounded-2xl cursor-grab shadow-sm hover:scale-105 active:cursor-grabbing transition-all ${COLORS.find(c => c.id === t.color)?.border} border-opacity-30`}
-                  >
-                    <p className="text-[10px] font-black dark:text-white uppercase tracking-wider">{t.subject}</p>
-                  </div>
-                ))}
-                {showTplInput ? (
-                  <form onSubmit={e => {
-                    e.preventDefault();
-                    if (!tplInputValue.trim()) return;
-                    const saved = localStorage.getItem('study_templates');
-                    const existing = saved ? JSON.parse(saved) : [];
-                    const updated = [...existing, { id: Math.random().toString(36).substr(2, 9), subject: tplInputValue.trim(), topic: 'Study', color: COLORS[Math.floor(Math.random() * COLORS.length)].id }];
-                    setTemplates(updated);
-                    localStorage.setItem('study_templates', JSON.stringify(updated));
-                    setTplInputValue('');
-                    setShowTplInput(false);
-                  }} className="flex items-center gap-2">
-                    <input autoFocus value={tplInputValue} onChange={e => setTplInputValue(e.target.value)} placeholder={t('sp2.subjectNamePlaceholder')} className="px-4 py-2 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-2xl text-sm font-bold dark:text-white outline-none focus:ring-2 ring-indigo-500/30 w-36" />
-                    <button type="submit" className="w-8 h-8 flex items-center justify-center bg-indigo-600 text-white rounded-full font-black text-sm">✓</button>
-                    <button type="button" onClick={() => setShowTplInput(false)} className="w-8 h-8 flex items-center justify-center bg-slate-100 dark:bg-slate-800 rounded-full text-slate-400">✕</button>
-                  </form>
-                ) : (
-                  <button onClick={() => setShowTplInput(true)} className="w-10 h-10 flex items-center justify-center bg-slate-100 dark:bg-slate-800 rounded-full text-slate-400 hover:text-indigo-600 transition-colors text-xl font-black">
-                    <Plus size={16} />
-                  </button>
-                )}
-              </div>
-            </div>
-
-            {/* Time Grid */}
-            <div className="bg-white dark:bg-slate-900 rounded-[32px] border border-slate-100 dark:border-slate-800 shadow-3d-raised overflow-hidden">
-              <div className="flex">
-                <div className="w-16 shrink-0 border-r border-slate-100 dark:border-slate-800">
-                  {HOURS.map(h => (
-                    <div key={h} style={{ height: HOUR_HEIGHT }} className="flex justify-center pt-2 border-b border-slate-50 dark:border-slate-800/50">
-                      <span className="text-[9px] font-mono font-black text-slate-300 dark:text-slate-700">{h}:00</span>
-                    </div>
-                  ))}
-                </div>
-                <div className="flex-grow">
-                  <div
-                    onDragOver={e => e.preventDefault()}
-                    onDrop={e => onDrop(e, selectedDay)}
-                    className="relative select-none"
-                    style={{ minHeight: HOUR_HEIGHT * HOURS.length }}
-                  >
-                    {HOURS.map(h => (
-                      <div key={h} style={{ height: HOUR_HEIGHT }} className="border-b border-slate-50 dark:border-slate-800/50 w-full" />
-                    ))}
-                    {entries.filter(e => e.day === selectedDay).map(entry => {
-                      const { top, height } = calculatePosition(entry.startTime, entry.endTime);
-                      const c = COLORS.find(x => x.id === entry.color) || COLORS[0];
-                      const isResizing = resizingId === entry.id;
-                      return (
-                        <div
-                          key={entry.id}
-                          style={{ top: `${top}px`, height: `${height}px`, left: '12px', right: '12px' }}
-                          className={`absolute rounded-[24px] border-2 p-4 transition-all duration-300 cursor-pointer group/item ${entry.completed ? 'opacity-30 grayscale blur-[0.5px]' : `bg-white dark:bg-slate-900 ${c.border} border-opacity-40 hover:border-opacity-100 shadow-3d-raised hover:shadow-3d-deep`} ${isResizing ? 'ring-4 ring-indigo-500/20 z-50' : 'z-10'}`}
-                        >
-                          <div className="flex flex-col h-full gap-1.5">
-                            <div className="flex justify-between items-start">
-                              <div className="flex items-center gap-2">
-                                <span className={`w-2 h-2 rounded-full ${c.bg}`} />
-                                <span className="text-[9px] font-black uppercase text-slate-400 tracking-widest">{entry.subject}</span>
-                              </div>
-                              <button onClick={e => { e.stopPropagation(); savePlan(entries.filter(x => x.id !== entry.id)); }} className="text-slate-300 hover:text-rose-500 opacity-0 group-hover/item:opacity-100 transition-opacity">
-                                <X size={12} />
-                              </button>
-                            </div>
-                            <p className="text-sm font-black dark:text-white break-words leading-tight">{entry.topic}</p>
-                            <div className="mt-auto flex justify-between items-end">
-                              <span className="text-[9px] font-mono font-black text-slate-400">{entry.startTime} – {entry.endTime}</span>
-                              <button
-                                onClick={e => { e.stopPropagation(); savePlan(entries.map(x => x.id === entry.id ? { ...x, completed: !x.completed } : x)); }}
-                                className={`w-7 h-7 rounded-lg border-2 flex items-center justify-center transition-all text-xs ${entry.completed ? 'bg-emerald-500 border-emerald-500 text-white' : 'border-slate-100 dark:border-slate-800 bg-slate-50 dark:bg-slate-800 hover:border-indigo-500'}`}
-                              >
-                                {entry.completed ? '✓' : ''}
-                              </button>
-                            </div>
-                          </div>
-                          {!entry.completed && (
-                            <div onMouseDown={e => handleResizeStart(e, entry)} className="absolute bottom-0 left-0 right-0 h-5 cursor-ns-resize flex items-end justify-center pb-1.5 opacity-0 group-hover/item:opacity-100 transition-opacity">
-                              <div className="w-10 h-1 bg-slate-200 dark:bg-slate-700 rounded-full" />
-                            </div>
-                          )}
-                        </div>
-                      );
-                    })}
-                  </div>
-                </div>
-              </div>
-            </div>
-          </div>
         </div>
       )}
     </div>

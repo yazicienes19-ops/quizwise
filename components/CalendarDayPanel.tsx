@@ -15,6 +15,8 @@ interface CalendarDayPanelProps {
   sessions: ResolvedSession[];
   collections: Collection[];
   onUpdateCollectionColor: (collectionId: string, color: string) => void;
+  onUpdateExam: (exam: ExamTerm) => void;
+  onUpdateEvent: (event: StudyEvent) => void;
   onDeleteExam: (id: string) => void;
   onDeleteEvent: (id: string) => void;
   onDeleteOneOffSession: (id: string) => void;
@@ -28,7 +30,7 @@ const DEFAULT_END = '17:30';
 
 export const CalendarDayPanel: React.FC<CalendarDayPanelProps> = ({
   date, examsToday, eventsToday, sessions, collections,
-  onUpdateCollectionColor, onDeleteExam, onDeleteEvent, onDeleteOneOffSession,
+  onUpdateCollectionColor, onUpdateExam, onUpdateEvent, onDeleteExam, onDeleteEvent, onDeleteOneOffSession,
   onSkipRecurringOccurrence, onDeleteRecurringRule, onSaveSession,
 }) => {
   const { t, tp } = useTranslation();
@@ -37,6 +39,14 @@ export const CalendarDayPanel: React.FC<CalendarDayPanelProps> = ({
 
   const [showForm, setShowForm] = useState(false);
   const [editing, setEditing] = useState<SessionEditTarget | undefined>(undefined);
+  const [editingExam, setEditingExam] = useState<ExamTerm | null>(null);
+  const [examEditTitle, setExamEditTitle] = useState('');
+  const [examEditDate, setExamEditDate] = useState('');
+  const [editingEvent, setEditingEvent] = useState<StudyEvent | null>(null);
+  const [eventEditTitle, setEventEditTitle] = useState('');
+  const [eventEditDate, setEventEditDate] = useState('');
+  const [eventEditDesc, setEventEditDesc] = useState('');
+  const [eventEditType, setEventEditType] = useState<'study' | 'reminder'>('study');
   const [moduleId, setModuleId] = useState<string | undefined>(undefined);
   const [useCustom, setUseCustom] = useState(false);
   const [customSubject, setCustomSubject] = useState('');
@@ -61,9 +71,41 @@ export const CalendarDayPanel: React.FC<CalendarDayPanelProps> = ({
     setOpenColorFor(null);
   };
 
-  const openAddForm = () => { resetForm(); setShowForm(true); };
+  const openAddForm = () => { resetForm(); setEditingExam(null); setEditingEvent(null); setShowForm(true); };
+
+  const openEditExam = (exam: ExamTerm) => {
+    setEditingExam(exam);
+    setExamEditTitle(exam.title);
+    setExamEditDate(exam.date);
+    setEditingEvent(null);
+    setShowForm(false);
+  };
+
+  const saveExamEdit = () => {
+    if (!editingExam || !examEditTitle.trim() || !examEditDate) return;
+    onUpdateExam({ ...editingExam, title: examEditTitle.trim(), date: examEditDate });
+    setEditingExam(null);
+  };
+
+  const openEditEvent = (ev: StudyEvent) => {
+    setEditingEvent(ev);
+    setEventEditTitle(ev.title);
+    setEventEditDate(ev.date);
+    setEventEditDesc(ev.description ?? '');
+    setEventEditType(ev.type === 'reminder' ? 'reminder' : 'study');
+    setEditingExam(null);
+    setShowForm(false);
+  };
+
+  const saveEventEdit = () => {
+    if (!editingEvent || !eventEditTitle.trim() || !eventEditDate) return;
+    onUpdateEvent({ ...editingEvent, title: eventEditTitle.trim(), date: eventEditDate, description: eventEditDesc.trim() || undefined, type: eventEditType });
+    setEditingEvent(null);
+  };
 
   const openEditForm = (s: ResolvedSession) => {
+    setEditingExam(null);
+    setEditingEvent(null);
     setModuleId(s.moduleId);
     setUseCustom(!s.moduleId);
     setCustomSubject(s.customSubject ?? '');
@@ -121,32 +163,124 @@ export const CalendarDayPanel: React.FC<CalendarDayPanelProps> = ({
         )}
 
         {examsToday.map(exam => (
-          <div key={exam.id} className="flex items-center gap-3 p-3 rounded-2xl" style={{ background: 'var(--bg-main)', border: '1px solid var(--border-color)' }}>
-            <div className="w-9 h-9 rounded-xl flex items-center justify-center shrink-0 bg-rose-100 dark:bg-rose-900/30">
-              <FileText size={16} className="text-rose-500" />
-            </div>
-            <div className="flex-1 min-w-0">
-              <p className="text-sm font-black break-words" style={{ color: 'var(--text-main)' }}>{exam.title}</p>
-              <p className="text-[9px] font-black uppercase tracking-widest text-slate-400 mt-0.5">{t('sp2.examTermLabel')}</p>
-            </div>
-            <button aria-label={t('common.delete')} onClick={() => onDeleteExam(exam.id)} className="w-7 h-7 shrink-0 flex items-center justify-center rounded-lg text-slate-300 hover:text-rose-500 hover:bg-rose-50 dark:hover:bg-rose-900/20 transition-colors">
-              <X size={14} />
-            </button>
+          <div key={exam.id} className="p-3 rounded-2xl" style={{ background: 'var(--bg-main)', border: '1px solid var(--border-color)' }}>
+            {editingExam?.id === exam.id ? (
+              <div className="space-y-2">
+                <input
+                  autoFocus
+                  value={examEditTitle}
+                  onChange={e => setExamEditTitle(e.target.value)}
+                  className="w-full p-2.5 bg-slate-50 dark:bg-slate-800 rounded-xl outline-none dark:text-white text-sm font-bold"
+                />
+                <input
+                  type="date"
+                  value={examEditDate}
+                  onChange={e => setExamEditDate(e.target.value)}
+                  className="w-full p-2.5 bg-slate-50 dark:bg-slate-800 rounded-xl outline-none dark:text-white text-sm font-bold"
+                />
+                <div className="flex gap-2">
+                  <button
+                    onClick={saveExamEdit}
+                    disabled={!examEditTitle.trim() || !examEditDate}
+                    className="flex-1 py-2 rounded-xl text-[10px] font-black uppercase tracking-widest disabled:opacity-40 transition-opacity"
+                    style={{ background: 'var(--primary)', color: 'var(--primary-text, white)' }}
+                  >
+                    {t('sp2.saveExam')}
+                  </button>
+                  <button onClick={() => setEditingExam(null)} className="px-4 py-2 rounded-xl text-[10px] font-black uppercase tracking-widest text-slate-400 bg-slate-100 dark:bg-slate-800">
+                    {t('common.cancel')}
+                  </button>
+                </div>
+              </div>
+            ) : (
+              <div className="flex items-center gap-3">
+                <div className="w-9 h-9 rounded-xl flex items-center justify-center shrink-0 bg-rose-100 dark:bg-rose-900/30">
+                  <FileText size={16} className="text-rose-500" />
+                </div>
+                <div className="flex-1 min-w-0">
+                  <p className="text-sm font-black break-words" style={{ color: 'var(--text-main)' }}>{exam.title}</p>
+                  <p className="text-[9px] font-black uppercase tracking-widest text-slate-400 mt-0.5">{t('sp2.examTermLabel')}</p>
+                </div>
+                <div className="flex items-center gap-1 shrink-0">
+                  <button aria-label={t('sp2.edit')} onClick={() => openEditExam(exam)} className="w-7 h-7 flex items-center justify-center rounded-lg text-slate-300 hover:text-indigo-500 hover:bg-indigo-50 dark:hover:bg-indigo-900/20 transition-colors">
+                    <Pencil size={13} />
+                  </button>
+                  <button aria-label={t('common.delete')} onClick={() => onDeleteExam(exam.id)} className="w-7 h-7 flex items-center justify-center rounded-lg text-slate-300 hover:text-rose-500 hover:bg-rose-50 dark:hover:bg-rose-900/20 transition-colors">
+                    <X size={14} />
+                  </button>
+                </div>
+              </div>
+            )}
           </div>
         ))}
 
         {eventsToday.map(ev => (
-          <div key={ev.id} className="flex items-center gap-3 p-3 rounded-2xl" style={{ background: 'var(--bg-main)', border: '1px solid var(--border-color)' }}>
-            <div className="w-9 h-9 rounded-xl flex items-center justify-center shrink-0 bg-blue-100 dark:bg-blue-900/30">
-              <MapPin size={16} className="text-blue-500" />
-            </div>
-            <div className="flex-1 min-w-0">
-              <p className="text-sm font-black break-words" style={{ color: 'var(--text-main)' }}>{ev.title}</p>
-              <p className="text-[9px] font-black uppercase tracking-widest text-slate-400 mt-0.5">{t('sp2.legendEvent')}</p>
-            </div>
-            <button aria-label={t('common.delete')} onClick={() => onDeleteEvent(ev.id)} className="w-7 h-7 shrink-0 flex items-center justify-center rounded-lg text-slate-300 hover:text-rose-500 hover:bg-rose-50 dark:hover:bg-rose-900/20 transition-colors">
-              <X size={14} />
-            </button>
+          <div key={ev.id} className="p-3 rounded-2xl" style={{ background: 'var(--bg-main)', border: '1px solid var(--border-color)' }}>
+            {editingEvent?.id === ev.id ? (
+              <div className="space-y-2">
+                <input
+                  autoFocus
+                  value={eventEditTitle}
+                  onChange={e => setEventEditTitle(e.target.value)}
+                  className="w-full p-2.5 bg-slate-50 dark:bg-slate-800 rounded-xl outline-none dark:text-white text-sm font-bold"
+                />
+                <input
+                  type="date"
+                  value={eventEditDate}
+                  onChange={e => setEventEditDate(e.target.value)}
+                  className="w-full p-2.5 bg-slate-50 dark:bg-slate-800 rounded-xl outline-none dark:text-white text-sm font-bold"
+                />
+                <input
+                  value={eventEditDesc}
+                  onChange={e => setEventEditDesc(e.target.value)}
+                  placeholder={t('sp2.descPlaceholder')}
+                  className="w-full p-2.5 bg-slate-50 dark:bg-slate-800 rounded-xl outline-none dark:text-white text-sm"
+                />
+                <div className="flex gap-2">
+                  {(['study', 'reminder'] as const).map(et => (
+                    <button
+                      key={et}
+                      type="button"
+                      onClick={() => setEventEditType(et)}
+                      className={`flex-1 py-2 rounded-xl text-[10px] font-black uppercase tracking-widest transition-all ${eventEditType === et ? 'bg-indigo-600 text-white' : 'bg-slate-100 dark:bg-slate-800 text-slate-500'}`}
+                    >
+                      {et === 'study' ? t('sp2.studyDate') : t('sp2.reminder')}
+                    </button>
+                  ))}
+                </div>
+                <div className="flex gap-2">
+                  <button
+                    onClick={saveEventEdit}
+                    disabled={!eventEditTitle.trim() || !eventEditDate}
+                    className="flex-1 py-2 rounded-xl text-[10px] font-black uppercase tracking-widest disabled:opacity-40 transition-opacity"
+                    style={{ background: 'var(--primary)', color: 'var(--primary-text, white)' }}
+                  >
+                    {t('sp2.saveEvent')}
+                  </button>
+                  <button onClick={() => setEditingEvent(null)} className="px-4 py-2 rounded-xl text-[10px] font-black uppercase tracking-widest text-slate-400 bg-slate-100 dark:bg-slate-800">
+                    {t('common.cancel')}
+                  </button>
+                </div>
+              </div>
+            ) : (
+              <div className="flex items-center gap-3">
+                <div className="w-9 h-9 rounded-xl flex items-center justify-center shrink-0 bg-blue-100 dark:bg-blue-900/30">
+                  <MapPin size={16} className="text-blue-500" />
+                </div>
+                <div className="flex-1 min-w-0">
+                  <p className="text-sm font-black break-words" style={{ color: 'var(--text-main)' }}>{ev.title}</p>
+                  <p className="text-[9px] font-black uppercase tracking-widest text-slate-400 mt-0.5">{t('sp2.legendEvent')}</p>
+                </div>
+                <div className="flex items-center gap-1 shrink-0">
+                  <button aria-label={t('sp2.edit')} onClick={() => openEditEvent(ev)} className="w-7 h-7 flex items-center justify-center rounded-lg text-slate-300 hover:text-indigo-500 hover:bg-indigo-50 dark:hover:bg-indigo-900/20 transition-colors">
+                    <Pencil size={13} />
+                  </button>
+                  <button aria-label={t('common.delete')} onClick={() => onDeleteEvent(ev.id)} className="w-7 h-7 flex items-center justify-center rounded-lg text-slate-300 hover:text-rose-500 hover:bg-rose-50 dark:hover:bg-rose-900/20 transition-colors">
+                    <X size={14} />
+                  </button>
+                </div>
+              </div>
+            )}
           </div>
         ))}
 
