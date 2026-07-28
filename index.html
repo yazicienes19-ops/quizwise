@@ -6,8 +6,13 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
     <meta name="apple-mobile-web-app-capable" content="yes">
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+    <!-- ICO/PNG-Fallbacks zuerst: Safari zeigt bei reinem SVG-Favicon im Tab
+         unzuverlässig nur einen generierten Buchstaben statt des echten Icons.
+         apple-touch-icon MUSS ein PNG sein (iOS unterstützt dafür kein SVG). -->
+    <link rel="icon" href="/favicon.ico" sizes="any">
     <link rel="icon" type="image/svg+xml" href="/icon-192.svg">
-    <link rel="apple-touch-icon" href="/icon-512.svg">
+    <link rel="icon" type="image/png" sizes="192x192" href="/icon-192.png">
+    <link rel="apple-touch-icon" href="/apple-touch-icon.png">
     <title>StudeArc - AI Document Quizzer</title>
     <script>
         // Einmalige Migration: alte quizwise_*/quizwise-* localStorage-Keys auf
