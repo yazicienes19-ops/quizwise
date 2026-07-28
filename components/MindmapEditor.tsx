@@ -1,7 +1,7 @@
 import React, { useRef, useState, useEffect } from 'react';
 import { Collection, MindmapItem, ProcessedDocument } from '../types';
 import { documentDisplayName } from '../services/libraryService';
-import { exportSvgAsPng } from '../services/mindmapExport';
+import { exportMindmapAsPng } from '../services/mindmapExport';
 import { MindmapNode, deserializeMindmap, serializeMindmap, toggleCollapsed, updateNodeColor } from '../services/mindmapTree';
 import { MindmapCanvas } from './MindmapCanvas';
 import { MindmapOutlineEditor } from './MindmapOutlineEditor';
@@ -24,7 +24,6 @@ export const MindmapEditor: React.FC<MindmapEditorProps> = ({ item, documents, c
   const [isRenaming, setIsRenaming] = useState(false);
   const [renameTitle, setRenameTitle] = useState(item.title);
 
-  const svgRef = useRef<SVGSVGElement | null>(null);
   const saveTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   const handleTreeChange = (next: MindmapNode) => {
@@ -55,9 +54,8 @@ export const MindmapEditor: React.FC<MindmapEditorProps> = ({ item, documents, c
   };
 
   const handleExport = async () => {
-    if (!svgRef.current) return;
     try {
-      await exportSvgAsPng(svgRef.current, item.title);
+      await exportMindmapAsPng(tree, item.title, t('mm.untitledNode'));
     } catch {
       // Export-Fehler sind selten (fehlender Canvas-Kontext) — still fehlschlagen reicht hier
     }
@@ -165,7 +163,7 @@ export const MindmapEditor: React.FC<MindmapEditorProps> = ({ item, documents, c
           className="lg:col-span-6 relative rounded-[24px] overflow-hidden h-[50vh] lg:h-[70vh]"
           style={{ background: 'var(--bg-sidebar)', border: '1px solid var(--border-color)' }}
         >
-          <MindmapCanvas ref={svgRef} tree={tree} onToggleCollapse={handleToggleCollapse} onColorChange={handleColorChange} />
+          <MindmapCanvas tree={tree} onToggleCollapse={handleToggleCollapse} onColorChange={handleColorChange} />
         </div>
       </div>
     </div>
