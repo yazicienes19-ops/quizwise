@@ -1,4 +1,4 @@
-import React, { useEffect, useMemo, useRef } from 'react';
+import React, { useEffect, useMemo, useRef, useState } from 'react';
 import * as d3 from 'd3';
 import { MindmapNode } from '../services/mindmapTree';
 import { computeMindmapLayout, NODE_HEIGHT } from '../services/mindmapLayout';
@@ -10,18 +10,30 @@ interface MindmapCanvasProps {
   onColorChange: (nodeId: string, color: string | undefined) => void;
 }
 
+interface ZoomTransform { x: number; y: number; k: number; }
+
 /**
  * Reine Vorschau (nicht editierbar) — Editieren passiert im
- * MindmapOutlineEditor daneben. Ein direkter Klick-Editor auf dieser Karte
- * wurde live getestet und hat sich als zu fragil erwiesen (SVG/foreignObject
- * + Zoom/Pan + Drag kollidieren browserseitig), deshalb bewusst nur noch
- * Layout/Rendering/Zoom/Pan/Einklappen hier.
+ * MindmapOutlineEditor daneben.
+ *
+ * WICHTIG: Die Knoten selbst (Rechteck + Text) sind reines SVG, die
+ * interaktiven Steuerelemente (Farbwähler, Reset-×, Ein-/Ausklapp-Pfeil)
+ * liegen als normales HTML-Overlay ÜBER dem SVG, nicht mehr als
+ * foreignObject INNERHALB der von d3-zoom transformierten <g>. Grund: Safari
+ * hat bekannte Hit-Testing-Bugs bei HTML-Inhalten in foreignObject, wenn ein
+ * Vorfahre ein SVG-transform-Attribut trägt (genau das, was Zoomen/Verschieben
+ * hier laufend tut) — Klicks landen dann inkonsistent daneben. Ein früherer
+ * Versuch, direkt im Canvas zu editieren, wurde deshalb schon verworfen; die
+ * verbliebenen kleinen Buttons hatten dasselbe Problem. Das HTML-Overlay
+ * (absolut positioniert, Position aus dem Zoom-Transform berechnet) umgeht
+ * das Problem komplett, weil dort kein SVG-transform mehr im Spiel ist.
  */
 export const MindmapCanvas: React.FC<MindmapCanvasProps> = ({ tree, onToggleCollapse, onColorChange }) => {
   const { t } = useTranslation();
   const svgRef = useRef<SVGSVGElement | null>(null);
   const gRef = useRef<SVGGElement | null>(null);
   const zoomBehaviorRef = useRef<d3.ZoomBehavior<SVGSVGElement, unknown> | null>(null);
+  const [zoomTransform, setZoomTransform] = useState<ZoomTransform>({ x: 0, y: 0, k: 1 });
 
   const { positioned, links, colorMap, hasChildrenMap } = useMemo(
     () => computeMindmapLayout(tree, t('mm.untitledNode')),
@@ -51,8 +63,10 @@ export const MindmapCanvas: React.FC<MindmapCanvasProps> = ({ tree, onToggleColl
     const g = d3.select(gRef.current);
     const zoomBehavior = d3.zoom<SVGSVGElement, unknown>()
       .scaleExtent([0.3, 2.5])
-      .filter((event: Event) => !(event.target as Element).closest('[data-interactive]'))
-      .on('zoom', (event) => g.attr('transform', event.transform.toString()));
+      .on('zoom', (event) => {
+        g.attr('transform', event.transform.toString());
+        setZoomTransform({ x: event.transform.x, y: event.transform.y, k: event.transform.k });
+      });
     svgSel.call(zoomBehavior);
     zoomBehaviorRef.current = zoomBehavior;
     return () => { svgSel.on('.zoom', null); };
@@ -67,10 +81,7 @@ export const MindmapCanvas: React.FC<MindmapCanvasProps> = ({ tree, onToggleColl
   }, [positioned]);
 
   // Nur neu einpassen, wenn sich die Zahl der SICHTBAREN Knoten ändert (neue/
-  // gelöschte Punkte, Ein-/Ausklappen) — nicht bei reinen Farbwechseln. Ein
-  // Re-Fit bei jedem Klick auf den Farbwähler verschiebt die Ansicht unter dem
-  // Mauszeiger genau während des Klicks und macht Buttons in der Nähe (×,
-  // Ein-/Ausklappen) unzuverlässig treffbar.
+  // gelöschte Punkte, Ein-/Ausklappen) — nicht bei reinen Farbwechseln.
   useEffect(() => {
     if (!didInitialFit.current) return;
     fitView();
@@ -83,7 +94,7 @@ export const MindmapCanvas: React.FC<MindmapCanvasProps> = ({ tree, onToggleColl
   };
 
   return (
-    <div className="relative w-full h-full">
+    <div className="relative w-full h-full overflow-hidden">
       <div className="absolute top-3 right-3 z-10 flex gap-1.5">
         <button onClick={() => zoomBy(1.3)} className="w-8 h-8 flex items-center justify-center bg-white dark:bg-slate-800 text-slate-500 dark:text-slate-300 rounded-lg shadow-sm text-sm font-black hover:text-indigo-600 transition-colors">+</button>
         <button onClick={() => zoomBy(1 / 1.3)} className="w-8 h-8 flex items-center justify-center bg-white dark:bg-slate-800 text-slate-500 dark:text-slate-300 rounded-lg shadow-sm text-sm font-black hover:text-indigo-600 transition-colors">−</button>
@@ -99,60 +110,69 @@ export const MindmapCanvas: React.FC<MindmapCanvasProps> = ({ tree, onToggleColl
           {positioned.map(p => {
             const isRoot = p.node.id === tree.id;
             const effectiveColor = colorMap.get(p.node.id);
-            const ownColor = p.node.color;
-            const canToggle = hasChildrenMap.get(p.node.id);
-            const extraWidth = 24 + (ownColor ? 18 : 0) + (canToggle ? 18 : 0);
+            const fill = effectiveColor || (isRoot ? 'var(--primary)' : undefined);
             return (
-              <g key={p.node.id} transform={`translate(${p.x - p.width / 2}, ${p.y - NODE_HEIGHT / 2})`}>
-                <foreignObject width={p.width + extraWidth} height={NODE_HEIGHT} style={{ overflow: 'visible' }}>
-                  <div xmlns="http://www.w3.org/1999/xhtml" className="flex items-center h-full" style={{ width: p.width + extraWidth }}>
-                    <div
-                      className={`flex items-center h-full px-3 rounded-2xl text-xs font-bold truncate select-none ${
-                        effectiveColor ? 'text-white' : isRoot ? 'bg-indigo-600 text-white' : 'bg-white dark:bg-slate-800 text-slate-700 dark:text-white shadow-sm'
-                      }`}
-                      style={{ width: p.width, height: NODE_HEIGHT, ...(effectiveColor ? { background: effectiveColor } : {}) }}
-                    >
-                      {p.node.text || t('mm.untitledNode')}
-                    </div>
-                    <input
-                      data-interactive="true"
-                      type="color"
-                      value={effectiveColor || '#94a3b8'}
-                      onChange={e => onColorChange(p.node.id, e.target.value)}
-                      onMouseDown={e => e.stopPropagation()}
-                      onPointerDown={e => e.stopPropagation()}
-                      title={t('mm.color')}
-                      className="shrink-0 ml-1 w-5 h-5 rounded border-0 cursor-pointer bg-transparent p-0"
-                    />
-                    {ownColor && (
-                      <button
-                        data-interactive="true"
-                        onClick={() => onColorChange(p.node.id, undefined)}
-                        onMouseDown={e => e.stopPropagation()}
-                        onPointerDown={e => e.stopPropagation()}
-                        title={t('mm.colorReset')}
-                        className="shrink-0 ml-0.5 w-4 h-4 flex items-center justify-center rounded-full bg-slate-200 dark:bg-slate-700 text-slate-500 dark:text-slate-300 text-[8px]"
-                      >×</button>
-                    )}
-                    {canToggle && (
-                      <button
-                        data-interactive="true"
-                        onClick={() => onToggleCollapse(p.node.id)}
-                        onMouseDown={e => e.stopPropagation()}
-                        onPointerDown={e => e.stopPropagation()}
-                        title={p.node.collapsed ? t('mm.expand') : t('mm.collapse')}
-                        className="shrink-0 ml-1 w-4 h-4 flex items-center justify-center rounded-full bg-slate-200 dark:bg-slate-700 text-slate-500 dark:text-slate-300 text-[9px]"
-                      >
-                        {p.node.collapsed ? '▸' : '▾'}
-                      </button>
-                    )}
-                  </div>
-                </foreignObject>
+              <g key={p.node.id}>
+                <rect
+                  x={p.x - p.width / 2} y={p.y - NODE_HEIGHT / 2}
+                  width={p.width} height={NODE_HEIGHT} rx={14}
+                  fill={fill || 'var(--bg-sidebar, #fff)'}
+                  stroke={fill ? 'none' : 'var(--border-color, #e2e8f0)'}
+                />
+                <text
+                  x={p.x} y={p.y + 4.5} textAnchor="middle"
+                  className={`text-xs font-bold select-none ${fill ? 'fill-white' : 'fill-slate-700 dark:fill-white'}`}
+                  style={{ pointerEvents: 'none' }}
+                >
+                  {p.node.text || t('mm.untitledNode')}
+                </text>
               </g>
             );
           })}
         </g>
       </svg>
+      {/* HTML-Overlay für die interaktiven Steuerelemente — Position wird aus
+          dem Zoom-Transform berechnet, damit sie mit dem SVG mitwandern. */}
+      <div className="absolute inset-0 pointer-events-none">
+        {positioned.map(p => {
+          const effectiveColor = colorMap.get(p.node.id);
+          const ownColor = p.node.color;
+          const canToggle = hasChildrenMap.get(p.node.id);
+          const screenX = zoomTransform.x + zoomTransform.k * (p.x + p.width / 2);
+          const screenY = zoomTransform.y + zoomTransform.k * p.y;
+          return (
+            <div
+              key={p.node.id}
+              className="absolute flex items-center gap-1 pointer-events-none"
+              style={{ left: screenX, top: screenY, transform: 'translate(6px, -50%)' }}
+            >
+              <input
+                type="color"
+                value={effectiveColor || '#94a3b8'}
+                onChange={e => onColorChange(p.node.id, e.target.value)}
+                title={t('mm.color')}
+                className="pointer-events-auto shrink-0 w-5 h-5 rounded border-0 cursor-pointer bg-transparent p-0"
+              />
+              {ownColor && (
+                <button
+                  onClick={() => onColorChange(p.node.id, undefined)}
+                  title={t('mm.colorReset')}
+                  className="pointer-events-auto shrink-0 w-4 h-4 flex items-center justify-center rounded-full bg-slate-200 dark:bg-slate-700 text-slate-500 dark:text-slate-300 text-[8px]"
+                >×</button>
+              )}
+              {canToggle && (
+                <button
+                  onClick={() => onToggleCollapse(p.node.id)}
+                  title={p.node.collapsed ? t('mm.expand') : t('mm.collapse')}
+                  className="pointer-events-auto shrink-0 w-4 h-4 flex items-center justify-center rounded-full bg-slate-200 dark:bg-slate-700 text-slate-500 dark:text-slate-300 text-[9px]"
+                >
+                  {p.node.collapsed ? '▸' : '▾'}
+                </button>
+              )}
+            </div>
+          );
+        })}
+      </div>
     </div>
   );
 };
