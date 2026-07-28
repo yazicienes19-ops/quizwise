@@ -3,6 +3,7 @@ const { GoogleGenAI } = require('@google/genai');
 const { JSDOM } = require('jsdom');
 const { Readability } = require('@mozilla/readability');
 const { checkUsageLimit } = require('../middleware/limits');
+const { validatePublicHttpUrl } = require('../utils/urlSafety');
 
 const router = express.Router();
 const ai = new GoogleGenAI({ apiKey: process.env.GEMINI_API_KEY });
@@ -10,26 +11,6 @@ const ai = new GoogleGenAI({ apiKey: process.env.GEMINI_API_KEY });
 const FETCH_TIMEOUT_MS = 20_000;
 const MAX_HTML_BYTES = 5 * 1024 * 1024;
 const MAX_TEXT_CHARS = 400_000;
-
-// ── URL-Validierung ───────────────────────────────────────────────────────────
-// Der Server ruft fremde URLs im Auftrag des Nutzers ab — interne Ziele
-// (localhost, private Netze, Cloud-Metadaten) dürfen dabei nie erreichbar sein.
-
-const PRIVATE_HOST_PATTERNS = [
-  /^localhost$/i,
-  /\.(local|internal)$/i,
-  /^127\./, /^10\./, /^192\.168\./, /^169\.254\./,
-  /^172\.(1[6-9]|2\d|3[01])\./,
-  /^0\./, /^\[?::1\]?$/, /^\[?fc/i, /^\[?fe80/i,
-];
-
-function validatePublicHttpUrl(raw) {
-  let url;
-  try { url = new URL(raw); } catch { return null; }
-  if (url.protocol !== 'http:' && url.protocol !== 'https:') return null;
-  if (PRIVATE_HOST_PATTERNS.some(p => p.test(url.hostname))) return null;
-  return url;
-}
 
 function parseYouTubeId(url) {
   const host = url.hostname.replace(/^(www|m)\./, '');

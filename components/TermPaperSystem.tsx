@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { AcademicSource, CitationStyle, SearchResult, ProcessedDocument, MultiStyleCitation, PaperFramework } from '../types';
 import { EmojiImage } from './EmojiImage';
-import { generatePaperFramework, formatCitationFull, GenerationSource, magicFormatCitation } from '../services/geminiService';
+import { generatePaperFramework, formatCitationFull, GenerationSource, magicFormatCitation, lookupCitationSource } from '../services/geminiService';
 import { documentDisplayName } from '../services/libraryService';
 import { toast } from '../services/toast';
 
@@ -338,6 +338,7 @@ export const TermPaperSystem: React.FC<TermPaperSystemProps> = ({
   const [manualJournal, setManualJournal]     = useState('');
   const [manualUrl, setManualUrl]             = useState('');
   const [isAdding, setIsAdding]               = useState(false);
+  const [isLookingUp, setIsLookingUp]         = useState(false);
   // Magic
   const [magicInput, setMagicInput]           = useState('');
   const [magicResult, setMagicResult]         = useState<MultiStyleCitation | null>(null);
@@ -412,6 +413,23 @@ export const TermPaperSystem: React.FC<TermPaperSystemProps> = ({
       toast.success('Quelle hinzugefügt');
     } catch { toast.error('Zitier-Fehler.'); }
     finally { setIsAdding(false); }
+  };
+
+  const handleLookupSource = async () => {
+    if (!manualUrl.trim()) { toast.error('Bitte zuerst eine DOI oder URL eintragen.'); return; }
+    setIsLookingUp(true);
+    try {
+      const r = await lookupCitationSource(manualUrl.trim());
+      setManualTitle(r.title);
+      setManualAuthor(r.authors);
+      setManualYear(r.year);
+      setManualJournal(r.journal);
+      toast.success('Felder automatisch ausgefüllt — bitte prüfen.');
+    } catch (e: any) {
+      toast.error(e?.message || 'Für diese DOI/URL ließen sich keine Angaben finden.');
+    } finally {
+      setIsLookingUp(false);
+    }
   };
 
   const handleMagicFormat = async () => {
@@ -731,10 +749,17 @@ export const TermPaperSystem: React.FC<TermPaperSystemProps> = ({
                     className="p-4 bg-slate-50 dark:bg-slate-800 rounded-2xl border-2 border-transparent focus:border-indigo-500 outline-none dark:text-white transition-colors"
                   />
                 ))}
-                <input type="text" value={manualUrl} onChange={e => setManualUrl(e.target.value)}
-                  placeholder="URL / DOI (optional)"
-                  className="p-4 bg-slate-50 dark:bg-slate-800 rounded-2xl border-2 border-transparent focus:border-indigo-500 outline-none dark:text-white sm:col-span-2 transition-colors"
-                />
+                <div className="flex gap-2 sm:col-span-2">
+                  <input type="text" value={manualUrl} onChange={e => setManualUrl(e.target.value)}
+                    placeholder="URL / DOI (optional)"
+                    className="flex-1 p-4 bg-slate-50 dark:bg-slate-800 rounded-2xl border-2 border-transparent focus:border-indigo-500 outline-none dark:text-white transition-colors"
+                  />
+                  <button type="button" onClick={handleLookupSource} disabled={isLookingUp || !manualUrl.trim()}
+                    className="px-5 rounded-2xl text-[10px] font-black uppercase tracking-widest bg-slate-100 dark:bg-slate-800 text-indigo-600 dark:text-indigo-400 hover:bg-slate-200 dark:hover:bg-slate-700 disabled:opacity-50 whitespace-nowrap transition-colors"
+                  >
+                    {isLookingUp ? '...' : 'Automatisch ausfüllen'}
+                  </button>
+                </div>
               </div>
               <button onClick={handleAddSource} disabled={isAdding || !manualTitle || !manualAuthor}
                 className="w-full bg-indigo-600 text-white font-black py-4 rounded-2xl text-[11px] uppercase tracking-widest hover:scale-[1.01] active:scale-[0.99] transition-all disabled:opacity-50"

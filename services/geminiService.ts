@@ -360,6 +360,30 @@ export const searchScholar = async (query: string): Promise<{ text: string, resu
   return { text: '', results: data.results || [] };
 };
 
+export interface CitationLookupResult {
+  title: string;
+  authors: string;
+  year: string;
+  journal: string;
+  doi: string | null;
+  url: string;
+  type: 'article' | 'book' | 'other';
+  isWeb: boolean;
+}
+
+export const lookupCitationSource = async (query: string): Promise<CitationLookupResult> => {
+  const authHeader = await getAuthHeader();
+  const res = await fetch(`${BACKEND_URL}/api/search/lookup?q=${encodeURIComponent(query)}`, {
+    headers: { ...authHeader },
+  });
+  if (!res.ok) {
+    const err = await res.json().catch(() => ({ error: 'Suchfehler' }));
+    throw new Error(err.error || `Suchfehler: ${res.status}`);
+  }
+  const data = await res.json();
+  return data.result;
+};
+
 export const generateSmartStudyPlan = async (
   metrics: TopicMetric[], decks: FlashcardDeck[], exams: ExamTerm[], dueForecast?: number[],
   fixedSchedule?: { day: string; subject: string }[]
