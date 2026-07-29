@@ -140,23 +140,34 @@ export const Layout: React.FC<LayoutProps> = ({
   };
 
   return (
-    <div className="min-h-screen flex transition-colors duration-300 overflow-hidden bg-transparent">
+    <div className="min-h-screen flex transition-colors duration-300 bg-transparent relative">
+
+      {/* WICHTIG: kein overflow-hidden auf diesem äußeren Container — das
+          würde ihn (statt html/body) zum "nächsten Scroll-Container" für
+          position:sticky in der <aside> darunter machen. Da dieser Container
+          selbst nie eigenständig scrollt (er wächst per min-h-screen immer
+          exakt auf Inhaltshöhe), bliebe sticky dadurch komplett wirkungslos —
+          die Sidebar würde beim echten Scrollen der Seite einfach normal
+          wegscrollen statt oben fixiert zu bleiben (genau der gemeldete Bug:
+          Nav verschwindet beim Scrollen, man sieht nur noch eine leere Navy-
+          Fläche). overflow-hidden für die Einklapp-Animation sitzt bereits
+          direkt auf der <aside> selbst, wird hier also nicht gebraucht.
+
+          Navy-Hintergrundfläche über die GESAMTE Seitenhöhe, unabhängig vom
+          Sticky-Nav-Inhalt daneben. Reine Farbfläche (kein Nav-Inhalt) —
+          verhindert, dass bei langen Seiten unter dem Sidebar-Inhalt heller
+          Hintergrund durchscheint, ohne die Sidebar selbst höher als einen
+          Bildschirm machen zu müssen. */}
+      <div className="hidden lg:block absolute inset-y-0 left-0 w-72 pointer-events-none" style={{ background: SIDEBAR.bg }} aria-hidden="true" />
+      <div className="hidden md:block lg:hidden absolute inset-y-0 left-0 w-[72px] pointer-events-none" style={{ background: SIDEBAR.bg }} aria-hidden="true" />
 
       {/* ── DESKTOP SIDEBAR (≥ 1024px) — einklappbar, Zustand persistiert ──
           Breite/Opacity animiert statt hart weg-/hinzugemountet; der innere
           Inhalt behält seine volle Breite (w-72) und wird vom schrumpfenden
           äußeren Container nur zunehmend abgeschnitten + nach links geschoben
-          — dadurch wirkt es wie ein weiches Einklappen statt eines harten Cuts.
-
-          min-h-screen (nicht h-screen) auf dem äußeren <aside>: bei langen
-          Seiten (z.B. Kalender-Monatsansicht) muss die Navy-Fläche über die
-          komplette gescrollte Höhe reichen, sonst hört sie nach einem
-          Bildschirm auf und darunter scheint wieder der helle Hintergrund
-          durch. Der innere Wrapper bleibt bewusst bei h-screen (fix, nicht
-          h-full) — sonst würde die Nav-Liste (flex-1) den ganzen zusätzlichen
-          Platz auffüllen und User-Chip/Einstellungen weit nach unten schieben. */}
+          — dadurch wirkt es wie ein weiches Einklappen statt eines harten Cuts. */}
       <aside
-        className="hidden lg:flex flex-col min-h-screen sticky top-0 shrink-0 shadow-[4px_0_24px_rgba(0,0,0,0.15)] z-20 overflow-hidden transition-[width,opacity] duration-300 ease-[cubic-bezier(0.16,1,0.3,1)]"
+        className="hidden lg:flex flex-col h-screen sticky top-0 shrink-0 shadow-[4px_0_24px_rgba(0,0,0,0.15)] z-20 overflow-hidden transition-[width,opacity] duration-300 ease-[cubic-bezier(0.16,1,0.3,1)]"
         style={{
           background: SIDEBAR.bg,
           borderRight: `1px solid ${SIDEBAR.border}`,
@@ -166,7 +177,7 @@ export const Layout: React.FC<LayoutProps> = ({
         aria-hidden={sidebarCollapsed}
       >
         <div
-          className="p-10 flex flex-col h-screen w-72 shrink-0 transition-transform duration-300 ease-[cubic-bezier(0.16,1,0.3,1)]"
+          className="p-10 flex flex-col h-full w-72 shrink-0 transition-transform duration-300 ease-[cubic-bezier(0.16,1,0.3,1)]"
           style={{ transform: sidebarCollapsed ? 'translateX(-24px)' : 'translateX(0)' }}
         >
           <div className="flex items-center gap-3 mb-12">
@@ -380,71 +391,65 @@ export const Layout: React.FC<LayoutProps> = ({
 
       {/* ── TABLET SIDEBAR (768px – 1023px) ── */}
       <aside
-        className="hidden md:flex lg:hidden flex-col min-h-screen w-[72px] sticky top-0 z-20"
+        className="hidden md:flex lg:hidden flex-col h-screen w-[72px] sticky top-0 z-20"
         style={{ background: SIDEBAR.bg, borderRight: `1px solid ${SIDEBAR.border}` }}
       >
-        {/* Fester Innen-Container in Bildschirmhöhe: hält die Nav/Footer-Aufteilung
-            unverändert, während der äußere <aside> (min-h-screen) für lange Seiten
-            (z.B. Kalender) über die komplette Scroll-Höhe hinweg Navy bleibt statt
-            nach einem Bildschirm abzubrechen. */}
-        <div className="flex flex-col h-screen w-full">
-          {/* Scrollable top: logo + all nav items */}
-          <div className="flex-1 overflow-y-auto scrollbar-hide flex flex-col items-center gap-1 pt-4 pb-2">
-            <BrandMark size={26} strokeColor={SIDEBAR.text} peakColor={SIDEBAR.gold} className="mb-5 shrink-0" />
+        {/* Scrollable top: logo + all nav items */}
+        <div className="flex-1 overflow-y-auto scrollbar-hide flex flex-col items-center gap-1 pt-4 pb-2">
+          <BrandMark size={26} strokeColor={SIDEBAR.text} peakColor={SIDEBAR.gold} className="mb-5 shrink-0" />
 
-            {allNavItems.map(item => {
-              const isActive = activeTab === item.tab;
-              const Icon = ICONS[item.tab];
-              return (
-                <button
-                  key={item.tab}
-                  onClick={() => onTabChange(item.tab)}
-                  title={t(item.labelKey)}
-                  className={`w-12 h-12 flex flex-col items-center justify-center gap-[3px] rounded-xl transition-all duration-200 active:scale-90 shrink-0 ${isActive ? 'shadow-[0_2px_12px_rgba(169,119,44,0.35)]' : ''}`}
-                  style={isActive ? { background: SIDEBAR.gold, color: SIDEBAR.bg } : { color: SIDEBAR.textMuted }}
-                  onMouseEnter={e => { if (!isActive) e.currentTarget.style.background = SIDEBAR.hoverBg; }}
-                  onMouseLeave={e => { if (!isActive) e.currentTarget.style.background = 'transparent'; }}
-                >
-                  {Icon && <Icon className="w-[18px] h-[18px]" strokeWidth={1.75} />}
-                  <span className="text-[7px] font-black uppercase tracking-wide leading-none">{t(item.labelKey).slice(0, 6)}</span>
-                </button>
-              );
-            })}
-          </div>
-
-          {/* Fixed bottom: settings + user */}
-          <div
-            className="shrink-0 flex flex-col items-center gap-2 py-3"
-            style={{ borderTop: `1px solid ${SIDEBAR.border}` }}
-          >
-            <button
-              onClick={onSettingsClick}
-              title={t('layout.settings')}
-              className="w-12 h-12 flex items-center justify-center rounded-xl transition-all active:scale-95"
-              style={{ color: SIDEBAR.textMuted }}
-              onMouseEnter={e => { e.currentTarget.style.background = SIDEBAR.hoverBg; }}
-              onMouseLeave={e => { e.currentTarget.style.background = 'transparent'; }}
-            >
-              <Settings className="w-[18px] h-[18px]" strokeWidth={1.75} />
-            </button>
-            {user ? (
+          {allNavItems.map(item => {
+            const isActive = activeTab === item.tab;
+            const Icon = ICONS[item.tab];
+            return (
               <button
-                title={t('layout.logoutTitle', { email: user.email ?? '' })}
-                onClick={onLogout}
-                className="w-10 h-10 rounded-xl flex items-center justify-center text-[11px] font-black transition-all hover:scale-105 active:scale-90"
-                style={{ background: SIDEBAR.gold, color: SIDEBAR.bg }}
-              >{userInitial}</button>
-            ) : (
-              <button
-                onClick={onLoginClick}
-                title={t('layout.login')}
-                className="w-12 h-12 flex items-center justify-center rounded-xl transition-all active:scale-95"
-                style={{ background: SIDEBAR.gold, color: SIDEBAR.bg }}
+                key={item.tab}
+                onClick={() => onTabChange(item.tab)}
+                title={t(item.labelKey)}
+                className={`w-12 h-12 flex flex-col items-center justify-center gap-[3px] rounded-xl transition-all duration-200 active:scale-90 shrink-0 ${isActive ? 'shadow-[0_2px_12px_rgba(169,119,44,0.35)]' : ''}`}
+                style={isActive ? { background: SIDEBAR.gold, color: SIDEBAR.bg } : { color: SIDEBAR.textMuted }}
+                onMouseEnter={e => { if (!isActive) e.currentTarget.style.background = SIDEBAR.hoverBg; }}
+                onMouseLeave={e => { if (!isActive) e.currentTarget.style.background = 'transparent'; }}
               >
-                <LogIn className="w-[18px] h-[18px]" strokeWidth={1.75} />
+                {Icon && <Icon className="w-[18px] h-[18px]" strokeWidth={1.75} />}
+                <span className="text-[7px] font-black uppercase tracking-wide leading-none">{t(item.labelKey).slice(0, 6)}</span>
               </button>
-            )}
-          </div>
+            );
+          })}
+        </div>
+
+        {/* Fixed bottom: settings + user */}
+        <div
+          className="shrink-0 flex flex-col items-center gap-2 py-3"
+          style={{ borderTop: `1px solid ${SIDEBAR.border}` }}
+        >
+          <button
+            onClick={onSettingsClick}
+            title={t('layout.settings')}
+            className="w-12 h-12 flex items-center justify-center rounded-xl transition-all active:scale-95"
+            style={{ color: SIDEBAR.textMuted }}
+            onMouseEnter={e => { e.currentTarget.style.background = SIDEBAR.hoverBg; }}
+            onMouseLeave={e => { e.currentTarget.style.background = 'transparent'; }}
+          >
+            <Settings className="w-[18px] h-[18px]" strokeWidth={1.75} />
+          </button>
+          {user ? (
+            <button
+              title={t('layout.logoutTitle', { email: user.email ?? '' })}
+              onClick={onLogout}
+              className="w-10 h-10 rounded-xl flex items-center justify-center text-[11px] font-black transition-all hover:scale-105 active:scale-90"
+              style={{ background: SIDEBAR.gold, color: SIDEBAR.bg }}
+            >{userInitial}</button>
+          ) : (
+            <button
+              onClick={onLoginClick}
+              title={t('layout.login')}
+              className="w-12 h-12 flex items-center justify-center rounded-xl transition-all active:scale-95"
+              style={{ background: SIDEBAR.gold, color: SIDEBAR.bg }}
+            >
+              <LogIn className="w-[18px] h-[18px]" strokeWidth={1.75} />
+            </button>
+          )}
         </div>
       </aside>
 
