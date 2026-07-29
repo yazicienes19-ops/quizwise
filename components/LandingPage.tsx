@@ -56,25 +56,58 @@ const Reveal: React.FC<{ children: React.ReactNode; className?: string }> = ({ c
 };
 
 /** Dekorative "Redemption Arc"-Illustration (Tiefpunkt → Aufstieg), größere Variante
- *  derselben Formsprache wie BrandMark — `flip` spiegelt sie für den Aufstiegs-Akt. */
+ *  derselben Formsprache wie BrandMark — `flip` spiegelt sie für den Aufstiegs-Akt.
+ *  Signatur-Interaktion: ein einzelner großer Stern läuft die Kurve per SMIL
+ *  `animateMotion` entlang, die Linie zeichnet sich synchron (gleiche Dauer/Easing)
+ *  dahinter — ausgelöst einmalig per IntersectionObserver ab 40% Sichtbarkeit,
+ *  nicht beim Laden. */
 const ArcArt: React.FC<{ flip?: boolean }> = ({ flip = false }) => {
   const d = flip
     ? 'M 30 40 C 90 60, 140 140, 170 210 C 190 260, 240 260, 260 200 C 285 130, 330 40, 380 20'
     : 'M 20 210 C 80 190, 120 100, 150 40 C 165 10, 210 10, 220 50 C 235 110, 270 190, 340 220';
-  const peak = flip ? { x: 380, y: 20 } : { x: 340, y: 220 };
-  const start = flip ? { x: 30, y: 40 } : { x: 20, y: 210 };
-  const pts: string[] = [];
+  const starPts: string[] = [];
   for (let i = 0; i < 10; i++) {
     const r = i % 2 === 0 ? 16 : 6.7;
     const ang = -Math.PI / 2 + (i * Math.PI) / 5;
-    pts.push(`${peak.x + r * Math.cos(ang)},${peak.y + r * Math.sin(ang)}`);
+    starPts.push(`${(r * Math.cos(ang)).toFixed(2)},${(r * Math.sin(ang)).toFixed(2)}`);
   }
+  const wrapRef = useRef<HTMLDivElement>(null);
+  const motionRef = useRef<SVGAnimateMotionElement | null>(null);
+  const [play, setPlay] = React.useState(false);
+
+  useEffect(() => {
+    const el = wrapRef.current;
+    if (!el) return;
+    const obs = new IntersectionObserver(([entry]) => {
+      if (entry.isIntersecting) {
+        setPlay(true);
+        motionRef.current?.beginElement?.();
+        obs.disconnect();
+      }
+    }, { threshold: 0.4 });
+    obs.observe(el);
+    return () => obs.disconnect();
+  }, []);
+
   return (
-    <svg width={400} height={260} viewBox="0 0 400 260" fill="none" style={{ maxWidth: '100%', height: 'auto' }}>
-      <path d={d} stroke="#D9A94E" strokeWidth={3} strokeDasharray={700} strokeDashoffset={700} strokeLinecap="round" fill="none" className="draw-arc" />
-      <circle cx={start.x} cy={start.y} r={7} fill="none" stroke="#D9A94E" strokeWidth={2.5} opacity={0.6} />
-      <polygon points={pts.join(' ')} fill="#D9A94E" />
-    </svg>
+    <div ref={wrapRef}>
+      <svg width={400} height={260} viewBox="0 0 400 260" fill="none" style={{ maxWidth: '100%', height: 'auto' }}>
+        <path d={d} pathLength={100} stroke="#D9A94E" strokeWidth={3} strokeLinecap="round" fill="none" className={`draw-arc${play ? ' draw-arc-play' : ''}`} />
+        <g>
+          <polygon points={starPts.join(' ')} fill="#D9A94E" />
+          <animateMotion
+            ref={motionRef}
+            dur="2.4s"
+            begin="indefinite"
+            fill="freeze"
+            path={d}
+            keyPoints="0;1"
+            keyTimes="0;1"
+            calcMode="linear"
+          />
+        </g>
+      </svg>
+    </div>
   );
 };
 

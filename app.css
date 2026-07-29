@@ -241,8 +241,18 @@ body {
     transition: opacity 0.9s cubic-bezier(.2,.7,.2,1), transform 0.9s cubic-bezier(.2,.7,.2,1);
 }
 .reveal.in { opacity: 1; transform: translateY(0); }
+
+/* Akt I/III Kurven-Illustration: die Linie zeichnet sich erst, wenn der
+   Stern per animateMotion (siehe ArcArt in LandingPage.tsx) losläuft —
+   dieselbe Dauer/Easing wie das Motion-Element, damit sie ihm sichtbar
+   hinterherzieht statt unabhängig/vorher zu laufen. pathLength=100 auf dem
+   <path> normalisiert die Dash-Mathematik unabhängig von der echten
+   Pfadlänge. Pausiert bis .draw-arc-play (per IntersectionObserver, einmalig,
+   ab 40% Sichtbarkeit) gesetzt wird — läuft NICHT beim Seitenladen.
+*/
 @keyframes drawArc { to { stroke-dashoffset: 0; } }
-.draw-arc { animation: drawArc 2.2s 0.3s ease-out forwards; }
+.draw-arc { stroke-dasharray: 100; stroke-dashoffset: 100; animation: drawArc 2.4s linear forwards; animation-play-state: paused; }
+.draw-arc-play { animation-play-state: running; }
 @media (prefers-reduced-motion: reduce) {
     .reveal { opacity: 1; transform: none; transition: none; }
     .draw-arc { animation: none; stroke-dashoffset: 0; }
