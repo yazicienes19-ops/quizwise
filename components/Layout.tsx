@@ -259,9 +259,9 @@ export const Layout: React.FC<LayoutProps> = ({
                       <div className="flex-1 min-w-0">
                         {/* Einzeilig in allen Schriftarten (Garamond & Co. laufen breiter):
                             engere Laufweite statt tracking-widest, truncate als Notbremse */}
-                        <span className="text-[10px] font-black uppercase tracking-wider block truncate">{t(item.labelKey)}</span>
+                        <span className="text-[10px] font-black uppercase tracking-wider block truncate" style={!isActive ? { color: SIDEBAR.text } : undefined}>{t(item.labelKey)}</span>
                         {item.hintKey && !isActive && (
-                          <span className="block text-[9px] font-medium normal-case tracking-normal mt-0.5 truncate" style={{ color: SIDEBAR.textMuted }}>
+                          <span className="block text-[9px] font-medium normal-case tracking-normal mt-0.5 truncate" style={{ color: SIDEBAR.text }}>
                             {t(item.hintKey)}
                           </span>
                         )}
