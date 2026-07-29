@@ -376,6 +376,22 @@ export const de = {
   'dashboard.greeting.evening': 'Guten Abend',
   'dashboard.greeting.night': 'Noch spät unterwegs',
 
+  // dashboard v2 (Lerncoach-Startbildschirm)
+  'dashboardV2.today.title': 'Heute solltest du',
+  'dashboardV2.today.cards': '{n} Karte wiederholen|{n} Karten wiederholen',
+  'dashboardV2.today.mistakes': '{n} Fehlerfrage üben|{n} Fehlerfragen üben',
+  'dashboardV2.today.examSoon': 'Klausur vorbereiten: {title}',
+  'dashboardV2.today.streak': 'Lernserie fortsetzen',
+  'dashboardV2.today.allDone': 'Alles im grünen Bereich, kein dringender Punkt heute.',
+  'dashboardV2.stat.dueCards': 'Karten fällig',
+  'dashboardV2.stat.streak': 'Lernserie',
+  'dashboardV2.stat.examDays': 'Tage bis Klausur',
+  'dashboardV2.stat.progress': 'Fortschritt',
+  'dashboardV2.progress.title': 'Lernfortschritt',
+  'dashboardV2.progress.detail': '{pct}% · noch {left}% bis zum Lernziel',
+  'dashboardV2.continue.cardsWaiting': '{n} Karte wartet|{n} Karten warten',
+  'dashboardV2.examCountdown': 'Noch {n} Tag bis zur Klausur „{title}"|Noch {n} Tage bis zur Klausur „{title}"',
+
   // quizSetup
   'quizSetup.backToLibrary': 'Zurück zur Bibliothek',
   'quizSetup.quizFrom': 'Quiz aus',

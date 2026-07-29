@@ -374,6 +374,22 @@ export const tr: Translations = {
   'dashboard.greeting.evening': 'İyi akşamlar',
   'dashboard.greeting.night': 'Hâlâ ayaktasın',
 
+  // dashboard v2 (öğrenme koçu ana ekranı)
+  'dashboardV2.today.title': 'Bugün öncelikli',
+  'dashboardV2.today.cards': '{n} kart tekrar et',
+  'dashboardV2.today.mistakes': '{n} hatalı soru çalış',
+  'dashboardV2.today.examSoon': 'Sınava hazırlan: {title}',
+  'dashboardV2.today.streak': 'Serini sürdür',
+  'dashboardV2.today.allDone': 'Her şey yolunda, bugün acil bir şey yok.',
+  'dashboardV2.stat.dueCards': 'Vadesi gelen kart',
+  'dashboardV2.stat.streak': 'Seri',
+  'dashboardV2.stat.examDays': 'Sınava kalan gün',
+  'dashboardV2.stat.progress': 'İlerleme',
+  'dashboardV2.progress.title': 'Öğrenme ilerlemesi',
+  'dashboardV2.progress.detail': '%{pct} · hedefe %{left} kaldı',
+  'dashboardV2.continue.cardsWaiting': '{n} kart bekliyor',
+  'dashboardV2.examCountdown': '"{title}" sınavına {n} gün kaldı',
+
   // quizSetup
   'quizSetup.backToLibrary': 'Kütüphaneye dön',
   'quizSetup.quizFrom': 'Test kaynağı',

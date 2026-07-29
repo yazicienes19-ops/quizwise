@@ -1,38 +1,30 @@
 
-import React, { useState, useMemo } from 'react';
-import { ActiveTab, LearningFlowResult, StudyEntry, FlashcardDeck, ProcessedDocument } from '../types';
-import { GeneratedImage } from './GeneratedImage';
+import React, { useEffect, useMemo, useState } from 'react';
+import { ActiveTab, LearningFlowResult, StudyEntry, FlashcardDeck, ProcessedDocument, TopicMetric, Collection } from '../types';
 import { toast } from '../services/toast';
-import { Layers, Star } from 'lucide-react';
+import { HelpCircle, Lightbulb, BookOpen, Layers, GraduationCap, Brain, Network, Sparkles, Play, CheckCircle2 } from 'lucide-react';
 import { countDueCards, migrateLegacyCard } from '../services/spacedRepetition';
 import { countDueMistakes } from '../services/mistakeReviewService';
 import { getStreak } from '../services/streakService';
 import { daysUntilDate } from '../services/calendarSessions';
+import { collectionDocs } from '../services/collectionSource';
+import { buildLearningScore } from '../services/learningScoreService';
+import { useModuleScopedActivity } from '../hooks/useModuleScopedActivity';
+import { AnimatedBar } from './AnimatedBar';
+import { CountUp } from './CountUp';
 import { useTranslation } from '../i18n/I18nProvider';
 import type { TKey } from '../i18n';
 import { greetingKind } from '../services/dashboardService';
-
-const USAGE_KEY = 'studearc_feature_usage';
-
-function getUsageCounts(): Record<string, number> {
-  try {
-    return JSON.parse(localStorage.getItem(USAGE_KEY) || '{}');
-  } catch {
-    return {};
-  }
-}
-
-function trackUsage(id: ActiveTab) {
-  const counts = getUsageCounts();
-  counts[id] = (counts[id] || 0) + 1;
-  localStorage.setItem(USAGE_KEY, JSON.stringify(counts));
-}
 
 interface DashboardProps {
   onTabChange: (tab: ActiveTab) => void;
   flowResult: LearningFlowResult | null;
   onAcceptFlow: (res: LearningFlowResult) => void;
   documents?: ProcessedDocument[];
+  decks?: FlashcardDeck[];
+  metrics?: TopicMetric[];
+  collections?: Collection[];
+  activeModuleId?: string | null;
   /** Startet die Wiederholungs-Session fälliger Fehlerfragen (Quiz-Tab). */
   onStartMistakeReview?: () => void;
   user?: { email?: string | null; user_metadata?: { full_name?: string } } | null;
@@ -41,86 +33,147 @@ interface DashboardProps {
 interface ActionCard {
   id: ActiveTab;
   titleKey: TKey;
-  descKey: TKey;
-  prompt: string;
-  color: string;
+  Icon: React.ComponentType<{ size?: number; className?: string }>;
 }
 
-const BASE_CARDS: ActionCard[] = [
-  { id: ActiveTab.RECALL, titleKey: 'nav.recall', descKey: 'dashboard.card.recall.desc', prompt: 'Human brain active recall, academic illustration', color: 'text-indigo-600' },
-  { id: ActiveTab.LIBRARY, titleKey: 'nav.library', descKey: 'dashboard.card.library.desc', prompt: 'Academic library books, minimalist illustration', color: 'text-blue-500' },
-  { id: ActiveTab.QUIZ, titleKey: 'nav.quiz', descKey: 'dashboard.card.quiz.desc', prompt: 'Target bullseye icon, academic minimalist illustration', color: 'text-indigo-500' },
-  { id: ActiveTab.EXAM, titleKey: 'nav.exam', descKey: 'dashboard.card.exam.desc', prompt: 'Exam paper graduation cap, academic illustration', color: 'text-rose-500' },
-  { id: ActiveTab.CARDS, titleKey: 'nav.cards', descKey: 'dashboard.card.cards.desc', prompt: 'Flashcards study deck, minimalist illustration', color: 'text-violet-500' },
-  { id: ActiveTab.RADAR, titleKey: 'nav.radar', descKey: 'dashboard.card.radar.desc', prompt: 'Data analysis radar chart, academic illustration', color: 'text-emerald-500' },
-  { id: ActiveTab.MINDMAP, titleKey: 'nav.mindmap', descKey: 'dashboard.card.mindmap.desc', prompt: 'Mindmap brainstorming tree, academic minimalist illustration', color: 'text-amber-500' }
+/** Fixe Priorität statt Sortierung nach Nutzungshäufigkeit — entspricht dem
+ *  freigegebenen Dashboard-Redesign (Quiz, Tutor, Karteikarten, Simulator,
+ *  Feynman, Mindmaps, Bibliothek). Bibliothek steht bewusst zuletzt: bei
+ *  ungerader Kartenzahl (7) bekommt die letzte Karte die volle Zeilenbreite
+ *  (siehe isLast im Grid unten), das passt gut als größte/unterste Karte. */
+const ACTION_CARDS: ActionCard[] = [
+  { id: ActiveTab.QUIZ, titleKey: 'nav.quiz', Icon: HelpCircle },
+  { id: ActiveTab.EXPLAINER, titleKey: 'nav.explainer', Icon: Lightbulb },
+  { id: ActiveTab.CARDS, titleKey: 'nav.cards', Icon: Layers },
+  { id: ActiveTab.EXAM, titleKey: 'nav.exam', Icon: GraduationCap },
+  { id: ActiveTab.RECALL, titleKey: 'nav.recall', Icon: Brain },
+  { id: ActiveTab.MINDMAP, titleKey: 'nav.mindmap', Icon: Network },
+  { id: ActiveTab.LIBRARY, titleKey: 'nav.library', Icon: BookOpen },
 ];
 
-export const Dashboard: React.FC<DashboardProps> = ({ onTabChange, flowResult, documents = [], onStartMistakeReview, user = null }) => {
+type Priority = 'red' | 'yellow' | 'green';
+const PRIORITY_COLOR: Record<Priority, string> = { red: '#f43f5e', yellow: '#f59e0b', green: '#22c55e' };
+
+interface TodayTask {
+  priority: Priority;
+  text: string;
+  meta?: string;
+  onClick: () => void;
+}
+
+const withSrs = (cards: FlashcardDeck['cards']) => cards.map(c => (c.srs ? c : { ...c, srs: migrateLegacyCard(c) }));
+
+export const Dashboard: React.FC<DashboardProps> = ({
+  onTabChange, flowResult, documents = [], decks = [], metrics = [], collections = [], activeModuleId = null,
+  onStartMistakeReview, user = null,
+}) => {
   const { t, tp } = useTranslation();
-  const [hovered, setHovered] = useState<ActiveTab | null>(null);
-  const [usageCounts, setUsageCounts] = useState<Record<string, number>>(getUsageCounts);
+
+  // Läuft weiter, solange das Dashboard offen ist — die Begrüßung passt sich
+  // so auch ohne Tab-Wechsel/Reload an, sobald eine Tageszeit-Grenze (5/11/17/22 Uhr) überschritten wird.
+  const [currentHour, setCurrentHour] = useState(() => new Date().getHours());
+  useEffect(() => {
+    const id = setInterval(() => setCurrentHour(new Date().getHours()), 60_000);
+    return () => clearInterval(id);
+  }, []);
 
   const firstName = user?.user_metadata?.full_name?.trim().split(/\s+/)[0] || user?.email?.split('@')[0] || null;
-  const greetingBase = t(`dashboard.greeting.${greetingKind(new Date().getHours())}` as TKey);
+  const greetingBase = t(`dashboard.greeting.${greetingKind(currentHour)}` as TKey);
   const greeting = firstName ? `${greetingBase}, ${firstName}` : greetingBase;
 
-  const dueCardsCount = useMemo(() => {
-    try {
-      const decks: FlashcardDeck[] = JSON.parse(localStorage.getItem('flashcard_decks') || '[]');
-      const allCards = decks.flatMap(d => d.cards.map(c => c.srs ? c : { ...c, srs: migrateLegacyCard(c) }));
-      return countDueCards(allCards);
-    } catch { return 0; }
-  }, []);
+  const activeModule = useMemo(() => collections.find(c => c.id === activeModuleId) ?? null, [collections, activeModuleId]);
+
+  const scopedDecks = useMemo(() => {
+    if (!activeModule) return decks;
+    const docIds = new Set(collectionDocs(activeModule, documents).map(d => d.id));
+    return decks.filter(d => d.sourceDocumentId && docIds.has(d.sourceDocumentId));
+  }, [decks, documents, activeModule]);
+
+  const dismissedTopics = useMemo(() => new Set<string>(), []);
+  const { quizResults, examResults, recallResults } = useModuleScopedActivity(activeModule, documents, dismissedTopics);
+
+  const dueCardsCount = useMemo(
+    () => countDueCards(scopedDecks.flatMap(d => withSrs(d.cards))),
+    [scopedDecks],
+  );
 
   const dueMistakesCount = useMemo(() => countDueMistakes(), []);
-
   const streak = useMemo(() => getStreak(), []);
-
-  const weiterlernCard = useMemo(() => {
-    // Last saved quiz progress
-    try {
-      const raw = localStorage.getItem('studearc_quiz_progress');
-      if (raw) {
-        const { meta, timestamp } = JSON.parse(raw);
-        if (meta && timestamp && Date.now() - timestamp < 7 * 24 * 60 * 60 * 1000) {
-          return { type: 'quiz' as const, label: meta.docName || t('dashboard.quizResume'), tab: ActiveTab.QUIZ };
-        }
-      }
-    } catch {}
-    // Last used deck
-    try {
-      const decks: FlashcardDeck[] = JSON.parse(localStorage.getItem('flashcard_decks') || '[]');
-      if (decks.length > 0) {
-        return { type: 'deck' as const, label: decks[decks.length - 1].title, tab: ActiveTab.CARDS };
-      }
-    } catch {}
-    return null;
-  }, []);
 
   const nextExam = useMemo(() => {
     try {
       const terms: Array<{ date: string; title: string }> = JSON.parse(localStorage.getItem('studearc_exam_terms') || '[]');
       const now = new Date();
       const future = terms
-        .map(t => ({ ...t, days: daysUntilDate(t.date, now) }))
-        .filter(t => t.days >= 0)
+        .map(term => ({ ...term, days: daysUntilDate(term.date, now) }))
+        .filter(term => term.days >= 0)
         .sort((a, b) => a.days - b.days);
-      if (!future.length) return null;
-      return { title: future[0].title, days: future[0].days };
+      return future.length ? { title: future[0].title, days: future[0].days } : null;
     } catch { return null; }
   }, []);
 
+  const learningScore = useMemo(
+    () => buildLearningScore({ quizResults, examResults, recallResults, metrics, decks: scopedDecks, streakCurrent: streak.current }),
+    [quizResults, examResults, recallResults, metrics, scopedDecks, streak.current],
+  );
 
-  const cards = useMemo(() => {
-    return [...BASE_CARDS].sort((a, b) => (usageCounts[b.id] || 0) - (usageCounts[a.id] || 0));
-  }, [usageCounts]);
+  const weiterlernCard = useMemo(() => {
+    try {
+      const raw = localStorage.getItem('studearc_quiz_progress');
+      if (raw) {
+        const progress = JSON.parse(raw);
+        const total = progress?.questions?.length ?? 0;
+        if (progress?.meta && progress?.timestamp && total > 0 && Date.now() - progress.timestamp < 7 * 24 * 60 * 60 * 1000) {
+          const answered = progress.answers?.length ?? 0;
+          return {
+            subject: progress.meta.docName || t('dashboard.quizResume'),
+            meta: t('dashboard.quizResume'),
+            tab: ActiveTab.QUIZ,
+            pct: Math.round((answered / total) * 100),
+          };
+        }
+      }
+    } catch { /* ignore */ }
+    if (scopedDecks.length > 0) {
+      const deck = scopedDecks[scopedDecks.length - 1];
+      const due = countDueCards(withSrs(deck.cards));
+      const total = deck.cards.length || 1;
+      return {
+        subject: deck.title,
+        meta: tp('dashboardV2.continue.cardsWaiting', due),
+        tab: ActiveTab.CARDS,
+        pct: Math.max(0, Math.round((1 - due / total) * 100)),
+      };
+    }
+    return null;
+  }, [scopedDecks, t, tp]);
 
-  const handleCardClick = (id: ActiveTab) => {
-    trackUsage(id);
-    setUsageCounts(getUsageCounts());
-    onTabChange(id);
-  };
+  const todayTasks = useMemo(() => {
+    const tasks: TodayTask[] = [];
+    if (nextExam && nextExam.days <= 7) {
+      tasks.push({ priority: 'red', text: t('dashboardV2.today.examSoon', { title: nextExam.title }), onClick: () => onTabChange(ActiveTab.EXAM) });
+    }
+    if (dueCardsCount > 0) {
+      tasks.push({ priority: 'red', text: tp('dashboardV2.today.cards', dueCardsCount), onClick: () => onTabChange(ActiveTab.CARDS) });
+    }
+    if (dueMistakesCount > 0 && onStartMistakeReview) {
+      tasks.push({ priority: 'yellow', text: tp('dashboardV2.today.mistakes', dueMistakesCount), onClick: onStartMistakeReview });
+    }
+    if (streak.current > 0 && !streak.todayDone) {
+      tasks.push({ priority: 'green', text: t('dashboardV2.today.streak'), onClick: () => onTabChange(dueCardsCount > 0 ? ActiveTab.CARDS : ActiveTab.QUIZ) });
+    }
+    return tasks;
+  }, [nextExam, dueCardsCount, dueMistakesCount, onStartMistakeReview, streak.current, streak.todayDone, t, tp, onTabChange]);
+
+  const statCards = useMemo(() => {
+    const cards = [
+      { label: t('dashboardV2.stat.dueCards'), value: dueCardsCount },
+      { label: t('dashboardV2.stat.streak'), value: streak.current },
+    ];
+    if (nextExam) cards.push({ label: t('dashboardV2.stat.examDays'), value: nextExam.days });
+    else cards.push({ label: t('dashboardV2.stat.progress'), value: learningScore.overall ?? 0 });
+    return cards;
+  }, [t, dueCardsCount, streak.current, nextExam, learningScore.overall]);
 
   const handleAcceptSuggestion = (suggestion: any) => {
     let plan: unknown[];
@@ -151,29 +204,38 @@ export const Dashboard: React.FC<DashboardProps> = ({ onTabChange, flowResult, d
 
   if (documents.length === 0) {
     return (
-      <div className="flex flex-col items-center justify-center py-20 px-4 space-y-10 animate-in fade-in duration-700 min-h-[60vh]">
-        <div className="text-center space-y-4 max-w-md">
-          <div className="text-7xl mb-2">📚</div>
-          <h2 className="text-3xl font-black tracking-tighter dark:text-white">{t('dashboard.empty.welcome')}</h2>
-          <p className="text-slate-500 dark:text-slate-400 font-medium">{t('dashboard.empty.subtitle')}</p>
+      <div className="max-w-xl mx-auto py-12 px-4 space-y-3 animate-in fade-in duration-700">
+        <div
+          className="p-6 sm:p-8 rounded-[24px] space-y-2 animate-card-enter"
+          style={{ background: 'var(--primary-soft)', border: '1px solid color-mix(in srgb, var(--primary) 30%, transparent)' }}
+        >
+          <h2 className="text-2xl sm:text-3xl font-black tracking-tight" style={{ color: 'var(--text-main)' }}>{t('dashboard.empty.welcome')}</h2>
+          <p className="text-sm font-medium" style={{ color: 'var(--text-secondary)' }}>{t('dashboard.empty.subtitle')}</p>
         </div>
-        <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 max-w-2xl w-full">
-          {([
-            { n: '1', labelKey: 'dashboard.empty.step1.label', descKey: 'dashboard.empty.step1.desc' },
-            { n: '2', labelKey: 'dashboard.empty.step2.label', descKey: 'dashboard.empty.step2.desc' },
-            { n: '3', labelKey: 'dashboard.empty.step3.label', descKey: 'dashboard.empty.step3.desc' },
-          ] as { n: string; labelKey: TKey; descKey: TKey }[]).map(({ n, labelKey, descKey }) => (
-            <div key={n} className="p-5 rounded-[24px] space-y-2" style={{ background: 'var(--bg-sidebar)', border: '1px solid var(--border-color)' }}>
-              <p className="text-[9px] font-black uppercase tracking-widest" style={{ color: 'var(--primary)' }}>{t('dashboard.stepLabel', { n })}</p>
-              <p className="text-sm font-black dark:text-white">{t(labelKey)}</p>
-              <p className="text-[10px] text-slate-400">{t(descKey)}</p>
+        {([
+          { n: '1', labelKey: 'dashboard.empty.step1.label', descKey: 'dashboard.empty.step1.desc' },
+          { n: '2', labelKey: 'dashboard.empty.step2.label', descKey: 'dashboard.empty.step2.desc' },
+          { n: '3', labelKey: 'dashboard.empty.step3.label', descKey: 'dashboard.empty.step3.desc' },
+        ] as { n: string; labelKey: TKey; descKey: TKey }[]).map(({ n, labelKey, descKey }, i) => (
+          <div
+            key={n}
+            className="p-4 rounded-[16px] flex items-center gap-3 animate-card-enter"
+            style={{ background: 'var(--bg-sidebar)', border: '1px solid var(--border-color)', ['--stagger-i' as string]: i + 1 }}
+          >
+            <div
+              className="w-7 h-7 rounded-lg flex items-center justify-center shrink-0 text-[11px] font-black"
+              style={{ background: 'var(--primary)', color: 'var(--primary-text)' }}
+            >{n}</div>
+            <div className="min-w-0">
+              <p className="text-sm font-black" style={{ color: 'var(--text-main)' }}>{t(labelKey)}</p>
+              <p className="text-[11px]" style={{ color: 'var(--text-secondary)' }}>{t(descKey)}</p>
             </div>
-          ))}
-        </div>
+          </div>
+        ))}
         <button
           onClick={() => onTabChange(ActiveTab.LIBRARY)}
-          className="px-8 py-4 rounded-[20px] font-black uppercase text-[11px] tracking-widest shadow-3d-deep hover:scale-105 transition-all flex items-center gap-3"
-          style={{ background: 'var(--primary)', color: 'var(--primary-text)' }}
+          className="w-full mt-2 px-8 py-4 rounded-[20px] font-black uppercase text-[11px] tracking-widest shadow-3d-deep hover:scale-[1.02] active:scale-[0.98] transition-all flex items-center justify-center gap-3 animate-card-enter"
+          style={{ background: 'var(--primary)', color: 'var(--primary-text)', ['--stagger-i' as string]: 4 }}
         >
           <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round">
             <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/>
@@ -185,225 +247,157 @@ export const Dashboard: React.FC<DashboardProps> = ({ onTabChange, flowResult, d
   }
 
   return (
-    <div className="space-y-12 lg:space-y-24 py-12 px-4 animate-in fade-in duration-1000">
-      {/* Hero Section: dynamische Begrüßung statt großem Logo (Logo bleibt klein in der Sidebar) */}
-      <div className="text-center space-y-2">
-        <h1 className="text-4xl sm:text-6xl lg:text-7xl font-light tracking-tighter leading-none" style={{ color: 'var(--text-main)' }}>
-          {greeting}
-        </h1>
-        <p className="text-[9px] sm:text-xs font-black uppercase tracking-[0.3em] sm:tracking-[1em] text-slate-400 dark:text-white/30 text-center break-words">
-          {t('splash.tagline')}
-        </p>
+    <div className="max-w-3xl mx-auto space-y-4 py-8 px-4 animate-in fade-in duration-700">
+
+      {/* Begrüßungs-Hero + Tagesliste */}
+      <div className="animate-card-enter" style={{ ['--stagger-i' as string]: 0 }}>
+        <h1 className="text-2xl sm:text-3xl font-black tracking-tight mb-1" style={{ color: 'var(--text-main)' }}>{greeting}</h1>
+        {nextExam && (
+          <p className="text-[13px] font-semibold mb-3" style={{ color: nextExam.days <= 7 ? '#f43f5e' : 'var(--text-secondary)' }}>
+            {tp('dashboardV2.examCountdown', nextExam.days, { title: nextExam.title })}
+          </p>
+        )}
+        {!nextExam && <div className="mb-3" />}
+        {todayTasks.length > 0 ? (
+          <>
+            <p className="text-[10px] font-black uppercase tracking-[0.15em] mb-2" style={{ color: 'var(--text-secondary)' }}>{t('dashboardV2.today.title')}</p>
+            <div className="space-y-1.5">
+              {todayTasks.map((task, i) => (
+                <button
+                  key={i}
+                  onClick={task.onClick}
+                  className="w-full flex items-center gap-2.5 px-3.5 py-2.5 rounded-[14px] text-left transition-transform hover:scale-[1.015] active:scale-[0.99]"
+                  style={{ background: 'var(--bg-sidebar)', border: '1px solid var(--border-color)' }}
+                >
+                  <span className="w-2 h-2 rounded-full shrink-0" style={{ background: PRIORITY_COLOR[task.priority] }} />
+                  <span className="flex-1 text-[13px] font-semibold" style={{ color: 'var(--text-main)' }}>{task.text}</span>
+                </button>
+              ))}
+            </div>
+          </>
+        ) : (
+          <div className="flex items-center gap-2.5 px-3.5 py-2.5 rounded-[14px]" style={{ background: 'var(--bg-sidebar)', border: '1px solid var(--border-color)' }}>
+            <CheckCircle2 size={16} style={{ color: '#22c55e' }} />
+            <span className="text-[13px] font-semibold" style={{ color: 'var(--text-secondary)' }}>{t('dashboardV2.today.allDone')}</span>
+          </div>
+        )}
       </div>
 
-      {/* Top-Banner: Heute fällig (Karten + Fehlerfragen) + Streak + Exam Countdown */}
-      {(dueCardsCount > 0 || dueMistakesCount > 0 || streak.current > 0 || nextExam) && (
-        <div className="max-w-6xl mx-auto w-full grid grid-cols-1 sm:grid-cols-3 gap-3">
-          {(dueCardsCount > 0 || dueMistakesCount > 0) && (
-            <div
-              className="px-5 py-4 rounded-[20px] space-y-3"
-              style={{ background: 'color-mix(in srgb, var(--primary) 10%, var(--bg-sidebar))', border: '1px solid color-mix(in srgb, var(--primary) 25%, transparent)' }}
-            >
-              <div className="flex items-center gap-3">
-                <div className="w-9 h-9 rounded-xl flex items-center justify-center shrink-0" style={{ background: 'var(--primary)' }}>
-                  <Layers size={16} style={{ color: 'var(--primary-text)' }} />
-                </div>
-                <div className="min-w-0">
-                  <p className="text-[11px] font-black uppercase tracking-widest" style={{ color: 'var(--primary)' }}>{t('dashboard.dueToday')}</p>
-                  <p className="text-[9px] text-slate-400 break-words">
-                    {[
-                      dueCardsCount > 0 ? tp('dashboard.cardsN', dueCardsCount) : null,
-                      dueMistakesCount > 0 ? tp('dashboard.questionsN', dueMistakesCount) : null,
-                    ].filter(Boolean).join(' · ')}
-                  </p>
-                </div>
-              </div>
-              <div className="flex gap-2">
-                {dueCardsCount > 0 && (
-                  <button
-                    onClick={() => onTabChange(ActiveTab.CARDS)}
-                    className="flex-1 py-2 rounded-xl text-[9px] font-black uppercase tracking-widest text-white hover:scale-[1.03] active:scale-95 transition-all"
-                    style={{ background: 'var(--primary)' }}
-                  >
-                    {t('dashboard.reviewCards')}
-                  </button>
-                )}
-                {dueMistakesCount > 0 && onStartMistakeReview && (
-                  <button
-                    onClick={onStartMistakeReview}
-                    className="flex-1 py-2 rounded-xl text-[9px] font-black uppercase tracking-widest transition-all hover:scale-[1.03] active:scale-95"
-                    style={{
-                      background: 'color-mix(in srgb, var(--primary) 12%, transparent)',
-                      color: 'var(--primary)',
-                      border: '1px solid color-mix(in srgb, var(--primary) 30%, transparent)',
-                    }}
-                  >
-                    {t('dashboard.reviewQuestions')}
-                  </button>
-                )}
-              </div>
-            </div>
-          )}
-          {streak.current > 0 && (
-            <div
-              className="flex items-center gap-3 px-5 py-4 rounded-[20px]"
-              style={{ background: 'var(--bg-sidebar)', border: '1px solid var(--border-color)' }}
-            >
-              <div className="w-9 h-9 rounded-xl flex items-center justify-center shrink-0" style={{ background: streak.todayDone ? 'color-mix(in srgb, var(--primary) 15%, transparent)' : 'var(--bg-main)' }}>
-                <Star size={16} style={{ color: streak.todayDone ? 'var(--primary)' : '#94a3b8' }} fill={streak.todayDone ? 'var(--primary)' : 'none'} strokeWidth={2} />
-              </div>
-              <div>
-                <p className="text-[11px] font-black uppercase tracking-widest" style={{ color: streak.todayDone ? 'var(--primary)' : undefined }}>{t('layout.streakTitle', { n: streak.current })}</p>
-                <p className="text-[9px] text-slate-400">{streak.todayDone ? t('dashboard.recordDone', { best: streak.best }) : t('dashboard.recordOpen', { best: streak.best })}</p>
-              </div>
-            </div>
-          )}
-          {nextExam && (
-            <div
-              className="flex items-center gap-3 px-5 py-4 rounded-[20px]"
-              style={{ background: 'var(--bg-sidebar)', border: `1px solid ${nextExam.days <= 7 ? '#f43f5e' : nextExam.days <= 14 ? '#f59e0b' : 'var(--border-color)'}` }}
-            >
-              <div className="w-9 h-9 rounded-xl flex items-center justify-center shrink-0" style={{ background: nextExam.days <= 7 ? 'rgba(244,63,94,0.1)' : 'var(--bg-main)' }}>
-                <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke={nextExam.days <= 7 ? '#f43f5e' : '#94a3b8'} strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
-                  <rect x="3" y="4" width="18" height="18" rx="2" ry="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/>
-                </svg>
-              </div>
-              <div>
-                <p className="text-[11px] font-black uppercase tracking-widest" style={{ color: nextExam.days <= 7 ? '#f43f5e' : undefined }}>{tp('dashboard.daysLeft', nextExam.days)}</p>
-                <p className="text-[9px] text-slate-400 break-words max-w-[140px]">{nextExam.title}</p>
-              </div>
-            </div>
-          )}
-        </div>
-      )}
+      {/* Stat-Zeile */}
+      <div className="grid grid-cols-3 gap-2 animate-card-enter" style={{ ['--stagger-i' as string]: 1 }}>
+        {statCards.map((s, i) => (
+          <div key={i} className="text-center px-2 py-3 rounded-[14px]" style={{ background: 'var(--bg-sidebar)', border: '1px solid var(--border-color)' }}>
+            <p className="text-lg font-black" style={{ color: 'var(--text-main)' }}><CountUp value={s.value} /></p>
+            <p className="text-[9px] font-medium mt-0.5 truncate" style={{ color: 'var(--text-secondary)' }}>{s.label}</p>
+          </div>
+        ))}
+      </div>
 
       {/* Weiterlernen */}
       {weiterlernCard && (
-        <div className="max-w-6xl mx-auto w-full">
-          <button
-            onClick={() => onTabChange(weiterlernCard.tab)}
-            className="w-full flex items-center justify-between px-6 py-4 rounded-[20px] transition-all hover:scale-[1.01] active:scale-[0.99] text-left"
-            style={{ background: 'var(--bg-sidebar)', border: '1px solid var(--border-color)' }}
-          >
-            <div className="flex items-center gap-3">
-              <div className="w-9 h-9 rounded-xl flex items-center justify-center shrink-0" style={{ background: 'color-mix(in srgb, var(--primary) 12%, transparent)' }}>
-                <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" style={{ color: 'var(--primary)' }}>
-                  <polygon points="5 3 19 12 5 21 5 3"/>
-                </svg>
-              </div>
-              <div>
-                <p className="text-[11px] font-black uppercase tracking-widest" style={{ color: 'var(--primary)' }}>{t('dashboard.continue')}</p>
-                <p className="text-xs text-slate-500 dark:text-slate-400 break-words max-w-[220px]">{weiterlernCard.label}</p>
-              </div>
-            </div>
-            <span className="text-[10px] font-black uppercase tracking-widest shrink-0" style={{ color: 'var(--primary)' }}>{t('dashboard.resume')}</span>
-          </button>
+        <button
+          onClick={() => onTabChange(weiterlernCard.tab)}
+          className="w-full text-left p-5 rounded-[20px] shadow-3d-raised hover:scale-[1.01] active:scale-[0.99] transition-transform animate-card-enter"
+          style={{ background: 'var(--primary)', color: 'var(--primary-text)', ['--stagger-i' as string]: 2 }}
+        >
+          <div className="flex items-center gap-1.5 mb-1.5">
+            <Play size={12} fill="currentColor" />
+            <span className="text-[10px] font-black uppercase tracking-widest">{t('dashboard.continue')}</span>
+          </div>
+          <p className="text-lg font-black mb-1">{weiterlernCard.subject}</p>
+          <p className="text-[11px] opacity-75 mb-2">{weiterlernCard.meta}</p>
+          <div className="h-[5px] rounded-full overflow-hidden mb-2" style={{ background: 'rgba(255,255,255,0.25)' }}>
+            <AnimatedBar percent={weiterlernCard.pct} className="h-full rounded-full" style={{ background: 'var(--primary-text)' }} />
+          </div>
+          <div className="flex items-center justify-between">
+            <span className="text-[10px] opacity-80">{weiterlernCard.pct}%</span>
+            <span className="text-[10px] font-black uppercase tracking-widest">{t('dashboard.resume')}</span>
+          </div>
+        </button>
+      )}
+
+      {/* Lernfortschritt */}
+      {learningScore.overall != null && (
+        <div className="p-4 rounded-[16px] animate-card-enter" style={{ background: 'var(--bg-sidebar)', border: '1px solid var(--border-color)', ['--stagger-i' as string]: 3 }}>
+          <p className="text-[10px] font-black uppercase tracking-widest mb-2" style={{ color: 'var(--text-secondary)' }}>{t('dashboardV2.progress.title')}</p>
+          <div className="h-[7px] rounded-full overflow-hidden mb-2" style={{ background: 'var(--border-color)' }}>
+            <AnimatedBar percent={learningScore.overall} className="h-full rounded-full" style={{ background: 'var(--primary)' }} />
+          </div>
+          <p className="text-[11px]" style={{ color: 'var(--text-secondary)' }}>
+            {t('dashboardV2.progress.detail', { pct: learningScore.overall, left: 100 - learningScore.overall })}
+          </p>
         </div>
       )}
 
-      {/* Intelligence Insights */}
+      {/* Nächste Schritte (KI-Empfehlung) */}
       {flowResult && (
-        <div className="max-w-6xl mx-auto space-y-8 animate-in slide-in-from-bottom-8 duration-700">
-          <div className="flex justify-between items-center px-4">
-            <h2 className="text-[11px] font-black uppercase tracking-[0.4em] text-indigo-500 flex items-center gap-2">
-              {t('dashboard.nextSteps')}
-              <GeneratedImage prompt="Sparkles icon, academic minimalist" className="w-4 h-4 rounded-full" />
-            </h2>
-          </div>
-          
-          <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+        <div className="space-y-3 animate-card-enter" style={{ ['--stagger-i' as string]: 4 }}>
+          <h2 className="text-[11px] font-black uppercase tracking-[0.3em] flex items-center gap-2" style={{ color: 'var(--primary)' }}>
+            {t('dashboard.nextSteps')}
+            <Sparkles size={14} />
+          </h2>
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
             {flowResult.next_actions.map((action, i) => (
-              <button 
+              <button
                 key={i}
                 onClick={() => {
                   const moduleToTab: Record<string, ActiveTab> = {
-                    analyse: ActiveTab.RADAR,
-                    quiz: ActiveTab.QUIZ,
-                    cards: ActiveTab.CARDS,
-                    explain: ActiveTab.EXPLAINER,
-                    calendar: ActiveTab.PLANNER,
-                    exam: ActiveTab.EXAM,
+                    analyse: ActiveTab.RADAR, quiz: ActiveTab.QUIZ, cards: ActiveTab.CARDS,
+                    explain: ActiveTab.EXPLAINER, calendar: ActiveTab.PLANNER, exam: ActiveTab.EXAM,
                   };
                   onTabChange(moduleToTab[action.module] ?? ActiveTab.QUIZ);
                 }}
-                className="bg-indigo-600 p-6 sm:p-8 rounded-[24px] sm:rounded-[32px] text-white text-left shadow-3d-deep hover:scale-105 transition-all group overflow-hidden relative"
+                className="p-5 rounded-[20px] text-left hover:scale-[1.02] transition-all"
+                style={{ background: 'var(--primary)', color: 'var(--primary-text)' }}
               >
-                <div className="absolute top-0 right-0 w-24 h-24 bg-white/5 blur-2xl rounded-full translate-x-8 -translate-y-8"></div>
-                <div className="relative z-10 space-y-4">
-                  <div className="flex justify-between items-center">
-                    <span className="text-[9px] font-black uppercase tracking-widest opacity-60">{t('dashboard.minFocus', { n: action.timebox_minutes })}</span>
-                    <span className="text-xs">➔</span>
-                  </div>
-                  <h3 className="text-xl font-black leading-tight">{action.title}</h3>
-                  <p className="text-[11px] font-medium opacity-80 italic">"{action.why}"</p>
+                <div className="flex justify-between items-center mb-2">
+                  <span className="text-[9px] font-black uppercase tracking-widest opacity-70">{t('dashboard.minFocus', { n: action.timebox_minutes })}</span>
+                  <span className="text-xs">→</span>
                 </div>
+                <h3 className="text-base font-black leading-tight mb-1">{action.title}</h3>
+                <p className="text-[11px] font-medium opacity-80 italic">"{action.why}"</p>
               </button>
             ))}
-
             {flowResult.calendar_suggestion.should_schedule && flowResult.calendar_suggestion.suggested_blocks.map((block, i) => (
-               <div key={i} className="p-8 rounded-[32px] flex flex-col justify-between group border-2 border-dashed border-indigo-200 dark:border-indigo-900" style={{ background: 'var(--bg-sidebar)' }}>
-                  <div>
-                    <span className="text-[9px] font-black uppercase text-indigo-500 tracking-widest mb-2 block">{t('dashboard.planSuggestion')}</span>
-                    <h3 className="text-lg font-black dark:text-white">{t('dashboard.blockTime', { day: block.day, time: block.start_time })}</h3>
-                    <p className="text-[11px] text-slate-500 mt-1">{block.focus_topics.join(', ')}</p>
-                  </div>
-                  <button
-                    onClick={() => handleAcceptSuggestion(block)}
-                    className="mt-6 w-full py-3 text-[10px] font-black uppercase tracking-widest rounded-xl hover:bg-indigo-600 hover:text-white transition-all"
-                    style={{ background: 'var(--bg-main)', color: 'var(--text-secondary, #64748b)', border: '1px solid var(--border-color)' }}
-                  >{t('dashboard.addToCalendar')}</button>
-               </div>
+              <div
+                key={i}
+                className="p-5 rounded-[20px] flex flex-col justify-between"
+                style={{ background: 'var(--bg-sidebar)', border: `1px dashed color-mix(in srgb, var(--primary) 40%, transparent)` }}
+              >
+                <div>
+                  <span className="text-[9px] font-black uppercase tracking-widest mb-1 block" style={{ color: 'var(--primary)' }}>{t('dashboard.planSuggestion')}</span>
+                  <h3 className="text-sm font-black" style={{ color: 'var(--text-main)' }}>{t('dashboard.blockTime', { day: block.day, time: block.start_time })}</h3>
+                  <p className="text-[11px] mt-1" style={{ color: 'var(--text-secondary)' }}>{block.focus_topics.join(', ')}</p>
+                </div>
+                <button
+                  onClick={() => handleAcceptSuggestion(block)}
+                  className="mt-4 w-full py-2.5 text-[10px] font-black uppercase tracking-widest rounded-xl hover:bg-[var(--primary)] hover:text-[var(--primary-text)] transition-all"
+                  style={{ background: 'var(--bg-main)', color: 'var(--text-secondary)', border: '1px solid var(--border-color)' }}
+                >{t('dashboard.addToCalendar')}</button>
+              </div>
             ))}
           </div>
         </div>
       )}
 
-      {/* Standard Navigation Grid */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6 lg:gap-8 max-w-6xl mx-auto w-full">
-        {cards.map((card, i) => {
-          const isHovered = hovered === card.id;
+      {/* Prioritäts-Grid */}
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-2 animate-card-enter" style={{ ['--stagger-i' as string]: 5 }}>
+        {ACTION_CARDS.map((card, i) => {
+          const Icon = card.Icon;
+          // Ungerade Kartenzahl (7): letzte Karte bekommt die volle Zeilenbreite,
+          // statt allein und verwaist in der letzten Reihe zu stehen.
+          const isLast = i === ACTION_CARDS.length - 1;
           return (
             <button
               key={card.id}
-              onClick={() => handleCardClick(card.id)}
-              onMouseEnter={() => setHovered(card.id)}
-              onMouseLeave={() => setHovered(null)}
-              className="group relative rounded-[28px] lg:rounded-[48px] p-6 sm:p-8 lg:p-12 text-left shadow-3d-raised hover:shadow-3d-deep hover:-translate-y-2 hover:scale-[1.02] transition-all duration-300 overflow-hidden active:scale-[0.98] animate-card-enter"
-              style={{
-                ...(isHovered
-                  ? { background: 'var(--primary)', border: '1px solid var(--primary)', boxShadow: '0 20px 40px color-mix(in srgb, var(--primary) 35%, transparent)' }
-                  : { background: 'var(--bg-sidebar)', border: '1px solid var(--border-color)' }),
-                ['--stagger-i' as string]: i,
-              }}
+              onClick={() => onTabChange(card.id)}
+              className={`flex items-center gap-2.5 px-3.5 py-3 rounded-[14px] text-left hover:scale-[1.03] active:scale-[0.98] transition-transform ${isLast ? 'sm:col-span-2 lg:col-span-3 sm:justify-center' : ''}`}
+              style={{ background: 'var(--bg-sidebar)', border: '1px solid var(--border-color)' }}
             >
-              <div className="absolute top-0 right-0 w-40 h-40 rounded-full blur-3xl transition-opacity duration-300 pointer-events-none"
-                style={{ background: isHovered ? 'rgba(255,255,255,0.15)' : 'transparent', opacity: isHovered ? 1 : 0 }}
-              />
-              <div className="relative z-10 space-y-6">
-                <div
-                  className="w-12 h-12 lg:w-16 lg:h-16 rounded-2xl flex items-center justify-center group-hover:scale-110 group-hover:rotate-3 transition-all duration-300"
-                  style={isHovered
-                    ? { background: 'rgba(255,255,255,0.2)', color: 'var(--primary-text)' }
-                    : { background: 'color-mix(in srgb, var(--primary) 12%, var(--bg-sidebar))', color: 'var(--primary)' }
-                  }
-                >
-                  <GeneratedImage prompt={card.prompt} className="w-7 h-7 lg:w-9 lg:h-9" />
-                </div>
-                <div className="space-y-2">
-                  <h3
-                    className="text-2xl lg:text-3xl font-black tracking-tight transition-colors duration-300"
-                    style={{ color: isHovered ? 'var(--primary-text)' : undefined }}
-                  >
-                    {t(card.titleKey)}
-                  </h3>
-                  <p
-                    className="text-sm lg:text-base leading-relaxed font-medium transition-colors duration-300"
-                    style={{ color: isHovered ? 'color-mix(in srgb, var(--primary-text) 75%, transparent)' : undefined }}
-                  >
-                    {t(card.descKey)}
-                  </p>
-                </div>
+              <div className="w-9 h-9 rounded-xl flex items-center justify-center shrink-0" style={{ background: 'var(--primary-soft)', color: 'var(--primary)' }}>
+                <Icon size={16} />
               </div>
+              <p className="text-sm font-black" style={{ color: 'var(--text-main)' }}>{t(card.titleKey)}</p>
             </button>
           );
         })}

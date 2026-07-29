@@ -375,6 +375,22 @@ export const en: Translations = {
   'dashboard.greeting.evening': 'Good evening',
   'dashboard.greeting.night': 'Still up late',
 
+  // dashboard v2 (learning coach home screen)
+  'dashboardV2.today.title': 'Today, focus on',
+  'dashboardV2.today.cards': '{n} card to review|{n} cards to review',
+  'dashboardV2.today.mistakes': '{n} mistake to practice|{n} mistakes to practice',
+  'dashboardV2.today.examSoon': 'Prepare for exam: {title}',
+  'dashboardV2.today.streak': 'Keep your streak going',
+  'dashboardV2.today.allDone': 'All clear, nothing urgent today.',
+  'dashboardV2.stat.dueCards': 'Cards due',
+  'dashboardV2.stat.streak': 'Streak',
+  'dashboardV2.stat.examDays': 'Days to exam',
+  'dashboardV2.stat.progress': 'Progress',
+  'dashboardV2.progress.title': 'Learning progress',
+  'dashboardV2.progress.detail': '{pct}% · {left}% to go',
+  'dashboardV2.continue.cardsWaiting': '{n} card waiting|{n} cards waiting',
+  'dashboardV2.examCountdown': '{n} day left until "{title}"|{n} days left until "{title}"',
+
   // quizSetup
   'quizSetup.backToLibrary': 'Back to library',
   'quizSetup.quizFrom': 'Quiz from',
