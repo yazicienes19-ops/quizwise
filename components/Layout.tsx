@@ -54,6 +54,21 @@ const ICONS: Partial<Record<ActiveTab, LucideIcon>> = {
   [ActiveTab.MINDMAP]:   Network,
 };
 
+/** Sidebar ist bewusst IMMER Navy — unabhängig vom Hell/Dunkel-Toggle des
+ *  Hauptinhalts (User-Wunsch: derselbe Navy/Gold-Look wie LandingPage.tsx/
+ *  AuthPage.tsx soll auch in der App sichtbar sein). Werte 1:1 von dort
+ *  übernommen (#1B2A4A/#A9772C/#FBF9F4), keine neue Palette. */
+const SIDEBAR = {
+  bg: '#1B2A4A',
+  border: 'rgba(255,255,255,0.08)',
+  text: '#FBF9F4',
+  textMuted: 'rgba(251,249,244,0.55)',
+  hoverBg: 'rgba(255,255,255,0.06)',
+  chipBg: 'rgba(255,255,255,0.08)',
+  chipBorder: 'rgba(255,255,255,0.14)',
+  gold: '#A9772C',
+} as const;
+
 export const Layout: React.FC<LayoutProps> = ({
   children, activeTab, onTabChange, collections = [], activeModuleId = null, onModuleChange, user, userPlan = 'free',
   onLoginClick, onLogout, onUpgradeClick, onSettingsClick,
@@ -130,10 +145,10 @@ export const Layout: React.FC<LayoutProps> = ({
           äußeren Container nur zunehmend abgeschnitten + nach links geschoben
           — dadurch wirkt es wie ein weiches Einklappen statt eines harten Cuts. */}
       <aside
-        className="hidden lg:flex flex-col h-screen sticky top-0 shrink-0 shadow-[4px_0_24px_rgba(0,0,0,0.05)] z-20 overflow-hidden transition-[width,opacity] duration-300 ease-[cubic-bezier(0.16,1,0.3,1)]"
+        className="hidden lg:flex flex-col h-screen sticky top-0 shrink-0 shadow-[4px_0_24px_rgba(0,0,0,0.15)] z-20 overflow-hidden transition-[width,opacity] duration-300 ease-[cubic-bezier(0.16,1,0.3,1)]"
         style={{
-          background: 'var(--bg-sidebar)',
-          borderRight: '1px solid var(--border-color)',
+          background: SIDEBAR.bg,
+          borderRight: `1px solid ${SIDEBAR.border}`,
           width: sidebarCollapsed ? '0px' : '18rem',
           opacity: sidebarCollapsed ? 0 : 1,
         }}
@@ -144,13 +159,14 @@ export const Layout: React.FC<LayoutProps> = ({
           style={{ transform: sidebarCollapsed ? 'translateX(-24px)' : 'translateX(0)' }}
         >
           <div className="flex items-center gap-3 mb-12">
-            <BrandMark size={26} strokeColor="var(--mark-stroke)" peakColor="var(--mark-peak)" className="shrink-0" />
-            <span className="text-xl font-black tracking-tighter uppercase truncate flex-1" style={{ color: 'var(--text-main)' }}>Stude<span style={{ color: '#A9772C' }}>Arc</span></span>
+            <BrandMark size={26} strokeColor={SIDEBAR.text} peakColor={SIDEBAR.gold} className="shrink-0" />
+            <span className="text-xl font-black tracking-tighter uppercase truncate flex-1" style={{ color: SIDEBAR.text }}>Stude<span style={{ color: SIDEBAR.gold }}>Arc</span></span>
             <button
               onClick={() => setSidebarCollapsed(true)}
               aria-label={t('layout.collapseSidebar')}
               title={t('layout.collapseSidebar')}
-              className="shrink-0 text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 transition-colors"
+              className="shrink-0 transition-colors"
+              style={{ color: SIDEBAR.textMuted }}
             >
               <PanelLeftClose className="w-4 h-4" strokeWidth={1.75} />
             </button>
@@ -158,11 +174,11 @@ export const Layout: React.FC<LayoutProps> = ({
               <div className="flex items-center gap-1 shrink-0" title={t('layout.streakTitle', { n: streak.current })}>
                 <Star
                   className="w-4 h-4"
-                  style={{ color: streak.todayDone ? 'var(--primary)' : '#94a3b8' }}
-                  fill={streak.todayDone ? 'var(--primary)' : 'none'}
+                  style={{ color: streak.todayDone ? SIDEBAR.gold : SIDEBAR.textMuted }}
+                  fill={streak.todayDone ? SIDEBAR.gold : 'none'}
                   strokeWidth={2}
                 />
-                <span className="text-[10px] font-black" style={{ color: streak.todayDone ? 'var(--primary)' : '#94a3b8' }}>
+                <span className="text-[10px] font-black" style={{ color: streak.todayDone ? SIDEBAR.gold : SIDEBAR.textMuted }}>
                   {streak.current}
                 </span>
               </div>
@@ -173,29 +189,29 @@ export const Layout: React.FC<LayoutProps> = ({
               Auch ohne Ordner sichtbar — sonst wissen Nutzer nicht, dass es das Feature gibt. */}
           {onModuleChange && collections.length === 0 && (
             <div className="mb-6 -mt-6">
-              <p className="text-[8px] font-black uppercase tracking-[0.3em] text-slate-400 mb-1.5 px-1">{t('layout.activeSubject')}</p>
+              <p className="text-[8px] font-black uppercase tracking-[0.3em] mb-1.5 px-1" style={{ color: SIDEBAR.textMuted }}>{t('layout.activeSubject')}</p>
               <button
                 onClick={() => onTabChange(ActiveTab.LIBRARY)}
                 className="w-full px-3 py-2.5 rounded-xl text-left transition-all hover:translate-x-0.5"
-                style={{ background: 'var(--bg-main)', border: '1px dashed var(--border-color)' }}
+                style={{ background: SIDEBAR.chipBg, border: `1px dashed ${SIDEBAR.chipBorder}` }}
               >
-                <span className="text-[11px] font-black uppercase tracking-wider block" style={{ color: 'var(--text-main)' }}>{t('layout.allSubjects')}</span>
-                <span className="block text-[9px] font-medium text-slate-400 mt-0.5">{t('layout.subjectHint')}</span>
+                <span className="text-[11px] font-black uppercase tracking-wider block" style={{ color: SIDEBAR.text }}>{t('layout.allSubjects')}</span>
+                <span className="block text-[9px] font-medium mt-0.5" style={{ color: SIDEBAR.textMuted }}>{t('layout.subjectHint')}</span>
               </button>
             </div>
           )}
           {onModuleChange && collections.length > 0 && (
             <div className="mb-6 -mt-6">
-              <p className="text-[8px] font-black uppercase tracking-[0.3em] text-slate-400 mb-1.5 px-1">{t('layout.activeSubject')}</p>
+              <p className="text-[8px] font-black uppercase tracking-[0.3em] mb-1.5 px-1" style={{ color: SIDEBAR.textMuted }}>{t('layout.activeSubject')}</p>
               <select
                 value={activeModuleId ?? ''}
                 onChange={e => onModuleChange(e.target.value || null)}
                 aria-label={t('layout.selectSubject')}
                 className="w-full px-3 py-2.5 rounded-xl text-[11px] font-black uppercase tracking-wider outline-none cursor-pointer"
                 style={{
-                  background: activeModuleId ? 'color-mix(in srgb, var(--primary) 10%, var(--bg-main))' : 'var(--bg-main)',
-                  border: `1px solid ${activeModuleId ? 'color-mix(in srgb, var(--primary) 35%, transparent)' : 'var(--border-color)'}`,
-                  color: activeModuleId ? 'var(--primary)' : 'var(--text-main)',
+                  background: activeModuleId ? 'color-mix(in srgb, #A9772C 18%, #1B2A4A)' : SIDEBAR.chipBg,
+                  border: `1px solid ${activeModuleId ? SIDEBAR.gold : SIDEBAR.chipBorder}`,
+                  color: activeModuleId ? SIDEBAR.gold : SIDEBAR.text,
                 }}
               >
                 <option value="">{t('layout.allSubjects')}</option>
@@ -210,7 +226,7 @@ export const Layout: React.FC<LayoutProps> = ({
             {visibleGroups.map((group, gi) => (
               <div key={gi}>
                 {group.titleKey && (
-                  <p className="px-3 pt-5 pb-1.5 text-[8px] font-black uppercase tracking-[0.3em] text-slate-400">
+                  <p className="px-3 pt-5 pb-1.5 text-[8px] font-black uppercase tracking-[0.3em]" style={{ color: SIDEBAR.textMuted }}>
                     {t(group.titleKey)}
                   </p>
                 )}
@@ -221,12 +237,12 @@ export const Layout: React.FC<LayoutProps> = ({
                     <button
                       key={item.tab}
                       onClick={() => onTabChange(item.tab)}
-                      className={`w-full flex items-center gap-3 px-4 py-2.5 rounded-[14px] text-left transition-all duration-200 ${
-                        isActive
-                          ? ''
-                          : 'text-slate-500 dark:text-slate-400 hover:bg-slate-50 dark:hover:bg-slate-800/50 hover:translate-x-0.5'
-                      }`}
-                      style={isActive ? { background: 'var(--primary-soft)', color: 'var(--primary-soft-text)' } : {}}
+                      className={`w-full flex items-center gap-3 px-4 py-2.5 rounded-[14px] text-left transition-all duration-200 ${isActive ? 'shadow-[0_2px_12px_rgba(169,119,44,0.35)]' : 'hover:translate-x-0.5'}`}
+                      style={isActive
+                        ? { background: SIDEBAR.gold, color: SIDEBAR.bg }
+                        : { color: SIDEBAR.textMuted, background: 'transparent' }}
+                      onMouseEnter={e => { if (!isActive) e.currentTarget.style.background = SIDEBAR.hoverBg; }}
+                      onMouseLeave={e => { if (!isActive) e.currentTarget.style.background = 'transparent'; }}
                     >
                       {Icon && <Icon className="w-4 h-4 shrink-0" strokeWidth={1.75} />}
                       <div className="flex-1 min-w-0">
@@ -234,7 +250,7 @@ export const Layout: React.FC<LayoutProps> = ({
                             engere Laufweite statt tracking-widest, truncate als Notbremse */}
                         <span className="text-[10px] font-black uppercase tracking-wider block truncate">{t(item.labelKey)}</span>
                         {item.hintKey && !isActive && (
-                          <span className="block text-[9px] font-medium text-slate-400 normal-case tracking-normal mt-0.5 truncate">
+                          <span className="block text-[9px] font-medium normal-case tracking-normal mt-0.5 truncate" style={{ color: SIDEBAR.textMuted }}>
                             {t(item.hintKey)}
                           </span>
                         )}
@@ -242,13 +258,13 @@ export const Layout: React.FC<LayoutProps> = ({
                       {item.tab === ActiveTab.CARDS && dueCardsCount > 0 && (
                         <span
                           className="text-[8px] font-black rounded-full px-1.5 py-0.5 shrink-0"
-                          style={{ background: 'var(--primary)', color: 'var(--primary-text)' }}
+                          style={isActive ? { background: SIDEBAR.bg, color: SIDEBAR.gold } : { background: SIDEBAR.gold, color: SIDEBAR.bg }}
                         >{dueCardsCount}</span>
                       )}
                       {item.tab === ActiveTab.QUIZ && dueMistakesCount > 0 && (
                         <span
                           className="text-[8px] font-black rounded-full px-1.5 py-0.5 shrink-0"
-                          style={{ background: 'var(--primary)', color: 'var(--primary-text)' }}
+                          style={isActive ? { background: SIDEBAR.bg, color: SIDEBAR.gold } : { background: SIDEBAR.gold, color: SIDEBAR.bg }}
                         >{dueMistakesCount}</span>
                       )}
                     </button>
@@ -263,28 +279,28 @@ export const Layout: React.FC<LayoutProps> = ({
               <>
                 <div
                   className="flex items-center gap-3 px-4 py-3 rounded-2xl"
-                  style={{ background: 'color-mix(in srgb, var(--border-color) 40%, var(--bg-sidebar))' }}
+                  style={{ background: SIDEBAR.chipBg }}
                 >
                   <div
-                    className="w-8 h-8 bg-indigo-600 rounded-xl flex items-center justify-center text-[10px] font-black shrink-0"
-                    style={{ color: 'var(--primary-text)', background: 'var(--primary)' }}
+                    className="w-8 h-8 rounded-xl flex items-center justify-center text-[10px] font-black shrink-0"
+                    style={{ color: SIDEBAR.bg, background: SIDEBAR.gold }}
                   >{userInitial}</div>
                   <div className="flex-1 min-w-0">
-                    <p className="text-[10px] font-black dark:text-white break-words flex items-center gap-1.5">
+                    <p className="text-[10px] font-black break-words flex items-center gap-1.5" style={{ color: SIDEBAR.text }}>
                       <span className="truncate">{user.user_metadata?.full_name || t('layout.user')}</span>
                       {userPlan === 'pro' && (
                         <span
                           className="text-[7px] font-black uppercase tracking-widest rounded-full px-1.5 py-0.5 shrink-0"
-                          style={{ background: 'var(--primary)', color: 'var(--primary-text)' }}
+                          style={{ background: SIDEBAR.gold, color: SIDEBAR.bg }}
                         >Pro</span>
                       )}
                     </p>
                     {/* Immer eine Zeile — kein Umbruch, volle Adresse per Tooltip */}
-                    <p className="text-[9px] text-slate-400 truncate" title={user.email ?? ''}>
+                    <p className="text-[9px] truncate" style={{ color: SIDEBAR.textMuted }} title={user.email ?? ''}>
                       {user.email}
                     </p>
                   </div>
-                  <button onClick={onLogout} className="text-slate-400 hover:text-rose-500 transition-colors shrink-0">
+                  <button onClick={onLogout} className="transition-colors shrink-0" style={{ color: SIDEBAR.textMuted }}>
                     <LogOut className="w-4 h-4" strokeWidth={1.75} />
                   </button>
                 </div>
@@ -292,7 +308,7 @@ export const Layout: React.FC<LayoutProps> = ({
                   <button
                     onClick={onUpgradeClick}
                     className="w-full flex items-center justify-center gap-2 px-4 py-2.5 rounded-2xl text-[10px] font-black uppercase tracking-widest transition-all hover:scale-[1.02] active:scale-95"
-                    style={{ background: 'color-mix(in srgb, var(--primary) 15%, transparent)', color: 'var(--primary)', border: '1px solid color-mix(in srgb, var(--primary) 30%, transparent)' }}
+                    style={{ background: 'color-mix(in srgb, #A9772C 18%, #1B2A4A)', color: SIDEBAR.gold, border: `1px solid ${SIDEBAR.gold}` }}
                   >
                     <Zap className="w-3.5 h-3.5" strokeWidth={2} />
                     {t('layout.upgradePro')}
@@ -303,7 +319,7 @@ export const Layout: React.FC<LayoutProps> = ({
               <button
                 onClick={onLoginClick}
                 className="w-full flex items-center justify-center gap-2 px-4 py-3 rounded-2xl text-[10px] font-black uppercase tracking-widest transition-all hover:scale-[1.02] active:scale-95"
-                style={{ background: 'var(--primary)', color: 'var(--primary-text)' }}
+                style={{ background: SIDEBAR.gold, color: SIDEBAR.bg }}
               >
                 <LogIn className="w-4 h-4" strokeWidth={1.75} />
                 {t('layout.loginRegister')}
@@ -311,11 +327,11 @@ export const Layout: React.FC<LayoutProps> = ({
             )}
           </div>
 
-          <div className="mt-4 pt-6 space-y-2" style={{ borderTop: '1px solid var(--border-color)' }}>
+          <div className="mt-4 pt-6 space-y-2" style={{ borderTop: `1px solid ${SIDEBAR.border}` }}>
             <button
               onClick={onSettingsClick}
-              className="w-full flex items-center px-4 py-3 rounded-xl text-[10px] font-black uppercase text-slate-500 dark:text-slate-400 hover:text-indigo-600 dark:hover:text-indigo-400 transition-all active:scale-95 group"
-              style={{ background: 'color-mix(in srgb, var(--border-color) 40%, var(--bg-sidebar))' }}
+              className="w-full flex items-center px-4 py-3 rounded-xl text-[10px] font-black uppercase transition-all active:scale-95 group"
+              style={{ background: SIDEBAR.chipBg, color: SIDEBAR.textMuted }}
             >
               <span className="group-hover:translate-x-1 transition-transform flex items-center gap-2">
                 <Settings className="w-4 h-4" strokeWidth={1.75} />
@@ -327,7 +343,8 @@ export const Layout: React.FC<LayoutProps> = ({
                 <button
                   key={p}
                   onClick={() => setLegalPage(p)}
-                  className="text-[8px] font-bold uppercase tracking-widest text-slate-400 hover:text-slate-600 dark:hover:text-slate-300 transition-colors"
+                  className="text-[8px] font-bold uppercase tracking-widest transition-colors"
+                  style={{ color: SIDEBAR.textMuted }}
                 >
                   {p === 'impressum' ? t('legal.imprint') : p === 'datenschutz' ? t('legal.privacy') : t('legal.terms')}
                 </button>
@@ -353,11 +370,11 @@ export const Layout: React.FC<LayoutProps> = ({
       {/* ── TABLET SIDEBAR (768px – 1023px) ── */}
       <aside
         className="hidden md:flex lg:hidden flex-col w-[72px] h-screen sticky top-0 z-20"
-        style={{ background: 'var(--bg-sidebar)', borderRight: '1px solid var(--border-color)' }}
+        style={{ background: SIDEBAR.bg, borderRight: `1px solid ${SIDEBAR.border}` }}
       >
         {/* Scrollable top: logo + all nav items */}
         <div className="flex-1 overflow-y-auto scrollbar-hide flex flex-col items-center gap-1 pt-4 pb-2">
-          <BrandMark size={26} strokeColor="var(--mark-stroke)" peakColor="var(--mark-peak)" className="mb-5 shrink-0" />
+          <BrandMark size={26} strokeColor={SIDEBAR.text} peakColor={SIDEBAR.gold} className="mb-5 shrink-0" />
 
           {allNavItems.map(item => {
             const isActive = activeTab === item.tab;
@@ -367,10 +384,10 @@ export const Layout: React.FC<LayoutProps> = ({
                 key={item.tab}
                 onClick={() => onTabChange(item.tab)}
                 title={t(item.labelKey)}
-                className={`w-12 h-12 flex flex-col items-center justify-center gap-[3px] rounded-xl transition-all duration-200 active:scale-90 shrink-0 ${
-                  isActive ? '' : 'text-slate-500 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800'
-                }`}
-                style={isActive ? { background: 'var(--primary)', color: 'var(--primary-text)' } : {}}
+                className={`w-12 h-12 flex flex-col items-center justify-center gap-[3px] rounded-xl transition-all duration-200 active:scale-90 shrink-0 ${isActive ? 'shadow-[0_2px_12px_rgba(169,119,44,0.35)]' : ''}`}
+                style={isActive ? { background: SIDEBAR.gold, color: SIDEBAR.bg } : { color: SIDEBAR.textMuted }}
+                onMouseEnter={e => { if (!isActive) e.currentTarget.style.background = SIDEBAR.hoverBg; }}
+                onMouseLeave={e => { if (!isActive) e.currentTarget.style.background = 'transparent'; }}
               >
                 {Icon && <Icon className="w-[18px] h-[18px]" strokeWidth={1.75} />}
                 <span className="text-[7px] font-black uppercase tracking-wide leading-none">{t(item.labelKey).slice(0, 6)}</span>
@@ -382,12 +399,15 @@ export const Layout: React.FC<LayoutProps> = ({
         {/* Fixed bottom: settings + user */}
         <div
           className="shrink-0 flex flex-col items-center gap-2 py-3"
-          style={{ borderTop: '1px solid var(--border-color)' }}
+          style={{ borderTop: `1px solid ${SIDEBAR.border}` }}
         >
           <button
             onClick={onSettingsClick}
             title={t('layout.settings')}
-            className="w-12 h-12 flex items-center justify-center rounded-xl text-slate-500 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800 transition-all active:scale-95"
+            className="w-12 h-12 flex items-center justify-center rounded-xl transition-all active:scale-95"
+            style={{ color: SIDEBAR.textMuted }}
+            onMouseEnter={e => { e.currentTarget.style.background = SIDEBAR.hoverBg; }}
+            onMouseLeave={e => { e.currentTarget.style.background = 'transparent'; }}
           >
             <Settings className="w-[18px] h-[18px]" strokeWidth={1.75} />
           </button>
@@ -396,14 +416,14 @@ export const Layout: React.FC<LayoutProps> = ({
               title={t('layout.logoutTitle', { email: user.email ?? '' })}
               onClick={onLogout}
               className="w-10 h-10 rounded-xl flex items-center justify-center text-[11px] font-black transition-all hover:scale-105 active:scale-90"
-              style={{ background: 'var(--primary)', color: 'var(--primary-text)' }}
+              style={{ background: SIDEBAR.gold, color: SIDEBAR.bg }}
             >{userInitial}</button>
           ) : (
             <button
               onClick={onLoginClick}
               title={t('layout.login')}
               className="w-12 h-12 flex items-center justify-center rounded-xl transition-all active:scale-95"
-              style={{ background: 'var(--primary)', color: 'var(--primary-text)' }}
+              style={{ background: SIDEBAR.gold, color: SIDEBAR.bg }}
             >
               <LogIn className="w-[18px] h-[18px]" strokeWidth={1.75} />
             </button>
