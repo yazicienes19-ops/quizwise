@@ -1,7 +1,34 @@
 # QuizWise (StudeArc) — Session Handoff
-**Stand: 28. Juli 2026 (Claude-Code-Session — echte Zitier-Engine + Mindmap-Feature)**
+**Stand: 29. Juli 2026 (Claude-Code-Session — Dashboard-Redesign "Persönlicher Lerncoach")**
 
-⚠️ Diese Datei wurde zwischen Session 18 (22.06.2026) und heute nicht gepflegt — die Memory-Datei des Assistenten (`~/.claude/projects/-Users-enesyazici/memory/project_quizwise.md`) enthält den vollständigen Verlauf der dazwischenliegenden Sessions (Rebrand zu StudeArc, Klausursimulator 2.0, Fehleranalyse-Überarbeitung, Tutor-Fixes u.v.m.). Die Tabelle unten unter "Ordnerstruktur"/"Tech Stack" ist entsprechend veraltet (kein Tailwind CDN mehr Thema, viele neue Features fehlen) — bei Bedarf dort nachschlagen statt hier zu vertrauen.
+⚠️ Diese Datei wurde zwischen Session 18 (22.06.2026) und dem 28.07.2026 nicht gepflegt — die Memory-Datei des Assistenten (`~/.claude/projects/-Users-enesyazici/memory/project_quizwise.md`) enthält den vollständigen Verlauf der dazwischenliegenden Sessions (Rebrand zu StudeArc, Klausursimulator 2.0, Fehleranalyse-Überarbeitung, Tutor-Fixes u.v.m.). Die Tabelle unten unter "Ordnerstruktur"/"Tech Stack" ist entsprechend veraltet (kein Tailwind CDN mehr Thema, viele neue Features fehlen) — bei Bedarf dort nachschlagen statt hier zu vertrauen.
+
+---
+
+## Was heute (29.07.2026) erledigt wurde
+
+### Dashboard-Redesign "Persönlicher Lerncoach statt Funktionsliste" — DEPLOYED, aber Nutzer noch unzufrieden
+Ausgangspunkt: Figma-artiges HTML-Mockup (drei Breakpoints iPhone/iPad/Desktop) vom User freigegeben, dann 1:1 in `components/Dashboard.tsx` nachgebaut (React/Tailwind, keine neuen Farb-Tokens — Mockup nutzte zufällig exakt dieselben Hex-Werte wie die bestehenden `app.css`-Variablen `--bg-main/--bg-sidebar/--text-main/--primary` etc.).
+
+**Neue Struktur:** Begrüßungs-Hero (mit lebendem Uhrzeit-Update, alle 60s) + Klausur-Countdown-Zeile (falls Termin eingetragen) + "Heute solltest du"-Tagesliste (rot/gelb/grün-Priorität, aus echten Signalen: fällige Karten, Fehlerfragen, Klausur ≤7 Tage, Streak) → 3 Stat-Karten (Karten fällig / Lernserie / Tage bis Klausur ODER Fortschritt) → "Weiterlernen"-Karte (Primary-gefüllt, animierte Fortschritts-Leiste, nur sichtbar wenn ein Quiz offen ist ODER mind. 1 Karteikarten-Deck existiert) → "Lernfortschritt"-Karte (`buildLearningScore().overall`, ausgeblendet wenn `null`) → bestehende KI-"Nächste Schritte" (`flowResult`) neu eingefärbt statt entfernt → fixes Prioritäts-Grid (Quiz/Tutor/Karteikarten/Simulator/Feynman/**Mindmap**/Bibliothek, 7 Karten, letzte spannt volle Zeilenbreite). Alles Modul-gefiltert nach `activeModuleId` (`useModuleScopedActivity`, eigener Deck-Scoping-Helper über `sourceDocumentId`). Eigener Onboarding-Screen (`documents.length === 0`) bleibt, nur neu gestylt.
+
+**Dateien:** `components/Dashboard.tsx` (komplett neu), `components/AppContent.tsx` (neue Props `decks/metrics/collections/activeModuleId` an allen 5 Dashboard-Stellen durchgereicht), `i18n/locales/{de,en,tr}.ts` (13 neue Keys, alle drei Sprachen — Typecheck verlangt identische Keys in allen dreien).
+
+**Iterative Live-Fixes nach User-Feedback** (jeweils commit+push+`vercel --prod`, kein Preview-Zwischenschritt gewünscht):
+1. Hand-Emoji raus, letzte Grid-Karte (damals Mindmap) spannt volle Breite statt verwaist allein zu stehen.
+2. Bibliothek statt Mindmap ans Ende verschoben (soll die größte/unterste Karte sein).
+3. Begrüßung reagiert jetzt live auf Tageszeit-Wechsel (60s-Timer), nicht nur beim Neuladen.
+4. Klausur-Countdown zusätzlich als Zeile direkt unter der Begrüßung (nicht nur in der Stat-Karte).
+5. **Bug gefunden + gefixt:** `Layout.tsx` wickelt jeden Tab schon in `max-w-6xl mx-auto` — meine eigene zusätzliche `max-w-3xl mx-auto` im Dashboard erzeugte eine doppelt-zentrierte, zu schmale Spalte mit viel Leerraum auf breiten Screens. Entfernt.
+6. Alle 7 Grid-Icons hatten dieselbe Gold-Farbe (Copy-Paste-Fehler beim Übertragen aus dem Mockup, das eigentlich gold/navy alternierte) → Alternierung wiederhergestellt; "Alles erledigt"-Box von grauer Notiz auf grün-getönten Erfolgs-Zustand geändert.
+
+### ⚠️ Offener Punkt — vom User bewusst vertagt, nächstes Mal weitermachen
+**User ist mit dem Dashboard-Redesign insgesamt weiterhin unzufrieden** ("gefällt mir nicht"), trotz der obigen Fixes. Auf Rückfrage, wie wir weitermachen sollen (zurück zum alten Dashboard? anderer visueller Stil? gezielt durchgehen was stört?) kam noch keine Antwort — der User ist stattdessen zur "Weiterlernen fehlt"-Frage und dann zum Handoff gesprungen. **Nächstes Mal zuerst klären:**
+1. Ist es eher die Grundstruktur/das Konzept, das nicht gefällt, oder Details (Farben/Abstände/Dichte)?
+2. Hat der Account `yazicienes19@gmail.com` echte Karteikarten-Decks? Falls ja: "Weiterlernen"-Karte erscheint trotzdem nicht → das wäre ein echter Bug in der `decks`-Prop-Weiterleitung (`AppContent.tsx`→`Dashboard.tsx`), noch nicht verifiziert. Falls nein: Account ist einfach noch leer, Verhalten ist korrekt aber unbefriedigend für einen Test-Account — evtl. lohnt sich ein reichhaltigerer Empty/Low-Data-Zustand statt der aktuellen kargen "0/0/X"-Stat-Reihe.
+3. Alternative ernsthaft in Betracht ziehen: kompletter Rollback auf das alte, vor dem Redesign bestehende Dashboard (git-Historie hat den alten Stand, Commit vor `8e4acd3`), Mindmaps dort einfach nur als zusätzliche Karte ergänzen — falls der Nutzer das Redesign grundsätzlich nicht will, statt weiter an Details zu schrauben.
+
+**Deploy-Historie dieser Session** (alle auf `studearc.com`, Vercel-Projekt `quizwise`): `8e4acd3` (Redesign) → `9fa1536` (Breiten-Fix) → `163d221` (Farb-Abwechslung). `HANDOFF.md`s "Live URLs"-Tabelle unten ist veraltet (`quizwise-kappa.vercel.app` existiert evtl. nicht mehr) — aktuelle Produktions-URL ist **studearc.com**, verlinktes Vercel-Projekt laut `.vercel/project.json`: `quizwise` (orgId `team_rsOK3jlRYNjsq4m56GICiqOt`).
 
 ---
 
