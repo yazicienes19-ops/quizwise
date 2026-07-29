@@ -34,6 +34,8 @@ interface ActionCard {
   id: ActiveTab;
   titleKey: TKey;
   Icon: React.ComponentType<{ size?: number; className?: string }>;
+  /** Wechselt bewusst gold/navy ab — sonst sehen alle 7 Icons gleich (nur gold) aus. */
+  tint: 'gold' | 'navy';
 }
 
 /** Fixe Priorität statt Sortierung nach Nutzungshäufigkeit — entspricht dem
@@ -42,13 +44,13 @@ interface ActionCard {
  *  ungerader Kartenzahl (7) bekommt die letzte Karte die volle Zeilenbreite
  *  (siehe isLast im Grid unten), das passt gut als größte/unterste Karte. */
 const ACTION_CARDS: ActionCard[] = [
-  { id: ActiveTab.QUIZ, titleKey: 'nav.quiz', Icon: HelpCircle },
-  { id: ActiveTab.EXPLAINER, titleKey: 'nav.explainer', Icon: Lightbulb },
-  { id: ActiveTab.CARDS, titleKey: 'nav.cards', Icon: Layers },
-  { id: ActiveTab.EXAM, titleKey: 'nav.exam', Icon: GraduationCap },
-  { id: ActiveTab.RECALL, titleKey: 'nav.recall', Icon: Brain },
-  { id: ActiveTab.MINDMAP, titleKey: 'nav.mindmap', Icon: Network },
-  { id: ActiveTab.LIBRARY, titleKey: 'nav.library', Icon: BookOpen },
+  { id: ActiveTab.QUIZ, titleKey: 'nav.quiz', Icon: HelpCircle, tint: 'gold' },
+  { id: ActiveTab.EXPLAINER, titleKey: 'nav.explainer', Icon: Lightbulb, tint: 'navy' },
+  { id: ActiveTab.CARDS, titleKey: 'nav.cards', Icon: Layers, tint: 'gold' },
+  { id: ActiveTab.EXAM, titleKey: 'nav.exam', Icon: GraduationCap, tint: 'navy' },
+  { id: ActiveTab.RECALL, titleKey: 'nav.recall', Icon: Brain, tint: 'gold' },
+  { id: ActiveTab.MINDMAP, titleKey: 'nav.mindmap', Icon: Network, tint: 'navy' },
+  { id: ActiveTab.LIBRARY, titleKey: 'nav.library', Icon: BookOpen, tint: 'gold' },
 ];
 
 type Priority = 'red' | 'yellow' | 'green';
@@ -276,9 +278,12 @@ export const Dashboard: React.FC<DashboardProps> = ({
             </div>
           </>
         ) : (
-          <div className="flex items-center gap-2.5 px-3.5 py-2.5 rounded-[14px]" style={{ background: 'var(--bg-sidebar)', border: '1px solid var(--border-color)' }}>
-            <CheckCircle2 size={16} style={{ color: '#22c55e' }} />
-            <span className="text-[13px] font-semibold" style={{ color: 'var(--text-secondary)' }}>{t('dashboardV2.today.allDone')}</span>
+          <div
+            className="flex items-center gap-2.5 px-3.5 py-3 rounded-[14px]"
+            style={{ background: 'color-mix(in srgb, #22c55e 10%, var(--bg-sidebar))', border: '1px solid color-mix(in srgb, #22c55e 30%, transparent)' }}
+          >
+            <CheckCircle2 size={18} style={{ color: '#22c55e' }} />
+            <span className="text-[13px] font-semibold" style={{ color: 'var(--text-main)' }}>{t('dashboardV2.today.allDone')}</span>
           </div>
         )}
       </div>
@@ -387,6 +392,8 @@ export const Dashboard: React.FC<DashboardProps> = ({
           // Ungerade Kartenzahl (7): letzte Karte bekommt die volle Zeilenbreite,
           // statt allein und verwaist in der letzten Reihe zu stehen.
           const isLast = i === ACTION_CARDS.length - 1;
+          const iconBg = card.tint === 'gold' ? 'var(--primary-soft)' : 'color-mix(in srgb, var(--text-main) 10%, transparent)';
+          const iconColor = card.tint === 'gold' ? 'var(--primary)' : 'var(--text-main)';
           return (
             <button
               key={card.id}
@@ -394,7 +401,7 @@ export const Dashboard: React.FC<DashboardProps> = ({
               className={`flex items-center gap-2.5 px-3.5 py-3 rounded-[14px] text-left hover:scale-[1.03] active:scale-[0.98] transition-transform ${isLast ? 'sm:col-span-2 lg:col-span-3 sm:justify-center' : ''}`}
               style={{ background: 'var(--bg-sidebar)', border: '1px solid var(--border-color)' }}
             >
-              <div className="w-9 h-9 rounded-xl flex items-center justify-center shrink-0" style={{ background: 'var(--primary-soft)', color: 'var(--primary)' }}>
+              <div className="w-9 h-9 rounded-xl flex items-center justify-center shrink-0" style={{ background: iconBg, color: iconColor }}>
                 <Icon size={16} />
               </div>
               <p className="text-sm font-black" style={{ color: 'var(--text-main)' }}>{t(card.titleKey)}</p>
