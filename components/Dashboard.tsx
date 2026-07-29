@@ -247,7 +247,7 @@ export const Dashboard: React.FC<DashboardProps> = ({
   }
 
   return (
-    <div className="max-w-3xl mx-auto space-y-4 py-8 px-4 animate-in fade-in duration-700">
+    <div className="space-y-4 animate-in fade-in duration-700">
 
       {/* Begrüßungs-Hero + Tagesliste */}
       <div className="animate-card-enter" style={{ ['--stagger-i' as string]: 0 }}>
