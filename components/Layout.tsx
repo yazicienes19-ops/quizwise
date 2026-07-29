@@ -143,9 +143,17 @@ export const Layout: React.FC<LayoutProps> = ({
           Breite/Opacity animiert statt hart weg-/hinzugemountet; der innere
           Inhalt behält seine volle Breite (w-72) und wird vom schrumpfenden
           äußeren Container nur zunehmend abgeschnitten + nach links geschoben
-          — dadurch wirkt es wie ein weiches Einklappen statt eines harten Cuts. */}
+          — dadurch wirkt es wie ein weiches Einklappen statt eines harten Cuts.
+
+          min-h-screen (nicht h-screen) auf dem äußeren <aside>: bei langen
+          Seiten (z.B. Kalender-Monatsansicht) muss die Navy-Fläche über die
+          komplette gescrollte Höhe reichen, sonst hört sie nach einem
+          Bildschirm auf und darunter scheint wieder der helle Hintergrund
+          durch. Der innere Wrapper bleibt bewusst bei h-screen (fix, nicht
+          h-full) — sonst würde die Nav-Liste (flex-1) den ganzen zusätzlichen
+          Platz auffüllen und User-Chip/Einstellungen weit nach unten schieben. */}
       <aside
-        className="hidden lg:flex flex-col h-screen sticky top-0 shrink-0 shadow-[4px_0_24px_rgba(0,0,0,0.15)] z-20 overflow-hidden transition-[width,opacity] duration-300 ease-[cubic-bezier(0.16,1,0.3,1)]"
+        className="hidden lg:flex flex-col min-h-screen sticky top-0 shrink-0 shadow-[4px_0_24px_rgba(0,0,0,0.15)] z-20 overflow-hidden transition-[width,opacity] duration-300 ease-[cubic-bezier(0.16,1,0.3,1)]"
         style={{
           background: SIDEBAR.bg,
           borderRight: `1px solid ${SIDEBAR.border}`,
@@ -155,7 +163,7 @@ export const Layout: React.FC<LayoutProps> = ({
         aria-hidden={sidebarCollapsed}
       >
         <div
-          className="p-10 flex flex-col h-full w-72 shrink-0 transition-transform duration-300 ease-[cubic-bezier(0.16,1,0.3,1)]"
+          className="p-10 flex flex-col h-screen w-72 shrink-0 transition-transform duration-300 ease-[cubic-bezier(0.16,1,0.3,1)]"
           style={{ transform: sidebarCollapsed ? 'translateX(-24px)' : 'translateX(0)' }}
         >
           <div className="flex items-center gap-3 mb-12">
@@ -369,65 +377,71 @@ export const Layout: React.FC<LayoutProps> = ({
 
       {/* ── TABLET SIDEBAR (768px – 1023px) ── */}
       <aside
-        className="hidden md:flex lg:hidden flex-col w-[72px] h-screen sticky top-0 z-20"
+        className="hidden md:flex lg:hidden flex-col min-h-screen w-[72px] sticky top-0 z-20"
         style={{ background: SIDEBAR.bg, borderRight: `1px solid ${SIDEBAR.border}` }}
       >
-        {/* Scrollable top: logo + all nav items */}
-        <div className="flex-1 overflow-y-auto scrollbar-hide flex flex-col items-center gap-1 pt-4 pb-2">
-          <BrandMark size={26} strokeColor={SIDEBAR.text} peakColor={SIDEBAR.gold} className="mb-5 shrink-0" />
+        {/* Fester Innen-Container in Bildschirmhöhe: hält die Nav/Footer-Aufteilung
+            unverändert, während der äußere <aside> (min-h-screen) für lange Seiten
+            (z.B. Kalender) über die komplette Scroll-Höhe hinweg Navy bleibt statt
+            nach einem Bildschirm abzubrechen. */}
+        <div className="flex flex-col h-screen w-full">
+          {/* Scrollable top: logo + all nav items */}
+          <div className="flex-1 overflow-y-auto scrollbar-hide flex flex-col items-center gap-1 pt-4 pb-2">
+            <BrandMark size={26} strokeColor={SIDEBAR.text} peakColor={SIDEBAR.gold} className="mb-5 shrink-0" />
 
-          {allNavItems.map(item => {
-            const isActive = activeTab === item.tab;
-            const Icon = ICONS[item.tab];
-            return (
-              <button
-                key={item.tab}
-                onClick={() => onTabChange(item.tab)}
-                title={t(item.labelKey)}
-                className={`w-12 h-12 flex flex-col items-center justify-center gap-[3px] rounded-xl transition-all duration-200 active:scale-90 shrink-0 ${isActive ? 'shadow-[0_2px_12px_rgba(169,119,44,0.35)]' : ''}`}
-                style={isActive ? { background: SIDEBAR.gold, color: SIDEBAR.bg } : { color: SIDEBAR.textMuted }}
-                onMouseEnter={e => { if (!isActive) e.currentTarget.style.background = SIDEBAR.hoverBg; }}
-                onMouseLeave={e => { if (!isActive) e.currentTarget.style.background = 'transparent'; }}
-              >
-                {Icon && <Icon className="w-[18px] h-[18px]" strokeWidth={1.75} />}
-                <span className="text-[7px] font-black uppercase tracking-wide leading-none">{t(item.labelKey).slice(0, 6)}</span>
-              </button>
-            );
-          })}
-        </div>
+            {allNavItems.map(item => {
+              const isActive = activeTab === item.tab;
+              const Icon = ICONS[item.tab];
+              return (
+                <button
+                  key={item.tab}
+                  onClick={() => onTabChange(item.tab)}
+                  title={t(item.labelKey)}
+                  className={`w-12 h-12 flex flex-col items-center justify-center gap-[3px] rounded-xl transition-all duration-200 active:scale-90 shrink-0 ${isActive ? 'shadow-[0_2px_12px_rgba(169,119,44,0.35)]' : ''}`}
+                  style={isActive ? { background: SIDEBAR.gold, color: SIDEBAR.bg } : { color: SIDEBAR.textMuted }}
+                  onMouseEnter={e => { if (!isActive) e.currentTarget.style.background = SIDEBAR.hoverBg; }}
+                  onMouseLeave={e => { if (!isActive) e.currentTarget.style.background = 'transparent'; }}
+                >
+                  {Icon && <Icon className="w-[18px] h-[18px]" strokeWidth={1.75} />}
+                  <span className="text-[7px] font-black uppercase tracking-wide leading-none">{t(item.labelKey).slice(0, 6)}</span>
+                </button>
+              );
+            })}
+          </div>
 
-        {/* Fixed bottom: settings + user */}
-        <div
-          className="shrink-0 flex flex-col items-center gap-2 py-3"
-          style={{ borderTop: `1px solid ${SIDEBAR.border}` }}
-        >
-          <button
-            onClick={onSettingsClick}
-            title={t('layout.settings')}
-            className="w-12 h-12 flex items-center justify-center rounded-xl transition-all active:scale-95"
-            style={{ color: SIDEBAR.textMuted }}
-            onMouseEnter={e => { e.currentTarget.style.background = SIDEBAR.hoverBg; }}
-            onMouseLeave={e => { e.currentTarget.style.background = 'transparent'; }}
+          {/* Fixed bottom: settings + user */}
+          <div
+            className="shrink-0 flex flex-col items-center gap-2 py-3"
+            style={{ borderTop: `1px solid ${SIDEBAR.border}` }}
           >
-            <Settings className="w-[18px] h-[18px]" strokeWidth={1.75} />
-          </button>
-          {user ? (
             <button
-              title={t('layout.logoutTitle', { email: user.email ?? '' })}
-              onClick={onLogout}
-              className="w-10 h-10 rounded-xl flex items-center justify-center text-[11px] font-black transition-all hover:scale-105 active:scale-90"
-              style={{ background: SIDEBAR.gold, color: SIDEBAR.bg }}
-            >{userInitial}</button>
-          ) : (
-            <button
-              onClick={onLoginClick}
-              title={t('layout.login')}
+              onClick={onSettingsClick}
+              title={t('layout.settings')}
               className="w-12 h-12 flex items-center justify-center rounded-xl transition-all active:scale-95"
-              style={{ background: SIDEBAR.gold, color: SIDEBAR.bg }}
+              style={{ color: SIDEBAR.textMuted }}
+              onMouseEnter={e => { e.currentTarget.style.background = SIDEBAR.hoverBg; }}
+              onMouseLeave={e => { e.currentTarget.style.background = 'transparent'; }}
             >
-              <LogIn className="w-[18px] h-[18px]" strokeWidth={1.75} />
+              <Settings className="w-[18px] h-[18px]" strokeWidth={1.75} />
             </button>
-          )}
+            {user ? (
+              <button
+                title={t('layout.logoutTitle', { email: user.email ?? '' })}
+                onClick={onLogout}
+                className="w-10 h-10 rounded-xl flex items-center justify-center text-[11px] font-black transition-all hover:scale-105 active:scale-90"
+                style={{ background: SIDEBAR.gold, color: SIDEBAR.bg }}
+              >{userInitial}</button>
+            ) : (
+              <button
+                onClick={onLoginClick}
+                title={t('layout.login')}
+                className="w-12 h-12 flex items-center justify-center rounded-xl transition-all active:scale-95"
+                style={{ background: SIDEBAR.gold, color: SIDEBAR.bg }}
+              >
+                <LogIn className="w-[18px] h-[18px]" strokeWidth={1.75} />
+              </button>
+            )}
+          </div>
         </div>
       </aside>
 
