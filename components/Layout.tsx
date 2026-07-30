@@ -460,7 +460,7 @@ export const Layout: React.FC<LayoutProps> = ({
       >
         <div className="flex items-center gap-2 shrink-0">
           <BrandMark size={20} strokeColor="var(--mark-stroke)" peakColor="var(--mark-peak)" className="shrink-0" />
-          <span className="text-[11px] font-black uppercase tracking-widest" style={{ color: 'var(--text-main)' }}>Stude<span style={{ color: '#A9772C' }}>Arc</span></span>
+          <span className="text-[11px] font-black uppercase tracking-widest" style={{ color: 'var(--text-main)' }}>Stude<span style={{ color: 'var(--primary)' }}>Arc</span></span>
         </div>
 
         <span className="absolute left-1/2 -translate-x-1/2 text-[9px] font-black uppercase tracking-widest text-slate-400 pointer-events-none max-w-[60vw] truncate">

@@ -15,7 +15,7 @@ interface BrandMarkProps {
 export const BrandMark: React.FC<BrandMarkProps> = ({
   size = 40,
   strokeColor = '#1B2A4A',
-  peakColor = '#A9772C',
+  peakColor = '#D9A94E',
   className,
 }) => (
   <svg width={size} height={size} viewBox="0 0 100 100" fill="none" className={className} aria-hidden="true">

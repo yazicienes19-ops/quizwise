@@ -4,7 +4,7 @@ import { Palette, Check } from 'lucide-react';
 import { useTranslation } from '../i18n/I18nProvider';
 
 const PRESETS = [
-  { name: 'StudeArc Gold', value: '#A9772C' },
+  { name: 'StudeArc Gold', value: '#D9A94E' },
   { name: 'Navy',          value: '#1B2A4A' },
   { name: 'Indigo',        value: '#6366F1' },
   { name: 'Blau',          value: '#3B82F6' },
@@ -29,7 +29,7 @@ export function applyAccentColor(color: string) {
 export const ColorPicker: React.FC = () => {
   const { t } = useTranslation();
   const [current, setCurrent] = useState(() =>
-    localStorage.getItem('accent_color') || '#A9772C'
+    localStorage.getItem('accent_color') || '#D9A94E'
   );
   const [open, setOpen] = useState(false);
 

@@ -16,7 +16,7 @@ import { formatDate } from '../i18n/dates';
 import type { Locale } from '../i18n';
 
 const PRESETS = [
-  { name: 'StudeArc Gold', value: '#A9772C' },
+  { name: 'StudeArc Gold', value: '#D9A94E' },
   { name: 'Navy',          value: '#1B2A4A' },
   { name: 'Indigo',        value: '#6366F1' },
   { name: 'Blau',          value: '#3B82F6' },
@@ -88,7 +88,7 @@ export const SettingsModal: React.FC<Props> = ({ user, isDark, onToggleTheme, on
   const [isCheckingOut, setIsCheckingOut] = useState(false);
 
   // Design
-  const [accentColor, setAccentColor] = useState(() => localStorage.getItem('accent_color') || '#A9772C');
+  const [accentColor, setAccentColor] = useState(() => localStorage.getItem('accent_color') || '#D9A94E');
   const [fontChoice, setFontChoice] = useState(() => localStorage.getItem('font_choice') || 'inter');
   const [lineHeight, setLineHeight] = useState(() => localStorage.getItem('line_height') || '1.6');
 

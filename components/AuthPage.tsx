@@ -189,7 +189,7 @@ export const AuthPage: React.FC = () => {
                     placeholder="Dein Name"
                     required
                     className="w-full pl-11 pr-4 py-3.5 rounded-2xl text-sm bg-slate-100 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-slate-900 dark:text-white placeholder-slate-400 outline-none focus:ring-2 transition-all"
-                    style={{ '--tw-ring-color': 'var(--primary, #A9772C)' } as React.CSSProperties}
+                    style={{ '--tw-ring-color': 'var(--primary, #D9A94E)' } as React.CSSProperties}
                   />
                 </div>
               </div>
@@ -242,7 +242,7 @@ export const AuthPage: React.FC = () => {
               type="submit"
               disabled={isLoading}
               className="w-full py-4 rounded-2xl text-[11px] font-black uppercase tracking-widest text-white transition-all hover:opacity-90 active:scale-95 shadow-lg disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
-              style={{ background: 'var(--primary, #A9772C)' }}
+              style={{ background: 'var(--primary, #D9A94E)' }}
             >
               {isLoading
                 ? <><Loader2 className="w-4 h-4 animate-spin" /> Bitte warten...</>
@@ -262,7 +262,7 @@ export const AuthPage: React.FC = () => {
             onClick={handleDemoLogin}
             disabled={isDemoLoading || isLoading}
             className="w-full py-3.5 rounded-2xl text-[11px] font-black uppercase tracking-widest transition-all hover:opacity-80 active:scale-95 disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2 border-2"
-            style={{ borderColor: 'var(--primary, #A9772C)', color: 'var(--primary, #A9772C)' }}
+            style={{ borderColor: 'var(--primary, #D9A94E)', color: 'var(--primary, #D9A94E)' }}
           >
             {isDemoLoading
               ? <><Loader2 className="w-4 h-4 animate-spin" /> Bitte warten...</>

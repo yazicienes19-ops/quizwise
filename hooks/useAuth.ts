@@ -43,11 +43,11 @@ export const useAuth = () => {
           // unabhängig davon, was vorher als Akzentfarbe gespeichert war —
           // Auswahl in den Einstellungen bleibt danach normal frei änderbar.
           if (!localStorage.getItem('studearc_accent_reset_v1')) {
-            document.documentElement.style.setProperty('--primary', '#A9772C');
-            document.documentElement.style.setProperty('--primary-text', '#ffffff');
-            localStorage.setItem('accent_color', '#A9772C');
+            document.documentElement.style.setProperty('--primary', '#D9A94E');
+            document.documentElement.style.setProperty('--primary-text', '#1B2A4A');
+            localStorage.setItem('accent_color', '#D9A94E');
             localStorage.setItem('studearc_accent_reset_v1', '1');
-            import('../services/syncService').then(({ syncPreferences }) => syncPreferences(user.id, { accent_color: '#A9772C' })).catch(() => {});
+            import('../services/syncService').then(({ syncPreferences }) => syncPreferences(user.id, { accent_color: '#D9A94E' })).catch(() => {});
           } else if (pr.accent_color) {
             document.documentElement.style.setProperty('--primary', pr.accent_color);
             localStorage.setItem('accent_color', pr.accent_color);

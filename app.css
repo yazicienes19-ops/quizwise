@@ -16,14 +16,15 @@
     --ink2:            #4A5A7A;
     --mute:            #8A8172;
     --card:            #FBF9F4;
-    --accent:          #A9772C;
+    --accent:          #D9A94E;
     /* Logo-Mark (BrandMark): Icon-Badges drehen sich mit dem Theme —
        hell = weißer Kasten/Navy-Kurve, dunkel = Navy-Kasten/helle Kurve.
-       Der Goldstern bleibt in beiden Modi Gold, nur der Farbton wechselt
-       für genug Kontrast (dunkler auf hell, heller auf dunkel). */
+       Der Goldstern bleibt in beiden Modi Gold (heller Ton #D9A94E statt
+       des erdigeren #A9772C — wirkte auf dunklen Flächen wie Navy braun
+       statt golden, jetzt app-weit einheitlich der hellere Ton). */
     --mark-bg:         #FFFFFF;
     --mark-stroke:     #1B2A4A;
-    --mark-peak:       #A9772C;
+    --mark-peak:       #D9A94E;
     --font-app:        'Inter', system-ui, sans-serif;
     --line-height-app: 1.6;
 }
@@ -57,12 +58,15 @@ body {
 }
 ::-webkit-scrollbar { width: 6px; height: 6px; }
 ::-webkit-scrollbar-track { background: transparent; }
-::-webkit-scrollbar-thumb { background: color-mix(in srgb, var(--primary, #A9772C) 50%, transparent); border-radius: 10px; }
+::-webkit-scrollbar-thumb { background: color-mix(in srgb, var(--primary, #D9A94E) 50%, transparent); border-radius: 10px; }
 
 /* ── Dynamic accent color palette ── */
 :root {
-    --primary:      #A9772C;
-    --primary-text: #ffffff;
+    --primary:      #D9A94E;
+    /* Heller Gold-Ton (statt des vorigen erdigeren #A9772C) braucht dunklen
+       statt weißen Text für ausreichenden Kontrast auf der Gold-Fläche —
+       genau wie im Dunkelmodus, der das schon richtig gemacht hat. */
+    --primary-text: #1B2A4A;
     --primary-soft: color-mix(in srgb, var(--primary) 12%, white);
     --primary-soft-text: color-mix(in srgb, var(--primary) 85%, #2d0f06);
     --p50:  color-mix(in srgb, var(--primary)  8%, white);
