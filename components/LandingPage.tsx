@@ -190,9 +190,12 @@ export const LandingPage: React.FC<LandingPageProps> = ({ onAuthClick, onLegalCl
             const Icon = f.icon;
             return (
               <Reveal key={f.titleKey} style={{ transitionDelay: `${i * 60}ms` } as React.CSSProperties}>
-                <div className="p-8 h-full rounded-[6px] border" style={{ background: '#FBF9F4', borderColor: 'rgba(27,42,74,0.1)' }}>
-                  <div className="w-11 h-11 rounded-full border flex items-center justify-center mb-7" style={{ borderColor: 'rgba(27,42,74,0.15)' }}>
-                    <Icon className="w-[18px] h-[18px]" strokeWidth={1.75} style={{ color: '#D9A94E' }} />
+                <div
+                  className="group p-8 h-full rounded-[6px] border border-[rgba(27,42,74,0.1)] transition-all duration-300 ease-out hover:-translate-y-1.5 hover:shadow-[0_16px_36px_rgba(27,42,74,0.12)] hover:border-[#D9A94E]"
+                  style={{ background: '#FBF9F4' }}
+                >
+                  <div className="w-11 h-11 rounded-full border border-[rgba(27,42,74,0.15)] flex items-center justify-center mb-7 transition-all duration-300 group-hover:border-[#D9A94E] group-hover:bg-[#D9A94E]/10">
+                    <Icon className="w-[18px] h-[18px] transition-transform duration-300 group-hover:scale-110" strokeWidth={1.75} style={{ color: '#D9A94E' }} />
                   </div>
                   <h3 style={{ ...serif, fontSize: 20, fontWeight: 600, marginBottom: 12 }}>{t(f.titleKey)}</h3>
                   <p style={{ fontSize: 14, lineHeight: 1.65, color: '#5B5647' }}>{t(f.descKey)}</p>
@@ -231,7 +234,7 @@ export const LandingPage: React.FC<LandingPageProps> = ({ onAuthClick, onLegalCl
 
           {/* Free */}
           <Reveal>
-            <div className="p-8 rounded-[6px] border h-full" style={{ borderColor: 'rgba(27,42,74,0.15)' }}>
+            <div className="p-8 rounded-[6px] border border-[rgba(27,42,74,0.15)] h-full transition-all duration-300 hover:-translate-y-1 hover:shadow-lg hover:border-[#D9A94E]">
               <p className="text-[10px] font-black uppercase tracking-widest mb-2" style={{ color: '#8A8172' }}>{t('landing.pricing.free')}</p>
               <p style={{ ...serif, fontSize: 44, fontWeight: 600 }} className="mb-1">{t('landing.pricing.freePrice')}</p>
               <p className="text-[11px] mb-8" style={{ color: '#8A8172' }}>{t('landing.pricing.freeSub')}</p>
@@ -255,7 +258,7 @@ export const LandingPage: React.FC<LandingPageProps> = ({ onAuthClick, onLegalCl
 
           {/* Pro */}
           <Reveal style={{ transitionDelay: '90ms' } as React.CSSProperties}>
-            <div className="p-8 rounded-[6px] border-2 relative h-full" style={{ borderColor: '#D9A94E', background: '#1B2A4A', color: '#FBF9F4' }}>
+            <div className="p-8 rounded-[6px] border-2 relative h-full transition-all duration-300 hover:-translate-y-1 hover:shadow-2xl" style={{ borderColor: '#D9A94E', background: '#1B2A4A', color: '#FBF9F4' }}>
               <div className="absolute top-6 right-6 px-2.5 py-1 rounded-full text-[9px] font-black uppercase tracking-widest" style={{ background: '#D9A94E', color: '#1B2A4A' }}>
                 {t('landing.pricing.recommended')}
               </div>
