@@ -26,7 +26,7 @@ const CONTENT: Record<LegalPage, { title: string; body: React.ReactNode }> = {
         </div>
         <div>
           <p className="font-bold text-slate-900 dark:text-white">Kontakt</p>
-          <p>E-Mail: yazicienes19@gmail.com</p>
+          <p>E-Mail: support@studearc.com</p>
         </div>
         <div>
           <p className="font-bold text-slate-900 dark:text-white">Verantwortlich für den Inhalt nach § 55 Abs. 2 RStV</p>
@@ -51,7 +51,7 @@ const CONTENT: Record<LegalPage, { title: string; body: React.ReactNode }> = {
         <div>
           <p className="font-bold text-slate-900 dark:text-white">1. Verantwortlicher</p>
           <p>Enes Yazici, [Straße Hausnummer, PLZ Ort], Deutschland</p>
-          <p>E-Mail: yazicienes19@gmail.com</p>
+          <p>E-Mail: support@studearc.com</p>
         </div>
         <div>
           <p className="font-bold text-slate-900 dark:text-white">2. Erhobene Daten</p>
@@ -94,7 +94,7 @@ const CONTENT: Record<LegalPage, { title: string; body: React.ReactNode }> = {
           <p>
             Du hast das Recht auf Auskunft, Berichtigung, Löschung, Einschränkung der Verarbeitung,
             Datenübertragbarkeit sowie Widerspruch gegen die Verarbeitung deiner personenbezogenen
-            Daten. Zur Ausübung dieser Rechte wende dich an: yazicienes19@gmail.com
+            Daten. Zur Ausübung dieser Rechte wende dich an: support@studearc.com
           </p>
           <p className="mt-2">
             Du hast zudem das Recht, dich bei der zuständigen Datenschutzaufsichtsbehörde zu beschweren.
@@ -144,18 +144,66 @@ const CONTENT: Record<LegalPage, { title: string; body: React.ReactNode }> = {
             Das Pro-Abonnement wird monatlich im Voraus abgerechnet und verlängert sich automatisch,
             sofern es nicht gekündigt wird. Die Kündigung ist jederzeit zum Ende des laufenden
             Abrechnungszeitraums möglich, direkt über die App-Einstellungen (Bereich „Abonnement")
-            oder per E-Mail an yazicienes19@gmail.com. Nach der Kündigung bleibt der Pro-Zugang
+            oder per E-Mail an support@studearc.com. Nach der Kündigung bleibt der Pro-Zugang
             bis zum Ende des bezahlten Zeitraums aktiv.
           </p>
         </div>
         <div>
           <p className="font-bold text-slate-900 dark:text-white">§ 4 Widerrufsrecht</p>
           <p>
-            Als Verbraucher steht dir ein gesetzliches Widerrufsrecht von 14 Tagen ab Vertragsschluss
-            zu. Das Widerrufsrecht erlischt bei digitalen Inhalten vorzeitig, wenn die Ausführung
-            des Vertrags mit deiner ausdrücklichen Zustimmung vor Ablauf der Widerrufsfrist begonnen
-            hat und du zur Kenntnis genommen hast, dass du dadurch dein Widerrufsrecht verlierst.
+            Als Verbraucher hast du das Recht, binnen vierzehn Tagen ohne Angabe von Gründen diesen
+            Vertrag zu widerrufen. Die Widerrufsfrist beträgt vierzehn Tage ab dem Tag des
+            Vertragsschlusses.
           </p>
+          <p className="mt-2">
+            Um dein Widerrufsrecht auszuüben, musst du uns (Enes Yazici, [Straße Hausnummer],
+            [PLZ Ort], Deutschland, E-Mail: support@studearc.com) mittels einer eindeutigen Erklärung
+            (z. B. ein mit der Post versandter Brief oder eine E-Mail) über deinen Entschluss, diesen
+            Vertrag zu widerrufen, informieren. Du kannst dafür das unten stehende
+            Muster-Widerrufsformular verwenden, das jedoch nicht vorgeschrieben ist. Zur Wahrung der
+            Widerrufsfrist reicht es aus, dass du die Mitteilung über die Ausübung des Widerrufsrechts
+            vor Ablauf der Widerrufsfrist absendest.
+          </p>
+          <p className="font-bold text-slate-900 dark:text-white mt-3">Folgen des Widerrufs</p>
+          <p>
+            Wenn du diesen Vertrag widerrufst, haben wir dir alle Zahlungen, die wir von dir erhalten
+            haben, unverzüglich und spätestens binnen vierzehn Tagen ab dem Tag zurückzuzahlen, an dem
+            die Mitteilung über deinen Widerruf dieses Vertrags bei uns eingegangen ist. Für diese
+            Rückzahlung verwenden wir dasselbe Zahlungsmittel, das du bei der ursprünglichen
+            Transaktion eingesetzt hast, es sei denn, mit dir wurde ausdrücklich etwas anderes
+            vereinbart; in keinem Fall werden dir wegen dieser Rückzahlung Entgelte berechnet. Hast du
+            verlangt, dass die Leistung während der Widerrufsfrist beginnen soll, so hast du uns einen
+            angemessenen Betrag zu zahlen, der dem Anteil der bis zum Zeitpunkt deines Widerrufs bereits
+            erbrachten Leistung im Vergleich zum Gesamtumfang der vertraglich vorgesehenen Leistung
+            entspricht.
+          </p>
+          <p className="font-bold text-slate-900 dark:text-white mt-3">
+            Vorzeitiges Erlöschen bei digitalen Inhalten
+          </p>
+          <p>
+            Das Widerrufsrecht erlischt vorzeitig, wenn die Ausführung des Vertrags mit deiner
+            ausdrücklichen Zustimmung vor Ablauf der Widerrufsfrist begonnen hat und du zur Kenntnis
+            genommen hast, dass du dadurch bei vollständiger Vertragserfüllung dein Widerrufsrecht
+            verlierst.
+          </p>
+        </div>
+        <div>
+          <p className="font-bold text-slate-900 dark:text-white">Muster-Widerrufsformular</p>
+          <p className="italic">
+            (Wenn du den Vertrag widerrufen willst, dann fülle bitte dieses Formular aus und sende es
+            an support@studearc.com zurück.)
+          </p>
+          <p className="mt-2">
+            An Enes Yazici, [Straße Hausnummer], [PLZ Ort], Deutschland, E-Mail: support@studearc.com:
+          </p>
+          <p className="mt-2">
+            Hiermit widerrufe ich den von mir abgeschlossenen Vertrag über die Erbringung der
+            folgenden Dienstleistung: StudeArc Pro-Abonnement
+          </p>
+          <p className="mt-2">Bestellt am: _______________</p>
+          <p>Name des Verbrauchers: _______________</p>
+          <p>Anschrift des Verbrauchers: _______________</p>
+          <p>Datum: _______________</p>
         </div>
         <div>
           <p className="font-bold text-slate-900 dark:text-white">§ 5 Pflichten des Nutzers</p>
@@ -186,19 +234,38 @@ const CONTENT: Record<LegalPage, { title: string; body: React.ReactNode }> = {
         <div>
           <p className="font-bold text-slate-900 dark:text-white">§ 8 Änderungen der AGB</p>
           <p>
-            Der Anbieter behält sich vor, diese AGB mit einer Ankündigungsfrist von 30 Tagen zu
-            ändern. Änderungen werden per E-Mail mitgeteilt. Widersprichst du nicht innerhalb
-            von 30 Tagen, gelten die neuen AGB als akzeptiert.
+            Änderungen dieser AGB, die dich nicht schlechterstellen (z. B. redaktionelle
+            Anpassungen, neue gesetzliche Vorgaben, technische Weiterentwicklungen), teilen wir dir
+            mindestens sechs Wochen vor ihrem Inkrafttreten per E-Mail mit. Wir weisen dich in dieser
+            Mitteilung ausdrücklich darauf hin, dass die Änderung als angenommen gilt, wenn du ihr
+            nicht innerhalb dieser Frist in Textform widersprichst. Widersprichst du, bleibt der
+            Vertrag zu den bisherigen Bedingungen bestehen; du kannst den Vertrag außerdem innerhalb
+            der Frist jederzeit außerordentlich zum Zeitpunkt des geplanten Inkrafttretens kündigen.
+          </p>
+          <p className="mt-2">
+            Änderungen des Leistungsumfangs des Pro-Abonnements sowie Erhöhungen des Abo-Preises
+            bedürfen deiner ausdrücklichen Zustimmung; das bloße Ausbleiben eines Widerspruchs genügt
+            hierfür nicht. Lehnst du eine Preiserhöhung ab, läuft dein bestehendes Abonnement zu den
+            bisherigen Konditionen bis zum Ende des laufenden Abrechnungszeitraums weiter.
           </p>
         </div>
         <div>
-          <p className="font-bold text-slate-900 dark:text-white">§ 9 Anwendbares Recht & Gerichtsstand</p>
+          <p className="font-bold text-slate-900 dark:text-white">§ 9 Verbraucherstreitbeilegung</p>
+          <p>
+            Die EU-Plattform zur Online-Streitbeilegung wurde zum 20. Juli 2025 eingestellt.
+            Wir sind nicht verpflichtet und nicht bereit, an einem Streitbeilegungsverfahren vor
+            einer Verbraucherschlichtungsstelle im Sinne des Verbraucherstreitbeilegungsgesetzes
+            (VSBG) teilzunehmen.
+          </p>
+        </div>
+        <div>
+          <p className="font-bold text-slate-900 dark:text-white">§ 10 Anwendbares Recht & Gerichtsstand</p>
           <p>
             Es gilt deutsches Recht unter Ausschluss des UN-Kaufrechts (CISG). Gerichtsstand
             für Streitigkeiten mit Kaufleuten ist der Sitz des Anbieters.
           </p>
         </div>
-        <p className="text-xs text-slate-400 pt-2">Stand: Mai 2026</p>
+        <p className="text-xs text-slate-400 pt-2">Stand: Juli 2026</p>
       </div>
     ),
   },

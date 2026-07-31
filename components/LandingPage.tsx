@@ -7,6 +7,7 @@ import { BrandMark } from './BrandMark';
 
 interface LandingPageProps {
   onAuthClick: (mode?: 'login' | 'register') => void;
+  onLegalClick: (page: 'impressum' | 'datenschutz' | 'agb') => void;
 }
 
 const features: { icon: LucideIcon; titleKey: TKey; descKey: TKey }[] = [
@@ -80,7 +81,7 @@ const ArcArt: React.FC<{ flip?: boolean }> = ({ flip = false }) => {
 
 const serif = { fontFamily: "'Source Serif 4', serif" } as const;
 
-export const LandingPage: React.FC<LandingPageProps> = ({ onAuthClick }) => {
+export const LandingPage: React.FC<LandingPageProps> = ({ onAuthClick, onLegalClick }) => {
   const { t } = useTranslation();
 
   const freeItems: TKey[] = ['landing.pricing.free1', 'landing.pricing.free2', 'landing.pricing.free3', 'landing.pricing.free4', 'landing.pricing.free5'];
@@ -313,9 +314,18 @@ export const LandingPage: React.FC<LandingPageProps> = ({ onAuthClick }) => {
             </span>
           </div>
           <div className="flex gap-6">
-            {(['landing.footer.privacy', 'landing.footer.imprint', 'landing.footer.terms'] as TKey[]).map(l => (
-              <button key={l} className="text-[11px] font-bold uppercase tracking-widest transition-colors hover:opacity-70" style={{ color: '#8A8172' }}>
-                {t(l)}
+            {([
+              { labelKey: 'landing.footer.privacy', page: 'datenschutz' },
+              { labelKey: 'landing.footer.imprint', page: 'impressum' },
+              { labelKey: 'landing.footer.terms', page: 'agb' },
+            ] as { labelKey: TKey; page: 'impressum' | 'datenschutz' | 'agb' }[]).map(({ labelKey, page }) => (
+              <button
+                key={labelKey}
+                onClick={() => onLegalClick(page)}
+                className="text-[11px] font-bold uppercase tracking-widest transition-colors hover:opacity-70"
+                style={{ color: '#8A8172' }}
+              >
+                {t(labelKey)}
               </button>
             ))}
           </div>

@@ -7,7 +7,7 @@ const router = express.Router();
 const vapidConfigured = !!(process.env.VAPID_PUBLIC_KEY && process.env.VAPID_PRIVATE_KEY);
 if (vapidConfigured) {
   webpush.setVapidDetails(
-    process.env.VAPID_SUBJECT || 'mailto:kontakt@quizwise.app',
+    process.env.VAPID_SUBJECT || 'mailto:support@studearc.com',
     process.env.VAPID_PUBLIC_KEY,
     process.env.VAPID_PRIVATE_KEY
   );

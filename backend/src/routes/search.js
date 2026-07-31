@@ -183,7 +183,7 @@ router.get('/scholar', async (req, res, next) => {
     if (!query) return res.status(400).json({ error: 'query erforderlich' });
 
     const fields = 'title,authorships,publication_year,abstract_inverted_index,primary_location,doi,cited_by_count';
-    const url = `https://api.openalex.org/works?search=${encodeURIComponent(query)}&per-page=10&select=${fields}&mailto=demo@quizwise.app`;
+    const url = `https://api.openalex.org/works?search=${encodeURIComponent(query)}&per-page=10&select=${fields}&mailto=support@studearc.com`;
 
     const controller = new AbortController();
     const timeout = setTimeout(() => controller.abort(), 8000);

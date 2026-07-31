@@ -249,7 +249,7 @@ const App: React.FC = () => {
   if (!auth.user) return (
     <>
       <ToastContainer />
-      <LandingPage onAuthClick={() => auth.setShowAuthModal(true)} />
+      <LandingPage onAuthClick={() => auth.setShowAuthModal(true)} onLegalClick={setLegalPage} />
       {auth.showAuthModal && <AuthModal onClose={() => auth.setShowAuthModal(false)} />}
       {!cookieConsent && !auth.showAuthModal && <CookieBanner
         onAccept={() => { setCookieConsent(true); localStorage.setItem('cookie_consent', 'accepted'); }}
