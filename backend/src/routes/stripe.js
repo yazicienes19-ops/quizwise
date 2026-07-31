@@ -2,6 +2,7 @@ const express = require('express');
 const Stripe = require('stripe');
 const { supabaseAdmin, requireAuth } = require('../middleware/auth');
 const { sendMail } = require('../utils/mailer');
+const { buildCancellationEmail } = require('../emails/kuendigung');
 
 const router = express.Router();
 const stripe = new Stripe(process.env.STRIPE_SECRET_KEY);
@@ -80,19 +81,17 @@ router.post('/cancel', requireAuth, async (req, res, next) => {
     const endsAt = new Date((updated.cancel_at ?? updated.items.data[0].current_period_end) * 1000).toLocaleDateString('de-DE');
     const receivedAt = new Date().toLocaleString('de-DE', { timeZone: 'Europe/Berlin', dateStyle: 'medium', timeStyle: 'short' });
 
+    const { data: profile } = await supabaseAdmin.from('profiles').select('full_name').eq('id', req.user.id).single();
+    const firstName = profile?.full_name?.split(' ')[0];
+    const { html, text } = buildCancellationEmail({ name: firstName, endsAt, receivedAt });
+
     // Unverzügliche elektronische Bestätigung nach § 312k Abs. 4 BGB. Ein Fehler
     // beim Mailversand darf die bereits vollzogene Kündigung nicht rückgängig
     // machen — deshalb nur loggen, nicht die Response blockieren.
     sendMail({
       to: req.user.email,
-      subject: 'Bestätigung deiner Kündigung – StudeArc',
-      text: `Deine Kündigung ist bei uns am ${receivedAt} Uhr eingegangen.\n\nVertrag: StudeArc Pro-Abonnement\nKündigungsart: ordentlich zum Ende der aktuellen Abrechnungsperiode\nWirksamkeit: ${endsAt}\n\nBis zu diesem Datum bleibt dein Pro-Zugang aktiv. Du erhältst diese E-Mail zur Bestätigung des Eingangs deiner Kündigung nach § 312k Abs. 4 BGB.\n\nStudeArc`,
-      html: `<p>Deine Kündigung ist bei uns am <strong>${receivedAt} Uhr</strong> eingegangen.</p>
-        <p><strong>Vertrag:</strong> StudeArc Pro-Abonnement<br>
-        <strong>Kündigungsart:</strong> ordentlich zum Ende der aktuellen Abrechnungsperiode<br>
-        <strong>Wirksamkeit:</strong> ${endsAt}</p>
-        <p>Bis zu diesem Datum bleibt dein Pro-Zugang aktiv.</p>
-        <p style="color:#64748b;font-size:12px">Du erhältst diese E-Mail zur Bestätigung des Eingangs deiner Kündigung nach § 312k Abs. 4 BGB.</p>`,
+      subject: 'Deine Kündigung bei StudeArc',
+      text, html,
     }).catch(err => console.error('[stripe/cancel] Kündigungsbestätigung konnte nicht verschickt werden:', err.message));
 
     res.json({ success: true, endsAt });
