@@ -1,6 +1,6 @@
 # StudeArc Knowledge Graph — Phase 1 Implementierungsplanung (Datenbasis)
 
-Status: **Phase 1 (DB), Phase 2 (TypeScript-Domain) und Phase 3 (Graph Engine: Rendering/Layout/Interaktion) umgesetzt (Stand 2026-08-02).** Baut auf `KNOWLEDGE_GRAPH_KONZEPT.md` auf (dort fixiert: ein Graph pro Fach, SVG-first, zeilenbasierter Sync, keine Migration alter Mindmaps). ID-Strategie final: `crypto.randomUUID()` ausschließlich für die vier neuen Graph-Tabellen. Migration liegt in `backend/migration_graph_v1.sql`. Vollständige Domain-Implementierung unter `services/graph/*.ts` (13 Module + Tests). UI/Rendering-Schicht: `components/GraphCanvas.tsx` (SVG-Renderer, Pan/Zoom/Selection/Drag/Erstellen) + `components/GraphDevHarness.tsx` (dauerhafter Development Harness, nur `import.meta.env.DEV` + `?graphDevHarness=1`, nachweislich nicht im Produktions-Bundle). **Aktueller Stand, kritischer Review und offene, bewusst zurückgestellte Punkte: Abschnitt 7. Phase 3 im Detail: Abschnitt 8.**
+Status: **Phase 1 (DB), Phase 2 (TypeScript-Domain), Phase 3 (Graph Engine) und Phase 4 (Application-Schicht) umgesetzt (Stand 2026-08-02).** Baut auf `KNOWLEDGE_GRAPH_KONZEPT.md` auf (dort fixiert: ein Graph pro Fach, SVG-first, zeilenbasierter Sync, keine Migration alter Mindmaps). ID-Strategie final: `crypto.randomUUID()` ausschließlich für die vier neuen Graph-Tabellen. Migration liegt in `backend/migration_graph_v1.sql`. Vollständige Domain-Implementierung unter `services/graph/*.ts` (13 Module + Tests). UI-Schicht: `components/GraphCanvas.tsx` (SVG-Renderer, Pan/Zoom/Selection/Drag/Erstellen — kennt weiterhin weder Supabase noch Repository noch Sync). Application-Schicht: `hooks/useKnowledgeGraph.ts` (einziger Ort, der GraphCanvas mit GraphSyncService/GraphPersistenceService verbindet). `components/GraphDevHarness.tsx` (dauerhafter Development Harness, nur `import.meta.env.DEV` + `?graphDevHarness=1`, nachweislich nicht im Produktions-Bundle) läuft seit Phase 4 über diesen Hook. **Aktueller Stand, kritischer Review und offene, bewusst zurückgestellte Punkte: Abschnitt 7. Phase 3: Abschnitt 8. Phase 4: Abschnitt 9.**
 
 ## Korrektur gegenüber dem Konzeptdokument (bitte gegenlesen)
 
@@ -474,3 +474,23 @@ Ziel laut Nutzer: ausschließlich die Engine (Layout, SVG-Renderer, Pan, Zoom, S
 **Echter Bug gefunden bei der manuellen Verifikation im Dev-Server (Playwright, danach entfernt):** Klick auf einen Node setzte die Auswahl korrekt, aber das native `click`-Event bubbelte anschließend zum Hintergrund hoch und `handleBackgroundClick` hob sie sofort wieder auf — `stopPropagation()` saß nur auf `mousedown`, nicht auf `click`. Behoben (`onClick={e => e.stopPropagation()}` auf dem Node) und danach erneut verifiziert: Rendering, Selection, Drag-to-Move (Positionsdelta exakt nachgemessen), Zoom, reines Hintergrund-Pan (alle Nodes gleichmäßig verschoben, kein Node-Drag), Node-Erstellung per Doppelklick, Kantenerstellung per Handle-Ziehen — alles bestätigt funktionsfähig, keine Konsolen-/Seitenfehler.
 
 **Bewusst nicht Teil von Phase 3** (unverändert auf der Roadmap, s. Abschnitt 7): Fokus-Modus, Beziehungstyp-Picker/Formulare, Seitenpanel, Verknüpfung mit Dokumenten/Karteikarten/Quiz/Feynman/KI-Erklärung (das Node-als-Einstiegspunkt-Ziel), `useKnowledgeGraph`-Hook (Application-Schicht) — `GraphCanvas` ist dafür bereits vorbereitet (`onEntityChanged`-Callback, entkoppelte Selection), aber der Hook selbst existiert noch nicht.
+
+---
+
+## 9. Phase 4 — Application-Schicht (`useKnowledgeGraph`), umgesetzt 2026-08-02
+
+Ziel: GraphCanvas erstmals mit echten Daten aus GraphSyncService/GraphPersistenceService verbinden, strikt layer-rein. Ausdrücklich keine neue Engine, keine UI-Erweiterung, keine KI.
+
+**Neu:** `hooks/useKnowledgeGraph.ts` (+ Tests, `@testing-library/react`'s `renderHook`) — einziger Ort, der GraphCanvas mit Infrastructure verbindet. Liefert `state/history/selection/loading/error` + `onChange/onSelectionChange/onEntityChanged/undo/redo`. `GraphCanvas.tsx` selbst wurde **nicht verändert** (Engine gilt als abgeschlossen) — nur der Typ `GraphEntityChange` wanderte vorher nach `services/graph/types.ts` (Domain), damit der Hook nicht rückwärts aus der UI-Komponente importieren muss.
+
+**Bewusst nicht gebaut:**
+- **Kein `GraphProvider`/Context** — ein Konsument (`GraphDevHarness`), kein Prop-Drilling-Problem. Kommt erst bei mehreren gleichzeitigen Konsumenten (Abschnitt 5).
+- **Keine spekulative Aktions-API** (kein `archiveNode`/`purgeNode`/Beziehungstyp-CRUD am Hook) — nur `onChange`/`onEntityChanged` (das, was GraphCanvas tatsächlich auslöst) plus `undo`/`redo` (für die bestehenden Harness-Buttons).
+- **Kein Polling/Refresh-Loop** — nur initiales Laden bei Mount/Scope-/User-Wechsel.
+- **`error` deckt nur einen fehlgeschlagenen initialen Pull ab**, nicht fehlgeschlagene Autosave-Pushes (dafür sorgt bereits das bestehende Pending-Write-Tracking).
+
+**Echter Bug beim Testen gefunden+behoben:** Der Cleanup-Pfad für "kein `userId`" (frühes `return` im Lade-Effekt) rief `flushAllPendingCommits()` nicht auf, nur der Pfad mit `userId` — dabei markiert `GraphPersistenceService.commitX` eine Änderung als pending unabhängig von `userId` (nur der Netzwerk-Push entfällt ohne Login, der lokale Cache-Write bleibt gedebouncet). Beide Zweige nutzen jetzt dieselbe Cleanup-Funktion.
+
+**`GraphDevHarness.tsx` läuft jetzt über den Hook** (nicht Teil der ursprünglichen Aufgabenliste, aber nötig, um "GraphCanvas mit echten Daten" überhaupt zu zeigen): zwei automatisch erkannte Modi ohne Login-Formular — isolierter, rein lokaler Fixture-Scope (`dev-harness-fixture`) ohne Session, oder die echte Kontoansicht (`{kind:'all'}`) samt echtem Sync/Autosave, falls im selben Browser bereits eine Supabase-Session besteht.
+
+**Verifiziert (Playwright, lokaler Modus):** Fixture wird nur bei tatsächlich leerem Cache geseedet, kein erneutes Seeden nach Reload, ein per Doppelklick angelegter Node übersteht jetzt einen Seiten-Reload (**echte Persistenz über den Hook — das gab es in Phase 3 noch nicht**), Undo/Redo/Reset funktionieren, keine Konsolenfehler. Der Cloud-Pfad ("Live-Daten"-Modus) konnte mangels echter Zugangsdaten nicht automatisiert verifiziert werden.
