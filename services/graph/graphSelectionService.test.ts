@@ -1,0 +1,59 @@
+import { describe, it, expect } from 'vitest';
+import {
+  createEmptySelection, selectNode, clearSelection, hoverNode,
+  setFocus, clearFocus, isSelected, isHovered,
+} from './graphSelectionService';
+
+describe('createEmptySelection', () => {
+  it('hat keine Auswahl, keinen Hover, keinen Fokus', () => {
+    const selection = createEmptySelection();
+    expect(selection.selectedNodeId).toBeUndefined();
+    expect(selection.hoveredNodeId).toBeUndefined();
+    expect(selection.focus).toBeUndefined();
+  });
+});
+
+describe('selectNode / clearSelection / isSelected', () => {
+  it('wählt einen Node aus und erkennt ihn als ausgewählt', () => {
+    const selection = selectNode(createEmptySelection(), 'n1');
+    expect(isSelected(selection, 'n1')).toBe(true);
+    expect(isSelected(selection, 'n2')).toBe(false);
+  });
+
+  it('ersetzt eine bestehende Auswahl durch eine neue (immer nur ein selektierter Node)', () => {
+    const selection = selectNode(selectNode(createEmptySelection(), 'n1'), 'n2');
+    expect(selection.selectedNodeId).toBe('n2');
+  });
+
+  it('clearSelection hebt die Auswahl auf, ohne Hover/Fokus zu berühren', () => {
+    let selection = selectNode(createEmptySelection(), 'n1');
+    selection = hoverNode(selection, 'n2');
+    selection = clearSelection(selection);
+    expect(selection.selectedNodeId).toBeUndefined();
+    expect(selection.hoveredNodeId).toBe('n2');
+  });
+
+  it('verändert den ursprünglichen State nicht (Immutabilität)', () => {
+    const before = createEmptySelection();
+    selectNode(before, 'n1');
+    expect(before.selectedNodeId).toBeUndefined();
+  });
+});
+
+describe('hoverNode / isHovered', () => {
+  it('setzt und löscht den Hover-Zustand (undefined = kein Hover)', () => {
+    let selection = hoverNode(createEmptySelection(), 'n1');
+    expect(isHovered(selection, 'n1')).toBe(true);
+    selection = hoverNode(selection, undefined);
+    expect(isHovered(selection, 'n1')).toBe(false);
+  });
+});
+
+describe('setFocus / clearFocus', () => {
+  it('setzt einen Fokus-Node mit Hop-Distanz und kann ihn wieder löschen', () => {
+    let selection = setFocus(createEmptySelection(), 'n1', 2);
+    expect(selection.focus).toEqual({ nodeId: 'n1', hops: 2 });
+    selection = clearFocus(selection);
+    expect(selection.focus).toBeUndefined();
+  });
+});
