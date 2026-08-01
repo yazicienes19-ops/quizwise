@@ -25,16 +25,35 @@ if (!rootElement) {
   throw new Error("Could not find root element to mount to");
 }
 
+// Offizieller Development Harness des Knowledge Graph (s. components/GraphDevHarness.tsx)
+// — dauerhafte Entwicklungsinfrastruktur, kein Produktfeature. Zweifach
+// abgesichert: import.meta.env.DEV ist in einem Produktions-Build statisch
+// `false`, wodurch Vite/Rollup den untenstehenden dynamischen Import
+// vollständig aus dem Bundle eliminieren (kein Code, keine Erreichbarkeit,
+// keine Bundle-Größe in Produktion — verifiziert per `npm run build` + Grep
+// auf den Output). Zusätzlich nur bei explizitem Query-Parameter, damit er
+// auch im normalen `npm run dev` nicht ungefragt die App verdrängt.
+const isGraphDevHarness = import.meta.env.DEV && new URLSearchParams(window.location.search).has('graphDevHarness');
+const GraphDevHarnessLazy = isGraphDevHarness
+  ? React.lazy(() => import('./components/GraphDevHarness').then(m => ({ default: m.GraphDevHarness })))
+  : null;
+
 const root = ReactDOM.createRoot(rootElement);
 root.render(
   <React.StrictMode>
-    <I18nProvider>
-      {/* Äußerste Auffanglinie: Nutzer sehen nie wieder eine Leerseite, sondern
-          einen Fehler-Bildschirm mit Neu-laden — und der Crash wird gemeldet. */}
-      <ErrorBoundary>
-        <App />
-        <PwaUpdatePrompt />
-      </ErrorBoundary>
-    </I18nProvider>
+    {GraphDevHarnessLazy ? (
+      <React.Suspense fallback={null}>
+        <GraphDevHarnessLazy />
+      </React.Suspense>
+    ) : (
+      <I18nProvider>
+        {/* Äußerste Auffanglinie: Nutzer sehen nie wieder eine Leerseite, sondern
+            einen Fehler-Bildschirm mit Neu-laden — und der Crash wird gemeldet. */}
+        <ErrorBoundary>
+          <App />
+          <PwaUpdatePrompt />
+        </ErrorBoundary>
+      </I18nProvider>
+    )}
   </React.StrictMode>
 );
