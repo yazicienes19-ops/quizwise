@@ -200,6 +200,38 @@ export const GraphCanvas: React.FC<GraphCanvasProps> = ({
     setEditingNodeId(null);
   };
 
+  // ── Freitext-Notiz (Phase 5A Punkt 4) ────────────────────────────────────
+  // Genau EIN Feld, wie vorgegeben — bewusst `notes` (persönliche Anmerkung:
+  // "warum ist das wichtig"), nicht `description` (objektive Definition, im
+  // Datenmodell separat vorhanden, aber hier nicht exponiert). Sichtbar,
+  // sobald ein Node ausgewählt ist — keine Sidebar, ein einfaches Overlay
+  // direkt unter dem Node reicht für diese Phase.
+  const [notesDraft, setNotesDraft] = useState<{ nodeId: string; value: string } | null>(null);
+  const [isEditingNotes, setIsEditingNotes] = useState(false);
+
+  // Initialisiert den Entwurf NUR, wenn sich die Auswahl ändert — nicht bei
+  // jeder state-Änderung, sonst würde der gerade getippte Text durch eine
+  // unabhängige Änderung anderswo überschrieben (dieselbe Überlegung wie bei
+  // der Titel-Bearbeitung).
+  useEffect(() => {
+    if (!selection.selectedNodeId) { setNotesDraft(null); return; }
+    const node = state.nodesById.get(selection.selectedNodeId);
+    setNotesDraft(node ? { nodeId: node.id, value: node.notes } : null);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [selection.selectedNodeId]);
+
+  const commitNotes = () => {
+    setIsEditingNotes(false);
+    if (!notesDraft) return;
+    const node = state.nodesById.get(notesDraft.nodeId);
+    if (!node || node.notes === notesDraft.value) return; // unverändert, kein Commit/History-Eintrag nötig
+    const result = recordUpdateNode(history, state, notesDraft.nodeId, { notes: notesDraft.value });
+    if (!result.error && result.entity) {
+      onChange({ state: result.state, history: result.history });
+      onEntityChanged?.({ kind: 'node', entity: result.entity });
+    }
+  };
+
   // ── Node-Drag (Verschieben) ──────────────────────────────────────────────
   interface NodeDragState { nodeId: string; startClientX: number; startClientY: number; startPos: GraphNodePosition; currentPos: GraphNodePosition; moved: boolean; }
   const [nodeDrag, setNodeDrag] = useState<NodeDragState | null>(null);
@@ -267,12 +299,13 @@ export const GraphCanvas: React.FC<GraphCanvasProps> = ({
   // Bewusst archiveNode (undo-fähig, Soft Delete), nicht purgeNode — das
   // endgültige Löschen bleibt eine bewusste Zweitaktion, s. Datenmodell.
   // "Noch keine perfekte UX" (User-Vorgabe) — kein Kontextmenü, keine
-  // Bestätigung, nur die Taste. Reagiert nicht, während der Titel gerade
-  // bearbeitet wird (sonst würde Löschen von Zeichen im Textfeld
-  // stattdessen den ganzen Node archivieren) oder während gezogen wird.
+  // Bestätigung, nur die Taste. Reagiert nicht, während der Titel ODER die
+  // Notiz gerade bearbeitet wird (sonst würde Löschen von Zeichen im
+  // Textfeld/der Textarea stattdessen den ganzen Node archivieren) oder
+  // während gezogen wird.
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
-      if (editingNodeId || nodeDrag || edgeDraft) return;
+      if (editingNodeId || isEditingNotes || nodeDrag || edgeDraft) return;
       if (e.key !== 'Delete' || !selection.selectedNodeId) return;
       e.preventDefault();
       const result = recordArchiveNode(history, state, selection.selectedNodeId);
@@ -284,7 +317,7 @@ export const GraphCanvas: React.FC<GraphCanvasProps> = ({
     };
     window.addEventListener('keydown', handleKeyDown);
     return () => window.removeEventListener('keydown', handleKeyDown);
-  }, [editingNodeId, nodeDrag, edgeDraft, selection, history, state, onChange, onSelectionChange, onEntityChanged]);
+  }, [editingNodeId, isEditingNotes, nodeDrag, edgeDraft, selection, history, state, onChange, onSelectionChange, onEntityChanged]);
 
   const handleNodePointerUp = (e: React.MouseEvent, targetNodeId: string) => {
     if (!edgeDraft || !resolvedRelationTypeId) return;
@@ -436,6 +469,25 @@ export const GraphCanvas: React.FC<GraphCanvasProps> = ({
             style={{
               left: screenX, top: screenY, transform: 'translate(-50%, -50%)',
               width: NODE_RADIUS * 2 + 16, borderColor: 'var(--primary)', zIndex: 20,
+            }}
+          />
+        );
+      })()}
+      {notesDraft && (() => {
+        const pos = positionOf(notesDraft.nodeId);
+        const screenX = zoomTransform.x + zoomTransform.k * pos.x;
+        const screenY = zoomTransform.y + zoomTransform.k * pos.y;
+        return (
+          <textarea
+            value={notesDraft.value}
+            placeholder="Notiz — warum ist das wichtig?"
+            onChange={e => setNotesDraft(prev => prev && { ...prev, value: e.target.value })}
+            onFocus={() => setIsEditingNotes(true)}
+            onBlur={commitNotes}
+            className="absolute text-[10px] rounded-md px-2 py-1.5 outline-none border resize-none bg-white dark:bg-slate-800 dark:text-white"
+            style={{
+              left: screenX, top: screenY + NODE_RADIUS * zoomTransform.k + 10, transform: 'translate(-50%, 0)',
+              width: 180, height: 56, borderColor: 'var(--border-color, #e2e8f0)', zIndex: 15,
             }}
           />
         );
