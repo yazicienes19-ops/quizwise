@@ -7,7 +7,7 @@ import { resolveOverlaps } from '../services/graph/graphLayoutEngine';
 import {
   type GraphSelectionState, selectNode, clearSelection, hoverNode, isSelected, isHovered,
 } from '../services/graph/graphSelectionService';
-import { type GraphHistory, recordCreateNode, recordUpdateNode, recordCreateEdge } from '../services/graph/graphHistoryService';
+import { type GraphHistory, recordCreateNode, recordUpdateNode, recordArchiveNode, recordCreateEdge } from '../services/graph/graphHistoryService';
 
 /**
  * Phase 3 — reine Graph Engine: SVG-Rendering, Pan/Zoom, Selection,
@@ -262,6 +262,29 @@ export const GraphCanvas: React.FC<GraphCanvasProps> = ({
       window.removeEventListener('mouseup', handleUp);
     };
   }, [edgeDraft, clientToGraphPoint]);
+
+  // ── Node löschen über die Entf-Taste (Phase 5A Punkt 3) ─────────────────
+  // Bewusst archiveNode (undo-fähig, Soft Delete), nicht purgeNode — das
+  // endgültige Löschen bleibt eine bewusste Zweitaktion, s. Datenmodell.
+  // "Noch keine perfekte UX" (User-Vorgabe) — kein Kontextmenü, keine
+  // Bestätigung, nur die Taste. Reagiert nicht, während der Titel gerade
+  // bearbeitet wird (sonst würde Löschen von Zeichen im Textfeld
+  // stattdessen den ganzen Node archivieren) oder während gezogen wird.
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (editingNodeId || nodeDrag || edgeDraft) return;
+      if (e.key !== 'Delete' || !selection.selectedNodeId) return;
+      e.preventDefault();
+      const result = recordArchiveNode(history, state, selection.selectedNodeId);
+      if (!result.error && result.entity) {
+        onChange({ state: result.state, history: result.history });
+        onSelectionChange(clearSelection(selection));
+        onEntityChanged?.({ kind: 'node', entity: result.entity });
+      }
+    };
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, [editingNodeId, nodeDrag, edgeDraft, selection, history, state, onChange, onSelectionChange, onEntityChanged]);
 
   const handleNodePointerUp = (e: React.MouseEvent, targetNodeId: string) => {
     if (!edgeDraft || !resolvedRelationTypeId) return;
