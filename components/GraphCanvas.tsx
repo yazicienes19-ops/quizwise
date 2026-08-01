@@ -149,6 +149,57 @@ export const GraphCanvas: React.FC<GraphCanvasProps> = ({
     return { x: (screenX - zoomTransform.x) / zoomTransform.k, y: (screenY - zoomTransform.y) / zoomTransform.k };
   }, [zoomTransform]);
 
+  // ── Titel direkt bearbeiten (Phase 5A Punkt 2) ──────────────────────────
+  // Kein Dialog/Modal — ein HTML-Overlay-<input>, absolut positioniert über
+  // dem Node (Muster aus dem alten MindmapCanvas.tsx: interaktive Controls
+  // liegen als HTML außerhalb des SVG, nicht als <foreignObject> darin, weil
+  // Safari beim Klicken durch ein transformiertes SVG-<g> hindurch bekannte
+  // Hit-Testing-Bugs hat — das transformierte <g ref={gRef}> für Pan/Zoom
+  // existiert hier genauso).
+  const [editingNodeId, setEditingNodeId] = useState<string | null>(null);
+  const [editingValue, setEditingValue] = useState('');
+  const editInputRef = useRef<HTMLInputElement | null>(null);
+  // Escape muss verwerfen, nicht speichern — aber das Entfernen des
+  // fokussierten <input> aus dem DOM löst danach trotzdem ein natives
+  // blur-Event aus, das sonst versehentlich erneut committen würde, bevor
+  // der State-Update aus setEditingNodeId(null) im Closure sichtbar ist
+  // (State-Updates sind asynchron, ein Ref ist es nicht).
+  const skipNextBlurCommitRef = useRef(false);
+
+  useEffect(() => {
+    if (editingNodeId) {
+      editInputRef.current?.focus();
+      editInputRef.current?.select();
+    }
+  }, [editingNodeId]);
+
+  const beginEditingTitle = (nodeId: string, currentTitle: string) => {
+    setEditingNodeId(nodeId);
+    setEditingValue(currentTitle);
+  };
+
+  const commitTitleEdit = () => {
+    if (skipNextBlurCommitRef.current) { skipNextBlurCommitRef.current = false; return; }
+    if (!editingNodeId) return;
+    const trimmed = editingValue.trim();
+    // Leerer Titel wird nicht committet (DB/Domain verlangen einen nicht-
+    // leeren Titel) — die Bearbeitung schließt einfach, ohne den
+    // bestehenden Titel zu verwerfen. Kein Fehler-UI nötig dafür.
+    if (trimmed.length > 0) {
+      const result = recordUpdateNode(history, state, editingNodeId, { title: trimmed });
+      if (!result.error && result.entity) {
+        onChange({ state: result.state, history: result.history });
+        onEntityChanged?.({ kind: 'node', entity: result.entity });
+      }
+    }
+    setEditingNodeId(null);
+  };
+
+  const cancelTitleEdit = () => {
+    skipNextBlurCommitRef.current = true;
+    setEditingNodeId(null);
+  };
+
   // ── Node-Drag (Verschieben) ──────────────────────────────────────────────
   interface NodeDragState { nodeId: string; startClientX: number; startClientY: number; startPos: GraphNodePosition; currentPos: GraphNodePosition; moved: boolean; }
   const [nodeDrag, setNodeDrag] = useState<NodeDragState | null>(null);
@@ -235,6 +286,11 @@ export const GraphCanvas: React.FC<GraphCanvasProps> = ({
       onChange({ state: result.state, history: result.history });
       onSelectionChange(selectNode(selection, result.entity.id));
       onEntityChanged?.({ kind: 'node', entity: result.entity });
+      // Sofort umbenennbar (Phase 5A Punkt 2) — der Platzhaltertitel ist nur
+      // die Voraussetzung für den nicht-leeren-Titel-Constraint, nicht das,
+      // was der Nutzer eigentlich benennen wollte. Text ist vorausgewählt
+      // (s. beginEditingTitle-Effekt), der erste Tastendruck ersetzt ihn.
+      beginEditingTitle(result.entity.id, result.entity.title);
     }
   };
 
@@ -301,13 +357,11 @@ export const GraphCanvas: React.FC<GraphCanvasProps> = ({
                   // hochbubbelt und dort die gerade erst gesetzte Auswahl
                   // sofort wieder löscht (handleBackgroundClick).
                   onClick={e => e.stopPropagation()}
-                  // Ohne dieses stopPropagation bubbelt ein Doppelklick auf
-                  // einem Node bis zum Hintergrund durch und legt dort einen
-                  // zweiten, neuen Node an derselben Stelle an (gefunden im
-                  // Nutzungstest, KNOWLEDGE_GRAPH_USABILITY_SESSION.md) — der
-                  // naheliegendste Reflex zum Umbenennen hätte also ungewollt
-                  // dupliziert. Die eigentliche Bearbeitung folgt in Punkt 2.
-                  onDoubleClick={e => e.stopPropagation()}
+                  // stopPropagation verhindert weiterhin, dass der Doppelklick
+                  // bis zum Hintergrund durchbubbelt und dort einen zweiten
+                  // Node anlegt (Phase 5A Punkt 1) — zusätzlich öffnet er jetzt
+                  // die Titel-Bearbeitung (Punkt 2), statt nur ins Leere zu laufen.
+                  onDoubleClick={e => { e.stopPropagation(); beginEditingTitle(node.id, node.title); }}
                   onMouseEnter={() => onSelectionChange(hoverNode(selection, node.id))}
                   onMouseLeave={() => onSelectionChange(hoverNode(selection, undefined))}
                   style={{ cursor: 'pointer' }}
@@ -318,13 +372,15 @@ export const GraphCanvas: React.FC<GraphCanvasProps> = ({
                     stroke={selected ? 'var(--primary)' : 'var(--border-color, #e2e8f0)'}
                     strokeWidth={selected ? 3 : 1.5}
                   />
-                  <text
-                    textAnchor="middle" y={4}
-                    className={`text-[10px] font-bold select-none ${node.color || selected ? 'fill-white' : 'fill-slate-700 dark:fill-white'}`}
-                    style={{ pointerEvents: 'none' }}
-                  >
-                    {node.title.length > 14 ? `${node.title.slice(0, 13)}…` : node.title}
-                  </text>
+                  {editingNodeId !== node.id && (
+                    <text
+                      textAnchor="middle" y={4}
+                      className={`text-[10px] font-bold select-none ${node.color || selected ? 'fill-white' : 'fill-slate-700 dark:fill-white'}`}
+                      style={{ pointerEvents: 'none' }}
+                    >
+                      {node.title.length > 14 ? `${node.title.slice(0, 13)}…` : node.title}
+                    </text>
+                  )}
                   {(hovered || selected) && resolvedRelationTypeId && (
                     <circle
                       cx={HANDLE_DISTANCE} cy={0} r={HANDLE_RADIUS}
@@ -339,6 +395,28 @@ export const GraphCanvas: React.FC<GraphCanvasProps> = ({
           </AnimatePresence>
         </g>
       </svg>
+      {editingNodeId && (() => {
+        const pos = positionOf(editingNodeId);
+        const screenX = zoomTransform.x + zoomTransform.k * pos.x;
+        const screenY = zoomTransform.y + zoomTransform.k * pos.y;
+        return (
+          <input
+            ref={editInputRef}
+            value={editingValue}
+            onChange={e => setEditingValue(e.target.value)}
+            onKeyDown={e => {
+              if (e.key === 'Enter') { e.preventDefault(); commitTitleEdit(); }
+              else if (e.key === 'Escape') { e.preventDefault(); cancelTitleEdit(); }
+            }}
+            onBlur={commitTitleEdit}
+            className="absolute text-[10px] font-bold text-center rounded-md px-1 py-1 outline-none border-2 bg-white dark:bg-slate-800 dark:text-white"
+            style={{
+              left: screenX, top: screenY, transform: 'translate(-50%, -50%)',
+              width: NODE_RADIUS * 2 + 16, borderColor: 'var(--primary)', zIndex: 20,
+            }}
+          />
+        );
+      })()}
     </div>
   );
 };
