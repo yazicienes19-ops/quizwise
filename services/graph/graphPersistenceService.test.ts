@@ -13,6 +13,7 @@ const makeNode = (id: string, overrides: Partial<GraphNode> = {}): GraphNode => 
 });
 
 beforeEach(() => {
+  localStorage.clear(); // markPending/clearPending schreiben real in localStorage
   vi.useFakeTimers();
   vi.spyOn(sync, 'saveCachedState').mockImplementation(() => {});
   vi.spyOn(sync, 'pushNode').mockResolvedValue(makeNode('irrelevant'));
@@ -116,6 +117,54 @@ describe('commitDeleteRelationType', () => {
     const state = createEmptyGraphState({ kind: 'all' });
     commitDeleteRelationType('rel-1', state, { userId: 'user-1' });
     expect(sync.pushDeleteRelationType).toHaveBeenCalledWith('rel-1', 'user-1');
+  });
+});
+
+describe('Pending-Write-Tracking (Fix vom 2026-08-02)', () => {
+  it('markiert eine Änderung SOFORT als pending — noch bevor der Debounce überhaupt abläuft', () => {
+    const state = createEmptyGraphState({ kind: 'all' });
+    commitNode(makeNode('n1'), state, { userId: 'user-1' });
+
+    // Kein vi.advanceTimersByTime() — der Debounce ist noch gar nicht gelaufen
+    expect(sync.loadPendingWrites(state.scope)).toEqual([{ kind: 'node', id: 'n1', op: 'upsert' }]);
+  });
+
+  it('löscht den Pending-Eintrag erst NACH erfolgreichem Push', async () => {
+    const state = createEmptyGraphState({ kind: 'all' });
+    commitNode(makeNode('n1'), state, { userId: 'user-1' });
+
+    vi.advanceTimersByTime(400);
+    expect(sync.loadPendingWrites(state.scope)).toHaveLength(1); // Push ist raus, aber die Promise noch nicht aufgelöst
+    await Promise.resolve(); // pushNode-Promise auflösen lassen
+    await Promise.resolve();
+
+    expect(sync.loadPendingWrites(state.scope)).toEqual([]);
+  });
+
+  it('behält den Pending-Eintrag, wenn der Push fehlschlägt (Kern des Local-First-Fixes)', async () => {
+    vi.spyOn(sync, 'pushNode').mockRejectedValue(new Error('offline'));
+    const state = createEmptyGraphState({ kind: 'all' });
+    commitNode(makeNode('n1'), state, { userId: 'user-1' });
+
+    vi.advanceTimersByTime(400);
+    await Promise.resolve();
+    await Promise.resolve();
+
+    expect(sync.loadPendingWrites(state.scope)).toEqual([{ kind: 'node', id: 'n1', op: 'upsert' }]);
+  });
+
+  it('bleibt pending, solange kein userId (kein eingeloggter Nutzer) vorhanden ist', () => {
+    const state = createEmptyGraphState({ kind: 'all' });
+    commitNode(makeNode('n1'), state, {});
+    vi.advanceTimersByTime(400);
+
+    expect(sync.loadPendingWrites(state.scope)).toEqual([{ kind: 'node', id: 'n1', op: 'upsert' }]);
+  });
+
+  it('commitPurgeNode markiert als pending-delete, nicht als pending-upsert', () => {
+    const state = createEmptyGraphState({ kind: 'all' });
+    commitPurgeNode('n1', state, { userId: 'user-1' });
+    expect(sync.loadPendingWrites(state.scope)).toEqual([{ kind: 'node', id: 'n1', op: 'delete' }]);
   });
 });
 

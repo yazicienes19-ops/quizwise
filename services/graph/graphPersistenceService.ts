@@ -79,42 +79,76 @@ export interface CommitOptions {
   debounceMs?: number;
 }
 
+// Jede commit*-Funktion markiert SOFORT, synchron, außerhalb des Debounce
+// (sync.markPending) — nicht erst im gedebouncten run(). Grund: genau die
+// Zeitspanne, die der Debounce absichtlich offen lässt, ist die Zeitspanne,
+// in der ein Crash/Tab-Close sonst spurlos eine Änderung verlieren würde.
+// Ein Pending-Write-Eintrag ist klein und billig — anders als saveCachedState
+// gibt es keinen Performance-Grund, ihn zu verzögern (s. graphSyncService.ts).
+// clearPending läuft erst NACH erfolgreichem Push; schlägt der Push fehl,
+// bleibt der Eintrag stehen und wird beim nächsten pullSince/retryPendingWrites
+// erneut versucht statt stillschweigend verloren zu gehen.
+
 export function commitNode(node: GraphNode, state: GraphState, options: CommitOptions = {}): void {
+  sync.markPending(state.scope, 'node', node.id, 'upsert');
   scheduleCommit(`node:${node.id}`, options.debounceMs ?? DEFAULT_DEBOUNCE_MS, () => {
     sync.saveCachedState(state);
-    if (options.userId) sync.pushNode(node, options.userId).catch(() => {});
+    if (options.userId) {
+      sync.pushNode(node, options.userId)
+        .then(() => sync.clearPending(state.scope, 'node', node.id))
+        .catch(() => {});
+    }
   });
 }
 
 /**
  * Fix für den im Architektur-Review vom 2026-08-02 gefundenen Bug: purgeNode
- * hat bis hierher NUR den In-Memory-State bereinigt — die DB-Zeile blieb
+ * hat zuvor NUR den In-Memory-State bereinigt — die DB-Zeile blieb
  * (archiviert) bestehen und wurde vom nächsten pullSince (includeArchived:
  * true) zurückgeholt, der "endgültig gelöschte" Node kam also wieder. Diese
- * Funktion committet den tatsächlichen Hard Delete.
+ * Funktion committet den tatsächlichen Hard Delete UND markiert ihn als
+ * pending, bis er bestätigt ist — schließt damit auch die Race Condition,
+ * bei der ein Pull während eines noch nicht durchgekommenen Deletes den Node
+ * erneut aus der (noch existierenden) Cloud-Zeile geholt hätte
+ * (s. pullSince/retryPendingWrites in graphSyncService.ts).
  *
  * debounceMs default 0 (wie commitDeleteRelationType) — Löschen ist eine
  * diskrete, bereits per Zweitaktion bestätigte Aktion, kein Tipp-Strom, der
  * eine Verzögerung bräuchte.
  */
 export function commitPurgeNode(nodeId: string, state: GraphState, options: CommitOptions = {}): void {
+  sync.markPending(state.scope, 'node', nodeId, 'delete');
   scheduleCommit(`node:${nodeId}`, options.debounceMs ?? 0, () => {
     sync.saveCachedState(state);
-    if (options.userId) sync.pushDeleteNode(nodeId, options.userId).catch(() => {});
+    if (options.userId) {
+      sync.pushDeleteNode(nodeId, options.userId)
+        .then(() => sync.clearPending(state.scope, 'node', nodeId))
+        .catch(() => {});
+    }
   });
 }
 
 export function commitEdge(edge: GraphEdge, state: GraphState, options: CommitOptions = {}): void {
+  sync.markPending(state.scope, 'edge', edge.id, 'upsert');
   scheduleCommit(`edge:${edge.id}`, options.debounceMs ?? DEFAULT_DEBOUNCE_MS, () => {
     sync.saveCachedState(state);
-    if (options.userId) sync.pushEdge(edge, options.userId).catch(() => {});
+    if (options.userId) {
+      sync.pushEdge(edge, options.userId)
+        .then(() => sync.clearPending(state.scope, 'edge', edge.id))
+        .catch(() => {});
+    }
   });
 }
 
 export function commitRelationType(relationType: GraphRelationType, state: GraphState, options: CommitOptions = {}): void {
+  sync.markPending(state.scope, 'relationType', relationType.id, 'upsert');
   scheduleCommit(`relationType:${relationType.id}`, options.debounceMs ?? DEFAULT_DEBOUNCE_MS, () => {
     sync.saveCachedState(state);
-    if (options.userId) sync.pushRelationType(relationType, options.userId).catch(() => {});
+    if (options.userId) {
+      sync.pushRelationType(relationType, options.userId)
+        .then(() => sync.clearPending(state.scope, 'relationType', relationType.id))
+        .catch(() => {});
+    }
   });
 }
 
@@ -122,23 +156,38 @@ export function commitRelationType(relationType: GraphRelationType, state: Graph
  *  werden hier typischerweise debounceMs: 0 verwenden, die Funktion erzwingt
  *  das aber nicht (derselbe generische Mechanismus wie überall sonst). */
 export function commitDeleteRelationType(relationTypeId: string, state: GraphState, options: CommitOptions = {}): void {
+  sync.markPending(state.scope, 'relationType', relationTypeId, 'delete');
   scheduleCommit(`relationType:${relationTypeId}`, options.debounceMs ?? 0, () => {
     sync.saveCachedState(state);
-    if (options.userId) sync.pushDeleteRelationType(relationTypeId, options.userId).catch(() => {});
+    if (options.userId) {
+      sync.pushDeleteRelationType(relationTypeId, options.userId)
+        .then(() => sync.clearPending(state.scope, 'relationType', relationTypeId))
+        .catch(() => {});
+    }
   });
 }
 
 export function commitNodeDocumentRef(ref: GraphNodeDocumentRef, state: GraphState, options: CommitOptions = {}): void {
+  sync.markPending(state.scope, 'nodeDocumentRef', ref.id, 'upsert');
   scheduleCommit(`nodeDocumentRef:${ref.id}`, options.debounceMs ?? DEFAULT_DEBOUNCE_MS, () => {
     sync.saveCachedState(state);
-    if (options.userId) sync.pushNodeDocumentRef(ref, options.userId).catch(() => {});
+    if (options.userId) {
+      sync.pushNodeDocumentRef(ref, options.userId)
+        .then(() => sync.clearPending(state.scope, 'nodeDocumentRef', ref.id))
+        .catch(() => {});
+    }
   });
 }
 
 export function commitRemoveNodeDocumentRef(refId: string, state: GraphState, options: CommitOptions = {}): void {
+  sync.markPending(state.scope, 'nodeDocumentRef', refId, 'delete');
   scheduleCommit(`nodeDocumentRef:${refId}`, options.debounceMs ?? 0, () => {
     sync.saveCachedState(state);
-    if (options.userId) sync.pushDeleteNodeDocumentRef(refId, options.userId).catch(() => {});
+    if (options.userId) {
+      sync.pushDeleteNodeDocumentRef(refId, options.userId)
+        .then(() => sync.clearPending(state.scope, 'nodeDocumentRef', refId))
+        .catch(() => {});
+    }
   });
 }
 
