@@ -301,6 +301,13 @@ export const GraphCanvas: React.FC<GraphCanvasProps> = ({
                   // hochbubbelt und dort die gerade erst gesetzte Auswahl
                   // sofort wieder löscht (handleBackgroundClick).
                   onClick={e => e.stopPropagation()}
+                  // Ohne dieses stopPropagation bubbelt ein Doppelklick auf
+                  // einem Node bis zum Hintergrund durch und legt dort einen
+                  // zweiten, neuen Node an derselben Stelle an (gefunden im
+                  // Nutzungstest, KNOWLEDGE_GRAPH_USABILITY_SESSION.md) — der
+                  // naheliegendste Reflex zum Umbenennen hätte also ungewollt
+                  // dupliziert. Die eigentliche Bearbeitung folgt in Punkt 2.
+                  onDoubleClick={e => e.stopPropagation()}
                   onMouseEnter={() => onSelectionChange(hoverNode(selection, node.id))}
                   onMouseLeave={() => onSelectionChange(hoverNode(selection, undefined))}
                   style={{ cursor: 'pointer' }}
