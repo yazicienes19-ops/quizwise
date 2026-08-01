@@ -1,5 +1,5 @@
 import type {
-  GraphState, GraphRelationType, ValidationResult,
+  GraphState, GraphEdge, GraphRelationType, ValidationResult,
   CreateNodeInput, UpdateNodeInput, CreateEdgeInput, CreateRelationTypeInput,
 } from './types';
 import { type GraphIndex, outgoingEdges } from './graphIndex';
@@ -127,13 +127,13 @@ export function validateUpdateNode(patch: UpdateNodeInput): ValidationResult {
 
 export function validateCreateEdge(state: GraphState, index: GraphIndex, input: CreateEdgeInput): ValidationResult {
   const selfLoop = validateNotSelfLoop(input.sourceNodeId, input.targetNodeId);
-  if (!selfLoop.valid) return selfLoop;
+  if (selfLoop.valid === false) return selfLoop;
 
   const endpoints = validateEdgeEndpointsExist(state, input.sourceNodeId, input.targetNodeId);
-  if (!endpoints.valid) return endpoints;
+  if (endpoints.valid === false) return endpoints;
 
   const typeExists = validateRelationTypeExists(state, input.relationTypeId);
-  if (!typeExists.valid) return typeExists;
+  if (typeExists.valid === false) return typeExists;
 
   const relationType = state.relationTypesById.get(input.relationTypeId)!;
   return validateNoDuplicateEdge(index, input.sourceNodeId, input.targetNodeId, relationType);
@@ -150,7 +150,7 @@ export function validateRetypeEdge(
   newRelationTypeId: string,
 ): ValidationResult {
   const typeExists = validateRelationTypeExists(state, newRelationTypeId);
-  if (!typeExists.valid) return typeExists;
+  if (typeExists.valid === false) return typeExists;
 
   const relationType = state.relationTypesById.get(newRelationTypeId)!;
   return validateNoDuplicateEdge(index, sourceNodeId, targetNodeId, relationType, edgeId);
@@ -158,4 +158,19 @@ export function validateRetypeEdge(
 
 export function validateCreateRelationType(state: GraphState, input: CreateRelationTypeInput): ValidationResult {
   return validateRelationTypeLabelUnique(state, input.label);
+}
+
+/** Beim Wiederherstellen einer archivierten Kante: Endpunkte müssen noch
+ *  existieren/aktiv sein, der Beziehungstyp muss noch existieren, UND es darf
+ *  seit der Archivierung keine neue, inhaltlich gleiche Kante entstanden sein.
+ *  `edge` selbst zählt nicht mit (buildGraphIndex indiziert nur aktive Kanten
+ *  — eine noch-archivierte Kante taucht darin gar nicht erst auf). */
+export function validateRestoreEdge(state: GraphState, index: GraphIndex, edge: GraphEdge): ValidationResult {
+  const endpoints = validateEdgeEndpointsExist(state, edge.sourceNodeId, edge.targetNodeId);
+  if (endpoints.valid === false) return endpoints;
+
+  const relationType = state.relationTypesById.get(edge.relationTypeId);
+  if (!relationType) return { valid: false, reason: 'Der Beziehungstyp dieser Kante existiert nicht mehr.' };
+
+  return validateNoDuplicateEdge(index, edge.sourceNodeId, edge.targetNodeId, relationType);
 }
