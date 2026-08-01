@@ -1,6 +1,6 @@
 # StudeArc Knowledge Graph — Phase 1 Implementierungsplanung (Datenbasis)
 
-Status: **Phase 2 (TypeScript-Domain) umgesetzt, kritisch geprüft, zwei Fixes eingearbeitet (2026-08-02).** Baut auf `KNOWLEDGE_GRAPH_KONZEPT.md` auf (dort fixiert: ein Graph pro Fach, SVG-first, zeilenbasierter Sync, keine Migration alter Mindmaps). ID-Strategie final: `crypto.randomUUID()` ausschließlich für die vier neuen Graph-Tabellen, bestätigt durch vollständige Codebase-Analyse. Die App bleibt ansonsten unverändert. Migration liegt in `backend/migration_graph_v1.sql`. Vollständige Domain-Implementierung unter `services/graph/*.ts` (11 Module + Tests, 652 Tests grün projektweit). **Aktueller Stand und offene, bewusst zurückgestellte Punkte: Abschnitt 7.**
+Status: **Phase 1 (DB), Phase 2 (TypeScript-Domain) und Phase 3 (Graph Engine: Rendering/Layout/Interaktion) umgesetzt (Stand 2026-08-02).** Baut auf `KNOWLEDGE_GRAPH_KONZEPT.md` auf (dort fixiert: ein Graph pro Fach, SVG-first, zeilenbasierter Sync, keine Migration alter Mindmaps). ID-Strategie final: `crypto.randomUUID()` ausschließlich für die vier neuen Graph-Tabellen. Migration liegt in `backend/migration_graph_v1.sql`. Vollständige Domain-Implementierung unter `services/graph/*.ts` (13 Module + Tests). UI/Rendering-Schicht: `components/GraphCanvas.tsx` (SVG-Renderer, Pan/Zoom/Selection/Drag/Erstellen) + `components/GraphDevHarness.tsx` (dauerhafter Development Harness, nur `import.meta.env.DEV` + `?graphDevHarness=1`, nachweislich nicht im Produktions-Bundle). **Aktueller Stand, kritischer Review und offene, bewusst zurückgestellte Punkte: Abschnitt 7. Phase 3 im Detail: Abschnitt 8.**
 
 ## Korrektur gegenüber dem Konzeptdokument (bitte gegenlesen)
 
@@ -455,4 +455,22 @@ Nach Fertigstellung der vollständigen TypeScript-Domain (`services/graph/`: `ty
 
 Die Schichtung, der Test-first-Stil der reinen Domain-Funktionen, die UUID-Entscheidung und die DB-seitige Autorität für `version`/`updated_at` haben sich beim Review bewährt. Zwei Stellen (`purgeNode` ohne echten Lösch-Pfad, fehlendes Pending-Write-Tracking) waren echte Lücken zwischen dem, was geplant war, und dem, was zuerst gebaut wurde — beide sind jetzt behoben und getestet (652 Tests projektweit, 0 TypeScript-Fehler). Die zurückgestellten Punkte sind bekannt, priorisiert und im Code an der jeweiligen Stelle dokumentiert, nicht stillschweigend liegen gelassen.
 
-Wenn das passt, ist die Datenbasis vollständig geplant und bereit für die erste konkrete Migration (`backend/migration_graph_v1.sql`) — die würde ich erst auf deine Bestätigung hin tatsächlich anlegen, nicht als Teil dieser Planung.
+---
+
+## 8. Phase 3 — Graph Engine (Rendering/Layout/Interaktion), umgesetzt 2026-08-02
+
+Ziel laut Nutzer: ausschließlich die Engine (Layout, SVG-Renderer, Pan, Zoom, Selection, Node-/Edge-Rendering, grundlegende Interaktionen inkl. Erstellen) — ausdrücklich keine produktionsreife Oberfläche, keine vollständige UI, keine KI.
+
+**Neue Module:**
+- `services/graph/graphSelectionService.ts` — reiner Auswahlzustand (Application-Schicht, war in Phase 2 bewusst zurückgestellt).
+- `services/graph/graphLayoutEngine.ts` — `computeForceLayout` (einmalige, statische d3-force-Berechnung, keine laufende Simulation), `computeBounds` (Fit-View), `findOverlapClusters`/`resolveOverlaps` (entzerrt ausschließlich exakt überlappende, nicht gepinnte Nodes — kein generelles Auto-Layout, "manuelle Position ist die Wahrheit" bleibt in Kraft).
+- `components/GraphCanvas.tsx` — erstes UI-Stück des Features. Kontrollierte Komponente (state/history/selection als Props), importiert bewusst **keine** Infrastructure (kein `GraphRepository`/`GraphSyncService`/`GraphPersistenceService` — das wäre ein Sprung über die Application-Schicht hinweg, es gibt noch keinen `useKnowledgeGraph`-Hook). Meldet jede Änderung über `onEntityChanged` nach außen; Persistenz ist Sache des Aufrufers. Mutationen laufen durchgängig über `GraphHistoryService`, nicht direkt über `GraphMutationService` — Undo/Redo funktioniert dadurch für jede Canvas-Interaktion automatisch mit.
+- `components/GraphDevHarness.tsx` — dauerhafter Development Harness (nicht nur Phase-3-Hilfsmittel, explizite Nutzer-Entscheidung), erreichbar ausschließlich über `import.meta.env.DEV` + `?graphDevHarness=1` (index.tsx). Nachweislich nicht im Produktions-Bundle (`npm run build` + Grep über `dist/` auf harness-spezifische Strings — keine Treffer).
+
+**Zwei konkrete Implementierungsdetails, beim Bauen gefunden und nach den bestehenden Architekturregeln aufgelöst (keine neue Entscheidung nötig):**
+1. d3-zoom hätte ohne Anpassung mit Node-Drag kollidiert (Ziehen an einem Node hätte auch die Canvas verschoben) — gelöst über `.filter()`, das Klicks auf `[data-graph-node]` von der Zoom-Pan-Erkennung ausnimmt. `dblclick.zoom` ist deaktiviert zugunsten des eigenen Doppelklick-Erstellen-Handlers.
+2. Kantenerstellung ohne UI-Picker (Phase-3-Vereinfachung): neue Kanten bekommen automatisch den eingebauten Beziehungstyp mit der niedrigsten `sortOrder` (`pickDefaultRelationTypeId`), kein Formular.
+
+**Echter Bug gefunden bei der manuellen Verifikation im Dev-Server (Playwright, danach entfernt):** Klick auf einen Node setzte die Auswahl korrekt, aber das native `click`-Event bubbelte anschließend zum Hintergrund hoch und `handleBackgroundClick` hob sie sofort wieder auf — `stopPropagation()` saß nur auf `mousedown`, nicht auf `click`. Behoben (`onClick={e => e.stopPropagation()}` auf dem Node) und danach erneut verifiziert: Rendering, Selection, Drag-to-Move (Positionsdelta exakt nachgemessen), Zoom, reines Hintergrund-Pan (alle Nodes gleichmäßig verschoben, kein Node-Drag), Node-Erstellung per Doppelklick, Kantenerstellung per Handle-Ziehen — alles bestätigt funktionsfähig, keine Konsolen-/Seitenfehler.
+
+**Bewusst nicht Teil von Phase 3** (unverändert auf der Roadmap, s. Abschnitt 7): Fokus-Modus, Beziehungstyp-Picker/Formulare, Seitenpanel, Verknüpfung mit Dokumenten/Karteikarten/Quiz/Feynman/KI-Erklärung (das Node-als-Einstiegspunkt-Ziel), `useKnowledgeGraph`-Hook (Application-Schicht) — `GraphCanvas` ist dafür bereits vorbereitet (`onEntityChanged`-Callback, entkoppelte Selection), aber der Hook selbst existiert noch nicht.
