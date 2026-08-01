@@ -3,7 +3,7 @@ import type { GraphNodeSummary } from './types';
 import { searchNodes } from './graphSearchService';
 
 const makeSummary = (id: string, title: string, tags: string[] = []): GraphNodeSummary => ({
-  id, title, type: 'begriff', position: { x: 0, y: 0 }, tags,
+  id, title, type: 'begriff', position: { x: 0, y: 0 }, tags, pinned: false,
 });
 
 describe('searchNodes', () => {

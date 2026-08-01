@@ -106,6 +106,10 @@ export interface GraphNodeSummary {
   icon?: string;
   position: GraphNodePosition;
   tags: string[];
+  /** Für die Rendering-/Layout-Schicht: ob die Position manuell fixiert ist
+   *  (nie durch Auto-Layout verschoben) — genuin canvas-relevant, deshalb
+   *  hier und nicht erst am vollen GraphNode. */
+  pinned: boolean;
 }
 
 export const toGraphNodeSummary = (node: GraphNode): GraphNodeSummary => ({
@@ -116,6 +120,7 @@ export const toGraphNodeSummary = (node: GraphNode): GraphNodeSummary => ({
   icon: node.icon,
   position: node.position,
   tags: node.tags,
+  pinned: node.pinned,
 });
 
 /** Abgeleitete, nie persistierte Werte — werden aus dem bereits geladenen
