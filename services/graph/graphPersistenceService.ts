@@ -86,6 +86,24 @@ export function commitNode(node: GraphNode, state: GraphState, options: CommitOp
   });
 }
 
+/**
+ * Fix für den im Architektur-Review vom 2026-08-02 gefundenen Bug: purgeNode
+ * hat bis hierher NUR den In-Memory-State bereinigt — die DB-Zeile blieb
+ * (archiviert) bestehen und wurde vom nächsten pullSince (includeArchived:
+ * true) zurückgeholt, der "endgültig gelöschte" Node kam also wieder. Diese
+ * Funktion committet den tatsächlichen Hard Delete.
+ *
+ * debounceMs default 0 (wie commitDeleteRelationType) — Löschen ist eine
+ * diskrete, bereits per Zweitaktion bestätigte Aktion, kein Tipp-Strom, der
+ * eine Verzögerung bräuchte.
+ */
+export function commitPurgeNode(nodeId: string, state: GraphState, options: CommitOptions = {}): void {
+  scheduleCommit(`node:${nodeId}`, options.debounceMs ?? 0, () => {
+    sync.saveCachedState(state);
+    if (options.userId) sync.pushDeleteNode(nodeId, options.userId).catch(() => {});
+  });
+}
+
 export function commitEdge(edge: GraphEdge, state: GraphState, options: CommitOptions = {}): void {
   scheduleCommit(`edge:${edge.id}`, options.debounceMs ?? DEFAULT_DEBOUNCE_MS, () => {
     sync.saveCachedState(state);

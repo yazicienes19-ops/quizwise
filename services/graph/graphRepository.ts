@@ -83,6 +83,16 @@ export async function fetchNodes(userId: string, opts: FetchNodesOptions = {}): 
   return (data || []).map(rowToNode);
 }
 
+/** Hard Delete — nur für die "endgültig löschen"-Zweitaktion aus dem bereits
+ *  archivierten Zustand (GraphMutationService.purgeNode). ON DELETE CASCADE
+ *  auf graph_edges/graph_node_documents räumt anhängende Zeilen serverseitig
+ *  automatisch mit auf — ein gesonderter deleteEdge-Aufruf ist dafür nicht
+ *  nötig (s. migration_graph_v1.sql). */
+export async function deleteNode(nodeId: string, userId: string): Promise<void> {
+  const { error } = await supabase.from('graph_nodes').delete().eq('id', nodeId).eq('user_id', userId);
+  if (error) throw error;
+}
+
 export async function upsertNode(node: GraphNode, userId: string): Promise<GraphNode> {
   const { data, error } = await supabase
     .from('graph_nodes')

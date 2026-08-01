@@ -2,7 +2,7 @@ import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import { createEmptyGraphState, type GraphNode } from './types';
 import * as sync from './graphSyncService';
 import {
-  commitNode, commitDeleteRelationType, flushPendingCommit, flushAllPendingCommits, hasPendingCommit,
+  commitNode, commitPurgeNode, commitDeleteRelationType, flushPendingCommit, flushAllPendingCommits, hasPendingCommit,
   initAutoFlush,
 } from './graphPersistenceService';
 
@@ -16,6 +16,7 @@ beforeEach(() => {
   vi.useFakeTimers();
   vi.spyOn(sync, 'saveCachedState').mockImplementation(() => {});
   vi.spyOn(sync, 'pushNode').mockResolvedValue(makeNode('irrelevant'));
+  vi.spyOn(sync, 'pushDeleteNode').mockResolvedValue(undefined);
   vi.spyOn(sync, 'pushDeleteRelationType').mockResolvedValue(undefined);
 });
 
@@ -115,6 +116,24 @@ describe('commitDeleteRelationType', () => {
     const state = createEmptyGraphState({ kind: 'all' });
     commitDeleteRelationType('rel-1', state, { userId: 'user-1' });
     expect(sync.pushDeleteRelationType).toHaveBeenCalledWith('rel-1', 'user-1');
+  });
+});
+
+describe('commitPurgeNode', () => {
+  it('committet standardmäßig sofort und ruft den echten Hard-Delete-Push auf (Fix des purgeNode-Bugs)', () => {
+    const state = createEmptyGraphState({ kind: 'all' });
+    commitPurgeNode('n1', state, { userId: 'user-1' });
+
+    expect(sync.saveCachedState).toHaveBeenCalledWith(state);
+    expect(sync.pushDeleteNode).toHaveBeenCalledWith('n1', 'user-1');
+  });
+
+  it('pusht nicht ohne userId, cached aber weiterhin lokal', () => {
+    const state = createEmptyGraphState({ kind: 'all' });
+    commitPurgeNode('n1', state, {});
+
+    expect(sync.saveCachedState).toHaveBeenCalled();
+    expect(sync.pushDeleteNode).not.toHaveBeenCalled();
   });
 });
 

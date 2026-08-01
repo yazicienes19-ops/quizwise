@@ -172,6 +172,7 @@ export async function pullSince(userId: string, scope: GraphScope): Promise<Grap
 // ─── Push (dünne Wrapper, kein Fehler-Schlucken) ────────────────────────────
 
 export const pushNode = (node: GraphNode, userId: string): Promise<GraphNode> => repo.upsertNode(node, userId);
+export const pushDeleteNode = (nodeId: string, userId: string): Promise<void> => repo.deleteNode(nodeId, userId);
 export const pushEdge = (edge: GraphEdge, userId: string): Promise<GraphEdge> => repo.upsertEdge(edge, userId);
 export const pushRelationType = (relationType: GraphRelationType, userId: string): Promise<GraphRelationType> =>
   repo.upsertRelationType(relationType, userId);
