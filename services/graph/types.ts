@@ -148,6 +148,7 @@ export interface GraphState {
   nodesById: Map<string, GraphNode>;
   edgesById: Map<string, GraphEdge>;
   relationTypesById: Map<string, GraphRelationType>;
+  nodeDocumentsById: Map<string, GraphNodeDocumentRef>;
 }
 
 export const createEmptyGraphState = (scope: GraphScope): GraphState => ({
@@ -155,6 +156,7 @@ export const createEmptyGraphState = (scope: GraphScope): GraphState => ({
   nodesById: new Map(),
   edgesById: new Map(),
   relationTypesById: new Map(),
+  nodeDocumentsById: new Map(),
 });
 
 // ─── Command-Input-Typen (Mutation-Aufrufe) ─────────────────────────────────
@@ -194,6 +196,13 @@ export interface CreateRelationTypeInput {
 }
 
 export type UpdateRelationTypeInput = Partial<Pick<GraphRelationType, 'label' | 'inverseLabel' | 'symmetric' | 'color' | 'icon' | 'sortOrder'>>;
+
+export interface CreateNodeDocumentRefInput {
+  nodeId: string;
+  documentId: string;
+  excerpt?: string;
+  page?: number;
+}
 
 // ─── Ergebnis-Konventionen ───────────────────────────────────────────────────
 //
