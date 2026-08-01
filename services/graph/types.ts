@@ -235,3 +235,15 @@ export interface MutationResult<TEntity> {
   entity?: TEntity;
   error?: string;
 }
+
+/**
+ * Meldung "diese Entität hat sich erfolgreich geändert" — von GraphCanvas
+ * (UI) nach außen gereicht, von useKnowledgeGraph (Application) für Autosave
+ * konsumiert. Bewusst hier in der Domain-Schicht definiert, nicht in
+ * GraphCanvas.tsx: sonst müsste der Application-Hook einen Typ aus der
+ * UI-Komponente importieren — das würde die Abhängigkeitsrichtung des
+ * Layer-Diagramms (UI → Application → Domain) umkehren.
+ */
+export type GraphEntityChange =
+  | { kind: 'node'; entity: GraphNode }
+  | { kind: 'edge'; entity: GraphEdge };

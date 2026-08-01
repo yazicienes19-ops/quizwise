@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
-import { GraphCanvas, type GraphEntityChange } from './GraphCanvas';
+import { GraphCanvas } from './GraphCanvas';
 import { generateGraphId } from '../services/graph/id';
-import { createEmptyGraphState, type GraphState, type GraphNode, type GraphRelationType } from '../services/graph/types';
+import { createEmptyGraphState, type GraphState, type GraphNode, type GraphRelationType, type GraphEntityChange } from '../services/graph/types';
 import { createEmptyHistory, type GraphHistory, undo, redo, canUndo, canRedo } from '../services/graph/graphHistoryService';
 import { createEmptySelection, type GraphSelectionState } from '../services/graph/graphSelectionService';
 

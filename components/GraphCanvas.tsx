@@ -1,7 +1,7 @@
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import * as d3 from 'd3';
 import { motion, AnimatePresence } from 'framer-motion';
-import type { GraphState, GraphNode, GraphEdge, GraphNodePosition } from '../services/graph/types';
+import type { GraphState, GraphNodePosition, GraphEntityChange } from '../services/graph/types';
 import { buildGraphIndex } from '../services/graph/graphIndex';
 import { resolveOverlaps } from '../services/graph/graphLayoutEngine';
 import {
@@ -22,9 +22,10 @@ import { type GraphHistory, recordCreateNode, recordUpdateNode, recordCreateEdge
  * (heute: Test-Harness, später: ein useKnowledgeGraph-Hook der
  * Application-Schicht). Kontrollierte Komponente: state/history/selection
  * kommen als Props, Änderungen laufen über onChange-Callbacks.
+ *
+ * GraphEntityChange ist in services/graph/types.ts definiert (Domain-
+ * Schicht), nicht hier — s. Kommentar dort.
  */
-
-export type GraphEntityChange = { kind: 'node'; entity: GraphNode } | { kind: 'edge'; entity: GraphEdge };
 
 export interface GraphCanvasProps {
   state: GraphState;
