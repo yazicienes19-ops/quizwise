@@ -41,6 +41,17 @@ export const getMeta = (docId: string): SourceMeta => readAll()[docId] ?? {};
 export const documentDisplayName = (doc: { id: string; name: string }): string =>
   readAll()[doc.id]?.displayTitle || doc.name.replace(/\.[^/.]+$/, '');
 
+/**
+ * Entscheidet, welcher der beiden Reader ein Dokument bekommt — zentral hier,
+ * damit AppContent.tsx (normale Navigation) und GraphSystem.tsx ("Eigene
+ * Unterlagen", Phase 3) exakt dieselbe Regel verwenden, statt sie an zwei
+ * Stellen unabhängig zu pflegen. PDFs mit echtem Dateiinhalt bekommen die
+ * echte Seitenansicht (pdf.js); alles andere (Text/DOCX/Bild, oder ein PDF
+ * ohne geladenen Inhalt) den Digest-Fließtext-Reader als Fallback.
+ */
+export const shouldUsePdfReader = (doc: { type: string; storagePath?: string; content?: string }): boolean =>
+  doc.type === 'pdf' && !!(doc.storagePath || doc.content);
+
 export const saveMeta = (docId: string, patch: Partial<SourceMeta>, userId?: string | null): void => {
   const all = readAll();
   all[docId] = { ...all[docId], ...patch };

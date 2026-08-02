@@ -22,6 +22,7 @@ import { createSrsState } from '../services/spacedRepetition';
 import { saveDeckToSupabase } from '../services/flashcardService';
 import { saveExamResult } from '../services/examHistoryService';
 import { recordActivity } from '../services/streakService';
+import { shouldUsePdfReader } from '../services/libraryService';
 import { isAdmin } from '../config/admin';
 import { toast } from '../services/toast';
 import { useTranslation } from '../i18n/I18nProvider';
@@ -318,7 +319,9 @@ export const AppContent: React.FC<AppContentProps> = (p) => {
       if (!pendingActionDoc) return <Dashboard onTabChange={setActiveTab} flowResult={flowResult} onAcceptFlow={saveFlowResult} documents={documents} decks={decks} metrics={metrics} collections={collections} activeModuleId={activeModuleId} onStartMistakeReview={handleStartMistakeReview} user={user} />;
       // PDFs bekommen die echte Seitenansicht (pdf.js) statt des Digest-Fließtexts —
       // der Digest-Reader bleibt Fallback für Bilder und PDFs ohne Dateiinhalt.
-      if (pendingActionDoc.type === 'pdf' && (pendingActionDoc.storagePath || pendingActionDoc.content)) {
+      // Regel zentral in shouldUsePdfReader() (libraryService.ts), damit
+      // GraphSystem.tsx ("Eigene Unterlagen") exakt dieselbe Entscheidung trifft.
+      if (shouldUsePdfReader(pendingActionDoc)) {
         return <PdfSplitScreenReader
           key={`pdf-reader-${pendingActionDoc.id}`}
           doc={pendingActionDoc}
@@ -481,6 +484,13 @@ export const AppContent: React.FC<AppContentProps> = (p) => {
         key={pendingActionDoc ? `graph-${pendingActionDoc.collectionId ?? 'none'}` : `graph-${activeModuleId ?? 'all'}`}
         collections={collections} userId={user?.id} activeModuleId={activeModuleId}
         initialDoc={pendingActionDoc ?? undefined}
+        documents={documents}
+        getDocumentSource={getDocumentSource}
+        // Identisch zur normalen Reader-Verdrahtung oben (ActiveTab.READER) —
+        // der Reader bleibt der Reader, auch wenn er aus dem Wissensnetz
+        // heraus geöffnet wurde: dessen "Erklären"-Aktion springt genauso
+        // fach-weit zu Feynman/RECALL, kein Sonderverhalten fürs Wissensnetz.
+        onStartFeynman={topic => { setPendingTopic(topic); setActiveTab(ActiveTab.RECALL); }}
       />;
 
     default:
