@@ -15,7 +15,7 @@ import { createRelationType } from '../services/graph/graphMutationService';
 
 /**
  * Phase 3 — reine Graph Engine: SVG-Rendering, Pan/Zoom, Selection,
- * Drag-to-Move. Phase 5A: Node-Titel/-Notiz direkt bearbeitbar, Node
+ * Drag-to-Move. Phase 5A: Node-Titel direkt bearbeitbar (Doppelklick), Node
  * löschbar, Beziehungstyp wird beim Kantenziehen bewusst per Texteingabe
  * gewählt statt automatisch defaultet (s. KNOWLEDGE_GRAPH_USABILITY_SESSION.md
  * — der stille Default widersprach der Kernregel "Nutzer ist bewusster Autor
@@ -31,6 +31,13 @@ import { createRelationType } from '../services/graph/graphMutationService';
  * zwischen demselben Node-Paar (unterschiedliche Beziehungstypen sind
  * erlaubt, nur inhaltliche Duplikate nicht), werden nur ihre Labels
  * gestaffelt versetzt — reine Anzeigekorrektur, keine Linien-Geometrie.
+ * Phase 1 der Umsetzungsphase: Node-Größe/Randstärke spiegeln die
+ * Hierarchie-Ebene (radiusOf-Lookup statt fester Konstante). Phase 2: Notiz-
+ * und Hierarchie-Bearbeitung sind aus dieser Datei AUSGEZOGEN in
+ * `GraphNodeDetailPanel.tsx` (rechtes Seitenpanel) — bewusst, damit nicht
+ * zwei Bearbeitungsorte für dasselbe Feld gleichzeitig sichtbar sind. Titel
+ * bleibt bewusst als Doppelklick-Overlay HIER (kein Duplikat, das Panel
+ * zeigt den Titel nur lesend an).
  *
  * UI-Schicht-Grenze bewusst eingehalten: diese Komponente importiert keine
  * Infrastructure (GraphRepository/GraphSyncService/GraphPersistenceService).
@@ -92,15 +99,6 @@ const HANDLE_RADIUS = 6;
 const HANDLE_OFFSET = 14;
 const DRAG_THRESHOLD_PX = 4;
 const NODE_DATA_ATTR = 'data-graph-node';
-// Bewusst vom Nutzer per Klick durchgezykelt (nie automatisch geraten, s.
-// GraphNode.hierarchyLevel-Kommentar) — dieselbe Reihenfolge wie die
-// Bedeutung selbst: Hauptthema → Unterthema → Detail → zurücksetzen.
-const HIERARCHY_CYCLE: (HierarchyLevel | undefined)[] = ['hauptthema', 'unterthema', 'detail', undefined];
-const HIERARCHY_LABEL: Record<HierarchyLevel, string> = {
-  hauptthema: 'Hauptthema',
-  unterthema: 'Unterthema',
-  detail: 'Detail',
-};
 
 export const GraphCanvas: React.FC<GraphCanvasProps> = ({
   state, history, selection, onChange, onSelectionChange, onEntityChanged,
@@ -293,55 +291,6 @@ export const GraphCanvas: React.FC<GraphCanvasProps> = ({
     setEditingNodeId(null);
   };
 
-  // ── Hierarchie bewusst setzen (Phase 1, Umsetzungsphase 2026-08-02) ──────
-  // Kein Formular, kein Dropdown — ein Klick auf den Ebenen-Chip zykelt durch
-  // die drei Stufen plus "zurücksetzen", exakt dieselbe Idee wie das bewusste
-  // Beziehungstyp-Setzen aus Phase 5A: keine Vorauswahl, jede Änderung ist
-  // eine explizite, bewusste Nutzeraktion.
-  const cycleHierarchyLevel = (nodeId: string) => {
-    const node = state.nodesById.get(nodeId);
-    if (!node) return;
-    const currentIndex = HIERARCHY_CYCLE.indexOf(node.hierarchyLevel);
-    const next = HIERARCHY_CYCLE[(currentIndex + 1) % HIERARCHY_CYCLE.length];
-    const result = recordUpdateNode(history, state, nodeId, { hierarchyLevel: next });
-    if (!result.error && result.entity) {
-      onChange({ state: result.state, history: result.history });
-      onEntityChanged?.({ kind: 'node', entity: result.entity });
-    }
-  };
-
-  // ── Freitext-Notiz (Phase 5A Punkt 4) ────────────────────────────────────
-  // Genau EIN Feld, wie vorgegeben — bewusst `notes` (persönliche Anmerkung:
-  // "warum ist das wichtig"), nicht `description` (objektive Definition, im
-  // Datenmodell separat vorhanden, aber hier nicht exponiert). Sichtbar,
-  // sobald ein Node ausgewählt ist — keine Sidebar, ein einfaches Overlay
-  // direkt unter dem Node reicht für diese Phase.
-  const [notesDraft, setNotesDraft] = useState<{ nodeId: string; value: string } | null>(null);
-  const [isEditingNotes, setIsEditingNotes] = useState(false);
-
-  // Initialisiert den Entwurf NUR, wenn sich die Auswahl ändert — nicht bei
-  // jeder state-Änderung, sonst würde der gerade getippte Text durch eine
-  // unabhängige Änderung anderswo überschrieben (dieselbe Überlegung wie bei
-  // der Titel-Bearbeitung).
-  useEffect(() => {
-    if (!selection.selectedNodeId) { setNotesDraft(null); return; }
-    const node = state.nodesById.get(selection.selectedNodeId);
-    setNotesDraft(node ? { nodeId: node.id, value: node.notes } : null);
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [selection.selectedNodeId]);
-
-  const commitNotes = () => {
-    setIsEditingNotes(false);
-    if (!notesDraft) return;
-    const node = state.nodesById.get(notesDraft.nodeId);
-    if (!node || node.notes === notesDraft.value) return; // unverändert, kein Commit/History-Eintrag nötig
-    const result = recordUpdateNode(history, state, notesDraft.nodeId, { notes: notesDraft.value });
-    if (!result.error && result.entity) {
-      onChange({ state: result.state, history: result.history });
-      onEntityChanged?.({ kind: 'node', entity: result.entity });
-    }
-  };
-
   // ── Node-Drag (Verschieben) ──────────────────────────────────────────────
   interface NodeDragState { nodeId: string; startClientX: number; startClientY: number; startPos: GraphNodePosition; currentPos: GraphNodePosition; moved: boolean; }
   const [nodeDrag, setNodeDrag] = useState<NodeDragState | null>(null);
@@ -494,9 +443,9 @@ export const GraphCanvas: React.FC<GraphCanvasProps> = ({
   const [isEditingEdgeLabel, setIsEditingEdgeLabel] = useState(false);
 
   // Initialisiert den Entwurf nur bei Auswahl-Wechsel, nicht bei jeder
-  // state-Änderung — dieselbe Überlegung wie beim notesDraft-Effekt oben
-  // (sonst würde gerade getippter Text durch unabhängige Änderungen anderswo
-  // überschrieben).
+  // state-Änderung — dieselbe Überlegung wie beim editingValue-Entwurf der
+  // Titel-Bearbeitung oben (sonst würde gerade getippter Text durch
+  // unabhängige Änderungen anderswo überschrieben).
   useEffect(() => {
     if (!selection.selectedEdgeId) { setEdgeEditDraft(null); setEdgeEditError(null); return; }
     const edge = state.edgesById.get(selection.selectedEdgeId);
@@ -554,14 +503,24 @@ export const GraphCanvas: React.FC<GraphCanvasProps> = ({
   // purgeNode — das endgültige Löschen bleibt eine bewusste Zweitaktion, s.
   // Datenmodell. "Noch keine perfekte UX" (User-Vorgabe) — kein
   // Kontextmenü, keine Bestätigung, nur die Taste. Reagiert nicht, während
-  // Titel, Notiz ODER Kanten-Label gerade bearbeitet werden (sonst würde
-  // Löschen von Zeichen im Textfeld stattdessen die ganze Entität
-  // archivieren) oder während gezogen wird. selectedNodeId/selectedEdgeId
+  // Titel ODER Kanten-Label gerade bearbeitet werden (eigene Overlays dieser
+  // Komponente) oder während gezogen wird. selectedNodeId/selectedEdgeId
   // schließen sich gegenseitig aus (s. graphSelectionService), deshalb reicht
   // ein einzelner Handler für beide.
+  //
+  // Zusätzlich: ein generischer document.activeElement-Check statt eines
+  // weiteren komponenteneigenen "isEditingX"-State-Flags — Titel/Notiz lagen
+  // beide früher als Overlay direkt in dieser Datei, seit Phase 2 leben
+  // Beschreibung/Notiz im GraphNodeDetailPanel (eigene Komponente, kein
+  // direkter Zugriff auf den State hier). Der generische Check funktioniert
+  // unabhängig davon, WO ein Eingabefeld sitzt, und schützt automatisch auch
+  // jedes künftige Textfeld einer späteren Phase (Quellen, Verwandte
+  // Konzepte), ohne dass diese Datei davon wissen muss.
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
-      if (editingNodeId || isEditingNotes || isEditingEdgeLabel || nodeDrag || edgeDraft) return;
+      const activeTag = (document.activeElement as HTMLElement | null)?.tagName;
+      const isTypingElsewhere = activeTag === 'INPUT' || activeTag === 'TEXTAREA';
+      if (editingNodeId || isEditingEdgeLabel || nodeDrag || edgeDraft || isTypingElsewhere) return;
       if (e.key !== 'Delete') return;
       if (selection.selectedNodeId) {
         e.preventDefault();
@@ -579,7 +538,7 @@ export const GraphCanvas: React.FC<GraphCanvasProps> = ({
     window.addEventListener('keydown', handleKeyDown);
     return () => window.removeEventListener('keydown', handleKeyDown);
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [editingNodeId, isEditingNotes, isEditingEdgeLabel, nodeDrag, edgeDraft, selection, history, state, onChange, onSelectionChange, onEntityChanged]);
+  }, [editingNodeId, isEditingEdgeLabel, nodeDrag, edgeDraft, selection, history, state, onChange, onSelectionChange, onEntityChanged]);
 
   // ── Hintergrund: Klick = Auswahl aufheben, Doppelklick = neuer Node ─────
   const handleBackgroundClick = () => onSelectionChange(clearSelection(selection));
@@ -730,36 +689,6 @@ export const GraphCanvas: React.FC<GraphCanvasProps> = ({
                       style={{ cursor: 'crosshair' }}
                     />
                   )}
-                  {/* Hierarchie bewusst setzen (Phase 1, Umsetzungsphase) — kein
-                      stiller Default, kein Raten: ein Klick zykelt durch
-                      Hauptthema → Unterthema → Detail → zurücksetzen. Nur bei
-                      Hover/Auswahl sichtbar, damit die Fläche im Ruhezustand
-                      nicht überladen wirkt. */}
-                  {(hovered || selected) && (() => {
-                    const chipLabel = node.hierarchyLevel ? HIERARCHY_LABEL[node.hierarchyLevel] : 'Ebene wählen';
-                    const chipWidth = Math.max(50, chipLabel.length * 5 + 14);
-                    const chipY = radiusOf(node.id) + 16;
-                    return (
-                      <g
-                        transform={`translate(0, ${chipY})`}
-                        onMouseDown={e => e.stopPropagation()}
-                        onClick={e => { e.stopPropagation(); cycleHierarchyLevel(node.id); }}
-                        style={{ cursor: 'pointer' }}
-                      >
-                        <rect
-                          x={-chipWidth / 2} y={-9} width={chipWidth} height={18} rx={9}
-                          fill="var(--bg-sidebar, #fff)" stroke="var(--border-color, #e2e8f0)" strokeWidth={1}
-                        />
-                        <text
-                          textAnchor="middle" y={3}
-                          className="text-[8px] font-black uppercase tracking-wider fill-slate-500 dark:fill-slate-300 select-none"
-                          style={{ pointerEvents: 'none' }}
-                        >
-                          {chipLabel}
-                        </text>
-                      </g>
-                    );
-                  })()}
                 </motion.g>
               );
             })}
@@ -784,28 +713,6 @@ export const GraphCanvas: React.FC<GraphCanvasProps> = ({
             style={{
               left: screenX, top: screenY, transform: 'translate(-50%, -50%)',
               width: radiusOf(editingNodeId) * 2 + 16, borderColor: 'var(--primary)', zIndex: 20,
-            }}
-          />
-        );
-      })()}
-      {notesDraft && (() => {
-        const pos = positionOf(notesDraft.nodeId);
-        const screenX = zoomTransform.x + zoomTransform.k * pos.x;
-        const screenY = zoomTransform.y + zoomTransform.k * pos.y;
-        return (
-          <textarea
-            value={notesDraft.value}
-            placeholder="Notiz — warum ist das wichtig?"
-            onChange={e => setNotesDraft(prev => prev && { ...prev, value: e.target.value })}
-            onFocus={() => setIsEditingNotes(true)}
-            onBlur={commitNotes}
-            className="absolute text-[10px] rounded-md px-2 py-1.5 outline-none border resize-none bg-white dark:bg-slate-800 dark:text-white"
-            style={{
-              // +32 statt +10: darunter liegt jetzt zusätzlich der
-              // Hierarchie-Chip (Phase 1), der bei einem ausgewählten Node
-              // immer mit sichtbar ist — sonst würden sich beide überlappen.
-              left: screenX, top: screenY + radiusOf(notesDraft.nodeId) * zoomTransform.k + 32, transform: 'translate(-50%, 0)',
-              width: 180, height: 56, borderColor: 'var(--border-color, #e2e8f0)', zIndex: 15,
             }}
           />
         );

@@ -24,6 +24,26 @@ export const SUGGESTED_NODE_TYPES: readonly GraphNodeType[] = [
  *  unabhängig wählbar. */
 export type HierarchyLevel = 'hauptthema' | 'unterthema' | 'detail';
 
+export const HIERARCHY_LEVELS: readonly HierarchyLevel[] = ['hauptthema', 'unterthema', 'detail'];
+
+export const HIERARCHY_LEVEL_LABELS: Record<HierarchyLevel, string> = {
+  hauptthema: 'Hauptthema',
+  unterthema: 'Unterthema',
+  detail: 'Detail',
+};
+
+/** Reihenfolge für die Klick-Zyklus-Interaktion (kein Formular, kein
+ *  Dropdown — dieselbe Idee wie das bewusste Beziehungstyp-Setzen seit Phase
+ *  5A: keine Vorauswahl, jede Änderung eine explizite Nutzeraktion):
+ *  Hauptthema → Unterthema → Detail → zurücksetzen (undefined) → von vorn.
+ *  Zentral hier definiert, weil sowohl GraphCanvas (Node-Chip) als auch
+ *  GraphNodeDetailPanel (Kopfbereich) exakt dasselbe Verhalten brauchen. */
+export function nextHierarchyLevel(current: HierarchyLevel | undefined): HierarchyLevel | undefined {
+  const cycle: (HierarchyLevel | undefined)[] = [...HIERARCHY_LEVELS, undefined];
+  const currentIndex = cycle.indexOf(current);
+  return cycle[(currentIndex + 1) % cycle.length];
+}
+
 export interface GraphNodePosition {
   x: number;
   y: number;

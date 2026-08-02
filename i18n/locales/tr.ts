@@ -550,6 +550,12 @@ export const tr: Translations = {
   'kg.undo': 'Geri al',
   'kg.redo': 'Yinele',
   'kg.errorPull': 'Bilgi ağı senkronize edilemedi. Değişikliklerin yerel olarak kaydedildi.',
+  'kg.panel.close': 'Kapat',
+  'kg.panel.description': 'Açıklama',
+  'kg.panel.descriptionPlaceholder': 'Nesnel açıklama (opsiyonel)',
+  'kg.panel.notes': 'Notlarım',
+  'kg.panel.notesPlaceholder': 'Bu neden önemli?',
+  'kg.panel.hierarchyPlaceholder': 'Seviye seç',
 
   // library
   'lib.title': 'Kütüphane',

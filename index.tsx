@@ -42,9 +42,14 @@ const root = ReactDOM.createRoot(rootElement);
 root.render(
   <React.StrictMode>
     {GraphDevHarnessLazy ? (
-      <React.Suspense fallback={null}>
-        <GraphDevHarnessLazy />
-      </React.Suspense>
+      // I18nProvider seit Phase 2 (Wissensnetz-Seitenpanel) nötig — GraphNodeDetailPanel
+      // nutzt useTranslation() für seine Chrome-Texte, exakt wie GraphSystem.tsx
+      // es in der echten App auch bräuchte.
+      <I18nProvider>
+        <React.Suspense fallback={null}>
+          <GraphDevHarnessLazy />
+        </React.Suspense>
+      </I18nProvider>
     ) : (
       <I18nProvider>
         {/* Äußerste Auffanglinie: Nutzer sehen nie wieder eine Leerseite, sondern

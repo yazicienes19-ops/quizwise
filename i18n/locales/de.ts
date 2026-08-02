@@ -552,6 +552,12 @@ export const de = {
   'kg.undo': 'Rückgängig',
   'kg.redo': 'Wiederholen',
   'kg.errorPull': 'Wissensnetz konnte nicht synchronisiert werden. Deine Änderungen bleiben lokal gespeichert.',
+  'kg.panel.close': 'Schließen',
+  'kg.panel.description': 'Beschreibung',
+  'kg.panel.descriptionPlaceholder': 'Objektive Beschreibung (optional)',
+  'kg.panel.notes': 'Eigene Notizen',
+  'kg.panel.notesPlaceholder': 'Warum ist das wichtig?',
+  'kg.panel.hierarchyPlaceholder': 'Ebene wählen',
 
   // library
   'lib.title': 'Bibliothek',

@@ -2,8 +2,10 @@ import React from 'react';
 import { Collection, ProcessedDocument } from '../types';
 import type { GraphScope } from '../services/graph/types';
 import { canUndo, canRedo } from '../services/graph/graphHistoryService';
+import { clearSelection } from '../services/graph/graphSelectionService';
 import { useKnowledgeGraph } from '../hooks/useKnowledgeGraph';
 import { GraphCanvas } from './GraphCanvas';
+import { GraphNodeDetailPanel } from './GraphNodeDetailPanel';
 import { useTranslation } from '../i18n/I18nProvider';
 
 /**
@@ -81,14 +83,29 @@ export const GraphSystem: React.FC<GraphSystemProps> = ({ userId, collections, a
             {t('kg.loading')}
           </div>
         ) : (
-          <GraphCanvas
-            state={graph.state}
-            history={graph.history}
-            selection={graph.selection}
-            onChange={graph.onChange}
-            onSelectionChange={graph.onSelectionChange}
-            onEntityChanged={graph.onEntityChanged}
-          />
+          <>
+            <GraphCanvas
+              state={graph.state}
+              history={graph.history}
+              selection={graph.selection}
+              onChange={graph.onChange}
+              onSelectionChange={graph.onSelectionChange}
+              onEntityChanged={graph.onEntityChanged}
+            />
+            {/* Absolutes Overlay, kein Resize der Kanvasfläche — s.
+                GraphNodeDetailPanel.tsx für die Begründung (Performance +
+                räumliche Orientierung). */}
+            {graph.selection.selectedNodeId && (
+              <GraphNodeDetailPanel
+                state={graph.state}
+                history={graph.history}
+                nodeId={graph.selection.selectedNodeId}
+                onChange={graph.onChange}
+                onEntityChanged={graph.onEntityChanged}
+                onClose={() => graph.onSelectionChange(clearSelection(graph.selection))}
+              />
+            )}
+          </>
         )}
         {graph.error && (
           <div

@@ -1,9 +1,11 @@
 import React, { useEffect, useRef, useState } from 'react';
 import { GraphCanvas } from './GraphCanvas';
+import { GraphNodeDetailPanel } from './GraphNodeDetailPanel';
 import { supabase } from '../services/supabaseClient';
 import { generateGraphId } from '../services/graph/id';
 import { createEmptyGraphState, type GraphState, type GraphNode, type GraphRelationType, type GraphScope } from '../services/graph/types';
 import { createEmptyHistory } from '../services/graph/graphHistoryService';
+import { clearSelection } from '../services/graph/graphSelectionService';
 import { saveCachedState } from '../services/graph/graphSyncService';
 import { useKnowledgeGraph } from '../hooks/useKnowledgeGraph';
 
@@ -174,6 +176,22 @@ export const GraphDevHarness: React.FC = () => {
             else pushLog(`Beziehungstyp angelegt: "${change.entity.label}"`);
           }}
         />
+        {/* Phase 2: dasselbe Overlay-Panel wie in GraphSystem.tsx, hier
+            verdrahtet, damit es ohne echten Login über den Harness testbar
+            ist (s. Kommentar oben zur echten-Zugangsdaten-Grenze). */}
+        {graph.selection.selectedNodeId && (
+          <GraphNodeDetailPanel
+            state={graph.state}
+            history={graph.history}
+            nodeId={graph.selection.selectedNodeId}
+            onChange={graph.onChange}
+            onEntityChanged={change => {
+              graph.onEntityChanged(change);
+              if (change.kind === 'node') pushLog(`Node geändert: "${change.entity.title}"`);
+            }}
+            onClose={() => graph.onSelectionChange(clearSelection(graph.selection))}
+          />
+        )}
       </div>
       <div style={{ padding: '4px 16px', fontSize: 11, fontFamily: 'monospace', color: '#64748b', maxHeight: 100, overflowY: 'auto' }}>
         {log.map((line, i) => <div key={i}>{line}</div>)}
