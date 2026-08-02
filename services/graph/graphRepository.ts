@@ -35,6 +35,7 @@ export function rowToNode(row: any): GraphNode {
     icon: row.icon ?? undefined,
     tags: row.tags ?? [],
     position: { x: row.position_x, y: row.position_y },
+    hierarchyLevel: row.hierarchy_level ?? undefined,
     pinned: row.pinned,
     archivedAt: row.archived_at ? new Date(row.archived_at).getTime() : undefined,
     version: row.version,
@@ -58,6 +59,7 @@ export function nodeToRow(node: GraphNode, userId: string): Record<string, unkno
     tags: node.tags,
     position_x: node.position.x,
     position_y: node.position.y,
+    hierarchy_level: node.hierarchyLevel ?? null,
     pinned: node.pinned,
     archived_at: node.archivedAt ? new Date(node.archivedAt).toISOString() : null,
   };

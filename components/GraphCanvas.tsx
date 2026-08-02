@@ -1,7 +1,7 @@
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import * as d3 from 'd3';
 import { motion, AnimatePresence } from 'framer-motion';
-import type { GraphState, GraphNodePosition, GraphEntityChange } from '../services/graph/types';
+import type { GraphState, GraphNodePosition, GraphEntityChange, HierarchyLevel } from '../services/graph/types';
 import { buildGraphIndex } from '../services/graph/graphIndex';
 import { resolveOverlaps } from '../services/graph/graphLayoutEngine';
 import {
@@ -63,11 +63,44 @@ export interface GraphCanvasProps {
 
 interface ZoomTransform { x: number; y: number; k: number; }
 
+// Basisgröße — gilt auch für hierarchyLevel === undefined ("noch nicht
+// festgelegt"), damit bestehende Graphen ohne gesetzte Hierarchie optisch
+// unverändert bleiben (keine Regression).
 const NODE_RADIUS = 28;
+// Phase 1 (Wissensnetz-Umsetzungsphase, 2026-08-02 final entschieden):
+// Größe ist das primäre, Randstärke das sekundäre Hierarchie-Signal (s.
+// KNOWLEDGE_GRAPH_KONZEPT.md Abschnitt 5 — Begründung/verworfene
+// Alternativen: Schrift verkleinert ausgerechnet die wichtigsten, oft
+// längeren Titel; Farbe kollidiert mit dem bereits freien `node.color`-Feld).
+// Bewusst nur ein Faktor ~1.5 zwischen größter/kleinster Stufe, nicht mehr —
+// sonst passt bei "Detail" kein Buchstabe des Titels mehr in den Kreis.
+const HIERARCHY_RADIUS: Record<HierarchyLevel, number> = {
+  hauptthema: 34,
+  unterthema: NODE_RADIUS,
+  detail: 22,
+};
+// Randstärke pro Ebene, UNABHÄNGIG von der Selektions-Randstärke (die kommt
+// weiterhin oben drauf) — sonst wäre ein selektierter "Detail"-Node optisch
+// nicht mehr von einem selektierten "Hauptthema"-Node zu unterscheiden.
+const HIERARCHY_STROKE_WIDTH: Record<HierarchyLevel, number> = {
+  hauptthema: 2.5,
+  unterthema: 1.5,
+  detail: 1,
+};
+const SELECTED_STROKE_BONUS = 1.5;
 const HANDLE_RADIUS = 6;
-const HANDLE_DISTANCE = NODE_RADIUS + 14;
+const HANDLE_OFFSET = 14;
 const DRAG_THRESHOLD_PX = 4;
 const NODE_DATA_ATTR = 'data-graph-node';
+// Bewusst vom Nutzer per Klick durchgezykelt (nie automatisch geraten, s.
+// GraphNode.hierarchyLevel-Kommentar) — dieselbe Reihenfolge wie die
+// Bedeutung selbst: Hauptthema → Unterthema → Detail → zurücksetzen.
+const HIERARCHY_CYCLE: (HierarchyLevel | undefined)[] = ['hauptthema', 'unterthema', 'detail', undefined];
+const HIERARCHY_LABEL: Record<HierarchyLevel, string> = {
+  hauptthema: 'Hauptthema',
+  unterthema: 'Unterthema',
+  detail: 'Detail',
+};
 
 export const GraphCanvas: React.FC<GraphCanvasProps> = ({
   state, history, selection, onChange, onSelectionChange, onEntityChanged,
@@ -125,28 +158,39 @@ export const GraphCanvas: React.FC<GraphCanvasProps> = ({
     [displayPositions],
   );
 
-  // Am NODE_RADIUS gekürzte Endpunkte einer Kante plus Mittelpunkt — einmal
-  // berechnet, sowohl fürs Linien-Rendering als auch für die Positionierung
-  // des Bearbeiten-Overlays (Phase 5B) genutzt, damit beide immer exakt
-  // übereinstimmen.
+  // hierarchyLevel === undefined ("noch nicht festgelegt") fällt bewusst auf
+  // dieselbe Basisgröße wie "unterthema" zurück — neutral, weder betont noch
+  // verkleinert, bis der Nutzer sich bewusst für eine Ebene entscheidet.
+  const radiusOf = useCallback((nodeId: string): number => {
+    const level = state.nodesById.get(nodeId)?.hierarchyLevel;
+    return level ? HIERARCHY_RADIUS[level] : NODE_RADIUS;
+  }, [state.nodesById]);
+
+  // Am jeweiligen Node-Radius gekürzte Endpunkte einer Kante plus Mittelpunkt
+  // — einmal berechnet, sowohl fürs Linien-Rendering als auch für die
+  // Positionierung des Bearbeiten-Overlays (Phase 5B) genutzt, damit beide
+  // immer exakt übereinstimmen. Quelle und Ziel können seit der
+  // Hierarchie-Einführung unterschiedlich große Radien haben.
   const computeEdgeGeometry = useCallback((edge: { sourceNodeId: string; targetNodeId: string }) => {
     const from = positionOf(edge.sourceNodeId);
     const to = positionOf(edge.targetNodeId);
     const angle = Math.atan2(to.y - from.y, to.x - from.x);
-    const x1 = from.x + Math.cos(angle) * NODE_RADIUS;
-    const y1 = from.y + Math.sin(angle) * NODE_RADIUS;
-    const x2 = to.x - Math.cos(angle) * NODE_RADIUS;
-    const y2 = to.y - Math.sin(angle) * NODE_RADIUS;
+    const x1 = from.x + Math.cos(angle) * radiusOf(edge.sourceNodeId);
+    const y1 = from.y + Math.sin(angle) * radiusOf(edge.sourceNodeId);
+    const x2 = to.x - Math.cos(angle) * radiusOf(edge.targetNodeId);
+    const y2 = to.y - Math.sin(angle) * radiusOf(edge.targetNodeId);
     return { x1, y1, x2, y2, midX: (x1 + x2) / 2, midY: (y1 + y2) / 2 };
-  }, [positionOf]);
+  }, [positionOf, radiusOf]);
 
   // ── Pan/Zoom (Muster aus MindmapCanvas.tsx, angepasst) ──────────────────
   const fitView = useCallback(() => {
     if (!svgRef.current || !zoomBehaviorRef.current || activeNodes.length === 0) return;
-    const xs = activeNodes.map(n => positionOf(n.id).x);
-    const ys = activeNodes.map(n => positionOf(n.id).y);
-    const minX = Math.min(...xs) - NODE_RADIUS, maxX = Math.max(...xs) + NODE_RADIUS;
-    const minY = Math.min(...ys) - NODE_RADIUS, maxY = Math.max(...ys) + NODE_RADIUS;
+    const xs = activeNodes.map(n => positionOf(n.id).x - radiusOf(n.id));
+    const xsMax = activeNodes.map(n => positionOf(n.id).x + radiusOf(n.id));
+    const ys = activeNodes.map(n => positionOf(n.id).y - radiusOf(n.id));
+    const ysMax = activeNodes.map(n => positionOf(n.id).y + radiusOf(n.id));
+    const minX = Math.min(...xs), maxX = Math.max(...xsMax);
+    const minY = Math.min(...ys), maxY = Math.max(...ysMax);
     const contentWidth = maxX - minX || 1;
     const contentHeight = maxY - minY || 1;
     const svgW = svgRef.current.clientWidth || 800;
@@ -156,7 +200,7 @@ export const GraphCanvas: React.FC<GraphCanvasProps> = ({
     const ty = svgH / 2 - scale * (minY + contentHeight / 2);
     d3.select(svgRef.current).transition().duration(300)
       .call(zoomBehaviorRef.current.transform, d3.zoomIdentity.translate(tx, ty).scale(scale));
-  }, [activeNodes, positionOf]);
+  }, [activeNodes, positionOf, radiusOf]);
 
   useEffect(() => {
     if (!svgRef.current || !gRef.current) return;
@@ -247,6 +291,23 @@ export const GraphCanvas: React.FC<GraphCanvasProps> = ({
   const cancelTitleEdit = () => {
     skipNextBlurCommitRef.current = true;
     setEditingNodeId(null);
+  };
+
+  // ── Hierarchie bewusst setzen (Phase 1, Umsetzungsphase 2026-08-02) ──────
+  // Kein Formular, kein Dropdown — ein Klick auf den Ebenen-Chip zykelt durch
+  // die drei Stufen plus "zurücksetzen", exakt dieselbe Idee wie das bewusste
+  // Beziehungstyp-Setzen aus Phase 5A: keine Vorauswahl, jede Änderung ist
+  // eine explizite, bewusste Nutzeraktion.
+  const cycleHierarchyLevel = (nodeId: string) => {
+    const node = state.nodesById.get(nodeId);
+    if (!node) return;
+    const currentIndex = HIERARCHY_CYCLE.indexOf(node.hierarchyLevel);
+    const next = HIERARCHY_CYCLE[(currentIndex + 1) % HIERARCHY_CYCLE.length];
+    const result = recordUpdateNode(history, state, nodeId, { hierarchyLevel: next });
+    if (!result.error && result.entity) {
+      onChange({ state: result.state, history: result.history });
+      onEntityChanged?.({ kind: 'node', entity: result.entity });
+    }
   };
 
   // ── Freitext-Notiz (Phase 5A Punkt 4) ────────────────────────────────────
@@ -647,10 +708,10 @@ export const GraphCanvas: React.FC<GraphCanvasProps> = ({
                   style={{ cursor: 'pointer' }}
                 >
                   <circle
-                    r={NODE_RADIUS}
+                    r={radiusOf(node.id)}
                     fill={fill}
                     stroke={selected ? 'var(--primary)' : 'var(--border-color, #e2e8f0)'}
-                    strokeWidth={selected ? 3 : 1.5}
+                    strokeWidth={(node.hierarchyLevel ? HIERARCHY_STROKE_WIDTH[node.hierarchyLevel] : HIERARCHY_STROKE_WIDTH.unterthema) + (selected ? SELECTED_STROKE_BONUS : 0)}
                   />
                   {editingNodeId !== node.id && (
                     <text
@@ -663,12 +724,42 @@ export const GraphCanvas: React.FC<GraphCanvasProps> = ({
                   )}
                   {(hovered || selected) && (
                     <circle
-                      cx={HANDLE_DISTANCE} cy={0} r={HANDLE_RADIUS}
+                      cx={radiusOf(node.id) + HANDLE_OFFSET} cy={0} r={HANDLE_RADIUS}
                       fill="var(--primary)"
                       onMouseDown={e => handleHandlePointerDown(e, node.id)}
                       style={{ cursor: 'crosshair' }}
                     />
                   )}
+                  {/* Hierarchie bewusst setzen (Phase 1, Umsetzungsphase) — kein
+                      stiller Default, kein Raten: ein Klick zykelt durch
+                      Hauptthema → Unterthema → Detail → zurücksetzen. Nur bei
+                      Hover/Auswahl sichtbar, damit die Fläche im Ruhezustand
+                      nicht überladen wirkt. */}
+                  {(hovered || selected) && (() => {
+                    const chipLabel = node.hierarchyLevel ? HIERARCHY_LABEL[node.hierarchyLevel] : 'Ebene wählen';
+                    const chipWidth = Math.max(50, chipLabel.length * 5 + 14);
+                    const chipY = radiusOf(node.id) + 16;
+                    return (
+                      <g
+                        transform={`translate(0, ${chipY})`}
+                        onMouseDown={e => e.stopPropagation()}
+                        onClick={e => { e.stopPropagation(); cycleHierarchyLevel(node.id); }}
+                        style={{ cursor: 'pointer' }}
+                      >
+                        <rect
+                          x={-chipWidth / 2} y={-9} width={chipWidth} height={18} rx={9}
+                          fill="var(--bg-sidebar, #fff)" stroke="var(--border-color, #e2e8f0)" strokeWidth={1}
+                        />
+                        <text
+                          textAnchor="middle" y={3}
+                          className="text-[8px] font-black uppercase tracking-wider fill-slate-500 dark:fill-slate-300 select-none"
+                          style={{ pointerEvents: 'none' }}
+                        >
+                          {chipLabel}
+                        </text>
+                      </g>
+                    );
+                  })()}
                 </motion.g>
               );
             })}
@@ -692,7 +783,7 @@ export const GraphCanvas: React.FC<GraphCanvasProps> = ({
             className="absolute text-[10px] font-bold text-center rounded-md px-1 py-1 outline-none border-2 bg-white dark:bg-slate-800 dark:text-white"
             style={{
               left: screenX, top: screenY, transform: 'translate(-50%, -50%)',
-              width: NODE_RADIUS * 2 + 16, borderColor: 'var(--primary)', zIndex: 20,
+              width: radiusOf(editingNodeId) * 2 + 16, borderColor: 'var(--primary)', zIndex: 20,
             }}
           />
         );
@@ -710,7 +801,10 @@ export const GraphCanvas: React.FC<GraphCanvasProps> = ({
             onBlur={commitNotes}
             className="absolute text-[10px] rounded-md px-2 py-1.5 outline-none border resize-none bg-white dark:bg-slate-800 dark:text-white"
             style={{
-              left: screenX, top: screenY + NODE_RADIUS * zoomTransform.k + 10, transform: 'translate(-50%, 0)',
+              // +32 statt +10: darunter liegt jetzt zusätzlich der
+              // Hierarchie-Chip (Phase 1), der bei einem ausgewählten Node
+              // immer mit sichtbar ist — sonst würden sich beide überlappen.
+              left: screenX, top: screenY + radiusOf(notesDraft.nodeId) * zoomTransform.k + 32, transform: 'translate(-50%, 0)',
               width: 180, height: 56, borderColor: 'var(--border-color, #e2e8f0)', zIndex: 15,
             }}
           />

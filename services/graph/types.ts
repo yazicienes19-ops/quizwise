@@ -13,8 +13,16 @@
 export type GraphNodeType = string;
 
 export const SUGGESTED_NODE_TYPES: readonly GraphNodeType[] = [
-  'begriff', 'theorie', 'definition', 'formel', 'prozess', 'person', 'beispiel', 'ereignis',
+  'begriff', 'definition', 'formel', 'prozess', 'theorie', 'person', 'beispiel', 'experiment', 'ereignis',
 ];
+
+/** Rangfolge im Wissensnetz — bewusst nur drei Stufen und strikt getrennt von
+ *  `GraphNodeType` (s. KNOWLEDGE_GRAPH_KONZEPT.md Abschnitt 5): `type`
+ *  beschreibt die Art des Wissens ("was ist es"), `HierarchyLevel` die
+ *  Bedeutung im Netz ("wie wichtig ist es"). Ein "Beispiel" kann Hauptthema
+ *  sein, eine "Definition" kann ein Detail sein — beide Achsen sind
+ *  unabhängig wählbar. */
+export type HierarchyLevel = 'hauptthema' | 'unterthema' | 'detail';
 
 export interface GraphNodePosition {
   x: number;
@@ -32,6 +40,11 @@ export interface GraphNode {
   icon?: string;
   tags: string[];
   position: GraphNodePosition;
+  /** undefined = noch nicht festgelegt. Ausschließlich vom Nutzer bewusst
+   *  gesetzt/geändert — wird NIE aus type, Position oder Kantenanzahl
+   *  abgeleitet oder geraten (dieselbe Regel wie beim Beziehungstyp seit
+   *  Phase 5A: kein stiller Default). */
+  hierarchyLevel?: HierarchyLevel;
   /** Reserviert für Phase 2 (Auto-Layout) — in dieser Phase von keinem Code gelesen,
    *  s. Begründung in KNOWLEDGE_GRAPH_PHASE1_PLAN.md (Spalte jetzt anlegen ist
    *  kostenlos, eine spätere Migration wäre es nicht). */
@@ -179,7 +192,7 @@ export interface CreateNodeInput {
 }
 
 export type UpdateNodeInput = Partial<
-  Pick<GraphNode, 'collectionId' | 'type' | 'title' | 'description' | 'notes' | 'color' | 'icon' | 'tags' | 'position' | 'pinned'>
+  Pick<GraphNode, 'collectionId' | 'type' | 'title' | 'description' | 'notes' | 'color' | 'icon' | 'tags' | 'position' | 'pinned' | 'hierarchyLevel'>
 >;
 
 export interface CreateEdgeInput {

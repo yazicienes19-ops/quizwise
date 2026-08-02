@@ -17,13 +17,14 @@ describe('rowToNode', () => {
     const row = {
       id: 'n1', collection_id: 'col-1', type: 'begriff', title: 'Falsifikation',
       description: 'Beschreibung', notes: 'Notiz', color: '#fff', icon: 'brain',
-      tags: ['popper'], position_x: 12.5, position_y: -3, pinned: true,
+      tags: ['popper'], position_x: 12.5, position_y: -3, hierarchy_level: 'hauptthema', pinned: true,
       archived_at: '2026-01-01T00:00:00.000Z', version: 4,
       created_at: '2026-01-01T00:00:00.000Z', updated_at: '2026-01-02T00:00:00.000Z',
     };
     const node = rowToNode(row);
     expect(node.position).toEqual({ x: 12.5, y: -3 });
     expect(node.collectionId).toBe('col-1');
+    expect(node.hierarchyLevel).toBe('hauptthema');
     expect(node.archivedAt).toBe(new Date('2026-01-01T00:00:00.000Z').getTime());
     expect(node.updatedAt).toBe(new Date('2026-01-02T00:00:00.000Z').getTime());
   });
@@ -31,13 +32,14 @@ describe('rowToNode', () => {
   it('übersetzt DB-NULL zu undefined statt null durchzureichen', () => {
     const row = {
       id: 'n1', collection_id: null, type: 'begriff', title: 'X', description: '', notes: '',
-      color: null, icon: null, tags: null, position_x: 0, position_y: 0, pinned: false,
+      color: null, icon: null, tags: null, position_x: 0, position_y: 0, hierarchy_level: null, pinned: false,
       archived_at: null, version: 1, created_at: '2026-01-01T00:00:00.000Z', updated_at: '2026-01-01T00:00:00.000Z',
     };
     const node = rowToNode(row);
     expect(node.collectionId).toBeUndefined();
     expect(node.color).toBeUndefined();
     expect(node.icon).toBeUndefined();
+    expect(node.hierarchyLevel).toBeUndefined();
     expect(node.archivedAt).toBeUndefined();
     expect(node.tags).toEqual([]); // null → leeres Array, nie null im Domain-Modell
   });
@@ -67,13 +69,14 @@ describe('nodeToRow', () => {
     expect(row.collection_id).toBeNull();
     expect(row.color).toBeNull();
     expect(row.icon).toBeNull();
+    expect(row.hierarchy_level).toBeNull();
     expect(row.archived_at).toBeNull();
   });
 
   it('Rundreise rowToNode(nodeToRow(x)) erhält alle für die Domain relevanten Felder', () => {
     const original: GraphNode = {
       id: 'n1', collectionId: 'col-1', type: 'theorie', title: 'X', description: 'D', notes: 'N',
-      color: '#abc', icon: 'atom', tags: ['a', 'b'], position: { x: 1, y: 2 }, pinned: true,
+      color: '#abc', icon: 'atom', tags: ['a', 'b'], position: { x: 1, y: 2 }, hierarchyLevel: 'unterthema', pinned: true,
       archivedAt: 1700000000000, version: 1, createdAt: 0, updatedAt: 0,
     };
     const row: any = nodeToRow(original, 'user-1');
@@ -87,6 +90,7 @@ describe('nodeToRow', () => {
     expect(roundTripped.title).toBe(original.title);
     expect(roundTripped.tags).toEqual(original.tags);
     expect(roundTripped.position).toEqual(original.position);
+    expect(roundTripped.hierarchyLevel).toBe(original.hierarchyLevel);
     expect(roundTripped.pinned).toBe(original.pinned);
     expect(roundTripped.archivedAt).toBe(original.archivedAt);
     expect(roundTripped.version).toBe(7); // autoritativer Server-Wert, nicht der lokale
