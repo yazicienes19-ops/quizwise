@@ -131,10 +131,17 @@ export function useKnowledgeGraph({ scope, userId }: UseKnowledgeGraphOptions): 
   }, []);
 
   const onEntityChanged = useCallback((change: GraphEntityChange) => {
+    // 'relationType' kam mit Phase 5A Punkt 5 dazu (GraphCanvas legt jetzt
+    // bei Bedarf spontan einen neuen Beziehungstyp an, wenn der Nutzer eine
+    // noch unbekannte Bezeichnung eingibt) — commitRelationType existierte
+    // in GraphPersistenceService bereits seit Phase 2, war bis hierher aber
+    // von nichts aufgerufen worden.
     if (change.kind === 'node') {
       persistence.commitNode(change.entity, stateRef.current, { userId });
-    } else {
+    } else if (change.kind === 'edge') {
       persistence.commitEdge(change.entity, stateRef.current, { userId });
+    } else {
+      persistence.commitRelationType(change.entity, stateRef.current, { userId });
     }
   }, [userId]);
 

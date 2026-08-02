@@ -169,7 +169,9 @@ export const GraphDevHarness: React.FC = () => {
           onSelectionChange={graph.onSelectionChange}
           onEntityChanged={change => {
             graph.onEntityChanged(change);
-            pushLog(change.kind === 'node' ? `Node geändert: "${change.entity.title}"` : `Kante geändert: ${change.entity.id.slice(0, 8)}`);
+            if (change.kind === 'node') pushLog(`Node geändert: "${change.entity.title}"`);
+            else if (change.kind === 'edge') pushLog(`Kante geändert: ${change.entity.id.slice(0, 8)}`);
+            else pushLog(`Beziehungstyp angelegt: "${change.entity.label}"`);
           }}
         />
       </div>

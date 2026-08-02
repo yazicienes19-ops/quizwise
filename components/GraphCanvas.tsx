@@ -8,11 +8,15 @@ import {
   type GraphSelectionState, selectNode, clearSelection, hoverNode, isSelected, isHovered,
 } from '../services/graph/graphSelectionService';
 import { type GraphHistory, recordCreateNode, recordUpdateNode, recordArchiveNode, recordCreateEdge } from '../services/graph/graphHistoryService';
+import { createRelationType } from '../services/graph/graphMutationService';
 
 /**
  * Phase 3 — reine Graph Engine: SVG-Rendering, Pan/Zoom, Selection,
- * Drag-to-Move, Node-/Kanten-Erstellung ohne Formular (Platzhalter-Titel
- * bzw. Standard-Beziehungstyp — Picker/Formulare sind spätere UI-Arbeit).
+ * Drag-to-Move. Phase 5A: Node-Titel/-Notiz direkt bearbeitbar, Node
+ * löschbar, Beziehungstyp wird beim Kantenziehen bewusst per Texteingabe
+ * gewählt statt automatisch defaultet (s. KNOWLEDGE_GRAPH_USABILITY_SESSION.md
+ * — der stille Default widersprach der Kernregel "Nutzer ist bewusster Autor
+ * jeder Bedeutung im Graphen").
  *
  * UI-Schicht-Grenze bewusst eingehalten: diese Komponente importiert keine
  * Infrastructure (GraphRepository/GraphSyncService/GraphPersistenceService).
@@ -25,6 +29,13 @@ import { type GraphHistory, recordCreateNode, recordUpdateNode, recordArchiveNod
  *
  * GraphEntityChange ist in services/graph/types.ts definiert (Domain-
  * Schicht), nicht hier — s. Kommentar dort.
+ *
+ * Ausnahme von "nur Domain-Funktionen über GraphHistoryService": das Anlegen
+ * eines neuen Beziehungstyps (createRelationType, direkt aus
+ * GraphMutationService) läuft NICHT über die History — das war schon in
+ * Phase 3 eine bewusste Scope-Entscheidung (RelationType-Mutationen sind
+ * seltene, "Einstellungs"-artige Aktionen, kein typischer Undo-Fall). Nur die
+ * daraus entstehende Kante selbst ist undo-fähig.
  */
 
 export interface GraphCanvasProps {
@@ -34,11 +45,6 @@ export interface GraphCanvasProps {
   onChange: (next: { state: GraphState; history: GraphHistory }) => void;
   onSelectionChange: (next: GraphSelectionState) => void;
   onEntityChanged?: (change: GraphEntityChange) => void;
-  /** Ohne UI-Picker (Phase 3) braucht eine neue Kante einen Standard-
-   *  Beziehungstyp. Fehlt die Prop, wird der eingebaute Typ mit der
-   *  niedrigsten sortOrder verwendet; ist gar keiner geladen, ist
-   *  Kantenerstellung schlicht nicht möglich (kein Fehler, nur kein Handle). */
-  defaultRelationTypeId?: string;
 }
 
 interface ZoomTransform { x: number; y: number; k: number; }
@@ -49,21 +55,13 @@ const HANDLE_DISTANCE = NODE_RADIUS + 14;
 const DRAG_THRESHOLD_PX = 4;
 const NODE_DATA_ATTR = 'data-graph-node';
 
-const pickDefaultRelationTypeId = (state: GraphState): string | undefined => {
-  const types = [...state.relationTypesById.values()];
-  const builtIn = types.filter(t => t.isBuiltIn).sort((a, b) => a.sortOrder - b.sortOrder);
-  return builtIn[0]?.id ?? types[0]?.id;
-};
-
 export const GraphCanvas: React.FC<GraphCanvasProps> = ({
-  state, history, selection, onChange, onSelectionChange, onEntityChanged, defaultRelationTypeId,
+  state, history, selection, onChange, onSelectionChange, onEntityChanged,
 }) => {
   const svgRef = useRef<SVGSVGElement | null>(null);
   const gRef = useRef<SVGGElement | null>(null);
   const zoomBehaviorRef = useRef<d3.ZoomBehavior<SVGSVGElement, unknown> | null>(null);
   const [zoomTransform, setZoomTransform] = useState<ZoomTransform>({ x: 0, y: 0, k: 1 });
-
-  const resolvedRelationTypeId = defaultRelationTypeId ?? pickDefaultRelationTypeId(state);
 
   // ── Sichtbare Nodes/Kanten ──────────────────────────────────────────────
   const activeNodes = useMemo(
@@ -277,7 +275,7 @@ export const GraphCanvas: React.FC<GraphCanvasProps> = ({
 
   const handleHandlePointerDown = (e: React.MouseEvent, nodeId: string) => {
     e.stopPropagation();
-    if (e.button !== 0 || !resolvedRelationTypeId) return;
+    if (e.button !== 0) return;
     setEdgeDraft({ sourceNodeId: nodeId, pointer: clientToGraphPoint(e.clientX, e.clientY) });
   };
 
@@ -319,16 +317,62 @@ export const GraphCanvas: React.FC<GraphCanvasProps> = ({
     return () => window.removeEventListener('keydown', handleKeyDown);
   }, [editingNodeId, isEditingNotes, nodeDrag, edgeDraft, selection, history, state, onChange, onSelectionChange, onEntityChanged]);
 
+  // ── Beziehung bewusst wählen (Phase 5A Punkt 5) ─────────────────────────
+  // Kein stiller Standard-Beziehungstyp mehr. Loslassen über einem Zielnode
+  // öffnet eine einfache Texteingabe ("Beziehung eingeben...") statt sofort
+  // eine Kante anzulegen — die Software interpretiert nichts. Abbruch ohne
+  // Eingabe (leer lassen, Escape) erzeugt bewusst KEINE Kante.
+  interface EdgePromptState { sourceNodeId: string; targetNodeId: string; position: GraphNodePosition; value: string; }
+  const [edgePrompt, setEdgePrompt] = useState<EdgePromptState | null>(null);
+  const edgePromptInputRef = useRef<HTMLInputElement | null>(null);
+
+  useEffect(() => {
+    if (edgePrompt) edgePromptInputRef.current?.focus();
+  }, [edgePrompt]);
+
   const handleNodePointerUp = (e: React.MouseEvent, targetNodeId: string) => {
-    if (!edgeDraft || !resolvedRelationTypeId) return;
+    if (!edgeDraft) return;
     e.stopPropagation();
     const { sourceNodeId } = edgeDraft;
     setEdgeDraft(null);
     if (sourceNodeId === targetNodeId) return;
-    const result = recordCreateEdge(history, state, { sourceNodeId, targetNodeId, relationTypeId: resolvedRelationTypeId });
-    if (!result.error && result.entity) {
-      onChange({ state: result.state, history: result.history });
-      onEntityChanged?.({ kind: 'edge', entity: result.entity });
+    setEdgePrompt({ sourceNodeId, targetNodeId, position: clientToGraphPoint(e.clientX, e.clientY), value: '' });
+  };
+
+  const cancelEdgePrompt = () => setEdgePrompt(null);
+
+  const commitEdgePrompt = () => {
+    if (!edgePrompt) return;
+    const label = edgePrompt.value.trim();
+    if (label.length === 0) { setEdgePrompt(null); return; } // keine Eingabe = keine Kante, nichts wird interpretiert
+
+    // Exakte (case-insensitive) Übereinstimmung mit einem bereits vorhandenen
+    // Typ wiederverwenden (eingebaut oder eigener) — sonst spontan einen
+    // neuen eigenen Beziehungstyp anlegen. Läuft bewusst NICHT über die
+    // History (s. Datei-Kommentar oben), nur die Kante selbst ist undo-fähig.
+    const existing = [...state.relationTypesById.values()].find(
+      rt => rt.label.trim().toLowerCase() === label.toLowerCase(),
+    );
+
+    let workingState = state;
+    let relationTypeId: string;
+    if (existing) {
+      relationTypeId = existing.id;
+    } else {
+      const createResult = createRelationType(workingState, { label });
+      if (createResult.error || !createResult.entity) { setEdgePrompt(null); return; }
+      workingState = createResult.state;
+      relationTypeId = createResult.entity.id;
+      onEntityChanged?.({ kind: 'relationType', entity: createResult.entity });
+    }
+
+    const edgeResult = recordCreateEdge(history, workingState, {
+      sourceNodeId: edgePrompt.sourceNodeId, targetNodeId: edgePrompt.targetNodeId, relationTypeId,
+    });
+    setEdgePrompt(null);
+    if (!edgeResult.error && edgeResult.entity) {
+      onChange({ state: edgeResult.state, history: edgeResult.history });
+      onEntityChanged?.({ kind: 'edge', entity: edgeResult.entity });
     }
   };
 
@@ -437,7 +481,7 @@ export const GraphCanvas: React.FC<GraphCanvasProps> = ({
                       {node.title.length > 14 ? `${node.title.slice(0, 13)}…` : node.title}
                     </text>
                   )}
-                  {(hovered || selected) && resolvedRelationTypeId && (
+                  {(hovered || selected) && (
                     <circle
                       cx={HANDLE_DISTANCE} cy={0} r={HANDLE_RADIUS}
                       fill="var(--primary)"
@@ -488,6 +532,28 @@ export const GraphCanvas: React.FC<GraphCanvasProps> = ({
             style={{
               left: screenX, top: screenY + NODE_RADIUS * zoomTransform.k + 10, transform: 'translate(-50%, 0)',
               width: 180, height: 56, borderColor: 'var(--border-color, #e2e8f0)', zIndex: 15,
+            }}
+          />
+        );
+      })()}
+      {edgePrompt && (() => {
+        const screenX = zoomTransform.x + zoomTransform.k * edgePrompt.position.x;
+        const screenY = zoomTransform.y + zoomTransform.k * edgePrompt.position.y;
+        return (
+          <input
+            ref={edgePromptInputRef}
+            value={edgePrompt.value}
+            placeholder="Beziehung eingeben…"
+            onChange={e => setEdgePrompt(prev => prev && { ...prev, value: e.target.value })}
+            onKeyDown={e => {
+              if (e.key === 'Enter') { e.preventDefault(); commitEdgePrompt(); }
+              else if (e.key === 'Escape') { e.preventDefault(); cancelEdgePrompt(); }
+            }}
+            onBlur={cancelEdgePrompt}
+            className="absolute text-[10px] font-bold rounded-md px-2 py-1.5 outline-none border-2 bg-white dark:bg-slate-800 dark:text-white"
+            style={{
+              left: screenX, top: screenY, transform: 'translate(-50%, -50%)',
+              width: 160, borderColor: 'var(--primary)', zIndex: 25,
             }}
           />
         );

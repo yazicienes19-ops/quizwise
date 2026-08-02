@@ -246,4 +246,5 @@ export interface MutationResult<TEntity> {
  */
 export type GraphEntityChange =
   | { kind: 'node'; entity: GraphNode }
-  | { kind: 'edge'; entity: GraphEdge };
+  | { kind: 'edge'; entity: GraphEdge }
+  | { kind: 'relationType'; entity: GraphRelationType };
