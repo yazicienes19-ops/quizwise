@@ -556,6 +556,12 @@ export const tr: Translations = {
   'kg.panel.notes': 'Notlarım',
   'kg.panel.notesPlaceholder': 'Bu neden önemli?',
   'kg.panel.hierarchyPlaceholder': 'Seviye seç',
+  'kg.panel.sources': 'Kaynaklarım',
+  'kg.panel.sourcesEmpty': 'Henüz bağlı bir kaynak yok.',
+  'kg.panel.sourcesAdd': 'Belge bağla',
+  'kg.panel.sourcesPickPlaceholder': 'Bir belge seç…',
+  'kg.panel.sourcesConfirm': 'Bağla',
+  'kg.panel.sourcesCancel': 'Vazgeç',
 
   // library
   'lib.title': 'Kütüphane',

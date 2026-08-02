@@ -557,6 +557,12 @@ export const en: Translations = {
   'kg.panel.notes': 'My notes',
   'kg.panel.notesPlaceholder': 'Why does this matter?',
   'kg.panel.hierarchyPlaceholder': 'Choose level',
+  'kg.panel.sources': 'My sources',
+  'kg.panel.sourcesEmpty': 'No source linked yet.',
+  'kg.panel.sourcesAdd': 'Link a document',
+  'kg.panel.sourcesPickPlaceholder': 'Choose a document…',
+  'kg.panel.sourcesConfirm': 'Link',
+  'kg.panel.sourcesCancel': 'Cancel',
 
   // library
   'lib.title': 'Library',

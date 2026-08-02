@@ -558,6 +558,12 @@ export const de = {
   'kg.panel.notes': 'Eigene Notizen',
   'kg.panel.notesPlaceholder': 'Warum ist das wichtig?',
   'kg.panel.hierarchyPlaceholder': 'Ebene wählen',
+  'kg.panel.sources': 'Eigene Unterlagen',
+  'kg.panel.sourcesEmpty': 'Noch keine Quelle verknüpft.',
+  'kg.panel.sourcesAdd': 'Dokument verknüpfen',
+  'kg.panel.sourcesPickPlaceholder': 'Dokument wählen…',
+  'kg.panel.sourcesConfirm': 'Verknüpfen',
+  'kg.panel.sourcesCancel': 'Abbrechen',
 
   // library
   'lib.title': 'Bibliothek',

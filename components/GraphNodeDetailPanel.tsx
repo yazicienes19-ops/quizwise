@@ -1,18 +1,22 @@
 import React, { useEffect, useRef, useState } from 'react';
+import type { ProcessedDocument } from '../types';
 import type { GraphState, GraphEntityChange } from '../services/graph/types';
 import { HIERARCHY_LEVEL_LABELS, nextHierarchyLevel } from '../services/graph/types';
 import { type GraphHistory, recordUpdateNode } from '../services/graph/graphHistoryService';
+import { createNodeDocumentRef } from '../services/graph/graphMutationService';
+import { documentDisplayName } from '../services/libraryService';
 import { useTranslation } from '../i18n/I18nProvider';
 
 /**
- * Phase 2 der Umsetzungsphase — Grundgerüst der rechten Seitenleiste (s.
- * KNOWLEDGE_GRAPH_KONZEPT.md Abschnitt 2 für die vollständige, verbindliche
- * 7-Abschnitt-Struktur; hier nur die ersten drei: Kopfbereich, Beschreibung,
- * Eigene Notizen). Architektonisch ein Geschwister von GraphCanvas, keine
- * Eltern-Kind-Beziehung: beide bekommen dieselben state/history/onChange/
- * onEntityChanged-Props vom Aufrufer (GraphSystem/GraphDevHarness) und rufen
- * unabhängig voneinander Domain-Funktionen über GraphHistoryService auf —
- * exakt dasselbe Muster wie GraphCanvas selbst, keine neue Architekturschicht.
+ * Rechte Seitenleiste des Wissensnetzes (s. KNOWLEDGE_GRAPH_KONZEPT.md
+ * Abschnitt 2 für die vollständige, verbindliche 7-Abschnitt-Struktur).
+ * Phase 2: Kopfbereich, Beschreibung, Eigene Notizen. Phase 3: Eigene
+ * Unterlagen (Dokumente verknüpfen/anzeigen/öffnen). Architektonisch ein
+ * Geschwister von GraphCanvas, keine Eltern-Kind-Beziehung: beide bekommen
+ * dieselben state/history/onChange/onEntityChanged-Props vom Aufrufer
+ * (GraphSystem/GraphDevHarness) und rufen unabhängig voneinander Domain-
+ * Funktionen auf — exakt dasselbe Muster wie GraphCanvas selbst, keine neue
+ * Architekturschicht.
  *
  * Notiz- und Hierarchie-Bearbeitung sind bewusst aus GraphCanvas HIERHER
  * umgezogen (nicht dupliziert) — zwei Bearbeitungsorte für dasselbe Feld
@@ -26,25 +30,36 @@ import { useTranslation } from '../i18n/I18nProvider';
  * Kanvasfläche: Öffnen/Schließen verändert dadurch nie Zoom/Pan/Viewport-
  * Größe des Graphen — die räumliche Orientierung bleibt garantiert erhalten,
  * und es gibt nichts an Layout neu zu berechnen (Performance).
+ *
+ * "Eigene Unterlagen" öffnet den bestehenden Reader NICHT selbst — dieses
+ * Panel meldet nur `onOpenDocument(documentId)` nach oben, GraphSystem.tsx
+ * entscheidet, WIE der Reader erscheint (Variante A: Portal-Overlay, s.
+ * dortiger Datei-Kommentar). Kein Löschen einer Verknüpfung in dieser Phase
+ * (bewusst, s. Umsetzungsbericht) — nur Anlegen und Ansehen.
  */
 
 export interface GraphNodeDetailPanelProps {
   state: GraphState;
   history: GraphHistory;
   nodeId: string;
+  documents: ProcessedDocument[];
   onChange: (next: { state: GraphState; history: GraphHistory }) => void;
   onEntityChanged?: (change: GraphEntityChange) => void;
   onClose: () => void;
+  /** Öffnet den bestehenden Reader als Overlay — s. GraphSystem.tsx
+   *  ("Variante A"). Dieses Panel weiß nichts vom Reader selbst, nur die ID. */
+  onOpenDocument: (documentId: string) => void;
 }
 
 const typeLabel = (type: string): string => type.length > 0 ? type.charAt(0).toUpperCase() + type.slice(1) : type;
 
 export const GraphNodeDetailPanel: React.FC<GraphNodeDetailPanelProps> = ({
-  state, history, nodeId, onChange, onEntityChanged, onClose,
+  state, history, nodeId, documents, onChange, onEntityChanged, onClose, onOpenDocument,
 }) => {
   const { t } = useTranslation();
   const node = state.nodesById.get(nodeId);
   const closeButtonRef = useRef<HTMLButtonElement | null>(null);
+  const pickerSelectRef = useRef<HTMLSelectElement | null>(null);
 
   // Eigene Entwürfe für Beschreibung/Notiz, NUR bei Node-Wechsel neu
   // initialisiert (nicht bei jeder state-Änderung) — sonst würde gerade
@@ -52,10 +67,17 @@ export const GraphNodeDetailPanel: React.FC<GraphNodeDetailPanelProps> = ({
   // Exakt dasselbe Muster, das vorher in GraphCanvas für die Notiz galt.
   const [descriptionDraft, setDescriptionDraft] = useState(node?.description ?? '');
   const [notesDraft, setNotesDraft] = useState(node?.notes ?? '');
+  // Eigene Unterlagen: Picker-Zustand hier oben deklariert (Rules of Hooks —
+  // vor dem frühen `if (!node) return null;` unten), auch wenn die Werte erst
+  // im JSX-Body gebraucht werden.
+  const [isPickingDocument, setIsPickingDocument] = useState(false);
+  const [pickedDocumentId, setPickedDocumentId] = useState('');
 
   useEffect(() => {
     setDescriptionDraft(node?.description ?? '');
     setNotesDraft(node?.notes ?? '');
+    setIsPickingDocument(false);
+    setPickedDocumentId('');
     // Fokus geht beim Öffnen/Wechseln auf den Schließen-Button — sicher,
     // stiehlt keinem Textfeld den Fokus (kein ungewolltes Tastatur-Popup),
     // aber Tab landet danach natürlich im Panel-Inhalt (kein Fokus-Trap,
@@ -70,6 +92,51 @@ export const GraphNodeDetailPanel: React.FC<GraphNodeDetailPanelProps> = ({
     if (!node) onClose();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [node]);
+
+  // Fokus ins Dropdown, sobald der Picker erscheint — ein Tastatur-Nutzer
+  // muss nach Klick auf "+" nicht erst manuell dorthin tabben.
+  useEffect(() => {
+    if (isPickingDocument) pickerSelectRef.current?.focus();
+  }, [isPickingDocument]);
+
+  // Escape in einer Notiz/Beschreibung committet nur (Blur), schließt aber
+  // nicht gleich das ganze Panel — erst ein zweites Escape (jetzt außerhalb
+  // des Textfelds) schließt. Dieselbe Regel gilt für den Dokument-Picker:
+  // Escape bricht nur das Picken ab (gefunden bei der echten Verifikation
+  // von Phase 3 — vorher schloss Escape im offenen Dropdown versehentlich
+  // das ganze Panel, nicht nur den Picker).
+  //
+  // Bewusst ein globaler window-Listener statt onKeyDown auf dem Panel-Div
+  // (exakt dasselbe Muster wie GraphCanvas' Delete-Handler, s. dortiger
+  // Kommentar): Wenn der Picker per Escape schließt, unmounted das <select>
+  // und der Fokus fällt auf document.body — AUSSERHALB der DOM-Teilbaums
+  // dieses Panels. Ein Escape-Tastendruck von dort würde nie durch das
+  // Panel-Div bubbeln, ein component-scoped onKeyDown hätte das zweite
+  // Escape (das dann das Panel schließen soll) also nie gesehen. Ein
+  // INPUT wird bewusst übersprungen (nicht wie TEXTAREA geblurrt) — das ist
+  // ein fremdes Feld (z.B. die Node-Titel-Bearbeitung auf dem Canvas per
+  // Doppelklick), dessen eigener Escape-Handler sich darum kümmert; sonst
+  // würde dieser globale Listener parallel das Panel schließen, obwohl der
+  // Nutzer nur die Titel-Bearbeitung abbrechen wollte.
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.key !== 'Escape') return;
+      const active = document.activeElement;
+      if (active instanceof HTMLTextAreaElement) {
+        active.blur();
+        return;
+      }
+      if (active instanceof HTMLInputElement) return;
+      if (isPickingDocument) {
+        setIsPickingDocument(false);
+        setPickedDocumentId('');
+        return;
+      }
+      onClose();
+    };
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, [isPickingDocument, onClose]);
 
   if (!node) return null;
 
@@ -99,23 +166,39 @@ export const GraphNodeDetailPanel: React.FC<GraphNodeDetailPanelProps> = ({
     }
   };
 
-  // Escape in einem Textfeld committet nur (Blur), schließt aber nicht gleich
-  // das ganze Panel — erst ein zweites Escape (jetzt außerhalb des Textfelds)
-  // schließt. Kein Fokus-Trap, deshalb kein Konflikt mit Canvas-Tastenkürzeln.
-  const handleKeyDown = (e: React.KeyboardEvent) => {
-    if (e.key !== 'Escape') return;
-    if (document.activeElement instanceof HTMLTextAreaElement) {
-      document.activeElement.blur();
-      return;
+  // ── Eigene Unterlagen (Phase 3) ────────────────────────────────────────
+  // Bewusst NICHT über GraphHistoryService — NodeDocumentRef-Mutationen sind
+  // seit Phase 2 dieselbe Kategorie wie Beziehungstypen: seltene,
+  // "Einstellungs"-artige Aktionen ohne den typischen Tipp-Fehler-Charakter,
+  // für den Undo/Redo gedacht ist (s. graphHistoryService.ts Datei-Kommentar).
+  // Reihenfolge: nach Verknüpfungs-Zeitpunkt (stabil, ändert sich nicht bei
+  // einer Dokument-Umbenennung).
+  const linkedDocumentRefs = [...state.nodeDocumentsById.values()]
+    .filter(ref => ref.nodeId === nodeId)
+    .sort((a, b) => a.createdAt - b.createdAt);
+  const linkedDocumentIds = new Set(linkedDocumentRefs.map(ref => ref.documentId));
+  // Bereits verknüpfte Dokumente werden im Picker gar nicht erst angeboten —
+  // die Domain-Validierung (validateNoDuplicateNodeDocumentRef) bleibt trotzdem
+  // die eigentliche Absicherung, das hier ist nur eine freundlichere UI.
+  const linkableDocuments = documents
+    .filter(doc => !linkedDocumentIds.has(doc.id))
+    .sort((a, b) => documentDisplayName(a).localeCompare(documentDisplayName(b)));
+
+  const confirmLinkDocument = () => {
+    if (!pickedDocumentId) return;
+    const result = createNodeDocumentRef(state, { nodeId, documentId: pickedDocumentId });
+    if (!result.error && result.entity) {
+      onChange({ state: result.state, history });
+      onEntityChanged?.({ kind: 'nodeDocumentRef', action: 'create', entity: result.entity });
     }
-    onClose();
+    setIsPickingDocument(false);
+    setPickedDocumentId('');
   };
 
   return (
     <div
       className="absolute inset-y-0 right-0 w-full max-w-[340px] flex flex-col z-30 animate-in fade-in duration-200"
       style={{ background: 'var(--bg-sidebar)', borderLeft: '1px solid var(--border-color)' }}
-      onKeyDown={handleKeyDown}
     >
       {/* Kopfbereich — Titel/Typ/Hierarchie sind in unter einer Sekunde erfassbar,
           bevor überhaupt etwas anderes im Panel gelesen werden muss. */}
@@ -180,6 +263,79 @@ export const GraphNodeDetailPanel: React.FC<GraphNodeDetailPanelProps> = ({
             className="w-full text-[11px] leading-relaxed rounded-lg px-3 py-2 outline-none border resize-none bg-transparent text-slate-700 dark:text-white placeholder:text-slate-400"
             style={{ borderColor: 'var(--border-color)' }}
           />
+        </section>
+
+        <section>
+          <div className="flex items-center justify-between mb-1.5">
+            <p className="text-[9px] font-black uppercase tracking-widest text-slate-400">
+              📚 {t('kg.panel.sources')}
+            </p>
+            <button
+              onClick={() => setIsPickingDocument(true)}
+              aria-label={t('kg.panel.sourcesAdd')}
+              title={t('kg.panel.sourcesAdd')}
+              className="w-5 h-5 flex items-center justify-center rounded-md text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800 hover:text-slate-600 dark:hover:text-slate-300 transition-colors text-xs font-black"
+            >
+              +
+            </button>
+          </div>
+
+          {linkedDocumentRefs.length === 0 && !isPickingDocument && (
+            <p className="text-[10px] text-slate-400 italic">{t('kg.panel.sourcesEmpty')}</p>
+          )}
+
+          {linkedDocumentRefs.length > 0 && (
+            <ul className="space-y-1">
+              {linkedDocumentRefs.map(ref => {
+                const doc = documents.find(d => d.id === ref.documentId);
+                const label = doc ? documentDisplayName(doc) : ref.documentId;
+                return (
+                  <li key={ref.id}>
+                    <button
+                      onClick={() => onOpenDocument(ref.documentId)}
+                      title={label}
+                      className="w-full text-left text-[11px] font-bold text-slate-700 dark:text-slate-200 rounded-lg px-3 py-2 hover:bg-slate-50 dark:hover:bg-slate-800 transition-colors truncate block"
+                    >
+                      {label}
+                    </button>
+                  </li>
+                );
+              })}
+            </ul>
+          )}
+
+          {isPickingDocument && (
+            <div className="mt-2 space-y-2">
+              <select
+                ref={pickerSelectRef}
+                value={pickedDocumentId}
+                onChange={e => setPickedDocumentId(e.target.value)}
+                className="w-full text-[11px] font-bold rounded-lg px-3 py-2 outline-none border bg-transparent text-slate-700 dark:text-white"
+                style={{ borderColor: 'var(--border-color)' }}
+              >
+                <option value="">{t('kg.panel.sourcesPickPlaceholder')}</option>
+                {linkableDocuments.map(doc => (
+                  <option key={doc.id} value={doc.id}>{documentDisplayName(doc)}</option>
+                ))}
+              </select>
+              <div className="flex gap-1.5">
+                <button
+                  onClick={confirmLinkDocument}
+                  disabled={!pickedDocumentId}
+                  className="flex-1 text-[9px] font-black uppercase tracking-widest rounded-lg py-2 disabled:opacity-40 transition-colors"
+                  style={{ background: 'var(--primary)', color: 'var(--primary-text, #fff)' }}
+                >
+                  {t('kg.panel.sourcesConfirm')}
+                </button>
+                <button
+                  onClick={() => { setIsPickingDocument(false); setPickedDocumentId(''); }}
+                  className="px-3 text-[9px] font-black uppercase tracking-widest rounded-lg py-2 text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors"
+                >
+                  {t('kg.panel.sourcesCancel')}
+                </button>
+              </div>
+            </div>
+          )}
         </section>
       </div>
     </div>
