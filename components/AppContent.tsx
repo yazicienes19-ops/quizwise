@@ -491,6 +491,9 @@ export const AppContent: React.FC<AppContentProps> = (p) => {
         // heraus geöffnet wurde: dessen "Erklären"-Aktion springt genauso
         // fach-weit zu Feynman/RECALL, kein Sonderverhalten fürs Wissensnetz.
         onStartFeynman={topic => { setPendingTopic(topic); setActiveTab(ActiveTab.RECALL); }}
+        decks={decks} onDecksChange={setDecks}
+        updateMetricsAfterSession={updateMetricsAfterSession}
+        onApiError={handleApiError}
       />;
 
     default:

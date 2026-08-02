@@ -1,6 +1,6 @@
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import { createPortal } from 'react-dom';
-import { Collection, ProcessedDocument } from '../types';
+import { Collection, FlashcardDeck, ProcessedDocument } from '../types';
 import type { GraphScope } from '../services/graph/types';
 import { canUndo, canRedo } from '../services/graph/graphHistoryService';
 import { clearSelection, selectNode } from '../services/graph/graphSelectionService';
@@ -8,6 +8,7 @@ import { shouldUsePdfReader } from '../services/libraryService';
 import { useKnowledgeGraph } from '../hooks/useKnowledgeGraph';
 import { GraphCanvas } from './GraphCanvas';
 import { GraphNodeDetailPanel } from './GraphNodeDetailPanel';
+import { GraphLearningOverlay, type GraphLearningActivity } from './GraphLearningOverlay';
 import { useTranslation } from '../i18n/I18nProvider';
 import type { GenerationSource } from '../services/geminiService';
 
@@ -47,6 +48,18 @@ const PdfSplitScreenReader = React.lazy(() => import('./PdfSplitScreenReader').t
  * ohnehin auslöst. Kein Sondercode nötig, damit Zoom/Pan dabei unverändert
  * bleiben — GraphCanvas unmountet nicht, und Auswahländerungen bewegen die
  * Kamera schon heute nirgends.
+ *
+ * Phase 5 ("Aktiv lernen") — letzte große Funktionsphase. `activeActivity`
+ * hält nur die Art (Karteikarten/Quiz/Feynman/KI-Erklärung), der Ziel-Node
+ * wird live aus `graph.selection.selectedNodeId` aufgelöst (dieselbe
+ * "immer frisch, nie eine eigene Kopie"-Regel wie schon in Phase 4) — dieser
+ * Overlay und der Reader-Overlay (Phase 3) sind strukturell gleich
+ * (Vollbild-Portal, GraphCanvas bleibt gemounted) und schon dadurch
+ * gegenseitig exklusiv: ist einer offen, deckt er den ganzen Bildschirm ab,
+ * der Panel-Button für den jeweils anderen ist währenddessen gar nicht
+ * klickbar. Siehe GraphLearningOverlay.tsx für die eigentliche Umsetzung
+ * (jede Aktivität ruft exakt dieselbe bestehende Service-Funktion/
+ * Komponente wie die "normale" App — kein zweiter Workflow).
  */
 
 interface GraphSystemProps {
@@ -63,10 +76,19 @@ interface GraphSystemProps {
    *  zum Wissensnetz DIESES Fachs, legt aber bewusst nichts automatisch an
    *  (KI/Automatik schreibt nie in den Graphen, s. services/graph/graphMutationService.ts). */
   initialDoc?: ProcessedDocument;
+  /** Phase 5 ("Aktiv lernen") — identische App-weite Karteikarten-/Metrik-/
+   *  Fehlerbehandlung wie AppContent.tsx selbst nutzt, damit ein node-
+   *  gestartetes Quiz/Feynman/Karten genauso ins Lernprofil/den Streak/die
+   *  Limit-Prüfung einzahlt wie jede andere Aktivität in der App. */
+  decks: FlashcardDeck[];
+  onDecksChange: (decks: FlashcardDeck[]) => void;
+  updateMetricsAfterSession: (score: number, name: string, type: 'quiz' | 'exam' | 'recall' | 'cards') => Promise<void>;
+  onApiError: (e: unknown) => void;
 }
 
 export const GraphSystem: React.FC<GraphSystemProps> = ({
   userId, collections, activeModuleId, documents, getDocumentSource, onStartFeynman, initialDoc,
+  decks, onDecksChange, updateMetricsAfterSession, onApiError,
 }) => {
   const { t } = useTranslation();
 
@@ -85,6 +107,18 @@ export const GraphSystem: React.FC<GraphSystemProps> = ({
   // automatisch mit aktualisiert (kein veralteter, eingefrorener Snapshot).
   const [openDocumentId, setOpenDocumentId] = useState<string | null>(null);
   const openDocument = documents.find(d => d.id === openDocumentId);
+
+  // Phase 5 ("Aktiv lernen") — nur die Art merken, der Node wird live
+  // aufgelöst (s. Datei-Kommentar oben).
+  const [activeActivity, setActiveActivity] = useState<GraphLearningActivity | null>(null);
+  const activeActivityNode = activeActivity ? graph.state.nodesById.get(graph.selection.selectedNodeId ?? '') : undefined;
+
+  // Verschwindet der Node während einer laufenden Aktivität (z.B. Undo
+  // archiviert ihn), sauber schließen statt eine Karteileiche zu zeigen —
+  // dieselbe Regel wie im Panel selbst.
+  useEffect(() => {
+    if (activeActivity && !activeActivityNode) setActiveActivity(null);
+  }, [activeActivity, activeActivityNode]);
 
   return (
     <div className="space-y-3">
@@ -135,8 +169,17 @@ export const GraphSystem: React.FC<GraphSystemProps> = ({
             />
             {/* Absolutes Overlay, kein Resize der Kanvasfläche — s.
                 GraphNodeDetailPanel.tsx für die Begründung (Performance +
-                räumliche Orientierung). */}
-            {graph.selection.selectedNodeId && (
+                räumliche Orientierung).
+                Bewusst NICHT rendern, während Reader- oder Learning-Overlay
+                offen sind (echter Bug bei der Phase-5-Verifikation gefunden:
+                das Panel bleibt sonst unsichtbar HINTER dem Vollbild-Overlay
+                gemountet, sein eigener globaler Escape-Listener aus Phase 3
+                feuert aber weiterhin mit — ein Escape zum Schließen der
+                Aktivität hat dadurch gleichzeitig lautlos die Auswahl
+                gelöscht. Betraf strukturell auch schon den Reader-Overlay
+                aus Phase 3, nur nie bemerkt, weil dort bisher niemand Escape
+                statt des sichtbaren Zurück-Buttons getestet hatte. */}
+            {graph.selection.selectedNodeId && !openDocument && !activeActivity && (
               <GraphNodeDetailPanel
                 state={graph.state}
                 history={graph.history}
@@ -147,6 +190,7 @@ export const GraphSystem: React.FC<GraphSystemProps> = ({
                 onClose={() => graph.onSelectionChange(clearSelection(graph.selection))}
                 onOpenDocument={setOpenDocumentId}
                 onSelectNode={id => graph.onSelectionChange(selectNode(graph.selection, id))}
+                onStartActivity={setActiveActivity}
               />
             )}
           </>
@@ -184,6 +228,21 @@ export const GraphSystem: React.FC<GraphSystemProps> = ({
           </React.Suspense>
         </div>,
         document.body,
+      )}
+
+      {activeActivity && activeActivityNode && (
+        <GraphLearningOverlay
+          node={activeActivityNode}
+          activity={activeActivity}
+          onClose={() => setActiveActivity(null)}
+          userId={userId}
+          documents={documents}
+          collections={collections}
+          decks={decks}
+          onDecksChange={onDecksChange}
+          updateMetricsAfterSession={updateMetricsAfterSession}
+          onApiError={onApiError}
+        />
       )}
     </div>
   );
