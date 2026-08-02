@@ -1,6 +1,6 @@
 # StudeArc Knowledge Graph — Softwarekonzept
 
-Status: **Konzeptphase abgeschlossen. Phase 1–4 (Datenbank bis Application-Schicht), Phase 5A/5B (Usability-Fixes, Relationship UX) sind umgesetzt und in die echte App integriert** (Produktname: "Wissensnetz", ersetzt die alte Mindmap vollständig, `components/GraphSystem.tsx`). Die alten Mindmap-Dateien wurden entfernt. Konkreter Implementierungsstand, Nachtests und Phasenprotokolle stehen in `KNOWLEDGE_GRAPH_PHASE1_PLAN.md` — dieses Dokument bleibt die Produkt-/Architektur-Vision. **Seit 2026-08-02 zusätzlich verbindlich:** die ConceptNode-Architekturentscheidung am Ende dieses Dokuments — Grundlage für jede künftige Verzahnung mit Quiz/Karteikarten/Klausur/Feynman/Lernanalyse.
+Status: **Konzeptphase endgültig abgeschlossen (2026-08-02).** Architektur, Produktphilosophie und UX des Wissensnetzes (inkl. der finalen Seitenpanel-Struktur, Abschnitt 2) gelten ab jetzt als verbindlich — Grundsatzfragen werden nicht mehr routinemäßig neu aufgerollt, nur noch bei echten, neu auftretenden Widersprüchen. Phase 1–4 (Datenbank bis Application-Schicht), Phase 5A/5B (Usability-Fixes, Relationship UX) sind umgesetzt und in die echte App integriert (Produktname: "Wissensnetz", ersetzt die alte Mindmap vollständig, `components/GraphSystem.tsx`). Die alten Mindmap-Dateien wurden entfernt. Konkreter Implementierungsstand, Nachtests und Phasenprotokolle stehen in `KNOWLEDGE_GRAPH_PHASE1_PLAN.md`. Die ConceptNode-Architekturentscheidung und das finale Seitenpanel-Konzept stehen am Ende dieses Dokuments bzw. in Abschnitt 2 — Grundlage für jede künftige Verzahnung mit Quiz/Karteikarten/Klausur/Feynman/Lernanalyse und für die jetzt beginnende Umsetzungsphase.
 
 ---
 
@@ -36,6 +36,20 @@ Langfristig hängen an jedem Node: die Dokumentstellen, aus denen das Konzept st
 **Hauptfläche:** Der Graph selbst — Pan/Zoom-Canvas, Nodes als kompakte Karten (Titel, Icon, Farbe, kleiner Typ-Tag), Edges als beschriftete Linien. Kein Auto-Layout-Zwang: Nodes bleiben, wo der Nutzer sie hinlegt (siehe Abschnitt 11).
 
 **Seitenpanel statt Vollbild-Navigation.** Das ist ein bewusster Bruch mit dem bisherigen Navigationsmuster der App: Bibliothek → `SourceDetailPage` und Mindmap-Liste → `MindmapEditor` ersetzen beim Klick die komplette Ansicht (`onBack`-Pattern). Für den Graphen wäre das falsch — der Nutzer verliert bei jedem Klick auf einen Node die räumliche Orientierung im Graphen. Stattdessen: Klick auf Node → Panel schiebt sich von rechts ein, Canvas bleibt sichtbar und interaktiv darunter/daneben (angelehnt an Obsidian/Notion/Figma-Inspector). Technisch ist das keine Neuerfindung: `MindmapEditor.tsx` nutzt bereits ein Zwei-Spalten-Grid (`lg:col-span-4` Outline / `lg:col-span-6` Canvas) — wir übernehmen dieselbe Grid-Technik, nur dass die rechte Spalte jetzt bedingt ein- und ausblendet statt permanent zwei Editoren nebeneinander zu zeigen.
+
+**Finale Struktur des Seitenpanels (2026-08-02, verbindlich — Produktprinzip: "Arbeitsplatz eines einzelnen Konzepts", kein Dashboard, kein Dateiexplorer):**
+
+1. **Kopfbereich** — Titel, Node-Typ, Hierarchie. Beantwortet "welches Konzept sehe ich gerade" in unter einer Sekunde.
+2. **Beschreibung** — objektive Beschreibung des Konzepts (`GraphNode.description`), nicht das persönliche Verständnis. Optional, bleibt leer wenn nicht gepflegt.
+3. **📝 Eigene Notizen** — persönliches Verständnis (`GraphNode.notes`). Immer sichtbar, nicht hinter einem Tab, nicht einklappbar. Wichtigster Bereich des Panels (höchster nachgewiesener Lernwert aus den bisherigen echten Nutzungstests).
+4. **📚 Eigene Unterlagen** — verknüpfte Dokumente über `GraphNodeDocumentRef` (nur `nodeId`+`documentId`, keine Seitenzahlen/Absatzreferenzen — kein zweiter PDF-Reader). Kategorien heute: Vorlesung, Zusammenfassung, Mitschrift. Später zusätzlich externe Quellen (Wikipedia, wissenschaftliche Webseiten, hochwertige Lernvideos) — eigener, noch offener Diskriminator, kein Bestandteil dieser Entscheidung.
+5. **🔗 Verwandte Konzepte** — direkt verbundene Nodes mit sichtbarem Beziehungstyp (z. B. "→ gehört zu"). Zentraler USP: die einzige Information im ganzen Panel, die kein anderes Modul der App liefern kann.
+6. **Aktiv lernen** — schmale Aktionszeile, keine Dashboard-Kacheln: Karteikarten, Quiz, Feynman, KI-Erklärung. Bewusst **keine** Klausur/Prüfungsaufgaben pro Node (Klausur-Simulator bleibt eigenständiges Werkzeug für vollständige Prüfungen — ein einzelnes Konzept ist die falsche Größenordnung dafür). Quiz (3–5 Fragen) und Feynman (eine kurze Erklärung) sind bewusst kurze, node-gebundene Sitzungen, keine vollständigen Modul-Sitzungen — Ergebnis erscheint im Panel, kein Tab-Wechsel, der Nutzer bleibt am Node. Alle vier Aktivitäten sind **prospektiv-generativ** (live aus Titel+Beschreibung+Notiz erzeugt), nicht retrospektiv — echte Verknüpfung mit bestehenden Karten/Fragen ist erst Gegenstand der ConceptNode-Konvergenz (Roadmap Phase 3.E).
+7. **Lernstatus** — Platzhalter, erst sinnvoll befüllbar nach Phase 3.D/E der ConceptNode-Konvergenz.
+
+Zwei Begriffs-Kollisionen wurden bei der Finalisierung bewusst aufgelöst, nicht übersehen: Abschnitt 2 heißt "Beschreibung", nicht "Definition" (kollidiert sonst mit dem gleichnamigen Node-Typ). Die Quellen-Kategorie in Abschnitt 4 heißt "Mitschrift", nicht "Eigene Notizen" (kollidiert sonst mit Abschnitt 3).
+
+**Offen, bewusst nicht Teil dieser Entscheidung:** Karteikarten sind strukturell anders als Quiz/Feynman/KI-Erklärung — sie erzeugen einen dauerhaften Datensatz (neue `Flashcard`-Zeilen), der ein Ziel-Deck braucht, während Quiz/Feynman/KI-Erklärung folgenlose Einmal-Sitzungen sind. Welches Deck eine node-generierte Karteikarte bekommt, ist beim tatsächlichen Bau dieser Aktivität zu klären, nicht jetzt.
 
 **Suche statt nur Navigation.** Ab ca. 50+ Nodes ist reines Herumnavigieren im Canvas nicht mehr die primäre Zugriffsart. Eine Befehlsleiste (⌘/Strg+K) zum Suchen *und* Neuanlegen von Nodes ist ab Phase 1 Pflicht, kein Nice-to-have.
 
@@ -130,8 +144,9 @@ Der Codebase verwendet aktuell **keine** globale State-Library (kein Redux/Zusta
 ```
 KnowledgeGraphSystem        — Einstiegspunkt, lädt Graph für aktiven Scope (kein "Liste vieler Mindmaps" mehr)
 ├── KnowledgeGraphCanvas     — Pan/Zoom/Drag, rendert Nodes+Edges (Renderer austauschbar, s. Abschnitt 10)
-├── GraphNodeDetailPanel     — Seitenpanel: Titel/Beschreibung/Notizen/Tags/Dokument-Refs/Beziehungen,
-│                              später Tabs: Karteikarten, Quiz, Feynman, KI-Erklärung
+├── GraphNodeDetailPanel     — Seitenpanel, finale 7-Abschnitt-Struktur s. Abschnitt 2:
+│                              Kopfbereich/Beschreibung/Eigene Notizen/Eigene Unterlagen/
+│                              Verwandte Konzepte/Aktiv lernen (Karteikarten,Quiz,Feynman,KI-Erklärung)/Lernstatus
 ├── GraphSearchCommandBar    — ⌘K: Node suchen ODER direkt neu anlegen
 ├── GraphFilterBar           — Filter nach Fach/Tag/Node-Typ/Beziehungstyp, Fokus-Modus (Hop-Distanz)
 ├── GraphRelationTypeManager — eigene Beziehungstypen verwalten
