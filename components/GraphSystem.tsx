@@ -3,7 +3,7 @@ import { createPortal } from 'react-dom';
 import { Collection, ProcessedDocument } from '../types';
 import type { GraphScope } from '../services/graph/types';
 import { canUndo, canRedo } from '../services/graph/graphHistoryService';
-import { clearSelection } from '../services/graph/graphSelectionService';
+import { clearSelection, selectNode } from '../services/graph/graphSelectionService';
 import { shouldUsePdfReader } from '../services/libraryService';
 import { useKnowledgeGraph } from '../hooks/useKnowledgeGraph';
 import { GraphCanvas } from './GraphCanvas';
@@ -41,6 +41,12 @@ const PdfSplitScreenReader = React.lazy(() => import('./PdfSplitScreenReader').t
  * `createPortal` nach `document.body`, weil der Karten-Container weiter unten
  * bewusst `overflow-hidden` hat (rundet die Ecken) — ein normales absolutes
  * Overlay würde daran geclippt, ein Portal umgeht das sauber.
+ *
+ * Phase 4 ("Verwandte Konzepte") — `onSelectNode` ruft nur `selectNode()`
+ * auf, denselben Selektionswechsel, den ein Klick auf den Node im Canvas
+ * ohnehin auslöst. Kein Sondercode nötig, damit Zoom/Pan dabei unverändert
+ * bleiben — GraphCanvas unmountet nicht, und Auswahländerungen bewegen die
+ * Kamera schon heute nirgends.
  */
 
 interface GraphSystemProps {
@@ -140,6 +146,7 @@ export const GraphSystem: React.FC<GraphSystemProps> = ({
                 onEntityChanged={graph.onEntityChanged}
                 onClose={() => graph.onSelectionChange(clearSelection(graph.selection))}
                 onOpenDocument={setOpenDocumentId}
+                onSelectNode={id => graph.onSelectionChange(selectNode(graph.selection, id))}
               />
             )}
           </>
