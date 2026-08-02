@@ -5,9 +5,12 @@ import type { GraphState, GraphNodePosition, GraphEntityChange } from '../servic
 import { buildGraphIndex } from '../services/graph/graphIndex';
 import { resolveOverlaps } from '../services/graph/graphLayoutEngine';
 import {
-  type GraphSelectionState, selectNode, clearSelection, hoverNode, isSelected, isHovered,
+  type GraphSelectionState, selectNode, selectEdge, clearSelection, hoverNode, isSelected, isHovered, isEdgeSelected,
 } from '../services/graph/graphSelectionService';
-import { type GraphHistory, recordCreateNode, recordUpdateNode, recordArchiveNode, recordCreateEdge } from '../services/graph/graphHistoryService';
+import {
+  type GraphHistory, recordCreateNode, recordUpdateNode, recordArchiveNode,
+  recordCreateEdge, recordUpdateEdge, recordArchiveEdge,
+} from '../services/graph/graphHistoryService';
 import { createRelationType } from '../services/graph/graphMutationService';
 
 /**
@@ -16,7 +19,18 @@ import { createRelationType } from '../services/graph/graphMutationService';
  * löschbar, Beziehungstyp wird beim Kantenziehen bewusst per Texteingabe
  * gewählt statt automatisch defaultet (s. KNOWLEDGE_GRAPH_USABILITY_SESSION.md
  * — der stille Default widersprach der Kernregel "Nutzer ist bewusster Autor
- * jeder Bedeutung im Graphen").
+ * jeder Bedeutung im Graphen"). Phase 5B (Relationship UX, s. Nachtest-Sektion
+ * am Ende desselben Dokuments): ein abgelehnter Kanten-Versuch (Duplikat)
+ * zeigt jetzt eine verständliche Meldung statt kommentarlos zu verschwinden;
+ * Kanten sind jetzt genau wie Nodes auswählbar (breiter, unsichtbarer
+ * Hit-Bereich neben der sichtbaren Linie) und darüber ansehbar, umbenennbar
+ * (dieselbe Freitext-Logik wie beim Anlegen) und löschbar (Entf-Taste oder
+ * Button im Editier-Overlay). Jede Kante zeigt ihre Bedeutung jetzt direkt
+ * auf der Fläche (horizontales Label mit Hintergrund-Pille am
+ * Kantenmittelpunkt, kein Menü/Inspector nötig); liegen mehrere Kanten
+ * zwischen demselben Node-Paar (unterschiedliche Beziehungstypen sind
+ * erlaubt, nur inhaltliche Duplikate nicht), werden nur ihre Labels
+ * gestaffelt versetzt — reine Anzeigekorrektur, keine Linien-Geometrie.
  *
  * UI-Schicht-Grenze bewusst eingehalten: diese Komponente importiert keine
  * Infrastructure (GraphRepository/GraphSyncService/GraphPersistenceService).
@@ -71,6 +85,28 @@ export const GraphCanvas: React.FC<GraphCanvasProps> = ({
   const index = useMemo(() => buildGraphIndex(state), [state]);
   const visibleEdges = useMemo(() => [...index.edgesBySource.values()].flat(), [index]);
 
+  // Phase 5B Punkt 2: zwei unterschiedliche Beziehungstypen zwischen
+  // demselben Node-Paar sind erlaubt (nur inhaltliche Duplikate werden
+  // blockiert, s. validateNoDuplicateEdge) — beide Kanten wären ohne diesen
+  // Index optisch identische, deckungsgleiche Linien mit exakt
+  // übereinanderliegenden Labels. Reine Anzeige-Korrektur (nur die
+  // Label-Position wird pro Kante innerhalb ihrer Gruppe leicht versetzt),
+  // KEINE Änderung an Linien-Geometrie/Layout-Engine.
+  const edgeParallelIndex = useMemo(() => {
+    const groups = new Map<string, string[]>();
+    for (const edge of visibleEdges) {
+      const key = [edge.sourceNodeId, edge.targetNodeId].sort().join('|');
+      const ids = groups.get(key) ?? [];
+      ids.push(edge.id);
+      groups.set(key, ids);
+    }
+    const indexById = new Map<string, number>();
+    for (const ids of groups.values()) {
+      ids.forEach((id, i) => indexById.set(id, i));
+    }
+    return indexById;
+  }, [visibleEdges]);
+
   // Nur rein visuelle Entzerrung exakt überlappender Nodes — wird NICHT in
   // state/history committet. Ein automatischer Hintergrund-Commit hier würde
   // sonst als überraschender Eintrag im Undo-Stack auftauchen, obwohl der
@@ -88,6 +124,21 @@ export const GraphCanvas: React.FC<GraphCanvasProps> = ({
     (nodeId: string): GraphNodePosition => displayPositions.get(nodeId) ?? { x: 0, y: 0 },
     [displayPositions],
   );
+
+  // Am NODE_RADIUS gekürzte Endpunkte einer Kante plus Mittelpunkt — einmal
+  // berechnet, sowohl fürs Linien-Rendering als auch für die Positionierung
+  // des Bearbeiten-Overlays (Phase 5B) genutzt, damit beide immer exakt
+  // übereinstimmen.
+  const computeEdgeGeometry = useCallback((edge: { sourceNodeId: string; targetNodeId: string }) => {
+    const from = positionOf(edge.sourceNodeId);
+    const to = positionOf(edge.targetNodeId);
+    const angle = Math.atan2(to.y - from.y, to.x - from.x);
+    const x1 = from.x + Math.cos(angle) * NODE_RADIUS;
+    const y1 = from.y + Math.sin(angle) * NODE_RADIUS;
+    const x2 = to.x - Math.cos(angle) * NODE_RADIUS;
+    const y2 = to.y - Math.sin(angle) * NODE_RADIUS;
+    return { x1, y1, x2, y2, midX: (x1 + x2) / 2, midY: (y1 + y2) / 2 };
+  }, [positionOf]);
 
   // ── Pan/Zoom (Muster aus MindmapCanvas.tsx, angepasst) ──────────────────
   const fitView = useCallback(() => {
@@ -293,30 +344,6 @@ export const GraphCanvas: React.FC<GraphCanvasProps> = ({
     };
   }, [edgeDraft, clientToGraphPoint]);
 
-  // ── Node löschen über die Entf-Taste (Phase 5A Punkt 3) ─────────────────
-  // Bewusst archiveNode (undo-fähig, Soft Delete), nicht purgeNode — das
-  // endgültige Löschen bleibt eine bewusste Zweitaktion, s. Datenmodell.
-  // "Noch keine perfekte UX" (User-Vorgabe) — kein Kontextmenü, keine
-  // Bestätigung, nur die Taste. Reagiert nicht, während der Titel ODER die
-  // Notiz gerade bearbeitet wird (sonst würde Löschen von Zeichen im
-  // Textfeld/der Textarea stattdessen den ganzen Node archivieren) oder
-  // während gezogen wird.
-  useEffect(() => {
-    const handleKeyDown = (e: KeyboardEvent) => {
-      if (editingNodeId || isEditingNotes || nodeDrag || edgeDraft) return;
-      if (e.key !== 'Delete' || !selection.selectedNodeId) return;
-      e.preventDefault();
-      const result = recordArchiveNode(history, state, selection.selectedNodeId);
-      if (!result.error && result.entity) {
-        onChange({ state: result.state, history: result.history });
-        onSelectionChange(clearSelection(selection));
-        onEntityChanged?.({ kind: 'node', entity: result.entity });
-      }
-    };
-    window.addEventListener('keydown', handleKeyDown);
-    return () => window.removeEventListener('keydown', handleKeyDown);
-  }, [editingNodeId, isEditingNotes, nodeDrag, edgeDraft, selection, history, state, onChange, onSelectionChange, onEntityChanged]);
-
   // ── Beziehung bewusst wählen (Phase 5A Punkt 5) ─────────────────────────
   // Kein stiller Standard-Beziehungstyp mehr. Loslassen über einem Zielnode
   // öffnet eine einfache Texteingabe ("Beziehung eingeben...") statt sofort
@@ -324,6 +351,13 @@ export const GraphCanvas: React.FC<GraphCanvasProps> = ({
   // Eingabe (leer lassen, Escape) erzeugt bewusst KEINE Kante.
   interface EdgePromptState { sourceNodeId: string; targetNodeId: string; position: GraphNodePosition; value: string; }
   const [edgePrompt, setEdgePrompt] = useState<EdgePromptState | null>(null);
+  // Phase 5B Punkt 1: Nachtest zeigte, dass ein Duplikat-Versuch das Prompt
+  // kommentarlos schließt — keine technische Fehlermeldung, aber auch keine
+  // Rückmeldung ist keine Lösung. Der Ablehnungsgrund aus GraphValidationService
+  // ist bereits eine verständliche, undokumentierte Alltagssprache-Meldung
+  // (z.B. "Eine Kante mit dem Beziehungstyp ... existiert bereits.") — die wird
+  // hier einfach sichtbar gemacht, statt sie zu verwerfen.
+  const [edgePromptError, setEdgePromptError] = useState<string | null>(null);
   const edgePromptInputRef = useRef<HTMLInputElement | null>(null);
 
   useEffect(() => {
@@ -336,45 +370,155 @@ export const GraphCanvas: React.FC<GraphCanvasProps> = ({
     const { sourceNodeId } = edgeDraft;
     setEdgeDraft(null);
     if (sourceNodeId === targetNodeId) return;
+    setEdgePromptError(null);
     setEdgePrompt({ sourceNodeId, targetNodeId, position: clientToGraphPoint(e.clientX, e.clientY), value: '' });
   };
 
-  const cancelEdgePrompt = () => setEdgePrompt(null);
+  const cancelEdgePrompt = () => { setEdgePrompt(null); setEdgePromptError(null); };
 
   const commitEdgePrompt = () => {
     if (!edgePrompt) return;
     const label = edgePrompt.value.trim();
     if (label.length === 0) { setEdgePrompt(null); return; } // keine Eingabe = keine Kante, nichts wird interpretiert
 
-    // Exakte (case-insensitive) Übereinstimmung mit einem bereits vorhandenen
-    // Typ wiederverwenden (eingebaut oder eigener) — sonst spontan einen
-    // neuen eigenen Beziehungstyp anlegen. Läuft bewusst NICHT über die
-    // History (s. Datei-Kommentar oben), nur die Kante selbst ist undo-fähig.
+    // resolveRelationTypeId: exakte (case-insensitive) Übereinstimmung mit
+    // einem bereits vorhandenen Typ wiederverwenden, sonst spontan einen
+    // neuen eigenen anlegen. Läuft bewusst NICHT über die History (s.
+    // Datei-Kommentar oben), nur die Kante selbst ist undo-fähig.
+    const resolved = resolveRelationTypeId(label);
+    if (resolved.error || !resolved.relationTypeId) { setEdgePromptError(resolved.error ?? null); return; }
+
+    const edgeResult = recordCreateEdge(history, resolved.workingState, {
+      sourceNodeId: edgePrompt.sourceNodeId, targetNodeId: edgePrompt.targetNodeId, relationTypeId: resolved.relationTypeId,
+    });
+    if (edgeResult.error || !edgeResult.entity) {
+      // Prompt bleibt bewusst offen (statt setEdgePrompt(null)) — der Nutzer
+      // sieht den Grund direkt unter der Eingabe und kann korrigieren oder
+      // bewusst mit Escape abbrechen, statt zu rätseln, ob der Klick verpufft ist.
+      setEdgePromptError(edgeResult.error ?? 'Diese Beziehung konnte nicht angelegt werden.');
+      return;
+    }
+    setEdgePromptError(null);
+    setEdgePrompt(null);
+    onChange({ state: edgeResult.state, history: edgeResult.history });
+    onEntityChanged?.({ kind: 'edge', entity: edgeResult.entity });
+  };
+
+  /** Exakte (case-insensitive) Übereinstimmung mit einem bestehenden
+   *  Beziehungstyp wiederverwenden, sonst einen neuen anlegen — dieselbe
+   *  Logik wie beim Kantenziehen (commitEdgePrompt), jetzt auch fürs
+   *  nachträgliche Umbenennen einer bestehenden Kante gebraucht (Phase 5B). */
+  const resolveRelationTypeId = (label: string): { workingState: GraphState; relationTypeId?: string; error?: string } => {
     const existing = [...state.relationTypesById.values()].find(
       rt => rt.label.trim().toLowerCase() === label.toLowerCase(),
     );
+    if (existing) return { workingState: state, relationTypeId: existing.id };
+    const createResult = createRelationType(state, { label });
+    if (createResult.error || !createResult.entity) return { workingState: state, error: createResult.error };
+    onEntityChanged?.({ kind: 'relationType', entity: createResult.entity });
+    return { workingState: createResult.state, relationTypeId: createResult.entity.id };
+  };
 
-    let workingState = state;
-    let relationTypeId: string;
-    if (existing) {
-      relationTypeId = existing.id;
-    } else {
-      const createResult = createRelationType(workingState, { label });
-      if (createResult.error || !createResult.entity) { setEdgePrompt(null); return; }
-      workingState = createResult.state;
-      relationTypeId = createResult.entity.id;
-      onEntityChanged?.({ kind: 'relationType', entity: createResult.entity });
+  // ── Beziehung ansehen/ändern/löschen (Phase 5B) ──────────────────────────
+  // Klick auf die Kante wählt sie aus (s. Hit-Line im Rendering) — dieselbe
+  // Selektion steuert Highlight (Ansehen), das Editier-Overlay (Ändern) und
+  // die Entf-Taste (Löschen). Kein Kontextmenü, kein Formular — Muster aus
+  // Phase 5A 1:1 auf Kanten übertragen: HTML-Overlay am Kantenmittelpunkt,
+  // Text kommt aus dem bestehenden Beziehungstyp/Label, "Ändern" läuft über
+  // dieselbe Frei-Text-Logik wie das Anlegen (resolveRelationTypeId oben),
+  // inklusive derselben Duplikat-Rückmeldung wie in Punkt 1.
+  interface EdgeEditDraft { edgeId: string; value: string; originalValue: string; }
+  const [edgeEditDraft, setEdgeEditDraft] = useState<EdgeEditDraft | null>(null);
+  const [edgeEditError, setEdgeEditError] = useState<string | null>(null);
+  const [isEditingEdgeLabel, setIsEditingEdgeLabel] = useState(false);
+
+  // Initialisiert den Entwurf nur bei Auswahl-Wechsel, nicht bei jeder
+  // state-Änderung — dieselbe Überlegung wie beim notesDraft-Effekt oben
+  // (sonst würde gerade getippter Text durch unabhängige Änderungen anderswo
+  // überschrieben).
+  useEffect(() => {
+    if (!selection.selectedEdgeId) { setEdgeEditDraft(null); setEdgeEditError(null); return; }
+    const edge = state.edgesById.get(selection.selectedEdgeId);
+    if (!edge) { setEdgeEditDraft(null); return; }
+    const relationType = state.relationTypesById.get(edge.relationTypeId);
+    const currentLabel = edge.label || relationType?.label || '';
+    setEdgeEditDraft({ edgeId: edge.id, value: currentLabel, originalValue: currentLabel });
+    setEdgeEditError(null);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [selection.selectedEdgeId]);
+
+  const cancelEdgeEdit = () => {
+    setEdgeEditDraft(prev => prev && { ...prev, value: prev.originalValue });
+    setEdgeEditError(null);
+  };
+
+  const commitEdgeEdit = () => {
+    if (!edgeEditDraft) return;
+    const label = edgeEditDraft.value.trim();
+    if (label.length === 0) { cancelEdgeEdit(); return; } // leer = keine Änderung, bestehender Typ bleibt
+
+    const edge = state.edgesById.get(edgeEditDraft.edgeId);
+    if (!edge) return;
+
+    const resolved = resolveRelationTypeId(label);
+    if (resolved.error || !resolved.relationTypeId) { setEdgeEditError(resolved.error ?? null); return; }
+    if (resolved.relationTypeId === edge.relationTypeId) { setEdgeEditError(null); return; } // unverändert (auch nach Groß-/Kleinschreibung), kein Commit nötig
+
+    const result = recordUpdateEdge(history, resolved.workingState, edgeEditDraft.edgeId, { relationTypeId: resolved.relationTypeId });
+    if (result.error || !result.entity) {
+      // Genau dieselbe Rückmeldung wie beim Neu-Anlegen (Punkt 1) — ein
+      // Duplikat-Versuch beim Umbenennen darf ebenso wenig kommentarlos
+      // verpuffen.
+      setEdgeEditError(result.error ?? 'Diese Änderung konnte nicht gespeichert werden.');
+      return;
     }
+    setEdgeEditError(null);
+    onChange({ state: result.state, history: result.history });
+    onEntityChanged?.({ kind: 'edge', entity: result.entity });
+    setEdgeEditDraft(prev => prev && { ...prev, originalValue: label });
+  };
 
-    const edgeResult = recordCreateEdge(history, workingState, {
-      sourceNodeId: edgePrompt.sourceNodeId, targetNodeId: edgePrompt.targetNodeId, relationTypeId,
-    });
-    setEdgePrompt(null);
-    if (!edgeResult.error && edgeResult.entity) {
-      onChange({ state: edgeResult.state, history: edgeResult.history });
-      onEntityChanged?.({ kind: 'edge', entity: edgeResult.entity });
+  const deleteSelectedEdge = () => {
+    if (!selection.selectedEdgeId) return;
+    const result = recordArchiveEdge(history, state, selection.selectedEdgeId);
+    if (!result.error && result.entity) {
+      onChange({ state: result.state, history: result.history });
+      onSelectionChange(clearSelection(selection));
+      onEntityChanged?.({ kind: 'edge', entity: result.entity });
     }
   };
+
+  // ── Node/Kante löschen über die Entf-Taste (Phase 5A Punkt 3, Phase 5B) ──
+  // Bewusst archiveNode/archiveEdge (undo-fähig, Soft Delete), nicht
+  // purgeNode — das endgültige Löschen bleibt eine bewusste Zweitaktion, s.
+  // Datenmodell. "Noch keine perfekte UX" (User-Vorgabe) — kein
+  // Kontextmenü, keine Bestätigung, nur die Taste. Reagiert nicht, während
+  // Titel, Notiz ODER Kanten-Label gerade bearbeitet werden (sonst würde
+  // Löschen von Zeichen im Textfeld stattdessen die ganze Entität
+  // archivieren) oder während gezogen wird. selectedNodeId/selectedEdgeId
+  // schließen sich gegenseitig aus (s. graphSelectionService), deshalb reicht
+  // ein einzelner Handler für beide.
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (editingNodeId || isEditingNotes || isEditingEdgeLabel || nodeDrag || edgeDraft) return;
+      if (e.key !== 'Delete') return;
+      if (selection.selectedNodeId) {
+        e.preventDefault();
+        const result = recordArchiveNode(history, state, selection.selectedNodeId);
+        if (!result.error && result.entity) {
+          onChange({ state: result.state, history: result.history });
+          onSelectionChange(clearSelection(selection));
+          onEntityChanged?.({ kind: 'node', entity: result.entity });
+        }
+      } else if (selection.selectedEdgeId) {
+        e.preventDefault();
+        deleteSelectedEdge();
+      }
+    };
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [editingNodeId, isEditingNotes, isEditingEdgeLabel, nodeDrag, edgeDraft, selection, history, state, onChange, onSelectionChange, onEntityChanged]);
 
   // ── Hintergrund: Klick = Auswahl aufheben, Doppelklick = neuer Node ─────
   const handleBackgroundClick = () => onSelectionChange(clearSelection(selection));
@@ -412,23 +556,59 @@ export const GraphCanvas: React.FC<GraphCanvasProps> = ({
         <g ref={gRef}>
           <AnimatePresence initial={false}>
             {visibleEdges.map(edge => {
-              const from = positionOf(edge.sourceNodeId);
-              const to = positionOf(edge.targetNodeId);
-              const angle = Math.atan2(to.y - from.y, to.x - from.x);
-              const x1 = from.x + Math.cos(angle) * NODE_RADIUS;
-              const y1 = from.y + Math.sin(angle) * NODE_RADIUS;
-              const x2 = to.x - Math.cos(angle) * NODE_RADIUS;
-              const y2 = to.y - Math.sin(angle) * NODE_RADIUS;
+              const { x1, y1, x2, y2, midX, midY } = computeEdgeGeometry(edge);
+              const edgeSelected = isEdgeSelected(selection, edge.id);
+              // Bedeutung direkt auf der Fläche sichtbar (Phase 5B Punkt 2) —
+              // ohne Menü/Inspector. `label` ist der Freitext-Override am
+              // Edge-Datensatz (heute von keiner UI gesetzt, aber
+              // vorrangig falls vorhanden), sonst der Name des Beziehungstyps.
+              const relationType = state.relationTypesById.get(edge.relationTypeId);
+              const rawLabel = edge.label || relationType?.label || '';
+              const displayLabel = rawLabel.length > 20 ? `${rawLabel.slice(0, 19)}…` : rawLabel;
+              const labelOffsetY = (edgeParallelIndex.get(edge.id) ?? 0) * 14;
+              const labelWidth = Math.max(28, displayLabel.length * 5 + 12);
               return (
-                <motion.line
+                <motion.g
                   key={edge.id}
-                  x1={x1} y1={y1} x2={x2} y2={y2}
-                  stroke="var(--border-color, #cbd5e1)"
-                  strokeWidth={2}
                   initial={{ opacity: 0 }}
                   animate={{ opacity: 1 }}
                   exit={{ opacity: 0 }}
-                />
+                >
+                  {/* Unsichtbarer breiter Hit-Bereich (Phase 5B) — die
+                      sichtbare Linie selbst ist mit 2px zu schmal, um
+                      zuverlässig klickbar zu sein. */}
+                  <line
+                    x1={x1} y1={y1} x2={x2} y2={y2}
+                    stroke="transparent" strokeWidth={14}
+                    onClick={e => { e.stopPropagation(); onSelectionChange(selectEdge(selection, edge.id)); }}
+                    style={{ cursor: 'pointer' }}
+                  />
+                  <line
+                    x1={x1} y1={y1} x2={x2} y2={y2}
+                    stroke={edgeSelected ? 'var(--primary)' : 'var(--border-color, #cbd5e1)'}
+                    strokeWidth={edgeSelected ? 3 : 2}
+                    style={{ pointerEvents: 'none' }}
+                  />
+                  {/* Während der Bearbeitung übernimmt das HTML-Overlay
+                      (Editier-Input) exakt dieselbe Stelle — Label hier
+                      ausblenden statt doppelt zu rendern. Bewusst horizontal
+                      (nicht mit der Kante rotiert): bleibt bei jedem
+                      Kantenwinkel aufrecht lesbar, wie die Node-Titel auch. */}
+                  {!edgeSelected && displayLabel && (
+                    <g transform={`translate(${midX}, ${midY + labelOffsetY})`} style={{ pointerEvents: 'none' }}>
+                      <rect
+                        x={-labelWidth / 2} y={-8} width={labelWidth} height={16} rx={4}
+                        fill="var(--bg-sidebar, #fff)" stroke="var(--border-color, #e2e8f0)" strokeWidth={1}
+                      />
+                      <text
+                        textAnchor="middle" y={3}
+                        className="text-[9px] font-bold fill-slate-500 dark:fill-slate-300 select-none"
+                      >
+                        {displayLabel}
+                      </text>
+                    </g>
+                  )}
+                </motion.g>
               );
             })}
             {edgeDraft && (
@@ -540,22 +720,78 @@ export const GraphCanvas: React.FC<GraphCanvasProps> = ({
         const screenX = zoomTransform.x + zoomTransform.k * edgePrompt.position.x;
         const screenY = zoomTransform.y + zoomTransform.k * edgePrompt.position.y;
         return (
-          <input
-            ref={edgePromptInputRef}
-            value={edgePrompt.value}
-            placeholder="Beziehung eingeben…"
-            onChange={e => setEdgePrompt(prev => prev && { ...prev, value: e.target.value })}
-            onKeyDown={e => {
-              if (e.key === 'Enter') { e.preventDefault(); commitEdgePrompt(); }
-              else if (e.key === 'Escape') { e.preventDefault(); cancelEdgePrompt(); }
-            }}
-            onBlur={cancelEdgePrompt}
-            className="absolute text-[10px] font-bold rounded-md px-2 py-1.5 outline-none border-2 bg-white dark:bg-slate-800 dark:text-white"
-            style={{
-              left: screenX, top: screenY, transform: 'translate(-50%, -50%)',
-              width: 160, borderColor: 'var(--primary)', zIndex: 25,
-            }}
-          />
+          <div className="absolute" style={{ left: screenX, top: screenY, transform: 'translate(-50%, -50%)', zIndex: 25 }}>
+            <input
+              ref={edgePromptInputRef}
+              value={edgePrompt.value}
+              placeholder="Beziehung eingeben…"
+              onChange={e => {
+                setEdgePrompt(prev => prev && { ...prev, value: e.target.value });
+                setEdgePromptError(null);
+              }}
+              onKeyDown={e => {
+                if (e.key === 'Enter') { e.preventDefault(); commitEdgePrompt(); }
+                else if (e.key === 'Escape') { e.preventDefault(); cancelEdgePrompt(); }
+              }}
+              onBlur={cancelEdgePrompt}
+              className="text-[10px] font-bold rounded-md px-2 py-1.5 outline-none border-2 bg-white dark:bg-slate-800 dark:text-white"
+              style={{ width: 160, borderColor: edgePromptError ? '#ef4444' : 'var(--primary)' }}
+            />
+            {edgePromptError && (
+              <div
+                className="text-[9px] font-bold text-red-500 bg-white dark:bg-slate-800 rounded px-1.5 py-1 shadow-sm mt-1"
+                style={{ maxWidth: 220 }}
+              >
+                {edgePromptError}
+              </div>
+            )}
+          </div>
+        );
+      })()}
+      {selection.selectedEdgeId && edgeEditDraft && (() => {
+        const edge = state.edgesById.get(selection.selectedEdgeId!);
+        if (!edge) return null;
+        const { midX, midY } = computeEdgeGeometry(edge);
+        // Derselbe Versatz wie beim Label-Rendering oben — sonst würde das
+        // Overlay beim Auswählen einer von mehreren parallelen Kanten an
+        // eine andere Stelle springen als das gerade sichtbare Label.
+        const labelOffsetY = (edgeParallelIndex.get(edge.id) ?? 0) * 14;
+        const screenX = zoomTransform.x + zoomTransform.k * midX;
+        const screenY = zoomTransform.y + zoomTransform.k * (midY + labelOffsetY);
+        return (
+          <div className="absolute flex items-center gap-1" style={{ left: screenX, top: screenY, transform: 'translate(-50%, -50%)', zIndex: 25 }}>
+            <input
+              value={edgeEditDraft.value}
+              onChange={e => {
+                setEdgeEditDraft(prev => prev && { ...prev, value: e.target.value });
+                setEdgeEditError(null);
+              }}
+              onFocus={() => setIsEditingEdgeLabel(true)}
+              onKeyDown={e => {
+                if (e.key === 'Enter') { e.preventDefault(); commitEdgeEdit(); }
+                else if (e.key === 'Escape') { e.preventDefault(); cancelEdgeEdit(); }
+              }}
+              onBlur={() => { setIsEditingEdgeLabel(false); commitEdgeEdit(); }}
+              className="text-[10px] font-bold rounded-md px-2 py-1.5 outline-none border-2 bg-white dark:bg-slate-800 dark:text-white"
+              style={{ width: 140, borderColor: edgeEditError ? '#ef4444' : 'var(--primary)' }}
+            />
+            <button
+              onClick={deleteSelectedEdge}
+              title="Beziehung löschen"
+              className="w-6 h-6 flex items-center justify-center rounded-md bg-white dark:bg-slate-800 text-red-500 border shrink-0 font-bold"
+              style={{ borderColor: 'var(--border-color, #e2e8f0)' }}
+            >
+              ×
+            </button>
+            {edgeEditError && (
+              <div
+                className="absolute text-[9px] font-bold text-red-500 bg-white dark:bg-slate-800 rounded px-1.5 py-1 shadow-sm"
+                style={{ maxWidth: 220, top: '100%', left: 0, marginTop: 4 }}
+              >
+                {edgeEditError}
+              </div>
+            )}
+          </div>
         );
       })()}
     </div>
