@@ -1,7 +1,7 @@
 import { describe, it, expect } from 'vitest';
 import {
-  createEmptySelection, selectNode, clearSelection, hoverNode,
-  setFocus, clearFocus, isSelected, isHovered,
+  createEmptySelection, selectNode, selectEdge, clearSelection, hoverNode,
+  setFocus, clearFocus, isSelected, isEdgeSelected, isHovered,
 } from './graphSelectionService';
 
 describe('createEmptySelection', () => {
@@ -37,6 +37,29 @@ describe('selectNode / clearSelection / isSelected', () => {
     const before = createEmptySelection();
     selectNode(before, 'n1');
     expect(before.selectedNodeId).toBeUndefined();
+  });
+});
+
+describe('selectEdge / isEdgeSelected', () => {
+  it('wählt eine Kante aus und erkennt sie als ausgewählt', () => {
+    const selection = selectEdge(createEmptySelection(), 'e1');
+    expect(isEdgeSelected(selection, 'e1')).toBe(true);
+    expect(isEdgeSelected(selection, 'e2')).toBe(false);
+  });
+
+  it('selectNode und selectEdge schließen sich gegenseitig aus (nie beides gleichzeitig)', () => {
+    const nodeThenEdge = selectEdge(selectNode(createEmptySelection(), 'n1'), 'e1');
+    expect(nodeThenEdge.selectedNodeId).toBeUndefined();
+    expect(nodeThenEdge.selectedEdgeId).toBe('e1');
+
+    const edgeThenNode = selectNode(selectEdge(createEmptySelection(), 'e1'), 'n1');
+    expect(edgeThenNode.selectedEdgeId).toBeUndefined();
+    expect(edgeThenNode.selectedNodeId).toBe('n1');
+  });
+
+  it('clearSelection hebt auch eine Kanten-Auswahl auf', () => {
+    const selection = clearSelection(selectEdge(createEmptySelection(), 'e1'));
+    expect(selection.selectedEdgeId).toBeUndefined();
   });
 });
 

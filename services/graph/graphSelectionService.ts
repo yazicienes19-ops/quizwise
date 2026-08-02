@@ -17,6 +17,11 @@
 
 export interface GraphSelectionState {
   selectedNodeId?: string;
+  /** Phase 5B: Kanten sind jetzt genauso auswählbar wie Nodes — bewusst
+   *  gegenseitig ausschließend mit selectedNodeId (s. selectNode/selectEdge),
+   *  damit nie zwei kontextabhängige Overlays (Notiz-Feld und Kanten-Editor)
+   *  gleichzeitig um dieselbe Fläche konkurrieren. */
+  selectedEdgeId?: string;
   hoveredNodeId?: string;
   /** Grundlage für den künftigen Fokus-Modus (Produkt-Roadmap Phase 2) —
    *  heute nur der Datenhaltungs-Platz dafür, noch kein Konsument. */
@@ -28,11 +33,19 @@ export const createEmptySelection = (): GraphSelectionState => ({});
 export const selectNode = (selection: GraphSelectionState, nodeId: string): GraphSelectionState => ({
   ...selection,
   selectedNodeId: nodeId,
+  selectedEdgeId: undefined,
+});
+
+export const selectEdge = (selection: GraphSelectionState, edgeId: string): GraphSelectionState => ({
+  ...selection,
+  selectedEdgeId: edgeId,
+  selectedNodeId: undefined,
 });
 
 export const clearSelection = (selection: GraphSelectionState): GraphSelectionState => ({
   ...selection,
   selectedNodeId: undefined,
+  selectedEdgeId: undefined,
 });
 
 export const hoverNode = (selection: GraphSelectionState, nodeId: string | undefined): GraphSelectionState => ({
@@ -52,6 +65,9 @@ export const clearFocus = (selection: GraphSelectionState): GraphSelectionState 
 
 export const isSelected = (selection: GraphSelectionState, nodeId: string): boolean =>
   selection.selectedNodeId === nodeId;
+
+export const isEdgeSelected = (selection: GraphSelectionState, edgeId: string): boolean =>
+  selection.selectedEdgeId === edgeId;
 
 export const isHovered = (selection: GraphSelectionState, nodeId: string): boolean =>
   selection.hoveredNodeId === nodeId;
