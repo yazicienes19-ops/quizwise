@@ -2,6 +2,7 @@ import React, { useEffect, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
 import { GraphCanvas } from './GraphCanvas';
 import { GraphNodeDetailPanel } from './GraphNodeDetailPanel';
+import { GraphLearningOverlay, type GraphLearningActivity } from './GraphLearningOverlay';
 import { supabase } from '../services/supabaseClient';
 import { generateGraphId } from '../services/graph/id';
 import {
@@ -13,7 +14,9 @@ import { clearSelection, selectNode } from '../services/graph/graphSelectionServ
 import { saveCachedState } from '../services/graph/graphSyncService';
 import { useKnowledgeGraph } from '../hooks/useKnowledgeGraph';
 import { shouldUsePdfReader } from '../services/libraryService';
-import type { ProcessedDocument } from '../types';
+import { resolveErrorMessage } from '../services/errorMessages';
+import { toast } from '../services/toast';
+import type { ProcessedDocument, FlashcardDeck } from '../types';
 import type { GenerationSource } from '../services/geminiService';
 
 const SplitScreenReader = React.lazy(() => import('./SplitScreenReader').then(m => ({ default: m.SplitScreenReader })));
@@ -184,6 +187,24 @@ export const GraphDevHarness: React.FC = () => {
   const openDocument = FIXTURE_DOCUMENTS.find(d => d.id === openDocumentId);
   const stubGetDocumentSource = (doc: ProcessedDocument): GenerationSource => ({ text: doc.content });
 
+  // Phase 5 ("Aktiv lernen") — rein lokaler Deck-Speicher (kein AppContent-
+  // Kontext im Harness) + einfache Fehlerbehandlung (kein Limit-/Auth-
+  // Sonderverhalten wie in der echten App, s. Datei-Kommentar zur echten-
+  // Zugangsdaten-Grenze). `updateMetricsAfterSession` ist hier bewusst ein
+  // No-Op mit Log-Zeile statt eines echten TopicMetric-Updates — der Harness
+  // hat kein Lernprofil, das ist kein Testziel dieser Komponente.
+  const [harnessDecks, setHarnessDecks] = useState<FlashcardDeck[]>([]);
+  const stubUpdateMetricsAfterSession = async (score: number, name: string) => {
+    pushLog(`Metrik aktualisiert: "${name}" → ${score}%`);
+  };
+  const stubApiError = (e: unknown) => toast.error(resolveErrorMessage(e));
+
+  const [activeActivity, setActiveActivity] = useState<GraphLearningActivity | null>(null);
+  const activeActivityNode = activeActivity ? graph.state.nodesById.get(graph.selection.selectedNodeId ?? '') : undefined;
+  useEffect(() => {
+    if (activeActivity && !activeActivityNode) setActiveActivity(null);
+  }, [activeActivity, activeActivityNode]);
+
   // Fixture einmalig seeden — nur ohne Login UND nur, wenn der isolierte
   // Fixture-Scope-Cache tatsächlich leer ist (erster Start in diesem Browser/
   // Profil). Eigene Interaktionen aus einer vorherigen Sitzung (bereits über
@@ -244,8 +265,12 @@ export const GraphDevHarness: React.FC = () => {
         />
         {/* Phase 2/3: dasselbe Overlay-Panel wie in GraphSystem.tsx, hier
             verdrahtet, damit es ohne echten Login über den Harness testbar
-            ist (s. Kommentar oben zur echten-Zugangsdaten-Grenze). */}
-        {graph.selection.selectedNodeId && (
+            ist (s. Kommentar oben zur echten-Zugangsdaten-Grenze). Bewusst
+            NICHT rendern, während ein Vollbild-Overlay offen ist — s.
+            GraphSystem.tsx für den dort bei der Phase-5-Verifikation
+            gefundenen Escape-Listener-Bug, den das hier auf dieselbe Art
+            vermeidet. */}
+        {graph.selection.selectedNodeId && !openDocument && !activeActivity && (
           <GraphNodeDetailPanel
             state={graph.state}
             history={graph.history}
@@ -260,6 +285,7 @@ export const GraphDevHarness: React.FC = () => {
             onOpenDocument={setOpenDocumentId}
             onClose={() => graph.onSelectionChange(clearSelection(graph.selection))}
             onSelectNode={id => graph.onSelectionChange(selectNode(graph.selection, id))}
+            onStartActivity={setActiveActivity}
           />
         )}
       </div>
@@ -291,6 +317,21 @@ export const GraphDevHarness: React.FC = () => {
           </React.Suspense>
         </div>,
         document.body,
+      )}
+
+      {activeActivity && activeActivityNode && (
+        <GraphLearningOverlay
+          node={activeActivityNode}
+          activity={activeActivity}
+          onClose={() => setActiveActivity(null)}
+          userId={userId}
+          documents={FIXTURE_DOCUMENTS}
+          collections={[]}
+          decks={harnessDecks}
+          onDecksChange={setHarnessDecks}
+          updateMetricsAfterSession={stubUpdateMetricsAfterSession}
+          onApiError={stubApiError}
+        />
       )}
     </div>
   );
