@@ -144,27 +144,15 @@ describe('rowToRelationType / relationTypeToRow', () => {
 });
 
 describe('rowToNodeDocumentRef / nodeDocumentRefToRow', () => {
-  it('mappt Zitat-Verknüpfung inkl. optionaler Felder', () => {
-    const ref: GraphNodeDocumentRef = {
-      id: 'ref-1', nodeId: 'n1', documentId: 'doc-1', excerpt: 'Ein Zitat', page: 12, createdAt: 0,
-    };
-    const row = nodeDocumentRefToRow(ref, 'user-1');
-    expect(row.excerpt).toBe('Ein Zitat');
-    expect(row.page).toBe(12);
-
-    const back = rowToNodeDocumentRef({ ...row, created_at: '2026-01-01T00:00:00.000Z' });
-    expect(back.excerpt).toBe('Ein Zitat');
-    expect(back.page).toBe(12);
-  });
-
-  it('fehlende optionale Felder werden zu null (Row) bzw. undefined (Domain)', () => {
+  it('mappt eine Dokument-Verknüpfung in beide Richtungen', () => {
     const ref: GraphNodeDocumentRef = { id: 'ref-1', nodeId: 'n1', documentId: 'doc-1', createdAt: 0 };
     const row = nodeDocumentRefToRow(ref, 'user-1');
-    expect(row.excerpt).toBeNull();
-    expect(row.page).toBeNull();
+    expect(row.node_id).toBe('n1');
+    expect(row.document_id).toBe('doc-1');
+    expect(row.user_id).toBe('user-1');
 
-    const back = rowToNodeDocumentRef({ ...row, created_at: '2026-01-01T00:00:00.000Z' });
-    expect(back.excerpt).toBeUndefined();
-    expect(back.page).toBeUndefined();
+    const back = rowToNodeDocumentRef({ ...row, id: 'ref-1', created_at: '2026-01-01T00:00:00.000Z' });
+    expect(back.nodeId).toBe('n1');
+    expect(back.documentId).toBe('doc-1');
   });
 });

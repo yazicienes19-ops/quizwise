@@ -1,6 +1,7 @@
 import type {
   GraphState, GraphEdge, GraphRelationType, ValidationResult,
   CreateNodeInput, UpdateNodeInput, CreateEdgeInput, CreateRelationTypeInput,
+  CreateNodeDocumentRefInput,
 } from './types';
 import { type GraphIndex, outgoingEdges } from './graphIndex';
 
@@ -173,4 +174,15 @@ export function validateRestoreEdge(state: GraphState, index: GraphIndex, edge: 
   if (!relationType) return { valid: false, reason: 'Der Beziehungstyp dieser Kante existiert nicht mehr.' };
 
   return validateNoDuplicateEdge(index, edge.sourceNodeId, edge.targetNodeId, relationType);
+}
+
+/** Dasselbe Dokument doppelt an denselben Node zu hängen wäre keine neue
+ *  Information, nur eine doppelte Zeile in der Anzeige (Phase 3, "Eigene
+ *  Unterlagen"). */
+export function validateNoDuplicateNodeDocumentRef(state: GraphState, input: CreateNodeDocumentRefInput): ValidationResult {
+  const alreadyLinked = [...state.nodeDocumentsById.values()].some(
+    ref => ref.nodeId === input.nodeId && ref.documentId === input.documentId,
+  );
+  if (alreadyLinked) return { valid: false, reason: 'Dieses Dokument ist bereits mit diesem Node verknüpft.' };
+  return { valid: true };
 }

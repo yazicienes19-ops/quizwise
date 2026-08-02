@@ -9,6 +9,7 @@ import { buildGraphIndex } from './graphIndex';
 import {
   validateCreateNode, validateUpdateNode, validateCreateEdge, validateRetypeEdge, validateRestoreEdge,
   validateCreateRelationType, validateRelationTypeLabelUnique, validateRelationTypeDeletable,
+  validateNoDuplicateNodeDocumentRef,
 } from './graphValidationService';
 
 /**
@@ -292,13 +293,13 @@ export function createNodeDocumentRef(state: GraphState, input: CreateNodeDocume
   // Dokumente (die leben in useDocuments/documentService, einem komplett
   // anderen Teil der App). Referenzielle Absicherung übernimmt beim Sync
   // der DB-Trigger assert_graph_node_document_ownership.
+  const duplicateCheck = validateNoDuplicateNodeDocumentRef(state, input);
+  if (duplicateCheck.valid === false) return reject(state, duplicateCheck.reason);
 
   const ref: GraphNodeDocumentRef = {
     id: generateGraphId(),
     nodeId: input.nodeId,
     documentId: input.documentId,
-    excerpt: input.excerpt,
-    page: input.page,
     createdAt: Date.now(),
   };
   return { state: withNodeDocumentRef(state, ref), entity: ref };

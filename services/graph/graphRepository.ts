@@ -230,8 +230,6 @@ export function rowToNodeDocumentRef(row: any): GraphNodeDocumentRef {
     id: row.id,
     nodeId: row.node_id,
     documentId: row.document_id,
-    excerpt: row.excerpt ?? undefined,
-    page: row.page ?? undefined,
     createdAt: new Date(row.created_at).getTime(),
   };
 }
@@ -242,8 +240,6 @@ export function nodeDocumentRefToRow(ref: GraphNodeDocumentRef, userId: string):
     user_id: userId,
     node_id: ref.nodeId,
     document_id: ref.documentId,
-    excerpt: ref.excerpt ?? null,
-    page: ref.page ?? null,
   };
 }
 
@@ -255,9 +251,9 @@ export async function fetchNodeDocumentRefs(userId: string, nodeId?: string): Pr
   return (data || []).map(rowToNodeDocumentRef);
 }
 
-/** Kein updateNodeDocumentRef — die Verknüpfung ist unveränderlich (neu
- *  anlegen + alte entfernen statt bearbeiten), es gibt keinen sinnvollen
- *  "Update"-Anwendungsfall für ein Zitat/eine Seitenzahl im Nachhinein. */
+/** Kein updateNodeDocumentRef — eine Verknüpfung hat außer `nodeId`/
+ *  `documentId` kein veränderliches Feld mehr (neu anlegen oder entfernen
+ *  deckt jeden Anwendungsfall ab). */
 export async function createNodeDocumentRef(ref: GraphNodeDocumentRef, userId: string): Promise<GraphNodeDocumentRef> {
   const { data, error } = await supabase
     .from('graph_node_documents')

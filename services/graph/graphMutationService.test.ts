@@ -305,13 +305,25 @@ describe('createNodeDocumentRef / removeNodeDocumentRef', () => {
     const a = createNode(state, { title: 'A', position: { x: 0, y: 0 } });
     state = a.state;
 
-    const created = createNodeDocumentRef(state, { nodeId: a.entity!.id, documentId: 'doc-1', excerpt: 'Zitat' });
+    const created = createNodeDocumentRef(state, { nodeId: a.entity!.id, documentId: 'doc-1' });
     expect(created.error).toBeUndefined();
     state = created.state;
 
     const removed = removeNodeDocumentRef(state, created.entity!.id);
     expect(removed.error).toBeUndefined();
     expect(removed.state.nodeDocumentsById.size).toBe(0);
+  });
+
+  it('lehnt eine zweite Verknüpfung desselben Dokuments mit demselben Node ab', () => {
+    let state = createEmptyGraphState({ kind: 'all' });
+    const a = createNode(state, { title: 'A', position: { x: 0, y: 0 } });
+    state = a.state;
+
+    const first = createNodeDocumentRef(state, { nodeId: a.entity!.id, documentId: 'doc-1' });
+    state = first.state;
+    const duplicate = createNodeDocumentRef(state, { nodeId: a.entity!.id, documentId: 'doc-1' });
+    expect(duplicate.error).toBeDefined();
+    expect(duplicate.state.nodeDocumentsById.size).toBe(1);
   });
 
   it('lehnt eine Verknüpfung zu einem archivierten Node ab', () => {

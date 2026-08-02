@@ -109,12 +109,16 @@ export interface GraphRelationType {
   createdAt: number;
 }
 
+/** Ein Node kennt ausschließlich SEINE Quellen — bewusst keine Seitenzahl,
+ *  kein Textausschnitt, keine Absatzreferenz (KNOWLEDGE_GRAPH_KONZEPT.md
+ *  Abschnitt 4, Entscheidung 2026-08-02: "Das Wissensnetz wird dadurch
+ *  ausdrücklich NICHT zu einem zweiten PDF-Reader"). Ursprünglich waren hier
+ *  `excerpt`/`page` vorgesehen (nie von einer UI genutzt) — entfernt, sobald
+ *  die erste echte UI für diesen Bereich gebaut wurde, nicht vorher. */
 export interface GraphNodeDocumentRef {
   id: string;
   nodeId: string;
   documentId: string;
-  excerpt?: string;
-  page?: number;
   createdAt: number;
 }
 
@@ -238,8 +242,6 @@ export type UpdateRelationTypeInput = Partial<Pick<GraphRelationType, 'label' | 
 export interface CreateNodeDocumentRefInput {
   nodeId: string;
   documentId: string;
-  excerpt?: string;
-  page?: number;
 }
 
 // ─── Ergebnis-Konventionen ───────────────────────────────────────────────────
@@ -280,4 +282,10 @@ export interface MutationResult<TEntity> {
 export type GraphEntityChange =
   | { kind: 'node'; entity: GraphNode }
   | { kind: 'edge'; entity: GraphEdge }
-  | { kind: 'relationType'; entity: GraphRelationType };
+  | { kind: 'relationType'; entity: GraphRelationType }
+  /** `action` ist hier nötig (anders als bei node/edge), weil GraphNodeDocumentRef
+   *  kein Soft-Delete/archivedAt kennt — removeNodeDocumentRef liefert zwar
+   *  auch eine `entity` zurück (die entfernte Zeile, für die History), aber
+   *  ohne einen Zustands-Unterschied wie bei archivedAt lässt sich "angelegt"
+   *  vs. "entfernt" nicht aus der Entität selbst ablesen. */
+  | { kind: 'nodeDocumentRef'; action: 'create' | 'remove'; entity: GraphNodeDocumentRef };
