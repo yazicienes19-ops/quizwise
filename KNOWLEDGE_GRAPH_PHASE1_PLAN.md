@@ -532,3 +532,18 @@ Auftrag des Nutzers: ausschließlich die drei aus dem Phase-5A-Nachtest übrig g
 **Verifiziert:** alle drei Punkte einzeln sowie im Zusammenspiel per Playwright im Dev-Harness (Auswahl blendet Klartext-Label korrekt zugunsten des Editier-Overlays aus, Node-Titel-Bearbeitung/-Notiz/-Löschen weiterhin unbeeinflusst), keine Konsolen-/Seitenfehler. `npx vitest run`: 688/688 grün.
 
 **Erneuter Lernsitzungs-Test:** s. Abschnitt "Nachtest 5B" am Ende von `KNOWLEDGE_GRAPH_USABILITY_SESSION.md`. Kurzfassung: alle drei Punkte bestätigt spürbar besser — Beziehungsbedeutung ist jetzt ohne jeden Klick auf der Fläche ablesbar, Duplikat-Versuche geben eine klare Rückmeldung, Fehlkorrekturen sind ohne Löschen+Neuziehen möglich. Zwei kleine, neue, nicht blockierende Punkte dokumentiert statt stillschweigend gelöst: Labels bei mehr als zwei parallelen Kanten zwischen demselben Paar könnten eng werden; Kanten haben (anders als Nodes) noch keinen eigenen Hover-Zustand.
+
+---
+
+## 12. Produktphilosophie final festgelegt + ConceptNode-Architektur (2026-08-02) — reine Entscheidung, keine Umsetzung
+
+Nach der Integration in die echte App (Abschnitt 11 oben) wurde die Produktname-Frage geklärt ("Wissensnetz") und anschließend die langfristige Architekturfrage verbindlich entschieden: Das Wissensnetz ist nicht "eine bessere Mindmap", sondern soll langfristig die eine, kanonische Konzept-Repräsentation der ganzen App werden — ohne dabei verpflichtend zu werden. Volle Begründung, Gegenprüfung einer verworfenen Alternative (separate `Concept`-Tabelle) und der komplette Entscheidungskatalog stehen in `KNOWLEDGE_GRAPH_KONZEPT.md` (Abschnitte 0/3/4/5/15/16 aktualisiert + neuer Entscheidungsblock am Ende) — hier nur die für die weitere Implementierungsplanung wichtigste Zusammenfassung:
+
+- **ConceptNode-Prinzip:** andere Systeme referenzieren ein Konzept künftig über eine stabile `GraphNode`-ID, nie über einen Titel-String. String-Matching bleibt für immer als Fallback bestehen (kein Enddatum).
+- **Kein Big-Bang:** Konvergenz läuft additiv in fünf Unterschritten (3.B–3.E, s. KONZEPT.md Roadmap) — jeder für sich lauffähig/testbar.
+- **Wissensnetz bleibt dauerhaft optional**, nie Voraussetzung für Quiz/Karteikarten/Klausur/Feynman.
+- **`GraphNode` bleibt das Fundament**, keine zusätzliche `Concept`-Tabelle.
+- **`GraphNodeDocumentRef` wird vereinfacht:** `excerpt`/`page` sollen entfernt werden (Entscheidung getroffen, **Code-Änderung steht noch aus** — erst wenn tatsächlich an diesem Teil gearbeitet wird).
+- **Finale Node-Typ-Liste:** Begriff (Standard), Definition, Formel, Prozess, Theorie, Person, Beispiel, Experiment, Ereignis. Neues, noch nicht implementiertes Feld `hierarchyLevel` (Hauptthema/Unterthema/Detail) bleibt strikt getrennt von `type`.
+
+**Reihenfolge, verbindlich:** Die laufenden UX-Themen aus der Lernworkflow-Analyse (Node-Hierarchie-Modell entscheiden, rechte Seitenleiste als UX-Entwurf, Offline-Hinweis-Formulierung, weitere dokumentierte Workflow-Probleme) werden zuerst abgeschlossen. **Erst danach** beginnt Phase 3.B (erstes additives `conceptNodeId?`-Feld an `TopicMetric`). Diese Dokumentationsrunde selbst enthielt bewusst keine Code-, Migrations- oder UI-Änderung.
