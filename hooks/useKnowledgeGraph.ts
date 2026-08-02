@@ -135,13 +135,20 @@ export function useKnowledgeGraph({ scope, userId }: UseKnowledgeGraphOptions): 
     // bei Bedarf spontan einen neuen Beziehungstyp an, wenn der Nutzer eine
     // noch unbekannte Bezeichnung eingibt) — commitRelationType existierte
     // in GraphPersistenceService bereits seit Phase 2, war bis hierher aber
-    // von nichts aufgerufen worden.
+    // von nichts aufgerufen worden. 'nodeDocumentRef' kam mit Phase 3
+    // ("Eigene Unterlagen") dazu — commitNodeDocumentRef/
+    // commitRemoveNodeDocumentRef existierten ebenfalls schon seit Phase 2,
+    // ebenfalls bis hierher ungenutzt.
     if (change.kind === 'node') {
       persistence.commitNode(change.entity, stateRef.current, { userId });
     } else if (change.kind === 'edge') {
       persistence.commitEdge(change.entity, stateRef.current, { userId });
-    } else {
+    } else if (change.kind === 'relationType') {
       persistence.commitRelationType(change.entity, stateRef.current, { userId });
+    } else if (change.action === 'create') {
+      persistence.commitNodeDocumentRef(change.entity, stateRef.current, { userId });
+    } else {
+      persistence.commitRemoveNodeDocumentRef(change.entity.id, stateRef.current, { userId });
     }
   }, [userId]);
 
