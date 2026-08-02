@@ -157,3 +157,27 @@ Alle drei Punkte waren bereits in der "Sollte vor dem Launch"-Liste oben benannt
 Keiner dieser drei Punkte ist in dieser Phase behoben worden — das war explizit nicht der Auftrag. Alle drei betreffen ausschließlich Interaktion mit bereits bestehenden Kanten, nicht die Architektur.
 
 **Fazit als Nutzerin:** Ja, der Workflow hat sich ehrlich verbessert — von "ich würde nach 20 Minuten frustriert aufhören" zu "ich konnte mein Thema strukturieren, benennen, bewusst verknüpfen und in eigenen Worten festhalten, was ich verstanden habe". Die verbleibenden drei Punkte sind spürbar, aber sie sind Reibung, keine Blockade mehr — ich könnte diesen Graphen heute Abend tatsächlich für eine echte Klausurvorbereitung nutzen.
+
+---
+
+## Nachtest 5B (2026-08-02) — Relationship UX (Duplikat-Feedback, sichtbare Labels, Kanten bearbeiten)
+
+Wieder dieselbe Sitzung, dasselbe Thema, jetzt gezielt auf die drei aus dem Nachtest oben übrig gebliebenen Punkte geprüft: stiller Fehlschlag bei Duplikaten, unsichtbare Kanten-Beschriftung, nicht bearbeitbare Kanten. Live am Dev-Harness (Playwright, echte Interaktion).
+
+### Was jetzt wirklich besser ist
+
+- **Ich sehe jetzt auf einen Blick, was jede Verbindung bedeutet.** Ohne einen einzigen Klick stehen "ist Teil von", "Beispiel für", "ist Urheber von" direkt auf der Fläche. Das ist der Unterschied zwischen "hier ist irgendeine Struktur" und "hier ist eine Aussage, die ich verstehen kann". Beim ersten Nachtest musste ich mich noch erinnern oder raten, was eine Kante bedeutet — das ist jetzt komplett weg.
+- **Der stille Fehlschlag ist weg.** Ich habe absichtlich versucht, "Pawlow ist Urheber von Behaviorismus" ein zweites Mal anzulegen. Diesmal bekomme ich sofort eine verständliche Meldung direkt unter der Eingabe ("... existiert bereits") — die Eingabe bleibt offen, ich kann sie korrigieren oder bewusst abbrechen. Kein Rätselraten mehr, ob mein Klick angekommen ist.
+- **Ich kann einen Fehler beim Verknüpfen jetzt tatsächlich korrigieren.** Ich habe absichtlich so getan, als hätte ich mich vertan ("Gegensatz zu" zwischen Verstärkung und Bestrafung sollte eigentlich "steht im Widerspruch zu" heißen): Kante anklicken, neuen Text eintippen, Enter — fertig, ohne die Kante zu löschen und neu zu ziehen. Das war im ersten Nachtest noch komplett unmöglich.
+- **Eine falsch angelegte Kante ist genauso leicht wieder weg wie ein falscher Node.** Anklicken, ×-Button oder Entf-Taste — kein Unterschied mehr zwischen "ich habe mich bei einem Node vertan" und "ich habe mich bei einer Kante vertan".
+
+Insgesamt fühlt sich der Graph jetzt zum ersten Mal wie ein echter Wissensgraph an, nicht wie eine Mindmap mit Kreisen statt Kästchen — genau der Philosophie-Punkt, den ich ganz am Anfang der ursprünglichen Sitzung kritisiert hatte, ist jetzt durchgängig eingelöst: jede Verbindung trägt sichtbar eine Bedeutung, die ich selbst gewählt habe, und ich kann sie jederzeit ansehen, korrigieren oder entfernen.
+
+### Neu aufgefallen — nicht stillschweigend gelöst, sondern hier dokumentiert
+
+- **Mehrere Beziehungen zwischen denselben zwei Begriffen können eng beieinander stehen.** Als ich testweise eine zweite, andere Beziehung zwischen zwei bereits verbundenen Nodes angelegt habe, lagen beide Labels nah übereinander (leicht versetzt, beide noch lesbar, aber knapp). Bei genau zwei parallelen Beziehungen kein echtes Problem — bei drei oder mehr zwischen demselben Paar (in der Praxis selten, aber beim Lernen mit vielen Wechselbeziehungen nicht ausgeschlossen) könnte es eng werden. Kein Blocker, aber ein Punkt für eine spätere Politur.
+- **Kein Hover-Zustand für Kanten.** Nodes werden beim Hover erkennbar (Cursor, Connector-Punkt erscheint) — bei Kanten sehe ich vor dem Klick nicht, dass die Linie überhaupt klickbar ist. Kleine Reibung, kein Blocker: Ich habe es beim ersten Versuch trotzdem sofort gefunden, weil das Label selbst schon wie ein UI-Element aussieht.
+
+Beide Punkte sind neu, klein, und explizit nicht in dieser Phase behoben — außerhalb des vom Nutzer vorgegebenen Scopes (nur Duplikat-Feedback, sichtbare Labels, Kanten ansehen/ändern/löschen).
+
+**Fazit als Nutzerin:** Die drei Punkte, die nach Phase 5A noch offen waren, sind jetzt echt gelöst, nicht nur behauptet — ich habe es live ausprobiert. Der Graph ist jetzt zum ersten Mal in der ganzen Testreihe an keiner Stelle mehr eine Blockade, nur noch an zwei kleinen Stellen (parallele Kanten bei genauer Betrachtung, fehlender Hover-Hinweis) eine leichte Politur wert.
