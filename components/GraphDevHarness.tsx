@@ -1,13 +1,23 @@
 import React, { useEffect, useRef, useState } from 'react';
+import { createPortal } from 'react-dom';
 import { GraphCanvas } from './GraphCanvas';
 import { GraphNodeDetailPanel } from './GraphNodeDetailPanel';
 import { supabase } from '../services/supabaseClient';
 import { generateGraphId } from '../services/graph/id';
-import { createEmptyGraphState, type GraphState, type GraphNode, type GraphRelationType, type GraphScope } from '../services/graph/types';
+import {
+  createEmptyGraphState, type GraphState, type GraphNode, type GraphRelationType,
+  type GraphNodeDocumentRef, type GraphScope,
+} from '../services/graph/types';
 import { createEmptyHistory } from '../services/graph/graphHistoryService';
 import { clearSelection } from '../services/graph/graphSelectionService';
 import { saveCachedState } from '../services/graph/graphSyncService';
 import { useKnowledgeGraph } from '../hooks/useKnowledgeGraph';
+import { shouldUsePdfReader } from '../services/libraryService';
+import type { ProcessedDocument } from '../types';
+import type { GenerationSource } from '../services/geminiService';
+
+const SplitScreenReader = React.lazy(() => import('./SplitScreenReader').then(m => ({ default: m.SplitScreenReader })));
+const PdfSplitScreenReader = React.lazy(() => import('./PdfSplitScreenReader').then(m => ({ default: m.PdfSplitScreenReader })));
 
 /**
  * OFFIZIELLER Development Harness des Knowledge Graph — dauerhafter
@@ -59,6 +69,19 @@ const makeRelationType = (label: string, symmetric: boolean, sortOrder: number):
   return [id, { id, label, symmetric, isBuiltIn: true, sortOrder, createdAt: now }];
 };
 
+// Phase 3 ("Eigene Unterlagen") — 40 Fixture-Dokumente, damit "Verhalten bei
+// vielen Dokumenten" (Picker-Liste) tatsächlich unter realistischer Last
+// geprüft werden kann, nicht nur mit 1-2 Beispielen. Echter Textinhalt
+// (type: 'text'), damit der bestehende SplitScreenReader beim Öffnen
+// tatsächlich etwas anzeigt statt eines leeren Digest-Zustands.
+const FIXTURE_DOCUMENTS: ProcessedDocument[] = Array.from({ length: 40 }, (_, i) => ({
+  id: `fixture-doc-${i + 1}`,
+  name: `Vorlesung ${i + 1} - Behaviorismus.txt`,
+  type: 'text' as const,
+  content: `Inhalt von Vorlesung ${i + 1}: Grundlagen des Behaviorismus, klassische und operante Konditionierung.`,
+  uploadDate: now - i * 86_400_000,
+}));
+
 function buildFixtureState(): GraphState {
   const state = createEmptyGraphState(FIXTURE_SCOPE);
 
@@ -99,6 +122,16 @@ function buildFixtureState(): GraphState {
   edge(bestrafungId, operantId, teilVonId);
   edge(verstaerkungId, bestrafungId, gegensatzId);
 
+  // Drei der 40 Fixture-Dokumente sind bereits mit dem Hauptthema verknüpft —
+  // damit "viele bereits verknüpfte Dokumente" (Anzeige-Reihenfolge, Klick
+  // zum Öffnen) direkt beim ersten Laden testbar ist, nicht erst nach
+  // manuellem Verknüpfen.
+  [0, 1, 2].forEach(i => {
+    const id = generateGraphId();
+    const ref: GraphNodeDocumentRef = { id, nodeId: rootId, documentId: FIXTURE_DOCUMENTS[i].id, createdAt: now + i };
+    state.nodeDocumentsById.set(id, ref);
+  });
+
   return state;
 }
 
@@ -118,6 +151,16 @@ export const GraphDevHarness: React.FC = () => {
 
   const [log, setLog] = useState<string[]>([]);
   const pushLog = (line: string) => setLog(prev => [line, ...prev].slice(0, 8));
+
+  // Phase 3: derselbe Portal-Overlay-Ansatz wie in GraphSystem.tsx ("Variante
+  // A") — hier dupliziert statt importiert, weil der Harness bewusst
+  // eigenständig bleibt (kein Collection[]/activeModuleId-Kontext einer
+  // echten Seite, s. Datei-Kommentar oben). getDocumentSource/onStartFeynman
+  // sind hier reine Platzhalter (kein echtes Gemini/RECALL im Harness) — nur
+  // der Reader-Öffnen/Schließen-Mechanismus selbst wird geprüft.
+  const [openDocumentId, setOpenDocumentId] = useState<string | null>(null);
+  const openDocument = FIXTURE_DOCUMENTS.find(d => d.id === openDocumentId);
+  const stubGetDocumentSource = (doc: ProcessedDocument): GenerationSource => ({ text: doc.content });
 
   // Fixture einmalig seeden — nur ohne Login UND nur, wenn der isolierte
   // Fixture-Scope-Cache tatsächlich leer ist (erster Start in diesem Browser/
@@ -173,10 +216,11 @@ export const GraphDevHarness: React.FC = () => {
             graph.onEntityChanged(change);
             if (change.kind === 'node') pushLog(`Node geändert: "${change.entity.title}"`);
             else if (change.kind === 'edge') pushLog(`Kante geändert: ${change.entity.id.slice(0, 8)}`);
-            else pushLog(`Beziehungstyp angelegt: "${change.entity.label}"`);
+            else if (change.kind === 'relationType') pushLog(`Beziehungstyp angelegt: "${change.entity.label}"`);
+            else pushLog(`Dokument-Verknüpfung ${change.action === 'create' ? 'angelegt' : 'entfernt'}`);
           }}
         />
-        {/* Phase 2: dasselbe Overlay-Panel wie in GraphSystem.tsx, hier
+        {/* Phase 2/3: dasselbe Overlay-Panel wie in GraphSystem.tsx, hier
             verdrahtet, damit es ohne echten Login über den Harness testbar
             ist (s. Kommentar oben zur echten-Zugangsdaten-Grenze). */}
         {graph.selection.selectedNodeId && (
@@ -184,11 +228,14 @@ export const GraphDevHarness: React.FC = () => {
             state={graph.state}
             history={graph.history}
             nodeId={graph.selection.selectedNodeId}
+            documents={FIXTURE_DOCUMENTS}
             onChange={graph.onChange}
             onEntityChanged={change => {
               graph.onEntityChanged(change);
               if (change.kind === 'node') pushLog(`Node geändert: "${change.entity.title}"`);
+              else if (change.kind === 'nodeDocumentRef') pushLog(`Dokument-Verknüpfung ${change.action === 'create' ? 'angelegt' : 'entfernt'}`);
             }}
+            onOpenDocument={setOpenDocumentId}
             onClose={() => graph.onSelectionChange(clearSelection(graph.selection))}
           />
         )}
@@ -196,6 +243,32 @@ export const GraphDevHarness: React.FC = () => {
       <div style={{ padding: '4px 16px', fontSize: 11, fontFamily: 'monospace', color: '#64748b', maxHeight: 100, overflowY: 'auto' }}>
         {log.map((line, i) => <div key={i}>{line}</div>)}
       </div>
+
+      {openDocument && createPortal(
+        <div className="fixed inset-0 z-50 bg-white dark:bg-slate-900">
+          <React.Suspense fallback={null}>
+            {shouldUsePdfReader(openDocument) ? (
+              <PdfSplitScreenReader
+                key={`harness-pdf-reader-${openDocument.id}`}
+                doc={openDocument}
+                userId={userId}
+                onBack={() => setOpenDocumentId(null)}
+                onStartFeynman={topic => pushLog(`Feynman-Sprung angefragt: "${topic}"`)}
+                getDocumentSource={stubGetDocumentSource}
+              />
+            ) : (
+              <SplitScreenReader
+                key={`harness-reader-${openDocument.id}`}
+                doc={openDocument}
+                userId={userId}
+                onBack={() => setOpenDocumentId(null)}
+                onStartFeynman={topic => pushLog(`Feynman-Sprung angefragt: "${topic}"`)}
+              />
+            )}
+          </React.Suspense>
+        </div>,
+        document.body,
+      )}
     </div>
   );
 };
