@@ -44,7 +44,7 @@ const LearningCoach = React.lazy(() => import('./LearningCoach').then(m => ({ de
 const ExplainerSystem = React.lazy(() => import('./ExplainerSystem').then(m => ({ default: m.ExplainerSystem })));
 const StudyPlanner = React.lazy(() => import('./StudyPlanner').then(m => ({ default: m.StudyPlanner })));
 const FlashcardSystem = React.lazy(() => import('./FlashcardSystem').then(m => ({ default: m.FlashcardSystem })));
-const MindmapSystem = React.lazy(() => import('./MindmapSystem').then(m => ({ default: m.MindmapSystem })));
+const GraphSystem = React.lazy(() => import('./GraphSystem').then(m => ({ default: m.GraphSystem })));
 
 interface AppContentProps {
   activeTab: ActiveTab;
@@ -174,7 +174,7 @@ export const AppContent: React.FC<AppContentProps> = (p) => {
         onRetryAnalysis={retryAnalysis}
         onAction={(tab, doc) => {
           if (tab === ActiveTab.QUIZ) { setPendingActionDoc(doc); setQuestions([]); setAnswers([]); setActiveTab(ActiveTab.QUIZ); }
-          else if (tab === ActiveTab.EXPLAINER || tab === ActiveTab.CARDS || tab === ActiveTab.RECALL || tab === ActiveTab.EXAM || tab === ActiveTab.READER || tab === ActiveTab.MINDMAP) { setPendingActionDoc(doc); setActiveTab(tab); }
+          else if (tab === ActiveTab.EXPLAINER || tab === ActiveTab.CARDS || tab === ActiveTab.RECALL || tab === ActiveTab.EXAM || tab === ActiveTab.READER || tab === ActiveTab.KNOWLEDGE_GRAPH) { setPendingActionDoc(doc); setActiveTab(tab); }
           else { setPendingActionDoc(null); setActiveTab(tab); }
         }}
         onAddCollection={addCollection} onDeleteCollection={removeCollection}
@@ -476,10 +476,10 @@ export const AppContent: React.FC<AppContentProps> = (p) => {
         initialDoc={pendingActionDoc ?? undefined}
       />;
 
-    case ActiveTab.MINDMAP:
-      return <MindmapSystem
-        key={pendingActionDoc ? `mindmap-${pendingActionDoc.id}` : `mindmap-${activeModuleId ?? 'all'}`}
-        availableDocuments={documents} collections={collections} userId={user?.id}
+    case ActiveTab.KNOWLEDGE_GRAPH:
+      return <GraphSystem
+        key={pendingActionDoc ? `graph-${pendingActionDoc.collectionId ?? 'none'}` : `graph-${activeModuleId ?? 'all'}`}
+        collections={collections} userId={user?.id} activeModuleId={activeModuleId}
         initialDoc={pendingActionDoc ?? undefined}
       />;
 

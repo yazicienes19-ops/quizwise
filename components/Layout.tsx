@@ -51,7 +51,7 @@ const ICONS: Partial<Record<ActiveTab, LucideIcon>> = {
   [ActiveTab.RADAR]:     BarChart2,
   [ActiveTab.SEARCH]:    Search,
   [ActiveTab.PAPER]:     FileText,
-  [ActiveTab.MINDMAP]:   Network,
+  [ActiveTab.KNOWLEDGE_GRAPH]: Network,
 };
 
 /** Sidebar ist bewusst IMMER Navy — unabhängig vom Hell/Dunkel-Toggle des
@@ -126,7 +126,7 @@ export const Layout: React.FC<LayoutProps> = ({
     { tab: ActiveTab.EXAM,      labelKey: 'nav.exam',      icon: GraduationCap },
     { tab: ActiveTab.RADAR,     labelKey: 'nav.radar',     icon: BarChart2 },
     { tab: ActiveTab.EXPLAINER, labelKey: 'nav.explainer', icon: Lightbulb },
-    { tab: ActiveTab.MINDMAP,   labelKey: 'nav.mindmap',   icon: Network },
+    { tab: ActiveTab.KNOWLEDGE_GRAPH, labelKey: 'nav.knowledgeGraph', icon: Network },
     ...(isAdmin(user?.id) ? [
       { tab: ActiveTab.SEARCH, labelKey: 'nav.search' as TKey, icon: Search },
       { tab: ActiveTab.PAPER,  labelKey: 'nav.paper'  as TKey, icon: FileText },
@@ -647,13 +647,13 @@ export const Layout: React.FC<LayoutProps> = ({
       )}
 
       {/* ── MAIN CONTENT ── */}
-      {/* Reader füllt die Fläche (Split-Screen braucht jeden Pixel), alle anderen Tabs behalten den zentrierten Lesebreiten-Container.
+      {/* Reader und Wissensnetz füllen die Fläche (Split-Screen bzw. Pan/Zoom-Kanvas brauchen jeden Pixel), alle anderen Tabs behalten den zentrierten Lesebreiten-Container.
           Bei eingeklappter Sidebar zusätzlicher linker Platz (nur ≥1024px, wo der Einblenden-Button schwebt) —
           sonst überlappt er knapp bemessene Header-Zeilen wie im Reader ("← Zurück" sitzt sonst genau darunter). */}
       <main className={`flex-grow overflow-y-auto w-full relative ${activeTab === ActiveTab.READER
         ? 'pt-16 pb-20 px-2 sm:px-4 md:pt-4 md:pb-4 md:px-4'
         : 'pt-16 pb-24 px-4 sm:px-6 md:pt-8 md:pb-8 md:px-8 lg:pt-16 lg:pb-16 lg:px-16'} ${sidebarCollapsed ? 'lg:pl-14' : ''}`}>
-        <div className={`relative z-10 ${activeTab === ActiveTab.READER ? 'w-full' : 'max-w-6xl mx-auto'}`}>{children}</div>
+        <div className={`relative z-10 ${activeTab === ActiveTab.READER || activeTab === ActiveTab.KNOWLEDGE_GRAPH ? 'w-full' : 'max-w-6xl mx-auto'}`}>{children}</div>
       </main>
 
       {showApiSettings && (

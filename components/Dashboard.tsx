@@ -40,7 +40,7 @@ interface ActionCard {
 
 /** Fixe Priorität statt Sortierung nach Nutzungshäufigkeit — entspricht dem
  *  freigegebenen Dashboard-Redesign (Quiz, Tutor, Karteikarten, Simulator,
- *  Feynman, Mindmaps, Bibliothek). Bibliothek steht bewusst zuletzt: bei
+ *  Feynman, Wissensnetz, Bibliothek). Bibliothek steht bewusst zuletzt: bei
  *  ungerader Kartenzahl (7) bekommt die letzte Karte die volle Zeilenbreite
  *  (siehe isLast im Grid unten), das passt gut als größte/unterste Karte. */
 const ACTION_CARDS: ActionCard[] = [
@@ -49,7 +49,7 @@ const ACTION_CARDS: ActionCard[] = [
   { id: ActiveTab.CARDS, titleKey: 'nav.cards', Icon: Layers, tint: 'gold' },
   { id: ActiveTab.EXAM, titleKey: 'nav.exam', Icon: GraduationCap, tint: 'navy' },
   { id: ActiveTab.RECALL, titleKey: 'nav.recall', Icon: Brain, tint: 'gold' },
-  { id: ActiveTab.MINDMAP, titleKey: 'nav.mindmap', Icon: Network, tint: 'navy' },
+  { id: ActiveTab.KNOWLEDGE_GRAPH, titleKey: 'nav.knowledgeGraph', Icon: Network, tint: 'navy' },
   { id: ActiveTab.LIBRARY, titleKey: 'nav.library', Icon: BookOpen, tint: 'gold' },
 ];
 

@@ -29,7 +29,7 @@ const ACTIONS: Action[] = [
   { tab: ActiveTab.READER,    emoji: '📖', titleKey: 'sd.action.reader.title',    descKey: 'sd.action.reader.desc',    ctaKey: 'sd.action.reader.cta',    directStart: true },
   { tab: ActiveTab.CARDS,     emoji: '🃏', titleKey: 'sd.action.cards.title',     descKey: 'sd.action.cards.desc',     ctaKey: 'sd.action.cards.cta',     directStart: true },
   { tab: ActiveTab.RECALL,    emoji: '🧠', titleKey: 'sd.action.recall.title',    descKey: 'sd.action.recall.desc',    ctaKey: 'sd.action.recall.cta',    directStart: true },
-  { tab: ActiveTab.MINDMAP,   emoji: '🗺️', titleKey: 'sd.action.mindmap.title',   descKey: 'sd.action.mindmap.desc',   ctaKey: 'sd.action.mindmap.cta',   directStart: true },
+  { tab: ActiveTab.KNOWLEDGE_GRAPH, emoji: '🕸️', titleKey: 'sd.action.knowledgeGraph.title', descKey: 'sd.action.knowledgeGraph.desc', ctaKey: 'sd.action.knowledgeGraph.cta', directStart: false },
   { tab: ActiveTab.EXAM,      emoji: '📝', titleKey: 'sd.action.exam.title',      descKey: 'sd.action.exam.desc',      ctaKey: 'sd.action.exam.cta',      directStart: false, danger: true },
   { tab: ActiveTab.PLANNER,   emoji: '📅', titleKey: 'sd.action.planner.title',   descKey: 'sd.action.planner.desc',   ctaKey: 'sd.action.planner.cta',   directStart: false },
   { tab: ActiveTab.RADAR,     emoji: '📊', titleKey: 'sd.action.radar.title',     descKey: 'sd.action.radar.desc',     ctaKey: 'sd.action.radar.cta',     directStart: false },
