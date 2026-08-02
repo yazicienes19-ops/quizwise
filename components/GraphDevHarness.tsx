@@ -9,7 +9,7 @@ import {
   type GraphNodeDocumentRef, type GraphScope,
 } from '../services/graph/types';
 import { createEmptyHistory } from '../services/graph/graphHistoryService';
-import { clearSelection } from '../services/graph/graphSelectionService';
+import { clearSelection, selectNode } from '../services/graph/graphSelectionService';
 import { saveCachedState } from '../services/graph/graphSyncService';
 import { useKnowledgeGraph } from '../hooks/useKnowledgeGraph';
 import { shouldUsePdfReader } from '../services/libraryService';
@@ -64,9 +64,11 @@ const makeNode = (title: string, x: number, y: number, overrides: Partial<GraphN
   }];
 };
 
-const makeRelationType = (label: string, symmetric: boolean, sortOrder: number): [string, GraphRelationType] => {
+const makeRelationType = (
+  label: string, symmetric: boolean, sortOrder: number, inverseLabel?: string,
+): [string, GraphRelationType] => {
   const id = generateGraphId();
-  return [id, { id, label, symmetric, isBuiltIn: true, sortOrder, createdAt: now }];
+  return [id, { id, label, inverseLabel, symmetric, isBuiltIn: true, sortOrder, createdAt: now }];
 };
 
 // Phase 3 ("Eigene Unterlagen") — 40 Fixture-Dokumente, damit "Verhalten bei
@@ -87,13 +89,19 @@ function buildFixtureState(): GraphState {
 
   const relationTypes = [
     makeRelationType('ist Teil von', false, 1),
+    // Mit inverseLabel + "…"-Lückentext-Konvention — exakt wie der echte
+    // Migrations-Seed (builtInRelationTypes.ts) — damit Phase 4 ("Verwandte
+    // Konzepte") die grammatikalisch korrekte Gegenrichtung tatsächlich
+    // gegen Fixture-Daten prüfen kann, nicht nur den Arrow-Flip-Fallback.
+    makeRelationType('Voraussetzung von', false, 2, 'baut auf … auf'),
     makeRelationType('Beispiel für', false, 3),
     makeRelationType('Gegensatz zu', true, 5),
   ];
   relationTypes.forEach(([id, rt]) => state.relationTypesById.set(id, rt));
   const [teilVonId] = relationTypes[0];
-  const [beispielFuerId] = relationTypes[1];
-  const [gegensatzId] = relationTypes[2];
+  const [voraussetzungId] = relationTypes[1];
+  const [beispielFuerId] = relationTypes[2];
+  const [gegensatzId] = relationTypes[3];
 
   const nodes = [
     makeNode('Konditionierung', 0, 0, { color: '#6366f1' }),
@@ -102,6 +110,10 @@ function buildFixtureState(): GraphState {
     makeNode('Pawlow', -220, 320, { type: 'person' }),
     makeNode('Verstärkung', 220, 320),
     makeNode('Bestrafung', 420, 320),
+    // Phase 4 ("Verwandte Konzepte") — bewusst OHNE jede Kante, damit
+    // "Verhalten ohne Beziehungen" (Leerzustand) beim ersten Laden direkt
+    // testbar ist, ohne erst manuell eine Kante zu löschen.
+    makeNode('Löschung', 620, 320),
   ];
   nodes.forEach(([id, n]) => state.nodesById.set(id, n));
   const [rootId] = nodes[0];
@@ -121,6 +133,16 @@ function buildFixtureState(): GraphState {
   edge(verstaerkungId, operantId, teilVonId);
   edge(bestrafungId, operantId, teilVonId);
   edge(verstaerkungId, bestrafungId, gegensatzId);
+
+  // 20 zusätzliche Nodes, alle als "Voraussetzung von" auf die Kondition-
+  // ierung bezogen — testet "viele Beziehungen" (Scroll/Performance im
+  // Abschnitt) UND gleichzeitig den inverseLabel-Pfad in großer Zahl
+  // (Konditionierung sieht die Gegenrichtung "baut auf X auf").
+  for (let i = 1; i <= 20; i++) {
+    const [fillerId, fillerNode] = makeNode(`Zusatzkonzept ${i}`, -400 + i * 40, 500);
+    state.nodesById.set(fillerId, fillerNode);
+    edge(fillerId, rootId, voraussetzungId);
+  }
 
   // Drei der 40 Fixture-Dokumente sind bereits mit dem Hauptthema verknüpft —
   // damit "viele bereits verknüpfte Dokumente" (Anzeige-Reihenfolge, Klick
@@ -237,6 +259,7 @@ export const GraphDevHarness: React.FC = () => {
             }}
             onOpenDocument={setOpenDocumentId}
             onClose={() => graph.onSelectionChange(clearSelection(graph.selection))}
+            onSelectNode={id => graph.onSelectionChange(selectNode(graph.selection, id))}
           />
         )}
       </div>
