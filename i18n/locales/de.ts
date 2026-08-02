@@ -566,6 +566,17 @@ export const de = {
   'kg.panel.sourcesCancel': 'Abbrechen',
   'kg.panel.related': 'Verwandte Konzepte',
   'kg.panel.relatedEmpty': 'Noch keine Verbindungen zu anderen Konzepten.',
+  'kg.panel.activity': 'Aktiv lernen',
+  'kg.panel.activityFlashcards': 'Karten',
+  'kg.panel.activityQuiz': 'Quiz',
+  'kg.panel.activityFeynman': 'Feynman',
+  'kg.panel.activityExplain': 'Erklären',
+  'kg.activity.back': 'Zurück zum Wissensnetz',
+  'kg.activity.loadingFlashcards': 'Karteikarten werden erstellt…',
+  'kg.activity.loadingQuiz': 'Quiz wird erstellt…',
+  'kg.activity.loadingFeynman': 'Wird vorbereitet…',
+  'kg.activity.loadingExplain': 'Erklärung wird vorbereitet…',
+  'kg.activity.quizResult': '{correct} von {total} richtig',
 
   // library
   'lib.title': 'Bibliothek',

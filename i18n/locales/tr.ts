@@ -564,6 +564,17 @@ export const tr: Translations = {
   'kg.panel.sourcesCancel': 'Vazgeç',
   'kg.panel.related': 'İlgili Kavramlar',
   'kg.panel.relatedEmpty': 'Henüz başka bir kavramla bağlantı yok.',
+  'kg.panel.activity': 'Aktif öğrenme',
+  'kg.panel.activityFlashcards': 'Kartlar',
+  'kg.panel.activityQuiz': 'Sınav',
+  'kg.panel.activityFeynman': 'Feynman',
+  'kg.panel.activityExplain': 'Açıkla',
+  'kg.activity.back': 'Bilgi ağına dön',
+  'kg.activity.loadingFlashcards': 'Kartlar oluşturuluyor…',
+  'kg.activity.loadingQuiz': 'Sınav oluşturuluyor…',
+  'kg.activity.loadingFeynman': 'Hazırlanıyor…',
+  'kg.activity.loadingExplain': 'Açıklama hazırlanıyor…',
+  'kg.activity.quizResult': '{total} sorudan {correct} doğru',
 
   // library
   'lib.title': 'Kütüphane',

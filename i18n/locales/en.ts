@@ -565,6 +565,17 @@ export const en: Translations = {
   'kg.panel.sourcesCancel': 'Cancel',
   'kg.panel.related': 'Related Concepts',
   'kg.panel.relatedEmpty': 'No connections to other concepts yet.',
+  'kg.panel.activity': 'Active learning',
+  'kg.panel.activityFlashcards': 'Cards',
+  'kg.panel.activityQuiz': 'Quiz',
+  'kg.panel.activityFeynman': 'Feynman',
+  'kg.panel.activityExplain': 'Explain',
+  'kg.activity.back': 'Back to the knowledge graph',
+  'kg.activity.loadingFlashcards': 'Creating flashcards…',
+  'kg.activity.loadingQuiz': 'Creating quiz…',
+  'kg.activity.loadingFeynman': 'Preparing…',
+  'kg.activity.loadingExplain': 'Preparing explanation…',
+  'kg.activity.quizResult': '{correct} of {total} correct',
 
   // library
   'lib.title': 'Library',
