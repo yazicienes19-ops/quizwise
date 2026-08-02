@@ -564,6 +564,8 @@ export const de = {
   'kg.panel.sourcesPickPlaceholder': 'Dokument wählen…',
   'kg.panel.sourcesConfirm': 'Verknüpfen',
   'kg.panel.sourcesCancel': 'Abbrechen',
+  'kg.panel.related': 'Verwandte Konzepte',
+  'kg.panel.relatedEmpty': 'Noch keine Verbindungen zu anderen Konzepten.',
 
   // library
   'lib.title': 'Bibliothek',

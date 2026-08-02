@@ -562,6 +562,8 @@ export const tr: Translations = {
   'kg.panel.sourcesPickPlaceholder': 'Bir belge seç…',
   'kg.panel.sourcesConfirm': 'Bağla',
   'kg.panel.sourcesCancel': 'Vazgeç',
+  'kg.panel.related': 'İlgili Kavramlar',
+  'kg.panel.relatedEmpty': 'Henüz başka bir kavramla bağlantı yok.',
 
   // library
   'lib.title': 'Kütüphane',

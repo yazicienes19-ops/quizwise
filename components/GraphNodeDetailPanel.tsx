@@ -1,9 +1,10 @@
-import React, { useEffect, useRef, useState } from 'react';
+import React, { useEffect, useMemo, useRef, useState } from 'react';
 import type { ProcessedDocument } from '../types';
-import type { GraphState, GraphEntityChange } from '../services/graph/types';
+import type { GraphEdge, GraphState, GraphEntityChange } from '../services/graph/types';
 import { HIERARCHY_LEVEL_LABELS, nextHierarchyLevel } from '../services/graph/types';
 import { type GraphHistory, recordUpdateNode } from '../services/graph/graphHistoryService';
 import { createNodeDocumentRef } from '../services/graph/graphMutationService';
+import { buildGraphIndex, outgoingEdges, incomingEdges } from '../services/graph/graphIndex';
 import { documentDisplayName } from '../services/libraryService';
 import { useTranslation } from '../i18n/I18nProvider';
 
@@ -11,8 +12,10 @@ import { useTranslation } from '../i18n/I18nProvider';
  * Rechte Seitenleiste des Wissensnetzes (s. KNOWLEDGE_GRAPH_KONZEPT.md
  * Abschnitt 2 für die vollständige, verbindliche 7-Abschnitt-Struktur).
  * Phase 2: Kopfbereich, Beschreibung, Eigene Notizen. Phase 3: Eigene
- * Unterlagen (Dokumente verknüpfen/anzeigen/öffnen). Architektonisch ein
- * Geschwister von GraphCanvas, keine Eltern-Kind-Beziehung: beide bekommen
+ * Unterlagen (Dokumente verknüpfen/anzeigen/öffnen). Phase 4: Verwandte
+ * Konzepte (direkt verbundene Nodes, lesbar statt Graph-technisch, Klick
+ * springt zum Node). Architektonisch ein Geschwister von GraphCanvas, keine
+ * Eltern-Kind-Beziehung: beide bekommen
  * dieselben state/history/onChange/onEntityChanged-Props vom Aufrufer
  * (GraphSystem/GraphDevHarness) und rufen unabhängig voneinander Domain-
  * Funktionen auf — exakt dasselbe Muster wie GraphCanvas selbst, keine neue
@@ -36,6 +39,17 @@ import { useTranslation } from '../i18n/I18nProvider';
  * entscheidet, WIE der Reader erscheint (Variante A: Portal-Overlay, s.
  * dortiger Datei-Kommentar). Kein Löschen einer Verknüpfung in dieser Phase
  * (bewusst, s. Umsetzungsbericht) — nur Anlegen und Ansehen.
+ *
+ * "Verwandte Konzepte" beantwortet bewusst "Wie hängt das mit anderem Wissen
+ * zusammen?", nicht "welche Kanten existieren?" — jede Zeile ist ein ganzer,
+ * lesbarer Satzfetzen ("→ gehört zu Behaviorismus"), keine rohe Kantenliste.
+ * Klick auf einen Eintrag meldet nur `onSelectNode(nodeId)` nach oben (exakt
+ * dasselbe Muster wie `onOpenDocument`) — auch das ist bewusst KEIN neuer
+ * Navigationsmechanismus, sondern derselbe Selektionswechsel, den ein Klick
+ * auf den Node im Canvas ohnehin auslöst. Weil dabei nichts unmountet und
+ * kein Code die Kamera bewegt, bleiben Zoom/Pan garantiert unverändert.
+ * Keine Beziehung lässt sich hier anlegen/löschen (nur auf dem Canvas per
+ * Kante ziehen) — dieser Abschnitt ist bewusst rein lesend/navigierend.
  */
 
 export interface GraphNodeDetailPanelProps {
@@ -49,12 +63,61 @@ export interface GraphNodeDetailPanelProps {
   /** Öffnet den bestehenden Reader als Overlay — s. GraphSystem.tsx
    *  ("Variante A"). Dieses Panel weiß nichts vom Reader selbst, nur die ID. */
   onOpenDocument: (documentId: string) => void;
+  /** Phase 4 ("Verwandte Konzepte"): Klick auf einen verwandten Begriff
+   *  wechselt nur die Auswahl (derselbe Mechanismus wie ein Klick auf den
+   *  Node im Canvas selbst) — der Aufrufer (GraphSystem/GraphDevHarness)
+   *  ruft dafür `selectNode(selection, nodeId)` auf. Das Panel kennt
+   *  `GraphSelectionState` bewusst nicht, nur die Ziel-ID. Weil GraphCanvas
+   *  dabei nicht unmountet und die Auswahl nie den Viewport verschiebt,
+   *  bleiben Zoom/Pan automatisch unverändert — keine eigene Logik dafür nötig. */
+  onSelectNode: (nodeId: string) => void;
 }
 
 const typeLabel = (type: string): string => type.length > 0 ? type.charAt(0).toUpperCase() + type.slice(1) : type;
 
+/** Baut aus einer Kante + Blickrichtung (aktueller Node ist Quelle oder Ziel)
+ *  eine für Menschen lesbare Zeile — Kernidee dieses Abschnitts: "Wie hängt
+ *  dieses Konzept mit anderem Wissen zusammen?", nicht "welche Kanten
+ *  existieren?" (s. Datei-Kommentar unten). Gibt `null` zurück, wenn der
+ *  andere Node oder der Beziehungstyp nicht (mehr) geladen ist — kann durch
+ *  den Lese-Zeit-Filter in graphIndex.ts eigentlich nicht vorkommen (dort
+ *  werden Kanten zu archivierten/gelöschten Nodes bereits ausgeblendet),
+ *  hier trotzdem defensiv statt eine Zeile mit "undefined" zu zeigen. */
+function describeRelatedEntry(
+  state: GraphState, edge: GraphEdge, isSource: boolean,
+): { key: string; otherNodeId: string; otherTitle: string; text: string } | null {
+  const otherNodeId = isSource ? edge.targetNodeId : edge.sourceNodeId;
+  const otherNode = state.nodesById.get(otherNodeId);
+  const relationType = state.relationTypesById.get(edge.relationTypeId);
+  if (!otherNode || !relationType) return null;
+
+  let text: string;
+  if (relationType.symmetric) {
+    // Symmetrisch: dieselbe Aussage in beide Richtungen, kein Pfeil-Konflikt.
+    text = `↔ ${relationType.label} ${otherNode.title}`;
+  } else if (isSource) {
+    text = `→ ${relationType.label} ${otherNode.title}`;
+  } else if (relationType.inverseLabel) {
+    // "…" ist die Lückentext-Konvention der eingebauten Typen für Fälle, in
+    // denen der Bezug grammatikalisch in die Mitte gehört (z.B. "baut auf …
+    // auf" statt "baut auf" + Anhängsel) — s. builtInRelationTypes.ts.
+    const filled = relationType.inverseLabel.includes('…')
+      ? relationType.inverseLabel.replace('…', otherNode.title)
+      : `${relationType.inverseLabel} ${otherNode.title}`;
+    text = `→ ${filled}`;
+  } else {
+    // Kein inverseLabel vorhanden (z.B. spontan per Freitext angelegte
+    // Beziehungstypen beim Kantenziehen haben nie eins) — bewusste, im
+    // Konzeptdokument als MVP-Kompromiss vorgesehene Vereinfachung: derselbe
+    // Text wie in Vorwärtsrichtung, nur der Pfeil zeigt die Gegenrichtung an,
+    // statt eine möglicherweise falsche Grammatik zu erfinden.
+    text = `← ${relationType.label} ${otherNode.title}`;
+  }
+  return { key: edge.id, otherNodeId, otherTitle: otherNode.title, text };
+}
+
 export const GraphNodeDetailPanel: React.FC<GraphNodeDetailPanelProps> = ({
-  state, history, nodeId, documents, onChange, onEntityChanged, onClose, onOpenDocument,
+  state, history, nodeId, documents, onChange, onEntityChanged, onClose, onOpenDocument, onSelectNode,
 }) => {
   const { t } = useTranslation();
   const node = state.nodesById.get(nodeId);
@@ -72,6 +135,11 @@ export const GraphNodeDetailPanel: React.FC<GraphNodeDetailPanelProps> = ({
   // im JSX-Body gebraucht werden.
   const [isPickingDocument, setIsPickingDocument] = useState(false);
   const [pickedDocumentId, setPickedDocumentId] = useState('');
+  // Verwandte Konzepte: derselbe Index wie in GraphCanvas.tsx (dieselbe
+  // buildGraphIndex-Funktion, dasselbe useMemo-Muster), damit das Auflösen
+  // von aus-/eingehenden Kanten bei jedem Render nicht neu über ALLE Kanten
+  // iterieren muss — relevant bei vielen Beziehungen im Fach.
+  const relationIndex = useMemo(() => buildGraphIndex(state), [state]);
 
   useEffect(() => {
     setDescriptionDraft(node?.description ?? '');
@@ -165,6 +233,20 @@ export const GraphNodeDetailPanel: React.FC<GraphNodeDetailPanelProps> = ({
       onEntityChanged?.({ kind: 'node', entity: result.entity });
     }
   };
+
+  // ── Verwandte Konzepte (Phase 4) ────────────────────────────────────────
+  // outgoingEdges/incomingEdges filtern bereits auf Kanten AKTIVER Nodes
+  // (s. graphIndex.ts) — ein Beziehungspartner, der zwischenzeitlich
+  // archiviert/gelöscht wurde, taucht hier automatisch nicht mehr auf, ohne
+  // dass diese Datei etwas davon wissen muss. Sortierung alphabetisch nach
+  // dem Titel des JEWEILS ANDEREN Nodes (dieselbe Konvention wie der
+  // Dokument-Picker in Phase 3) — lesbar/scannbar auch bei vielen Kanten.
+  const relatedEntries = [
+    ...outgoingEdges(relationIndex, nodeId).map(edge => describeRelatedEntry(state, edge, true)),
+    ...incomingEdges(relationIndex, nodeId).map(edge => describeRelatedEntry(state, edge, false)),
+  ]
+    .filter((entry): entry is NonNullable<typeof entry> => entry !== null)
+    .sort((a, b) => a.otherTitle.localeCompare(b.otherTitle));
 
   // ── Eigene Unterlagen (Phase 3) ────────────────────────────────────────
   // Bewusst NICHT über GraphHistoryService — NodeDocumentRef-Mutationen sind
@@ -335,6 +417,32 @@ export const GraphNodeDetailPanel: React.FC<GraphNodeDetailPanelProps> = ({
                 </button>
               </div>
             </div>
+          )}
+        </section>
+
+        <section>
+          <p className="text-[9px] font-black uppercase tracking-widest text-slate-400 mb-1.5">
+            🔗 {t('kg.panel.related')}
+          </p>
+
+          {relatedEntries.length === 0 && (
+            <p className="text-[10px] text-slate-400 italic">{t('kg.panel.relatedEmpty')}</p>
+          )}
+
+          {relatedEntries.length > 0 && (
+            <ul className="space-y-1 max-h-64 overflow-y-auto">
+              {relatedEntries.map(entry => (
+                <li key={entry.key}>
+                  <button
+                    onClick={() => onSelectNode(entry.otherNodeId)}
+                    title={entry.text}
+                    className="w-full text-left text-[11px] font-bold text-slate-700 dark:text-slate-200 rounded-lg px-3 py-2 hover:bg-slate-50 dark:hover:bg-slate-800 transition-colors truncate block"
+                  >
+                    {entry.text}
+                  </button>
+                </li>
+              ))}
+            </ul>
           )}
         </section>
       </div>

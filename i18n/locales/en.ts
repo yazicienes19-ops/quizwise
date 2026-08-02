@@ -563,6 +563,8 @@ export const en: Translations = {
   'kg.panel.sourcesPickPlaceholder': 'Choose a document…',
   'kg.panel.sourcesConfirm': 'Link',
   'kg.panel.sourcesCancel': 'Cancel',
+  'kg.panel.related': 'Related Concepts',
+  'kg.panel.relatedEmpty': 'No connections to other concepts yet.',
 
   // library
   'lib.title': 'Library',
