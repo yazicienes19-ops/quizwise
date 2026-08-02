@@ -50,6 +50,13 @@ import { useTranslation } from '../i18n/I18nProvider';
  * kein Code die Kamera bewegt, bleiben Zoom/Pan garantiert unverändert.
  * Keine Beziehung lässt sich hier anlegen/löschen (nur auf dem Canvas per
  * Kante ziehen) — dieser Abschnitt ist bewusst rein lesend/navigierend.
+ *
+ * Phase 5 ("Aktiv lernen"): schmale Aktionszeile, keine Dashboard-Kacheln —
+ * vier Buttons (Karteikarten/Quiz/Feynman/KI-Erklärung), die nur
+ * `onStartActivity(kind)` nach oben melden. Dieses Panel weiß nichts davon,
+ * WIE eine Aktivität aussieht (GraphSystem.tsx entscheidet das, s. dortiger
+ * Kommentar zu GraphLearningOverlay) — exakt dasselbe Melde-Muster wie
+ * `onOpenDocument`/`onSelectNode`.
  */
 
 export interface GraphNodeDetailPanelProps {
@@ -71,6 +78,10 @@ export interface GraphNodeDetailPanelProps {
    *  dabei nicht unmountet und die Auswahl nie den Viewport verschiebt,
    *  bleiben Zoom/Pan automatisch unverändert — keine eigene Logik dafür nötig. */
   onSelectNode: (nodeId: string) => void;
+  /** Phase 5 ("Aktiv lernen"): meldet nur, WELCHE Aktivität gestartet werden
+   *  soll — GraphSystem.tsx entscheidet, wie sie als Overlay erscheint
+   *  (GraphLearningOverlay). */
+  onStartActivity: (activity: 'flashcards' | 'quiz' | 'feynman' | 'explain') => void;
 }
 
 const typeLabel = (type: string): string => type.length > 0 ? type.charAt(0).toUpperCase() + type.slice(1) : type;
@@ -117,7 +128,7 @@ function describeRelatedEntry(
 }
 
 export const GraphNodeDetailPanel: React.FC<GraphNodeDetailPanelProps> = ({
-  state, history, nodeId, documents, onChange, onEntityChanged, onClose, onOpenDocument, onSelectNode,
+  state, history, nodeId, documents, onChange, onEntityChanged, onClose, onOpenDocument, onSelectNode, onStartActivity,
 }) => {
   const { t } = useTranslation();
   const node = state.nodesById.get(nodeId);
@@ -444,6 +455,29 @@ export const GraphNodeDetailPanel: React.FC<GraphNodeDetailPanelProps> = ({
               ))}
             </ul>
           )}
+        </section>
+
+        <section>
+          <p className="text-[9px] font-black uppercase tracking-widest text-slate-400 mb-1.5">
+            {t('kg.panel.activity')}
+          </p>
+          <div className="flex gap-1.5">
+            {([
+              ['flashcards', '🃏', 'kg.panel.activityFlashcards'],
+              ['quiz', '❓', 'kg.panel.activityQuiz'],
+              ['feynman', '🧠', 'kg.panel.activityFeynman'],
+              ['explain', '🤖', 'kg.panel.activityExplain'],
+            ] as const).map(([kind, emoji, labelKey]) => (
+              <button
+                key={kind}
+                onClick={() => onStartActivity(kind)}
+                className="flex-1 flex flex-col items-center gap-1 rounded-lg py-2.5 hover:bg-slate-50 dark:hover:bg-slate-800 transition-colors"
+              >
+                <span className="text-base leading-none">{emoji}</span>
+                <span className="text-[8px] font-black uppercase tracking-wider text-slate-500 dark:text-slate-400">{t(labelKey)}</span>
+              </button>
+            ))}
+          </div>
         </section>
       </div>
     </div>
