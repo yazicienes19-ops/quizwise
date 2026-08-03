@@ -146,6 +146,51 @@ export const getPageTextItems = async (
   return { items, width: viewport.width, height: viewport.height };
 };
 
+export interface PositionedLine {
+  /** y-Position der Zeile (oben links, wie PositionedTextItem). */
+  y: number;
+  /** Zeichenhöhe des größten Fragments dieser Zeile — Grundlage für die
+   *  schriftgrößenbasierte Überschriften-Erkennung dichter Textseiten. */
+  height: number;
+  text: string;
+}
+
+/**
+ * Fasst Positions-Fragmente einer Seite zu Zeilen zusammen (Fragmente mit
+ * ähnlichem y gehören zur selben Zeile) — anders als joinTextItems() bleibt
+ * hier pro Zeile die Schriftgröße erhalten, nötig um echte Überschriften auf
+ * textdichten Seiten von gleich aussehenden, aber fließtextgroßen
+ * Aufzählungspunkten zu unterscheiden (siehe chapterService.detectDenseChapters).
+ */
+export function groupIntoLines(items: PositionedTextItem[]): PositionedLine[] {
+  const withText = items.filter(it => it.str.trim());
+  // Erst grob nach y clustern (Fragmente können innerhalb derselben Zeile
+  // leicht in y schwanken, z.B. durch Font-Metrik-Jitter) — die Lesereihen-
+  // folge INNERHALB einer Zeile kommt danach separat aus der x-Sortierung,
+  // sonst könnte ein Fragment mit knapp höherem/niedrigerem y vor einem
+  // eigentlich weiter links stehenden Fragment landen.
+  const sortedByY = [...withText].sort((a, b) => a.y - b.y);
+  const rawLines: PositionedTextItem[][] = [];
+  for (const it of sortedByY) {
+    const lastLine = rawLines[rawLines.length - 1];
+    const lastItem = lastLine?.[lastLine.length - 1];
+    if (lastItem && Math.abs(it.y - lastItem.y) < Math.max(it.h, lastItem.h) * 0.5) {
+      lastLine.push(it);
+    } else {
+      rawLines.push([it]);
+    }
+  }
+  return rawLines.map(lineItems => {
+    const sortedByX = [...lineItems].sort((a, b) => a.x - b.x);
+    let text = '';
+    for (const it of sortedByX) {
+      if (text && !text.endsWith(' ') && !it.str.startsWith(' ')) text += ' ';
+      text += it.str;
+    }
+    return { y: lineItems[0].y, height: Math.max(...lineItems.map(it => it.h)), text };
+  });
+}
+
 /**
  * Begrenzt targetWidth so, dass eine Seite mit dem Seitenverhältnis
  * baseWidth/baseHeight bei dieser Breite nicht höher als maxHeight wird.

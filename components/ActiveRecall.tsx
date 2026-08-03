@@ -16,7 +16,7 @@ import { getAllResults } from '../services/quizHistoryService';
 import { getAllRecallResults } from '../services/recallHistoryService';
 import { recentRecallTopics } from '../services/recallSteering';
 import { getCoverage, markTopicCovered } from '../services/recallCoverageService';
-import { detectChapters, getTextForChapterDetection } from '../services/chapterService';
+import { detectChaptersForDoc } from '../services/chapterService';
 import { getAllExamResults } from '../services/examHistoryService';
 
 interface ActiveRecallProps {
@@ -109,13 +109,18 @@ export const ActiveRecall: React.FC<ActiveRecallProps> = ({
     setActiveDoc(doc);
   };
 
-  // Kapitel-Themen des aktiven Dokuments (Text/DOCX direkt, sonst Digest) —
-  // Grundlage für „erst alles einmal abfragen, dann vertiefen".
-  const chapterTitles = useMemo(() => {
-    if (!activeDoc) return [];
-    return detectChapters(getTextForChapterDetection(activeDoc))
-      .map(c => c.title.replace(/^#{1,6}\s*/, '').trim())
-      .filter(Boolean);
+  // Kapitel-Themen des aktiven Dokuments (Text/DOCX direkt per Regex, PDF per
+  // echter Seiten-Layout-Erkennung, sonst Digest als Fallback) — Grundlage
+  // für „erst alles einmal abfragen, dann vertiefen".
+  const [chapterTitles, setChapterTitles] = useState<string[]>([]);
+  useEffect(() => {
+    if (!activeDoc) { setChapterTitles([]); return; }
+    let cancelled = false;
+    detectChaptersForDoc(activeDoc).then(chapters => {
+      if (cancelled) return;
+      setChapterTitles(chapters.map(c => c.title.replace(/^#{1,6}\s*/, '').trim()).filter(Boolean));
+    });
+    return () => { cancelled = true; };
   }, [activeDoc]);
 
   const coverage = useMemo(

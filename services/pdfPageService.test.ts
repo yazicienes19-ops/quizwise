@@ -1,5 +1,6 @@
 import { describe, it, expect } from 'vitest';
-import { joinTextItems, isScannedPage, SCANNED_PAGE_TEXT_THRESHOLD, constrainWidthToHeight } from './pdfPageService';
+import { joinTextItems, isScannedPage, SCANNED_PAGE_TEXT_THRESHOLD, constrainWidthToHeight, groupIntoLines } from './pdfPageService';
+import type { PositionedTextItem } from './pdfPageService';
 
 describe('joinTextItems', () => {
   it('fügt Fragmente mit Leerzeichen zusammen', () => {
@@ -85,5 +86,51 @@ describe('constrainWidthToHeight', () => {
 
   it('liefert targetWidth unverändert bei baseHeight <= 0 (defekte Seitenmaße, kein Crash)', () => {
     expect(constrainWidthToHeight(1000, 600, 0, 500)).toBe(1000);
+  });
+});
+
+describe('groupIntoLines', () => {
+  const posItem = (str: string, x: number, y: number, h: number): PositionedTextItem => ({ str, x, y, w: str.length * h * 0.5, h });
+
+  it('fasst Fragmente mit ähnlichem y zu einer Zeile zusammen', () => {
+    const lines = groupIntoLines([
+      posItem('Die', 0, 100, 11),
+      posItem('Psychologie', 20, 101, 11),
+      posItem('als', 90, 100.5, 11),
+    ]);
+    expect(lines).toHaveLength(1);
+    expect(lines[0].text).toBe('Die Psychologie als');
+    expect(lines[0].height).toBe(11);
+  });
+
+  it('trennt Fragmente mit deutlich unterschiedlichem y in eigene Zeilen', () => {
+    const lines = groupIntoLines([
+      posItem('Kapitel 1', 0, 100, 16),
+      posItem('Erster Satz.', 0, 130, 11),
+    ]);
+    expect(lines).toHaveLength(2);
+    expect(lines.map(l => l.text)).toEqual(['Kapitel 1', 'Erster Satz.']);
+  });
+
+  it('übernimmt die größte Fragmenthöhe einer Zeile (für die Überschriften-Erkennung entscheidend)', () => {
+    const lines = groupIntoLines([
+      posItem('1.1', 0, 100, 14),
+      posItem('Psychologie als Wissenschaft', 20, 100, 11),
+    ]);
+    expect(lines).toHaveLength(1);
+    expect(lines[0].height).toBe(14);
+  });
+
+  it('ignoriert Fragmente ohne sichtbaren Text und liefert eine leere Liste für leere Eingabe', () => {
+    expect(groupIntoLines([posItem('   ', 0, 100, 11)])).toEqual([]);
+    expect(groupIntoLines([])).toEqual([]);
+  });
+
+  it('sortiert Zeilen nach y, unabhängig von der Reihenfolge der Eingabe-Fragmente', () => {
+    const lines = groupIntoLines([
+      posItem('Zweite Zeile', 0, 130, 11),
+      posItem('Erste Zeile', 0, 100, 11),
+    ]);
+    expect(lines.map(l => l.text)).toEqual(['Erste Zeile', 'Zweite Zeile']);
   });
 });
