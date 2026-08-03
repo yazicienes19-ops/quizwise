@@ -93,7 +93,7 @@ create table if not exists public.graph_relation_types (
   user_id       uuid        references public.profiles(id) on delete cascade,
   label         text        not null,
   inverse_label text,
-  symmetric     boolean     not null default false,
+  "symmetric"   boolean     not null default false,
   color         text,
   icon          text,
   is_built_in   boolean     not null default false,
@@ -124,8 +124,8 @@ create policy "Eigene Beziehungstypen löschen" on public.graph_relation_types
 -- statt ON CONFLICT: eine UNIQUE-Constraint behandelt zwei NULL-Werte in
 -- user_id nicht automatisch als Duplikat, ON CONFLICT (user_id, label)
 -- würde bei erneutem Ausführen also stumm weitere Kopien einfügen.
-insert into public.graph_relation_types (label, inverse_label, symmetric, is_built_in, sort_order)
-select v.label, v.inverse_label, v.symmetric, true, v.sort_order
+insert into public.graph_relation_types (label, inverse_label, "symmetric", is_built_in, sort_order)
+select v.label, v.inverse_label, v."symmetric", true, v.sort_order
 from (values
   ('ist Teil von',          'enthält',               false, 1),
   ('Voraussetzung von',     'baut auf … auf',        false, 2),
@@ -133,7 +133,7 @@ from (values
   ('Ursache von',           'wird verursacht durch', false, 4),
   ('Gegensatz zu',          null,                    true,  5),
   ('gehört zusammen mit',   null,                    true,  6)
-) as v(label, inverse_label, symmetric, sort_order)
+) as v(label, inverse_label, "symmetric", sort_order)
 where not exists (
   select 1 from public.graph_relation_types r
   where r.user_id is null and r.label = v.label
