@@ -158,7 +158,11 @@ export const Layout: React.FC<LayoutProps> = ({
           verhindert, dass bei langen Seiten unter dem Sidebar-Inhalt heller
           Hintergrund durchscheint, ohne die Sidebar selbst höher als einen
           Bildschirm machen zu müssen. */}
-      <div className="hidden lg:block absolute inset-y-0 left-0 w-72 pointer-events-none" style={{ background: SIDEBAR.bg }} aria-hidden="true" />
+      <div
+        className="hidden lg:block absolute inset-y-0 left-0 pointer-events-none transition-[width] duration-300 ease-[cubic-bezier(0.16,1,0.3,1)]"
+        style={{ background: SIDEBAR.bg, width: sidebarCollapsed ? '0px' : '18rem' }}
+        aria-hidden="true"
+      />
       <div className="hidden md:block lg:hidden absolute inset-y-0 left-0 w-[72px] pointer-events-none" style={{ background: SIDEBAR.bg }} aria-hidden="true" />
 
       {/* ── DESKTOP SIDEBAR (≥ 1024px) — einklappbar, Zustand persistiert ──
