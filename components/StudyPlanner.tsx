@@ -14,7 +14,7 @@ import { useTranslation } from '../i18n/I18nProvider';
 import { formatDate } from '../i18n/dates';
 import { localeTag } from '../i18n';
 import type { TKey } from '../i18n';
-import { ChevronLeft, ChevronRight, X, Plus, Repeat as RepeatIcon, Clock, CalendarX as CalendarXIcon } from 'lucide-react';
+import { ChevronLeft, ChevronRight, X, Plus, Repeat as RepeatIcon, Clock, CalendarX as CalendarXIcon, Trash2 } from 'lucide-react';
 
 type ViewMode = 'monat' | 'liste';
 
@@ -435,6 +435,30 @@ export const StudyPlanner: React.FC<StudyPlannerProps> = ({ metrics, decks, exam
           </div>
         </div>
       </div>
+
+      {/* Kalender aufräumen — Bulk-Löschen (User-Wunsch 2026-08-04). Bewusst
+          NUR Klausurtermine + wiederkehrende Regeln (explizit vom User
+          ausgewählt), NICHT die einzelnen Lernsessions — die sollen bleiben. */}
+      {(examTerms.length > 0 || recurringSessions.length > 0) && (
+        <div className="flex flex-wrap gap-2 justify-end px-1">
+          {examTerms.length > 0 && (
+            <button
+              onClick={() => { if (window.confirm(tp('sp2.deleteAllExamsConfirm', examTerms.length))) onUpdateExams([]); }}
+              className="flex items-center gap-1.5 px-3 py-2 rounded-xl text-[9px] font-black uppercase tracking-widest text-slate-400 hover:text-rose-500 hover:bg-rose-50 dark:hover:bg-rose-900/20 transition-colors"
+            >
+              <Trash2 size={12} /> {t('sp2.deleteAllExams')}
+            </button>
+          )}
+          {recurringSessions.length > 0 && (
+            <button
+              onClick={() => { if (window.confirm(tp('sp2.deleteAllRecurringConfirm', recurringSessions.length))) saveRecurringSessions([]); }}
+              className="flex items-center gap-1.5 px-3 py-2 rounded-xl text-[9px] font-black uppercase tracking-widest text-slate-400 hover:text-rose-500 hover:bg-rose-50 dark:hover:bg-rose-900/20 transition-colors"
+            >
+              <Trash2 size={12} /> {t('sp2.deleteAllRecurring')}
+            </button>
+          )}
+        </div>
+      )}
 
       {/* Klausur Form */}
       {showExamForm && (

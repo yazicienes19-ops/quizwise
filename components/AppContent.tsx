@@ -15,7 +15,7 @@ import { searchScholar, searchWeb, generateQuizFromDocument, generateQuizFromFla
 import { getAllResults } from '../services/quizHistoryService';
 import { sourceTopicsKey, getUsedTopics, saveUsedTopics } from '../hooks/useQuizState';
 import { interleaveQuestionsByTopic } from '../services/interleave';
-import { countDueMistakes, addExamMistakes } from '../services/mistakeReviewService';
+import { countDueMistakes, addExamMistakes, removeMistake } from '../services/mistakeReviewService';
 import type { MistakeItem } from '../services/mistakeReviewService';
 import { saveRecallResult } from '../services/recallHistoryService';
 import { createSrsState } from '../services/spacedRepetition';
@@ -132,9 +132,34 @@ export const AppContent: React.FC<AppContentProps> = (p) => {
     handleSaveQuiz, handleLoadSavedQuiz, handleDeleteSavedQuiz,
     handleLoadSavedExam, handleDeleteSavedExam, onQuizComplete,
     handleStartQuizFromDoc, handleStartQuizFromSetup, handleCreateFlashcardsFromMistakes,
-    setReviewSessionItems, handleStartMistakeReview,
+    reviewSessionItems, setReviewSessionItems, handleStartMistakeReview,
     handleApiError, updateMetricsAfterSession, isDark,
   } = p;
+
+  // Einzelne Frage dauerhaft aus der Fehler-Wiederholung entfernen (User-Fund
+  // 2026-08-04: es gab keine UI dafür, obwohl removeMistake() im Service
+  // schon existierte — nur nie irgendwo aufgerufen). Baut questions/
+  // reviewSessionItems parallel neu auf statt nur die Queue zu ändern, sonst
+  // würde die entfernte Frage in DIESER laufenden Session trotzdem weiter
+  // angezeigt.
+  const handleDeleteMistakeAt = (index: number) => {
+    if (!reviewSessionItems) return;
+    const item = reviewSessionItems[index];
+    if (!item) return;
+    removeMistake(item.id, user?.id);
+    const nextItems = reviewSessionItems.filter((_, i) => i !== index);
+    if (nextItems.length === 0) {
+      clearQuizProgress();
+      setReviewSessionItems(null);
+      setQuestions([]);
+      setAnswers([]);
+      toast.success(t('ac.mistakeRemovedLastDone'));
+      return;
+    }
+    setReviewSessionItems(nextItems);
+    setQuestions(nextItems.map(i => i.question));
+    toast.success(t('ac.mistakeRemoved'));
+  };
 
   // Gemeinsamer Folge-Aktion-Handler für schwache Themen — von Lern-Coach UND Klausur-Ergebnis genutzt
   const handleWeakTopicAction = (topic: string, mode: 'cards' | 'recall' | 'quiz') => {
@@ -209,6 +234,7 @@ export const AppContent: React.FC<AppContentProps> = (p) => {
         />;
       }
       if (questions.length > 0 && answers.length === 0) return <QuizPlayer
+        key={reviewSessionItems ? `mistake-review-${reviewSessionItems.length}` : 'quiz'}
         questions={questions} sourceName={activeQuizMeta?.docName} examMode={false}
         initialAnswers={quizInitialAnswers}
         onProgress={(ans) => saveQuizProgress(questions, ans, activeQuizMeta)}
@@ -219,6 +245,7 @@ export const AppContent: React.FC<AppContentProps> = (p) => {
           toast.success(t('ac.quizSaved'));
         }}
         onCancel={() => { clearQuizProgress(); setQuizInitialAnswers(undefined); setQuestions([]); setAnswers([]); setPendingActionDoc(null); setReviewSessionItems(null); }}
+        onDeleteCurrent={reviewSessionItems ? handleDeleteMistakeAt : undefined}
       />;
       if (answers.length > 0) return <ResultView
         answers={answers} questions={questions} docName={activeQuizMeta?.docName}

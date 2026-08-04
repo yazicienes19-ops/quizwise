@@ -14,6 +14,12 @@ interface QuizPlayerProps {
   sourceName?: string;
   examMode?: boolean;
   initialAnswers?: UserAnswer[];
+  /** Nur bei der Fehler-Wiederholung gesetzt (User-Fund 2026-08-04: es gab
+   *  keine Möglichkeit, eine einzelne, nicht mehr gewollte Frage dauerhaft
+   *  aus der Wiederholungs-Warteschlange zu entfernen). Erhält den Index der
+   *  AKTUELL angezeigten Frage — der Aufrufer kennt die zugehörige
+   *  MistakeItem-ID und entfernt sie aus Queue + Sync. */
+  onDeleteCurrent?: (index: number) => void;
 }
 
 // Fisher-Yates: gleichmäßig verteiltes Mischen (sort(()=>Math.random()-0.5) ist verzerrt)
@@ -27,7 +33,7 @@ const shuffle = <T,>(arr: T[]): T[] => {
 };
 
 export const QuizPlayer: React.FC<QuizPlayerProps> = ({
-  questions, onComplete, onCancel, onProgress, onSave, sourceName, examMode, initialAnswers,
+  questions, onComplete, onCancel, onProgress, onSave, sourceName, examMode, initialAnswers, onDeleteCurrent,
 }) => {
   const { t } = useTranslation();
   const [currentIndex, setCurrentIndex]         = useState(initialAnswers?.length ?? 0);
@@ -221,6 +227,15 @@ export const QuizPlayer: React.FC<QuizPlayerProps> = ({
     scenario: t('quiz.badge.scenario'),
   };
   const badgeLabel = qt ? TYPE_BADGE[qt] : null;
+
+  // Ob der Bottom-Balken einen echten Haupt-Button zeigt (Antwort prüfen /
+  // Weiter) — bei offenen Fragen VOR dem Einblenden der Musterantwort gibt
+  // es keinen (der Button dafür sitzt schon in der Karte selbst). User-Fund
+  // 2026-08-04: ohne diese Unterscheidung bekam der Balken dann trotzdem die
+  // volle Verlaufs-/Innenabstand-Behandlung, obwohl nur "Abbrechen" drin
+  // stand — wirkte wie ein riesiges, fast leeres schwarzes Feld.
+  const hasFooterPrimaryButton =
+    (!showResult && !isOpen) || showResult || (isOpen && selfAssessCorrect !== null);
 
   // ─── Result overlay for non-MC types ────────────────────────────────────
   const renderResultFeedback = () => {
@@ -440,7 +455,7 @@ export const QuizPlayer: React.FC<QuizPlayerProps> = ({
     if (isRanking && currentQuestion.rankingItems) {
       const correct = currentQuestion.rankingItems;
       return (
-        <div className="px-4 pb-10 space-y-2">
+        <div className="px-4 pb-4 space-y-2">
           <p className="text-[9px] font-black uppercase tracking-widest text-slate-400 mb-3 px-1">{t('quiz.rankingHint')}</p>
           {rankingOrder.map((item, i) => {
             const isCorrect = showResult && correct[i] === item;
@@ -518,7 +533,7 @@ export const QuizPlayer: React.FC<QuizPlayerProps> = ({
   };
 
   return (
-    <div className="max-w-2xl mx-auto animate-in fade-in duration-700 pb-56 md:pb-44">
+    <div className="max-w-2xl mx-auto animate-in fade-in duration-700 pb-8 md:pb-6">
       {/* Header */}
       <div className="px-4 pt-6 lg:pt-10 space-y-3 mb-6">
         {sourceName && (
@@ -527,6 +542,17 @@ export const QuizPlayer: React.FC<QuizPlayerProps> = ({
         <div className="flex justify-between items-center text-[10px] font-black uppercase text-slate-400 tracking-widest">
           <span>{t('quiz.questionOf', { n: currentIndex + 1, total: questions.length })}</span>
           <div className="flex items-center gap-3">
+            {onDeleteCurrent && (
+              <button
+                onClick={() => {
+                  if (window.confirm(t('quiz.deleteMistakeConfirm'))) onDeleteCurrent(currentIndex);
+                }}
+                className="flex items-center gap-1 text-slate-400 hover:text-rose-500 transition-colors"
+                title={t('quiz.deleteMistake')}
+              >
+                <svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/></svg>
+              </button>
+            )}
             {onSave && (
               <button
                 onClick={() => { setSaveName(sourceName || t('quiz.myQuiz')); setShowSaveInput(v => !v); }}
@@ -640,7 +666,11 @@ export const QuizPlayer: React.FC<QuizPlayerProps> = ({
           `overflow-hidden` hat (s. Layout.tsx-Kommentar zur Sidebar — exakt
           derselbe Grund, warum `sticky` dort funktioniert). */}
       <div className="sticky bottom-[calc(3.75rem+env(safe-area-inset-bottom))] md:bottom-0 z-20 pointer-events-none">
-        <div className="max-w-2xl mx-auto px-4 pb-4 md:pb-6 pt-10 bg-gradient-to-t from-slate-50 dark:from-slate-950 from-45% pointer-events-auto">
+        <div className={`max-w-2xl mx-auto px-4 pointer-events-auto ${
+          hasFooterPrimaryButton
+            ? 'pb-4 md:pb-6 pt-10 bg-gradient-to-t from-slate-50 dark:from-slate-950 from-45%'
+            : 'py-3'
+        }`}>
           <div className="flex gap-3">
             {onCancel && (
               <button onClick={onCancel} className="text-[9px] font-black uppercase tracking-widest text-slate-400 hover:text-rose-500 transition-colors px-4 py-4 shrink-0">
@@ -660,12 +690,13 @@ export const QuizPlayer: React.FC<QuizPlayerProps> = ({
               </button>
             )}
 
-            {/* Open: warte auf Sample Answer + Self-Assess */}
-            {isOpen && !showSampleAnswer && (
-              <div className="flex-1 py-4 rounded-[20px] bg-slate-100 dark:bg-slate-800 text-slate-400 text-[10px] font-black uppercase tracking-widest text-center cursor-not-allowed">
-                {t('quiz.showSampleFirst')}
-              </div>
-            )}
+            {/* Open, bevor die Musterantwort eingeblendet ist: hier bewusst
+                KEIN eigenes Element mehr (User-Fund 2026-08-04) — der
+                eigentliche, klickbare "Musterantwort anzeigen"-Button sitzt
+                schon prominent in der Karte selbst; ein zusätzliches
+                deaktiviertes Feld mit fast demselben Text
+                ("Musterantwort ERST anzeigen") direkt darunter wirkte wie
+                eine funktionslose Dopplung, nicht wie eine Anleitung. */}
 
             {/* Next / Finish button */}
             {(showResult || (isOpen && selfAssessCorrect !== null)) && (
