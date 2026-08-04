@@ -973,7 +973,13 @@ export const GraphCanvas: React.FC<GraphCanvasProps> = ({
     // nächsten Laden aus dem fachspezifischen Wissensnetz. state.scope
     // trägt bereits, welches Fach aktuell aktiv ist (s. GraphSystem.tsx).
     const collectionId = state.scope.kind === 'collection' ? state.scope.collectionId : undefined;
-    const result = recordCreateNode(history, state, { title: 'Neuer Node', position, collectionId });
+    // User-Vorgabe 2026-08-04: der erste Node eines Fachs ist in der Praxis
+    // immer das Hauptthema (z.B. "Bio", benannt wie das Modul) — soll direkt
+    // golden starten statt erst über den Hierarchie-Klick-Zyklus manuell
+    // dorthin geschaltet werden zu müssen. Nur beim allerersten Node
+    // (activeNodes leer), jeder weitere bleibt ohne Vorbelegung wie bisher.
+    const hierarchyLevel = activeNodes.length === 0 ? 'hauptthema' : undefined;
+    const result = recordCreateNode(history, state, { title: 'Neuer Node', position, collectionId, hierarchyLevel });
     if (!result.error && result.entity) {
       onChange({ state: result.state, history: result.history });
       onSelectionChange(selectNode(selection, result.entity.id));
@@ -1254,12 +1260,17 @@ export const GraphCanvas: React.FC<GraphCanvasProps> = ({
                     })()}
                   </g>
                   {(hovered || selected) && (
-                    <circle
-                      cx={rx + HANDLE_OFFSET} cy={0} r={HANDLE_RADIUS}
-                      fill={wnTheme.focusLabel}
-                      onMouseDown={e => handleHandlePointerDown(e, node.id)}
-                      style={{ cursor: 'crosshair' }}
-                    />
+                    <g onMouseDown={e => handleHandlePointerDown(e, node.id)} style={{ cursor: 'crosshair' }}>
+                      {/* Unsichtbarer, deutlich größerer Trefferbereich um den
+                          sichtbaren Punkt (User-Fund 2026-08-04: der 6px-Punkt
+                          allein war kaum zu treffen — verpasste Klicks landeten
+                          auf dem Node darunter, wiederholte Versuche lösten
+                          dabei unbeabsichtigt den Doppelklick-Titel-Editor
+                          aus). Rein fürs Hit-Testing, keine visuelle Änderung
+                          über den sichtbaren Punkt hinaus. */}
+                      <circle cx={rx + HANDLE_OFFSET} cy={0} r={HANDLE_RADIUS + 8} fill="transparent" />
+                      <circle cx={rx + HANDLE_OFFSET} cy={0} r={HANDLE_RADIUS} fill={wnTheme.focusLabel} style={{ pointerEvents: 'none' }} />
+                    </g>
                   )}
                 </motion.g>
               );

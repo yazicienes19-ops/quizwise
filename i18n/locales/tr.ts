@@ -554,6 +554,7 @@ export const tr: Translations = {
   'kg.redo': 'Yinele',
   'kg.errorPull': 'Bilgi ağı senkronize edilemedi. Değişikliklerin yerel olarak kaydedildi.',
   'kg.panel.close': 'Kapat',
+  'kg.panel.titleLabel': 'Başlık',
   'kg.panel.description': 'Açıklama',
   'kg.panel.descriptionPlaceholder': 'Nesnel açıklama (opsiyonel)',
   'kg.panel.notes': 'Notlarım',

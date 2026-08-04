@@ -217,6 +217,7 @@ export interface CreateNodeInput {
   icon?: string;
   tags?: string[];
   position: GraphNodePosition;
+  hierarchyLevel?: HierarchyLevel;
 }
 
 export type UpdateNodeInput = Partial<

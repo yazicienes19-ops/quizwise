@@ -555,6 +555,7 @@ export const en: Translations = {
   'kg.redo': 'Redo',
   'kg.errorPull': 'Knowledge web could not sync. Your changes stay saved locally.',
   'kg.panel.close': 'Close',
+  'kg.panel.titleLabel': 'Title',
   'kg.panel.description': 'Description',
   'kg.panel.descriptionPlaceholder': 'Objective description (optional)',
   'kg.panel.notes': 'My notes',

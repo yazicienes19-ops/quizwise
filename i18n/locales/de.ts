@@ -556,6 +556,7 @@ export const de = {
   'kg.redo': 'Wiederholen',
   'kg.errorPull': 'Wissensnetz konnte nicht synchronisiert werden. Deine Änderungen bleiben lokal gespeichert.',
   'kg.panel.close': 'Schließen',
+  'kg.panel.titleLabel': 'Titel',
   'kg.panel.description': 'Beschreibung',
   'kg.panel.descriptionPlaceholder': 'Objektive Beschreibung (optional)',
   'kg.panel.notes': 'Eigene Notizen',

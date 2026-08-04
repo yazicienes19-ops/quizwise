@@ -154,6 +154,11 @@ export const GraphNodeDetailPanel: React.FC<GraphNodeDetailPanelProps> = ({
   // Exakt dasselbe Muster, das vorher in GraphCanvas für die Notiz galt.
   const [descriptionDraft, setDescriptionDraft] = useState(node?.description ?? '');
   const [notesDraft, setNotesDraft] = useState(node?.notes ?? '');
+  // Titel jetzt auch hier bearbeitbar (User-Vorgabe 2026-08-05) — bisher war
+  // er im Panel bewusst nur lesend, Bearbeitung ging ausschließlich über den
+  // Doppelklick auf den Node im Canvas. Gleiches Entwurf-Muster wie
+  // description/notes: eigener Draft, nur bei Node-Wechsel neu initialisiert.
+  const [titleDraft, setTitleDraft] = useState(node?.title ?? '');
   // Eigene Unterlagen: Picker-Zustand hier oben deklariert (Rules of Hooks —
   // vor dem frühen `if (!node) return null;` unten), auch wenn die Werte erst
   // im JSX-Body gebraucht werden.
@@ -168,6 +173,7 @@ export const GraphNodeDetailPanel: React.FC<GraphNodeDetailPanelProps> = ({
   useEffect(() => {
     setDescriptionDraft(node?.description ?? '');
     setNotesDraft(node?.notes ?? '');
+    setTitleDraft(node?.title ?? '');
     setIsPickingDocument(false);
     setPickedDocumentId('');
     // Fokus geht beim Öffnen/Wechseln auf den Schließen-Button — sicher,
@@ -231,6 +237,22 @@ export const GraphNodeDetailPanel: React.FC<GraphNodeDetailPanelProps> = ({
   }, [isPickingDocument, onClose]);
 
   if (!node) return null;
+
+  // Exakt dieselbe Leer-Titel-Schutzlogik wie beim Doppelklick-Editor im
+  // Canvas (commitTitleEdit dort) — leerer Titel wird verworfen statt
+  // committet, der bestehende Titel bleibt einfach stehen, kein Fehler-UI.
+  const commitTitle = () => {
+    const trimmed = titleDraft.trim();
+    if (trimmed.length === 0) { setTitleDraft(node.title); return; }
+    if (trimmed === node.title) return;
+    const result = recordUpdateNode(history, state, nodeId, { title: trimmed });
+    if (!result.error && result.entity) {
+      onChange({ state: result.state, history: result.history });
+      onEntityChanged?.({ kind: 'node', entity: result.entity });
+    } else {
+      setTitleDraft(node.title);
+    }
+  };
 
   const commitDescription = () => {
     if (node.description === descriptionDraft) return;
@@ -322,7 +344,17 @@ export const GraphNodeDetailPanel: React.FC<GraphNodeDetailPanelProps> = ({
           bevor überhaupt etwas anderes im Panel gelesen werden muss. */}
       <div className="flex items-start gap-2 p-4 border-b" style={{ borderColor: 'var(--border-color)' }}>
         <div className="min-w-0 flex-1">
-          <h2 className="text-base font-black text-slate-900 dark:text-white break-words">{node.title}</h2>
+          <input
+            value={titleDraft}
+            onChange={e => setTitleDraft(e.target.value)}
+            onBlur={commitTitle}
+            onKeyDown={e => {
+              if (e.key === 'Enter') { e.preventDefault(); (e.target as HTMLInputElement).blur(); }
+              else if (e.key === 'Escape') { e.preventDefault(); setTitleDraft(node.title); (e.target as HTMLInputElement).blur(); }
+            }}
+            aria-label={t('kg.panel.titleLabel')}
+            className="w-full text-base font-black text-slate-900 dark:text-white bg-transparent outline-none border border-transparent hover:border-slate-200 dark:hover:border-slate-700 focus:border-indigo-400 rounded-lg -mx-1 px-1 py-0.5 transition-colors"
+          />
           <div className="flex items-center gap-1.5 mt-2 flex-wrap">
             <span
               className="text-[8px] font-black uppercase tracking-wider px-2 py-1 rounded-full"

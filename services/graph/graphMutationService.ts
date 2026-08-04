@@ -94,6 +94,7 @@ export function createNode(state: GraphState, input: CreateNodeInput): MutationR
     icon: input.icon,
     tags: input.tags ?? [],
     position: input.position,
+    hierarchyLevel: input.hierarchyLevel,
     pinned: false,
     version: 1,
     createdAt: now,
