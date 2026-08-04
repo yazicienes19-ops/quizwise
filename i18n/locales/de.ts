@@ -556,6 +556,8 @@ export const de = {
   'kg.redo': 'Wiederholen',
   'kg.errorPull': 'Wissensnetz konnte nicht synchronisiert werden. Deine Änderungen bleiben lokal gespeichert.',
   'kg.panel.close': 'Schließen',
+  'kg.panel.delete': 'Node löschen',
+  'kg.panel.deleteConfirm': '"{title}" wirklich löschen? Du kannst es danach über "Rückgängig" wiederherstellen.',
   'kg.panel.titleLabel': 'Titel',
   'kg.panel.description': 'Beschreibung',
   'kg.panel.descriptionPlaceholder': 'Objektive Beschreibung (optional)',

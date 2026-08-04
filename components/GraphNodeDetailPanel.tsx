@@ -2,11 +2,12 @@ import React, { useEffect, useMemo, useRef, useState } from 'react';
 import type { ProcessedDocument } from '../types';
 import type { GraphEdge, GraphState, GraphEntityChange } from '../services/graph/types';
 import { HIERARCHY_LEVEL_LABELS, nextHierarchyLevel } from '../services/graph/types';
-import { type GraphHistory, recordUpdateNode } from '../services/graph/graphHistoryService';
+import { type GraphHistory, recordUpdateNode, recordArchiveNode } from '../services/graph/graphHistoryService';
 import { createNodeDocumentRef } from '../services/graph/graphMutationService';
 import { buildGraphIndex, outgoingEdges, incomingEdges } from '../services/graph/graphIndex';
 import { documentDisplayName } from '../services/libraryService';
 import { useTranslation } from '../i18n/I18nProvider';
+import { Trash2 } from 'lucide-react';
 
 /**
  * Rechte Seitenleiste des Wissensnetzes (s. KNOWLEDGE_GRAPH_KONZEPT.md
@@ -254,6 +255,22 @@ export const GraphNodeDetailPanel: React.FC<GraphNodeDetailPanelProps> = ({
     }
   };
 
+  // Node löschen (User-Vorgabe 2026-08-05: bisher nur über die Entf-Taste
+  // im Canvas möglich, keine sichtbare Schaltfläche). Bewusst archiveNode
+  // (Soft Delete, per Undo rückholbar) — exakt dieselbe Funktion, die auch
+  // die Entf-Taste dort aufruft, nur mit zusätzlicher Bestätigung, weil ein
+  // sichtbarer Button (anders als ein bewusster Tastendruck) leichter aus
+  // Versehen getroffen wird.
+  const handleDeleteNode = () => {
+    if (!window.confirm(t('kg.panel.deleteConfirm', { title: node.title }))) return;
+    const result = recordArchiveNode(history, state, nodeId);
+    if (!result.error && result.entity) {
+      onChange({ state: result.state, history: result.history });
+      onEntityChanged?.({ kind: 'node', entity: result.entity });
+      onClose();
+    }
+  };
+
   const commitDescription = () => {
     if (node.description === descriptionDraft) return;
     const result = recordUpdateNode(history, state, nodeId, { description: descriptionDraft });
@@ -408,14 +425,24 @@ export const GraphNodeDetailPanel: React.FC<GraphNodeDetailPanelProps> = ({
             ))}
           </div>
         </div>
-        <button
-          ref={closeButtonRef}
-          onClick={onClose}
-          aria-label={t('kg.panel.close')}
-          className="w-7 h-7 flex items-center justify-center rounded-lg text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800 shrink-0 transition-colors"
-        >
-          ✕
-        </button>
+        <div className="flex flex-col items-center gap-1 shrink-0">
+          <button
+            onClick={handleDeleteNode}
+            aria-label={t('kg.panel.delete')}
+            title={t('kg.panel.delete')}
+            className="w-7 h-7 flex items-center justify-center rounded-lg text-slate-400 hover:text-rose-500 hover:bg-rose-50 dark:hover:bg-rose-900/20 transition-colors"
+          >
+            <Trash2 size={14} />
+          </button>
+          <button
+            ref={closeButtonRef}
+            onClick={onClose}
+            aria-label={t('kg.panel.close')}
+            className="w-7 h-7 flex items-center justify-center rounded-lg text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors"
+          >
+            ✕
+          </button>
+        </div>
       </div>
 
       {/* Scrollbarer Körper — EIN Scroll-Container für das ganze Panel statt
