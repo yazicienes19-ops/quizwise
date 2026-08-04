@@ -83,7 +83,11 @@ export interface GraphEdge {
   id: string;
   sourceNodeId: string;
   targetNodeId: string;
-  relationTypeId: string;
+  /** undefined = noch kein Beziehungstyp zugewiesen. Beim Ziehen einer Kante
+   *  ist die Eingabe eines Typs bewusst NICHT verpflichtend (User-Vorgabe
+   *  2026-08-04) — die Verbindung selbst ist die Aussage, die Benennung kann
+   *  jederzeit später über dieselbe Bearbeiten-Logik nachgeholt werden. */
+  relationTypeId?: string;
   /** Freitext-Override zum Anzeigenamen des Beziehungstyps. */
   label?: string;
   archivedAt?: number;
@@ -222,7 +226,8 @@ export type UpdateNodeInput = Partial<
 export interface CreateEdgeInput {
   sourceNodeId: string;
   targetNodeId: string;
-  relationTypeId: string;
+  /** Optional — s. GraphEdge.relationTypeId. */
+  relationTypeId?: string;
   label?: string;
 }
 

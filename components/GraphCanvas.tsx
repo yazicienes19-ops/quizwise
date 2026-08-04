@@ -66,6 +66,10 @@ export interface GraphCanvasProps {
   onChange: (next: { state: GraphState; history: GraphHistory }) => void;
   onSelectionChange: (next: GraphSelectionState) => void;
   onEntityChanged?: (change: GraphEntityChange) => void;
+  /** Globaler App-Theme-Zustand (User-Vorgabe 2026-08-04: KEIN eigener
+   *  Wissensnetz-Modus mehr) — kommt von useAuth() über GraphSystem.tsx
+   *  durchgereicht, exakt derselbe Zustand wie der Rest der App. */
+  isDark: boolean;
 }
 
 interface ZoomTransform { x: number; y: number; k: number; }
@@ -73,7 +77,10 @@ interface ZoomTransform { x: number; y: number; k: number; }
 // Basisgröße — gilt auch für hierarchyLevel === undefined ("noch nicht
 // festgelegt"), damit bestehende Graphen ohne gesetzte Hierarchie optisch
 // unverändert bleiben (keine Regression).
-const NODE_RADIUS = 28;
+// Etwas größer als die ursprünglichen 28/34/22 (User-Feedback 2026-08-04:
+// mehr Platz für Titel) — weiterhin dasselbe ~1.5er-Verhältnis zwischen
+// größter/kleinster Stufe, nur insgesamt großzügiger bemessen.
+const NODE_RADIUS = 32;
 // Phase 1 (Wissensnetz-Umsetzungsphase, 2026-08-02 final entschieden):
 // Größe ist das primäre, Randstärke das sekundäre Hierarchie-Signal (s.
 // KNOWLEDGE_GRAPH_KONZEPT.md Abschnitt 5 — Begründung/verworfene
@@ -82,9 +89,9 @@ const NODE_RADIUS = 28;
 // Bewusst nur ein Faktor ~1.5 zwischen größter/kleinster Stufe, nicht mehr —
 // sonst passt bei "Detail" kein Buchstabe des Titels mehr in den Kreis.
 const HIERARCHY_RADIUS: Record<HierarchyLevel, number> = {
-  hauptthema: 34,
+  hauptthema: 40,
   unterthema: NODE_RADIUS,
-  detail: 22,
+  detail: 26,
 };
 // Randstärke pro Ebene, UNABHÄNGIG von der Selektions-Randstärke (die kommt
 // weiterhin oben drauf) — sonst wäre ein selektierter "Detail"-Node optisch
@@ -99,6 +106,10 @@ const HANDLE_RADIUS = 6;
 const HANDLE_OFFSET = 14;
 const DRAG_THRESHOLD_PX = 4;
 const NODE_DATA_ATTR = 'data-graph-node';
+// Kein hartes Zeichen-Limit mehr für Kantenlabels (User-Vorgabe 2026-08-04:
+// nie abschneiden) — stattdessen eine großzügige Breite, ab der auf eine
+// zweite Zeile umgebrochen wird (wrapTitleToLines, wie bei Node-Titeln).
+const EDGE_LABEL_MAX_WIDTH = 130;
 
 // ── Visuelle Sprache "Wissensnetz/Synapsen-Netz" (Design-Abnahme 2026-08-04,
 // Handoff design_handoff_studearc_wissnetz/StudeArc Wissnetz.dc.html) ───────
@@ -156,8 +167,6 @@ const WN_THEME: Record<'night' | 'day', WnTheme> = {
   },
 };
 
-const WN_THEME_STORAGE_KEY = 'studearc_graph_theme';
-
 /** Stabiler Hash statt Math.random() — jeder Node behält so bei jedem
  *  Re-Render (Theme-Wechsel, Selektion, Drag) exakt dieselbe Blob-Form statt
  *  optisch zu "springen". */
@@ -169,11 +178,15 @@ function hashId(id: string): number {
 
 /** Leicht unregelmäßige "Blob"-Kontur statt eines perfekten Kreises (User-
  *  Feedback zur Design-Abnahme: "nicht alle Nodes so perfekt rund") — acht
- *  Punkte um den Node-Radius herum, Radius pro Punkt um ±12% aus der
- *  Node-ID gejittert, durch quadratische Kurven über die Punkt-Mittelpunkte
- *  zu einer glatten geschlossenen Fläche verbunden. Deterministisch pro
- *  Node-ID, unabhängig von Zoom/Position/Theme. */
-function blobPathD(radius: number, seed: string): string {
+ *  Punkte um eine Ellipse mit Halbachsen `rx`/`ry` herum, Radius pro Punkt
+ *  um ±12% aus der Node-ID gejittert, durch quadratische Kurven über die
+ *  Punkt-Mittelpunkte zu einer glatten geschlossenen Fläche verbunden.
+ *  Deterministisch pro Node-ID, unabhängig von Zoom/Position/Theme.
+ *  `rx`≠`ry` (s. nodeExtentsOf) macht aus dem Kreis eine Kapsel-artige
+ *  Form für Nodes mit langem Titel, statt bei jedem Wort gleich stark zu
+ *  kürzen/umzubrechen (User-Wunsch 2026-08-04: "Form soll sich je nach
+ *  Länge des Wortes anpassen"). */
+function blobPathD(rx: number, ry: number, seed: string): string {
   const h = hashId(seed);
   const n = 8;
   const pts: { x: number; y: number }[] = [];
@@ -181,7 +194,7 @@ function blobPathD(radius: number, seed: string): string {
     const bit = (h >> (i * 3)) & 0x7;
     const jitter = 0.88 + (bit / 7) * 0.24; // 0.88..1.12
     const angle = (i / n) * Math.PI * 2;
-    pts.push({ x: Math.cos(angle) * radius * jitter, y: Math.sin(angle) * radius * jitter });
+    pts.push({ x: Math.cos(angle) * rx * jitter, y: Math.sin(angle) * ry * jitter });
   }
   const mid = (a: { x: number; y: number }, b: { x: number; y: number }) => ({ x: (a.x + b.x) / 2, y: (a.y + b.y) / 2 });
   const first = mid(pts[n - 1], pts[0]);
@@ -194,31 +207,205 @@ function blobPathD(radius: number, seed: string): string {
   return d + 'Z';
 }
 
+/** Abstand vom Zentrum bis zum Ellipsenrand in Richtung `angle` — für
+ *  Kanten-Endpunkte, die jetzt am tatsächlichen (ggf. gestreckten) Rand
+ *  enden sollen, nicht an einem festen Kreisradius, sonst klaffte bei
+ *  breiten Nodes eine sichtbare Lücke oder die Linie liefe hinein. */
+function ellipseRadiusAtAngle(rx: number, ry: number, angle: number): number {
+  const cos = Math.cos(angle);
+  const sin = Math.sin(angle);
+  return 1 / Math.sqrt((cos * cos) / (rx * rx) + (sin * sin) / (ry * ry));
+}
+
+// Echte Textbreiten-Messung statt geschätzter Zeichenbreite (die erste
+// Schätz-Version reichte laut Live-Check immer noch nicht, s. Kommentar bei
+// truncateTitleToFit) — ein einziges wiederverwendetes <canvas> reicht,
+// Messungen selbst kosten kein sichtbares DOM.
+let measureCanvasCtx: CanvasRenderingContext2D | null | undefined;
+function getMeasureCtx(): CanvasRenderingContext2D | null {
+  if (measureCanvasCtx !== undefined) return measureCanvasCtx;
+  measureCanvasCtx = typeof document !== 'undefined' ? document.createElement('canvas').getContext('2d') : null;
+  return measureCanvasCtx;
+}
+function measureTextWidthPx(text: string, fontSizePx: number, fontWeight: number): number {
+  const ctx = getMeasureCtx();
+  if (!ctx) return text.length * fontSizePx * 0.58; // SSR/Testumgebung ohne canvas-Support
+  ctx.font = `${fontWeight} ${fontSizePx}px Inter, -apple-system, sans-serif`;
+  return ctx.measureText(text).width;
+}
+
+/** Kürzt `text` so, dass er inklusive „…" innerhalb `maxWidthPx` passt —
+ *  ersetzt eine erste, rein geschätzte Zeichen-pro-Radius-Formel, die beim
+ *  Live-Check (User-Fund 2026-08-04, z.B. "Wahrnehmung" bei r=28) immer noch
+ *  über den Kreisrand hinauslief: eine feste Durchschnitts-Zeichenbreite
+ *  passt nicht zu den je nach Buchstaben (schmales „i" vs. breites „W")
+ *  stark unterschiedlichen Glyphenbreiten von Inter. Echte Messung ist die
+ *  einzig robuste Lösung. */
+function truncateTitleToFit(text: string, maxWidthPx: number, fontSizePx: number, fontWeight: number): string {
+  if (measureTextWidthPx(text, fontSizePx, fontWeight) <= maxWidthPx) return text;
+  let end = text.length;
+  while (end > 1 && measureTextWidthPx(text.slice(0, end) + '…', fontSizePx, fontWeight) > maxWidthPx) end--;
+  return text.slice(0, end) + '…';
+}
+
+const HYPHEN_VOWELS = new Set('aeiouäöüyAEIOUÄÖÜY'.split(''));
+// Zweibuchstaben-Verbindungen, die beim Trennen nicht auseinandergerissen
+// werden sollen (Digraphen/Diphthonge) — keine vollständige Liste der
+// deutschen Rechtschreibregeln, nur die häufigsten Fälle.
+const HYPHEN_INSEPARABLE = new Set([
+  'ch', 'sch', 'ph', 'th', 'sh', 'ck', 'ng', 'nk', 'qu', 'ie', 'ei', 'au', 'eu', 'äu', 'ai',
+  // Deutsches Dehnungs-h (stummes, längendes h nach Vokal, z.B. "ge-hen",
+  // nicht "geh-en") — fehlte zuerst und riss z.B. bei "Wahrnehmung" das "eh"
+  // auseinander ("Wahrne-hmung" statt "Wahr-nehmung").
+  'ah', 'eh', 'ih', 'oh', 'uh', 'äh', 'öh', 'üh',
+]);
+
+/** true, wenn eine Trennung VOR Index `i` (word[i] beginnt Zeile 2) an einer
+ *  silbenähnlichen Stelle läge: nach einem Vokal vor einem Konsonanten (der
+ *  häufigste deutsche Trennfall, "Wahr-neh-mung") oder zwischen zwei
+ *  gleichen Konsonanten ("kom-men"). Keine echte Silbentrennung (dafür
+ *  bräuchte es ein Wörterbuch/einen Algorithmus wie TeX' Knuth-Liang-
+ *  Verfahren, unverhältnismäßig für Node-Labels) — eine bewusst einfache,
+ *  aber deutlich bessere Heuristik als blindes Zeichen-Abschneiden. */
+function looksLikeSyllableBreak(word: string, i: number): boolean {
+  if (i < 2 || i >= word.length - 1) return false; // mind. 2 Zeichen je Seite
+  const before = word[i - 1].toLowerCase();
+  const at = word[i].toLowerCase();
+  if (HYPHEN_INSEPARABLE.has(before + at)) return false;
+  // Nie direkt VOR einem Vokal trennen — der stünde sonst ohne seinen
+  // eigentlichen Anfangskonsonanten da. Deckt beide häufigen deutschen
+  // Trennfälle ab: Vokal|Konsonant ("Wah-rung") UND Konsonant|Konsonant,
+  // auch mit UNTERSCHIEDLICHEN Konsonanten ("Wahr-nehmung": r|n, nicht nur
+  // identische Doppelkonsonanten wie "kom-men" — das war die erste, zu enge
+  // Fassung dieser Heuristik).
+  return !HYPHEN_VOWELS.has(at);
+}
+
+/** Zeichenweiser Split eines einzelnen (oft zusammengesetzten) Worts, das
+ *  für sich schon zu breit für eine Zeile ist — sucht rückwärts von der
+ *  breiten-basierten Grenze aus in einem kleinen Fenster nach einer
+ *  silbenähnlichen Trennstelle (s. looksLikeSyllableBreak) und markiert sie
+ *  mit Bindestrich, statt mitten im Wort willkürlich abzuschneiden. */
+function splitWordWithHyphen(word: string, maxWidthPx: number, fontSizePx: number, fontWeight: number): [string, string] {
+  const hyphenWidth = measureTextWidthPx('-', fontSizePx, fontWeight);
+  const budget = maxWidthPx - hyphenWidth;
+  let splitAt = word.length;
+  while (splitAt > 1 && measureTextWidthPx(word.slice(0, splitAt), fontSizePx, fontWeight) > budget) splitAt--;
+  splitAt = Math.max(1, splitAt);
+  for (let i = splitAt; i >= Math.max(2, splitAt - 4); i--) {
+    if (looksLikeSyllableBreak(word, i)) { splitAt = i; break; }
+  }
+  return [`${word.slice(0, splitAt)}-`, word.slice(splitAt)];
+}
+
+/**
+ * Reines Ein-Zeilen-Kürzen (s. truncateTitleToFit) machte echte Titel wie
+ * "Wahrnehmung" bei den kleineren Radien praktisch unlesbar kurz (User-Fund
+ * 2026-08-04: "kann man es nicht lesen") — technisch kein Überlauf mehr,
+ * aber am Ziel (Titel erkennbar) vorbei. Zweizeiliger Umbruch statt noch
+ * härterem Kürzen: erste Zeile nimmt so viele ganze Wörter wie passen, der
+ * Rest kommt in Zeile 2 (dort bei Bedarf zeichenweise gekürzt).
+ *
+ * Deutsche Komposita (genau "Wahrnehmung") haben aber gar KEIN Leerzeichen
+ * zum Umbrechen — ein erster Versuch fiel dafür auf reines Ein-Zeilen-Kürzen
+ * zurück ("Wahrn…" statt zweier lesbarer Zeilen), derselbe Fehler nur in
+ * neuer Form. Fix: passt schon das ERSTE (oft einzige) Wort nicht auf eine
+ * Zeile, wird über splitWordWithHyphen an einer silbenähnlichen Stelle mit
+ * Bindestrich getrennt statt willkürlich mitten im Wort gekürzt. */
+function wrapTitleToLines(text: string, maxWidthPx: number, fontSizePx: number, fontWeight: number): string[] {
+  if (measureTextWidthPx(text, fontSizePx, fontWeight) <= maxWidthPx) return [text];
+  const words = text.split(' ');
+  const firstWord = words[0];
+  if (measureTextWidthPx(firstWord, fontSizePx, fontWeight) > maxWidthPx) {
+    const [line1, remainder] = splitWordWithHyphen(firstWord, maxWidthPx, fontSizePx, fontWeight);
+    const line2Source = remainder + (words.length > 1 ? ` ${words.slice(1).join(' ')}` : '');
+    return [line1, truncateTitleToFit(line2Source, maxWidthPx, fontSizePx, fontWeight)];
+  }
+  let line1 = '';
+  let i = 0;
+  for (; i < words.length; i++) {
+    const candidate = line1 ? `${line1} ${words[i]}` : words[i];
+    if (line1 && measureTextWidthPx(candidate, fontSizePx, fontWeight) > maxWidthPx) break;
+    line1 = candidate;
+  }
+  const rest = words.slice(i).join(' ');
+  if (!rest) return [line1];
+  return [line1, truncateTitleToFit(rest, maxWidthPx, fontSizePx, fontWeight)];
+}
+
+const TITLE_FONT_SIZE_STEPS = [10, 9, 8];
+// Harte Obergrenze an Zeilen für Node-Titel — verhindert, dass ein
+// pathologisch langer Titel die Kapsel unbegrenzt hoch wachsen lässt.
+// Alles bis hierhin ist "mehrzeilige Darstellung" (User-Vorgabe
+// 2026-08-04), erst danach greift truncateTitleToFit als letzter Ausweg.
+const TITLE_MAX_LINES = 4;
+
+/** Voller, ungekürzter Zeilenumbruch (beliebig viele Zeilen, nicht auf 2
+ *  begrenzt wie wrapTitleToLines) — Wörter, die selbst auf einer leeren
+ *  Zeile nicht passen, werden per splitWordWithHyphen fortlaufend
+ *  aufgeteilt, bis der Rest passt. Nur die letzte erlaubte Zeile
+ *  (maxLines erreicht) wird bei Bedarf über truncateTitleToFit gekürzt. */
+function wrapTitleAllLines(
+  text: string, maxWidthPx: number, fontSizePx: number, fontWeight: number, maxLines: number,
+): { lines: string[]; truncated: boolean } {
+  const lines: string[] = [];
+  const words = text.split(' ');
+  let i = 0;
+  while (i < words.length) {
+    if (lines.length === maxLines - 1) {
+      const restText = words.slice(i).join(' ');
+      const fits = measureTextWidthPx(restText, fontSizePx, fontWeight) <= maxWidthPx;
+      lines.push(fits ? restText : truncateTitleToFit(restText, maxWidthPx, fontSizePx, fontWeight));
+      return { lines, truncated: !fits };
+    }
+    if (measureTextWidthPx(words[i], fontSizePx, fontWeight) > maxWidthPx) {
+      const [head, tail] = splitWordWithHyphen(words[i], maxWidthPx, fontSizePx, fontWeight);
+      lines.push(head);
+      words[i] = tail;
+      continue;
+    }
+    let line = words[i];
+    let j = i + 1;
+    while (j < words.length) {
+      const candidate = `${line} ${words[j]}`;
+      if (measureTextWidthPx(candidate, fontSizePx, fontWeight) > maxWidthPx) break;
+      line = candidate;
+      j++;
+    }
+    lines.push(line);
+    i = j;
+  }
+  return { lines, truncated: false };
+}
+
+/** Letzter Fallback vor "…" (User-Vorgabe 2026-08-04: "Keine '...' wenn es
+ *  sich vermeiden lässt... falls nötig kleinere Schrift, größere Container,
+ *  mehrzeilige Darstellung"): probiert wrapTitleAllLines bei absteigender
+ *  Schriftgröße (bis zu TITLE_MAX_LINES Zeilen je Stufe), bis der Titel ohne
+ *  Kürzung passt. Bleibt es bei jeder Stufe gekürzt (extrem langer Text),
+ *  wird die kleinste Stufe verwendet — seltener Rest-Fall, kein
+ *  unbegrenztes Schrumpfen/Wachsen. */
+function wrapTitleAdaptive(text: string, maxWidthPx: number, fontWeight: number): { lines: string[]; fontSize: number } {
+  let result = { lines: [text] as string[], fontSize: TITLE_FONT_SIZE_STEPS[TITLE_FONT_SIZE_STEPS.length - 1] };
+  for (const fontSize of TITLE_FONT_SIZE_STEPS) {
+    const { lines, truncated } = wrapTitleAllLines(text, maxWidthPx, fontSize, fontWeight, TITLE_MAX_LINES);
+    result = { lines, fontSize };
+    if (!truncated) return result;
+  }
+  return result;
+}
+
 export const GraphCanvas: React.FC<GraphCanvasProps> = ({
-  state, history, selection, onChange, onSelectionChange, onEntityChanged,
+  state, history, selection, onChange, onSelectionChange, onEntityChanged, isDark,
 }) => {
   const svgRef = useRef<SVGSVGElement | null>(null);
   const gRef = useRef<SVGGElement | null>(null);
   const zoomBehaviorRef = useRef<d3.ZoomBehavior<SVGSVGElement, unknown> | null>(null);
   const [zoomTransform, setZoomTransform] = useState<ZoomTransform>({ x: 0, y: 0, k: 1 });
 
-  // ── Nacht/Tag (Design-Abnahme 2026-08-04) ───────────────────────────────
-  // Rein präsentationelles UI-Detail (wie zoomTransform/editingNodeId oben),
-  // deshalb bewusst lokaler State statt Props/Domain — genau wie im
-  // Design-Handoff ein eigener, vom System-Darkmode unabhängiger Toggle,
-  // Nacht ist der Standard. Persistiert wie andere reine UI-Präferenzen
-  // dieses Projekts (z.B. studearc_feynman_intro_done) direkt in localStorage.
-  const [isNightMode, setIsNightMode] = useState(() => {
-    try { return localStorage.getItem(WN_THEME_STORAGE_KEY) !== 'day'; } catch { return true; }
-  });
-  const toggleNightMode = () => {
-    setIsNightMode(prev => {
-      const next = !prev;
-      try { localStorage.setItem(WN_THEME_STORAGE_KEY, next ? 'night' : 'day'); } catch { /* Speicher voll/verweigert — Toggle bleibt trotzdem für diese Sitzung wirksam */ }
-      return next;
-    });
-  };
-  const wnTheme = isNightMode ? WN_THEME.night : WN_THEME.day;
+  // Kein eigener Wissensnetz-Modus mehr (User-Vorgabe 2026-08-04) — folgt
+  // dem globalen App-Theme, das über `isDark` hereinkommt.
+  const wnTheme = isDark ? WN_THEME.night : WN_THEME.day;
 
   // ── Sichtbare Nodes/Kanten ──────────────────────────────────────────────
   const activeNodes = useMemo(
@@ -241,6 +428,17 @@ export const GraphCanvas: React.FC<GraphCanvasProps> = ({
     return 'far';
   }, [selection.selectedNodeId, focusedNeighborIds]);
   const tierColorsOf = (tier: GraphTier) => wnTheme.tier[tier === 'neutral' ? 'neighbor' : tier];
+
+  // Hauptthema-Nodes sind standardmäßig Gold — ihre dauerhafte Identität,
+  // nicht nur der Auswahlzustand (s. Kommentar bei isGoldIdentity im
+  // Node-Rendering unten). Auch für Kanten gebraucht: eine Kante an einem
+  // Gold-Node soll genauso pulsen wie eine Kante am tatsächlich
+  // ausgewählten Node — sonst wirkt der Gold-Node optisch wie der Fokus,
+  // ohne dass die Kanten das mittragen (genau der vom User gemeldete Bruch).
+  const isGoldIdentityNode = useCallback((nodeId: string): boolean => {
+    const n = state.nodesById.get(nodeId);
+    return !!n && !n.color && n.hierarchyLevel === 'hauptthema';
+  }, [state.nodesById]);
 
   // Phase 5B Punkt 2: zwei unterschiedliche Beziehungstypen zwischen
   // demselben Node-Paar sind erlaubt (nur inhaltliche Duplikate werden
@@ -290,29 +488,57 @@ export const GraphCanvas: React.FC<GraphCanvasProps> = ({
     return level ? HIERARCHY_RADIUS[level] : NODE_RADIUS;
   }, [state.nodesById]);
 
-  // Am jeweiligen Node-Radius gekürzte Endpunkte einer Kante plus Mittelpunkt
-  // — einmal berechnet, sowohl fürs Linien-Rendering als auch für die
-  // Positionierung des Bearbeiten-Overlays (Phase 5B) genutzt, damit beide
-  // immer exakt übereinstimmen. Quelle und Ziel können seit der
-  // Hierarchie-Einführung unterschiedlich große Radien haben.
+  // Kapsel-Halbachsen statt eines einzelnen Radius (User-Wunsch 2026-08-04:
+  // "je nach Länge des Wortes soll sich die Form anpassen") — `rx` wächst
+  // nur so weit wie nötig, um den Titel einzeilig zu zeigen, gedeckelt bei
+  // `radiusOf*2.1` (sonst würde ein einzelnes sehr langes Wort einen
+  // unverhältnismäßig breiten Node erzeugen statt in den Zeilenumbruch zu
+  // gehen). `ry` wächst stattdessen mit der tatsächlich benötigten
+  // Zeilenzahl (wrapTitleAdaptive, bis zu TITLE_MAX_LINES) — Titel, die
+  // auch bei maximaler Breite mehrzeilig bleiben, bekommen eine höhere statt
+  // eine abgeschnittene Kapsel (User-Vorgabe 2026-08-04, Punkt 2: "kein Text
+  // darf abgeschnitten werden").
+  const nodeExtentsOf = useCallback((nodeId: string): { rx: number; ry: number } => {
+    const node = state.nodesById.get(nodeId);
+    const baseR = radiusOf(nodeId);
+    if (!node) return { rx: baseR, ry: baseR };
+    const fontWeight = node.hierarchyLevel === 'hauptthema' ? 800 : node.hierarchyLevel === 'detail' ? 600 : 700;
+    const singleLineWidth = measureTextWidthPx(node.title, 10, fontWeight);
+    const desiredRx = Math.max(baseR, singleLineWidth / (2 * 0.86) + 6);
+    const rx = Math.min(desiredRx, baseR * 2.1);
+    const maxWidth = rx * 2 * 0.86;
+    const { lines } = wrapTitleAdaptive(node.title, maxWidth, fontWeight);
+    const ry = lines.length <= 1 ? baseR : baseR * (1 + 0.22 * (lines.length - 1));
+    return { rx, ry };
+  }, [state.nodesById, radiusOf]);
+
+  // Am jeweiligen Node-Rand (Ellipse, s. nodeExtentsOf) gekürzte Endpunkte
+  // einer Kante plus Mittelpunkt — einmal berechnet, sowohl fürs
+  // Linien-Rendering als auch für die Positionierung des Bearbeiten-Overlays
+  // (Phase 5B) genutzt, damit beide immer exakt übereinstimmen. Quelle und
+  // Ziel können unterschiedlich große/breite Nodes sein.
   const computeEdgeGeometry = useCallback((edge: { sourceNodeId: string; targetNodeId: string }) => {
     const from = positionOf(edge.sourceNodeId);
     const to = positionOf(edge.targetNodeId);
     const angle = Math.atan2(to.y - from.y, to.x - from.x);
-    const x1 = from.x + Math.cos(angle) * radiusOf(edge.sourceNodeId);
-    const y1 = from.y + Math.sin(angle) * radiusOf(edge.sourceNodeId);
-    const x2 = to.x - Math.cos(angle) * radiusOf(edge.targetNodeId);
-    const y2 = to.y - Math.sin(angle) * radiusOf(edge.targetNodeId);
+    const srcExt = nodeExtentsOf(edge.sourceNodeId);
+    const tgtExt = nodeExtentsOf(edge.targetNodeId);
+    const srcDist = ellipseRadiusAtAngle(srcExt.rx, srcExt.ry, angle);
+    const tgtDist = ellipseRadiusAtAngle(tgtExt.rx, tgtExt.ry, angle + Math.PI);
+    const x1 = from.x + Math.cos(angle) * srcDist;
+    const y1 = from.y + Math.sin(angle) * srcDist;
+    const x2 = to.x - Math.cos(angle) * tgtDist;
+    const y2 = to.y - Math.sin(angle) * tgtDist;
     return { x1, y1, x2, y2, midX: (x1 + x2) / 2, midY: (y1 + y2) / 2 };
-  }, [positionOf, radiusOf]);
+  }, [positionOf, nodeExtentsOf]);
 
   // ── Pan/Zoom (Muster aus MindmapCanvas.tsx, angepasst) ──────────────────
   const fitView = useCallback(() => {
     if (!svgRef.current || !zoomBehaviorRef.current || activeNodes.length === 0) return;
-    const xs = activeNodes.map(n => positionOf(n.id).x - radiusOf(n.id));
-    const xsMax = activeNodes.map(n => positionOf(n.id).x + radiusOf(n.id));
-    const ys = activeNodes.map(n => positionOf(n.id).y - radiusOf(n.id));
-    const ysMax = activeNodes.map(n => positionOf(n.id).y + radiusOf(n.id));
+    const xs = activeNodes.map(n => positionOf(n.id).x - nodeExtentsOf(n.id).rx);
+    const xsMax = activeNodes.map(n => positionOf(n.id).x + nodeExtentsOf(n.id).rx);
+    const ys = activeNodes.map(n => positionOf(n.id).y - nodeExtentsOf(n.id).ry);
+    const ysMax = activeNodes.map(n => positionOf(n.id).y + nodeExtentsOf(n.id).ry);
     const minX = Math.min(...xs), maxX = Math.max(...xsMax);
     const minY = Math.min(...ys), maxY = Math.max(...ysMax);
     const contentWidth = maxX - minX || 1;
@@ -324,7 +550,7 @@ export const GraphCanvas: React.FC<GraphCanvasProps> = ({
     const ty = svgH / 2 - scale * (minY + contentHeight / 2);
     d3.select(svgRef.current).transition().duration(300)
       .call(zoomBehaviorRef.current.transform, d3.zoomIdentity.translate(tx, ty).scale(scale));
-  }, [activeNodes, positionOf, radiusOf]);
+  }, [activeNodes, positionOf, nodeExtentsOf]);
 
   useEffect(() => {
     if (!svgRef.current || !gRef.current) return;
@@ -515,14 +741,20 @@ export const GraphCanvas: React.FC<GraphCanvasProps> = ({
   const commitEdgePrompt = () => {
     if (!edgePrompt) return;
     const label = edgePrompt.value.trim();
-    if (label.length === 0) { setEdgePrompt(null); return; } // keine Eingabe = keine Kante, nichts wird interpretiert
-
-    // resolveRelationTypeId: exakte (case-insensitive) Übereinstimmung mit
-    // einem bereits vorhandenen Typ wiederverwenden, sonst spontan einen
-    // neuen eigenen anlegen. Läuft bewusst NICHT über die History (s.
-    // Datei-Kommentar oben), nur die Kante selbst ist undo-fähig.
-    const resolved = resolveRelationTypeId(label);
-    if (resolved.error || !resolved.relationTypeId) { setEdgePromptError(resolved.error ?? null); return; }
+    // Beziehungstyp ist optional (User-Vorgabe 2026-08-04): leere Eingabe
+    // legt die Verbindung trotzdem an, nur ohne Typ — kein Fehler, kein
+    // Platzhalter, kein Label. Der Typ kann jederzeit später über dieselbe
+    // Bearbeiten-Logik ergänzt werden (Klick auf die Kante).
+    //
+    // resolveRelationTypeId (nur bei nicht-leerer Eingabe): exakte
+    // (case-insensitive) Übereinstimmung mit einem bereits vorhandenen Typ
+    // wiederverwenden, sonst spontan einen neuen eigenen anlegen. Läuft
+    // bewusst NICHT über die History (s. Datei-Kommentar oben), nur die
+    // Kante selbst ist undo-fähig.
+    const resolved: { workingState: GraphState; relationTypeId?: string; error?: string } = label.length === 0
+      ? { workingState: state, relationTypeId: undefined }
+      : resolveRelationTypeId(label);
+    if (resolved.error) { setEdgePromptError(resolved.error); return; }
 
     const edgeResult = recordCreateEdge(history, resolved.workingState, {
       sourceNodeId: edgePrompt.sourceNodeId, targetNodeId: edgePrompt.targetNodeId, relationTypeId: resolved.relationTypeId,
@@ -671,7 +903,13 @@ export const GraphCanvas: React.FC<GraphCanvasProps> = ({
 
   const handleBackgroundDoubleClick = (e: React.MouseEvent) => {
     const position = clientToGraphPoint(e.clientX, e.clientY);
-    const result = recordCreateNode(history, state, { title: 'Neuer Node', position });
+    // Echter Bug (User-Fund 2026-08-04, "nur EIN Wissensnetz"): collectionId
+    // fehlte hier komplett — neue Nodes landeten unabhängig vom gerade
+    // aktiven Fach immer ohne Fach-Zuordnung, dadurch verschwanden sie beim
+    // nächsten Laden aus dem fachspezifischen Wissensnetz. state.scope
+    // trägt bereits, welches Fach aktuell aktiv ist (s. GraphSystem.tsx).
+    const collectionId = state.scope.kind === 'collection' ? state.scope.collectionId : undefined;
+    const result = recordCreateNode(history, state, { title: 'Neuer Node', position, collectionId });
     if (!result.error && result.entity) {
       onChange({ state: result.state, history: result.history });
       onSelectionChange(selectNode(selection, result.entity.id));
@@ -703,14 +941,6 @@ export const GraphCanvas: React.FC<GraphCanvasProps> = ({
         </div>
       )}
       <div className="absolute top-3 right-3 z-10 flex gap-1.5">
-        <button
-          onClick={toggleNightMode}
-          title={isNightMode ? 'Zu Tag-Modus wechseln' : 'Zu Nacht-Modus wechseln'}
-          className="h-8 px-3 flex items-center justify-center rounded-lg text-[9px] font-black uppercase tracking-widest"
-          style={{ background: wnTheme.chipBg, border: `1px solid ${wnTheme.chipBorder}`, color: wnTheme.chipText, backdropFilter: 'blur(6px)' }}
-        >
-          {isNightMode ? 'Nacht' : 'Tag'}
-        </button>
         <button onClick={() => zoomBy(1.3)} className="w-8 h-8 flex items-center justify-center rounded-lg text-sm font-black" style={{ background: wnTheme.chipBg, border: `1px solid ${wnTheme.chipBorder}`, color: wnTheme.chipText, backdropFilter: 'blur(6px)' }}>+</button>
         <button onClick={() => zoomBy(1 / 1.3)} className="w-8 h-8 flex items-center justify-center rounded-lg text-sm font-black" style={{ background: wnTheme.chipBg, border: `1px solid ${wnTheme.chipBorder}`, color: wnTheme.chipText, backdropFilter: 'blur(6px)' }}>−</button>
         <button onClick={fitView} className="w-8 h-8 flex items-center justify-center rounded-lg" style={{ background: wnTheme.chipBg, border: `1px solid ${wnTheme.chipBorder}`, color: wnTheme.chipText, backdropFilter: 'blur(6px)' }}>
@@ -750,15 +980,22 @@ export const GraphCanvas: React.FC<GraphCanvasProps> = ({
               // ohne Menü/Inspector. `label` ist der Freitext-Override am
               // Edge-Datensatz (heute von keiner UI gesetzt, aber
               // vorrangig falls vorhanden), sonst der Name des Beziehungstyps.
-              const relationType = state.relationTypesById.get(edge.relationTypeId);
+              const relationType = edge.relationTypeId ? state.relationTypesById.get(edge.relationTypeId) : undefined;
               const rawLabel = edge.label || relationType?.label || '';
-              const displayLabel = rawLabel.length > 20 ? `${rawLabel.slice(0, 19)}…` : rawLabel;
-              const labelOffsetY = (edgeParallelIndex.get(edge.id) ?? 0) * 14;
-              // Kanten-Nähe-Stufe wie bei Nodes: berührt sie den Fokus-Node,
-              // ist sie 'focus' (bekommt den wandernden Lichtpuls, s.
-              // Design-Handoff — Gold NUR als Puls, nie als Ambient-Deko),
-              // berührt sie nur einen Nachbarn, 'neighbor', sonst 'far'.
-              const touchesFocus = selection.selectedNodeId != null && (edge.sourceNodeId === selection.selectedNodeId || edge.targetNodeId === selection.selectedNodeId);
+              // Kein Abschneiden mehr (User-Vorgabe 2026-08-04) — bei Bedarf
+              // mehrzeilig statt mit "…" gekürzt, wie bei den Node-Titeln.
+              const labelLines = rawLabel ? wrapTitleToLines(rawLabel, EDGE_LABEL_MAX_WIDTH, 9, 500) : [];
+              const labelOffsetY = (edgeParallelIndex.get(edge.id) ?? 0) * (14 + (labelLines.length > 1 ? 11 : 0));
+              // Kanten-Nähe-Stufe wie bei Nodes: berührt sie den Fokus-Node
+              // ODER einen Gold-Hauptthema-Node (User-Feedback: der Gold-Node
+              // sieht sonst wie der Fokus aus, ohne dass seine Kanten
+              // mitpulsen), ist sie 'focus' (bekommt den wandernden
+              // Lichtpuls, s. Design-Handoff — Gold NUR als Puls, nie als
+              // Ambient-Deko), berührt sie nur einen Nachbarn, 'neighbor',
+              // sonst 'far'.
+              const touchesFocus =
+                (selection.selectedNodeId != null && (edge.sourceNodeId === selection.selectedNodeId || edge.targetNodeId === selection.selectedNodeId)) ||
+                isGoldIdentityNode(edge.sourceNodeId) || isGoldIdentityNode(edge.targetNodeId);
               const edgeTier: 'focus' | 'neighbor' | 'far' = touchesFocus ? 'focus' : (!selection.selectedNodeId ? 'neighbor' : 'far');
               const edgeColor = wnTheme.edge[edgeTier];
               const edgeOpacity = edgeTier === 'focus' ? 0.75 : edgeTier === 'neighbor' ? 0.5 : 0.22;
@@ -813,16 +1050,17 @@ export const GraphCanvas: React.FC<GraphCanvasProps> = ({
                       Design-Handoff v3: keine Pillen-Kapsel mehr — schlichter
                       kursiver Text mit weichem Leucht-Schatten, wirkt als Teil
                       der Synapse statt als schwebendes UI-Badge. */}
-                  {!edgeSelected && displayLabel && (
+                  {!edgeSelected && labelLines.length > 0 && (
                     <text
-                      x={midX} y={midY + labelOffsetY + 3}
                       textAnchor="middle"
                       fontStyle="italic"
                       className="text-[9px] font-medium select-none"
                       fill={edgeTier === 'focus' ? wnTheme.label.focus : wnTheme.label.far}
-                      style={{ pointerEvents: 'none', filter: `drop-shadow(0 0 3px ${isNightMode ? '#08111E' : '#F5F1E7'})` }}
+                      style={{ pointerEvents: 'none', filter: `drop-shadow(0 0 3px ${isDark ? '#08111E' : '#F5F1E7'})` }}
                     >
-                      {displayLabel}
+                      {labelLines.map((line, i) => (
+                        <tspan key={i} x={midX} y={midY + labelOffsetY + 3 + i * 11}>{line}</tspan>
+                      ))}
                     </text>
                   )}
                 </motion.g>
@@ -841,15 +1079,15 @@ export const GraphCanvas: React.FC<GraphCanvasProps> = ({
               const hovered = isHovered(selection, node.id);
               const tier = tierOf(node.id);
               const tc = tierColorsOf(tier);
-              const r = radiusOf(node.id);
-              const blobD = blobPathD(r, node.id);
+              const { rx, ry } = nodeExtentsOf(node.id);
+              const blobD = blobPathD(rx, ry, node.id);
               // Hauptthema-Nodes sind standardmäßig Gold — ihre "Identität",
               // nicht nur der Fokus-Zustand (User-Wunsch 2026-08-04, "wie im
               // Bsp"). Bleibt bewusst golden auch als Nachbar/Fern-Node (nur
               // Deckkraft/Unschärfe folgen weiterhin der Nähe-Stufe wie bei
               // jedem anderen Node) — eine eigene, nutzerdefinierte Farbe
               // (node.color) hat immer Vorrang.
-              const isGoldIdentity = !node.color && node.hierarchyLevel === 'hauptthema';
+              const isGoldIdentity = isGoldIdentityNode(node.id);
               const fill = node.color || `url(#${wnTheme.gradientId[isGoldIdentity ? 'focus' : (tier === 'neutral' ? 'neighbor' : tier)]})`;
               const glowColor = isGoldIdentity ? wnTheme.tier.focus.glow : tc.glow;
               const isFocusTier = tier === 'focus';
@@ -887,12 +1125,17 @@ export const GraphCanvas: React.FC<GraphCanvasProps> = ({
                       // widersprüchlichen Kurz-/Langform-Eigenschaften im
                       // selben Style-Objekt (Reihenfolge-abhängiger Bug).
                       animation: `${isFocusTier ? 'wnBreathe 6s' : `wnFloat ${(5 + (hashId(node.id) % 30) / 10).toFixed(1)}s`} ease-in-out ${(hashId(node.id) % 30) / 10}s infinite`,
+                      // Ohne transformBox bezieht sich transform-origin bei
+                      // SVG-Elementen auf den Viewport der gesamten Kanvas,
+                      // nicht auf den Node selbst — die Animation lief zwar,
+                      // war aber je nach Node-Position unsichtbar oder verzerrt.
+                      transformBox: 'fill-box',
                       transformOrigin: 'center',
                       filter: tc.blurPx ? `blur(${tc.blurPx}px)` : undefined,
                     }}
                   >
                     {/* Glut hinter dem Node — reine Deko, nimmt keine Klicks entgegen. */}
-                    <path d={blobD} fill={glowColor} opacity={tc.glowOpacity} style={{ filter: `blur(${Math.max(8, r * 0.35)}px)`, pointerEvents: 'none' }} transform="scale(1.15)" />
+                    <path d={blobD} fill={glowColor} opacity={tc.glowOpacity} style={{ filter: `blur(${Math.max(8, ry * 0.35)}px)`, pointerEvents: 'none' }} transform="scale(1.15)" />
                     <path
                       d={blobD}
                       fill={fill}
@@ -900,21 +1143,44 @@ export const GraphCanvas: React.FC<GraphCanvasProps> = ({
                       stroke={tc.border}
                       strokeWidth={(node.hierarchyLevel ? HIERARCHY_STROKE_WIDTH[node.hierarchyLevel] : HIERARCHY_STROKE_WIDTH.unterthema) + (selected ? SELECTED_STROKE_BONUS : 0)}
                     />
-                    {editingNodeId !== node.id && (
-                      <text
-                        textAnchor="middle" y={4}
-                        className="text-[10px] select-none"
-                        fontWeight={node.hierarchyLevel === 'hauptthema' ? 800 : node.hierarchyLevel === 'detail' ? 600 : 700}
-                        fill={node.color ? '#fff' : tc.text}
-                        style={{ pointerEvents: 'none' }}
-                      >
-                        {node.title.length > 14 ? `${node.title.slice(0, 13)}…` : node.title}
-                      </text>
-                    )}
+                    {editingNodeId !== node.id && (() => {
+                      const titleFontWeight = node.hierarchyLevel === 'hauptthema' ? 800 : node.hierarchyLevel === 'detail' ? 600 : 700;
+                      // 0.86 statt voller Durchmesser als Sicherheitsabstand
+                      // zum Rand — die Messung selbst ist jetzt exakt, der
+                      // Puffer ist reiner Gestaltungsspielraum, kein Ausgleich
+                      // für eine ungenaue Schätzung mehr.
+                      const maxWidth = rx * 2 * 0.86;
+                      const { lines: titleLines, fontSize: titleFontSize } = wrapTitleAdaptive(node.title, maxWidth, titleFontWeight);
+                      const titleColor = node.color ? '#fff' : tc.text;
+                      // Zeilenabstand skaliert mit der (ggf. verkleinerten)
+                      // Schrift, statt bei kleinerer Schrift unnötig viel
+                      // Luft zwischen den Zeilen zu lassen.
+                      const lineStep = titleFontSize * 1.1;
+                      return (
+                        <text
+                          textAnchor="middle"
+                          fontSize={titleFontSize}
+                          className="select-none"
+                          fontWeight={titleFontWeight}
+                          fill={titleColor}
+                          style={{ pointerEvents: 'none' }}
+                        >
+                          {titleLines.length === 1 ? (
+                            <tspan x={0} y={4}>{titleLines[0]}</tspan>
+                          ) : (
+                            titleLines.map((line, li) => (
+                              <tspan key={li} x={0} y={(li - (titleLines.length - 1) / 2) * lineStep + 4}>
+                                {line}
+                              </tspan>
+                            ))
+                          )}
+                        </text>
+                      );
+                    })()}
                   </g>
                   {(hovered || selected) && (
                     <circle
-                      cx={r + HANDLE_OFFSET} cy={0} r={HANDLE_RADIUS}
+                      cx={rx + HANDLE_OFFSET} cy={0} r={HANDLE_RADIUS}
                       fill={wnTheme.focusLabel}
                       onMouseDown={e => handleHandlePointerDown(e, node.id)}
                       style={{ cursor: 'crosshair' }}
@@ -943,7 +1209,7 @@ export const GraphCanvas: React.FC<GraphCanvasProps> = ({
             className="absolute text-[10px] font-bold text-center rounded-md px-1 py-1 outline-none border-2 bg-white dark:bg-slate-800 dark:text-white"
             style={{
               left: screenX, top: screenY, transform: 'translate(-50%, -50%)',
-              width: radiusOf(editingNodeId) * 2 + 16, borderColor: 'var(--primary)', zIndex: 20,
+              width: Math.max(nodeExtentsOf(editingNodeId).rx * 2 + 16, radiusOf(editingNodeId) * 2 + 16), borderColor: 'var(--primary)', zIndex: 20,
             }}
           />
         );
@@ -956,7 +1222,7 @@ export const GraphCanvas: React.FC<GraphCanvasProps> = ({
             <input
               ref={edgePromptInputRef}
               value={edgePrompt.value}
-              placeholder="Beziehung eingeben…"
+              placeholder="Beziehung eingeben (optional)…"
               onChange={e => {
                 setEdgePrompt(prev => prev && { ...prev, value: e.target.value });
                 setEdgePromptError(null);
@@ -984,10 +1250,14 @@ export const GraphCanvas: React.FC<GraphCanvasProps> = ({
         const edge = state.edgesById.get(selection.selectedEdgeId!);
         if (!edge) return null;
         const { midX, midY } = computeEdgeGeometry(edge);
-        // Derselbe Versatz wie beim Label-Rendering oben — sonst würde das
+        // Derselbe Versatz wie beim Label-Rendering oben (inkl. der
+        // größeren Schrittweite bei zweizeiligen Labels) — sonst würde das
         // Overlay beim Auswählen einer von mehreren parallelen Kanten an
         // eine andere Stelle springen als das gerade sichtbare Label.
-        const labelOffsetY = (edgeParallelIndex.get(edge.id) ?? 0) * 14;
+        const ownRelationType = edge.relationTypeId ? state.relationTypesById.get(edge.relationTypeId) : undefined;
+        const ownRawLabel = edge.label || ownRelationType?.label || '';
+        const ownWraps = ownRawLabel ? wrapTitleToLines(ownRawLabel, EDGE_LABEL_MAX_WIDTH, 9, 500).length > 1 : false;
+        const labelOffsetY = (edgeParallelIndex.get(edge.id) ?? 0) * (14 + (ownWraps ? 11 : 0));
         const screenX = zoomTransform.x + zoomTransform.k * midX;
         const screenY = zoomTransform.y + zoomTransform.k * (midY + labelOffsetY);
         return (

@@ -207,6 +207,25 @@ export const Layout: React.FC<LayoutProps> = ({
             )}
           </div>
 
+          {/* Globaler Tag-/Nachtmodus-Umschalter — unterhalb des Ein-/Ausklapp-
+              Buttons, damit er überall in der App erreichbar ist (User-Vorgabe
+              2026-08-04), nicht nur im Wissensnetz. Steuert denselben
+              App-weiten Zustand wie der bestehende Umschalter im Mobile-Menü
+              und in den Einstellungen (useAuth().isDark/toggleTheme) — kein
+              eigener Theme-Zustand. */}
+          <button
+            onClick={onToggleTheme}
+            aria-label={isDark ? t('layout.dayMode') : t('layout.nightMode')}
+            title={isDark ? t('layout.dayMode') : t('layout.nightMode')}
+            className="flex items-center gap-1.5 -mt-8 mb-6 shrink-0 transition-colors self-start"
+            style={{ color: SIDEBAR.textMuted }}
+          >
+            {isDark ? <Sun className="w-4 h-4" strokeWidth={1.75} /> : <Moon className="w-4 h-4" strokeWidth={1.75} />}
+            <span className="text-[9px] font-black uppercase tracking-widest">
+              {isDark ? t('layout.dayMode') : t('layout.nightMode')}
+            </span>
+          </button>
+
           {/* Fach-Kontext: gewähltes Modul gilt überall als Vorauswahl.
               Auch ohne Ordner sichtbar — sonst wissen Nutzer nicht, dass es das Feature gibt. */}
           {onModuleChange && collections.length === 0 && (

@@ -84,11 +84,14 @@ interface GraphSystemProps {
   onDecksChange: (decks: FlashcardDeck[]) => void;
   updateMetricsAfterSession: (score: number, name: string, type: 'quiz' | 'exam' | 'recall' | 'cards') => Promise<void>;
   onApiError: (e: unknown) => void;
+  /** Globaler App-Theme-Zustand (User-Vorgabe 2026-08-04: kein eigener
+   *  Wissensnetz-Modus mehr) — kommt von useAuth() über AppContent.tsx. */
+  isDark: boolean;
 }
 
 export const GraphSystem: React.FC<GraphSystemProps> = ({
   userId, collections, activeModuleId, documents, getDocumentSource, onStartFeynman, initialDoc,
-  decks, onDecksChange, updateMetricsAfterSession, onApiError,
+  decks, onDecksChange, updateMetricsAfterSession, onApiError, isDark,
 }) => {
   const { t } = useTranslation();
 
@@ -124,7 +127,7 @@ export const GraphSystem: React.FC<GraphSystemProps> = ({
     <div className="space-y-3">
       <div className="flex items-center gap-3 flex-wrap px-1">
         <div className="min-w-0">
-          <h1 className="text-lg font-black text-slate-900 dark:text-white tracking-tight truncate">
+          <h1 className="text-lg font-black text-slate-900 dark:text-white tracking-tight break-words">
             {activeCollection ? `${activeCollection.emoji} ${activeCollection.name}` : t('kg.allSubjects')}
           </h1>
           <p className="text-[9px] font-black uppercase tracking-widest text-slate-400">{t('nav.knowledgeGraph.hint')}</p>
@@ -166,6 +169,7 @@ export const GraphSystem: React.FC<GraphSystemProps> = ({
               onChange={graph.onChange}
               onSelectionChange={graph.onSelectionChange}
               onEntityChanged={graph.onEntityChanged}
+              isDark={isDark}
             />
             {/* Absolutes Overlay, kein Resize der Kanvasfläche — s.
                 GraphNodeDetailPanel.tsx für die Begründung (Performance +

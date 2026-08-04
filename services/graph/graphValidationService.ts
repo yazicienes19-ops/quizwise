@@ -133,11 +133,29 @@ export function validateCreateEdge(state: GraphState, index: GraphIndex, input: 
   const endpoints = validateEdgeEndpointsExist(state, input.sourceNodeId, input.targetNodeId);
   if (endpoints.valid === false) return endpoints;
 
+  // Beziehungstyp ist optional (User-Vorgabe 2026-08-04) — ohne Typ trotzdem
+  // gegen eine bereits bestehende, ebenfalls unbenannte Verbindung zwischen
+  // denselben zwei Nodes prüfen (sonst könnte dieselbe leere Kante versehentlich
+  // mehrfach gezogen werden).
+  if (input.relationTypeId === undefined) {
+    return validateNoDuplicateUntypedEdge(index, input.sourceNodeId, input.targetNodeId);
+  }
+
   const typeExists = validateRelationTypeExists(state, input.relationTypeId);
   if (typeExists.valid === false) return typeExists;
 
   const relationType = state.relationTypesById.get(input.relationTypeId)!;
   return validateNoDuplicateEdge(index, input.sourceNodeId, input.targetNodeId, relationType);
+}
+
+function validateNoDuplicateUntypedEdge(index: GraphIndex, sourceNodeId: string, targetNodeId: string): ValidationResult {
+  const exists = outgoingEdges(index, sourceNodeId).some(
+    e => e.targetNodeId === targetNodeId && e.relationTypeId === undefined,
+  );
+  if (exists) {
+    return { valid: false, reason: 'Eine unbenannte Verbindung zwischen diesen beiden Nodes existiert bereits.' };
+  }
+  return { valid: true };
 }
 
 /** Beim Ändern des Beziehungstyps einer bestehenden Kante — Endpunkte bleiben

@@ -157,6 +157,13 @@ describe('createEdge', () => {
     expect(result.entity?.targetNodeId).toBe(bId);
   });
 
+  it('legt eine Kante ohne Beziehungstyp an', () => {
+    const { state, aId, bId } = setup();
+    const result = createEdge(state, { sourceNodeId: aId, targetNodeId: bId, relationTypeId: undefined });
+    expect(result.error).toBeUndefined();
+    expect(result.entity?.relationTypeId).toBeUndefined();
+  });
+
   it('lehnt eine inhaltlich doppelte Kante ab', () => {
     const { state, aId, bId } = setup();
     const first = createEdge(state, { sourceNodeId: aId, targetNodeId: bId, relationTypeId: 'rel-1' });

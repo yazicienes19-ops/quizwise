@@ -176,6 +176,29 @@ describe('validateCreateEdge (Orchestrierung)', () => {
     const result = validateCreateEdge(state, index, { sourceNodeId: 'a', targetNodeId: 'b', relationTypeId: 'rel-1' });
     expect(result.valid).toBe(true);
   });
+
+  it('akzeptiert eine neue Kante ohne Beziehungstyp', () => {
+    const state = buildState();
+    const index = buildGraphIndex(state);
+    const result = validateCreateEdge(state, index, { sourceNodeId: 'a', targetNodeId: 'b', relationTypeId: undefined });
+    expect(result.valid).toBe(true);
+  });
+
+  it('lehnt eine zweite unbenannte Kante zwischen denselben Nodes ab', () => {
+    const state = buildState();
+    state.edgesById.set('e1', makeEdge('e1', 'a', 'b', { relationTypeId: undefined }));
+    const index = buildGraphIndex(state);
+    const result = validateCreateEdge(state, index, { sourceNodeId: 'a', targetNodeId: 'b', relationTypeId: undefined });
+    expect(result.valid).toBe(false);
+  });
+
+  it('erlaubt eine unbenannte Kante trotz bestehender benannter Kante zwischen denselben Nodes', () => {
+    const state = buildState();
+    state.edgesById.set('e1', makeEdge('e1', 'a', 'b', { relationTypeId: 'rel-1' }));
+    const index = buildGraphIndex(state);
+    const result = validateCreateEdge(state, index, { sourceNodeId: 'a', targetNodeId: 'b', relationTypeId: undefined });
+    expect(result.valid).toBe(true);
+  });
 });
 
 describe('validateRetypeEdge', () => {

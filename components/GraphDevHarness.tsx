@@ -174,6 +174,12 @@ export const GraphDevHarness: React.FC = () => {
   const scope = userId ? REAL_SCOPE : FIXTURE_SCOPE;
   const graph = useKnowledgeGraph({ scope, userId });
 
+  // Dev-Harness hat kein eigenes useAuth() — liest den globalen App-Theme-
+  // Zustand einmalig genau wie useAuth.ts selbst (dieselbe 'dark'-Klasse auf
+  // <html>), damit GraphCanvas auch hier dieselbe verpflichtende isDark-Prop
+  // bekommt wie im echten Produkt-UI.
+  const [isDark] = useState(() => document.documentElement.classList.contains('dark'));
+
   const [log, setLog] = useState<string[]>([]);
   const pushLog = (line: string) => setLog(prev => [line, ...prev].slice(0, 8));
 
@@ -262,6 +268,7 @@ export const GraphDevHarness: React.FC = () => {
             else if (change.kind === 'relationType') pushLog(`Beziehungstyp angelegt: "${change.entity.label}"`);
             else pushLog(`Dokument-Verknüpfung ${change.action === 'create' ? 'angelegt' : 'entfernt'}`);
           }}
+          isDark={isDark}
         />
         {/* Phase 2/3: dasselbe Overlay-Panel wie in GraphSystem.tsx, hier
             verdrahtet, damit es ohne echten Login über den Harness testbar

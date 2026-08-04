@@ -106,7 +106,7 @@ const OverlayShell: React.FC<{ node: GraphNode; activity: GraphLearningActivity;
           ← {t('kg.activity.back')}
         </button>
         <div className="min-w-0 flex-1 text-center">
-          <p className="text-[9px] font-black uppercase tracking-widest text-slate-400 truncate">{t(ACTIVITY_TITLES[activity])} · {node.title}</p>
+          <p className="text-[9px] font-black uppercase tracking-widest text-slate-400 break-words">{t(ACTIVITY_TITLES[activity])} · {node.title}</p>
         </div>
         <div className="w-[72px] shrink-0" />
       </div>

@@ -107,11 +107,16 @@ function describeRelatedEntry(
 ): { key: string; otherNodeId: string; otherTitle: string; text: string } | null {
   const otherNodeId = isSource ? edge.targetNodeId : edge.sourceNodeId;
   const otherNode = state.nodesById.get(otherNodeId);
-  const relationType = state.relationTypesById.get(edge.relationTypeId);
-  if (!otherNode || !relationType) return null;
+  if (!otherNode) return null;
+  const relationType = edge.relationTypeId ? state.relationTypesById.get(edge.relationTypeId) : undefined;
 
   let text: string;
-  if (relationType.symmetric) {
+  if (!relationType) {
+    // Beziehungstyp ist optional (User-Vorgabe 2026-08-04) — die Verbindung
+    // bleibt trotzdem sichtbar, nur ohne Beziehungsphrase dazwischen. Kein
+    // Platzhaltertext ("unbenannt" o.ä.), einfach nur Pfeil + Node-Titel.
+    text = `${isSource ? '→' : '←'} ${otherNode.title}`;
+  } else if (relationType.symmetric) {
     // Symmetrisch: dieselbe Aussage in beide Richtungen, kein Pfeil-Konflikt.
     text = `↔ ${relationType.label} ${otherNode.title}`;
   } else if (isSource) {
@@ -317,7 +322,7 @@ export const GraphNodeDetailPanel: React.FC<GraphNodeDetailPanelProps> = ({
           bevor überhaupt etwas anderes im Panel gelesen werden muss. */}
       <div className="flex items-start gap-2 p-4 border-b" style={{ borderColor: 'var(--border-color)' }}>
         <div className="min-w-0 flex-1">
-          <h2 className="text-base font-black text-slate-900 dark:text-white truncate">{node.title}</h2>
+          <h2 className="text-base font-black text-slate-900 dark:text-white break-words">{node.title}</h2>
           <div className="flex items-center gap-1.5 mt-2 flex-wrap">
             <span
               className="text-[8px] font-black uppercase tracking-wider px-2 py-1 rounded-full"
@@ -444,7 +449,7 @@ export const GraphNodeDetailPanel: React.FC<GraphNodeDetailPanelProps> = ({
                     <button
                       onClick={() => onOpenDocument(ref.documentId)}
                       title={label}
-                      className="w-full text-left text-[11px] font-bold text-slate-700 dark:text-slate-200 rounded-lg px-3 py-2 hover:bg-slate-50 dark:hover:bg-slate-800 transition-colors truncate block"
+                      className="w-full text-left text-[11px] font-bold text-slate-700 dark:text-slate-200 rounded-lg px-3 py-2 hover:bg-slate-50 dark:hover:bg-slate-800 transition-colors break-words block"
                     >
                       {label}
                     </button>
@@ -504,7 +509,7 @@ export const GraphNodeDetailPanel: React.FC<GraphNodeDetailPanelProps> = ({
                   <button
                     onClick={() => onSelectNode(entry.otherNodeId)}
                     title={entry.text}
-                    className="w-full text-left text-[11px] font-bold text-slate-700 dark:text-slate-200 rounded-lg px-3 py-2 hover:bg-slate-50 dark:hover:bg-slate-800 transition-colors truncate block"
+                    className="w-full text-left text-[11px] font-bold text-slate-700 dark:text-slate-200 rounded-lg px-3 py-2 hover:bg-slate-50 dark:hover:bg-slate-800 transition-colors break-words block"
                   >
                     {entry.text}
                   </button>

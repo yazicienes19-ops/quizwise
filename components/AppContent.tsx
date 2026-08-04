@@ -112,6 +112,9 @@ interface AppContentProps {
   handleStartMistakeReview: () => void;
   handleApiError: (e: any) => void;
   updateMetricsAfterSession: (score: number, name: string, type: 'quiz' | 'exam' | 'recall' | 'cards') => Promise<void>;
+  /** Globaler App-Theme-Zustand (User-Vorgabe 2026-08-04: kein eigener
+   *  Wissensnetz-Modus mehr) — für GraphSystem.tsx durchgereicht. */
+  isDark: boolean;
 }
 
 export const AppContent: React.FC<AppContentProps> = (p) => {
@@ -130,7 +133,7 @@ export const AppContent: React.FC<AppContentProps> = (p) => {
     handleLoadSavedExam, handleDeleteSavedExam, onQuizComplete,
     handleStartQuizFromDoc, handleStartQuizFromSetup, handleCreateFlashcardsFromMistakes,
     setReviewSessionItems, handleStartMistakeReview,
-    handleApiError, updateMetricsAfterSession,
+    handleApiError, updateMetricsAfterSession, isDark,
   } = p;
 
   // Gemeinsamer Folge-Aktion-Handler für schwache Themen — von Lern-Coach UND Klausur-Ergebnis genutzt
@@ -494,6 +497,7 @@ export const AppContent: React.FC<AppContentProps> = (p) => {
         decks={decks} onDecksChange={setDecks}
         updateMetricsAfterSession={updateMetricsAfterSession}
         onApiError={handleApiError}
+        isDark={isDark}
       />;
 
     default:

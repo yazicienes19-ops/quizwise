@@ -335,6 +335,7 @@ const App: React.FC = () => {
             activeModuleId={activeModuleId}
             handleApiError={handleApiError}
             updateMetricsAfterSession={updateMetricsAfterSession}
+            isDark={auth.isDark}
           />
         </React.Suspense>
         </ErrorBoundary>

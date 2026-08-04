@@ -112,7 +112,7 @@ export function rowToEdge(row: any): GraphEdge {
     id: row.id,
     sourceNodeId: row.source_node_id,
     targetNodeId: row.target_node_id,
-    relationTypeId: row.relation_type_id,
+    relationTypeId: row.relation_type_id ?? undefined,
     label: row.label ?? undefined,
     archivedAt: row.archived_at ? new Date(row.archived_at).getTime() : undefined,
     version: row.version,
@@ -127,7 +127,7 @@ export function edgeToRow(edge: GraphEdge, userId: string): Record<string, unkno
     user_id: userId,
     source_node_id: edge.sourceNodeId,
     target_node_id: edge.targetNodeId,
-    relation_type_id: edge.relationTypeId,
+    relation_type_id: edge.relationTypeId ?? null,
     label: edge.label ?? null,
     archived_at: edge.archivedAt ? new Date(edge.archivedAt).toISOString() : null,
   };
