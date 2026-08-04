@@ -2,7 +2,7 @@ import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import * as d3 from 'd3';
 import { motion, AnimatePresence } from 'framer-motion';
 import type { GraphState, GraphNodePosition, GraphEntityChange, HierarchyLevel } from '../services/graph/types';
-import { buildGraphIndex, neighborIds } from '../services/graph/graphIndex';
+import { buildGraphIndex, neighborIds, outgoingEdges, incomingEdges } from '../services/graph/graphIndex';
 import { resolveOverlaps } from '../services/graph/graphLayoutEngine';
 import {
   type GraphSelectionState, selectNode, selectEdge, clearSelection, hoverNode, isSelected, isHovered, isEdgeSelected,
@@ -439,6 +439,70 @@ export const GraphCanvas: React.FC<GraphCanvasProps> = ({
     const n = state.nodesById.get(nodeId);
     return !!n && !n.color && n.hierarchyLevel === 'hauptthema';
   }, [state.nodesById]);
+
+  // Impuls-Ausbreitung durchs GANZE zusammenhängende Netz (User-Vorgabe
+  // 2026-08-04): vorher pulste nur die Kante, die DIREKT den ausgewählten/
+  // Gold-Hauptthema-Node berührte — wirkte "künstlich unterbrochen", sobald
+  // ein Konzept über einen Zwischenknoten hing (z.B. DNA→Nukleotide, wenn
+  // Biologie ausgewählt war). Multi-Source-BFS (ungerichtet, wie bei
+  // `neighborIds`) ab genau denselben zwei Quellen wie bisher (ausgewählter
+  // Node + alle Gold-Hauptthema-Nodes) über ALLE Kanten hinweg — jeder
+  // erreichbare Node bekommt seine Hop-Distanz zur nächsten Quelle, jede
+  // Kante zwischen zwei erreichbaren Nodes bekommt die kleinere der beiden
+  // Distanzen als "Aktivierungs-Tiefe". Isolierte Teilgraphen bleiben
+  // schlicht draußen (kein Eintrag in der Map) — keine Animation dort.
+  // Bewusst NUR die Wander-Puls-Gating/-Verzögerung, NICHT die statische
+  // Kantenfarbe/-Deckkraft (edgeTier bleibt 1-Hop, unverändert) — sonst
+  // würde das ganze Netz dauerhaft golden aufleuchten statt nur der
+  // wandernde Punkt (Design-Handoff: "Gold NUR als wandernder Puls, nie als
+  // Ambient-Deko").
+  const pulseDepthByEdge = useMemo(() => {
+    const sourceIds = new Set<string>();
+    if (selection.selectedNodeId) sourceIds.add(selection.selectedNodeId);
+    for (const n of activeNodes) {
+      if (isGoldIdentityNode(n.id)) sourceIds.add(n.id);
+    }
+    const nodeDist = new Map<string, number>();
+    let frontier: string[] = [];
+    for (const id of sourceIds) {
+      if (!nodeDist.has(id)) { nodeDist.set(id, 0); frontier.push(id); }
+    }
+    let depth = 0;
+    while (frontier.length > 0) {
+      const next: string[] = [];
+      for (const id of frontier) {
+        for (const edge of [...outgoingEdges(index, id), ...incomingEdges(index, id)]) {
+          const otherId = edge.sourceNodeId === id ? edge.targetNodeId : edge.sourceNodeId;
+          if (!nodeDist.has(otherId)) {
+            nodeDist.set(otherId, depth + 1);
+            next.push(otherId);
+          }
+        }
+      }
+      frontier = next;
+      depth++;
+    }
+    const edgeDepth = new Map<string, number>();
+    for (const edge of visibleEdges) {
+      const ds = nodeDist.get(edge.sourceNodeId);
+      const dt = nodeDist.get(edge.targetNodeId);
+      if (ds === undefined || dt === undefined) continue;
+      edgeDepth.set(edge.id, Math.min(ds, dt));
+    }
+    return edgeDepth;
+  }, [selection.selectedNodeId, activeNodes, isGoldIdentityNode, index, visibleEdges]);
+  // Verzögerung je Ausbreitungs-Tiefe — erzeugt den "Signal wandert Schritt
+  // für Schritt weiter"-Effekt. Da alle Pulse dieselbe `dur` (3.6s) haben,
+  // bleibt der Versatz bei jeder Wiederholung stabil (kein Auseinanderlaufen
+  // über die Zeit), wirkt also wie eine fortlaufend durchs Netz laufende
+  // Welle, nicht wie ein einmaliger Effekt. Deutlich größer als der
+  // Pro-Kante-Jitter unten (PULSE_JITTER_MAX_S) — sonst verschluckt der
+  // Zufallsversatz die eigentlich sichtbare Tiefen-Staffelung.
+  const PULSE_DEPTH_STAGGER_S = 0.55;
+  // Kleiner organischer Zufallsversatz pro Kante (statt starrem Metronom-
+  // Takt) — bewusst klein gehalten, bleibt der Tiefen-Staffelung klar
+  // untergeordnet.
+  const PULSE_JITTER_MAX_S = 0.4;
 
   // Phase 5B Punkt 2: zwei unterschiedliche Beziehungstypen zwischen
   // demselben Node-Paar sind erlaubt (nur inhaltliche Duplikate werden
@@ -1035,11 +1099,22 @@ export const GraphCanvas: React.FC<GraphCanvasProps> = ({
                     style={{ pointerEvents: 'none' }}
                   />
                   {/* Wandernder Lichtpuls (Design-Handoff: "Golden dots exist
-                      ONLY as these traveling pulses") — ausschließlich auf
-                      Kanten, die den ausgewählten Node berühren. */}
-                  {edgeTier === 'focus' && (
+                      ONLY as these traveling pulses") — auf jeder Kante, die
+                      über einen durchgehenden Pfad mit dem ausgewählten/
+                      Gold-Hauptthema-Node zusammenhängt (pulseDepthByEdge),
+                      nicht mehr nur 1 Hop weit. Tiefen-abhängige Verzögerung
+                      zusätzlich zum bisherigen Pro-Kante-Jitter (organischer
+                      Startversatz) lässt das Signal sichtbar nach außen
+                      wandern statt überall gleichzeitig aufzuleuchten. */}
+                  {pulseDepthByEdge.has(edge.id) && (
                     <circle r={3.2} fill="url(#wnPulseGrad)" className="wn-pulse" style={{ pointerEvents: 'none' }}>
-                      <animateMotion dur="3.6s" begin={`${(hashId(pulseId) % 20) / 10}s`} repeatCount="indefinite" path={`M${x1},${y1} L${x2},${y2}`} calcMode="linear" />
+                      <animateMotion
+                        dur="3.6s"
+                        begin={`${(pulseDepthByEdge.get(edge.id) ?? 0) * PULSE_DEPTH_STAGGER_S + (hashId(pulseId) % 10) / 10 * PULSE_JITTER_MAX_S}s`}
+                        repeatCount="indefinite"
+                        path={`M${x1},${y1} L${x2},${y2}`}
+                        calcMode="linear"
+                      />
                     </circle>
                   )}
                   {/* Während der Bearbeitung übernimmt das HTML-Overlay
