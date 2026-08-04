@@ -556,6 +556,8 @@ export const tr: Translations = {
   'kg.panel.notes': 'Notlarım',
   'kg.panel.notesPlaceholder': 'Bu neden önemli?',
   'kg.panel.hierarchyPlaceholder': 'Seviye seç',
+  'kg.panel.colorLabel': 'Renk',
+  'kg.panel.colorAuto': 'Otomatik (seviyeye göre)',
   'kg.panel.sources': 'Kaynaklarım',
   'kg.panel.sourcesEmpty': 'Henüz bağlı bir kaynak yok.',
   'kg.panel.sourcesAdd': 'Belge bağla',

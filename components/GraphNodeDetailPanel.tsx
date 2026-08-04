@@ -86,6 +86,14 @@ export interface GraphNodeDetailPanelProps {
 
 const typeLabel = (type: string): string => type.length > 0 ? type.charAt(0).toUpperCase() + type.slice(1) : type;
 
+/** Kuratierte Auswahl statt freiem Color-Picker — passend zur "direkte
+ *  Bearbeitung statt Formular"-Linie dieses Panels (Hierarchie ist z.B. ein
+ *  Klick-Zyklus-Chip, kein Dropdown). Gold zuerst, weil es exakt der
+ *  Standard-Farbe von Hauptthema-Nodes in GraphCanvas.tsx entspricht —
+ *  Nutzer können sie so bewusst UND explizit wählen, nicht nur implizit
+ *  über die Ebene bekommen. */
+const NODE_COLOR_SWATCHES = ['#D9A94E', '#6366F1', '#38BDF8', '#10B981', '#F43F5E', '#F97316', '#64748B'];
+
 /** Baut aus einer Kante + Blickrichtung (aktueller Node ist Quelle oder Ziel)
  *  eine für Menschen lesbare Zeile — Kernidee dieses Abschnitts: "Wie hängt
  *  dieses Konzept mit anderem Wissen zusammen?", nicht "welche Kanten
@@ -245,6 +253,18 @@ export const GraphNodeDetailPanel: React.FC<GraphNodeDetailPanelProps> = ({
     }
   };
 
+  // undefined = "Auto" (kein Override) — GraphCanvas.tsx leitet die Farbe
+  // dann aus der Hierarchie-Ebene ab (Hauptthema=Gold, sonst neutral), exakt
+  // dieselbe "kein stiller Default, aber ein bewusster Rückfall"-Idee wie bei
+  // hierarchyLevel/Beziehungstyp an anderer Stelle im Wissensnetz.
+  const commitColor = (color: string | undefined) => {
+    const result = recordUpdateNode(history, state, nodeId, { color });
+    if (!result.error && result.entity) {
+      onChange({ state: result.state, history: result.history });
+      onEntityChanged?.({ kind: 'node', entity: result.entity });
+    }
+  };
+
   // ── Verwandte Konzepte (Phase 4) ────────────────────────────────────────
   // outgoingEdges/incomingEdges filtern bereits auf Kanten AKTIVER Nodes
   // (s. graphIndex.ts) — ein Beziehungspartner, der zwischenzeitlich
@@ -312,6 +332,43 @@ export const GraphNodeDetailPanel: React.FC<GraphNodeDetailPanelProps> = ({
             >
               {node.hierarchyLevel ? HIERARCHY_LEVEL_LABELS[node.hierarchyLevel] : t('kg.panel.hierarchyPlaceholder')}
             </button>
+          </div>
+          {/* Direkte Farbwahl statt Formular/Dropdown — dieselbe Linie wie
+              der Hierarchie-Chip oben. "Auto" (Kreis mit Diagonale) setzt
+              node.color zurück auf undefined, GraphCanvas.tsx leitet die
+              Farbe dann wieder aus der Hierarchie-Ebene ab. */}
+          <div className="flex items-center gap-1.5 mt-2" role="group" aria-label={t('kg.panel.colorLabel')}>
+            <button
+              onClick={() => commitColor(undefined)}
+              title={t('kg.panel.colorAuto')}
+              aria-label={t('kg.panel.colorAuto')}
+              aria-pressed={!node.color}
+              className="w-5 h-5 rounded-full shrink-0 relative overflow-hidden transition-transform hover:scale-110"
+              style={{
+                background: 'var(--bg-main)',
+                border: `1.5px solid ${!node.color ? 'var(--primary)' : 'var(--border-color)'}`,
+              }}
+            >
+              <span
+                aria-hidden="true"
+                className="absolute inset-0"
+                style={{ background: 'linear-gradient(45deg, transparent 46%, var(--text-muted, #94a3b8) 48%, var(--text-muted, #94a3b8) 52%, transparent 54%)' }}
+              />
+            </button>
+            {NODE_COLOR_SWATCHES.map(swatch => (
+              <button
+                key={swatch}
+                onClick={() => commitColor(swatch)}
+                title={swatch}
+                aria-label={swatch}
+                aria-pressed={node.color === swatch}
+                className="w-5 h-5 rounded-full shrink-0 transition-transform hover:scale-110"
+                style={{
+                  background: swatch,
+                  boxShadow: node.color === swatch ? '0 0 0 2px var(--bg-sidebar), 0 0 0 3.5px var(--primary)' : 'none',
+                }}
+              />
+            ))}
           </div>
         </div>
         <button

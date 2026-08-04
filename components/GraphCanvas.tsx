@@ -2,7 +2,7 @@ import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import * as d3 from 'd3';
 import { motion, AnimatePresence } from 'framer-motion';
 import type { GraphState, GraphNodePosition, GraphEntityChange, HierarchyLevel } from '../services/graph/types';
-import { buildGraphIndex } from '../services/graph/graphIndex';
+import { buildGraphIndex, neighborIds } from '../services/graph/graphIndex';
 import { resolveOverlaps } from '../services/graph/graphLayoutEngine';
 import {
   type GraphSelectionState, selectNode, selectEdge, clearSelection, hoverNode, isSelected, isHovered, isEdgeSelected,
@@ -100,6 +100,100 @@ const HANDLE_OFFSET = 14;
 const DRAG_THRESHOLD_PX = 4;
 const NODE_DATA_ATTR = 'data-graph-node';
 
+// ── Visuelle Sprache "Wissensnetz/Synapsen-Netz" (Design-Abnahme 2026-08-04,
+// Handoff design_handoff_studearc_wissnetz/StudeArc Wissnetz.dc.html) ───────
+// Drei Nähe-Stufen zum AUSGEWÄHLTEN Node steuern Farbe/Glut/Unschärfe (nicht
+// die Größe — die bleibt weiterhin hierarchyLevel-gesteuert, s. oben):
+// 'focus' = der ausgewählte Node selbst, 'neighbor' = direkt verbunden,
+// 'far' = alles andere. Ohne Auswahl gilt 'neutral' (== neighbor-Optik,
+// nichts wird gedimmt). Bewusst NICHT die im Handoff vorgeschlagenen 6
+// Kantenstile (gepunktet/durchgezogen/dick/gestrichelt/doppelt/dünn) pro
+// Beziehungstyp umgesetzt — dafür bräuchte GraphRelationType ein neues
+// Kategorie-Feld, das es im Datenmodell nicht gibt (keine Architekturänderung
+// ohne Rückfrage). `symmetric` (existiert bereits) steuert stattdessen eine
+// Doppellinie, sonst einheitlich durchgezogen.
+type GraphTier = 'focus' | 'neighbor' | 'far' | 'neutral';
+
+interface WnTierColors {
+  bg: string; border: string; text: string; glow: string; glowOpacity: number; opacity: number; blurPx: number;
+}
+interface WnTheme {
+  canvasBg: string;
+  focusEyebrow: string; focusLabel: string;
+  chipBg: string; chipBorder: string; chipText: string;
+  tier: Record<Exclude<GraphTier, 'neutral'>, WnTierColors>;
+  edge: { focus: string; neighbor: string; far: string };
+  label: { focus: string; far: string };
+  gradientId: Record<Exclude<GraphTier, 'neutral'>, string>;
+}
+
+const WN_THEME: Record<'night' | 'day', WnTheme> = {
+  night: {
+    canvasBg: 'radial-gradient(ellipse at 50% 35%,#101E38 0%,#08111E 68%)',
+    focusEyebrow: '#5E75A8', focusLabel: '#F3D48B',
+    chipBg: 'rgba(255,255,255,.06)', chipBorder: 'rgba(255,255,255,.12)', chipText: '#D9A94E',
+    tier: {
+      focus: { bg: '#D9A94E', border: 'rgba(255,236,180,.75)', text: '#1B2A4A', glow: '#D9A94E', glowOpacity: .4, opacity: 1, blurPx: 0 },
+      neighbor: { bg: '#4E6CA8', border: 'rgba(140,170,230,.42)', text: '#DCE6FA', glow: '#4E6CA8', glowOpacity: .3, opacity: .97, blurPx: 0 },
+      far: { bg: '#26355C', border: 'rgba(90,110,160,.16)', text: '#7186B4', glow: '#1B2740', glowOpacity: .1, opacity: .5, blurPx: .8 },
+    },
+    edge: { focus: '#7B93C8', neighbor: '#4E6CA8', far: '#26355C' },
+    label: { focus: '#F3D48B', far: '#8CA0D0' },
+    gradientId: { focus: 'wnGradFocusNight', neighbor: 'wnGradNeighborNight', far: 'wnGradFarNight' },
+  },
+  day: {
+    canvasBg: 'radial-gradient(ellipse at 50% 35%,#F5F1E7 0%,#E4DFD2 70%)',
+    focusEyebrow: '#9A8F73', focusLabel: '#8A5A1E',
+    chipBg: 'rgba(27,42,74,.05)', chipBorder: 'rgba(27,42,74,.12)', chipText: '#A9772C',
+    tier: {
+      focus: { bg: '#C08B33', border: 'rgba(191,140,50,.7)', text: '#FBF9F4', glow: '#C08B33', glowOpacity: .3, opacity: 1, blurPx: 0 },
+      neighbor: { bg: '#405482', border: 'rgba(70,90,140,.3)', text: '#FBF9F4', glow: '#7C90BE', glowOpacity: .2, opacity: .97, blurPx: 0 },
+      far: { bg: '#9BA3C0', border: 'rgba(120,130,165,.18)', text: '#4B5568', glow: '#9BA3C0', glowOpacity: .08, opacity: .6, blurPx: .8 },
+    },
+    edge: { focus: '#B99A5C', neighbor: '#8A96BE', far: '#B7BDD4' },
+    label: { focus: '#8A5A1E', far: '#6B7BA8' },
+    gradientId: { focus: 'wnGradFocusDay', neighbor: 'wnGradNeighborDay', far: 'wnGradFarDay' },
+  },
+};
+
+const WN_THEME_STORAGE_KEY = 'studearc_graph_theme';
+
+/** Stabiler Hash statt Math.random() — jeder Node behält so bei jedem
+ *  Re-Render (Theme-Wechsel, Selektion, Drag) exakt dieselbe Blob-Form statt
+ *  optisch zu "springen". */
+function hashId(id: string): number {
+  let h = 0;
+  for (let i = 0; i < id.length; i++) h = (h * 31 + id.charCodeAt(i)) >>> 0;
+  return h;
+}
+
+/** Leicht unregelmäßige "Blob"-Kontur statt eines perfekten Kreises (User-
+ *  Feedback zur Design-Abnahme: "nicht alle Nodes so perfekt rund") — acht
+ *  Punkte um den Node-Radius herum, Radius pro Punkt um ±12% aus der
+ *  Node-ID gejittert, durch quadratische Kurven über die Punkt-Mittelpunkte
+ *  zu einer glatten geschlossenen Fläche verbunden. Deterministisch pro
+ *  Node-ID, unabhängig von Zoom/Position/Theme. */
+function blobPathD(radius: number, seed: string): string {
+  const h = hashId(seed);
+  const n = 8;
+  const pts: { x: number; y: number }[] = [];
+  for (let i = 0; i < n; i++) {
+    const bit = (h >> (i * 3)) & 0x7;
+    const jitter = 0.88 + (bit / 7) * 0.24; // 0.88..1.12
+    const angle = (i / n) * Math.PI * 2;
+    pts.push({ x: Math.cos(angle) * radius * jitter, y: Math.sin(angle) * radius * jitter });
+  }
+  const mid = (a: { x: number; y: number }, b: { x: number; y: number }) => ({ x: (a.x + b.x) / 2, y: (a.y + b.y) / 2 });
+  const first = mid(pts[n - 1], pts[0]);
+  let d = `M${first.x},${first.y} `;
+  for (let i = 0; i < n; i++) {
+    const p = pts[i];
+    const m = mid(p, pts[(i + 1) % n]);
+    d += `Q${p.x},${p.y} ${m.x},${m.y} `;
+  }
+  return d + 'Z';
+}
+
 export const GraphCanvas: React.FC<GraphCanvasProps> = ({
   state, history, selection, onChange, onSelectionChange, onEntityChanged,
 }) => {
@@ -108,6 +202,24 @@ export const GraphCanvas: React.FC<GraphCanvasProps> = ({
   const zoomBehaviorRef = useRef<d3.ZoomBehavior<SVGSVGElement, unknown> | null>(null);
   const [zoomTransform, setZoomTransform] = useState<ZoomTransform>({ x: 0, y: 0, k: 1 });
 
+  // ── Nacht/Tag (Design-Abnahme 2026-08-04) ───────────────────────────────
+  // Rein präsentationelles UI-Detail (wie zoomTransform/editingNodeId oben),
+  // deshalb bewusst lokaler State statt Props/Domain — genau wie im
+  // Design-Handoff ein eigener, vom System-Darkmode unabhängiger Toggle,
+  // Nacht ist der Standard. Persistiert wie andere reine UI-Präferenzen
+  // dieses Projekts (z.B. studearc_feynman_intro_done) direkt in localStorage.
+  const [isNightMode, setIsNightMode] = useState(() => {
+    try { return localStorage.getItem(WN_THEME_STORAGE_KEY) !== 'day'; } catch { return true; }
+  });
+  const toggleNightMode = () => {
+    setIsNightMode(prev => {
+      const next = !prev;
+      try { localStorage.setItem(WN_THEME_STORAGE_KEY, next ? 'night' : 'day'); } catch { /* Speicher voll/verweigert — Toggle bleibt trotzdem für diese Sitzung wirksam */ }
+      return next;
+    });
+  };
+  const wnTheme = isNightMode ? WN_THEME.night : WN_THEME.day;
+
   // ── Sichtbare Nodes/Kanten ──────────────────────────────────────────────
   const activeNodes = useMemo(
     () => [...state.nodesById.values()].filter(n => n.archivedAt === undefined),
@@ -115,6 +227,20 @@ export const GraphCanvas: React.FC<GraphCanvasProps> = ({
   );
   const index = useMemo(() => buildGraphIndex(state), [state]);
   const visibleEdges = useMemo(() => [...index.edgesBySource.values()].flat(), [index]);
+
+  // Nähe-Stufe zum ausgewählten Node (s. GraphTier-Kommentar oben) — ohne
+  // Auswahl ist jeder Node 'neutral' (== neighbor-Optik, nichts gedimmt).
+  const focusedNeighborIds = useMemo(
+    () => (selection.selectedNodeId ? neighborIds(index, selection.selectedNodeId) : undefined),
+    [index, selection.selectedNodeId],
+  );
+  const tierOf = useCallback((nodeId: string): GraphTier => {
+    if (!selection.selectedNodeId) return 'neutral';
+    if (nodeId === selection.selectedNodeId) return 'focus';
+    if (focusedNeighborIds?.has(nodeId)) return 'neighbor';
+    return 'far';
+  }, [selection.selectedNodeId, focusedNeighborIds]);
+  const tierColorsOf = (tier: GraphTier) => wnTheme.tier[tier === 'neutral' ? 'neighbor' : tier];
 
   // Phase 5B Punkt 2: zwei unterschiedliche Beziehungstypen zwischen
   // demselben Node-Paar sind erlaubt (nur inhaltliche Duplikate werden
@@ -559,11 +685,35 @@ export const GraphCanvas: React.FC<GraphCanvasProps> = ({
   };
 
   return (
-    <div className="relative w-full h-full overflow-hidden">
+    <div className="relative w-full h-full overflow-hidden" style={{ background: wnTheme.canvasBg, transition: 'background .4s ease' }}>
+      <style>{`
+        @keyframes wnFloat { 0%, 100% { transform: translateY(0); } 50% { transform: translateY(-4px); } }
+        @keyframes wnBreathe { 0%, 100% { transform: scale(1); } 50% { transform: scale(1.025); } }
+        @media (prefers-reduced-motion: reduce) {
+          .wn-float, .wn-breathe { animation: none !important; }
+          .wn-pulse { display: none; }
+        }
+      `}</style>
+      {selection.selectedNodeId && state.nodesById.get(selection.selectedNodeId) && (
+        <div className="absolute top-3 left-4 z-10 pointer-events-none">
+          <p className="m-0 text-[9px] font-bold uppercase tracking-[0.2em]" style={{ color: wnTheme.focusEyebrow }}>Fokus</p>
+          <p className="m-0 mt-0.5 text-sm font-bold" style={{ color: wnTheme.focusLabel }}>
+            {state.nodesById.get(selection.selectedNodeId)!.title}
+          </p>
+        </div>
+      )}
       <div className="absolute top-3 right-3 z-10 flex gap-1.5">
-        <button onClick={() => zoomBy(1.3)} className="w-8 h-8 flex items-center justify-center bg-white dark:bg-slate-800 text-slate-500 dark:text-slate-300 rounded-lg shadow-sm text-sm font-black">+</button>
-        <button onClick={() => zoomBy(1 / 1.3)} className="w-8 h-8 flex items-center justify-center bg-white dark:bg-slate-800 text-slate-500 dark:text-slate-300 rounded-lg shadow-sm text-sm font-black">−</button>
-        <button onClick={fitView} className="w-8 h-8 flex items-center justify-center bg-white dark:bg-slate-800 text-slate-500 dark:text-slate-300 rounded-lg shadow-sm">
+        <button
+          onClick={toggleNightMode}
+          title={isNightMode ? 'Zu Tag-Modus wechseln' : 'Zu Nacht-Modus wechseln'}
+          className="h-8 px-3 flex items-center justify-center rounded-lg text-[9px] font-black uppercase tracking-widest"
+          style={{ background: wnTheme.chipBg, border: `1px solid ${wnTheme.chipBorder}`, color: wnTheme.chipText, backdropFilter: 'blur(6px)' }}
+        >
+          {isNightMode ? 'Nacht' : 'Tag'}
+        </button>
+        <button onClick={() => zoomBy(1.3)} className="w-8 h-8 flex items-center justify-center rounded-lg text-sm font-black" style={{ background: wnTheme.chipBg, border: `1px solid ${wnTheme.chipBorder}`, color: wnTheme.chipText, backdropFilter: 'blur(6px)' }}>+</button>
+        <button onClick={() => zoomBy(1 / 1.3)} className="w-8 h-8 flex items-center justify-center rounded-lg text-sm font-black" style={{ background: wnTheme.chipBg, border: `1px solid ${wnTheme.chipBorder}`, color: wnTheme.chipText, backdropFilter: 'blur(6px)' }}>−</button>
+        <button onClick={fitView} className="w-8 h-8 flex items-center justify-center rounded-lg" style={{ background: wnTheme.chipBg, border: `1px solid ${wnTheme.chipBorder}`, color: wnTheme.chipText, backdropFilter: 'blur(6px)' }}>
           <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><path d="M8 3H5a2 2 0 0 0-2 2v3m18 0V5a2 2 0 0 0-2-2h-3m0 18h3a2 2 0 0 0 2-2v-3M3 16v3a2 2 0 0 0 2 2h3"/></svg>
         </button>
       </div>
@@ -573,6 +723,24 @@ export const GraphCanvas: React.FC<GraphCanvasProps> = ({
         onClick={handleBackgroundClick}
         onDoubleClick={handleBackgroundDoubleClick}
       >
+        <defs>
+          <radialGradient id="wnPulseGrad" cx="50%" cy="50%" r="50%">
+            <stop offset="0%" stopColor="#FFF3D2" stopOpacity="1" />
+            <stop offset="40%" stopColor="#D9A94E" stopOpacity=".9" />
+            <stop offset="100%" stopColor="#D9A94E" stopOpacity="0" />
+          </radialGradient>
+          {(['night', 'day'] as const).map(mode => (
+            (['focus', 'neighbor', 'far'] as const).map(tier => {
+              const c = WN_THEME[mode].tier[tier];
+              return (
+                <radialGradient key={`${mode}-${tier}`} id={WN_THEME[mode].gradientId[tier]} cx="35%" cy="30%" r="70%">
+                  <stop offset="0%" stopColor={c.bg} stopOpacity="1" />
+                  <stop offset="100%" stopColor={c.bg} stopOpacity=".72" />
+                </radialGradient>
+              );
+            })
+          ))}
+        </defs>
         <g ref={gRef}>
           <AnimatePresence initial={false}>
             {visibleEdges.map(edge => {
@@ -586,7 +754,15 @@ export const GraphCanvas: React.FC<GraphCanvasProps> = ({
               const rawLabel = edge.label || relationType?.label || '';
               const displayLabel = rawLabel.length > 20 ? `${rawLabel.slice(0, 19)}…` : rawLabel;
               const labelOffsetY = (edgeParallelIndex.get(edge.id) ?? 0) * 14;
-              const labelWidth = Math.max(28, displayLabel.length * 5 + 12);
+              // Kanten-Nähe-Stufe wie bei Nodes: berührt sie den Fokus-Node,
+              // ist sie 'focus' (bekommt den wandernden Lichtpuls, s.
+              // Design-Handoff — Gold NUR als Puls, nie als Ambient-Deko),
+              // berührt sie nur einen Nachbarn, 'neighbor', sonst 'far'.
+              const touchesFocus = selection.selectedNodeId != null && (edge.sourceNodeId === selection.selectedNodeId || edge.targetNodeId === selection.selectedNodeId);
+              const edgeTier: 'focus' | 'neighbor' | 'far' = touchesFocus ? 'focus' : (!selection.selectedNodeId ? 'neighbor' : 'far');
+              const edgeColor = wnTheme.edge[edgeTier];
+              const edgeOpacity = edgeTier === 'focus' ? 0.75 : edgeTier === 'neighbor' ? 0.5 : 0.22;
+              const pulseId = `wnpulse-${edge.id}`;
               return (
                 <motion.g
                   key={edge.id}
@@ -603,30 +779,51 @@ export const GraphCanvas: React.FC<GraphCanvasProps> = ({
                     onClick={e => { e.stopPropagation(); onSelectionChange(selectEdge(selection, edge.id)); }}
                     style={{ cursor: 'pointer' }}
                   />
+                  {relationType?.symmetric && (
+                    <line
+                      x1={x1} y1={y1 + 3} x2={x2} y2={y2 + 3}
+                      stroke={edgeSelected ? wnTheme.focusLabel : edgeColor}
+                      strokeWidth={edgeSelected ? 2 : 1.2}
+                      strokeLinecap="round"
+                      opacity={edgeSelected ? 1 : edgeOpacity}
+                      style={{ pointerEvents: 'none' }}
+                    />
+                  )}
                   <line
                     x1={x1} y1={y1} x2={x2} y2={y2}
-                    stroke={edgeSelected ? 'var(--primary)' : 'var(--border-color, #cbd5e1)'}
-                    strokeWidth={edgeSelected ? 3 : 2}
+                    stroke={edgeSelected ? wnTheme.focusLabel : edgeColor}
+                    strokeWidth={edgeSelected ? 3 : 1.4}
+                    strokeLinecap="round"
+                    opacity={edgeSelected ? 1 : edgeOpacity}
                     style={{ pointerEvents: 'none' }}
                   />
+                  {/* Wandernder Lichtpuls (Design-Handoff: "Golden dots exist
+                      ONLY as these traveling pulses") — ausschließlich auf
+                      Kanten, die den ausgewählten Node berühren. */}
+                  {edgeTier === 'focus' && (
+                    <circle r={3.2} fill="url(#wnPulseGrad)" className="wn-pulse" style={{ pointerEvents: 'none' }}>
+                      <animateMotion dur="3.6s" begin={`${(hashId(pulseId) % 20) / 10}s`} repeatCount="indefinite" path={`M${x1},${y1} L${x2},${y2}`} calcMode="linear" />
+                    </circle>
+                  )}
                   {/* Während der Bearbeitung übernimmt das HTML-Overlay
                       (Editier-Input) exakt dieselbe Stelle — Label hier
                       ausblenden statt doppelt zu rendern. Bewusst horizontal
                       (nicht mit der Kante rotiert): bleibt bei jedem
-                      Kantenwinkel aufrecht lesbar, wie die Node-Titel auch. */}
+                      Kantenwinkel aufrecht lesbar, wie die Node-Titel auch.
+                      Design-Handoff v3: keine Pillen-Kapsel mehr — schlichter
+                      kursiver Text mit weichem Leucht-Schatten, wirkt als Teil
+                      der Synapse statt als schwebendes UI-Badge. */}
                   {!edgeSelected && displayLabel && (
-                    <g transform={`translate(${midX}, ${midY + labelOffsetY})`} style={{ pointerEvents: 'none' }}>
-                      <rect
-                        x={-labelWidth / 2} y={-8} width={labelWidth} height={16} rx={4}
-                        fill="var(--bg-sidebar, #fff)" stroke="var(--border-color, #e2e8f0)" strokeWidth={1}
-                      />
-                      <text
-                        textAnchor="middle" y={3}
-                        className="text-[9px] font-bold fill-slate-500 dark:fill-slate-300 select-none"
-                      >
-                        {displayLabel}
-                      </text>
-                    </g>
+                    <text
+                      x={midX} y={midY + labelOffsetY + 3}
+                      textAnchor="middle"
+                      fontStyle="italic"
+                      className="text-[9px] font-medium select-none"
+                      fill={edgeTier === 'focus' ? wnTheme.label.focus : wnTheme.label.far}
+                      style={{ pointerEvents: 'none', filter: `drop-shadow(0 0 3px ${isNightMode ? '#08111E' : '#F5F1E7'})` }}
+                    >
+                      {displayLabel}
+                    </text>
                   )}
                 </motion.g>
               );
@@ -635,14 +832,27 @@ export const GraphCanvas: React.FC<GraphCanvasProps> = ({
               <line
                 x1={positionOf(edgeDraft.sourceNodeId).x} y1={positionOf(edgeDraft.sourceNodeId).y}
                 x2={edgeDraft.pointer.x} y2={edgeDraft.pointer.y}
-                stroke="var(--primary)" strokeWidth={2} strokeDasharray="4 4"
+                stroke={wnTheme.focusLabel} strokeWidth={2} strokeDasharray="4 4"
               />
             )}
             {activeNodes.map(node => {
               const pos = nodeDrag?.nodeId === node.id ? nodeDrag.currentPos : positionOf(node.id);
               const selected = isSelected(selection, node.id);
               const hovered = isHovered(selection, node.id);
-              const fill = node.color || (selected ? 'var(--primary)' : 'var(--bg-sidebar, #fff)');
+              const tier = tierOf(node.id);
+              const tc = tierColorsOf(tier);
+              const r = radiusOf(node.id);
+              const blobD = blobPathD(r, node.id);
+              // Hauptthema-Nodes sind standardmäßig Gold — ihre "Identität",
+              // nicht nur der Fokus-Zustand (User-Wunsch 2026-08-04, "wie im
+              // Bsp"). Bleibt bewusst golden auch als Nachbar/Fern-Node (nur
+              // Deckkraft/Unschärfe folgen weiterhin der Nähe-Stufe wie bei
+              // jedem anderen Node) — eine eigene, nutzerdefinierte Farbe
+              // (node.color) hat immer Vorrang.
+              const isGoldIdentity = !node.color && node.hierarchyLevel === 'hauptthema';
+              const fill = node.color || `url(#${wnTheme.gradientId[isGoldIdentity ? 'focus' : (tier === 'neutral' ? 'neighbor' : tier)]})`;
+              const glowColor = isGoldIdentity ? wnTheme.tier.focus.glow : tc.glow;
+              const isFocusTier = tier === 'focus';
               return (
                 <motion.g
                   key={node.id}
@@ -666,25 +876,46 @@ export const GraphCanvas: React.FC<GraphCanvasProps> = ({
                   onMouseLeave={() => onSelectionChange(hoverNode(selection, undefined))}
                   style={{ cursor: 'pointer' }}
                 >
-                  <circle
-                    r={radiusOf(node.id)}
-                    fill={fill}
-                    stroke={selected ? 'var(--primary)' : 'var(--border-color, #e2e8f0)'}
-                    strokeWidth={(node.hierarchyLevel ? HIERARCHY_STROKE_WIDTH[node.hierarchyLevel] : HIERARCHY_STROKE_WIDTH.unterthema) + (selected ? SELECTED_STROKE_BONUS : 0)}
-                  />
-                  {editingNodeId !== node.id && (
-                    <text
-                      textAnchor="middle" y={4}
-                      className={`text-[10px] font-bold select-none ${node.color || selected ? 'fill-white' : 'fill-slate-700 dark:fill-white'}`}
-                      style={{ pointerEvents: 'none' }}
-                    >
-                      {node.title.length > 14 ? `${node.title.slice(0, 13)}…` : node.title}
-                    </text>
-                  )}
+                  {/* Leichtes, pro Node festes Schweben/Atmen (Design-Handoff)
+                      — CSS-Animation statt framer-motion, damit sie parallel
+                      zu Drag/Zoom-Transforms unabhängig läuft. */}
+                  <g
+                    className={isFocusTier ? 'wn-breathe' : 'wn-float'}
+                    style={{
+                      // Verzögerung bewusst IN der Shorthand statt als
+                      // separates animationDelay — React warnt sonst vor
+                      // widersprüchlichen Kurz-/Langform-Eigenschaften im
+                      // selben Style-Objekt (Reihenfolge-abhängiger Bug).
+                      animation: `${isFocusTier ? 'wnBreathe 6s' : `wnFloat ${(5 + (hashId(node.id) % 30) / 10).toFixed(1)}s`} ease-in-out ${(hashId(node.id) % 30) / 10}s infinite`,
+                      transformOrigin: 'center',
+                      filter: tc.blurPx ? `blur(${tc.blurPx}px)` : undefined,
+                    }}
+                  >
+                    {/* Glut hinter dem Node — reine Deko, nimmt keine Klicks entgegen. */}
+                    <path d={blobD} fill={glowColor} opacity={tc.glowOpacity} style={{ filter: `blur(${Math.max(8, r * 0.35)}px)`, pointerEvents: 'none' }} transform="scale(1.15)" />
+                    <path
+                      d={blobD}
+                      fill={fill}
+                      opacity={tc.opacity}
+                      stroke={tc.border}
+                      strokeWidth={(node.hierarchyLevel ? HIERARCHY_STROKE_WIDTH[node.hierarchyLevel] : HIERARCHY_STROKE_WIDTH.unterthema) + (selected ? SELECTED_STROKE_BONUS : 0)}
+                    />
+                    {editingNodeId !== node.id && (
+                      <text
+                        textAnchor="middle" y={4}
+                        className="text-[10px] select-none"
+                        fontWeight={node.hierarchyLevel === 'hauptthema' ? 800 : node.hierarchyLevel === 'detail' ? 600 : 700}
+                        fill={node.color ? '#fff' : tc.text}
+                        style={{ pointerEvents: 'none' }}
+                      >
+                        {node.title.length > 14 ? `${node.title.slice(0, 13)}…` : node.title}
+                      </text>
+                    )}
+                  </g>
                   {(hovered || selected) && (
                     <circle
-                      cx={radiusOf(node.id) + HANDLE_OFFSET} cy={0} r={HANDLE_RADIUS}
-                      fill="var(--primary)"
+                      cx={r + HANDLE_OFFSET} cy={0} r={HANDLE_RADIUS}
+                      fill={wnTheme.focusLabel}
                       onMouseDown={e => handleHandlePointerDown(e, node.id)}
                       style={{ cursor: 'crosshair' }}
                     />

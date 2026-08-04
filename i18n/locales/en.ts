@@ -557,6 +557,8 @@ export const en: Translations = {
   'kg.panel.notes': 'My notes',
   'kg.panel.notesPlaceholder': 'Why does this matter?',
   'kg.panel.hierarchyPlaceholder': 'Choose level',
+  'kg.panel.colorLabel': 'Color',
+  'kg.panel.colorAuto': 'Automatic (by level)',
   'kg.panel.sources': 'My sources',
   'kg.panel.sourcesEmpty': 'No source linked yet.',
   'kg.panel.sourcesAdd': 'Link a document',
