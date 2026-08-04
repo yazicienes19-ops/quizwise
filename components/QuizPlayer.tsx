@@ -440,7 +440,7 @@ export const QuizPlayer: React.FC<QuizPlayerProps> = ({
     if (isRanking && currentQuestion.rankingItems) {
       const correct = currentQuestion.rankingItems;
       return (
-        <div className="px-4 pb-4 space-y-2">
+        <div className="px-4 pb-10 space-y-2">
           <p className="text-[9px] font-black uppercase tracking-widest text-slate-400 mb-3 px-1">{t('quiz.rankingHint')}</p>
           {rankingOrder.map((item, i) => {
             const isCorrect = showResult && correct[i] === item;
@@ -518,7 +518,7 @@ export const QuizPlayer: React.FC<QuizPlayerProps> = ({
   };
 
   return (
-    <div className="max-w-2xl mx-auto animate-in fade-in duration-700 pb-48 md:pb-36">
+    <div className="max-w-2xl mx-auto animate-in fade-in duration-700 pb-56 md:pb-44">
       {/* Header */}
       <div className="px-4 pt-6 lg:pt-10 space-y-3 mb-6">
         {sourceName && (
@@ -624,9 +624,23 @@ export const QuizPlayer: React.FC<QuizPlayerProps> = ({
         )}
       </div>
 
-      {/* Sticky bottom CTA — auf Mobile über der unteren Tab-Navigation, ab md am Rand */}
-      <div className="fixed bottom-[calc(3.75rem+env(safe-area-inset-bottom))] md:bottom-0 left-0 right-0 z-20 pointer-events-none">
-        <div className="max-w-2xl mx-auto px-4 pb-4 md:pb-6 pt-8 bg-gradient-to-t from-slate-50 dark:from-slate-950 from-60% pointer-events-auto">
+      {/* Bottom-CTA — bewusst `sticky` statt `fixed` (User-Fund 2026-08-04):
+          `fixed` positioniert relativ zum Viewport UNABHÄNGIG vom
+          Scroll-Fortschritt der Seite — beim ersten Laden (scrollY=0) lag der
+          Balken dadurch schon über dem unteren Rand der Frage-Karte, auch
+          wenn die Karte selbst noch gar nicht bis dorthin gescrollt war
+          (sichtbar als "Antwort prüfen" schwebt über dem letzten
+          Sortier-Eintrag, teils mit durchscheinendem Verlauf). `sticky`
+          bleibt an derselben Fließtext-Position im DOM (direkt nach der
+          Karte) verankert und wird erst dann am Viewport-Rand fixiert, wenn
+          der Scroll-Fortschritt dort tatsächlich angekommen ist — dadurch
+          KANN er nie mehr Inhalt verdecken, unabhängig von Fragelänge oder
+          Fensterhöhe, ganz ohne die Bottom-Padding-Werte oben exakt treffen
+          zu müssen. Funktioniert nur, weil der äußere Seiten-Container kein
+          `overflow-hidden` hat (s. Layout.tsx-Kommentar zur Sidebar — exakt
+          derselbe Grund, warum `sticky` dort funktioniert). */}
+      <div className="sticky bottom-[calc(3.75rem+env(safe-area-inset-bottom))] md:bottom-0 z-20 pointer-events-none">
+        <div className="max-w-2xl mx-auto px-4 pb-4 md:pb-6 pt-10 bg-gradient-to-t from-slate-50 dark:from-slate-950 from-45% pointer-events-auto">
           <div className="flex gap-3">
             {onCancel && (
               <button onClick={onCancel} className="text-[9px] font-black uppercase tracking-widest text-slate-400 hover:text-rose-500 transition-colors px-4 py-4 shrink-0">
