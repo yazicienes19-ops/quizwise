@@ -291,7 +291,7 @@ export const Layout: React.FC<LayoutProps> = ({
                             engere Laufweite statt tracking-widest, truncate als Notbremse */}
                         <span className="text-[10px] font-black uppercase tracking-wider block truncate" style={!isActive ? { color: SIDEBAR.text } : undefined}>{t(item.labelKey)}</span>
                         {item.hintKey && !isActive && (
-                          <span className="block text-[9px] font-medium normal-case tracking-normal mt-0.5 truncate" style={{ color: SIDEBAR.text }}>
+                          <span className="block text-[9px] font-medium normal-case tracking-normal mt-0.5 break-words" style={{ color: SIDEBAR.text }}>
                             {t(item.hintKey)}
                           </span>
                         )}
