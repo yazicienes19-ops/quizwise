@@ -1,8 +1,8 @@
 import React, { useEffect, useState } from 'react';
 import { createPortal } from 'react-dom';
 import { Collection, FlashcardDeck, ProcessedDocument } from '../types';
-import type { GraphScope } from '../services/graph/types';
-import { canUndo, canRedo } from '../services/graph/graphHistoryService';
+import type { GraphScope, GraphState } from '../services/graph/types';
+import { canUndo, canRedo, recordUpdateNode, type GraphHistory } from '../services/graph/graphHistoryService';
 import { clearSelection, selectNode } from '../services/graph/graphSelectionService';
 import { shouldUsePdfReader } from '../services/libraryService';
 import { useKnowledgeGraph } from '../hooks/useKnowledgeGraph';
@@ -10,6 +10,7 @@ import { GraphCanvas } from './GraphCanvas';
 import { GraphNodeDetailPanel } from './GraphNodeDetailPanel';
 import { GraphLearningOverlay, type GraphLearningActivity } from './GraphLearningOverlay';
 import { useTranslation } from '../i18n/I18nProvider';
+import { toast } from '../services/toast';
 import type { GenerationSource } from '../services/geminiService';
 
 const SplitScreenReader = React.lazy(() => import('./SplitScreenReader').then(m => ({ default: m.SplitScreenReader })));
@@ -105,6 +106,42 @@ export const GraphSystem: React.FC<GraphSystemProps> = ({
 
   const graph = useKnowledgeGraph({ scope, userId });
 
+  // Nodes einem Fach nachträglich zuordnen (User-Fund 2026-08-05): unter
+  // "Alle Fächer" angelegte Nodes bekommen KEINE collectionId (s.
+  // GraphCanvas.tsx handleBackgroundDoubleClick) — dadurch tauchen sie nie
+  // im fachspezifischen Wissensnetz auf, obwohl sie inhaltlich zu einem
+  // bestimmten Fach gehören. Nur relevant/sichtbar in der "Alle Fächer"-
+  // Gesamtansicht; bewusst NUR bereits unzugeordnete Nodes (collectionId
+  // === undefined), niemals bereits einem ANDEREN Fach zugeordnete —
+  // sonst würde diese Aktion versehentlich Nodes aus fremden Fächern
+  // umhängen, nur weil sie in der Gesamtansicht mit sichtbar sind.
+  const unassignedNodes = scope.kind === 'all'
+    ? [...graph.state.nodesById.values()].filter(n => n.archivedAt === undefined && n.collectionId === undefined)
+    : [];
+  const [moveTargetId, setMoveTargetId] = useState('');
+  const [isMoving, setIsMoving] = useState(false);
+
+  const handleAssignToCollection = () => {
+    if (!moveTargetId || unassignedNodes.length === 0) return;
+    setIsMoving(true);
+    let workingState: GraphState = graph.state;
+    let workingHistory: GraphHistory = graph.history;
+    const changedEntities: Parameters<typeof graph.onEntityChanged>[0][] = [];
+    for (const node of unassignedNodes) {
+      const result = recordUpdateNode(workingHistory, workingState, node.id, { collectionId: moveTargetId });
+      if (!result.error && result.entity) {
+        workingState = result.state;
+        workingHistory = result.history;
+        changedEntities.push({ kind: 'node', entity: result.entity });
+      }
+    }
+    graph.onChange({ state: workingState, history: workingHistory });
+    changedEntities.forEach(change => graph.onEntityChanged(change));
+    setMoveTargetId('');
+    setIsMoving(false);
+    toast.success(`${changedEntities.length} ${changedEntities.length === 1 ? 'Node' : 'Nodes'} zugeordnet.`);
+  };
+
   // Welches Dokument gerade im Reader-Overlay offen ist — nur eine ID, damit
   // sich das offene Dokument beim Umbenennen/Neuladen der documents-Liste
   // automatisch mit aktualisiert (kein veralteter, eingefrorener Snapshot).
@@ -151,6 +188,41 @@ export const GraphSystem: React.FC<GraphSystemProps> = ({
           </button>
         </div>
       </div>
+
+      {unassignedNodes.length > 0 && (
+        <div
+          className="flex items-center gap-3 flex-wrap px-4 py-3 rounded-[18px]"
+          style={{
+            background: 'color-mix(in srgb, var(--primary) 8%, transparent)',
+            border: '1px solid color-mix(in srgb, var(--primary) 20%, transparent)',
+          }}
+        >
+          <p className="text-xs font-medium text-slate-600 dark:text-slate-300 min-w-0">
+            {unassignedNodes.length} {unassignedNodes.length === 1 ? 'Node ist' : 'Nodes sind'} noch keinem Fach zugeordnet.
+          </p>
+          <div className="flex items-center gap-2 ml-auto">
+            <select
+              value={moveTargetId}
+              onChange={e => setMoveTargetId(e.target.value)}
+              className="text-[10px] font-black uppercase tracking-widest bg-white dark:bg-slate-800 dark:text-white rounded-xl px-3 py-2 outline-none border"
+              style={{ borderColor: 'var(--border-color)' }}
+            >
+              <option value="">Fach wählen...</option>
+              {collections.map(c => (
+                <option key={c.id} value={c.id}>{c.emoji} {c.name}</option>
+              ))}
+            </select>
+            <button
+              onClick={handleAssignToCollection}
+              disabled={!moveTargetId || isMoving}
+              className="text-[10px] font-black uppercase tracking-widest px-4 py-2 rounded-xl text-white disabled:opacity-40 transition-colors"
+              style={{ background: 'var(--primary)' }}
+            >
+              {isMoving ? '...' : 'Zuordnen'}
+            </button>
+          </div>
+        </div>
+      )}
 
       <div
         className="relative rounded-[24px] overflow-hidden h-[80vh] lg:h-[calc(100vh-11rem)]"
