@@ -12,7 +12,7 @@ interface TermPaperSystemProps {
   getDocumentSource: (doc: ProcessedDocument) => GenerationSource;
 }
 
-type Tab = 'guide' | 'outline' | 'phrases' | 'citations' | 'magic' | 'paraphrase' | 'checklist';
+type Tab = 'guide' | 'outline' | 'phrases' | 'sources' | 'citations' | 'magic' | 'paraphrase' | 'checklist';
 
 const CopyButton: React.FC<{ text: string; label?: string }> = ({ text, label = 'Kopieren' }) => {
   const [copied, setCopied] = useState(false);
@@ -517,6 +517,7 @@ export const TermPaperSystem: React.FC<TermPaperSystemProps> = ({
     { id: 'outline',    label: 'Gliederung' },
     { id: 'phrases',    label: 'Formulierungen' },
     { id: 'paraphrase', label: 'Paraphrasieren' },
+    { id: 'sources',    label: 'Quellen' },
     { id: 'citations',  label: 'Zitierung' },
     { id: 'magic',      label: 'Zitier-Assistent' },
     { id: 'checklist',  label: 'Checkliste' },
@@ -757,23 +758,16 @@ export const TermPaperSystem: React.FC<TermPaperSystemProps> = ({
           </div>
         )}
 
-        {/* ── ZITIERUNG ── */}
-        {tab === 'citations' && (
+        {/* ── QUELLEN ── (User-Vorgabe 2026-08-05: eigene Seite, getrennt von
+            der Zitierung — hier verwaltet man seine Quellen-Bibliothek,
+            fügt per Link oder manuell hinzu und kann mit einem Klick die
+            Zitation im aktuell gewählten Stil kopieren. Style/Quellen/
+            Zitations-State bleibt gemeinsam mit dem Zitierung-Tab genutzt,
+            nur die UI ist jetzt aufgeteilt: Quellen = Bibliothek pflegen,
+            Zitierung = vollständige Stil-Aufschlüsselung + Export.) */}
+        {tab === 'sources' && (
           <div className="space-y-8 animate-in fade-in duration-500">
-            {/* Style picker */}
-            <div className="flex gap-2 bg-slate-100 dark:bg-slate-900 p-1 rounded-2xl w-fit">
-              {(['APA', 'MLA', 'Harvard', 'Chicago'] as CitationStyle[]).map(s => (
-                <button key={s} onClick={() => setCitationStyle(s)}
-                  className={`px-5 py-2 rounded-xl text-[10px] font-black uppercase tracking-widest transition-all ${citationStyle === s ? 'bg-white dark:bg-slate-700 text-indigo-600 dark:text-white shadow-md' : 'text-slate-400'}`}
-                >
-                  {s}
-                </button>
-              ))}
-            </div>
-
-            {/* Quelle per Link — Schnellweg (User-Vorgabe 2026-08-05):
-                Link von der Website einfügen, ein Klick, fertig. Titel/
-                Autor/Zitation werden automatisch ermittelt. */}
+            {/* Quelle per Link */}
             <div className="bg-gradient-to-br from-indigo-50 to-violet-50 dark:from-indigo-900/20 dark:to-violet-900/20 rounded-[32px] border-2 border-indigo-100 dark:border-indigo-800 p-6 space-y-3">
               <h3 className="text-[10px] font-black uppercase tracking-widest text-indigo-600">Quelle per Link hinzufügen</h3>
               <p className="text-xs text-slate-500 dark:text-slate-400">
@@ -794,7 +788,7 @@ export const TermPaperSystem: React.FC<TermPaperSystemProps> = ({
               </div>
             </div>
 
-            {/* Add source form (manuell/Korrektur) */}
+            {/* Manuelles Formular (Korrektur/Sonderfälle) */}
             <div className="bg-white dark:bg-slate-900 rounded-[32px] border border-slate-100 dark:border-slate-800 p-6 space-y-4">
               <h3 className="text-[10px] font-black uppercase tracking-widest text-indigo-600">Oder manuell eintragen</h3>
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
@@ -827,9 +821,93 @@ export const TermPaperSystem: React.FC<TermPaperSystemProps> = ({
               </button>
             </div>
 
-            {/* Source list */}
+            {/* Quellen-Bibliothek */}
             {sources.length === 0 ? (
               <p className="text-center text-slate-400 text-sm py-8">Noch keine Quellen hinzugefügt.</p>
+            ) : (
+              <div className="space-y-3">
+                <div className="flex items-center justify-between flex-wrap gap-3">
+                  <p className="text-[10px] font-black uppercase tracking-widest text-slate-400">
+                    {sources.length} {sources.length === 1 ? 'Quelle' : 'Quellen'}
+                  </p>
+                  {/* Kompakter Stil-Umschalter — derselbe Zustand wie im
+                      Zitierung-Tab, damit "Zitat kopieren" unten weiß, in
+                      welchem Stil kopiert werden soll. */}
+                  <div className="flex gap-1 bg-slate-100 dark:bg-slate-900 p-1 rounded-xl">
+                    {(['APA', 'MLA', 'Harvard', 'Chicago'] as CitationStyle[]).map(s => (
+                      <button key={s} onClick={() => setCitationStyle(s)}
+                        className={`px-3 py-1.5 rounded-lg text-[9px] font-black uppercase tracking-widest transition-all ${citationStyle === s ? 'bg-white dark:bg-slate-700 text-indigo-600 dark:text-white shadow-sm' : 'text-slate-400'}`}
+                      >
+                        {s}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+
+                {sources.map(s => {
+                  const c = citations[s.id];
+                  const entry = !c ? undefined
+                    : citationStyle === 'APA' ? c.apa?.entry
+                    : citationStyle === 'MLA' ? c.mla?.entry
+                    : citationStyle === 'Harvard' ? c.harvard?.entry
+                    : c.chicago?.bibliography;
+                  return (
+                    <div key={s.id} className="bg-white dark:bg-slate-900 rounded-[24px] border border-slate-100 dark:border-slate-800 p-5 flex items-start justify-between gap-4">
+                      <div className="min-w-0 flex-1">
+                        <p className="font-black text-slate-900 dark:text-white text-sm">{s.title}</p>
+                        <p className="text-[10px] text-slate-400 mt-0.5">{s.authors} · {s.year}</p>
+                        {s.url && (
+                          <a href={s.url} target="_blank" rel="noopener noreferrer"
+                            className="inline-flex items-center gap-1 mt-1.5 text-[9px] font-black uppercase tracking-widest text-indigo-500 hover:text-indigo-700 dark:hover:text-indigo-300 transition-colors"
+                          >
+                            🔗 Zur Quelle
+                          </a>
+                        )}
+                      </div>
+                      <div className="flex items-center gap-2 shrink-0">
+                        {entry ? (
+                          <CopyButton text={entry} label={`Zitat (${citationStyle})`} />
+                        ) : (
+                          <span className="text-[9px] text-slate-400 italic px-2">Formatierung ausstehend...</span>
+                        )}
+                        <button onClick={() => setSources(prev => prev.filter(x => x.id !== s.id))}
+                          className="text-slate-300 hover:text-rose-500 transition-colors text-lg">×</button>
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+            )}
+          </div>
+        )}
+
+        {/* ── ZITIERUNG ── */}
+        {tab === 'citations' && (
+          <div className="space-y-8 animate-in fade-in duration-500">
+            {/* Style picker */}
+            <div className="flex gap-2 bg-slate-100 dark:bg-slate-900 p-1 rounded-2xl w-fit">
+              {(['APA', 'MLA', 'Harvard', 'Chicago'] as CitationStyle[]).map(s => (
+                <button key={s} onClick={() => setCitationStyle(s)}
+                  className={`px-5 py-2 rounded-xl text-[10px] font-black uppercase tracking-widest transition-all ${citationStyle === s ? 'bg-white dark:bg-slate-700 text-indigo-600 dark:text-white shadow-md' : 'text-slate-400'}`}
+                >
+                  {s}
+                </button>
+              ))}
+            </div>
+
+            {/* Quellen hinzufügen/verwalten lebt jetzt auf der eigenen
+                "Quellen"-Seite (User-Vorgabe 2026-08-05) — hier nur noch die
+                vollständige Stil-Aufschlüsselung + der Bibliografie-Export
+                für bereits vorhandene Quellen. */}
+            {sources.length === 0 ? (
+              <div className="text-center py-12 space-y-3">
+                <p className="text-slate-400 text-sm">Noch keine Quellen hinzugefügt.</p>
+                <button onClick={() => setTab('sources')}
+                  className="text-[10px] font-black uppercase tracking-widest text-indigo-600 hover:text-indigo-700 transition-colors"
+                >
+                  → Zur Quellen-Seite
+                </button>
+              </div>
             ) : (
               <div className="space-y-4">
                 {/* Export section */}
