@@ -130,13 +130,18 @@ type GraphTier = 'focus' | 'neighbor' | 'far' | 'neutral';
 
 // Farb-Hierarchie (User-Vorgabe 2026-08-06): Hauptthema=Gold, Unterthema=
 // Blau, Detail=Grau, als dauerhafte Identität der Ebene statt nur als
-// Auswahlzustand. Bewusst KEINE neuen Farben — wiederverwendet exakt die
-// bereits bestehenden Nähe-Stufen-Farbtöne (focus=Gold, neighbor=Blau,
-// far=Grau/gedimmt), nur jetzt an die Hierarchie gekoppelt statt an die
-// Auswahl (s. identityTierOf im Node-Rendering).
+// Auswahlzustand. Hauptthema/Unterthema wiederverwenden exakt die bereits
+// bestehenden Nähe-Stufen-Farbtöne (focus=Gold, neighbor=Blau). Detail
+// NICHT den gedimmten "far"-Ton (User-Feedback: sieht "noch nicht ganz"
+// richtig aus) — stattdessen exakt dasselbe neutrale Grau wie im
+// Farbauswahl-Swatch (NODE_COLOR_SWATCHES in GraphNodeDetailPanel.tsx,
+// letzter Swatch), s. DETAIL_IDENTITY_COLOR unten.
 const HIERARCHY_IDENTITY_TIER: Record<HierarchyLevel, Exclude<GraphTier, 'neutral'>> = {
   hauptthema: 'focus', unterthema: 'neighbor', detail: 'far',
 };
+// Muss exakt dem letzten Wert in NODE_COLOR_SWATCHES (GraphNodeDetailPanel.tsx)
+// entsprechen — dieselbe Farbe, die der Nutzer auch manuell auswählen könnte.
+const DETAIL_IDENTITY_COLOR = '#64748B';
 
 interface WnTierColors {
   bg: string; border: string; text: string; glow: string; glowOpacity: number; opacity: number; blurPx: number;
@@ -1159,8 +1164,14 @@ export const GraphCanvas: React.FC<GraphCanvasProps> = ({
               // jedem anderen Node) — eine eigene, nutzerdefinierte Farbe
               // (node.color) hat immer Vorrang.
               const identityTier = identityTierOf(node.id);
-              const fill = node.color || `url(#${wnTheme.gradientId[identityTier ?? (tier === 'neutral' ? 'neighbor' : tier)]})`;
-              const glowColor = identityTier ? wnTheme.tier[identityTier].glow : tc.glow;
+              // identityTier === 'far' kommt ausschließlich von
+              // hierarchyLevel === 'detail' (s. HIERARCHY_IDENTITY_TIER) —
+              // eindeutig genug, kein zusätzlicher hierarchyLevel-Check nötig.
+              const isDetailIdentity = identityTier === 'far';
+              const fill = node.color
+                || (isDetailIdentity ? DETAIL_IDENTITY_COLOR : undefined)
+                || `url(#${wnTheme.gradientId[identityTier ?? (tier === 'neutral' ? 'neighbor' : tier)]})`;
+              const glowColor = isDetailIdentity ? DETAIL_IDENTITY_COLOR : identityTier ? wnTheme.tier[identityTier].glow : tc.glow;
               const isFocusTier = tier === 'focus';
               return (
                 <motion.g
