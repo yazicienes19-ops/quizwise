@@ -339,6 +339,12 @@ export const TermPaperSystem: React.FC<TermPaperSystemProps> = ({
   const [manualUrl, setManualUrl]             = useState('');
   const [isAdding, setIsAdding]               = useState(false);
   const [isLookingUp, setIsLookingUp]         = useState(false);
+  // Quelle per Link (User-Vorgabe 2026-08-05): eigener, bewusst simpler
+  // Schnellweg — nur URL einfügen, EIN Klick, fertig (Lookup + Hinzufügen
+  // in einem Schritt statt der zwei Klicks im ausführlichen Formular
+  // unten, das für Korrekturen weiterhin bestehen bleibt).
+  const [quickUrl, setQuickUrl]               = useState('');
+  const [isQuickAdding, setIsQuickAdding]     = useState(false);
   // Magic
   const [magicInput, setMagicInput]           = useState('');
   const [magicResult, setMagicResult]         = useState<MultiStyleCitation | null>(null);
@@ -413,6 +419,36 @@ export const TermPaperSystem: React.FC<TermPaperSystemProps> = ({
       toast.success('Quelle hinzugefügt');
     } catch { toast.error('Zitier-Fehler.'); }
     finally { setIsAdding(false); }
+  };
+
+  // Quelle per Link (User-Vorgabe 2026-08-05): Lookup + Hinzufügen in einem
+  // Schritt, exakt dieselben Funktionen wie die zwei getrennten Buttons im
+  // Formular unten (lookupCitationSource, formatCitationFull), nur ohne
+  // Zwischenstopp zum manuellen Prüfen der Felder. Bewusst KEIN Ersatz für
+  // das ausführliche Formular, nur ein schnellerer Weg für den Normalfall.
+  const handleQuickAddByUrl = async () => {
+    const url = quickUrl.trim();
+    if (!url) return;
+    if (sources.some(s => s.url === url)) { toast.error('Diese Quelle wurde bereits hinzugefügt.'); return; }
+    setIsQuickAdding(true);
+    try {
+      const r = await lookupCitationSource(url);
+      const src: AcademicSource = {
+        id: `link-${Date.now()}`,
+        authors: r.authors, title: r.title, year: r.year,
+        journal: r.journal, url: r.url, doi: r.doi ?? undefined,
+        type: r.type, isWeb: r.isWeb, snippet: '', apaCitation: '',
+      };
+      const full = await formatCitationFull(src);
+      setSources(prev => [src, ...prev]);
+      setCitations(prev => ({ ...prev, [src.id]: full }));
+      setQuickUrl('');
+      toast.success('Quelle hinzugefügt.');
+    } catch (e: any) {
+      toast.error(e?.message || 'Für diesen Link ließen sich keine Angaben finden. Bitte manuell eintragen.');
+    } finally {
+      setIsQuickAdding(false);
+    }
   };
 
   const handleLookupSource = async () => {
@@ -735,9 +771,32 @@ export const TermPaperSystem: React.FC<TermPaperSystemProps> = ({
               ))}
             </div>
 
-            {/* Add source form */}
+            {/* Quelle per Link — Schnellweg (User-Vorgabe 2026-08-05):
+                Link von der Website einfügen, ein Klick, fertig. Titel/
+                Autor/Zitation werden automatisch ermittelt. */}
+            <div className="bg-gradient-to-br from-indigo-50 to-violet-50 dark:from-indigo-900/20 dark:to-violet-900/20 rounded-[32px] border-2 border-indigo-100 dark:border-indigo-800 p-6 space-y-3">
+              <h3 className="text-[10px] font-black uppercase tracking-widest text-indigo-600">Quelle per Link hinzufügen</h3>
+              <p className="text-xs text-slate-500 dark:text-slate-400">
+                Website-Link einfügen. Titel, Autor und Zitation werden automatisch ermittelt.
+              </p>
+              <div className="flex gap-2">
+                <input
+                  type="text" value={quickUrl} onChange={e => setQuickUrl(e.target.value)}
+                  onKeyDown={e => { if (e.key === 'Enter' && !isQuickAdding && quickUrl.trim()) handleQuickAddByUrl(); }}
+                  placeholder="https://..."
+                  className="flex-1 p-4 bg-white dark:bg-slate-800 rounded-2xl border-2 border-transparent focus:border-indigo-500 outline-none dark:text-white transition-colors"
+                />
+                <button onClick={handleQuickAddByUrl} disabled={isQuickAdding || !quickUrl.trim()}
+                  className="px-6 rounded-2xl text-[10px] font-black uppercase tracking-widest bg-indigo-600 text-white hover:bg-indigo-700 disabled:opacity-50 whitespace-nowrap transition-colors"
+                >
+                  {isQuickAdding ? 'Wird geladen...' : 'Hinzufügen'}
+                </button>
+              </div>
+            </div>
+
+            {/* Add source form (manuell/Korrektur) */}
             <div className="bg-white dark:bg-slate-900 rounded-[32px] border border-slate-100 dark:border-slate-800 p-6 space-y-4">
-              <h3 className="text-[10px] font-black uppercase tracking-widest text-indigo-600">Quelle hinzufügen</h3>
+              <h3 className="text-[10px] font-black uppercase tracking-widest text-indigo-600">Oder manuell eintragen</h3>
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                 {[
                   { val: manualAuthor, set: setManualAuthor, ph: 'Autor(en), z.B. Müller, A. & Schmidt, B.' },
@@ -817,9 +876,16 @@ export const TermPaperSystem: React.FC<TermPaperSystemProps> = ({
                   return (
                     <div key={s.id} className="bg-white dark:bg-slate-900 rounded-[28px] border border-slate-100 dark:border-slate-800 p-6 space-y-4">
                       <div className="flex items-start justify-between gap-4">
-                        <div>
+                        <div className="min-w-0">
                           <p className="font-black text-slate-900 dark:text-white text-sm">{s.title}</p>
                           <p className="text-[10px] text-slate-400 mt-0.5">{s.authors} · {s.year}</p>
+                          {s.url && (
+                            <a href={s.url} target="_blank" rel="noopener noreferrer"
+                              className="inline-flex items-center gap-1 mt-1.5 text-[9px] font-black uppercase tracking-widest text-indigo-500 hover:text-indigo-700 dark:hover:text-indigo-300 transition-colors"
+                            >
+                              🔗 Zur Quelle
+                            </a>
+                          )}
                         </div>
                         <button onClick={() => setSources(prev => prev.filter(x => x.id !== s.id))}
                           className="text-slate-300 hover:text-rose-500 transition-colors text-lg shrink-0">×</button>
