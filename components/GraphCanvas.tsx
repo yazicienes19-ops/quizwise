@@ -106,10 +106,13 @@ const HANDLE_RADIUS = 6;
 const HANDLE_OFFSET = 14;
 const DRAG_THRESHOLD_PX = 4;
 const NODE_DATA_ATTR = 'data-graph-node';
-// Kein hartes Zeichen-Limit mehr für Kantenlabels (User-Vorgabe 2026-08-04:
-// nie abschneiden) — stattdessen eine großzügige Breite, ab der auf eine
-// zweite Zeile umgebrochen wird (wrapTitleToLines, wie bei Node-Titeln).
+// Kein hartes Zeichen-Limit mehr für Kantenlabels (User-Vorgabe 2026-08-04,
+// verschärft 2026-08-05: "Beziehung soll immer lesbar sein, auch wenn sie
+// länger ist") — stattdessen eine großzügige Breite, ab der umgebrochen
+// wird (wrapTitleAllLines, wie bei Node-Titeln, bis zu EDGE_LABEL_MAX_LINES
+// Zeilen, bevor überhaupt eine Kürzung in Betracht käme).
 const EDGE_LABEL_MAX_WIDTH = 130;
+const EDGE_LABEL_MAX_LINES = 4;
 
 // ── Visuelle Sprache "Wissensnetz/Synapsen-Netz" (Design-Abnahme 2026-08-04,
 // Handoff design_handoff_studearc_wissnetz/StudeArc Wissnetz.dc.html) ───────
@@ -298,41 +301,6 @@ function splitWordWithHyphen(word: string, maxWidthPx: number, fontSizePx: numbe
   return [`${word.slice(0, splitAt)}-`, word.slice(splitAt)];
 }
 
-/**
- * Reines Ein-Zeilen-Kürzen (s. truncateTitleToFit) machte echte Titel wie
- * "Wahrnehmung" bei den kleineren Radien praktisch unlesbar kurz (User-Fund
- * 2026-08-04: "kann man es nicht lesen") — technisch kein Überlauf mehr,
- * aber am Ziel (Titel erkennbar) vorbei. Zweizeiliger Umbruch statt noch
- * härterem Kürzen: erste Zeile nimmt so viele ganze Wörter wie passen, der
- * Rest kommt in Zeile 2 (dort bei Bedarf zeichenweise gekürzt).
- *
- * Deutsche Komposita (genau "Wahrnehmung") haben aber gar KEIN Leerzeichen
- * zum Umbrechen — ein erster Versuch fiel dafür auf reines Ein-Zeilen-Kürzen
- * zurück ("Wahrn…" statt zweier lesbarer Zeilen), derselbe Fehler nur in
- * neuer Form. Fix: passt schon das ERSTE (oft einzige) Wort nicht auf eine
- * Zeile, wird über splitWordWithHyphen an einer silbenähnlichen Stelle mit
- * Bindestrich getrennt statt willkürlich mitten im Wort gekürzt. */
-function wrapTitleToLines(text: string, maxWidthPx: number, fontSizePx: number, fontWeight: number): string[] {
-  if (measureTextWidthPx(text, fontSizePx, fontWeight) <= maxWidthPx) return [text];
-  const words = text.split(' ');
-  const firstWord = words[0];
-  if (measureTextWidthPx(firstWord, fontSizePx, fontWeight) > maxWidthPx) {
-    const [line1, remainder] = splitWordWithHyphen(firstWord, maxWidthPx, fontSizePx, fontWeight);
-    const line2Source = remainder + (words.length > 1 ? ` ${words.slice(1).join(' ')}` : '');
-    return [line1, truncateTitleToFit(line2Source, maxWidthPx, fontSizePx, fontWeight)];
-  }
-  let line1 = '';
-  let i = 0;
-  for (; i < words.length; i++) {
-    const candidate = line1 ? `${line1} ${words[i]}` : words[i];
-    if (line1 && measureTextWidthPx(candidate, fontSizePx, fontWeight) > maxWidthPx) break;
-    line1 = candidate;
-  }
-  const rest = words.slice(i).join(' ');
-  if (!rest) return [line1];
-  return [line1, truncateTitleToFit(rest, maxWidthPx, fontSizePx, fontWeight)];
-}
-
 const TITLE_FONT_SIZE_STEPS = [10, 9, 8];
 // Harte Obergrenze an Zeilen für Node-Titel — verhindert, dass ein
 // pathologisch langer Titel die Kapsel unbegrenzt hoch wachsen lässt.
@@ -340,9 +308,9 @@ const TITLE_FONT_SIZE_STEPS = [10, 9, 8];
 // 2026-08-04), erst danach greift truncateTitleToFit als letzter Ausweg.
 const TITLE_MAX_LINES = 4;
 
-/** Voller, ungekürzter Zeilenumbruch (beliebig viele Zeilen, nicht auf 2
- *  begrenzt wie wrapTitleToLines) — Wörter, die selbst auf einer leeren
- *  Zeile nicht passen, werden per splitWordWithHyphen fortlaufend
+/** Voller, ungekürzter Zeilenumbruch (beliebig viele Zeilen bis maxLines) —
+ *  Wörter, die selbst auf einer leeren Zeile nicht passen, werden per
+ *  splitWordWithHyphen fortlaufend
  *  aufgeteilt, bis der Rest passt. Nur die letzte erlaubte Zeile
  *  (maxLines erreicht) wird bei Bedarf über truncateTitleToFit gekürzt. */
 function wrapTitleAllLines(
@@ -1052,10 +1020,11 @@ export const GraphCanvas: React.FC<GraphCanvasProps> = ({
               // vorrangig falls vorhanden), sonst der Name des Beziehungstyps.
               const relationType = edge.relationTypeId ? state.relationTypesById.get(edge.relationTypeId) : undefined;
               const rawLabel = edge.label || relationType?.label || '';
-              // Kein Abschneiden mehr (User-Vorgabe 2026-08-04) — bei Bedarf
-              // mehrzeilig statt mit "…" gekürzt, wie bei den Node-Titeln.
-              const labelLines = rawLabel ? wrapTitleToLines(rawLabel, EDGE_LABEL_MAX_WIDTH, 9, 500) : [];
-              const labelOffsetY = (edgeParallelIndex.get(edge.id) ?? 0) * (14 + (labelLines.length > 1 ? 11 : 0));
+              // Kein Abschneiden mehr (User-Vorgabe 2026-08-04, verschärft
+              // 2026-08-05) — bei Bedarf mehrzeilig statt mit "…" gekürzt,
+              // wie bei den Node-Titeln (bis zu EDGE_LABEL_MAX_LINES Zeilen).
+              const labelLines = rawLabel ? wrapTitleAllLines(rawLabel, EDGE_LABEL_MAX_WIDTH, 9, 500, EDGE_LABEL_MAX_LINES).lines : [];
+              const labelOffsetY = (edgeParallelIndex.get(edge.id) ?? 0) * (14 + Math.max(0, labelLines.length - 1) * 11);
               // Kanten-Nähe-Stufe wie bei Nodes: berührt sie den Fokus-Node
               // ODER einen Gold-Hauptthema-Node (User-Feedback: der Gold-Node
               // sieht sonst wie der Fokus aus, ohne dass seine Kanten
@@ -1342,8 +1311,8 @@ export const GraphCanvas: React.FC<GraphCanvasProps> = ({
         // eine andere Stelle springen als das gerade sichtbare Label.
         const ownRelationType = edge.relationTypeId ? state.relationTypesById.get(edge.relationTypeId) : undefined;
         const ownRawLabel = edge.label || ownRelationType?.label || '';
-        const ownWraps = ownRawLabel ? wrapTitleToLines(ownRawLabel, EDGE_LABEL_MAX_WIDTH, 9, 500).length > 1 : false;
-        const labelOffsetY = (edgeParallelIndex.get(edge.id) ?? 0) * (14 + (ownWraps ? 11 : 0));
+        const ownLineCount = ownRawLabel ? wrapTitleAllLines(ownRawLabel, EDGE_LABEL_MAX_WIDTH, 9, 500, EDGE_LABEL_MAX_LINES).lines.length : 1;
+        const labelOffsetY = (edgeParallelIndex.get(edge.id) ?? 0) * (14 + Math.max(0, ownLineCount - 1) * 11);
         const screenX = zoomTransform.x + zoomTransform.k * midX;
         const screenY = zoomTransform.y + zoomTransform.k * (midY + labelOffsetY);
         return (
