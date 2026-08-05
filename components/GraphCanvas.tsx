@@ -128,6 +128,16 @@ const EDGE_LABEL_MAX_LINES = 4;
 // Doppellinie, sonst einheitlich durchgezogen.
 type GraphTier = 'focus' | 'neighbor' | 'far' | 'neutral';
 
+// Farb-Hierarchie (User-Vorgabe 2026-08-06): Hauptthema=Gold, Unterthema=
+// Blau, Detail=Grau, als dauerhafte Identität der Ebene statt nur als
+// Auswahlzustand. Bewusst KEINE neuen Farben — wiederverwendet exakt die
+// bereits bestehenden Nähe-Stufen-Farbtöne (focus=Gold, neighbor=Blau,
+// far=Grau/gedimmt), nur jetzt an die Hierarchie gekoppelt statt an die
+// Auswahl (s. identityTierOf im Node-Rendering).
+const HIERARCHY_IDENTITY_TIER: Record<HierarchyLevel, Exclude<GraphTier, 'neutral'>> = {
+  hauptthema: 'focus', unterthema: 'neighbor', detail: 'far',
+};
+
 interface WnTierColors {
   bg: string; border: string; text: string; glow: string; glowOpacity: number; opacity: number; blurPx: number;
 }
@@ -398,14 +408,25 @@ export const GraphCanvas: React.FC<GraphCanvasProps> = ({
   const tierColorsOf = (tier: GraphTier) => wnTheme.tier[tier === 'neutral' ? 'neighbor' : tier];
 
   // Hauptthema-Nodes sind standardmäßig Gold — ihre dauerhafte Identität,
-  // nicht nur der Auswahlzustand (s. Kommentar bei isGoldIdentity im
-  // Node-Rendering unten). Auch für Kanten gebraucht: eine Kante an einem
+  // nicht nur der Auswahlzustand (s. identityTierOf unten für die auf
+  // Unterthema/Detail erweiterte Farb-Hierarchie). Auch für Kanten gebraucht: eine Kante an einem
   // Gold-Node soll genauso pulsen wie eine Kante am tatsächlich
   // ausgewählten Node — sonst wirkt der Gold-Node optisch wie der Fokus,
   // ohne dass die Kanten das mittragen (genau der vom User gemeldete Bruch).
   const isGoldIdentityNode = useCallback((nodeId: string): boolean => {
     const n = state.nodesById.get(nodeId);
     return !!n && !n.color && n.hierarchyLevel === 'hauptthema';
+  }, [state.nodesById]);
+
+  // Eine eigene, nutzerdefinierte Farbe (node.color) hat immer Vorrang und
+  // wird hier deshalb zuerst ausgeschlossen — die Hierarchie selbst bleibt
+  // davon komplett unberührt, es ändert sich nur die Darstellung. Nodes
+  // ganz ohne hierarchyLevel behalten ihr bisheriges Verhalten (Farbe folgt
+  // weiterhin der Nähe-Stufe zur Auswahl).
+  const identityTierOf = useCallback((nodeId: string): Exclude<GraphTier, 'neutral'> | undefined => {
+    const n = state.nodesById.get(nodeId);
+    if (!n || n.color || !n.hierarchyLevel) return undefined;
+    return HIERARCHY_IDENTITY_TIER[n.hierarchyLevel];
   }, [state.nodesById]);
 
   // Impuls-Ausbreitung durchs GANZE zusammenhängende Netz (User-Vorgabe
@@ -1137,9 +1158,9 @@ export const GraphCanvas: React.FC<GraphCanvasProps> = ({
               // Deckkraft/Unschärfe folgen weiterhin der Nähe-Stufe wie bei
               // jedem anderen Node) — eine eigene, nutzerdefinierte Farbe
               // (node.color) hat immer Vorrang.
-              const isGoldIdentity = isGoldIdentityNode(node.id);
-              const fill = node.color || `url(#${wnTheme.gradientId[isGoldIdentity ? 'focus' : (tier === 'neutral' ? 'neighbor' : tier)]})`;
-              const glowColor = isGoldIdentity ? wnTheme.tier.focus.glow : tc.glow;
+              const identityTier = identityTierOf(node.id);
+              const fill = node.color || `url(#${wnTheme.gradientId[identityTier ?? (tier === 'neutral' ? 'neighbor' : tier)]})`;
+              const glowColor = identityTier ? wnTheme.tier[identityTier].glow : tc.glow;
               const isFocusTier = tier === 'focus';
               return (
                 <motion.g
