@@ -340,7 +340,7 @@ export const LibrarySystem: React.FC<LibrarySystemProps> = ({
                       <div className="flex justify-between items-start">
                         <div
                           className="w-14 h-14 rounded-2xl flex items-center justify-center text-2xl shadow-md"
-                          style={{ background: 'color-mix(in srgb, var(--primary) 12%, white)' }}
+                          style={{ background: 'color-mix(in srgb, var(--primary) 12%, var(--bg-main))' }}
                         >
                           <EmojiImage emoji={col.emoji} size={28} />
                         </div>

@@ -634,7 +634,7 @@ export const QuizPlayer: React.FC<QuizPlayerProps> = ({
             <div
               className="px-5 py-4 rounded-[20px] border"
               style={!checkCorrectness()
-                ? { background: 'color-mix(in srgb, var(--primary) 8%, white)', borderColor: 'color-mix(in srgb, var(--primary) 25%, transparent)' }
+                ? { background: 'color-mix(in srgb, var(--primary) 8%, var(--bg-main))', borderColor: 'color-mix(in srgb, var(--primary) 25%, transparent)' }
                 : { background: 'var(--bg-sidebar)', borderColor: 'var(--border-color)' }
               }
             >
