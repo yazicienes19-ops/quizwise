@@ -31,7 +31,7 @@ Eine vorherige Session (05.08.2026) hatte parallel zwei große Dinge im Working 
 
 **Verifiziert:** `tsc --noEmit`, `vitest run` (707 Tests grün), `npm run build` sauber — nach der Trennung erneut komplett durchlaufen. Bundle-Grep bestätigt: keine Studienplaner-Reste (`sp2b.`/`sp2c.`/`sp2d.`/`dnd-kit`), Benachrichtigung (`sp2e.`) und Wissensnetz-Node-Dialog (s.u.) vorhanden.
 
-**Committed:** ja, auf `main` (Node-Dialog per Fast-Forward-Merge von `feature/graph-node-dialog`, Benachrichtigung als eigener Commit obendrauf). **Deployed:** nur der Wissensnetz-Node-Dialog (s. Abschnitt unten) — das Benachrichtigungssystem ist committed, aber noch NICHT deployed (Migration steht noch aus, User-Freigabe zum Deployen noch nicht eingeholt).
+**Committed:** ja, auf `main` (Node-Dialog per Fast-Forward-Merge von `feature/graph-node-dialog`, Benachrichtigung als eigener Commit `4b99cdb` obendrauf). **Deployed:** ja, beides — `migration_notification_system.sql` wurde vom User in Supabase ausgeführt, danach Backend (`railway up --service quizwise-backend`, Logs bestätigen `Notification-Scheduler aktiv`) und Frontend (gewohnter prebuilt-Workflow, alle drei Domains) neu deployed. `npm run smoke` grün. 4 von 5 Notification-Typen aktiv — "Tagesziel/Wochenziel erreicht" bleibt dauerhaft inaktiv (brauchte die verworfene Blockstatus-Verfolgung), kein Bug.
 
 ### Wissensnetz: Node-Erklärer zum Dialog ausgebaut — DEPLOYED
 
@@ -274,8 +274,8 @@ railway up --service quizwise-backend
 
 ## ⚠️ MANUELL ZU ERLEDIGEN
 
-### 0. ⚠️ OFFEN (07.08.2026): `backend/migration_notification_system.sql` ausführen, dann Backend deployen
-Supabase → SQL Editor → `backend/migration_notification_system.sql` ausführen (den `block_status`-Teil ggf. weglassen, s. Abschnitt "Was heute (07.08.2026) erledigt wurde" — das Studienplaner-Redesign, das dieses Feld gebraucht hätte, wurde verworfen). Erstellt: `notification_log`-Tabelle (Dedup für Benachrichtigungen), dokumentiert nachträglich die bereits live existierende `push_subscriptions`-Tabelle. **Ohne diese Migration läuft der neue Notification-Scheduler nicht** — Backend darf erst danach neu deployed werden. Frontend+Backend-Deploy für das Benachrichtigungssystem steht noch aus (User-Freigabe noch nicht eingeholt, s.o.).
+### 0. ✅ ERLEDIGT (07.08.2026): Benachrichtigungssystem komplett deployed
+`backend/migration_notification_system.sql` in Supabase ausgeführt, danach Backend (Railway) + Frontend (Vercel, alle drei Domains) deployed, `npm run smoke` grün. Kein offener Punkt mehr — Details im Abschnitt "Was heute (07.08.2026) erledigt wurde" oben.
 
 ### 1. SQL-Migration ausführen (Cloud-Sync aktivieren)
 Supabase → SQL Editor → `backend/migration_cloud_sync.sql` ausführen.
