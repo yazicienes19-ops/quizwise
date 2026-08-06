@@ -8,6 +8,7 @@ import { buildGraphIndex, outgoingEdges, incomingEdges } from '../services/graph
 import { documentDisplayName } from '../services/libraryService';
 import { useTranslation } from '../i18n/I18nProvider';
 import { Trash2 } from 'lucide-react';
+import { EmojiImage } from './EmojiImage';
 
 /**
  * Rechte Seitenleiste des Wissensnetzes (s. KNOWLEDGE_GRAPH_KONZEPT.md
@@ -465,8 +466,8 @@ export const GraphNodeDetailPanel: React.FC<GraphNodeDetailPanelProps> = ({
         </section>
 
         <section>
-          <p className="text-[9px] font-black uppercase tracking-widest text-slate-400 mb-1.5">
-            📝 {t('kg.panel.notes')}
+          <p className="text-[9px] font-black uppercase tracking-widest text-slate-400 mb-1.5 flex items-center gap-1">
+            <EmojiImage emoji="📝" size={11} /> {t('kg.panel.notes')}
           </p>
           <textarea
             value={notesDraft}
@@ -481,8 +482,8 @@ export const GraphNodeDetailPanel: React.FC<GraphNodeDetailPanelProps> = ({
 
         <section>
           <div className="flex items-center justify-between mb-1.5">
-            <p className="text-[9px] font-black uppercase tracking-widest text-slate-400">
-              📚 {t('kg.panel.sources')}
+            <p className="text-[9px] font-black uppercase tracking-widest text-slate-400 flex items-center gap-1">
+              <EmojiImage emoji="📚" size={11} /> {t('kg.panel.sources')}
             </p>
             <button
               onClick={() => setIsPickingDocument(true)}
@@ -553,8 +554,8 @@ export const GraphNodeDetailPanel: React.FC<GraphNodeDetailPanelProps> = ({
         </section>
 
         <section>
-          <p className="text-[9px] font-black uppercase tracking-widest text-slate-400 mb-1.5">
-            🔗 {t('kg.panel.related')}
+          <p className="text-[9px] font-black uppercase tracking-widest text-slate-400 mb-1.5 flex items-center gap-1">
+            <EmojiImage emoji="🔗" size={11} /> {t('kg.panel.related')}
           </p>
 
           {relatedEntries.length === 0 && (
@@ -594,7 +595,7 @@ export const GraphNodeDetailPanel: React.FC<GraphNodeDetailPanelProps> = ({
                 onClick={() => onStartActivity(kind)}
                 className="flex-1 flex flex-col items-center gap-1 rounded-lg py-2.5 hover:bg-slate-50 dark:hover:bg-slate-800 transition-colors"
               >
-                <span className="text-base leading-none">{emoji}</span>
+                <EmojiImage emoji={emoji} size={18} />
                 <span className="text-[8px] font-black uppercase tracking-wider text-slate-500 dark:text-slate-400">{t(labelKey)}</span>
               </button>
             ))}
