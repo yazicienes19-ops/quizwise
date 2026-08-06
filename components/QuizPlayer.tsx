@@ -668,7 +668,7 @@ export const QuizPlayer: React.FC<QuizPlayerProps> = ({
       <div className="sticky bottom-[calc(3.75rem+env(safe-area-inset-bottom))] md:bottom-0 z-20 pointer-events-none">
         <div className={`max-w-2xl mx-auto px-4 pointer-events-auto ${
           hasFooterPrimaryButton
-            ? 'pb-4 md:pb-6 pt-10 bg-gradient-to-t from-slate-50 dark:from-slate-950 from-45%'
+            ? 'pb-4 md:pb-6 pt-10 bg-gradient-to-t from-[var(--bg-main)] from-45%'
             : 'py-3'
         }`}>
           <div className="flex gap-3">
