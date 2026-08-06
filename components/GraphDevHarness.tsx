@@ -1,4 +1,4 @@
-import React, { useEffect, useRef, useState } from 'react';
+import React, { useEffect, useMemo, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
 import { GraphCanvas } from './GraphCanvas';
 import { GraphNodeDetailPanel } from './GraphNodeDetailPanel';
@@ -11,6 +11,7 @@ import {
 } from '../services/graph/types';
 import { createEmptyHistory } from '../services/graph/graphHistoryService';
 import { clearSelection, selectNode } from '../services/graph/graphSelectionService';
+import { buildGraphIndex, outgoingEdges, incomingEdges, describeRelatedEntry } from '../services/graph/graphIndex';
 import { saveCachedState } from '../services/graph/graphSyncService';
 import { useKnowledgeGraph } from '../hooks/useKnowledgeGraph';
 import { shouldUsePdfReader } from '../services/libraryService';
@@ -211,6 +212,18 @@ export const GraphDevHarness: React.FC = () => {
     if (activeActivity && !activeActivityNode) setActiveActivity(null);
   }, [activeActivity, activeActivityNode]);
 
+  // Selbe Berechnung wie GraphSystem.tsx (Node-Dialog braucht dieselben
+  // "Verwandte Konzepte"-Einträge, damit sich Rückfragen im Harness identisch
+  // zum echten Produkt-UI verhalten).
+  const relatedConceptEntries = useMemo(() => {
+    if (!activeActivityNode) return [];
+    const index = buildGraphIndex(graph.state);
+    return [
+      ...outgoingEdges(index, activeActivityNode.id).map(edge => describeRelatedEntry(graph.state, edge, true)),
+      ...incomingEdges(index, activeActivityNode.id).map(edge => describeRelatedEntry(graph.state, edge, false)),
+    ].filter((entry): entry is NonNullable<typeof entry> => entry !== null);
+  }, [activeActivityNode, graph.state]);
+
   // Fixture einmalig seeden — nur ohne Login UND nur, wenn der isolierte
   // Fixture-Scope-Cache tatsächlich leer ist (erster Start in diesem Browser/
   // Profil). Eigene Interaktionen aus einer vorherigen Sitzung (bereits über
@@ -330,6 +343,7 @@ export const GraphDevHarness: React.FC = () => {
         <GraphLearningOverlay
           node={activeActivityNode}
           activity={activeActivity}
+          relatedConceptEntries={relatedConceptEntries}
           onClose={() => setActiveActivity(null)}
           userId={userId}
           documents={FIXTURE_DOCUMENTS}

@@ -583,6 +583,14 @@ export const en: Translations = {
   'kg.activity.loadingQuiz': 'Creating quiz…',
   'kg.activity.loadingFeynman': 'Preparing…',
   'kg.activity.loadingExplain': 'Preparing explanation…',
+  'kg.activity.explainAskLoading': 'Preparing answer…',
+  'kg.activity.explainAskPlaceholder': 'Ask a question about this concept…',
+  'kg.activity.explainAskSend': 'Ask',
+  'kg.activity.explainQuickSimpler': 'Explain more simply',
+  'kg.activity.explainQuickExample': 'Give an example',
+  'kg.activity.explainQuickDifference': 'Difference to related concepts',
+  'kg.activity.explainQuickSteps': 'Step by step',
+  'kg.activity.explainQuickSummary': 'Summarize',
   'kg.activity.quizResult': '{correct} of {total} correct',
 
   // library

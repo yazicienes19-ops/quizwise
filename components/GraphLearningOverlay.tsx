@@ -3,8 +3,9 @@ import { createPortal } from 'react-dom';
 import type { Collection, Flashcard, FlashcardDeck, ProcessedDocument, QuizQuestion, UserAnswer } from '../types';
 import { QuizType } from '../types';
 import type { GraphNode } from '../services/graph/types';
-import { buildNodeGenerationSource, buildNodeSyntheticDocument } from '../services/graph/graphLearningSource';
-import { generateFlashcardsFromDocument, generateQuizFromDocument, generateExplanation } from '../services/geminiService';
+import type { RelatedConceptEntry } from '../services/graph/graphIndex';
+import { buildNodeGenerationSource, buildNodeSyntheticDocument, buildNodeDialogSource } from '../services/graph/graphLearningSource';
+import { generateFlashcardsFromDocument, generateQuizFromDocument, generateExplanation, continueNodeExplanation, type NodeDialogTurn } from '../services/geminiService';
 import { createSrsState, reviewCard, migrateLegacyCard, QUALITY_MAP } from '../services/spacedRepetition';
 import { saveDeckToSupabase } from '../services/flashcardService';
 import { saveQuizResult } from '../services/quizHistoryService';
@@ -48,6 +49,10 @@ export type GraphLearningActivity = 'flashcards' | 'quiz' | 'feynman' | 'explain
 export interface GraphLearningOverlayProps {
   node: GraphNode;
   activity: GraphLearningActivity;
+  /** Nur für activity==='explain' relevant (Node-Dialog-Rückfragen zur
+   *  Beziehung zu verbundenen Konzepten) — von den anderen drei Aktivitäten
+   *  ungenutzt, deshalb kein optionales Feld nur für sie extra. */
+  relatedConceptEntries: RelatedConceptEntry[];
   onClose: () => void;
   userId?: string;
   documents: ProcessedDocument[];
@@ -360,10 +365,33 @@ const FeynmanActivity: React.FC<{
 };
 
 // ── KI-Erklärung ─────────────────────────────────────────────────────────
-const ExplainActivity: React.FC<{ node: GraphNode; onClose: () => void; onApiError: (e: unknown) => void }> = ({ node, onClose, onApiError }) => {
+// Node-Dialog: die einmalige Erklärung von generateExplanation bleibt der
+// Einstieg (unverändert), danach kann der Nutzer Rückfragen zu GENAU diesem
+// Node stellen (continueNodeExplanation, s. geminiService.ts). Bewusst KEIN
+// allgemeiner Chat — jede Rückfrage bleibt an den Node-Kontext gebunden, die
+// Regel dafür sitzt im Prompt selbst, nicht in der UI.
+const QuickActionButton: React.FC<{ label: string; onClick: () => void }> = ({ label, onClick }) => (
+  <button
+    onClick={onClick}
+    className="px-3 py-1.5 rounded-full text-xs font-bold border hover:border-[var(--primary)] transition-colors dark:text-white"
+    style={{ borderColor: 'var(--border-color)' }}
+  >
+    {label}
+  </button>
+);
+
+const ExplainActivity: React.FC<{
+  node: GraphNode;
+  relatedConceptEntries: RelatedConceptEntry[];
+  onClose: () => void;
+  onApiError: (e: unknown) => void;
+}> = ({ node, relatedConceptEntries, onClose, onApiError }) => {
   const { t } = useTranslation();
   const [explanation, setExplanation] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const [history, setHistory] = useState<NodeDialogTurn[]>([]);
+  const [followUpInput, setFollowUpInput] = useState('');
+  const [isAsking, setIsAsking] = useState(false);
   const startedRef = useRef(false);
 
   useEffect(() => {
@@ -383,6 +411,23 @@ const ExplainActivity: React.FC<{ node: GraphNode; onClose: () => void; onApiErr
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
+  const handleAsk = async (overrideQuestion?: string) => {
+    const question = (overrideQuestion ?? followUpInput).trim();
+    if (!question || isAsking) return;
+    setIsAsking(true);
+    setFollowUpInput('');
+    try {
+      const dialogSource = buildNodeDialogSource(node, relatedConceptEntries);
+      const answer = await continueNodeExplanation(dialogSource, node.title, history, question);
+      setHistory(prev => [...prev, { question, answer }]);
+    } catch (e) {
+      onApiError(e);
+      toast.error(resolveErrorMessage(e));
+    } finally {
+      setIsAsking(false);
+    }
+  };
+
   return (
     <OverlayShell node={node} activity="explain" onClose={onClose}>
       {error && <ErrorState message={error} onClose={onClose} />}
@@ -392,6 +437,54 @@ const ExplainActivity: React.FC<{ node: GraphNode; onClose: () => void; onApiErr
           <div className="rounded-[20px] p-6 border" style={{ borderColor: 'var(--border-color)', background: 'var(--bg-sidebar)' }}>
             {renderMarkdown(explanation)}
           </div>
+
+          {history.map((turn, i) => (
+            <div key={i} className="space-y-2">
+              <p className="text-sm font-bold px-2" style={{ color: 'var(--primary)' }}>{turn.question}</p>
+              <div className="rounded-[20px] p-6 border" style={{ borderColor: 'var(--border-color)', background: 'var(--bg-sidebar)' }}>
+                {renderMarkdown(turn.answer)}
+              </div>
+            </div>
+          ))}
+
+          {isAsking && <LoadingState label={t('kg.activity.explainAskLoading')} />}
+
+          {!isAsking && (
+            <div className="space-y-3 pt-2">
+              <div className="flex flex-wrap gap-2">
+                {relatedConceptEntries.length > 0 && (
+                  <QuickActionButton
+                    label={t('kg.activity.explainQuickDifference')}
+                    onClick={() => handleAsk(t('kg.activity.explainQuickDifference'))}
+                  />
+                )}
+                <QuickActionButton label={t('kg.activity.explainQuickSimpler')} onClick={() => handleAsk(t('kg.activity.explainQuickSimpler'))} />
+                <QuickActionButton label={t('kg.activity.explainQuickExample')} onClick={() => handleAsk(t('kg.activity.explainQuickExample'))} />
+                <QuickActionButton label={t('kg.activity.explainQuickSteps')} onClick={() => handleAsk(t('kg.activity.explainQuickSteps'))} />
+                <QuickActionButton label={t('kg.activity.explainQuickSummary')} onClick={() => handleAsk(t('kg.activity.explainQuickSummary'))} />
+              </div>
+              <div className="flex gap-2">
+                <input
+                  value={followUpInput}
+                  onChange={e => setFollowUpInput(e.target.value)}
+                  onKeyDown={e => { if (e.key === 'Enter') { e.preventDefault(); handleAsk(); } }}
+                  maxLength={300}
+                  placeholder={t('kg.activity.explainAskPlaceholder')}
+                  aria-label={t('kg.activity.explainAskPlaceholder')}
+                  className="flex-1 rounded-full px-4 py-2.5 text-sm border outline-none focus:border-[var(--primary)] bg-transparent dark:text-white"
+                  style={{ borderColor: 'var(--border-color)' }}
+                />
+                <button
+                  onClick={() => handleAsk()}
+                  disabled={!followUpInput.trim()}
+                  className="px-5 py-2.5 rounded-full text-xs font-black uppercase tracking-wider text-white disabled:opacity-40 transition-opacity shrink-0"
+                  style={{ background: 'var(--primary)' }}
+                >
+                  {t('kg.activity.explainAskSend')}
+                </button>
+              </div>
+            </div>
+          )}
         </div>
       )}
     </OverlayShell>
@@ -399,7 +492,7 @@ const ExplainActivity: React.FC<{ node: GraphNode; onClose: () => void; onApiErr
 };
 
 export const GraphLearningOverlay: React.FC<GraphLearningOverlayProps> = ({
-  node, activity, onClose, userId, documents, collections, decks, onDecksChange, updateMetricsAfterSession, onApiError,
+  node, activity, relatedConceptEntries, onClose, userId, documents, collections, decks, onDecksChange, updateMetricsAfterSession, onApiError,
 }) => {
   switch (activity) {
     case 'flashcards':
@@ -409,6 +502,6 @@ export const GraphLearningOverlay: React.FC<GraphLearningOverlayProps> = ({
     case 'feynman':
       return <FeynmanActivity key={`feynman-${node.id}`} node={node} documents={documents} collections={collections} userId={userId} onClose={onClose} decks={decks} onDecksChange={onDecksChange} updateMetricsAfterSession={updateMetricsAfterSession} />;
     case 'explain':
-      return <ExplainActivity key={`explain-${node.id}`} node={node} onClose={onClose} onApiError={onApiError} />;
+      return <ExplainActivity key={`explain-${node.id}`} node={node} relatedConceptEntries={relatedConceptEntries} onClose={onClose} onApiError={onApiError} />;
   }
 };

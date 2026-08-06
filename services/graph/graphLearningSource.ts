@@ -1,4 +1,5 @@
 import type { GraphNode } from './types';
+import type { RelatedConceptEntry } from './graphIndex';
 import type { ProcessedDocument } from '../../types';
 import type { GenerationSource } from '../geminiService';
 
@@ -20,6 +21,22 @@ export function buildNodeLearningText(node: GraphNode): string {
 
 export function buildNodeGenerationSource(node: GraphNode): GenerationSource {
   return { text: buildNodeLearningText(node) };
+}
+
+/**
+ * Wie buildNodeGenerationSource, aber für den Node-Dialog (GraphLearningOverlay
+ * "Erklären"-Aktivität, s. continueNodeExplanation in geminiService.ts): hängt
+ * zusätzlich die Beziehungen zu anderen Nodes an, damit Rückfragen wie
+ * "Erkläre die Beziehung zu den verbundenen Konzepten" beantwortbar sind.
+ * Bewusst NUR für den Dialog — die bestehende Karteikarten-/Quiz-/Feynman-
+ * Generierung nutzt weiterhin buildNodeGenerationSource unverändert (keine
+ * ConceptNode-Konvergenz, keine Kanten-Referenz dort, s. Datei-Kommentar oben).
+ */
+export function buildNodeDialogSource(node: GraphNode, relatedEntries: RelatedConceptEntry[]): GenerationSource {
+  const relationsBlock = relatedEntries.length
+    ? `\n\nBeziehungen zu anderen Konzepten im Wissensnetz:\n${relatedEntries.map(e => `- ${e.text}`).join('\n')}`
+    : '';
+  return { text: buildNodeLearningText(node) + relationsBlock };
 }
 
 /**

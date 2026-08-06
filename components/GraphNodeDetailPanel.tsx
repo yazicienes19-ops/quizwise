@@ -1,10 +1,10 @@
 import React, { useEffect, useMemo, useRef, useState } from 'react';
 import type { ProcessedDocument } from '../types';
-import type { GraphEdge, GraphState, GraphEntityChange } from '../services/graph/types';
+import type { GraphState, GraphEntityChange } from '../services/graph/types';
 import { HIERARCHY_LEVEL_LABELS, nextHierarchyLevel } from '../services/graph/types';
 import { type GraphHistory, recordUpdateNode, recordArchiveNode } from '../services/graph/graphHistoryService';
 import { createNodeDocumentRef } from '../services/graph/graphMutationService';
-import { buildGraphIndex, outgoingEdges, incomingEdges } from '../services/graph/graphIndex';
+import { buildGraphIndex, outgoingEdges, incomingEdges, describeRelatedEntry } from '../services/graph/graphIndex';
 import { documentDisplayName } from '../services/libraryService';
 import { useTranslation } from '../i18n/I18nProvider';
 import { Trash2 } from 'lucide-react';
@@ -96,51 +96,8 @@ const typeLabel = (type: string): string => type.length > 0 ? type.charAt(0).toU
  *  über die Ebene bekommen. */
 const NODE_COLOR_SWATCHES = ['#D9A94E', '#6366F1', '#38BDF8', '#10B981', '#F43F5E', '#F97316', '#64748B'];
 
-/** Baut aus einer Kante + Blickrichtung (aktueller Node ist Quelle oder Ziel)
- *  eine für Menschen lesbare Zeile — Kernidee dieses Abschnitts: "Wie hängt
- *  dieses Konzept mit anderem Wissen zusammen?", nicht "welche Kanten
- *  existieren?" (s. Datei-Kommentar unten). Gibt `null` zurück, wenn der
- *  andere Node oder der Beziehungstyp nicht (mehr) geladen ist — kann durch
- *  den Lese-Zeit-Filter in graphIndex.ts eigentlich nicht vorkommen (dort
- *  werden Kanten zu archivierten/gelöschten Nodes bereits ausgeblendet),
- *  hier trotzdem defensiv statt eine Zeile mit "undefined" zu zeigen. */
-function describeRelatedEntry(
-  state: GraphState, edge: GraphEdge, isSource: boolean,
-): { key: string; otherNodeId: string; otherTitle: string; text: string } | null {
-  const otherNodeId = isSource ? edge.targetNodeId : edge.sourceNodeId;
-  const otherNode = state.nodesById.get(otherNodeId);
-  if (!otherNode) return null;
-  const relationType = edge.relationTypeId ? state.relationTypesById.get(edge.relationTypeId) : undefined;
-
-  let text: string;
-  if (!relationType) {
-    // Beziehungstyp ist optional (User-Vorgabe 2026-08-04) — die Verbindung
-    // bleibt trotzdem sichtbar, nur ohne Beziehungsphrase dazwischen. Kein
-    // Platzhaltertext ("unbenannt" o.ä.), einfach nur Pfeil + Node-Titel.
-    text = `${isSource ? '→' : '←'} ${otherNode.title}`;
-  } else if (relationType.symmetric) {
-    // Symmetrisch: dieselbe Aussage in beide Richtungen, kein Pfeil-Konflikt.
-    text = `↔ ${relationType.label} ${otherNode.title}`;
-  } else if (isSource) {
-    text = `→ ${relationType.label} ${otherNode.title}`;
-  } else if (relationType.inverseLabel) {
-    // "…" ist die Lückentext-Konvention der eingebauten Typen für Fälle, in
-    // denen der Bezug grammatikalisch in die Mitte gehört (z.B. "baut auf …
-    // auf" statt "baut auf" + Anhängsel) — s. builtInRelationTypes.ts.
-    const filled = relationType.inverseLabel.includes('…')
-      ? relationType.inverseLabel.replace('…', otherNode.title)
-      : `${relationType.inverseLabel} ${otherNode.title}`;
-    text = `→ ${filled}`;
-  } else {
-    // Kein inverseLabel vorhanden (z.B. spontan per Freitext angelegte
-    // Beziehungstypen beim Kantenziehen haben nie eins) — bewusste, im
-    // Konzeptdokument als MVP-Kompromiss vorgesehene Vereinfachung: derselbe
-    // Text wie in Vorwärtsrichtung, nur der Pfeil zeigt die Gegenrichtung an,
-    // statt eine möglicherweise falsche Grammatik zu erfinden.
-    text = `← ${relationType.label} ${otherNode.title}`;
-  }
-  return { key: edge.id, otherNodeId, otherTitle: otherNode.title, text };
-}
+// describeRelatedEntry lebt jetzt in services/graph/graphIndex.ts (seit der
+// Node-Dialog-KI-Schicht von mehr als nur diesem Panel gebraucht).
 
 export const GraphNodeDetailPanel: React.FC<GraphNodeDetailPanelProps> = ({
   state, history, nodeId, documents, onChange, onEntityChanged, onClose, onOpenDocument, onSelectNode, onStartActivity,

@@ -1,9 +1,10 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useMemo, useState } from 'react';
 import { createPortal } from 'react-dom';
 import { Collection, FlashcardDeck, ProcessedDocument } from '../types';
 import type { GraphScope, GraphState } from '../services/graph/types';
 import { canUndo, canRedo, recordUpdateNode, type GraphHistory } from '../services/graph/graphHistoryService';
 import { clearSelection, selectNode } from '../services/graph/graphSelectionService';
+import { buildGraphIndex, outgoingEdges, incomingEdges, describeRelatedEntry } from '../services/graph/graphIndex';
 import { shouldUsePdfReader } from '../services/libraryService';
 import { useKnowledgeGraph } from '../hooks/useKnowledgeGraph';
 import { GraphCanvas } from './GraphCanvas';
@@ -152,6 +153,19 @@ export const GraphSystem: React.FC<GraphSystemProps> = ({
   // aufgelöst (s. Datei-Kommentar oben).
   const [activeActivity, setActiveActivity] = useState<GraphLearningActivity | null>(null);
   const activeActivityNode = activeActivity ? graph.state.nodesById.get(graph.selection.selectedNodeId ?? '') : undefined;
+
+  // Node-Dialog (KI-Erklärung, s. GraphLearningOverlay): braucht dieselben
+  // "Verwandte Konzepte"-Einträge wie das Seitenpanel, damit Rückfragen zur
+  // Beziehung zu verbundenen Konzepten beantwortbar sind. Derselbe Index wie
+  // GraphNodeDetailPanel, nur hier gebraucht, wenn eine Aktivität offen ist.
+  const relatedConceptEntries = useMemo(() => {
+    if (!activeActivityNode) return [];
+    const index = buildGraphIndex(graph.state);
+    return [
+      ...outgoingEdges(index, activeActivityNode.id).map(edge => describeRelatedEntry(graph.state, edge, true)),
+      ...incomingEdges(index, activeActivityNode.id).map(edge => describeRelatedEntry(graph.state, edge, false)),
+    ].filter((entry): entry is NonNullable<typeof entry> => entry !== null);
+  }, [activeActivityNode, graph.state]);
 
   // Verschwindet der Node während einer laufenden Aktivität (z.B. Undo
   // archiviert ihn), sauber schließen statt eine Karteileiche zu zeigen —
@@ -310,6 +324,7 @@ export const GraphSystem: React.FC<GraphSystemProps> = ({
         <GraphLearningOverlay
           node={activeActivityNode}
           activity={activeActivity}
+          relatedConceptEntries={relatedConceptEntries}
           onClose={() => setActiveActivity(null)}
           userId={userId}
           documents={documents}

@@ -584,6 +584,14 @@ export const de = {
   'kg.activity.loadingQuiz': 'Quiz wird erstellt…',
   'kg.activity.loadingFeynman': 'Wird vorbereitet…',
   'kg.activity.loadingExplain': 'Erklärung wird vorbereitet…',
+  'kg.activity.explainAskLoading': 'Antwort wird vorbereitet…',
+  'kg.activity.explainAskPlaceholder': 'Frage zu diesem Konzept stellen…',
+  'kg.activity.explainAskSend': 'Fragen',
+  'kg.activity.explainQuickSimpler': 'Einfacher erklären',
+  'kg.activity.explainQuickExample': 'Beispiel geben',
+  'kg.activity.explainQuickDifference': 'Unterschied zu verwandten Konzepten',
+  'kg.activity.explainQuickSteps': 'Schritt für Schritt',
+  'kg.activity.explainQuickSummary': 'Zusammenfassen',
   'kg.activity.quizResult': '{correct} von {total} richtig',
 
   // library

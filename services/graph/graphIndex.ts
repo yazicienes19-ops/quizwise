@@ -1,5 +1,12 @@
 import type { GraphState, GraphEdge } from './types';
 
+export interface RelatedConceptEntry {
+  key: string;
+  otherNodeId: string;
+  otherTitle: string;
+  text: string;
+}
+
 /**
  * Internes Hilfsmodul (kein eigener Top-Level-Service, User-Entscheidung
  * 2026-08-01) — Adjazenz-Struktur für GraphMutationService/GraphValidationService.
@@ -84,6 +91,42 @@ export const hasActiveEdgeBetweenEitherDirection = (
 /** Grundlage für den künftigen Fokus-Modus (Phase 2 der Produkt-Roadmap) —
  *  Nachbarschaft bis zu `hops` Schritten, ungerichtet (Kanten zählen in
  *  beide Richtungen als Nachbarschaft, unabhängig vom Beziehungstyp). */
+/** Menschlich lesbare Beschreibung einer Kante aus Sicht EINES ihrer beiden
+ *  Nodes ("Wie hängt das mit anderem Wissen zusammen?", nicht "welche Kanten
+ *  existieren?") — von GraphNodeDetailPanel (Verwandte Konzepte) UND der
+ *  Node-Dialog-KI-Schicht (GraphLearningOverlay) gemeinsam genutzt, damit
+ *  beide Stellen dieselbe Beziehung identisch in Worte fassen. Gibt `null`
+ *  zurück, wenn der andere Node nicht (mehr) geladen ist — kann durch den
+ *  Lese-Zeit-Filter oben eigentlich nicht vorkommen, hier trotzdem defensiv
+ *  statt eine Zeile mit "undefined" zu zeigen. */
+export function describeRelatedEntry(
+  state: GraphState, edge: GraphEdge, isSource: boolean,
+): RelatedConceptEntry | null {
+  const otherNodeId = isSource ? edge.targetNodeId : edge.sourceNodeId;
+  const otherNode = state.nodesById.get(otherNodeId);
+  if (!otherNode) return null;
+  const relationType = edge.relationTypeId ? state.relationTypesById.get(edge.relationTypeId) : undefined;
+
+  let text: string;
+  if (!relationType) {
+    // Beziehungstyp ist optional (User-Vorgabe 2026-08-04) — die Verbindung
+    // bleibt trotzdem sichtbar, nur ohne Beziehungsphrase dazwischen.
+    text = `${isSource ? '→' : '←'} ${otherNode.title}`;
+  } else if (relationType.symmetric) {
+    text = `↔ ${relationType.label} ${otherNode.title}`;
+  } else if (isSource) {
+    text = `→ ${relationType.label} ${otherNode.title}`;
+  } else if (relationType.inverseLabel) {
+    const filled = relationType.inverseLabel.includes('…')
+      ? relationType.inverseLabel.replace('…', otherNode.title)
+      : `${relationType.inverseLabel} ${otherNode.title}`;
+    text = `→ ${filled}`;
+  } else {
+    text = `← ${relationType.label} ${otherNode.title}`;
+  }
+  return { key: edge.id, otherNodeId, otherTitle: otherNode.title, text };
+}
+
 export function subgraph(
   index: GraphIndex,
   centerNodeId: string,

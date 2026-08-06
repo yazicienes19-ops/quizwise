@@ -582,6 +582,14 @@ export const tr: Translations = {
   'kg.activity.loadingQuiz': 'Sınav oluşturuluyor…',
   'kg.activity.loadingFeynman': 'Hazırlanıyor…',
   'kg.activity.loadingExplain': 'Açıklama hazırlanıyor…',
+  'kg.activity.explainAskLoading': 'Yanıt hazırlanıyor…',
+  'kg.activity.explainAskPlaceholder': 'Bu kavramla ilgili bir soru sor…',
+  'kg.activity.explainAskSend': 'Sor',
+  'kg.activity.explainQuickSimpler': 'Daha basit anlat',
+  'kg.activity.explainQuickExample': 'Örnek ver',
+  'kg.activity.explainQuickDifference': 'İlişkili kavramlardan farkı',
+  'kg.activity.explainQuickSteps': 'Adım adım',
+  'kg.activity.explainQuickSummary': 'Özetle',
   'kg.activity.quizResult': '{total} sorudan {correct} doğru',
 
   // library

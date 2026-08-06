@@ -3,7 +3,9 @@ import { createEmptyGraphState, type GraphEdge, type GraphNode } from './types';
 import {
   buildGraphIndex, outgoingEdges, incomingEdges, neighborIds,
   hasActiveEdgeBetween, hasActiveEdgeBetweenEitherDirection, subgraph,
+  describeRelatedEntry,
 } from './graphIndex';
+import type { GraphRelationType } from './types';
 
 const makeNode = (id: string, overrides: Partial<GraphNode> = {}): GraphNode => ({
   id,
@@ -108,6 +110,63 @@ describe('hasActiveEdgeBetween / hasActiveEdgeBetweenEitherDirection', () => {
     const index = buildGraphIndex(state);
 
     expect(hasActiveEdgeBetweenEitherDirection(index, 'a', 'b', 'rel-gegensatz')).toBe(true);
+  });
+});
+
+const makeRelationType = (overrides: Partial<GraphRelationType> = {}): GraphRelationType => ({
+  id: 'rel-1', label: 'Voraussetzung von', symmetric: false, isBuiltIn: true, sortOrder: 0, createdAt: 0,
+  ...overrides,
+});
+
+describe('describeRelatedEntry', () => {
+  it('nutzt Pfeil ohne Beziehungsphrase, wenn kein Beziehungstyp gesetzt ist', () => {
+    const state = createEmptyGraphState({ kind: 'all' });
+    state.nodesById.set('a', makeNode('a', { title: 'Reiz' }));
+    state.nodesById.set('b', makeNode('b', { title: 'Reaktion' }));
+    const edge = makeEdge('e1', 'a', 'b', { relationTypeId: undefined });
+
+    expect(describeRelatedEntry(state, edge, true)).toEqual({ key: 'e1', otherNodeId: 'b', otherTitle: 'Reaktion', text: '→ Reaktion' });
+    expect(describeRelatedEntry(state, edge, false)).toEqual({ key: 'e1', otherNodeId: 'a', otherTitle: 'Reiz', text: '← Reiz' });
+  });
+
+  it('nutzt das Label vorwärts und die inverseLabel-Lückentext-Konvention rückwärts', () => {
+    const state = createEmptyGraphState({ kind: 'all' });
+    state.nodesById.set('a', makeNode('a', { title: 'Grundwissen' }));
+    state.nodesById.set('b', makeNode('b', { title: 'Aufbauwissen' }));
+    state.relationTypesById.set('rel-1', makeRelationType({ label: 'Voraussetzung von', inverseLabel: 'baut auf … auf' }));
+    const edge = makeEdge('e1', 'a', 'b', { relationTypeId: 'rel-1' });
+
+    expect(describeRelatedEntry(state, edge, true)!.text).toBe('→ Voraussetzung von Aufbauwissen');
+    expect(describeRelatedEntry(state, edge, false)!.text).toBe('→ baut auf Grundwissen auf');
+  });
+
+  it('nutzt denselben Text mit umgekehrtem Pfeil, wenn keine inverseLabel existiert (Freitext-Typen)', () => {
+    const state = createEmptyGraphState({ kind: 'all' });
+    state.nodesById.set('a', makeNode('a', { title: 'A' }));
+    state.nodesById.set('b', makeNode('b', { title: 'B' }));
+    state.relationTypesById.set('rel-1', makeRelationType({ label: 'hängt zusammen mit', inverseLabel: undefined }));
+    const edge = makeEdge('e1', 'a', 'b', { relationTypeId: 'rel-1' });
+
+    expect(describeRelatedEntry(state, edge, false)!.text).toBe('← hängt zusammen mit A');
+  });
+
+  it('nutzt einen Doppelpfeil für symmetrische Beziehungstypen, unabhängig von der Blickrichtung', () => {
+    const state = createEmptyGraphState({ kind: 'all' });
+    state.nodesById.set('a', makeNode('a', { title: 'Verstärkung' }));
+    state.nodesById.set('b', makeNode('b', { title: 'Bestrafung' }));
+    state.relationTypesById.set('rel-1', makeRelationType({ label: 'Gegensatz zu', symmetric: true }));
+    const edge = makeEdge('e1', 'a', 'b', { relationTypeId: 'rel-1' });
+
+    expect(describeRelatedEntry(state, edge, true)!.text).toBe('↔ Gegensatz zu Bestrafung');
+    expect(describeRelatedEntry(state, edge, false)!.text).toBe('↔ Gegensatz zu Verstärkung');
+  });
+
+  it('gibt null zurück, wenn der andere Node nicht (mehr) geladen ist', () => {
+    const state = createEmptyGraphState({ kind: 'all' });
+    state.nodesById.set('a', makeNode('a'));
+    const edge = makeEdge('e1', 'a', 'ghost');
+
+    expect(describeRelatedEntry(state, edge, true)).toBeNull();
   });
 });
 

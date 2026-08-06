@@ -939,6 +939,52 @@ Verarbeite sie umfassend aus deinem Allgemeinwissen.${intentInstruction}${output
   });
 };
 
+export interface NodeDialogTurn {
+  question: string;
+  answer: string;
+}
+
+/**
+ * Wissensnetz-Node-Dialog: Rückfrage zu EXAKT der Erklärung, die
+ * generateExplanation zuvor zu einem Node geliefert hat. Bewusst KEIN
+ * allgemeiner Chat — jeder Aufruf sendet den vollen Node-Kontext (Titel,
+ * Beschreibung, Notizen, Beziehungen — s. buildNodeDialogSource in
+ * graphLearningSource.ts) plus den bisherigen Verlauf erneut mit, weil der
+ * Backend-Call selbst zustandslos ist. Die Prompt-Regel verbietet dem Modell
+ * explizit, den Konzept-Rahmen zu verlassen, auch bei allgemein formulierten
+ * Rückfragen ("Warum ist das wichtig?").
+ */
+export const continueNodeExplanation = async (
+  source: GenerationSource,
+  concept: string,
+  history: NodeDialogTurn[],
+  followUpQuestion: string,
+): Promise<string> => {
+  const parts: any[] = [sourceTopart(source)];
+
+  const safeConcept = sanitizeUserInput(concept, 200);
+  const safeQuestion = sanitizeUserInput(followUpQuestion, 300);
+  const historyBlock = history.length
+    ? `\n\nBisheriger Gesprächsverlauf zu diesem Konzept:\n${history
+        .map((turn, i) => `Rückfrage ${i + 1}: ${turn.question}\nAntwort ${i + 1}: ${turn.answer}`)
+        .join('\n\n')}`
+    : '';
+
+  parts.push({
+    text: `Du erklärst dem Nutzer ausschließlich das Konzept "${safeConcept}" auf Basis der oben bereitgestellten Informationen (Titel, Beschreibung, eigene Notizen, Beziehungen zu anderen Konzepten im Wissensnetz).${historyBlock}
+
+Neue Rückfrage des Nutzers: "${safeQuestion}"
+
+WICHTIGE REGEL: Dies ist KEIN offener Chat, sondern ein Dialog ausschließlich über dieses eine Konzept. Beantworte die Rückfrage IMMER mit Bezug auf genau dieses Konzept, auch wenn sie allgemein formuliert ist ("Warum ist das wichtig?", "Gib mir ein Beispiel."). Verlasse unter keinen Umständen diesen Rahmen — bezieht sich die Frage eindeutig auf etwas völlig anderes, weise kurz darauf hin, dass du nur zu diesem Konzept antworten kannst, statt die fremde Frage zu beantworten. Antworte prägnant und direkt auf die Rückfrage (keine erneute komplette Grunderklärung von vorne, keine Überschriften), normaler Fließtext.${outputLangDirective()}`,
+  });
+
+  return callBackend({
+    complexity: 'heavy',
+    parts,
+    config: { temperature: 0.4, thinkingConfig: { thinkingBudget: 0 } },
+  });
+};
+
 export interface GroundedExplanation {
   answer: string;
   /** true, wenn die übergebene (meist eng zugeschnittene) Quelle die Nutzereingabe
