@@ -1,7 +1,41 @@
 # QuizWise (StudeArc) — Session Handoff
-**Stand: 29. Juli 2026 (Claude-Code-Session — Dashboard-Redesign "Persönlicher Lerncoach")**
+**Stand: 7. August 2026 (Claude-Code-Session — Wissensnetz-Node-Dialog + Benachrichtigungssystem, Studienplaner-Redesign verworfen)**
 
 ⚠️ Diese Datei wurde zwischen Session 18 (22.06.2026) und dem 28.07.2026 nicht gepflegt — die Memory-Datei des Assistenten (`~/.claude/projects/-Users-enesyazici/memory/project_quizwise.md`) enthält den vollständigen Verlauf der dazwischenliegenden Sessions (Rebrand zu StudeArc, Klausursimulator 2.0, Fehleranalyse-Überarbeitung, Tutor-Fixes u.v.m.). Die Tabelle unten unter "Ordnerstruktur"/"Tech Stack" ist entsprechend veraltet (kein Tailwind CDN mehr Thema, viele neue Features fehlen) — bei Bedarf dort nachschlagen statt hier zu vertrauen.
+
+---
+
+## Was heute (07.08.2026) erledigt wurde
+
+### Wissensnetz-Node-Dialog gebaut + deployed, Studienplaner-Redesign verworfen, Benachrichtigungssystem übernommen
+
+Eine vorherige Session (05.08.2026) hatte parallel zwei große Dinge im Working Tree liegen, beide weder committed noch deployed: einen sechsteiligen Umbau des Kalender-Tabs zum "Studienplaner" (Lernblock-Karten, Drag & Drop, neue Datenfelder `durationMinutes`/`priority`/`learnMethod`) UND ein komplettes, modulares Benachrichtigungssystem, das auf diesem neuen Studienplaner-Datenmodell aufbaute. **Der Nutzer entschied sich explizit gegen das Studienplaner-Redesign** ("die jetzige [Kalenderfunktion] reicht völlig aus") — dieser komplette Teil wurde verworfen. Das Benachrichtigungssystem wollte er dagegen behalten ("Benachrichtigung wäre natürlich dennoch gut").
+
+**Trennung war nötig, weil beides in denselben Dateien vermischt war** (App.tsx, types.ts, i18n-Locales, syncService.ts u.a.). Durchgeführt per Datei-/Hunk-Analyse: Kalender-Dateien komplett verworfen (`components/StudyPlanner.tsx`, `components/CalendarDayPanel.tsx`, `services/calendarSessions.ts`, `types.ts`-Feldänderungen, `package.json`-Abhängigkeit `@dnd-kit/core`, sowie die neuen Dateien `CalendarLibraryPanel.tsx`/`ProgressRing.tsx`/`services/dayBlocks.ts` gelöscht), Benachrichtigung behalten. i18n-Keys wurden manuell entflochten (Studienplaner-Keys `sp2b.*`/`sp2c.*`/`sp2d.*` raus, Benachrichtigungs-Keys `sp2e.*` behalten).
+
+**Wichtige technische Konsequenz:** Das Backend-Benachrichtigungssystem (`backend/src/notifications/`) wurde ursprünglich FÜR das neue Studienplaner-Datenmodell gebaut, funktioniert aber auch mit dem alten Kalender weiter — `dayBlocks.js` (Backend) hat einen eingebauten Fallback, der die Blockdauer aus dem alten `startTime`/`endTime`-Paar berechnet, wenn `durationMinutes` fehlt. Nur der Motivation-Baustein **"Tagesziel/Wochenziel erreicht"** bleibt dauerhaft inaktiv (kein Crash, einfach kein Feuern) — er braucht `block_status` (Erledigt-Markierung einzelner Lernblöcke), ein Konzept, das nur im verworfenen Studienplaner existierte. Die entsprechende Sync-Plumbing (`block_status` in `syncService.ts`/`App.tsx`) wurde beim Verwerfen konsequent mit entfernt.
+
+**Ebenfalls verworfen:** `components/NotificationBellPopover.tsx` (Glocke mit Quick-Toggles) — ihr einziger Einbauort war der Studienplaner-Header, der nicht mehr existiert. Benachrichtigungseinstellungen sind aktuell ausschließlich über den normalen Settings-Dialog (neuer Tab "🔔 Benachrichtigungen") erreichbar. Falls ein globaler Schnellzugriff (z. B. in `Layout.tsx`s Header, neben Theme-Toggle/Streak) gewünscht ist: bewusst noch nicht gebaut, da das eine neue, nicht angefragte UI-Platzierungsentscheidung gewesen wäre.
+
+**Backend — Modul `backend/src/notifications/`** (ersetzt das alte `backend/src/push/reminderCron.js`, gelöscht):
+- **Registry-Muster:** jeder Notification-Typ ein eigenständiges Modul unter `types/` — `dailyReminder.js`, `blockLeadTime.js`, `spacedRepetition.js`, `examCountdown.js`, `motivation.js` (5 Untertypen, s.o. — einer davon aktuell inaktiv).
+- **`scheduler.js`:** `node-cron`-Tick alle 5 Minuten (Europe/Berlin), lädt Push-Subscriptions + Datenkontext (`dataLoader.js`), ruft alle Typen auf, sendet über bestehende `web-push`-Anbindung.
+- **Dedup:** neue Tabelle `notification_log (user_id, dedup_key, sent_at)`, `INSERT ... ON CONFLICT DO NOTHING`.
+- Nachrichtentexte datengetrieben, keine Platzhalter.
+
+**Frontend:**
+- Neuer Einstellungs-Tab **"🔔 Benachrichtigungen"** (`components/NotificationSettingsPanel.tsx`) — 6 Karten-Sektionen: Browser-Push-Status, Lernerinnerungen (Uhrzeit), Lernblöcke (Vorlauf), Spaced Repetition, Klausuren, Motivation.
+- `services/notificationSettings.ts` (Einstellungs-Datenmodell, localStorage + Cloud-Sync über `profiles.preferences.notification_settings`).
+
+**⚠️ MANUELL ZU ERLEDIGEN — Migration:** `backend/migration_notification_system.sql` muss in Supabase laufen, BEVOR das Backend neu deployed wird (erstellt `notification_log`-Tabelle, dokumentiert `push_subscriptions` nach). Die `block_status`-Spalte aus der ursprünglichen Migration ist nicht mehr nötig (Studienplaner verworfen) — falls die Migrationsdatei das noch enthält, diesen Teil beim Ausführen weglassen/ignorieren.
+
+**Verifiziert:** `tsc --noEmit`, `vitest run` (707 Tests grün), `npm run build` sauber — nach der Trennung erneut komplett durchlaufen. Bundle-Grep bestätigt: keine Studienplaner-Reste (`sp2b.`/`sp2c.`/`sp2d.`/`dnd-kit`), Benachrichtigung (`sp2e.`) und Wissensnetz-Node-Dialog (s.u.) vorhanden.
+
+**Committed:** ja, auf `main` (Node-Dialog per Fast-Forward-Merge von `feature/graph-node-dialog`, Benachrichtigung als eigener Commit obendrauf). **Deployed:** nur der Wissensnetz-Node-Dialog (s. Abschnitt unten) — das Benachrichtigungssystem ist committed, aber noch NICHT deployed (Migration steht noch aus, User-Freigabe zum Deployen noch nicht eingeholt).
+
+### Wissensnetz: Node-Erklärer zum Dialog ausgebaut — DEPLOYED
+
+Nach der bestehenden einmaligen KI-Erklärung zu einem Wissensnetz-Node kann der Nutzer jetzt Rückfragen stellen (5 Schnellaktionen + Freitextfeld), streng gebunden an den Node-Kontext (Titel/Beschreibung/Notizen/Beziehungen zu anderen Nodes) — kein allgemeiner Chat. Details in der Assistenten-Memory (`project_quizwise_knowledge_graph.md`, Abschnitt "Node-Erklärer zum Dialog ausgebaut"). Live auf studearc.com/www.studearc.com/quizwise-kappa.vercel.app, `npm run smoke` grün.
 
 ---
 
@@ -239,6 +273,9 @@ railway up --service quizwise-backend
 ---
 
 ## ⚠️ MANUELL ZU ERLEDIGEN
+
+### 0. ⚠️ OFFEN (07.08.2026): `backend/migration_notification_system.sql` ausführen, dann Backend deployen
+Supabase → SQL Editor → `backend/migration_notification_system.sql` ausführen (den `block_status`-Teil ggf. weglassen, s. Abschnitt "Was heute (07.08.2026) erledigt wurde" — das Studienplaner-Redesign, das dieses Feld gebraucht hätte, wurde verworfen). Erstellt: `notification_log`-Tabelle (Dedup für Benachrichtigungen), dokumentiert nachträglich die bereits live existierende `push_subscriptions`-Tabelle. **Ohne diese Migration läuft der neue Notification-Scheduler nicht** — Backend darf erst danach neu deployed werden. Frontend+Backend-Deploy für das Benachrichtigungssystem steht noch aus (User-Freigabe noch nicht eingeholt, s.o.).
 
 ### 1. SQL-Migration ausführen (Cloud-Sync aktivieren)
 Supabase → SQL Editor → `backend/migration_cloud_sync.sql` ausführen.

@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import {
   X, User, CreditCard, Palette, Key, Check, Loader2, Moon, Sun,
-  Zap, LogOut, AlertTriangle, Download, Trash2, Lock, ExternalLink, Shield
+  Zap, LogOut, AlertTriangle, Download, Trash2, Lock, ExternalLink, Shield, Bell
 } from 'lucide-react';
 import type { User as SupabaseUser } from '@supabase/supabase-js';
 import { supabase } from '../services/supabaseClient';
@@ -9,7 +9,7 @@ import { fetchUserProfile } from '../services/geminiService';
 import { applyAccentColor } from './ColorPicker';
 import { startCheckout } from '../services/stripeService';
 import { changePassword, deleteAccount, exportUserData, getInvoices, cancelSubscription } from '../services/userService';
-import { isPushSupported, getExistingSubscription, subscribeToPush, unsubscribeFromPush } from '../services/pushService';
+import { NotificationSettingsPanel } from './NotificationSettingsPanel';
 import { toast } from '../services/toast';
 import { useTranslation } from '../i18n/I18nProvider';
 import { formatDate } from '../i18n/dates';
@@ -55,7 +55,7 @@ function applyLineHeight(lh: string, userId?: string | null) {
   if (userId) import('../services/syncService').then(({ syncPreferences }) => syncPreferences(userId, { line_height: lh })).catch(() => {});
 }
 
-type Tab = 'profil' | 'abo' | 'design' | 'datenschutz' | 'api';
+type Tab = 'profil' | 'abo' | 'design' | 'benachrichtigungen' | 'datenschutz' | 'api';
 
 interface Props {
   user: SupabaseUser | null;
@@ -63,11 +63,12 @@ interface Props {
   onToggleTheme: () => void;
   onLogout: () => void;
   onClose: () => void;
+  initialTab?: Tab;
 }
 
-export const SettingsModal: React.FC<Props> = ({ user, isDark, onToggleTheme, onLogout, onClose }) => {
+export const SettingsModal: React.FC<Props> = ({ user, isDark, onToggleTheme, onLogout, onClose, initialTab }) => {
   const { t, locale, changeLocale } = useTranslation();
-  const [tab, setTab] = useState<Tab>('profil');
+  const [tab, setTab] = useState<Tab>(initialTab || 'profil');
 
   // Profil
   const [name, setName] = useState(user?.user_metadata?.full_name || '');
@@ -91,34 +92,6 @@ export const SettingsModal: React.FC<Props> = ({ user, isDark, onToggleTheme, on
   const [accentColor, setAccentColor] = useState(() => localStorage.getItem('accent_color') || '#D9A94E');
   const [fontChoice, setFontChoice] = useState(() => localStorage.getItem('font_choice') || 'inter');
   const [lineHeight, setLineHeight] = useState(() => localStorage.getItem('line_height') || '1.6');
-
-  // Push-Erinnerung
-  const [pushEnabled, setPushEnabled] = useState(false);
-  const [pushBusy, setPushBusy] = useState(false);
-
-  useEffect(() => {
-    if (!isPushSupported()) return;
-    getExistingSubscription().then(sub => setPushEnabled(!!sub)).catch(() => {});
-  }, []);
-
-  const handleTogglePush = async () => {
-    setPushBusy(true);
-    try {
-      if (pushEnabled) {
-        await unsubscribeFromPush();
-        setPushEnabled(false);
-        toast.info(t('settings.push.disabled'));
-      } else {
-        await subscribeToPush();
-        setPushEnabled(true);
-        toast.success(t('settings.push.enabled'));
-      }
-    } catch (e: any) {
-      toast.error(e?.message || t('settings.push.error'));
-    } finally {
-      setPushBusy(false);
-    }
-  };
 
   // API
   const [apiKey, setApiKey] = useState(localStorage.getItem('gemini_api_key') || '');
@@ -206,6 +179,7 @@ export const SettingsModal: React.FC<Props> = ({ user, isDark, onToggleTheme, on
     { id: 'profil',      label: t('settings.tab.profile'),      icon: <User className="w-4 h-4" strokeWidth={1.75} /> },
     { id: 'abo',         label: t('settings.tab.subscription'), icon: <CreditCard className="w-4 h-4" strokeWidth={1.75} /> },
     { id: 'design',      label: t('settings.tab.design'),       icon: <Palette className="w-4 h-4" strokeWidth={1.75} /> },
+    { id: 'benachrichtigungen', label: t('settings.tab.notifications'), icon: <Bell className="w-4 h-4" strokeWidth={1.75} /> },
     { id: 'datenschutz', label: t('settings.tab.privacy'),      icon: <Shield className="w-4 h-4" strokeWidth={1.75} /> },
     { id: 'api',         label: 'API',         icon: <Key className="w-4 h-4" strokeWidth={1.75} /> },
   ];
@@ -411,34 +385,6 @@ export const SettingsModal: React.FC<Props> = ({ user, isDark, onToggleTheme, on
           {tab === 'design' && (
             <div className="space-y-8">
 
-              {/* Tägliche Lern-Erinnerung (Web Push) */}
-              {isPushSupported() && (
-                <div className="space-y-3">
-                  <p className="text-[10px] font-black uppercase tracking-widest text-slate-400">{t('settings.notifications')}</p>
-                  <button
-                    onClick={handleTogglePush}
-                    disabled={pushBusy}
-                    className="w-full flex items-center justify-between px-5 py-4 rounded-2xl transition-all hover:opacity-90 disabled:opacity-50 text-left"
-                    style={{ background: 'color-mix(in srgb, var(--border-color) 30%, var(--bg-main))', border: '1px solid var(--border-color)' }}
-                  >
-                    <div className="min-w-0 pr-3">
-                      <p className="text-[11px] font-black uppercase tracking-widest dark:text-white">{t('settings.dailyReminder')}</p>
-                      <p className="text-[10px] font-medium text-slate-400 mt-0.5">
-                        {pushEnabled
-                          ? t('settings.reminderActive')
-                          : t('settings.reminderInactive')}
-                      </p>
-                    </div>
-                    <div
-                      className="w-11 h-6 rounded-full p-0.5 shrink-0 transition-all"
-                      style={{ background: pushEnabled ? 'var(--primary)' : 'var(--border-color)' }}
-                    >
-                      <div className={`w-5 h-5 rounded-full bg-white shadow transition-transform ${pushEnabled ? 'translate-x-5' : ''}`} />
-                    </div>
-                  </button>
-                </div>
-              )}
-
               {/* Erscheinungsbild */}
               <div className="space-y-3">
                 <p className="text-[10px] font-black uppercase tracking-widest text-slate-400">{t('settings.appearance')}</p>
@@ -551,6 +497,9 @@ export const SettingsModal: React.FC<Props> = ({ user, isDark, onToggleTheme, on
 
             </div>
           )}
+
+          {/* ── BENACHRICHTIGUNGEN ── */}
+          {tab === 'benachrichtigungen' && <NotificationSettingsPanel userId={user?.id} />}
 
           {/* ── DATENSCHUTZ ── */}
           {tab === 'datenschutz' && (!user ? <NotLoggedIn /> : (

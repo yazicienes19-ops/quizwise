@@ -32,6 +32,7 @@ export interface CloudPreferences {
   recall_intro_done?: boolean;
   spaced_planning?: boolean;
   language?: string;
+  notification_settings?: Record<string, any>;
 }
 
 export interface AllCloudData {
