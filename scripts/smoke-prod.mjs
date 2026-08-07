@@ -6,9 +6,15 @@
 //   2. Login mountet die App (Konto-Daten-Klasse)
 //   3. App startet auch mit VOLLEM localStorage (QuotaExceeded-Klasse, 19.07.2026)
 
+// Zugangsdaten NICHT hier hardcoden (Repo ist öffentlich auf GitHub) — via
+// SMOKE_USER/SMOKE_PASS setzen, z.B. aus einer lokalen, gitignorten .env.test.local.
 const URL = process.env.SMOKE_URL || 'https://www.studearc.com/';
-const USER = process.env.SMOKE_USER || 'demo@quizwise.app';
-const PASS = process.env.SMOKE_PASS || 'QuizWise2026!';
+const USER = process.env.SMOKE_USER;
+const PASS = process.env.SMOKE_PASS;
+if (!USER || !PASS) {
+  console.error('❌ SMOKE_USER/SMOKE_PASS fehlen (nicht mehr hartkodiert, s. Kommentar oben).');
+  process.exit(2);
+}
 
 let chromium;
 try { ({ chromium } = await import('playwright')); }

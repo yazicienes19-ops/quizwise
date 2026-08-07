@@ -10,7 +10,7 @@
     "lint": "tsc --noEmit",
     "test": "vitest run",
     "test:watch": "vitest",
-    "smoke": "node scripts/smoke-prod.mjs"
+    "smoke": "node --env-file-if-exists=.env.test.local scripts/smoke-prod.mjs"
   },
   "dependencies": {
     "@capacitor/core": "^8.4.1",
