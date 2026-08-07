@@ -25,6 +25,21 @@ const getTopicBloomHints = () =>
     .filter(t => t.bloomLevel)
     .map(t => ({ topic: t.topic, bloomLevel: t.bloomLevel! }));
 
+/** Ein Wiederholungsversuch bei komplett leerem Ergebnis — seltener Einzelfall,
+ *  wenn die Modellantwort bei sehr verbosen Themen abgeschnitten wird und das
+ *  JSON dadurch nicht mehr parsbar ist (Live-Befund 2026-08-07). Gleiches
+ *  Retry-Once-Muster wie an anderen Stellen im Projekt (z.B. classifyBloomLevels)
+ *  statt den Nutzer bei einem einmaligen Ausreißer sofort zu blockieren. */
+const generateQuizWithRetry = async (
+  source: GenerationSource,
+  quizType: QuizType,
+  options?: Parameters<typeof generateQuizFromDocument>[2]
+): Promise<QuizQuestion[]> => {
+  const first = await generateQuizFromDocument(source, quizType, options);
+  if (first.length > 0) return first;
+  return generateQuizFromDocument(source, quizType, options);
+};
+
 interface UseQuizStateParams {
   userId?: string | null;
   documents: ProcessedDocument[];
@@ -178,7 +193,7 @@ export const useQuizState = (params: UseQuizStateParams) => {
       const source = params.getDocumentSource(doc);
       const excludeTopics = getUsedTopics(doc.id);
       const topicBloomHints = getTopicBloomHints();
-      const rawQuiz = await generateQuizFromDocument(source, quizType, { ...options, excludeTopics, topicBloomHints });
+      const rawQuiz = await generateQuizWithRetry(source, quizType, { ...options, excludeTopics, topicBloomHints });
       if (!rawQuiz.length) throw new Error('Daraus ließen sich keine Fragen erstellen. Bitte versuche es noch einmal.');
       const quiz = interleaveQuestionsByTopic(rawQuiz);
       const meta = { docId: doc.id, docName: documentDisplayName(doc) };
@@ -235,7 +250,7 @@ export const useQuizState = (params: UseQuizStateParams) => {
         ? `Fokus auf schwache Themen: ${stats.weakTopics.join(', ')}` : undefined;
       const excludeTopics = getUsedTopics(metaDocId);
       const topicBloomHints = getTopicBloomHints();
-      const rawQuiz = await generateQuizFromDocument(source, QuizType.CUSTOM, {
+      const rawQuiz = await generateQuizWithRetry(source, QuizType.CUSTOM, {
         customCount: config.questionCount,
         customDifficulty: config.difficulty,
         customFocus,

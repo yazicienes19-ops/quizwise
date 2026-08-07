@@ -542,12 +542,12 @@ STRENGE DIVERSITÄTS-REGELN (zwingend einhalten):
 4. Wechsle die kognitive Ebene pro Frage: Wissen → Verstehen → Anwenden → Analysieren → Bewerten → wieder von vorne
 5. Fragen die logisch ähnlich oder Umformulierungen voneinander sind, sind verboten
 
-ANTWORTOPTIONEN-REGELN für MC/Single/TF/Szenario (zwingend einhalten):
-6. Alle 4 Antwortoptionen MÜSSEN gleich lang sein — gleiche Anzahl Wörter (±3 Wörter Toleranz)
+ANTWORTOPTIONEN-REGELN (zwingend einhalten):
+6. NUR bei Fragetypen mit 4 Antwortoptionen (Multiple-Choice, Single-Choice, Szenario): alle 4 Optionen MÜSSEN gleich lang sein — gleiche Anzahl Wörter (±3 Wörter Toleranz). Wahr/Falsch hat IMMER genau 2 Optionen ("Wahr"/"Falsch") — diese Regel gilt dafür NICHT, dort niemals mehr als diese 2 Optionen erzeugen.
 7. Die richtige Antwort darf sich nicht durch Länge, Stil oder Formulierungsmuster von den falschen unterscheiden
-8. Keine offensichtlich falschen Distraktoren — alle Optionen müssen plausibel klingen
+8. Keine offensichtlich falschen Distraktoren — alle Optionen (bzw. bei Wahr/Falsch die Falsch-Aussage) müssen plausibel klingen
 
-Zu jeder Frage: Erklärung (explanation), Textbezug (sourceReference), Thema (topic) und Schwierigkeitsgrad (difficulty) IMMER befüllen.${outputLangDirective()}` });
+Zu jeder Frage: Erklärung (explanation), Textbezug (sourceReference), Thema (topic) und Schwierigkeitsgrad (difficulty) IMMER befüllen. topic MUSS kurz sein — 2 bis 6 Wörter, ein Fachbegriff/Unterthema, KEIN ganzer Satz und keine Erklärung.${outputLangDirective()}` });
     return callBackend({
       complexity: 'heavy',
       parts: batchParts,
