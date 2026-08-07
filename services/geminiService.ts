@@ -469,8 +469,14 @@ export const generateQuizFromDocument = async (
   const typeInstruction = buildTypeInstruction(options?.questionType ?? 'mixed');
 
   const bloomHints = options?.topicBloomHints ?? [];
+  // WICHTIG: bewusst knapp gehalten (max. 12 statt vorher 30 Einträge) und
+  // als reine BEDINGTE Zusatzregel formuliert, NICHT als Themenliste, die
+  // abgedeckt werden muss — eine frühere Formulierung ("für folgende Themen
+  // fragen") wurde vom Modell offenbar teils als Pflicht-Themenliste
+  // gelesen und kollidierte dann mit der fixen Gesamtanzahl (führte zu
+  // sichtbar zu wenigen oder fehlerhaften Fragen, Live-Befund 2026-08-07).
   const bloomHintLine = bloomHints.length > 0
-    ? `\nBLOOM-STUFEN-STEUERUNG: Für folgende, bereits bekannte Themen (basierend auf bisheriger Leistung des Nutzers) genau auf dieser kognitiven Stufe fragen — erinnern=Fakten abrufen, verstehen=erklären/zusammenfassen, anwenden=auf einen neuen Fall anwenden, analysieren=Zusammenhänge zerlegen/vergleichen:\n${bloomHints.slice(-30).map(h => `${h.topic} → ${h.bloomLevel}`).join('\n')}\nFür alle anderen, hier nicht gelisteten Themen: bleibe bei "erinnern" bis "verstehen". Weise jeder Frage über das Feld bloomLevel ehrlich die Stufe zu, die du für sie tatsächlich verwendet hast (kein Rückschluss aus Fragetyp/Länge im Nachhinein).\n`
+    ? `\nBLOOM-STUFEN-HINWEIS (nur anwenden, WENN eine Frage ohnehin zu einem dieser Themen passt — ändert NICHTS an der oben geforderten Gesamtanzahl, erzwingt KEINE zusätzlichen Themen): Falls eine Frage zu einem der folgenden Themen entsteht, wähle bewusst die dort genannte kognitive Stufe (erinnern=Fakten abrufen, verstehen=erklären/zusammenfassen, anwenden=auf einen neuen Fall anwenden, analysieren=Zusammenhänge zerlegen/vergleichen). Bei allen anderen Themen: freie Wahl, tendenziell "erinnern" bis "verstehen".\n${bloomHints.slice(-12).map(h => `${h.topic} → ${h.bloomLevel}`).join('\n')}\nWeise jeder Frage über das Feld bloomLevel ehrlich die Stufe zu, die du tatsächlich verwendet hast.\n`
     : '';
 
   const quizSchema = {
