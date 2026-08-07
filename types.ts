@@ -59,6 +59,9 @@ export interface TopicSecurity {
   confidence: number;                     // 0–100
   security: 'sicher' | 'unsicher' | 'kritisch';
   weakCount: number;                      // wie oft als Schwachstelle aufgetaucht
+  /** Nur von buildRealTopicMastery gesetzt — aus der chronologischen Antwort-Historie
+   *  hergeleitete Bloom-Stufe (services/bloomProgression.ts computeBloomStage). */
+  bloomLevel?: BloomLevel;
 }
 
 export type ExamCategory = 'definition' | 'verstaendnis' | 'transfer' | 'beispiel' | 'rechnung' | 'fachbegriff';
@@ -142,6 +145,10 @@ export interface QuizQuestion {
   sourceReference: string;
   topic?: string;
   difficulty?: 'leicht' | 'mittel' | 'schwer';
+  /** Kognitive Bloom-Stufe — von der KI direkt bei der Generierung self-gelabelt
+   *  (kein zweiter Klassifikations-Call wie beim Klausursimulator, s. services/bloomProgression.ts).
+   *  Steuert die adaptive Fragenauswahl innerhalb einer Session. */
+  bloomLevel?: BloomLevel;
   learningGoal?: string;
   questionType?: 'mc' | 'single' | 'truefalse' | 'open' | 'matching' | 'cloze' | 'ranking' | 'numeric' | 'scenario';
   // Szenario-basiert (Fallbeispiel)
@@ -158,8 +165,15 @@ export interface QuizQuestion {
   numericTolerance?: number;
 }
 
+/** Konkrete, einzeln wählbare Fragetypen (Basis + "Weitere Fragetypen"-Bereich in QuizSetup).
+ *  Numeric/Szenario bleiben bewusst nur über 'mixed' erreichbar. */
+export type ConcreteQuestionType = 'mc' | 'truefalse' | 'open' | 'matching' | 'cloze' | 'ranking';
+
 export interface QuizConfig {
-  questionType: 'mc' | 'truefalse' | 'open' | 'mixed' | 'matching' | 'cloze' | 'ranking';
+  /** 'mixed' = volle Palette (heutiges Verhalten). Sonst eine nicht-leere Liste
+   *  konkreter Typen — auch bei genau einem gewählten Typ ein Array mit 1 Element,
+   *  damit Einzel- und Mehrfachauswahl denselben Pfad nutzen. */
+  questionType: 'mixed' | ConcreteQuestionType[];
   difficulty: 'leicht' | 'mittel' | 'schwer' | 'klausurnah';
   questionCount: number;
   focus: 'all' | 'weak';

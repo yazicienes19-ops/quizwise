@@ -1,5 +1,5 @@
 import React, { useState, useMemo } from 'react';
-import type { ProcessedDocument, QuizConfig } from '../types';
+import type { ProcessedDocument, QuizConfig, ConcreteQuestionType } from '../types';
 import { getDocStats } from '../services/quizHistoryService';
 import { detectChapters, extractChapterText, getTextForChapterDetection, Chapter } from '../services/chapterService';
 import { documentDisplayName } from '../services/libraryService';
@@ -15,11 +15,20 @@ interface QuizSetupProps {
   initialFocus?: QuizConfig['focus'];
 }
 
-const QUESTION_TYPES: { value: QuizConfig['questionType']; labelKey: TKey; descKey: TKey }[] = [
+const QUESTION_TYPES: { value: 'mixed' | ConcreteQuestionType; labelKey: TKey; descKey: TKey }[] = [
   { value: 'mixed',    labelKey: 'qType.mixed',     descKey: 'qType.mixed.desc' },
   { value: 'mc',       labelKey: 'qType.mc',        descKey: 'qType.mc.desc' },
   { value: 'truefalse',labelKey: 'qType.truefalse', descKey: 'qType.truefalse.desc' },
   { value: 'open',     labelKey: 'qType.open',      descKey: 'qType.open.desc' },
+];
+
+/** "Weitere Fragetypen" — standardmäßig eingeklappt, einzeln UND kombinierbar
+ *  wählbar (mit den 4 Haupt-Chips oben und untereinander). Numeric bleibt
+ *  bewusst nur über "Gemischt" erreichbar (kein eigener Generierungs-Pfad). */
+const ADVANCED_TYPES: { value: ConcreteQuestionType; labelKey: TKey; descKey: TKey }[] = [
+  { value: 'matching', labelKey: 'qType.matching', descKey: 'qType.matching.desc' },
+  { value: 'cloze',    labelKey: 'qType.cloze',    descKey: 'qType.cloze.desc' },
+  { value: 'ranking',  labelKey: 'qType.ranking',  descKey: 'qType.ranking.desc' },
 ];
 
 const DIFFICULTIES: { value: QuizConfig['difficulty']; labelKey: TKey; color: string }[] = [
@@ -53,7 +62,10 @@ const Chip: React.FC<{ selected: boolean; onClick: () => void; label: string; de
 
 export const QuizSetup: React.FC<QuizSetupProps> = ({ doc, availableDocs, onStart, onBack, initialFocus }) => {
   const { t } = useTranslation();
-  const [questionType, setQuestionType] = useState<QuizConfig['questionType']>('mixed');
+  // 'mixed' als Sonderwert im Set, oder 1+ konkrete Typen — nie leer (fällt bei
+  // Abwahl des letzten konkreten Typs automatisch auf 'mixed' zurück).
+  const [selectedTypes, setSelectedTypes] = useState<Set<string>>(new Set(['mixed']));
+  const [showAdvancedTypes, setShowAdvancedTypes] = useState(false);
   const [difficulty, setDifficulty]     = useState<QuizConfig['difficulty']>('mittel');
   const [questionCount, setQuestionCount] = useState(10);
   const [customCount, setCustomCount]   = useState('');
@@ -84,6 +96,24 @@ export const QuizSetup: React.FC<QuizSetupProps> = ({ doc, availableDocs, onStar
     setSelectedDocIds(prev =>
       prev.includes(id) ? (prev.length > 1 ? prev.filter(d => d !== id) : prev) : [...prev, id]
     );
+  };
+
+  /** Klick auf "Gemischt" setzt das Set hart zurück. Klick auf einen konkreten
+   *  Typ verlässt "Gemischt" und toggelt diesen Typ; wird das Set dabei leer,
+   *  fällt es automatisch auf "Gemischt" zurück (nie eine leere Auswahl). */
+  const toggleType = (value: string) => {
+    setSelectedTypes(prev => {
+      if (value === 'mixed') return new Set(['mixed']);
+      const next = new Set(prev);
+      next.delete('mixed');
+      if (next.has(value)) {
+        next.delete(value);
+        if (next.size === 0) return new Set(['mixed']);
+      } else {
+        next.add(value);
+      }
+      return next;
+    });
   };
 
   const otherDocs = availableDocs?.filter(d => d.id !== doc.id) ?? [];
@@ -168,7 +198,7 @@ export const QuizSetup: React.FC<QuizSetupProps> = ({ doc, availableDocs, onStar
         <p className="text-[9px] font-black uppercase tracking-widest text-slate-400">{t('quizSetup.questionType')}</p>
         <div className="grid grid-cols-2 gap-2">
           {QUESTION_TYPES.map(({ value, labelKey, descKey }) => (
-            <Chip key={value} selected={questionType === value} onClick={() => setQuestionType(value)} label={t(labelKey)} desc={t(descKey)} />
+            <Chip key={value} selected={selectedTypes.has(value)} onClick={() => toggleType(value)} label={t(labelKey)} desc={t(descKey)} />
           ))}
         </div>
       </div>
@@ -181,6 +211,28 @@ export const QuizSetup: React.FC<QuizSetupProps> = ({ doc, availableDocs, onStar
             <Chip key={value} selected={difficulty === value} onClick={() => setDifficulty(value)} label={t(labelKey)} accent={value === 'klausurnah' && difficulty === 'klausurnah'} />
           ))}
         </div>
+      </div>
+
+      {/* Weitere Fragetypen — progressive disclosure, standardmäßig eingeklappt */}
+      <div className="space-y-3">
+        <button
+          onClick={() => setShowAdvancedTypes(v => !v)}
+          className="flex items-center gap-2 text-[9px] font-black uppercase tracking-widest text-slate-400 hover:text-indigo-600 transition-colors"
+        >
+          <svg xmlns="http://www.w3.org/2000/svg" width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round"
+            className={`transition-transform ${showAdvancedTypes ? 'rotate-90' : ''}`}
+          >
+            <polyline points="9 18 15 12 9 6"/>
+          </svg>
+          {t('quizSetup.moreTypes')}
+        </button>
+        {showAdvancedTypes && (
+          <div className="grid grid-cols-3 gap-2 animate-in fade-in slide-in-from-top-2 duration-300">
+            {ADVANCED_TYPES.map(({ value, labelKey, descKey }) => (
+              <Chip key={value} selected={selectedTypes.has(value)} onClick={() => toggleType(value)} label={t(labelKey)} desc={t(descKey)} />
+            ))}
+          </div>
+        )}
       </div>
 
       {/* Count */}
@@ -235,7 +287,12 @@ export const QuizSetup: React.FC<QuizSetupProps> = ({ doc, availableDocs, onStar
 
       {/* CTA */}
       <button
-        onClick={() => onStart({ questionType, difficulty, questionCount: effectiveCount, focus, examMode }, selectedDocIds)}
+        onClick={() => {
+          const questionType: QuizConfig['questionType'] = selectedTypes.has('mixed')
+            ? 'mixed'
+            : (Array.from(selectedTypes) as ConcreteQuestionType[]);
+          onStart({ questionType, difficulty, questionCount: effectiveCount, focus, examMode }, selectedDocIds);
+        }}
         className="w-full py-5 rounded-[24px] font-black uppercase tracking-widest text-[11px] shadow-3d-deep hover:scale-[1.02] active:scale-[0.98] transition-all flex items-center justify-center gap-3"
         style={{ background: 'var(--primary)', color: 'var(--primary-text)' }}
       >

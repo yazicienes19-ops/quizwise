@@ -1,4 +1,5 @@
-import type { QuizQuestion } from '../types';
+import type { QuizQuestion, BloomLevel } from '../types';
+import { BLOOM_LEVELS } from './bloomPresets';
 
 /**
  * Normalisierung von KI-generierten Quiz-Fragen.
@@ -71,6 +72,9 @@ export const normalizeQuizQuestions = (raw: unknown): QuizQuestion[] => {
       sourceReference: typeof q.sourceReference === 'string' ? q.sourceReference : '',
       topic: typeof q.topic === 'string' ? q.topic : undefined,
       difficulty: q.difficulty,
+      // Self-gelabelt im selben Generierungs-Call (kein zweiter Klassifikations-Call,
+      // s. services/bloomProgression.ts) — nur übernehmen wenn ein gültiger Wert.
+      bloomLevel: BLOOM_LEVELS.includes(q.bloomLevel) ? (q.bloomLevel as BloomLevel) : undefined,
       learningGoal: typeof q.learningGoal === 'string' ? q.learningGoal : undefined,
       questionType: questionType as QuizQuestion['questionType'],
       scenarioText: typeof q.scenarioText === 'string' ? q.scenarioText : undefined,

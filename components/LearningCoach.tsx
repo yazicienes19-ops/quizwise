@@ -230,7 +230,11 @@ export const LearningCoach: React.FC<LearningCoachProps> = ({ metrics, decks, on
     if (!hasAnyData || !hasEnoughForCoach) return;
     setIsLoading(true);
     try {
-      const result = await generateCoachInsights(profile, wrongAnswersCtx);
+      // Echte Subthemen (inkl. hergeleitetem bloomLevel, s. learningProfileService.ts)
+      // statt der doc-name-basierten profile.topicMastery an die KI geben, falls
+      // vorhanden — profile selbst bleibt unangetastet (ExamGenerator hängt daran).
+      const coachProfile = realTopics.length > 0 ? { ...profile, topicMastery: realTopics } : profile;
+      const result = await generateCoachInsights(coachProfile, wrongAnswersCtx);
       setInsights(result);
       try {
         localStorage.setItem(insightsCacheKey(activeModule?.id), JSON.stringify({

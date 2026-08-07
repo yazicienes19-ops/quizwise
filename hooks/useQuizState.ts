@@ -12,6 +12,18 @@ import { interleaveByKey, interleaveQuestionsByTopic } from '../services/interle
 import { countDueCards, migrateLegacyCard, createSrsState } from '../services/spacedRepetition';
 import { recordActivity } from '../services/streakService';
 import { toast } from '../services/toast';
+import { getAllResults } from '../services/quizHistoryService';
+import { getAllExamResults } from '../services/examHistoryService';
+import { getAllRecallResults } from '../services/recallHistoryService';
+import { buildRealTopicMastery } from '../services/learningProfileService';
+
+/** Bloom-Stufen-Hinweise pro Thema aus der bisherigen Historie (services/bloomProgression.ts) —
+ *  steuert die adaptive Quiz-Generierung, ohne einen eigenen State/eine eigene
+ *  Persistenz zu brauchen (reine Lesefunktion auf ohnehin gespeicherten Daten). */
+const getTopicBloomHints = () =>
+  buildRealTopicMastery(getAllResults(), getAllExamResults(), getAllRecallResults())
+    .filter(t => t.bloomLevel)
+    .map(t => ({ topic: t.topic, bloomLevel: t.bloomLevel! }));
 
 interface UseQuizStateParams {
   userId?: string | null;
@@ -165,7 +177,8 @@ export const useQuizState = (params: UseQuizStateParams) => {
     try {
       const source = params.getDocumentSource(doc);
       const excludeTopics = getUsedTopics(doc.id);
-      const rawQuiz = await generateQuizFromDocument(source, quizType, { ...options, excludeTopics });
+      const topicBloomHints = getTopicBloomHints();
+      const rawQuiz = await generateQuizFromDocument(source, quizType, { ...options, excludeTopics, topicBloomHints });
       if (!rawQuiz.length) throw new Error('Daraus ließen sich keine Fragen erstellen. Bitte versuche es noch einmal.');
       const quiz = interleaveQuestionsByTopic(rawQuiz);
       const meta = { docId: doc.id, docName: documentDisplayName(doc) };
@@ -221,12 +234,14 @@ export const useQuizState = (params: UseQuizStateParams) => {
       const customFocus = config.focus === 'weak' && stats.weakTopics.length > 0
         ? `Fokus auf schwache Themen: ${stats.weakTopics.join(', ')}` : undefined;
       const excludeTopics = getUsedTopics(metaDocId);
+      const topicBloomHints = getTopicBloomHints();
       const rawQuiz = await generateQuizFromDocument(source, QuizType.CUSTOM, {
         customCount: config.questionCount,
         customDifficulty: config.difficulty,
         customFocus,
         questionType: config.questionType,
         excludeTopics,
+        topicBloomHints,
       });
       if (!rawQuiz.length) throw new Error('Daraus ließen sich keine Fragen erstellen. Bitte versuche es noch einmal.');
       const quiz = interleaveQuestionsByTopic(rawQuiz);

@@ -4,6 +4,7 @@ import { EmojiImage } from './EmojiImage';
 import { AnimatedBar } from './AnimatedBar';
 import { useTranslation } from '../i18n/I18nProvider';
 import { matchBlank } from '../services/blankMatch';
+import { pickNextQuestionIndex } from '../services/adaptiveQuizOrder';
 
 interface QuizPlayerProps {
   questions: QuizQuestion[];
@@ -36,7 +37,12 @@ export const QuizPlayer: React.FC<QuizPlayerProps> = ({
   questions, onComplete, onCancel, onProgress, onSave, sourceName, examMode, initialAnswers, onDeleteCurrent,
 }) => {
   const { t } = useTranslation();
-  const [currentIndex, setCurrentIndex]         = useState(initialAnswers?.length ?? 0);
+  // shownIndex = Original-Array-Index der aktuell gezeigten Frage (nicht mehr
+  // zwingend die Array-Position) — adaptive Bloom-Umsortierung innerhalb der
+  // Session, s. services/adaptiveQuizOrder.ts. Ohne bloomLevel-Tags (Mistake-
+  // Review, Altbestand) verhält sich das exakt wie die frühere sequenzielle
+  // Reihenfolge (Neutral-per-default-Eigenschaft der Auswahlfunktion).
+  const [shownIndex, setShownIndex]             = useState(() => pickNextQuestionIndex(questions, initialAnswers ?? []));
   const [answers, setAnswers]                   = useState<UserAnswer[]>(initialAnswers ?? []);
   const [showResult, setShowResult]             = useState(false);
   const [showExplanation, setShowExplanation]   = useState(false);
@@ -59,7 +65,7 @@ export const QuizPlayer: React.FC<QuizPlayerProps> = ({
   // Ranking
   const [rankingOrder, setRankingOrder]         = useState<string[]>([]);
 
-  const currentQuestion = questions[currentIndex];
+  const currentQuestion = questions[shownIndex];
   const qt = currentQuestion?.questionType;
   const isOpen     = qt === 'open' || (!qt && (currentQuestion?.options?.length === 0));
   const isMatching = qt === 'matching';
@@ -80,12 +86,12 @@ export const QuizPlayer: React.FC<QuizPlayerProps> = ({
   const shuffledRight = useMemo(() => {
     if (!currentQuestion?.matchPairs) return [];
     return shuffle(currentQuestion.matchPairs.map(p => p.right));
-  }, [currentIndex]);
+  }, [shownIndex]);
 
   const shuffledRanking = useMemo(() => {
     if (!currentQuestion?.rankingItems) return [];
     return shuffle(currentQuestion.rankingItems);
-  }, [currentIndex]);
+  }, [shownIndex]);
 
   useEffect(() => {
     setSelectedOptions([]);
@@ -98,7 +104,7 @@ export const QuizPlayer: React.FC<QuizPlayerProps> = ({
     setClozeAnswer([]);
     setNumericInput('');
     setRankingOrder(shuffledRanking);
-  }, [currentIndex]);
+  }, [shownIndex]);
 
   useEffect(() => {
     if (shuffledRanking.length > 0 && rankingOrder.length === 0) {
@@ -171,7 +177,7 @@ export const QuizPlayer: React.FC<QuizPlayerProps> = ({
   const handleNext = useCallback(() => {
     const isCorrect = checkCorrectness();
     const newAnswer: UserAnswer = {
-      questionIndex: currentIndex,
+      questionIndex: shownIndex,
       selectedOptionIndices: selectedOptions,
       isCorrect,
       ...(isOpen               ? { textAnswer: '' }           : {}),
@@ -184,13 +190,14 @@ export const QuizPlayer: React.FC<QuizPlayerProps> = ({
     const newAnswers = [...answers, newAnswer];
     setAnswers(newAnswers);
     onProgress?.(newAnswers);
-    if (currentIndex < questions.length - 1) {
-      setCurrentIndex(currentIndex + 1);
+    const next = pickNextQuestionIndex(questions, newAnswers);
+    if (next !== -1) {
+      setShownIndex(next);
     } else {
       onComplete(newAnswers);
     }
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [currentIndex, questions.length, answers, selectedOptions, confidence, isOpen, isMatching, isCloze, isNumeric, isRanking, matchAnswer, clozeAnswer, numericInput, rankingOrder, onComplete]);
+  }, [shownIndex, questions, answers, selectedOptions, confidence, isOpen, isMatching, isCloze, isNumeric, isRanking, matchAnswer, clozeAnswer, numericInput, rankingOrder, onComplete]);
 
   // Keyboard: 1–4 select option, Enter confirm/next
   useEffect(() => {
@@ -215,7 +222,9 @@ export const QuizPlayer: React.FC<QuizPlayerProps> = ({
 
   if (!currentQuestion) return null;
 
-  const progress = ((currentIndex + 1) / questions.length) * 100;
+  // answers.length statt shownIndex: "wievielte Frage wird gerade gezeigt" ist
+  // jetzt unabhängig vom Original-Array-Index (adaptive Umsortierung).
+  const progress = ((answers.length + 1) / questions.length) * 100;
 
   // ─── Question type badge ─────────────────────────────────────────────────
   const TYPE_BADGE: Record<string, string> = {
@@ -540,12 +549,12 @@ export const QuizPlayer: React.FC<QuizPlayerProps> = ({
           <p className="text-[9px] font-black uppercase tracking-[0.3em] text-indigo-500 break-words">{sourceName}</p>
         )}
         <div className="flex justify-between items-center text-[10px] font-black uppercase text-slate-400 tracking-widest">
-          <span>{t('quiz.questionOf', { n: currentIndex + 1, total: questions.length })}</span>
+          <span>{t('quiz.questionOf', { n: answers.length + 1, total: questions.length })}</span>
           <div className="flex items-center gap-3">
             {onDeleteCurrent && (
               <button
                 onClick={() => {
-                  if (window.confirm(t('quiz.deleteMistakeConfirm'))) onDeleteCurrent(currentIndex);
+                  if (window.confirm(t('quiz.deleteMistakeConfirm'))) onDeleteCurrent(shownIndex);
                 }}
                 className="flex items-center gap-1 text-slate-400 hover:text-rose-500 transition-colors"
                 title={t('quiz.deleteMistake')}
@@ -569,10 +578,10 @@ export const QuizPlayer: React.FC<QuizPlayerProps> = ({
         <div
           className="w-full h-2 bg-slate-200 dark:bg-slate-800 rounded-full overflow-hidden"
           role="progressbar"
-          aria-valuenow={currentIndex + 1}
+          aria-valuenow={answers.length + 1}
           aria-valuemin={1}
           aria-valuemax={questions.length}
-          aria-label={t('quiz.progressLabel', { n: currentIndex + 1, total: questions.length })}
+          aria-label={t('quiz.progressLabel', { n: answers.length + 1, total: questions.length })}
         >
           <AnimatedBar percent={progress} className="h-full" style={{ background: 'var(--primary)' }} duration={700} />
         </div>
@@ -704,7 +713,7 @@ export const QuizPlayer: React.FC<QuizPlayerProps> = ({
                 className="flex-1 py-4 rounded-[20px] font-black uppercase tracking-widest text-[10px] shadow-3d-raised hover:scale-[1.02] active:scale-[0.98] transition-all flex items-center justify-center gap-2 min-h-[52px]"
                 style={{ background: 'var(--primary)', color: 'var(--primary-text)' }}
               >
-                {currentIndex < questions.length - 1 ? t('quiz.nextQuestion') : t('quiz.showResults')}
+                {answers.length < questions.length - 1 ? t('quiz.nextQuestion') : t('quiz.showResults')}
                 <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round">
                   <line x1="5" y1="12" x2="19" y2="12"/><polyline points="12 5 19 12 12 19"/>
                 </svg>

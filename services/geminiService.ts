@@ -25,6 +25,7 @@ import {
   CoachInsights,
   BloomLevel,
   ExamTypePreset,
+  ConcreteQuestionType,
 } from "../types";
 
 // ─── Backend-Verbindung ──────────────────────────────────────────────────────
@@ -32,6 +33,7 @@ import { supabase } from './supabaseClient';
 import { parseQuizQuestions } from './quizNormalize';
 import { parseCoachInsights } from './coachInsightsNormalize';
 import { BLOOM_LEVELS, buildBloomTargetLine, mergeBloomLevels } from './bloomPresets';
+import { buildTypeInstruction } from './quizTypeInstruction';
 import { outputLangDirective, explainerHeadings } from './aiLocale';
 import { t } from '../i18n';
 import { validateLearningAnalysis, EMPTY_ANALYSIS, ACTION_TYPES } from './analysisValidation';
@@ -437,8 +439,13 @@ export const generateQuizFromDocument = async (
     customCount?: number;
     customDifficulty?: string;
     customFocus?: string;
-    questionType?: 'mc' | 'truefalse' | 'open' | 'mixed' | 'matching' | 'cloze' | 'ranking';
+    questionType?: 'mixed' | ConcreteQuestionType[];
     excludeTopics?: string[];
+    /** Aus buildRealTopicMastery hergeleitet (services/learningProfileService.ts) —
+     *  steuert pro bereits bekanntem Thema die Ziel-Bloom-Stufe VOR der Generierung.
+     *  Kein zweiter Klassifikations-Call: die KI liefert bloomLevel direkt im selben
+     *  Call mit (s. services/bloomProgression.ts für die Herleitung der Stufen). */
+    topicBloomHints?: { topic: string; bloomLevel: BloomLevel }[];
   }
 ): Promise<QuizQuestion[]> => {
   const parts: any[] = [sourceTopart(source)];
@@ -459,35 +466,12 @@ export const generateQuizFromDocument = async (
     difficulty = 'leicht bis mittel';
   }
 
-  const qt = options?.questionType ?? 'mixed';
-  let typeInstruction: string;
+  const typeInstruction = buildTypeInstruction(options?.questionType ?? 'mixed');
 
-  if (qt === 'mc') {
-    typeInstruction = 'FRAGETYP: Erstelle AUSSCHLIESSLICH Multiple-Choice-Fragen. questionType: "mc". isMultipleChoice: true. 2-3 korrekte Antworten aus 4 Optionen. options[]: genau 4 Antworten. Alle anderen Felder (matchPairs, clozeText usw.) als leer/null lassen.';
-  } else if (qt === 'truefalse') {
-    typeInstruction = 'FRAGETYP: Erstelle NUR Wahr/Falsch-Fragen. questionType: "truefalse". options: ["Wahr","Falsch"]. isMultipleChoice: false. correctAnswerIndices: [0] für wahr, [1] für falsch.';
-  } else if (qt === 'open') {
-    typeInstruction = 'FRAGETYP: Erstelle AUSSCHLIESSLICH offene Fragen. questionType: "open". options: []. correctAnswerIndices: []. isMultipleChoice: false. explanation = vollständige Musterantwort.';
-  } else if (qt === 'matching') {
-    typeInstruction = 'FRAGETYP: Erstelle AUSSCHLIESSLICH Zuordnungsfragen. questionType: "matching". matchPairs: 4 korrekte {left, right}-Paare. options: []. correctAnswerIndices: []. isMultipleChoice: false.';
-  } else if (qt === 'cloze') {
-    typeInstruction = 'FRAGETYP: Erstelle AUSSCHLIESSLICH Lückentexte. questionType: "cloze". clozeText: Satz mit "__LÜCKE__" als Platzhalter (max 3 Lücken pro Frage). clozeAnswers: korrekte Wörter in gleicher Reihenfolge. options: []. correctAnswerIndices: []. isMultipleChoice: false.';
-  } else if (qt === 'ranking') {
-    typeInstruction = 'FRAGETYP: Erstelle AUSSCHLIESSLICH Sortieraufgaben. questionType: "ranking". rankingItems: 4-5 Elemente in KORREKTER Reihenfolge. options: []. correctAnswerIndices: []. isMultipleChoice: false.';
-  } else {
-    // mixed — vollständige Palette inkl. aller neuen Typen
-    typeInstruction = `FRAGETYPEN-MIX (wähle basierend auf dem Inhalt des Materials):
-- "mc": Multiple-Choice (isMultipleChoice: true, 2-3 korrekte aus 4) ODER Single-Choice (isMultipleChoice: false, 1 korrekt). options[4]. ~30% der Fragen.
-- "truefalse": Wahr/Falsch. options: ["Wahr","Falsch"]. correctAnswerIndices: [0] wahr / [1] falsch. ~10% der Fragen.
-- "open": Offene Kurzantwort/Essay. options: []. correctAnswerIndices: []. explanation = Musterantwort. ~15% der Fragen.
-- "matching": Zuordnung (z.B. Begriff ↔ Definition, Forscher ↔ Theorie). matchPairs: 4 {left,right}-Paare. options: []. correctAnswerIndices: []. ~15% der Fragen.
-- "cloze": Lückentext. clozeText mit "__LÜCKE__" (max 3 Lücken). clozeAnswers: korrekte Füllwörter. options: []. correctAnswerIndices: []. ~15% der Fragen.
-- "ranking": Schritte/Phasen/Konzepte in richtige Reihenfolge bringen. rankingItems: 4-5 Elemente in KORREKTER Reihenfolge. options: []. correctAnswerIndices: []. ~10% der Fragen.
-- "numeric": Zahlenangabe. numericAnswer: korrekte Zahl. numericTolerance: akzeptabler Spielraum (z.B. 0.5). options: []. correctAnswerIndices: []. NUR wenn das Material konkrete Zahlen enthält. ~5% wenn relevant.
-- "scenario": Fallbeispiel + MC. scenarioText: 2-4 Sätze Fallbeschreibung. options[4]. correctAnswerIndices. NUR wenn das Material echte Fallbeispiele, Kasuistiken, klinische Szenarien oder Anwendungsfälle enthält (z.B. Klinische Psychologie, Jura, Medizin). Bei rein theoretischen/statistischen/Grundlagenmaterialien: NICHT verwenden. ~5% wenn relevant.
-
-WICHTIG: questionType MUSS exakt einem der Werte oben entsprechen. Nur für den jeweiligen Typ relevante Felder befüllen — alle anderen Felder (Options, matchPairs usw.) als leer/null lassen.`;
-  }
+  const bloomHints = options?.topicBloomHints ?? [];
+  const bloomHintLine = bloomHints.length > 0
+    ? `\nBLOOM-STUFEN-STEUERUNG: Für folgende, bereits bekannte Themen (basierend auf bisheriger Leistung des Nutzers) genau auf dieser kognitiven Stufe fragen — erinnern=Fakten abrufen, verstehen=erklären/zusammenfassen, anwenden=auf einen neuen Fall anwenden, analysieren=Zusammenhänge zerlegen/vergleichen:\n${bloomHints.slice(-30).map(h => `${h.topic} → ${h.bloomLevel}`).join('\n')}\nFür alle anderen, hier nicht gelisteten Themen: bleibe bei "erinnern" bis "verstehen". Weise jeder Frage über das Feld bloomLevel ehrlich die Stufe zu, die du für sie tatsächlich verwendet hast (kein Rückschluss aus Fragetyp/Länge im Nachhinein).\n`
+    : '';
 
   const quizSchema = {
     type: Type.ARRAY,
@@ -523,6 +507,8 @@ WICHTIG: questionType MUSS exakt einem der Werte oben entsprechen. Nur für den 
         // Numerisch
         numericAnswer:         { type: Type.NUMBER },
         numericTolerance:      { type: Type.NUMBER },
+        // Bloom-Taxonomie (self-gelabelt im selben Call, s. bloomHintLine unten)
+        bloomLevel:            { type: Type.STRING, format: 'enum', enum: BLOOM_LEVELS },
       },
       required: ['question', 'questionType', 'explanation', 'sourceReference']
     }
@@ -540,7 +526,7 @@ WICHTIG: questionType MUSS exakt einem der Werte oben entsprechen. Nur für den 
     batchParts.push({ text: `Erstelle ein Quiz mit genau ${batchCount} Fragen basierend auf dem Material.
 Schwierigkeit: ${difficulty}.${focusLine}
 Seed: ${seedSuffix}
-${focusHint}${excludeLine}
+${focusHint}${excludeLine}${bloomHintLine}
 ${typeInstruction}
 
 STRENGE DIVERSITÄTS-REGELN (zwingend einhalten):
@@ -1597,6 +1583,8 @@ export const generateCoachInsights = async (
 WICHTIGSTE REGEL: Behaupte NUR, was die Daten unten wirklich hergeben. Erfinde keine Muster, Zusammenhänge oder Zahlen, die sich nicht aus dem Profil ableiten lassen. Wenn eine Kategorie zu wenig Daten hat, sage das statt zu spekulieren.
 
 DEINE ROLLE: Du bist KEIN Statistik-Dashboard. Fasse NICHT einfach Zahlen zusammen, die im Profil schon stehen. Erkenne Muster über mehrere Datenpunkte hinweg, analysiere Zusammenhänge (z.B. zwischen Kategorie-Schwäche, Themen-Schwäche und Methodenwahl), und leite daraus eine individuelle Lernstrategie ab — etwas, das über das bloße Anzeigen der Zahlen hinausgeht.
+
+Manche Einträge in topicMastery haben zusätzlich ein Feld bloomLevel (erinnern/verstehen/anwenden/analysieren) — das ist die aktuelle kognitive Reifestufe des Nutzers zu diesem Thema, hergeleitet aus dessen Quiz-Verlauf. Nutze das für konkretere Empfehlungen (z.B. "Faktenwissen zu X ist bereits gefestigt, als Nächstes helfen Transfer-/Anwendungsfragen" statt nur "X üben").
 
 LERNPROFIL (JSON):
 ${JSON.stringify(profile)}

@@ -9,6 +9,7 @@ import type { ExamResult } from './examHistoryService';
 import type { RecallResult } from './recallHistoryService';
 import { t, tp } from '../i18n';
 import type { TKey } from '../i18n';
+import { computeBloomStage } from './bloomProgression';
 
 const DAY_MS = 24 * 60 * 60 * 1000;
 
@@ -152,7 +153,8 @@ export const buildRealTopicMastery = (
   recallResults: RecallResult[],
 ): TopicSecurity[] => {
   const acc = new Map<string, { correct: number; total: number; samples: number[] }>();
-  quizResults.slice(0, 30).forEach(r => {
+  const recentQuizResults = quizResults.slice(0, 30);
+  recentQuizResults.forEach(r => {
     (r.answers || []).forEach(a => {
       const topic = r.questions?.[a.questionIndex]?.topic?.trim();
       if (!topic) return;
@@ -160,6 +162,22 @@ export const buildRealTopicMastery = (
       e.total += 1;
       if (a.isCorrect) e.correct += 1;
       acc.set(topic, e);
+    });
+  });
+
+  // Bloom-Stufe je Thema: chronologische (älteste zuerst) Richtig/Falsch-Folge
+  // durch den Stufen-Automaten (services/bloomProgression.ts) — Grundlage für
+  // die adaptive Quiz-Generierung (topicBloomHints in generateQuizFromDocument).
+  // Sitzungen werden nach timestamp sortiert, Antworten INNERHALB einer Sitzung
+  // bleiben in ihrer gespeicherten (= tatsächlich gezeigten) Reihenfolge.
+  const bloomSequences = new Map<string, boolean[]>();
+  [...recentQuizResults].sort((a, b) => a.timestamp - b.timestamp).forEach(r => {
+    (r.answers || []).forEach(a => {
+      const topic = r.questions?.[a.questionIndex]?.topic?.trim();
+      if (!topic) return;
+      const seq = bloomSequences.get(topic) ?? [];
+      seq.push(!!a.isCorrect);
+      bloomSequences.set(topic, seq);
     });
   });
 
@@ -184,7 +202,8 @@ export const buildRealTopicMastery = (
     pcts.push(...e.samples);
     const confidence = avg(pcts);
     const weakCount = weakCounts[topic] || 0;
-    byTopic.set(topic, { topic, confidence, security: securityOf(confidence, weakCount), weakCount });
+    const bloomLevel = bloomSequences.has(topic) ? computeBloomStage(bloomSequences.get(topic)!) : undefined;
+    byTopic.set(topic, { topic, confidence, security: securityOf(confidence, weakCount), weakCount, bloomLevel });
   });
   Object.entries(weakCounts).forEach(([topic, weakCount]) => {
     if (!byTopic.has(topic)) {
