@@ -14,7 +14,7 @@ import { buildRealTopicMastery } from '../services/learningProfileService';
 import { buildCollectionSource } from '../services/collectionSource';
 import { getAllResults } from '../services/quizHistoryService';
 import { getAllRecallResults } from '../services/recallHistoryService';
-import { recentRecallTopics } from '../services/recallSteering';
+import { rankTopicsForNextChallenge } from '../services/recallGaps';
 import { getCoverage, markTopicCovered } from '../services/recallCoverageService';
 import { detectChaptersForDoc } from '../services/chapterService';
 import { getAllExamResults } from '../services/examHistoryService';
@@ -178,18 +178,27 @@ export const ActiveRecall: React.FC<ActiveRecallProps> = ({
     setUserAnswer('');
     setShowModelAnswer(false);
     try {
-      // Informierte Themenwahl: kürzlich Geübtes ausschließen, Schwächen bevorzugen.
-      // Quell-/Dateinamen (Alt-Einträge ohne echtes Thema) taugen nicht als Ausschluss.
-      const excludeTopics = recentRecallTopics(getAllRecallResults(), {
-        dropNames: [activeSourceName, ...availableDocuments.map(d => documentDisplayName(d))],
-      });
-      const excluded = new Set(excludeTopics.map(x => x.toLowerCase()));
+      // Informierte Themenwahl: nie erfolgreich erklärte / häufig falsch
+      // beantwortete / kürzlich gescheiterte Themen bevorzugen (in dieser
+      // Reihenfolge), nur kürzlich ERFOLGREICH gemeisterte Themen kurz aussetzen
+      // (services/recallGaps.ts — Kernstück des kontinuierlichen Lernzyklus:
+      // ein gerade schlecht erklärtes Thema soll HÄUFIGER wiederkehren, nicht
+      // seltener). Quell-/Dateinamen (Alt-Einträge ohne echtes Thema) fliegen
+      // vorher raus, sonst würden sie fälschlich als Thema mitgezählt.
+      const dropNames = new Set(
+        [activeSourceName, ...availableDocuments.map(d => documentDisplayName(d))].map(n => n.trim().toLowerCase())
+      );
+      const relevantResults = getAllRecallResults().filter(r => !dropNames.has((r.topic ?? '').trim().toLowerCase()));
+      const { preferTopics, excludeTopics } = rankTopicsForNextChallenge(
+        topicSuggestions.map(s => s.topic),
+        relevantResults,
+      );
       const res = await generateRecallChallenge(activeSource, focusTopic.trim() || undefined, {
         // Abdeckung vor Vertiefung: offene Kapitel zuerst — sind alle einmal
         // durch, übernimmt die adaptive Steuerung (Ausschluss + Schwächen).
         coverTopics: coverage?.uncovered ?? [],
         excludeTopics,
-        preferTopics: topicSuggestions.map(s => s.topic).filter(x => !excluded.has(x.trim().toLowerCase())),
+        preferTopics,
       });
       if (!res || !res.question) throw new Error(t('ar.invalidResponse'));
       setChallenge(res);
