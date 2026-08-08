@@ -306,6 +306,7 @@ export const GraphDevHarness: React.FC = () => {
             onClose={() => graph.onSelectionChange(clearSelection(graph.selection))}
             onSelectNode={id => graph.onSelectionChange(selectNode(graph.selection, id))}
             onStartActivity={setActiveActivity}
+            onApiError={stubApiError}
           />
         )}
       </div>

@@ -337,6 +337,7 @@ export const GraphSystem: React.FC<GraphSystemProps> = ({
                 onOpenDocument={setOpenDocumentId}
                 onSelectNode={id => graph.onSelectionChange(selectNode(graph.selection, id))}
                 onStartActivity={setActiveActivity}
+                onApiError={onApiError}
               />
             )}
           </>

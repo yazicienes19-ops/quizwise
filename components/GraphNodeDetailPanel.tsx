@@ -5,7 +5,11 @@ import { HIERARCHY_LEVEL_LABELS, nextHierarchyLevel } from '../services/graph/ty
 import { type GraphHistory, recordUpdateNode, recordArchiveNode } from '../services/graph/graphHistoryService';
 import { createNodeDocumentRef } from '../services/graph/graphMutationService';
 import { buildGraphIndex, outgoingEdges, incomingEdges, describeRelatedEntry } from '../services/graph/graphIndex';
+import { buildNodeGenerationSource } from '../services/graph/graphLearningSource';
 import { documentDisplayName } from '../services/libraryService';
+import { suggestNodeImprovement, type NodeImprovementSuggestion } from '../services/geminiService';
+import { resolveErrorMessage } from '../services/errorMessages';
+import { toast } from '../services/toast';
 import { useTranslation } from '../i18n/I18nProvider';
 import { Trash2 } from 'lucide-react';
 import { EmojiImage } from './EmojiImage';
@@ -84,6 +88,9 @@ export interface GraphNodeDetailPanelProps {
    *  soll — GraphSystem.tsx entscheidet, wie sie als Overlay erscheint
    *  (GraphLearningOverlay). */
   onStartActivity: (activity: 'flashcards' | 'quiz' | 'feynman' | 'explain') => void;
+  /** Wissensnetz-Coach, Baustein 3 ("Node verbessern", s.
+   *  suggestNodeImprovement in geminiService.ts). */
+  onApiError: (e: unknown) => void;
 }
 
 const typeLabel = (type: string): string => type.length > 0 ? type.charAt(0).toUpperCase() + type.slice(1) : type;
@@ -100,7 +107,7 @@ const NODE_COLOR_SWATCHES = ['#D9A94E', '#6366F1', '#38BDF8', '#10B981', '#F43F5
 // Node-Dialog-KI-Schicht von mehr als nur diesem Panel gebraucht).
 
 export const GraphNodeDetailPanel: React.FC<GraphNodeDetailPanelProps> = ({
-  state, history, nodeId, documents, onChange, onEntityChanged, onClose, onOpenDocument, onSelectNode, onStartActivity,
+  state, history, nodeId, documents, onChange, onEntityChanged, onClose, onOpenDocument, onSelectNode, onStartActivity, onApiError,
 }) => {
   const { t } = useTranslation();
   const node = state.nodesById.get(nodeId);
@@ -123,6 +130,10 @@ export const GraphNodeDetailPanel: React.FC<GraphNodeDetailPanelProps> = ({
   // im JSX-Body gebraucht werden.
   const [isPickingDocument, setIsPickingDocument] = useState(false);
   const [pickedDocumentId, setPickedDocumentId] = useState('');
+  // "Node verbessern" (Wissensnetz-Coach, Baustein 3) — Vorschlag ist reiner
+  // Anzeigezustand, nie automatisch übernommen (s. applySuggestion unten).
+  const [improveSuggestion, setImproveSuggestion] = useState<NodeImprovementSuggestion | null>(null);
+  const [isImproving, setIsImproving] = useState(false);
   // Verwandte Konzepte: derselbe Index wie in GraphCanvas.tsx (dieselbe
   // buildGraphIndex-Funktion, dasselbe useMemo-Muster), damit das Auflösen
   // von aus-/eingehenden Kanten bei jedem Render nicht neu über ALLE Kanten
@@ -135,6 +146,7 @@ export const GraphNodeDetailPanel: React.FC<GraphNodeDetailPanelProps> = ({
     setTitleDraft(node?.title ?? '');
     setIsPickingDocument(false);
     setPickedDocumentId('');
+    setImproveSuggestion(null);
     // Fokus geht beim Öffnen/Wechseln auf den Schließen-Button — sicher,
     // stiehlt keinem Textfeld den Fokus (kein ungewolltes Tastatur-Popup),
     // aber Tab landet danach natürlich im Panel-Inhalt (kein Fokus-Trap,
@@ -245,6 +257,49 @@ export const GraphNodeDetailPanel: React.FC<GraphNodeDetailPanelProps> = ({
       onChange({ state: result.state, history: result.history });
       onEntityChanged?.({ kind: 'node', entity: result.entity });
     }
+  };
+
+  const requestImprovement = async () => {
+    if (isImproving) return;
+    setIsImproving(true);
+    try {
+      const suggestion = await suggestNodeImprovement(buildNodeGenerationSource(node), node.title);
+      if (!suggestion) {
+        toast.success(t('kg.panel.improveNone'));
+      } else {
+        setImproveSuggestion(suggestion);
+      }
+    } catch (e) {
+      onApiError(e);
+      toast.error(resolveErrorMessage(e));
+    } finally {
+      setIsImproving(false);
+    }
+  };
+
+  // Bewusst NICHT commitTitle/commitDescription wiederverwenden — die lesen
+  // titleDraft/descriptionDraft per Closure; ein setState unmittelbar davor
+  // wäre darin noch nicht sichtbar (State-Update ist asynchron). Stattdessen
+  // direkt mit den Vorschlagswerten committen, nur die tatsächlich
+  // geänderten Felder — Prinzip: die KI schreibt nie selbst, dieser Aufruf
+  // passiert ausschließlich durch den expliziten Klick auf "Übernehmen".
+  const applySuggestion = () => {
+    if (!improveSuggestion) return;
+    const trimmedTitle = improveSuggestion.title.trim();
+    const patch: { title?: string; description?: string } = {};
+    if (trimmedTitle.length > 0 && trimmedTitle !== node.title) patch.title = trimmedTitle;
+    if (improveSuggestion.description !== node.description) patch.description = improveSuggestion.description;
+
+    if (Object.keys(patch).length > 0) {
+      const result = recordUpdateNode(history, state, nodeId, patch);
+      if (!result.error && result.entity) {
+        onChange({ state: result.state, history: result.history });
+        onEntityChanged?.({ kind: 'node', entity: result.entity });
+        if (patch.title) setTitleDraft(patch.title);
+        if (patch.description !== undefined) setDescriptionDraft(patch.description);
+      }
+    }
+    setImproveSuggestion(null);
   };
 
   const cycleHierarchy = () => {
@@ -408,9 +463,20 @@ export const GraphNodeDetailPanel: React.FC<GraphNodeDetailPanelProps> = ({
           Overhead bei langen Notizen). */}
       <div className="flex-1 overflow-y-auto p-4 space-y-5">
         <section>
-          <p className="text-[9px] font-black uppercase tracking-widest text-slate-400 mb-1.5">
-            {t('kg.panel.description')}
-          </p>
+          <div className="flex items-center justify-between mb-1.5">
+            <p className="text-[9px] font-black uppercase tracking-widest text-slate-400">
+              {t('kg.panel.description')}
+            </p>
+            <button
+              onClick={requestImprovement}
+              disabled={isImproving || (!node.description.trim() && !node.notes.trim())}
+              aria-label={t('kg.panel.improveAction')}
+              title={t('kg.panel.improveAction')}
+              className="w-5 h-5 flex items-center justify-center rounded-md text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800 hover:text-slate-600 dark:hover:text-slate-300 disabled:opacity-30 transition-colors text-xs"
+            >
+              {isImproving ? '…' : '✨'}
+            </button>
+          </div>
           <textarea
             value={descriptionDraft}
             placeholder={t('kg.panel.descriptionPlaceholder')}
@@ -420,6 +486,37 @@ export const GraphNodeDetailPanel: React.FC<GraphNodeDetailPanelProps> = ({
             className="w-full text-[11px] leading-relaxed rounded-lg px-3 py-2 outline-none border resize-none bg-transparent text-slate-700 dark:text-white placeholder:text-slate-400"
             style={{ borderColor: 'var(--border-color)' }}
           />
+
+          {improveSuggestion && (
+            <div className="mt-2 space-y-2 rounded-lg border p-3" style={{ borderColor: 'var(--border-color)' }}>
+              <p className="text-[9px] font-black uppercase tracking-widest text-slate-400">
+                {t('kg.panel.improveSuggestion')}
+              </p>
+              {improveSuggestion.title !== node.title && (
+                <p className="text-[11px] font-bold text-slate-700 dark:text-slate-200">
+                  {t('kg.panel.improveSuggestedTitle')}: {improveSuggestion.title}
+                </p>
+              )}
+              <p className="text-[11px] leading-relaxed text-slate-700 dark:text-slate-200 whitespace-pre-wrap">
+                {improveSuggestion.description}
+              </p>
+              <div className="flex gap-1.5">
+                <button
+                  onClick={applySuggestion}
+                  className="flex-1 text-[9px] font-black uppercase tracking-widest rounded-lg py-2 transition-colors"
+                  style={{ background: 'var(--primary)', color: 'var(--primary-text, #fff)' }}
+                >
+                  {t('kg.panel.improveApply')}
+                </button>
+                <button
+                  onClick={() => setImproveSuggestion(null)}
+                  className="px-3 text-[9px] font-black uppercase tracking-widest rounded-lg py-2 text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors"
+                >
+                  {t('kg.panel.improveDiscard')}
+                </button>
+              </div>
+            </div>
+          )}
         </section>
 
         <section>

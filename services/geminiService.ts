@@ -1013,6 +1013,65 @@ STRENGE REGELN:
   });
 };
 
+/**
+ * Wissensnetz-Coach, Baustein 3 ("Node verbessern" — s. Memory
+ * project_quizwise_wissensnetz_coach.md, Punkt 4). Formuliert AUSSCHLIESSLICH
+ * bereits vorhandenen Inhalt (Titel/Beschreibung/Notizen des Nodes) klarer —
+ * erzeugt NIE neue Fakten aus Allgemeinwissen. Aufrufer (GraphNodeDetailPanel)
+ * ruft diese Funktion deshalb nur auf, wenn Beschreibung ODER Notizen bereits
+ * Inhalt haben; ein leerer Node hat nichts zum Umformulieren. Liefert null,
+ * wenn das Modell nichts Sinnvolles vorzuschlagen hat — ein akzeptables
+ * Ergebnis, kein Fehlerfall. Die KI schreibt dabei nie selbst in den Node:
+ * der Aufrufer entscheidet per explizitem Klick, ob der Vorschlag übernommen
+ * wird.
+ */
+export interface NodeImprovementSuggestion {
+  title: string;
+  description: string;
+}
+
+export const suggestNodeImprovement = async (
+  source: GenerationSource,
+  currentTitle: string,
+): Promise<NodeImprovementSuggestion | null> => {
+  const safeTitle = sanitizeUserInput(currentTitle, 200);
+  const parts: any[] = [sourceTopart(source)];
+
+  parts.push({
+    text: `Der aktuelle Titel dieses Konzepts lautet "${safeTitle}". Schlage eine klarere, präzisere oder vollständigere Formulierung für Titel und Beschreibung vor.
+
+STRENGE REGELN:
+- Nutze AUSSCHLIESSLICH die oben bereitgestellten Informationen (Titel, Beschreibung, Notizen). Kein Allgemeinwissen, keine neuen Fakten — nur den vorhandenen Inhalt klarer, präziser oder vollständiger formulieren.
+- Ändere den Titel NUR, wenn er unklar oder redundant zur Beschreibung ist. Ist er bereits gut, gib ihn unverändert zurück.
+- Ist der vorhandene Inhalt bereits klar und gut formuliert, setze hasSuggestion auf false — das ist ein vollkommen akzeptables Ergebnis, kein Fehlerfall. Erzwinge keine Änderung nur um etwas zu ändern.
+- description bleibt in angemessener Länge — nicht künstlich aufblähen.
+- Keine Anführungszeichen um die Werte, kein Meta-Kommentar.${outputLangDirective()}`,
+  });
+
+  const text = await callBackend({
+    complexity: 'heavy',
+    parts,
+    config: {
+      temperature: 0.4,
+      thinkingConfig: { thinkingBudget: 0 },
+      responseMimeType: 'application/json',
+      responseSchema: {
+        type: Type.OBJECT,
+        properties: {
+          hasSuggestion: { type: Type.BOOLEAN },
+          title: { type: Type.STRING },
+          description: { type: Type.STRING },
+        },
+        required: ['hasSuggestion', 'title', 'description'],
+      },
+    },
+  });
+
+  const raw = JSON.parse(text || '{}') as Partial<NodeImprovementSuggestion & { hasSuggestion: boolean }>;
+  if (!raw.hasSuggestion || !raw.title || !raw.description) return null;
+  return { title: raw.title, description: raw.description };
+};
+
 export interface GroundedExplanation {
   answer: string;
   /** true, wenn die übergebene (meist eng zugeschnittene) Quelle die Nutzereingabe
