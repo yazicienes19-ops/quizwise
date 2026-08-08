@@ -15,6 +15,7 @@ import { resolve } from 'path';
 const AI_FILES = [
   'services/geminiService.ts',
   'services/graph/graphEdgeExplanationSource.ts',
+  'services/graph/graphRelationSuggestionSource.ts',
 ];
 
 const FORBIDDEN = [/graphMutationService/, /graphHistoryService/];

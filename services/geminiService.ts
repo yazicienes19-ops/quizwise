@@ -1072,6 +1072,70 @@ STRENGE REGELN:
   return { title: raw.title, description: raw.description };
 };
 
+/**
+ * Wissensnetz-Coach, Baustein 4 ("Fehlende Beziehungen erkennen" — s. Memory
+ * project_quizwise_wissensnetz_coach.md, Punkt 1). Erste graphweite
+ * KI-Aktion — source enthält Titel/Beschreibung/Notizen mehrerer Nodes plus
+ * deren echte IDs (s. buildRelationSuggestionSource in
+ * graphRelationSuggestionSource.ts). Liefert die ROHE, unvalidierte Liste
+ * zurück — die eigentliche Anti-Halluzinations-Prüfung (existieren die IDs
+ * wirklich, sind sie nicht schon verbunden) passiert bewusst getrennt in
+ * validateRelationSuggestions, nicht hier (gleiche Trennung Prompt-Layer/
+ * Validierung wie bei analysisValidation.ts).
+ */
+export interface RawRelationSuggestion {
+  sourceNodeId: string;
+  targetNodeId: string;
+  reason: string;
+}
+
+export const suggestMissingRelationships = async (source: GenerationSource): Promise<RawRelationSuggestion[]> => {
+  const parts: any[] = [sourceTopart(source)];
+
+  parts.push({
+    text: `Schlage Paare von Konzepten aus der obigen Liste vor, zwischen denen inhaltlich vermutlich eine Beziehung fehlt.
+
+STRENGE REGELN:
+- Nutze AUSSCHLIESSLICH die oben bereitgestellten Konzepte (Titel/Beschreibung/Notizen) — kein Allgemeinwissen, keine neuen Fakten.
+- Antworte NUR mit IDs, die exakt in der obigen Liste stehen. Erfinde niemals eine ID.
+- Schlage ein Paar NUR vor, wenn eine klare inhaltliche Nähe erkennbar ist — vage oder beliebige Nähe reicht nicht.
+- Schlage bereits verbundene Paare (s. oben) NICHT erneut vor.
+- 0 bis N Vorschläge — reichen die Konzepte nichts Plausibles her, ist eine leere Liste die richtige Antwort, kein Fehlerfall. Erzwinge keine Mindestanzahl.
+- reason immer als Vermutung formulieren ("könnte", "vermutlich"), nie als Tatsachenbehauptung, 1 kurzer Satz.${outputLangDirective()}`,
+  });
+
+  const text = await callBackend({
+    complexity: 'heavy',
+    parts,
+    config: {
+      temperature: 0.4,
+      thinkingConfig: { thinkingBudget: 0 },
+      responseMimeType: 'application/json',
+      responseSchema: {
+        type: Type.OBJECT,
+        properties: {
+          suggestions: {
+            type: Type.ARRAY,
+            items: {
+              type: Type.OBJECT,
+              properties: {
+                sourceNodeId: { type: Type.STRING },
+                targetNodeId: { type: Type.STRING },
+                reason: { type: Type.STRING },
+              },
+              required: ['sourceNodeId', 'targetNodeId', 'reason'],
+            },
+          },
+        },
+        required: ['suggestions'],
+      },
+    },
+  });
+
+  const raw = JSON.parse(text || '{}') as { suggestions?: RawRelationSuggestion[] };
+  return raw.suggestions ?? [];
+};
+
 export interface GroundedExplanation {
   answer: string;
   /** true, wenn die übergebene (meist eng zugeschnittene) Quelle die Nutzereingabe

@@ -2,10 +2,11 @@ import React, { useEffect, useMemo, useState } from 'react';
 import { createPortal } from 'react-dom';
 import { Collection, FlashcardDeck, ProcessedDocument } from '../types';
 import type { GraphScope, GraphState } from '../services/graph/types';
-import { canUndo, canRedo, recordUpdateNode, type GraphHistory } from '../services/graph/graphHistoryService';
+import { canUndo, canRedo, recordUpdateNode, recordCreateEdge, type GraphHistory } from '../services/graph/graphHistoryService';
 import { clearSelection, selectNode } from '../services/graph/graphSelectionService';
 import { buildGraphIndex, outgoingEdges, incomingEdges, describeRelatedEntry } from '../services/graph/graphIndex';
 import { computeNodeInsights, groupInsightsByNode } from '../services/graph/graphInsightsService';
+import { buildRelationSuggestionSource, validateRelationSuggestions, type RelationSuggestion } from '../services/graph/graphRelationSuggestionSource';
 import { shouldUsePdfReader } from '../services/libraryService';
 import { useKnowledgeGraph } from '../hooks/useKnowledgeGraph';
 import { GraphCanvas } from './GraphCanvas';
@@ -14,7 +15,8 @@ import { GraphNodeDetailPanel } from './GraphNodeDetailPanel';
 import { GraphLearningOverlay, type GraphLearningActivity } from './GraphLearningOverlay';
 import { useTranslation } from '../i18n/I18nProvider';
 import { toast } from '../services/toast';
-import type { GenerationSource } from '../services/geminiService';
+import { resolveErrorMessage } from '../services/errorMessages';
+import { suggestMissingRelationships, type GenerationSource } from '../services/geminiService';
 
 const SplitScreenReader = React.lazy(() => import('./SplitScreenReader').then(m => ({ default: m.SplitScreenReader })));
 const PdfSplitScreenReader = React.lazy(() => import('./PdfSplitScreenReader').then(m => ({ default: m.PdfSplitScreenReader })));
@@ -133,6 +135,51 @@ export const GraphSystem: React.FC<GraphSystemProps> = ({
   // ohne Beschreibung UND Notizen hat 2 Einträge, soll aber nur 1x zählen.
   const nodeInsightCount = useMemo(() => groupInsightsByNode(computeNodeInsights(graph.state)).size, [graph.state]);
 
+  // Wissensnetz-Coach, Baustein 4 ("Fehlende Beziehungen erkennen", Punkt 1)
+  // — erste graphweite KI-Aktion, deshalb bewusst KEIN Dauer-Toggle wie
+  // showInsights (das ist kostenlos/strukturell), sondern eine einmalige,
+  // explizit ausgelöste Aktion. null = noch nicht geprüft/verworfen,
+  // [] = geprüft, nichts Plausibles gefunden.
+  const [missingRelationSuggestions, setMissingRelationSuggestions] = useState<RelationSuggestion[] | null>(null);
+  const [isCheckingRelations, setIsCheckingRelations] = useState(false);
+
+  const handleCheckMissingRelations = async () => {
+    if (isCheckingRelations) return;
+    setIsCheckingRelations(true);
+    try {
+      const built = buildRelationSuggestionSource(graph.state);
+      if (!built) {
+        toast.success('Zu wenig Nodes für einen Beziehungs-Check.');
+        return;
+      }
+      const raw = await suggestMissingRelationships(built.source);
+      const valid = validateRelationSuggestions(graph.state, raw);
+      setMissingRelationSuggestions(valid);
+      if (valid.length === 0) toast.success('Keine plausiblen fehlenden Beziehungen gefunden.');
+    } catch (e) {
+      onApiError(e);
+      toast.error(resolveErrorMessage(e));
+    } finally {
+      setIsCheckingRelations(false);
+    }
+  };
+
+  const handleAcceptRelationSuggestion = (suggestion: RelationSuggestion) => {
+    const result = recordCreateEdge(graph.history, graph.state, {
+      sourceNodeId: suggestion.sourceNodeId,
+      targetNodeId: suggestion.targetNodeId,
+    });
+    if (!result.error && result.entity) {
+      graph.onChange({ state: result.state, history: result.history });
+      graph.onEntityChanged({ kind: 'edge', entity: result.entity });
+    }
+    setMissingRelationSuggestions(prev => (prev ?? []).filter(s => s !== suggestion));
+  };
+
+  const handleDiscardRelationSuggestion = (suggestion: RelationSuggestion) => {
+    setMissingRelationSuggestions(prev => (prev ?? []).filter(s => s !== suggestion));
+  };
+
   const handleAssignToCollection = () => {
     if (!moveTargetId || unassignedNodes.length === 0) return;
     setIsMoving(true);
@@ -217,6 +264,14 @@ export const GraphSystem: React.FC<GraphSystemProps> = ({
             💡
           </button>
           <button
+            onClick={handleCheckMissingRelations}
+            disabled={isCheckingRelations}
+            title="Fehlende Beziehungen prüfen"
+            className="w-8 h-8 flex items-center justify-center rounded-lg text-slate-500 dark:text-slate-300 disabled:opacity-40 hover:bg-slate-50 dark:hover:bg-slate-800 transition-colors"
+          >
+            {isCheckingRelations ? '…' : '🧩'}
+          </button>
+          <button
             onClick={graph.undo}
             disabled={!canUndo(graph.history)}
             title={t('kg.undo')}
@@ -281,6 +336,47 @@ export const GraphSystem: React.FC<GraphSystemProps> = ({
           <p className="text-xs font-medium text-slate-600 dark:text-slate-300 min-w-0">
             {nodeInsightCount} {nodeInsightCount === 1 ? 'Node könnte' : 'Nodes könnten'} noch ausgebaut werden.
           </p>
+        </div>
+      )}
+
+      {missingRelationSuggestions && missingRelationSuggestions.length > 0 && (
+        <div
+          className="space-y-2 px-4 py-3 rounded-[18px]"
+          style={{
+            background: 'color-mix(in srgb, var(--primary) 8%, transparent)',
+            border: '1px solid color-mix(in srgb, var(--primary) 20%, transparent)',
+          }}
+        >
+          <p className="text-xs font-medium text-slate-600 dark:text-slate-300">
+            Vermutlich fehlende {missingRelationSuggestions.length === 1 ? 'Beziehung' : 'Beziehungen'}:
+          </p>
+          {missingRelationSuggestions.map((s, i) => {
+            const titleA = graph.state.nodesById.get(s.sourceNodeId)?.title ?? s.sourceNodeId;
+            const titleB = graph.state.nodesById.get(s.targetNodeId)?.title ?? s.targetNodeId;
+            return (
+              <div key={`${s.sourceNodeId}-${s.targetNodeId}-${i}`} className="flex items-center gap-3 flex-wrap">
+                <div className="min-w-0">
+                  <p className="text-xs font-bold text-slate-700 dark:text-slate-200 break-words">{titleA} ↔ {titleB}</p>
+                  <p className="text-[11px] text-slate-500 dark:text-slate-400 break-words">{s.reason}</p>
+                </div>
+                <div className="flex items-center gap-2 ml-auto shrink-0">
+                  <button
+                    onClick={() => handleAcceptRelationSuggestion(s)}
+                    className="text-[10px] font-black uppercase tracking-widest px-3 py-2 rounded-xl text-white transition-colors"
+                    style={{ background: 'var(--primary)' }}
+                  >
+                    Verbinden
+                  </button>
+                  <button
+                    onClick={() => handleDiscardRelationSuggestion(s)}
+                    className="text-[10px] font-black uppercase tracking-widest px-3 py-2 rounded-xl text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors"
+                  >
+                    Ignorieren
+                  </button>
+                </div>
+              </div>
+            );
+          })}
         </div>
       )}
 
