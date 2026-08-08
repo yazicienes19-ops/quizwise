@@ -3,6 +3,7 @@ import * as d3 from 'd3';
 import { motion, AnimatePresence } from 'framer-motion';
 import type { GraphState, GraphNodePosition, GraphEntityChange, HierarchyLevel } from '../services/graph/types';
 import { buildGraphIndex, neighborIds, outgoingEdges, incomingEdges } from '../services/graph/graphIndex';
+import { computeNodeInsights, groupInsightsByNode, type NodeInsightType } from '../services/graph/graphInsightsService';
 import { resolveOverlaps } from '../services/graph/graphLayoutEngine';
 import {
   type GraphSelectionState, selectNode, selectEdge, clearSelection, hoverNode, isSelected, isHovered, isEdgeSelected,
@@ -70,6 +71,10 @@ export interface GraphCanvasProps {
    *  Wissensnetz-Modus mehr) — kommt von useAuth() über GraphSystem.tsx
    *  durchgereicht, exakt derselbe Zustand wie der Rest der App. */
   isDark: boolean;
+  /** Wissensnetz-Coach, erster Baustein (s. services/graph/graphInsightsService.ts) —
+   *  rein struktureller, informativer Hinweis-Punkt am Node. Default false:
+   *  nur an, wenn der Nutzer den Schalter in GraphSystem.tsx bewusst aktiviert. */
+  showInsights?: boolean;
 }
 
 interface ZoomTransform { x: number; y: number; k: number; }
@@ -104,6 +109,13 @@ const HIERARCHY_STROKE_WIDTH: Record<HierarchyLevel, number> = {
 const SELECTED_STROKE_BONUS = 1.5;
 const HANDLE_RADIUS = 6;
 const HANDLE_OFFSET = 14;
+
+// Wissensnetz-Coach, erster Baustein — Anzeigetexte für services/graph/graphInsightsService.ts.
+const INSIGHT_LABELS: Record<NodeInsightType, string> = {
+  'no-description': 'Noch keine Beschreibung',
+  'no-notes': 'Noch keine eigenen Notizen',
+  'many-relationships': 'Ungewöhnlich viele Beziehungen für diesen Bereich',
+};
 const DRAG_THRESHOLD_PX = 4;
 const NODE_DATA_ATTR = 'data-graph-node';
 // Kein hartes Zeichen-Limit mehr für Kantenlabels (User-Vorgabe 2026-08-04,
@@ -379,7 +391,7 @@ function wrapTitleAdaptive(text: string, maxWidthPx: number, fontWeight: number)
 }
 
 export const GraphCanvas: React.FC<GraphCanvasProps> = ({
-  state, history, selection, onChange, onSelectionChange, onEntityChanged, isDark,
+  state, history, selection, onChange, onSelectionChange, onEntityChanged, isDark, showInsights,
 }) => {
   const svgRef = useRef<SVGSVGElement | null>(null);
   const gRef = useRef<SVGGElement | null>(null);
@@ -397,6 +409,13 @@ export const GraphCanvas: React.FC<GraphCanvasProps> = ({
   );
   const index = useMemo(() => buildGraphIndex(state), [state]);
   const visibleEdges = useMemo(() => [...index.edgesBySource.values()].flat(), [index]);
+  // Wissensnetz-Coach, erster Baustein — nur berechnet, wenn der Nutzer den
+  // Schalter aktiviert hat, damit ein reiner Beobachtungs-Zustand nicht bei
+  // jedem Render mitläuft, wenn niemand ihn sehen will.
+  const nodeInsightsByNode = useMemo(
+    () => (showInsights ? groupInsightsByNode(computeNodeInsights(state)) : undefined),
+    [state, showInsights],
+  );
 
   // Nähe-Stufe zum ausgewählten Node (s. GraphTier-Kommentar oben) — ohne
   // Auswahl ist jeder Node 'neutral' (== neighbor-Optik, nichts gedimmt).
@@ -1271,6 +1290,18 @@ export const GraphCanvas: React.FC<GraphCanvasProps> = ({
                           über den sichtbaren Punkt hinaus. */}
                       <circle cx={rx + HANDLE_OFFSET} cy={0} r={HANDLE_RADIUS + 8} fill="transparent" />
                       <circle cx={rx + HANDLE_OFFSET} cy={0} r={HANDLE_RADIUS} fill={wnTheme.focusLabel} style={{ pointerEvents: 'none' }} />
+                    </g>
+                  )}
+                  {/* Wissensnetz-Coach, erster Baustein: dezenter, immer
+                      sichtbarer Hinweis-Punkt (nicht nur bei Hover/Auswahl wie
+                      der Handle) — bewusst KEINE Warnfarbe (rot/rose ist app-weit
+                      für "kritisch/schwach" reserviert), reiner Beobachtungston.
+                      Native <title> statt eigenem Tooltip-Bau — genügt für v1. */}
+                  {nodeInsightsByNode?.has(node.id) && (
+                    <g style={{ pointerEvents: 'none' }}>
+                      <circle cx={-rx * 0.72} cy={-ry * 0.72} r={5} fill={wnTheme.chipText} opacity={0.85} stroke={wnTheme.chipBg} strokeWidth={1.5}>
+                        <title>{INSIGHT_LABELS[nodeInsightsByNode.get(node.id)![0].type]}{nodeInsightsByNode.get(node.id)!.length > 1 ? ` (+${nodeInsightsByNode.get(node.id)!.length - 1} weitere)` : ''}</title>
+                      </circle>
                     </g>
                   )}
                 </motion.g>

@@ -5,6 +5,7 @@ import type { GraphScope, GraphState } from '../services/graph/types';
 import { canUndo, canRedo, recordUpdateNode, type GraphHistory } from '../services/graph/graphHistoryService';
 import { clearSelection, selectNode } from '../services/graph/graphSelectionService';
 import { buildGraphIndex, outgoingEdges, incomingEdges, describeRelatedEntry } from '../services/graph/graphIndex';
+import { computeNodeInsights, groupInsightsByNode } from '../services/graph/graphInsightsService';
 import { shouldUsePdfReader } from '../services/libraryService';
 import { useKnowledgeGraph } from '../hooks/useKnowledgeGraph';
 import { GraphCanvas } from './GraphCanvas';
@@ -122,6 +123,15 @@ export const GraphSystem: React.FC<GraphSystemProps> = ({
   const [moveTargetId, setMoveTargetId] = useState('');
   const [isMoving, setIsMoving] = useState(false);
 
+  // Wissensnetz-Coach, Punkt 3 (rein strukturell, kein KI-Call) — s. Memory
+  // project_quizwise_wissensnetz_coach.md. Standardmäßig aus, damit die
+  // Hinweise als optionale Unterstützung wahrgenommen werden, nicht als
+  // Dauerzustand (User-Vorgabe im Plan).
+  const [showInsights, setShowInsights] = useState(false);
+  // .size (betroffene Nodes), nicht .length (Insight-Einträge) — ein Node
+  // ohne Beschreibung UND Notizen hat 2 Einträge, soll aber nur 1x zählen.
+  const nodeInsightCount = useMemo(() => groupInsightsByNode(computeNodeInsights(graph.state)).size, [graph.state]);
+
   const handleAssignToCollection = () => {
     if (!moveTargetId || unassignedNodes.length === 0) return;
     setIsMoving(true);
@@ -185,6 +195,17 @@ export const GraphSystem: React.FC<GraphSystemProps> = ({
         </div>
         <div className="ml-auto flex items-center gap-1.5">
           <button
+            onClick={() => setShowInsights(v => !v)}
+            title={showInsights ? 'Coach-Hinweise ausblenden' : 'Coach-Hinweise einblenden'}
+            aria-pressed={showInsights}
+            className="w-8 h-8 flex items-center justify-center rounded-lg text-slate-500 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-800 transition-colors"
+            style={showInsights
+              ? { background: 'color-mix(in srgb, var(--primary) 14%, transparent)' }
+              : undefined}
+          >
+            💡
+          </button>
+          <button
             onClick={graph.undo}
             disabled={!canUndo(graph.history)}
             title={t('kg.undo')}
@@ -238,6 +259,20 @@ export const GraphSystem: React.FC<GraphSystemProps> = ({
         </div>
       )}
 
+      {showInsights && nodeInsightCount > 0 && (
+        <div
+          className="flex items-center gap-3 flex-wrap px-4 py-3 rounded-[18px]"
+          style={{
+            background: 'color-mix(in srgb, var(--primary) 8%, transparent)',
+            border: '1px solid color-mix(in srgb, var(--primary) 20%, transparent)',
+          }}
+        >
+          <p className="text-xs font-medium text-slate-600 dark:text-slate-300 min-w-0">
+            {nodeInsightCount} {nodeInsightCount === 1 ? 'Node könnte' : 'Nodes könnten'} noch ausgebaut werden.
+          </p>
+        </div>
+      )}
+
       <div
         className="relative rounded-[24px] overflow-hidden h-[80vh] lg:h-[calc(100vh-11rem)]"
         style={{ background: 'var(--bg-sidebar)', border: '1px solid var(--border-color)' }}
@@ -256,6 +291,7 @@ export const GraphSystem: React.FC<GraphSystemProps> = ({
               onSelectionChange={graph.onSelectionChange}
               onEntityChanged={graph.onEntityChanged}
               isDark={isDark}
+              showInsights={showInsights}
             />
             {/* Absolutes Overlay, kein Resize der Kanvasfläche — s.
                 GraphNodeDetailPanel.tsx für die Begründung (Performance +
