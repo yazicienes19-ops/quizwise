@@ -472,9 +472,9 @@ export const GraphNodeDetailPanel: React.FC<GraphNodeDetailPanelProps> = ({
               disabled={isImproving || (!node.description.trim() && !node.notes.trim())}
               aria-label={t('kg.panel.improveAction')}
               title={t('kg.panel.improveAction')}
-              className="w-5 h-5 flex items-center justify-center rounded-md text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800 hover:text-slate-600 dark:hover:text-slate-300 disabled:opacity-30 transition-colors text-xs"
+              className="h-5 px-2 flex items-center justify-center rounded-md text-[8px] font-black uppercase tracking-wide text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800 hover:text-slate-600 dark:hover:text-slate-300 disabled:opacity-30 transition-colors"
             >
-              {isImproving ? '…' : '✨'}
+              {isImproving ? '…' : 'Verbessern'}
             </button>
           </div>
           <textarea

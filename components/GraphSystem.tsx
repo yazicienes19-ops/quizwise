@@ -357,36 +357,36 @@ export const GraphSystem: React.FC<GraphSystemProps> = ({
             onClick={() => setShowInsights(v => !v)}
             title={showInsights ? 'Coach-Hinweise ausblenden' : 'Coach-Hinweise einblenden'}
             aria-pressed={showInsights}
-            className="w-8 h-8 flex items-center justify-center rounded-lg text-slate-500 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-800 transition-colors"
+            className="h-8 px-3 flex items-center justify-center rounded-lg text-[9px] font-black uppercase tracking-widest text-slate-500 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-800 transition-colors"
             style={showInsights
               ? { background: 'color-mix(in srgb, var(--primary) 14%, transparent)' }
               : undefined}
           >
-            💡
+            Hinweise
           </button>
           <button
             onClick={handleCheckMissingRelations}
             disabled={isCheckingRelations}
             title="Fehlende Beziehungen prüfen"
-            className="w-8 h-8 flex items-center justify-center rounded-lg text-slate-500 dark:text-slate-300 disabled:opacity-40 hover:bg-slate-50 dark:hover:bg-slate-800 transition-colors"
+            className="h-8 px-3 flex items-center justify-center rounded-lg text-[9px] font-black uppercase tracking-widest text-slate-500 dark:text-slate-300 disabled:opacity-40 hover:bg-slate-50 dark:hover:bg-slate-800 transition-colors"
           >
-            {isCheckingRelations ? '…' : '🧩'}
+            {isCheckingRelations ? '…' : 'Beziehungen'}
           </button>
           <button
             onClick={handleCheckDuplicates}
             disabled={isCheckingDuplicates}
             title="Doppelte Konzepte prüfen"
-            className="w-8 h-8 flex items-center justify-center rounded-lg text-slate-500 dark:text-slate-300 disabled:opacity-40 hover:bg-slate-50 dark:hover:bg-slate-800 transition-colors"
+            className="h-8 px-3 flex items-center justify-center rounded-lg text-[9px] font-black uppercase tracking-widest text-slate-500 dark:text-slate-300 disabled:opacity-40 hover:bg-slate-50 dark:hover:bg-slate-800 transition-colors"
           >
-            {isCheckingDuplicates ? '…' : '👯'}
+            {isCheckingDuplicates ? '…' : 'Duplikate'}
           </button>
           <button
             onClick={handleCheckMissingConcepts}
             disabled={isCheckingConcepts}
             title="Fehlende Konzepte prüfen"
-            className="w-8 h-8 flex items-center justify-center rounded-lg text-slate-500 dark:text-slate-300 disabled:opacity-40 hover:bg-slate-50 dark:hover:bg-slate-800 transition-colors"
+            className="h-8 px-3 flex items-center justify-center rounded-lg text-[9px] font-black uppercase tracking-widest text-slate-500 dark:text-slate-300 disabled:opacity-40 hover:bg-slate-50 dark:hover:bg-slate-800 transition-colors"
           >
-            {isCheckingConcepts ? '…' : '🧠'}
+            {isCheckingConcepts ? '…' : 'Konzepte'}
           </button>
           <button
             onClick={graph.undo}
@@ -464,9 +464,17 @@ export const GraphSystem: React.FC<GraphSystemProps> = ({
             border: '1px solid color-mix(in srgb, var(--primary) 20%, transparent)',
           }}
         >
-          <p className="text-xs font-medium text-slate-600 dark:text-slate-300">
-            Vermutlich fehlende {missingRelationSuggestions.length === 1 ? 'Beziehung' : 'Beziehungen'}:
-          </p>
+          <div className="flex items-center justify-between gap-3">
+            <p className="text-xs font-medium text-slate-600 dark:text-slate-300">
+              Vermutlich fehlende {missingRelationSuggestions.length === 1 ? 'Beziehung' : 'Beziehungen'}:
+            </p>
+            <button
+              onClick={() => setMissingRelationSuggestions([])}
+              className="text-[9px] font-black uppercase tracking-widest text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 transition-colors shrink-0"
+            >
+              Alle ignorieren
+            </button>
+          </div>
           {missingRelationSuggestions.map((s, i) => {
             const titleA = graph.state.nodesById.get(s.sourceNodeId)?.title ?? s.sourceNodeId;
             const titleB = graph.state.nodesById.get(s.targetNodeId)?.title ?? s.targetNodeId;
@@ -505,9 +513,17 @@ export const GraphSystem: React.FC<GraphSystemProps> = ({
             border: '1px solid color-mix(in srgb, var(--primary) 20%, transparent)',
           }}
         >
-          <p className="text-xs font-medium text-slate-600 dark:text-slate-300">
-            {duplicateSuggestions.length === 1 ? 'Vermutlich doppeltes Konzept-Paar:' : 'Vermutlich doppelte Konzept-Paare:'}
-          </p>
+          <div className="flex items-center justify-between gap-3">
+            <p className="text-xs font-medium text-slate-600 dark:text-slate-300">
+              {duplicateSuggestions.length === 1 ? 'Vermutlich doppeltes Konzept-Paar:' : 'Vermutlich doppelte Konzept-Paare:'}
+            </p>
+            <button
+              onClick={() => setDuplicateSuggestions([])}
+              className="text-[9px] font-black uppercase tracking-widest text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 transition-colors shrink-0"
+            >
+              Alle ignorieren
+            </button>
+          </div>
           {duplicateSuggestions.map((s, i) => {
             const titleA = graph.state.nodesById.get(s.nodeAId)?.title ?? s.nodeAId;
             const titleB = graph.state.nodesById.get(s.nodeBId)?.title ?? s.nodeBId;
@@ -546,9 +562,17 @@ export const GraphSystem: React.FC<GraphSystemProps> = ({
             border: '1px solid color-mix(in srgb, var(--primary) 20%, transparent)',
           }}
         >
-          <p className="text-xs font-medium text-slate-600 dark:text-slate-300">
-            {missingConceptSuggestions.length === 1 ? 'Mögliches fehlendes Konzept:' : 'Mögliche fehlende Konzepte:'}
-          </p>
+          <div className="flex items-center justify-between gap-3">
+            <p className="text-xs font-medium text-slate-600 dark:text-slate-300">
+              {missingConceptSuggestions.length === 1 ? 'Mögliches fehlendes Konzept:' : 'Mögliche fehlende Konzepte:'}
+            </p>
+            <button
+              onClick={() => setMissingConceptSuggestions([])}
+              className="text-[9px] font-black uppercase tracking-widest text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 transition-colors shrink-0"
+            >
+              Alle ignorieren
+            </button>
+          </div>
           {missingConceptSuggestions.map((s, i) => (
             <div key={`${s.title}-${i}`} className="flex items-center gap-3 flex-wrap">
               <div className="min-w-0">

@@ -1403,10 +1403,10 @@ export const GraphCanvas: React.FC<GraphCanvasProps> = ({
               <button
                 onClick={() => onExplainEdge(edge.id)}
                 title="Beziehung erklären"
-                className="w-6 h-6 flex items-center justify-center rounded-md bg-white dark:bg-slate-800 text-slate-500 dark:text-slate-300 border shrink-0"
+                className="h-6 px-2 flex items-center justify-center rounded-md bg-white dark:bg-slate-800 text-[9px] font-black uppercase tracking-wide text-slate-500 dark:text-slate-300 border shrink-0"
                 style={{ borderColor: 'var(--border-color, #e2e8f0)' }}
               >
-                💡
+                Erklären
               </button>
             )}
             <button
