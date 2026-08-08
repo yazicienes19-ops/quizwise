@@ -75,6 +75,10 @@ export interface GraphCanvasProps {
    *  rein struktureller, informativer Hinweis-Punkt am Node. Default false:
    *  nur an, wenn der Nutzer den Schalter in GraphSystem.tsx bewusst aktiviert. */
   showInsights?: boolean;
+  /** Wissensnetz-Coach, Baustein 2 (s. GraphEdgeExplainOverlay.tsx) — Button
+   *  in der Kanten-Bearbeitungsleiste. Optional statt Pflicht, damit
+   *  GraphDevHarness.tsx (zweiter Aufrufer) unverändert bleiben kann. */
+  onExplainEdge?: (edgeId: string) => void;
 }
 
 interface ZoomTransform { x: number; y: number; k: number; }
@@ -391,7 +395,7 @@ function wrapTitleAdaptive(text: string, maxWidthPx: number, fontWeight: number)
 }
 
 export const GraphCanvas: React.FC<GraphCanvasProps> = ({
-  state, history, selection, onChange, onSelectionChange, onEntityChanged, isDark, showInsights,
+  state, history, selection, onChange, onSelectionChange, onEntityChanged, isDark, showInsights, onExplainEdge,
 }) => {
   const svgRef = useRef<SVGSVGElement | null>(null);
   const gRef = useRef<SVGGElement | null>(null);
@@ -1395,6 +1399,16 @@ export const GraphCanvas: React.FC<GraphCanvasProps> = ({
               className="text-[10px] font-bold rounded-md px-2 py-1.5 outline-none border-2 bg-white dark:bg-slate-800 dark:text-white"
               style={{ width: 140, borderColor: edgeEditError ? '#ef4444' : 'var(--primary)' }}
             />
+            {onExplainEdge && (
+              <button
+                onClick={() => onExplainEdge(edge.id)}
+                title="Beziehung erklären"
+                className="w-6 h-6 flex items-center justify-center rounded-md bg-white dark:bg-slate-800 text-slate-500 dark:text-slate-300 border shrink-0"
+                style={{ borderColor: 'var(--border-color, #e2e8f0)' }}
+              >
+                💡
+              </button>
+            )}
             <button
               onClick={deleteSelectedEdge}
               title="Beziehung löschen"

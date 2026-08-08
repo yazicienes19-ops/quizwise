@@ -9,6 +9,7 @@ import { computeNodeInsights, groupInsightsByNode } from '../services/graph/grap
 import { shouldUsePdfReader } from '../services/libraryService';
 import { useKnowledgeGraph } from '../hooks/useKnowledgeGraph';
 import { GraphCanvas } from './GraphCanvas';
+import { GraphEdgeExplainOverlay } from './GraphEdgeExplainOverlay';
 import { GraphNodeDetailPanel } from './GraphNodeDetailPanel';
 import { GraphLearningOverlay, type GraphLearningActivity } from './GraphLearningOverlay';
 import { useTranslation } from '../i18n/I18nProvider';
@@ -184,6 +185,16 @@ export const GraphSystem: React.FC<GraphSystemProps> = ({
     if (activeActivity && !activeActivityNode) setActiveActivity(null);
   }, [activeActivity, activeActivityNode]);
 
+  // Wissensnetz-Coach, Baustein 2 ("Beziehungen erklären", s.
+  // GraphEdgeExplainOverlay.tsx) — nur die ID merken, dieselbe "live
+  // auflösen statt Snapshot einfrieren"-Regel wie bei activeActivity/
+  // activeActivityNode oben. Schließt automatisch, falls die Kante
+  // währenddessen verschwindet (z.B. Undo/Löschen).
+  const [explainingEdgeId, setExplainingEdgeId] = useState<string | null>(null);
+  useEffect(() => {
+    if (explainingEdgeId && !graph.state.edgesById.has(explainingEdgeId)) setExplainingEdgeId(null);
+  }, [explainingEdgeId, graph.state]);
+
   return (
     <div className="space-y-3">
       <div className="flex items-center gap-3 flex-wrap px-1">
@@ -292,7 +303,16 @@ export const GraphSystem: React.FC<GraphSystemProps> = ({
               onEntityChanged={graph.onEntityChanged}
               isDark={isDark}
               showInsights={showInsights}
+              onExplainEdge={setExplainingEdgeId}
             />
+            {explainingEdgeId && (
+              <GraphEdgeExplainOverlay
+                state={graph.state}
+                edgeId={explainingEdgeId}
+                onClose={() => setExplainingEdgeId(null)}
+                onApiError={onApiError}
+              />
+            )}
             {/* Absolutes Overlay, kein Resize der Kanvasfläche — s.
                 GraphNodeDetailPanel.tsx für die Begründung (Performance +
                 räumliche Orientierung).

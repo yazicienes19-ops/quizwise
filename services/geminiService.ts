@@ -977,6 +977,42 @@ WICHTIGE REGEL: Dies ist KEIN offener Chat, sondern ein Dialog ausschließlich �
   });
 };
 
+/**
+ * Wissensnetz-Coach, Baustein 2 ("Beziehungen erklären" — s. Memory
+ * project_quizwise_wissensnetz_coach.md, Punkt 5). Anders als
+ * generateExplanation/continueNodeExplanation für Nodes bewusst OHNE
+ * Allgemeinwissen-Vermischung: source enthält ausschließlich Graph-internen
+ * Text (Titel/Beschreibung/Notizen beider Konzepte + die vom Nutzer selbst
+ * vergebene Beziehung, s. buildEdgeExplanationSource in
+ * graphEdgeExplanationSource.ts) — strikte Stoffbindung ab V1, keine
+ * Rückfragen (kein Dialog, einmalige Erklärung auf Klick einer Kante).
+ */
+export const explainRelationship = async (
+  source: GenerationSource,
+  nodeATitle: string,
+  nodeBTitle: string,
+): Promise<string> => {
+  const safeA = sanitizeUserInput(nodeATitle, 200);
+  const safeB = sanitizeUserInput(nodeBTitle, 200);
+  const parts: any[] = [sourceTopart(source)];
+
+  parts.push({
+    text: `Erkläre in 2-4 kurzen Sätzen, warum im Wissensnetz des Nutzers eine Beziehung zwischen den Konzepten "${safeA}" und "${safeB}" bestehen könnte.
+
+STRENGE REGELN:
+- Nutze AUSSCHLIESSLICH die oben bereitgestellten Informationen (Titel, Beschreibung, Notizen beider Konzepte, die vom Nutzer vergebene Beziehung). Kein Allgemeinwissen, keine externen Quellen, keine Erfindungen.
+- Reichen die Informationen nicht aus, um die Beziehung nachvollziehbar zu begründen, sage das ehrlich (z.B. "Anhand der vorhandenen Angaben lässt sich das nicht eindeutig sagen.") statt zu spekulieren. Das ist ein vollkommen akzeptables Ergebnis, kein Fehlerfall.
+- Formuliere als Vermutung, nie als Tatsachenbehauptung — nutze Formulierungen wie "vermutlich", "könnte", "naheliegend ist...".
+- Kurzer Fließtext, keine Überschriften, keine Aufzählung.${outputLangDirective()}`,
+  });
+
+  return callBackend({
+    complexity: 'heavy',
+    parts,
+    config: { temperature: 0.4, thinkingConfig: { thinkingBudget: 0 } },
+  });
+};
+
 export interface GroundedExplanation {
   answer: string;
   /** true, wenn die übergebene (meist eng zugeschnittene) Quelle die Nutzereingabe
