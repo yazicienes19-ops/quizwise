@@ -1196,6 +1196,68 @@ STRENGE REGELN:
   return raw.duplicates ?? [];
 };
 
+/**
+ * Wissensnetz-Coach, Baustein 6 ("Fehlende Konzepte erkennen" — s. Memory
+ * project_quizwise_wissensnetz_coach.md, Punkt 2). Anders als die bisherigen
+ * fünf Bausteine bekommt diese Funktion ECHTES Dokumentmaterial (s.
+ * buildMissingConceptSource in graphMissingConceptSource.ts, nur Dokumente,
+ * die der Nutzer bewusst mit Nodes verknüpft hat) statt nur Graph-internen
+ * Text — strikte Stoffbindung bleibt trotzdem Pflicht, jetzt bezogen auf das
+ * Material statt auf den Graphen. Liefert Vorschläge für NEUE Konzepte
+ * (keine existierenden IDs) — Duplikat-Prüfung passiert getrennt in
+ * validateMissingConceptSuggestions.
+ */
+export interface MissingConceptSuggestion {
+  title: string;
+  description: string;
+}
+
+export const suggestMissingConcepts = async (source: GenerationSource): Promise<MissingConceptSuggestion[]> => {
+  const parts: any[] = [sourceTopart(source)];
+
+  parts.push({
+    text: `Schlage Konzepte vor, die im obigen Material klar behandelt werden, aber noch NICHT in der Liste "Bereits vorhandene Konzepte" stehen.
+
+STRENGE REGELN:
+- Nutze AUSSCHLIESSLICH das oben bereitgestellte Material — kein Allgemeinwissen, keine Ergänzung über das Material hinaus.
+- Schlage ein Konzept NUR vor, wenn es im Material klar und eigenständig behandelt wird — keine Nebensächlichkeiten, keine bloße Erwähnung in einem Nebensatz.
+- Schlage NIEMALS ein Konzept vor, das (auch unter leicht anderer Formulierung) bereits in der "Bereits vorhandene Konzepte"-Liste steht.
+- title: kurz und prägnant wie eine Überschrift (2-6 Wörter), kein ganzer Satz.
+- description: eine kurze, eigenständige Definition/Zusammenfassung AUSSCHLIESSLICH aus dem Material, 1-3 Sätze.
+- 0 bis N Vorschläge — deckt der Graph das Material bereits vollständig ab, ist eine leere Liste die richtige Antwort, kein Fehlerfall. Erzwinge keine Mindestanzahl.${outputLangDirective()}`,
+  });
+
+  const text = await callBackend({
+    complexity: 'heavy',
+    parts,
+    config: {
+      temperature: 0.4,
+      thinkingConfig: { thinkingBudget: 0 },
+      responseMimeType: 'application/json',
+      responseSchema: {
+        type: Type.OBJECT,
+        properties: {
+          concepts: {
+            type: Type.ARRAY,
+            items: {
+              type: Type.OBJECT,
+              properties: {
+                title: { type: Type.STRING },
+                description: { type: Type.STRING },
+              },
+              required: ['title', 'description'],
+            },
+          },
+        },
+        required: ['concepts'],
+      },
+    },
+  });
+
+  const raw = JSON.parse(text || '{}') as { concepts?: MissingConceptSuggestion[] };
+  return raw.concepts ?? [];
+};
+
 export interface GroundedExplanation {
   answer: string;
   /** true, wenn die übergebene (meist eng zugeschnittene) Quelle die Nutzereingabe
