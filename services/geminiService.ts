@@ -1136,6 +1136,66 @@ STRENGE REGELN:
   return raw.suggestions ?? [];
 };
 
+/**
+ * Wissensnetz-Coach, Baustein 5 ("Doppelte Konzepte erkennen" — s. Memory
+ * project_quizwise_wissensnetz_coach.md, Punkt 6). Gleiches Muster wie
+ * suggestMissingRelationships: source enthält Titel/Beschreibung/Notizen
+ * mehrerer Nodes plus deren echte IDs (s. buildDuplicateSuggestionSource in
+ * graphDuplicateSuggestionSource.ts). Liefert die ROHE, unvalidierte Liste
+ * zurück — Prüfung passiert getrennt in validateDuplicateSuggestions.
+ */
+export interface RawDuplicateSuggestion {
+  nodeAId: string;
+  nodeBId: string;
+  reason: string;
+}
+
+export const suggestDuplicateConcepts = async (source: GenerationSource): Promise<RawDuplicateSuggestion[]> => {
+  const parts: any[] = [sourceTopart(source)];
+
+  parts.push({
+    text: `Schlage Paare von Konzepten aus der obigen Liste vor, die vermutlich DASSELBE Konzept sind (Synonym, Übersetzung, exakte Wiederholung unter anderem Namen) — NICHT bloß verwandte oder ähnliche, aber tatsächlich verschiedene Konzepte.
+
+STRENGE REGELN:
+- Nutze AUSSCHLIESSLICH die oben bereitgestellten Konzepte (Titel/Beschreibung/Notizen) — kein Allgemeinwissen, keine neuen Fakten.
+- Antworte NUR mit IDs, die exakt in der obigen Liste stehen. Erfinde niemals eine ID.
+- Schlage ein Paar NUR vor, wenn es sich klar um dasselbe Konzept handelt — bei bloßer thematischer Nähe oder Verwandtschaft NICHT vorschlagen, das ist kein Duplikat.
+- 0 bis N Vorschläge — findest du keine echten Duplikate, ist eine leere Liste die richtige Antwort, kein Fehlerfall. Erzwinge keine Mindestanzahl.
+- reason immer als Vermutung formulieren ("könnte dasselbe Konzept sein wie ..."), nie als Tatsachenbehauptung, 1 kurzer Satz.${outputLangDirective()}`,
+  });
+
+  const text = await callBackend({
+    complexity: 'heavy',
+    parts,
+    config: {
+      temperature: 0.4,
+      thinkingConfig: { thinkingBudget: 0 },
+      responseMimeType: 'application/json',
+      responseSchema: {
+        type: Type.OBJECT,
+        properties: {
+          duplicates: {
+            type: Type.ARRAY,
+            items: {
+              type: Type.OBJECT,
+              properties: {
+                nodeAId: { type: Type.STRING },
+                nodeBId: { type: Type.STRING },
+                reason: { type: Type.STRING },
+              },
+              required: ['nodeAId', 'nodeBId', 'reason'],
+            },
+          },
+        },
+        required: ['duplicates'],
+      },
+    },
+  });
+
+  const raw = JSON.parse(text || '{}') as { duplicates?: RawDuplicateSuggestion[] };
+  return raw.duplicates ?? [];
+};
+
 export interface GroundedExplanation {
   answer: string;
   /** true, wenn die übergebene (meist eng zugeschnittene) Quelle die Nutzereingabe
