@@ -144,7 +144,7 @@ export const ScholarSearch: React.FC<ScholarSearchProps> = ({
         <button
           type="submit"
           disabled={isSearching || !query.trim()}
-          className="absolute right-3 top-1/2 -translate-y-1/2 text-white px-6 py-2.5 rounded-2xl font-black uppercase text-[10px] tracking-widest hover:scale-105 active:scale-95 transition-all shadow-lg disabled:opacity-50"
+          className="absolute right-3 top-1/2 -translate-y-1/2 text-white px-6 py-2.5 rounded-2xl font-black uppercase text-[10px] tracking-widest hover:scale-105 transition-all shadow-lg disabled:opacity-40"
           style={{ background: 'var(--primary)' }}
         >
           {isSearching ? (
@@ -190,8 +190,12 @@ export const ScholarSearch: React.FC<ScholarSearchProps> = ({
               >
                 {/* Collapsed row */}
                 <div
-                  className="flex items-center gap-4 p-4 cursor-pointer select-none"
+                  role="button"
+                  tabIndex={0}
+                  aria-expanded={expanded}
+                  className="flex items-center gap-4 p-4 cursor-pointer select-none focus-visible:outline focus-visible:outline-2 focus-visible:outline-[color:var(--primary)]"
                   onClick={() => setExpandedIndex(expanded ? null : i)}
+                  onKeyDown={e => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); setExpandedIndex(expanded ? null : i); } }}
                 >
                   <span
                     className="w-7 h-7 rounded-lg flex items-center justify-center text-[10px] font-black shrink-0 transition-colors"
@@ -214,7 +218,7 @@ export const ScholarSearch: React.FC<ScholarSearchProps> = ({
 
                   <div className="flex items-center gap-2 shrink-0">
                     {saved && (
-                      <span className="text-[8px] font-black uppercase text-emerald-500 bg-emerald-50 dark:bg-emerald-950/30 px-2 py-1 rounded-lg">
+                      <span className="text-[9px] font-black uppercase text-emerald-500 bg-emerald-50 dark:bg-emerald-950/30 px-2 py-1 rounded-full">
                         {t('sch.saved')}
                       </span>
                     )}
@@ -222,7 +226,7 @@ export const ScholarSearch: React.FC<ScholarSearchProps> = ({
                       onClick={(e) => { e.stopPropagation(); handleSave(result); }}
                       disabled={saved}
                       title={t('sch.saveSource')}
-                      className="w-8 h-8 rounded-xl flex items-center justify-center transition-all hover:scale-110 active:scale-95 disabled:opacity-40"
+                      className="w-8 h-8 rounded-xl flex items-center justify-center transition-all hover:scale-110 disabled:opacity-40"
                       style={{ background: saved ? '#10b981' : 'var(--border-color)', color: saved ? 'white' : 'var(--text-main)' }}
                     >
                       <BookOpen className="w-3.5 h-3.5" strokeWidth={2} />
@@ -231,7 +235,7 @@ export const ScholarSearch: React.FC<ScholarSearchProps> = ({
                       <button
                         onClick={(e) => { e.stopPropagation(); handleCopy(result, i); }}
                         title={t('sch.copyApa')}
-                        className="w-8 h-8 rounded-xl flex items-center justify-center transition-all hover:scale-110 active:scale-95"
+                        className="w-8 h-8 rounded-xl flex items-center justify-center transition-all hover:scale-110"
                         style={{ background: 'var(--border-color)', color: copied ? '#10b981' : 'var(--text-main)' }}
                       >
                         {copied ? <Check className="w-3.5 h-3.5" strokeWidth={2.5} /> : <Copy className="w-3.5 h-3.5" strokeWidth={2} />}
@@ -289,7 +293,7 @@ export const ScholarSearch: React.FC<ScholarSearchProps> = ({
 
                     <button
                       onClick={() => onGenerateQuiz(result)}
-                      className="w-full py-3 rounded-xl text-[10px] font-black uppercase tracking-widest text-white transition-all hover:scale-[1.02] active:scale-95 flex items-center justify-center gap-2"
+                      className="w-full py-3 rounded-xl text-[10px] font-black uppercase tracking-widest text-white transition-all hover:scale-[1.02] flex items-center justify-center gap-2"
                       style={{ background: 'var(--primary)' }}
                     >
                       <GraduationCap className="w-4 h-4" strokeWidth={2} />
@@ -308,7 +312,7 @@ export const ScholarSearch: React.FC<ScholarSearchProps> = ({
         <div className="fixed bottom-6 left-1/2 -translate-x-1/2 z-50">
           <button
             onClick={onGoToPaper}
-            className="flex items-center gap-3 bg-emerald-600 hover:bg-emerald-700 text-white px-6 py-3.5 rounded-2xl shadow-2xl font-black uppercase text-[10px] tracking-widest transition-all hover:scale-105 active:scale-95"
+            className="flex items-center gap-3 bg-emerald-600 hover:bg-emerald-700 text-white px-6 py-3.5 rounded-2xl shadow-2xl font-black uppercase text-[10px] tracking-widest transition-all hover:scale-105"
           >
             <BookOpen className="w-4 h-4" strokeWidth={2.5} />
             {tp('sch.sourceN', savedResults.length)} {t('sch.savedBannerSuffix')}

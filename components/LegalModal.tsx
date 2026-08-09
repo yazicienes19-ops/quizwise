@@ -1,6 +1,8 @@
 import React from 'react';
+import { createPortal } from 'react-dom';
 import { X } from 'lucide-react';
 import { getLocale, t } from '../i18n';
+import { useModalA11y } from '../hooks/useModalA11y';
 
 type LegalPage = 'impressum' | 'datenschutz' | 'agb';
 
@@ -273,21 +275,23 @@ const CONTENT: Record<LegalPage, { title: string; body: React.ReactNode }> = {
 
 export const LegalModal: React.FC<LegalModalProps> = ({ page, onClose }) => {
   const { title, body } = CONTENT[page];
+  const { titleId, dialogProps } = useModalA11y(onClose);
 
-  return (
+  return createPortal(
     <div className="fixed inset-0 z-[100] flex items-end sm:items-center justify-center p-4 bg-slate-900/50 backdrop-blur-sm animate-in fade-in duration-200">
       <div
+        {...dialogProps}
         className="w-full max-w-2xl max-h-[85vh] flex flex-col rounded-[32px] shadow-3d-deep animate-in slide-in-from-bottom-4 duration-300"
         style={{ background: 'var(--bg-sidebar)', border: '1px solid var(--border-color)' }}
       >
         <div className="flex items-center justify-between p-8 pb-0 shrink-0">
-          <h2 className="text-2xl font-black tracking-tight dark:text-white">{title}</h2>
+          <h2 id={titleId} className="text-2xl font-black tracking-tight dark:text-white">{title}</h2>
           <button aria-label={t('common.close')}
             onClick={onClose}
             className="w-10 h-10 rounded-xl flex items-center justify-center text-slate-400 hover:text-slate-700 dark:hover:text-white transition-colors"
             style={{ background: 'var(--border-color)' }}
           >
-            <X className="w-5 h-5" strokeWidth={2} />
+            <X className="w-[18px] h-[18px]" strokeWidth={2} />
           </button>
         </div>
         <div className="overflow-y-auto p-8 scrollbar-thin space-y-4">
@@ -299,6 +303,7 @@ export const LegalModal: React.FC<LegalModalProps> = ({ page, onClose }) => {
           {body}
         </div>
       </div>
-    </div>
+    </div>,
+    document.body
   );
 };

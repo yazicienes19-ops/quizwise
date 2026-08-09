@@ -1,8 +1,11 @@
 
 import React, { useMemo } from 'react';
+import { createPortal } from 'react-dom';
 import { FlashcardDeck } from '../types';
 import { migrateLegacyCard } from '../services/spacedRepetition';
 import { useTranslation } from '../i18n/I18nProvider';
+import { useModalA11y } from '../hooks/useModalA11y';
+import { ModalCloseButton } from './ModalCloseButton';
 
 interface DeckStatsModalProps {
   deck: FlashcardDeck;
@@ -11,6 +14,7 @@ interface DeckStatsModalProps {
 
 export const DeckStatsModal: React.FC<DeckStatsModalProps> = ({ deck, onClose }) => {
   const { t } = useTranslation();
+  const { titleId, dialogProps } = useModalA11y(onClose);
   const stats = useMemo(() => {
     const now = Date.now();
     const cards = deck.cards.map(c => c.srs ? c : { ...c, srs: migrateLegacyCard(c) });
@@ -39,12 +43,13 @@ export const DeckStatsModal: React.FC<DeckStatsModalProps> = ({ deck, onClose })
     { label: t('dsm.mastered'),   value: stats.mastered,  color: 'bg-indigo-500',  text: 'text-indigo-500'  },
   ];
 
-  return (
+  return createPortal(
     <div
       className="fixed inset-0 bg-black/60 z-50 flex items-center justify-center p-4 animate-in fade-in duration-200"
       onClick={onClose}
     >
       <div
+        {...dialogProps}
         className="bg-white dark:bg-slate-900 rounded-[32px] w-full max-w-md shadow-3d-deep overflow-hidden animate-in zoom-in-95 duration-300"
         onClick={e => e.stopPropagation()}
       >
@@ -52,14 +57,10 @@ export const DeckStatsModal: React.FC<DeckStatsModalProps> = ({ deck, onClose })
         <div className="flex justify-between items-start px-8 py-6 border-b border-slate-100 dark:border-slate-800">
           <div className="min-w-0 flex-1 pr-4">
             <p className="text-[10px] font-black uppercase tracking-widest text-slate-400 mb-1">{t('dsm.stats')}</p>
-            <h2 className="text-xl font-black dark:text-white break-words">{deck.title}</h2>
+            <h2 id={titleId} className="text-xl font-black dark:text-white break-words">{deck.title}</h2>
             <p className="text-[10px] font-bold text-slate-400 mt-0.5">{t('dsm.totalCards', { n: stats.total })}</p>
           </div>
-          <button aria-label={t('upl.close')} onClick={onClose} className="p-2 text-slate-400 hover:text-rose-500 transition-colors rounded-xl shrink-0">
-            <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round">
-              <line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/>
-            </svg>
-          </button>
+          <ModalCloseButton onClick={onClose} label={t('upl.close')} />
         </div>
 
         <div className="px-8 py-6 space-y-6">
@@ -111,6 +112,7 @@ export const DeckStatsModal: React.FC<DeckStatsModalProps> = ({ deck, onClose })
           )}
         </div>
       </div>
-    </div>
+    </div>,
+    document.body
   );
 };

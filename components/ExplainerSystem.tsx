@@ -173,7 +173,7 @@ export const ExplainerSystem: React.FC<ExplainerSystemProps> = ({
       {step === 'landing' && (
         <div className="grid sm:grid-cols-2 gap-4 animate-in fade-in duration-500">
           <button onClick={() => setStep('setup')}
-            className="text-left p-8 rounded-[32px] transition-all hover:scale-[1.01] active:scale-[0.99] space-y-4"
+            className="text-left p-8 rounded-[32px] transition-all hover:scale-[1.02] space-y-4"
             style={{ background: 'var(--bg-sidebar)', border: '1px solid var(--border-color)' }}
           >
             <div className="w-12 h-12 rounded-2xl flex items-center justify-center" style={{ background: 'color-mix(in srgb, var(--primary) 12%, transparent)' }}>
@@ -185,7 +185,7 @@ export const ExplainerSystem: React.FC<ExplainerSystemProps> = ({
             </div>
           </button>
           <button onClick={() => setStep('picker')}
-            className="text-left p-8 rounded-[32px] transition-all hover:scale-[1.01] active:scale-[0.99] space-y-4"
+            className="text-left p-8 rounded-[32px] transition-all hover:scale-[1.02] space-y-4"
             style={{ background: 'var(--bg-sidebar)', border: '1px solid var(--border-color)' }}
           >
             <div className="w-12 h-12 rounded-2xl flex items-center justify-center" style={{ background: 'color-mix(in srgb, var(--primary) 12%, transparent)' }}>
@@ -225,7 +225,7 @@ export const ExplainerSystem: React.FC<ExplainerSystemProps> = ({
                   <button
                     key={doc.id}
                     onClick={() => onOpenReader?.(doc)}
-                    className="w-full flex items-center gap-4 px-5 py-4 rounded-2xl text-left transition-all hover:scale-[1.01] active:scale-[0.99]"
+                    className="w-full flex items-center gap-4 px-5 py-4 rounded-2xl text-left transition-all hover:scale-[1.02]"
                     style={{ background: 'var(--bg-sidebar)', border: '1px solid var(--border-color)' }}
                   >
                     <BookOpen size={18} className="shrink-0" style={{ color: 'var(--primary)' }} strokeWidth={1.75} />
@@ -335,7 +335,7 @@ export const ExplainerSystem: React.FC<ExplainerSystemProps> = ({
           <button
             onClick={() => handleExplain()}
             disabled={!canStart}
-            className="w-full py-4 rounded-2xl text-[11px] font-black uppercase tracking-widest transition-all hover:scale-[1.02] active:scale-[0.98] disabled:opacity-30 disabled:cursor-not-allowed"
+            className="w-full py-4 rounded-2xl text-[11px] font-black uppercase tracking-widest transition-all hover:scale-[1.02] disabled:opacity-40 disabled:cursor-not-allowed"
             style={{ background: 'var(--primary)', color: 'var(--primary-text)' }}
           >
             {t('ex.explainThis')}
@@ -419,7 +419,7 @@ export const ExplainerSystem: React.FC<ExplainerSystemProps> = ({
           {/* Beleg aus der Quelle: worauf stützt sich die Erklärung? */}
           {sourceQuote && (
             <div className="rounded-2xl p-4" style={{ background: 'color-mix(in srgb, var(--primary) 8%, transparent)', border: '1px solid color-mix(in srgb, var(--primary) 25%, transparent)' }}>
-              <p className="text-[8px] font-black uppercase tracking-widest mb-1" style={{ color: 'var(--primary)' }}>
+              <p className="text-[9px] font-black uppercase tracking-widest mb-1" style={{ color: 'var(--primary)' }}>
                 {activeSourceName ? t('ex.quoteFrom', { source: activeSourceName }) : t('ex.quoteLabel')}
               </p>
               <p className="text-xs font-medium italic text-slate-600 dark:text-slate-300 break-words">„{sourceQuote}"</p>

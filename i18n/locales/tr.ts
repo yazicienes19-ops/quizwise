@@ -621,6 +621,8 @@ export const tr: Translations = {
   'lib.exampleSemester': 'ör. 1. Dönem',
   'lib.edit': 'Düzenle',
   'lib.delete': 'Sil',
+  'lib.gridView': 'Izgara görünümü',
+  'lib.listView': 'Liste görünümü',
   'lib.modules': 'Modüller',
   'lib.searchPlaceholder': 'Kaynak ara…',
   'lib.allTypes': 'Tüm türler',

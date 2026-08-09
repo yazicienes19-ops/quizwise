@@ -246,7 +246,7 @@ export const ExamView: React.FC<ExamViewProps> = ({
     if (q.type === 'mc' && q.options) {
       const scenarioBlock = q.scenarioText ? (
         <div className="pl-4 lg:pl-10 mb-4 p-5 bg-amber-50 dark:bg-amber-900/20 rounded-[20px] border border-amber-200 dark:border-amber-800">
-          <p className="text-[8px] font-black uppercase tracking-widest text-amber-600 dark:text-amber-400 mb-2">{t('quiz.badge.scenario')}</p>
+          <p className="text-[9px] font-black uppercase tracking-widest text-amber-600 dark:text-amber-400 mb-2">{t('quiz.badge.scenario')}</p>
           <p className="text-sm text-slate-700 dark:text-slate-300 leading-relaxed">{q.scenarioText}</p>
         </div>
       ) : null;
@@ -302,12 +302,12 @@ export const ExamView: React.FC<ExamViewProps> = ({
                     const next = [...userOrder];
                     [next[i - 1], next[i]] = [next[i], next[i - 1]];
                     setAnswer(q.id, next);
-                  }} className="w-7 h-7 rounded-lg bg-slate-100 dark:bg-slate-700 text-slate-500 text-xs flex items-center justify-center hover:bg-indigo-100 disabled:opacity-30 transition-colors">▲</button>
+                  }} className="w-7 h-7 rounded-lg bg-slate-100 dark:bg-slate-700 text-slate-500 text-xs flex items-center justify-center hover:bg-indigo-100 disabled:opacity-40 transition-colors">▲</button>
                   <button disabled={i === userOrder.length - 1} onClick={() => {
                     const next = [...userOrder];
                     [next[i], next[i + 1]] = [next[i + 1], next[i]];
                     setAnswer(q.id, next);
-                  }} className="w-7 h-7 rounded-lg bg-slate-100 dark:bg-slate-700 text-slate-500 text-xs flex items-center justify-center hover:bg-indigo-100 disabled:opacity-30 transition-colors">▼</button>
+                  }} className="w-7 h-7 rounded-lg bg-slate-100 dark:bg-slate-700 text-slate-500 text-xs flex items-center justify-center hover:bg-indigo-100 disabled:opacity-40 transition-colors">▼</button>
                 </div>
               </div>
             ))}
@@ -632,10 +632,10 @@ export const ExamView: React.FC<ExamViewProps> = ({
                 ) : showSaveInput ? (
                   <div className="flex gap-2 mb-2">
                     <input autoFocus value={saveName} onChange={e => setSaveName(e.target.value)}
-                      className="flex-1 px-4 py-2 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-[14px] text-sm font-medium dark:text-white outline-none focus:border-indigo-500 transition-colors"
+                      className="flex-1 px-4 py-2 bg-white dark:bg-slate-800 border-2 border-slate-200 dark:border-slate-700 rounded-[14px] text-sm font-medium dark:text-white outline-none focus:border-indigo-500 transition-colors"
                       placeholder={t('ev.examNamePlaceholder')} />
                     <button onClick={() => { onSaveExam(saveName.trim() || t('ev.myExam')); setExamSaved(true); setShowSaveInput(false); }}
-                      className="px-4 py-2 bg-indigo-600 text-white rounded-[14px] text-[10px] font-black uppercase tracking-widest hover:scale-105 active:scale-95 transition-all shrink-0">
+                      className="px-4 py-2 bg-indigo-600 text-white rounded-[14px] text-[10px] font-black uppercase tracking-widest hover:scale-105 transition-all shrink-0">
                       {t('quiz.save')}
                     </button>
                   </div>
@@ -894,7 +894,7 @@ export const ExamView: React.FC<ExamViewProps> = ({
             <div key={q.id} className="relative group p-6 -m-6 rounded-[32px] hover:bg-slate-50 dark:hover:bg-slate-900/50 transition-colors">
 
               {mode === 'edit' && !isEditing && (
-                <button onClick={() => startEditing(q)} className="absolute top-6 right-6 opacity-0 group-hover:opacity-100 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 p-2 rounded-xl text-slate-400 hover:text-indigo-600 transition-all shadow-sm z-10">
+                <button onClick={() => startEditing(q)} aria-label="Frage bearbeiten" className="absolute top-6 right-6 opacity-0 group-hover:opacity-100 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 p-2 rounded-xl text-slate-400 hover:text-indigo-600 transition-all shadow-sm z-10">
                   <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
                     <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 1 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/>
                   </svg>
@@ -918,7 +918,7 @@ export const ExamView: React.FC<ExamViewProps> = ({
                   <div className="flex justify-between items-start gap-4">
                     <div className="flex items-center gap-3">
                       <span className="font-black text-xl dark:text-white">Aufgabe {idx + 1}:</span>
-                      <span className="text-[8px] font-black uppercase tracking-widest bg-slate-100 dark:bg-slate-800 text-slate-400 px-2.5 py-1 rounded-lg">
+                      <span className="text-[9px] font-black uppercase tracking-widest bg-slate-100 dark:bg-slate-800 text-slate-400 px-2.5 py-1 rounded-full">
                         {getTypeLabel(q.type)}
                       </span>
                     </div>
@@ -937,14 +937,14 @@ export const ExamView: React.FC<ExamViewProps> = ({
                   {mode === 'result' && (
                     <div className="mt-8 pl-4 lg:pl-10 animate-in slide-in-from-bottom-4 space-y-3">
                       {/* Haupt-Box */}
-                      <div className={`p-6 rounded-[32px] border-l-8 ${(q.achievedPoints ?? 0) === q.points ? 'bg-emerald-50 dark:bg-emerald-950/20 border-emerald-500' : (q.achievedPoints ?? 0) > 0 ? 'bg-amber-50 dark:bg-amber-950/20 border-amber-500' : 'bg-rose-50 dark:bg-rose-950/20 border-rose-400'}`}>
+                      <div className={`p-6 rounded-[32px] border-l-4 ${(q.achievedPoints ?? 0) === q.points ? 'bg-emerald-50 dark:bg-emerald-950/20 border-emerald-500' : (q.achievedPoints ?? 0) > 0 ? 'bg-amber-50 dark:bg-amber-950/20 border-amber-500' : 'bg-rose-50 dark:bg-rose-950/20 border-rose-400'}`}>
                         <div className="flex justify-between items-center mb-4">
                           <div className="flex items-center gap-2">
                             <h4 className="text-[10px] font-black uppercase tracking-widest text-slate-400">
                               {q.type === 'open' ? t('ev.correction') : t('ev.evaluation')}
                             </h4>
                             {q.evaluationConfidence !== undefined && (
-                              <span className={`text-[8px] font-black uppercase tracking-widest px-2 py-0.5 rounded-full ${q.evaluationConfidence >= 80 ? 'bg-emerald-100 dark:bg-emerald-900/30 text-emerald-600' : q.evaluationConfidence >= 60 ? 'bg-amber-100 dark:bg-amber-900/30 text-amber-600' : 'bg-rose-100 dark:bg-rose-900/30 text-rose-600'}`}>
+                              <span className={`text-[9px] font-black uppercase tracking-widest px-2 py-0.5 rounded-full ${q.evaluationConfidence >= 80 ? 'bg-emerald-100 dark:bg-emerald-900/30 text-emerald-600' : q.evaluationConfidence >= 60 ? 'bg-amber-100 dark:bg-amber-900/30 text-amber-600' : 'bg-rose-100 dark:bg-rose-900/30 text-rose-600'}`}>
                                 {q.evaluationConfidence >= 80 ? t('ev.confHigh') : q.evaluationConfidence >= 60 ? t('ev.confMid') : t('ev.confLow')}
                               </span>
                             )}
@@ -1044,11 +1044,11 @@ export const ExamView: React.FC<ExamViewProps> = ({
                     if (e.key === 'Escape') setShowProgressInput(false);
                   }}
                   placeholder={t('ev.examNamePlaceholder')}
-                  className="flex-1 px-3 py-2 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-[12px] text-sm font-medium dark:text-white outline-none focus:border-indigo-500 transition-colors"
+                  className="flex-1 px-3 py-2 bg-slate-50 dark:bg-slate-800 border-2 border-slate-200 dark:border-slate-700 rounded-[12px] text-sm font-medium dark:text-white outline-none focus:border-indigo-500 transition-colors"
                 />
                 <button
                   onClick={() => { onSaveProgress(progressName.trim() || t('ev.myExam')); setShowProgressInput(false); }}
-                  className="px-3 py-2 bg-indigo-600 text-white rounded-[12px] text-[10px] font-black uppercase tracking-widest hover:scale-105 active:scale-95 transition-all shrink-0"
+                  className="px-3 py-2 bg-indigo-600 text-white rounded-[12px] text-[10px] font-black uppercase tracking-widest hover:scale-105 transition-all shrink-0"
                 >
                   OK
                 </button>
@@ -1061,14 +1061,14 @@ export const ExamView: React.FC<ExamViewProps> = ({
             {onSaveProgress && (
               <button
                 onClick={() => { setProgressName(t('ev.myExam')); setShowProgressInput(v => !v); }}
-                className="bg-white/90 dark:bg-slate-900/90 backdrop-blur-sm border border-slate-200 dark:border-slate-700 text-slate-600 dark:text-slate-300 px-5 py-4 rounded-[24px] font-black uppercase tracking-widest text-[10px] shadow-lg hover:scale-105 active:scale-95 transition-all flex items-center gap-2"
+                className="bg-white/90 dark:bg-slate-900/90 backdrop-blur-sm border border-slate-200 dark:border-slate-700 text-slate-600 dark:text-slate-300 px-5 py-4 rounded-[24px] font-black uppercase tracking-widest text-[10px] shadow-lg hover:scale-105 transition-all flex items-center gap-2"
               >
                 <svg xmlns="http://www.w3.org/2000/svg" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z"/><polyline points="17 21 17 13 7 13 7 21"/><polyline points="7 3 7 8 15 8"/></svg>
                 {t('quiz.save')}
               </button>
             )}
             <button onClick={handleSubmit} disabled={isEvaluating}
-              className="bg-indigo-600 text-white px-6 sm:px-10 py-5 sm:py-6 rounded-[24px] sm:rounded-[32px] font-black uppercase tracking-[0.2em] sm:tracking-[0.3em] text-[11px] shadow-3d-deep hover:scale-110 active:scale-95 transition-all flex items-center gap-3 sm:gap-4"
+              className="bg-indigo-600 text-white px-6 sm:px-10 py-5 sm:py-6 rounded-[24px] font-black uppercase tracking-[0.2em] sm:tracking-[0.3em] text-[11px] shadow-3d-deep hover:scale-105 transition-all flex items-center gap-3 sm:gap-4"
             >
               {isEvaluating ? t('ev.correcting') : <span>{t('ev.submit')} <EmojiImage emoji="📝" size={16} /></span>}
             </button>

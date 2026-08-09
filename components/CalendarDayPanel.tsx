@@ -202,10 +202,10 @@ export const CalendarDayPanel: React.FC<CalendarDayPanelProps> = ({
                   <p className="text-[9px] font-black uppercase tracking-widest text-slate-400 mt-0.5">{t('sp2.examTermLabel')}</p>
                 </div>
                 <div className="flex items-center gap-1 shrink-0">
-                  <button aria-label={t('sp2.edit')} onClick={() => openEditExam(exam)} className="w-7 h-7 flex items-center justify-center rounded-lg text-slate-300 hover:text-indigo-500 hover:bg-indigo-50 dark:hover:bg-indigo-900/20 transition-colors">
+                  <button aria-label={t('sp2.edit')} onClick={() => openEditExam(exam)} className="w-9 h-9 flex items-center justify-center rounded-lg text-slate-300 hover:text-indigo-500 hover:bg-indigo-50 dark:hover:bg-indigo-900/20 transition-colors">
                     <Pencil size={13} />
                   </button>
-                  <button aria-label={t('common.delete')} onClick={() => onDeleteExam(exam.id)} className="w-7 h-7 flex items-center justify-center rounded-lg text-slate-300 hover:text-rose-500 hover:bg-rose-50 dark:hover:bg-rose-900/20 transition-colors">
+                  <button aria-label={t('common.delete')} onClick={() => onDeleteExam(exam.id)} className="w-9 h-9 flex items-center justify-center rounded-lg text-slate-300 hover:text-rose-500 hover:bg-rose-50 dark:hover:bg-rose-900/20 transition-colors">
                     <X size={14} />
                   </button>
                 </div>
@@ -272,10 +272,10 @@ export const CalendarDayPanel: React.FC<CalendarDayPanelProps> = ({
                   <p className="text-[9px] font-black uppercase tracking-widest text-slate-400 mt-0.5">{t('sp2.legendEvent')}</p>
                 </div>
                 <div className="flex items-center gap-1 shrink-0">
-                  <button aria-label={t('sp2.edit')} onClick={() => openEditEvent(ev)} className="w-7 h-7 flex items-center justify-center rounded-lg text-slate-300 hover:text-indigo-500 hover:bg-indigo-50 dark:hover:bg-indigo-900/20 transition-colors">
+                  <button aria-label={t('sp2.edit')} onClick={() => openEditEvent(ev)} className="w-9 h-9 flex items-center justify-center rounded-lg text-slate-300 hover:text-indigo-500 hover:bg-indigo-50 dark:hover:bg-indigo-900/20 transition-colors">
                     <Pencil size={13} />
                   </button>
-                  <button aria-label={t('common.delete')} onClick={() => onDeleteEvent(ev.id)} className="w-7 h-7 flex items-center justify-center rounded-lg text-slate-300 hover:text-rose-500 hover:bg-rose-50 dark:hover:bg-rose-900/20 transition-colors">
+                  <button aria-label={t('common.delete')} onClick={() => onDeleteEvent(ev.id)} className="w-9 h-9 flex items-center justify-center rounded-lg text-slate-300 hover:text-rose-500 hover:bg-rose-50 dark:hover:bg-rose-900/20 transition-colors">
                     <X size={14} />
                   </button>
                 </div>
@@ -308,25 +308,25 @@ export const CalendarDayPanel: React.FC<CalendarDayPanelProps> = ({
               </p>
             </div>
             <div className="flex items-center gap-1 shrink-0">
-              <button aria-label={t('sp2.edit')} onClick={() => openEditForm(s)} className="w-7 h-7 flex items-center justify-center rounded-lg text-slate-300 hover:text-indigo-500 hover:bg-indigo-50 dark:hover:bg-indigo-900/20 transition-colors">
+              <button aria-label={t('sp2.edit')} onClick={() => openEditForm(s)} className="w-9 h-9 flex items-center justify-center rounded-lg text-slate-300 hover:text-indigo-500 hover:bg-indigo-50 dark:hover:bg-indigo-900/20 transition-colors">
                 <Pencil size={13} />
               </button>
               {s.recurring && s.sourceRuleId ? (
                 <>
-                  <button aria-label={t('sp2.skipOccurrence')} title={t('sp2.skipOccurrence')} onClick={() => onSkipRecurringOccurrence(s.sourceRuleId!)} className="w-7 h-7 flex items-center justify-center rounded-lg text-slate-300 hover:text-amber-500 hover:bg-amber-50 dark:hover:bg-amber-900/20 transition-colors">
+                  <button aria-label={t('sp2.skipOccurrence')} title={t('sp2.skipOccurrence')} onClick={() => onSkipRecurringOccurrence(s.sourceRuleId!)} className="w-9 h-9 flex items-center justify-center rounded-lg text-slate-300 hover:text-amber-500 hover:bg-amber-50 dark:hover:bg-amber-900/20 transition-colors">
                     <CalendarX size={13} />
                   </button>
                   <button
                     aria-label={t('sp2.deleteRule')}
                     title={t('sp2.deleteRule')}
                     onClick={() => { if (window.confirm(t('sp2.deleteRuleConfirm'))) onDeleteRecurringRule(s.sourceRuleId!); }}
-                    className="w-7 h-7 flex items-center justify-center rounded-lg text-slate-300 hover:text-rose-500 hover:bg-rose-50 dark:hover:bg-rose-900/20 transition-colors"
+                    className="w-9 h-9 flex items-center justify-center rounded-lg text-slate-300 hover:text-rose-500 hover:bg-rose-50 dark:hover:bg-rose-900/20 transition-colors"
                   >
                     <Trash2 size={13} />
                   </button>
                 </>
               ) : (
-                <button aria-label={t('common.delete')} onClick={() => onDeleteOneOffSession(s.id)} className="w-7 h-7 flex items-center justify-center rounded-lg text-slate-300 hover:text-rose-500 hover:bg-rose-50 dark:hover:bg-rose-900/20 transition-colors">
+                <button aria-label={t('common.delete')} onClick={() => onDeleteOneOffSession(s.id)} className="w-9 h-9 flex items-center justify-center rounded-lg text-slate-300 hover:text-rose-500 hover:bg-rose-50 dark:hover:bg-rose-900/20 transition-colors">
                   <X size={14} />
                 </button>
               )}
@@ -350,7 +350,7 @@ export const CalendarDayPanel: React.FC<CalendarDayPanelProps> = ({
               <p className="text-[9px] font-black uppercase tracking-widest text-indigo-600">
                 {editing ? t('sp2.editSession') : t('sp2.addSession')}
               </p>
-              <button onClick={() => { setShowForm(false); resetForm(); }} className="w-7 h-7 flex items-center justify-center rounded-lg text-slate-400 hover:text-rose-500 transition-colors">
+              <button onClick={() => { setShowForm(false); resetForm(); }} className="w-9 h-9 flex items-center justify-center rounded-lg text-slate-400 hover:text-rose-500 transition-colors">
                 <X size={14} />
               </button>
             </div>

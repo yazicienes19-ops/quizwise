@@ -335,11 +335,11 @@ export const StudyPlanner: React.FC<StudyPlannerProps> = ({ metrics, decks, exam
           {t('sp2.subtitle')}
         </p>
 
-        <div className="flex justify-center gap-3 pt-2">
+        <div className="flex flex-wrap justify-center gap-3 pt-2">
           <button
             onClick={handleSmartPlan}
             disabled={isGenerating}
-            className="bg-indigo-600 text-white px-8 py-4 rounded-3xl font-black uppercase tracking-[0.2em] text-[11px] shadow-3d-deep hover:scale-105 active:scale-95 transition-all flex items-center gap-2 disabled:opacity-50"
+            className="bg-indigo-600 text-white px-8 py-4 rounded-3xl font-black uppercase tracking-[0.2em] text-[11px] shadow-3d-deep hover:scale-105 transition-all flex items-center gap-2 disabled:opacity-40"
           >
             {isGenerating ? t('sp2.planning') : t('sp2.smartPlan')}
           </button>
@@ -387,7 +387,7 @@ export const StudyPlanner: React.FC<StudyPlannerProps> = ({ metrics, decks, exam
           {spacedEnabled && (
             <button
               onClick={handleRedistribute}
-              className="px-5 py-3 rounded-2xl text-[10px] font-black uppercase tracking-widest transition-all hover:scale-105 active:scale-95"
+              className="px-5 py-3 rounded-2xl text-[10px] font-black uppercase tracking-widest transition-all hover:scale-105"
               style={{ background: 'color-mix(in srgb, var(--primary) 12%, transparent)', color: 'var(--primary)', border: '1px solid color-mix(in srgb, var(--primary) 30%, transparent)' }}
             >
               {t('sp2.redistribute')}

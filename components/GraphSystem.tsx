@@ -402,7 +402,7 @@ export const GraphSystem: React.FC<GraphSystemProps> = ({
             onClick={graph.undo}
             disabled={!canUndo(graph.history)}
             title={t('kg.undo')}
-            className="w-8 h-8 flex items-center justify-center rounded-lg text-slate-500 dark:text-slate-300 disabled:opacity-30 hover:bg-slate-50 dark:hover:bg-slate-800 transition-colors"
+            className="w-8 h-8 flex items-center justify-center rounded-lg text-slate-500 dark:text-slate-300 disabled:opacity-40 hover:bg-slate-50 dark:hover:bg-slate-800 transition-colors"
           >
             ↶
           </button>
@@ -410,7 +410,7 @@ export const GraphSystem: React.FC<GraphSystemProps> = ({
             onClick={graph.redo}
             disabled={!canRedo(graph.history)}
             title={t('kg.redo')}
-            className="w-8 h-8 flex items-center justify-center rounded-lg text-slate-500 dark:text-slate-300 disabled:opacity-30 hover:bg-slate-50 dark:hover:bg-slate-800 transition-colors"
+            className="w-8 h-8 flex items-center justify-center rounded-lg text-slate-500 dark:text-slate-300 disabled:opacity-40 hover:bg-slate-50 dark:hover:bg-slate-800 transition-colors"
           >
             ↷
           </button>

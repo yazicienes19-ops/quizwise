@@ -1,7 +1,10 @@
-import React, { useState, useMemo, useCallback } from 'react';
+import React, { useState, useMemo, useCallback, useRef } from 'react';
+import { createPortal } from 'react-dom';
 import { Flashcard, FlashcardDeck } from '../types';
 import { createSrsState } from '../services/spacedRepetition';
 import { useTranslation } from '../i18n/I18nProvider';
+import { useModalA11y } from '../hooks/useModalA11y';
+import { ModalCloseButton } from './ModalCloseButton';
 
 interface AnkiImportModalProps {
   decks: FlashcardDeck[];
@@ -64,6 +67,8 @@ function parseLines(text: string): { front: string; back: string }[] {
 
 export const AnkiImportModal: React.FC<AnkiImportModalProps> = ({ decks, onClose, onImport }) => {
   const { t, tp } = useTranslation();
+  const pasteRef = useRef<HTMLTextAreaElement>(null);
+  const { titleId, dialogProps } = useModalA11y(onClose, pasteRef);
   const [tab, setTab] = useState<'paste' | 'file'>('paste');
   const [pasteText, setPasteText] = useState('');
   const [fileText, setFileText] = useState('');
@@ -113,26 +118,23 @@ export const AnkiImportModal: React.FC<AnkiImportModalProps> = ({ decks, onClose
     onClose();
   };
 
-  return (
+  return createPortal(
     <div
       className="fixed inset-0 bg-black/60 z-50 flex items-center justify-center p-4 animate-in fade-in duration-200"
       onClick={() => onClose()}
     >
       <div
+        {...dialogProps}
         className="bg-white dark:bg-slate-900 rounded-[32px] w-full max-w-lg shadow-3d-deep overflow-hidden animate-in zoom-in-95 duration-300 max-h-[90vh] overflow-y-auto"
         onClick={e => e.stopPropagation()}
       >
         {/* Header */}
         <div className="flex justify-between items-center px-8 py-6 border-b border-slate-100 dark:border-slate-800">
           <div>
-            <h2 className="text-xl font-black dark:text-white">{t('aim.title')}</h2>
+            <h2 id={titleId} className="text-xl font-black dark:text-white">{t('aim.title')}</h2>
             <p className="text-[10px] font-black uppercase tracking-widest text-slate-400 mt-0.5">{t('aim.subtitle')}</p>
           </div>
-          <button aria-label={t('upl.close')} onClick={onClose} className="p-2 text-slate-400 hover:text-rose-500 transition-colors rounded-xl">
-            <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round">
-              <line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/>
-            </svg>
-          </button>
+          <ModalCloseButton onClick={onClose} label={t('upl.close')} className="p-2 text-slate-400 hover:text-rose-500 transition-colors rounded-xl" />
         </div>
 
         <div className="px-8 py-6 space-y-6">
@@ -155,7 +157,7 @@ export const AnkiImportModal: React.FC<AnkiImportModalProps> = ({ decks, onClose
             <div className="space-y-2">
               <p className="text-[9px] font-black uppercase tracking-widest text-slate-400">{t('aim.oneCardPerLine')}</p>
               <textarea
-                autoFocus
+                ref={pasteRef}
                 value={pasteText}
                 onChange={e => setPasteText(e.target.value)}
                 placeholder={"Apoptose\tProgrammierter Zelltod\nSynapse\tVerbindung zwischen zwei Neuronen"}
@@ -188,7 +190,7 @@ export const AnkiImportModal: React.FC<AnkiImportModalProps> = ({ decks, onClose
               ) : (
                 <>
                   <p className="font-black dark:text-white text-sm">{t('aim.dropCsv')}</p>
-                  <p className="text-[10px] text-slate-400 mt-1 uppercase tracking-widest">{t('aim.orClick')}</p>
+                  <p className="text-[10px] text-slate-400 mt-1 font-black uppercase tracking-widest">{t('aim.orClick')}</p>
                 </>
               )}
             </div>
@@ -253,6 +255,7 @@ export const AnkiImportModal: React.FC<AnkiImportModalProps> = ({ decks, onClose
           </button>
         </div>
       </div>
-    </div>
+    </div>,
+    document.body
   );
 };

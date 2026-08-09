@@ -142,16 +142,16 @@ export const QuizSetup: React.FC<QuizSetupProps> = ({ doc, availableDocs, onStar
         {stats.count > 0 && (
           <div className="flex gap-4 mt-3 pt-3 border-t border-white/20">
             <div>
-              <p className="text-[8px] uppercase tracking-widest opacity-60">{t('quizSetup.quizzes')}</p>
+              <p className="text-[9px] font-black uppercase tracking-widest opacity-60">{t('quizSetup.quizzes')}</p>
               <p className="text-sm font-black">{stats.count}</p>
             </div>
             <div>
-              <p className="text-[8px] uppercase tracking-widest opacity-60">{t('quizSetup.avgAccuracy')}</p>
+              <p className="text-[9px] font-black uppercase tracking-widest opacity-60">{t('quizSetup.avgAccuracy')}</p>
               <p className="text-sm font-black">{stats.avgAccuracy}%</p>
             </div>
             {stats.lastAt && (
               <div>
-                <p className="text-[8px] uppercase tracking-widest opacity-60">{t('quizSetup.last')}</p>
+                <p className="text-[9px] font-black uppercase tracking-widest opacity-60">{t('quizSetup.last')}</p>
                 <p className="text-sm font-black">{formatDate(stats.lastAt, { day: '2-digit', month: 'short' })}</p>
               </div>
             )}
@@ -187,7 +187,7 @@ export const QuizSetup: React.FC<QuizSetupProps> = ({ doc, availableDocs, onStar
                 )}
               </div>
               <span className="text-[10px] font-black break-words dark:text-white">{documentDisplayName(d)}</span>
-              {d.id === doc.id && <span className="text-[8px] font-black text-slate-400 shrink-0">{t('quizSetup.primary')}</span>}
+              {d.id === doc.id && <span className="text-[9px] font-black text-slate-400 shrink-0">{t('quizSetup.primary')}</span>}
             </button>
           ))}
         </div>
@@ -293,7 +293,7 @@ export const QuizSetup: React.FC<QuizSetupProps> = ({ doc, availableDocs, onStar
             : (Array.from(selectedTypes) as ConcreteQuestionType[]);
           onStart({ questionType, difficulty, questionCount: effectiveCount, focus, examMode }, selectedDocIds);
         }}
-        className="w-full py-5 rounded-[24px] font-black uppercase tracking-widest text-[11px] shadow-3d-deep hover:scale-[1.02] active:scale-[0.98] transition-all flex items-center justify-center gap-3"
+        className="w-full py-5 rounded-[24px] font-black uppercase tracking-widest text-[11px] shadow-3d-deep hover:scale-[1.02] transition-all flex items-center justify-center gap-3"
         style={{ background: 'var(--primary)', color: 'var(--primary-text)' }}
       >
         <span>{t('quizSetup.generate', { n: effectiveCount })}</span>

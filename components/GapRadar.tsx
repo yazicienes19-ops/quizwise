@@ -77,7 +77,7 @@ const ChartTooltip: React.FC<{ active?: boolean; payload?: any[]; label?: number
       border: '1px solid var(--border-color)',
       borderRadius: 14,
       padding: '10px 14px',
-      boxShadow: '0 8px 32px rgba(0,0,0,0.14)',
+      boxShadow: '0 10px 30px -5px rgba(0, 0, 0, 0.08), 0 4px 10px -2px rgba(0, 0, 0, 0.03), inset 0 1px 0 0 rgba(255, 255, 255, 0.5)',
       minWidth: 170,
     }}>
       <p style={{
@@ -654,7 +654,7 @@ export const GapRadar: React.FC<GapRadarProps> = ({ metrics, onNavigate, onActio
       {/* ── Header ── */}
       {!hideHeader && (
         <div className="text-center space-y-3">
-          <h1 className="text-4xl lg:text-7xl font-black text-slate-900 dark:text-white tracking-tighter">
+          <h1 className="text-4xl lg:text-6xl font-black text-slate-900 dark:text-white tracking-tighter">
             {t('gr.titlePre')} <span className="text-indigo-600">{t('gr.titleAccent')}</span> <EmojiImage emoji="📡" size={36} />
           </h1>
           <p className="text-base text-slate-500 dark:text-slate-400 font-medium opacity-80">
@@ -720,7 +720,7 @@ export const GapRadar: React.FC<GapRadarProps> = ({ metrics, onNavigate, onActio
 
         {/* Kachel 1: Gesamtfortschritt */}
         <div
-          className="bg-white dark:bg-slate-900 p-5 lg:p-8 rounded-[24px] lg:rounded-[32px] border border-slate-200 dark:border-slate-800 shadow-sm flex flex-col"
+          className="bg-white dark:bg-slate-900 p-6 lg:p-8 rounded-[24px] lg:rounded-[32px] border border-slate-200 dark:border-slate-800 shadow-3d-raised flex flex-col"
           style={{ background: 'var(--card)' }}
         >
           <h3 className="text-[9px] font-black uppercase tracking-widest mb-4" style={{ color: 'var(--mute)' }}>
@@ -759,7 +759,7 @@ export const GapRadar: React.FC<GapRadarProps> = ({ metrics, onNavigate, onActio
 
         {/* Kachel 2: Größte Lücke */}
         <div
-          className="p-5 lg:p-8 rounded-[24px] lg:rounded-[32px] border border-l-4 border-l-rose-500 border-slate-200 dark:border-slate-800 shadow-sm"
+          className="p-6 lg:p-8 rounded-[24px] lg:rounded-[32px] border border-l-4 border-l-rose-500 border-slate-200 dark:border-slate-800 shadow-3d-raised"
           style={{ background: 'var(--card)' }}
         >
           <h3 className="text-[9px] font-black uppercase tracking-widest text-rose-500 mb-3">{t('gr.biggestGap')}</h3>
@@ -776,7 +776,7 @@ export const GapRadar: React.FC<GapRadarProps> = ({ metrics, onNavigate, onActio
                   const tabMap = { exam: ActiveTab.EXAM, anki: ActiveTab.CARDS, quiz: ActiveTab.QUIZ };
                   onNavigate(tabMap[biggestGap.action]);
                 }}
-                className="mt-4 w-full py-2.5 rounded-xl text-[8px] font-black uppercase tracking-widest transition-all hover:opacity-80"
+                className="mt-4 w-full py-2.5 rounded-xl text-[9px] font-black uppercase tracking-widest transition-all hover:opacity-80"
                 style={{ background: 'color-mix(in srgb, #f43f5e 12%, var(--bg-sidebar))', color: '#f43f5e', border: '1px solid color-mix(in srgb, #f43f5e 25%, transparent)' }}
               >
                 {biggestGap.action === 'exam' ? t('gr.startExam') :
@@ -790,7 +790,7 @@ export const GapRadar: React.FC<GapRadarProps> = ({ metrics, onNavigate, onActio
 
         {/* Kachel 3: Heute lernen */}
         <div
-          className="p-5 lg:p-8 rounded-[24px] lg:rounded-[32px] border border-slate-200 dark:border-slate-800 shadow-sm"
+          className="p-6 lg:p-8 rounded-[24px] lg:rounded-[32px] border border-slate-200 dark:border-slate-800 shadow-3d-raised"
           style={{ background: 'var(--card)' }}
         >
           <h3 className="text-[9px] font-black uppercase tracking-widest mb-3" style={{ color: 'var(--primary)' }}>
@@ -804,7 +804,7 @@ export const GapRadar: React.FC<GapRadarProps> = ({ metrics, onNavigate, onActio
                     <p className="text-[10px] font-black break-words pr-1" style={{ color: 'var(--ink)' }}>
                       {item.topic}
                     </p>
-                    <p className="text-[8px] uppercase font-bold" style={{ color: 'var(--mute)' }}>
+                    <p className="text-[9px] uppercase font-bold" style={{ color: 'var(--mute)' }}>
                       {item.mode}
                     </p>
                   </div>
@@ -900,7 +900,7 @@ export const GapRadar: React.FC<GapRadarProps> = ({ metrics, onNavigate, onActio
                       border: '1px solid var(--border-color)',
                     }}
                   >
-                    <p className="px-4 pt-3 pb-1 text-[8px] font-black uppercase tracking-widest" style={{ color: 'var(--mute)' }}>
+                    <p className="px-4 pt-3 pb-1 text-[9px] font-black uppercase tracking-widest" style={{ color: 'var(--mute)' }}>
                       {topic}
                     </p>
                     {[
@@ -958,7 +958,7 @@ export const GapRadar: React.FC<GapRadarProps> = ({ metrics, onNavigate, onActio
               >
                 {/* Mode badge */}
                 <span
-                  className="shrink-0 px-2 py-1 rounded-lg text-[8px] font-black uppercase tracking-wider"
+                  className="shrink-0 px-2 py-1 rounded-full text-[9px] font-black uppercase tracking-wider"
                   style={{
                     background: scoreBg(entry.score),
                     color: scoreColor(entry.score),
@@ -1010,7 +1010,7 @@ export const GapRadar: React.FC<GapRadarProps> = ({ metrics, onNavigate, onActio
           <button
             onClick={handleRunAnalysis}
             disabled={isAnalyzing || !hasAnyData}
-            className="w-full sm:w-auto px-8 py-4 rounded-2xl font-black uppercase text-[10px] tracking-[0.2em] shadow-xl hover:scale-105 active:scale-95 transition-all disabled:opacity-40 shrink-0"
+            className="w-full sm:w-auto px-8 py-4 rounded-2xl font-black uppercase text-[10px] tracking-[0.2em] shadow-xl hover:scale-105 transition-all disabled:opacity-40 shrink-0"
             style={{ background: 'var(--primary)', color: 'var(--primary-text)' }}
           >
             {isAnalyzing ? t('gr.analyzing') : <>{t('gr.deepAnalysis')} <EmojiImage emoji="✨" size={13} /></>}
@@ -1041,14 +1041,14 @@ export const GapRadar: React.FC<GapRadarProps> = ({ metrics, onNavigate, onActio
                 return (
                   <div
                     key={idx}
-                    className="p-6 lg:p-8 rounded-[24px] lg:rounded-[32px] border shadow-sm space-y-4 flex flex-col"
+                    className="p-6 lg:p-8 rounded-[24px] lg:rounded-[32px] border shadow-3d-raised space-y-4 flex flex-col"
                     style={{ background: 'var(--card)', borderColor: 'var(--border-color)' }}
                   >
                     <div>
                       <div className="flex flex-wrap justify-between items-start gap-2">
                         <p className="text-[9px] font-black uppercase tracking-widest" style={{ color: '#f43f5e' }}>{t('gr.mainProblem')}</p>
                         <span
-                          className="text-[8px] font-black px-2.5 py-1 rounded-full uppercase tracking-widest shrink-0"
+                          className="text-[9px] font-black px-2.5 py-1 rounded-full uppercase tracking-widest shrink-0"
                           style={{ background: 'var(--primary)', color: 'var(--primary-text)' }}
                         >
                           {t('gr.occurredN', { n: error.count })}
@@ -1073,7 +1073,7 @@ export const GapRadar: React.FC<GapRadarProps> = ({ metrics, onNavigate, onActio
                     </div>
                     <button
                       onClick={handleLearn}
-                      className="w-full py-3 rounded-xl text-[9px] font-black uppercase tracking-widest transition-all hover:scale-[1.02] active:scale-[0.98]"
+                      className="w-full py-3 rounded-xl text-[9px] font-black uppercase tracking-widest transition-all hover:scale-[1.02]"
                       style={{ background: 'var(--primary)', color: 'var(--primary-text)' }}
                     >
                       Jetzt lernen →

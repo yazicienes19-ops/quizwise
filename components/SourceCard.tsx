@@ -45,7 +45,7 @@ const DigestInfo: React.FC<{ doc: ProcessedDocument; onRetry?: () => void }> = (
       {status === 'error' && onRetry && (
         <button
           onClick={e => { e.stopPropagation(); onRetry(); }}
-          className="text-[8px] font-black uppercase tracking-widest px-2 py-0.5 rounded-full transition-all hover:opacity-80"
+          className="text-[9px] font-black uppercase tracking-widest px-2 py-0.5 rounded-full transition-all hover:opacity-80"
           style={{ background: 'color-mix(in srgb, var(--primary) 12%, transparent)', color: 'var(--primary)', border: '1px solid color-mix(in srgb, var(--primary) 30%, transparent)' }}
         >
           {t('card.retryAnalysis')}
@@ -58,7 +58,7 @@ const DigestInfo: React.FC<{ doc: ProcessedDocument; onRetry?: () => void }> = (
 const Stat: React.FC<{ label: string; value: number }> = ({ label, value }) => (
   <div className="text-center">
     <p className="font-black text-sm" style={{ color: 'var(--text-main)' }}>{value}</p>
-    <p className="text-[8px] font-black uppercase text-slate-400 tracking-widest">{label}</p>
+    <p className="text-[9px] font-black uppercase text-slate-400 tracking-widest">{label}</p>
   </div>
 );
 
@@ -107,7 +107,7 @@ export const SourceCard: React.FC<Props> = ({ doc, meta, view, onOpen, onView, o
         <div className="flex items-center gap-2 shrink-0">
           {meta.quizCount      ? <span className="text-[9px] font-bold text-slate-400 hidden sm:block">{t('card.quizCount', { n: meta.quizCount })}</span> : null}
           {meta.flashcardCount ? <span className="text-[9px] font-bold text-slate-400 hidden sm:block">{t('card.cardsCount', { n: meta.flashcardCount })}</span> : null}
-          {meta.isAltklausur && <span className="hidden sm:block text-[8px] font-black uppercase tracking-widest px-2 py-0.5 rounded-full bg-rose-50 dark:bg-rose-950/20 text-rose-500">{t('card.oldExam')}</span>}
+          {meta.isAltklausur && <span className="hidden sm:block text-[9px] font-black uppercase tracking-widest px-2 py-0.5 rounded-full bg-rose-50 dark:bg-rose-950/20 text-rose-500">{t('card.oldExam')}</span>}
           <button
             onClick={onOpen}
             className="px-4 py-2 bg-indigo-600 text-white rounded-xl text-[9px] font-black uppercase tracking-widest hover:scale-105 transition-all"
@@ -134,10 +134,10 @@ export const SourceCard: React.FC<Props> = ({ doc, meta, view, onOpen, onView, o
       <div className="flex justify-between items-start mb-4">
         <div className="flex gap-1 flex-wrap flex-grow min-w-0 mr-2">
           {meta.isAltklausur && (
-            <span className="text-[8px] font-black uppercase tracking-widest px-2 py-0.5 rounded-full bg-rose-50 dark:bg-rose-950/20 text-rose-500">{t('card.oldExam')}</span>
+            <span className="text-[9px] font-black uppercase tracking-widest px-2 py-0.5 rounded-full bg-rose-50 dark:bg-rose-950/20 text-rose-500">{t('card.oldExam')}</span>
           )}
           {meta.tags?.slice(0, 2).map(t => (
-            <span key={t} className="bg-indigo-50 dark:bg-indigo-900/20 text-indigo-600 dark:text-indigo-400 text-[8px] font-black px-2 py-0.5 rounded-full uppercase tracking-tight">
+            <span key={t} className="bg-indigo-50 dark:bg-indigo-900/20 text-indigo-600 dark:text-indigo-400 text-[9px] font-black px-2 py-0.5 rounded-full uppercase tracking-tight">
               {t}
             </span>
           ))}
@@ -183,11 +183,11 @@ export const SourceCard: React.FC<Props> = ({ doc, meta, view, onOpen, onView, o
           <p className="text-[9px] text-slate-400">
             {lastOpened ? t('card.lastPrefix', { date: lastOpened }) : t('card.uploadedPrefix', { date: uploadedAt })}
           </p>
-          <span className="text-[8px] font-black uppercase text-slate-300 dark:text-slate-600">{doc.type.toUpperCase()}</span>
+          <span className="text-[9px] font-black uppercase text-slate-300 dark:text-slate-600">{doc.type.toUpperCase()}</span>
         </div>
         <button
           onClick={onOpen}
-          className="w-full bg-indigo-600 py-3 rounded-2xl text-[10px] font-black uppercase tracking-widest hover:scale-[1.02] active:scale-95 transition-all shadow-md"
+          className="w-full bg-indigo-600 py-3 rounded-2xl text-[10px] font-black uppercase tracking-widest hover:scale-[1.02] transition-all shadow-md"
           style={{ color: 'var(--primary-text)' }}
         >
           {t('card.openArrow')}

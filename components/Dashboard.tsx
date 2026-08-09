@@ -236,7 +236,7 @@ export const Dashboard: React.FC<DashboardProps> = ({
         ))}
         <button
           onClick={() => onTabChange(ActiveTab.LIBRARY)}
-          className="w-full mt-2 px-8 py-4 rounded-[20px] font-black uppercase text-[11px] tracking-widest shadow-3d-deep hover:scale-[1.02] active:scale-[0.98] transition-all flex items-center justify-center gap-3 animate-card-enter"
+          className="w-full mt-2 px-8 py-4 rounded-[24px] font-black uppercase text-[11px] tracking-widest shadow-3d-deep hover:scale-[1.02] transition-all flex items-center justify-center gap-3 animate-card-enter"
           style={{ background: 'var(--primary)', color: 'var(--primary-text)', ['--stagger-i' as string]: 4 }}
         >
           <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round">
@@ -268,7 +268,7 @@ export const Dashboard: React.FC<DashboardProps> = ({
                 <button
                   key={i}
                   onClick={task.onClick}
-                  className="w-full flex items-center gap-2.5 px-3.5 py-2.5 rounded-[14px] text-left transition-transform hover:scale-[1.015] active:scale-[0.99]"
+                  className="w-full flex items-center gap-2.5 px-3.5 py-2.5 rounded-[14px] text-left transition-transform hover:scale-[1.02]"
                   style={{ background: 'var(--bg-sidebar)', border: '1px solid var(--border-color)' }}
                 >
                   <span className="w-2 h-2 rounded-full shrink-0" style={{ background: PRIORITY_COLOR[task.priority] }} />
@@ -302,7 +302,7 @@ export const Dashboard: React.FC<DashboardProps> = ({
       {weiterlernCard && (
         <button
           onClick={() => onTabChange(weiterlernCard.tab)}
-          className="w-full text-left p-5 rounded-[20px] shadow-3d-raised hover:scale-[1.01] active:scale-[0.99] transition-transform animate-card-enter"
+          className="w-full text-left p-5 rounded-[20px] shadow-3d-raised hover:scale-[1.02] transition-transform animate-card-enter"
           style={{ background: 'var(--primary)', color: 'var(--primary-text)', ['--stagger-i' as string]: 2 }}
         >
           <div className="flex items-center gap-1.5 mb-1.5">
@@ -398,7 +398,7 @@ export const Dashboard: React.FC<DashboardProps> = ({
             <button
               key={card.id}
               onClick={() => onTabChange(card.id)}
-              className={`flex items-center gap-2.5 px-3.5 py-3 rounded-[14px] text-left hover:scale-[1.03] active:scale-[0.98] transition-transform ${isLast ? 'sm:col-span-2 lg:col-span-3 sm:justify-center' : ''}`}
+              className={`flex items-center gap-2.5 px-3.5 py-3 rounded-[14px] text-left hover:scale-[1.02] transition-transform ${isLast ? 'sm:col-span-2 lg:col-span-3 sm:justify-center' : ''}`}
               style={{ background: 'var(--bg-sidebar)', border: '1px solid var(--border-color)' }}
             >
               <div className="w-9 h-9 rounded-xl flex items-center justify-center shrink-0" style={{ background: iconBg, color: iconColor }}>

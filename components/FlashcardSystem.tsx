@@ -520,7 +520,7 @@ export const FlashcardSystem: React.FC<FlashcardSystemProps> = ({
                   className="w-full pl-10 pr-4 py-2.5 bg-slate-50 dark:bg-slate-800 rounded-xl text-sm outline-none border-2 border-transparent focus:border-indigo-400 dark:text-white transition-colors"
                 />
                 {cardSearch && (
-                  <button onClick={() => setCardSearch('')} className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-300 hover:text-slate-500">
+                  <button onClick={() => setCardSearch('')} aria-label={t('common.close')} className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-300 hover:text-slate-500">
                     <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
                   </button>
                 )}
@@ -603,7 +603,7 @@ export const FlashcardSystem: React.FC<FlashcardSystemProps> = ({
         />
       )}
       <div className="text-center space-y-4 px-4">
-        <h1 className="text-5xl lg:text-7xl font-black text-slate-900 dark:text-white tracking-tighter">
+        <h1 className="text-4xl lg:text-6xl font-black text-slate-900 dark:text-white tracking-tighter">
           Anki <span className="text-indigo-600">{t('fcs.decks')}</span> <EmojiImage emoji="🎓" size={48} />
         </h1>
         <p className="text-lg lg:text-xl text-slate-500 dark:text-slate-400 font-medium opacity-80">
@@ -682,7 +682,7 @@ export const FlashcardSystem: React.FC<FlashcardSystemProps> = ({
           </div>
         </div>
 
-        <div className="lg:col-span-7 bg-white dark:bg-slate-900 rounded-[30px] lg:rounded-[48px] border border-slate-200 dark:border-slate-800 shadow-3d-deep overflow-hidden order-1 lg:order-2">
+        <div className="lg:col-span-7 bg-white dark:bg-slate-900 rounded-[30px] lg:rounded-[40px] border border-slate-200 dark:border-slate-800 shadow-3d-deep overflow-hidden order-1 lg:order-2">
           <div className="p-5 sm:p-6 lg:p-10 border-b border-slate-50 dark:border-slate-800 flex flex-col sm:flex-row justify-between items-center gap-4 lg:gap-0">
             <h3 className="text-[10px] lg:text-[11px] font-black uppercase tracking-[0.3em] lg:tracking-[0.4em] text-slate-400">Deine Stapel ({decks.length})</h3>
             <div className="flex gap-3 sm:gap-4 items-center flex-wrap justify-center sm:justify-end">
@@ -746,7 +746,7 @@ export const FlashcardSystem: React.FC<FlashcardSystemProps> = ({
                         <h4 className="text-lg lg:text-xl font-black text-slate-900 dark:text-white break-words group-hover:text-indigo-600 transition-colors cursor-pointer" onClick={() => handleOpenDeck(deck.id)}>
                           {deck.title}
                         </h4>
-                        {!deck.sourceDocumentId && <span className="bg-slate-100 dark:bg-slate-800 text-[8px] font-black uppercase px-2 py-0.5 rounded text-slate-400 tracking-tighter">{t('fcs.manual')}</span>}
+                        {!deck.sourceDocumentId && <span className="bg-slate-100 dark:bg-slate-800 text-[9px] font-black uppercase px-2 py-0.5 rounded text-slate-400 tracking-tighter">{t('fcs.manual')}</span>}
                       </div>
                       <p className="text-[9px] font-bold text-slate-400 uppercase mt-1">{t('fcs.totalCards', { n: deck.cards.length })}</p>
                     </div>
@@ -761,7 +761,7 @@ export const FlashcardSystem: React.FC<FlashcardSystemProps> = ({
                       <div className="flex flex-wrap gap-2 w-full sm:w-auto items-center justify-center sm:justify-end">
                         <button
                           onClick={() => handleOpenDeck(deck.id)}
-                          className="flex-1 sm:flex-none bg-indigo-600 hover:bg-indigo-700 text-white px-5 lg:px-6 py-3 rounded-xl lg:rounded-2xl text-[9px] font-black uppercase tracking-widest shadow-lg hover:scale-105 active:scale-95 transition-all"
+                          className="flex-1 sm:flex-none bg-indigo-600 hover:bg-indigo-700 text-white px-5 lg:px-6 py-3 rounded-xl lg:rounded-2xl text-[9px] font-black uppercase tracking-widest shadow-lg hover:scale-105 transition-all"
                         >
                           Lernen
                         </button>
@@ -811,7 +811,7 @@ export const FlashcardSystem: React.FC<FlashcardSystemProps> = ({
                         <button
                           onClick={() => onGenerateQuizFromDeck(deck)}
                           disabled={isQuizLoading}
-                          className="bg-white dark:bg-slate-800 border-2 border-indigo-600 text-indigo-600 dark:text-indigo-400 px-4 py-3 rounded-xl lg:rounded-2xl text-[9px] font-black uppercase tracking-widest shadow-lg hover:scale-105 active:scale-95 transition-all disabled:opacity-50 flex items-center gap-2"
+                          className="bg-white dark:bg-slate-800 border-2 border-indigo-600 text-indigo-600 dark:text-indigo-400 px-4 py-3 rounded-xl lg:rounded-2xl text-[9px] font-black uppercase tracking-widest shadow-lg hover:scale-105 transition-all disabled:opacity-40 flex items-center gap-2"
                         >
                           {isQuizLoading ? '...' : <span>Quiz <EmojiImage emoji="🎯" size={12} /></span>}
                         </button>

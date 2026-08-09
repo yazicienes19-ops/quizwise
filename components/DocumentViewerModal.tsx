@@ -1,10 +1,13 @@
 
 import React, { useEffect, useState } from 'react';
+import { createPortal } from 'react-dom';
 import { ProcessedDocument } from '../types';
 import { documentDisplayName } from '../services/libraryService';
 import { downloadPdfAsBase64 } from '../services/documentService';
 import { useTranslation } from '../i18n/I18nProvider';
 import { t as translate } from '../i18n';
+import { useModalA11y } from '../hooks/useModalA11y';
+import { ModalCloseButton } from './ModalCloseButton';
 
 interface DocumentViewerModalProps {
   doc: ProcessedDocument;
@@ -20,6 +23,7 @@ const base64ToBlob = (base64: string, mime: string): Blob => {
 
 export const DocumentViewerModal: React.FC<DocumentViewerModalProps> = ({ doc, onClose }) => {
   const { t } = useTranslation();
+  const { titleId, dialogProps } = useModalA11y(onClose);
   const [blobUrl, setBlobUrl] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(doc.type === 'pdf' || doc.type === 'image');
   const [error, setError] = useState<string | null>(null);
@@ -78,19 +82,20 @@ export const DocumentViewerModal: React.FC<DocumentViewerModalProps> = ({ doc, o
 
   const canDownload = !!blobUrl || ((doc.type === 'text' || doc.type === 'docx') && !!doc.content);
 
-  return (
+  return createPortal(
     <div
       className="fixed inset-0 bg-black/70 z-50 flex items-center justify-center p-4 animate-in fade-in duration-200"
       onClick={onClose}
     >
       <div
-        className="bg-white dark:bg-slate-900 rounded-[28px] w-full max-w-4xl h-[88vh] shadow-3d-deep overflow-hidden flex flex-col animate-in zoom-in-95 duration-300"
+        {...dialogProps}
+        className="bg-white dark:bg-slate-900 rounded-[32px] w-full max-w-4xl h-[88vh] shadow-3d-deep overflow-hidden flex flex-col animate-in zoom-in-95 duration-300"
         onClick={e => e.stopPropagation()}
       >
         {/* Header */}
         <div className="flex justify-between items-center px-6 py-4 border-b border-slate-100 dark:border-slate-800 shrink-0">
           <div className="min-w-0 flex-1 pr-4">
-            <h2 className="text-base font-black dark:text-white break-words">{documentDisplayName(doc)}</h2>
+            <h2 id={titleId} className="text-base font-black dark:text-white break-words">{documentDisplayName(doc)}</h2>
             <p className="text-[9px] font-black uppercase tracking-widest text-slate-400 mt-0.5">
               {doc.type === 'docx'
                 ? t('dvm.extractedText')
@@ -109,11 +114,7 @@ export const DocumentViewerModal: React.FC<DocumentViewerModalProps> = ({ doc, o
                 </svg>
               </button>
             )}
-            <button aria-label={t('upl.close')} onClick={onClose} className="p-2.5 text-slate-400 hover:text-rose-500 transition-colors rounded-xl">
-              <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round">
-                <line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/>
-              </svg>
-            </button>
+            <ModalCloseButton onClick={onClose} label={t('upl.close')} className="p-2.5 text-slate-400 hover:text-rose-500 transition-colors rounded-xl" />
           </div>
         </div>
 
@@ -150,6 +151,7 @@ export const DocumentViewerModal: React.FC<DocumentViewerModalProps> = ({ doc, o
           )}
         </div>
       </div>
-    </div>
+    </div>,
+    document.body
   );
 };

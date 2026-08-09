@@ -61,7 +61,7 @@ export const FileUploader: React.FC<FileUploaderProps> = ({
   return (
     <div className="space-y-8 lg:space-y-12 max-w-4xl mx-auto py-6 lg:py-10 animate-in fade-in slide-in-from-bottom-12 duration-1000 px-4">
       <div className="text-center space-y-4 lg:space-y-6">
-        <h1 className="text-4xl sm:text-5xl lg:text-7xl font-black text-slate-900 dark:text-white tracking-tighter leading-tight lg:leading-none">
+        <h1 className="text-4xl lg:text-6xl font-black text-slate-900 dark:text-white tracking-tighter">
           {t('fu.title1')} <span className="text-indigo-600 drop-shadow-lg">{t('fu.titleAccent')}</span> <EmojiImage emoji="📥" size={48} />
         </h1>
         <p className="text-lg lg:text-xl text-slate-500 dark:text-slate-400 max-w-2xl mx-auto font-medium opacity-80">
@@ -87,7 +87,7 @@ export const FileUploader: React.FC<FileUploaderProps> = ({
             </div>
             <div>
               <p className="font-black text-[10px] sm:text-xs uppercase tracking-wider dark:text-white">{t.label}</p>
-              <p className="text-[8px] sm:text-[9px] text-slate-400 font-bold leading-tight break-words">{t.desc}</p>
+              <p className="text-[9px] sm:text-[9px] text-slate-400 font-bold leading-tight break-words">{t.desc}</p>
             </div>
           </button>
         ))}
@@ -154,7 +154,7 @@ export const FileUploader: React.FC<FileUploaderProps> = ({
           <button
             onClick={() => onSourceSelect(folderResult.source, folderResult.name, selectedQuizType, getOptions())}
             disabled={isLoading}
-            className="w-full py-4 rounded-2xl text-[11px] font-black uppercase tracking-widest transition-all hover:scale-[1.02] active:scale-[0.98] disabled:opacity-50"
+            className="w-full py-4 rounded-2xl text-[11px] font-black uppercase tracking-widest transition-all hover:scale-[1.02] disabled:opacity-40"
             style={{ background: 'var(--primary)', color: 'var(--primary-text)' }}
           >
             {t('fu.startQuizNow')}
@@ -197,7 +197,7 @@ export const FileUploader: React.FC<FileUploaderProps> = ({
                   key={deck.id}
                   onClick={() => onDeckSelect(deck, selectedQuizType, getOptions())}
                   disabled={isLoading}
-                  className="p-5 bg-slate-50 dark:bg-slate-800/50 rounded-2xl border-2 border-transparent hover:border-indigo-500 text-left transition-all active:scale-95 group relative overflow-hidden"
+                  className="p-5 bg-slate-50 dark:bg-slate-800/50 rounded-2xl border-2 border-transparent hover:border-indigo-500 text-left transition-all group relative overflow-hidden"
                 >
                   <div className="absolute top-0 left-0 w-1 h-full bg-indigo-600 opacity-0 group-hover:opacity-100 transition-opacity" />
                   <p className="font-black text-sm text-slate-900 dark:text-white group-hover:text-indigo-600 break-words">{deck.title}</p>

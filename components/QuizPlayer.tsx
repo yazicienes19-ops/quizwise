@@ -265,7 +265,7 @@ export const QuizPlayer: React.FC<QuizPlayerProps> = ({
     /* ── Scenario card ── */
     const scenarioCard = isScenario && currentQuestion.scenarioText ? (
       <div className="mx-4 mb-4 p-5 bg-amber-50 dark:bg-amber-900/20 rounded-[24px] border border-amber-200 dark:border-amber-800">
-        <p className="text-[8px] font-black uppercase tracking-widest text-amber-600 dark:text-amber-400 mb-2">{t('quiz.badge.scenario')}</p>
+        <p className="text-[9px] font-black uppercase tracking-widest text-amber-600 dark:text-amber-400 mb-2">{t('quiz.badge.scenario')}</p>
         <p className="text-sm text-slate-700 dark:text-slate-300 leading-relaxed">{currentQuestion.scenarioText}</p>
       </div>
     ) : null;
@@ -298,7 +298,7 @@ export const QuizPlayer: React.FC<QuizPlayerProps> = ({
                   </span>
                   <span className="text-sm sm:text-base leading-snug flex-1">{option}</span>
                   {!showResult && idx < 4 && (
-                    <span className="text-[8px] font-black text-slate-300 shrink-0">{idx + 1}</span>
+                    <span className="text-[9px] font-black text-slate-300 shrink-0">{idx + 1}</span>
                   )}
                   {showResult && isCorrect && <EmojiImage emoji="✨" size={16} className="ml-auto shrink-0" />}
                 </button>
@@ -306,32 +306,41 @@ export const QuizPlayer: React.FC<QuizPlayerProps> = ({
             })}
           </div>
 
-          {/* Metakognitive Kalibrierung: Selbsteinschätzung vor Aufdeckung der Lösung */}
-          {!showResult && selectedOptions.length > 0 && (
-            <div className="px-4 pb-4 animate-in fade-in slide-in-from-bottom-2 duration-300">
-              <p className="text-[8px] font-black uppercase tracking-widest text-slate-400 mb-2 px-1">{t('quiz.confidence')}</p>
-              <div className="flex gap-2">
-                <button
-                  onClick={() => setConfidence('unsicher')}
-                  className={`flex-1 py-3 rounded-2xl text-[10px] font-black uppercase tracking-widest border-2 transition-all flex items-center justify-center gap-2 ${
-                    confidence === 'unsicher' ? '' : 'border-slate-100 dark:border-slate-800 text-slate-400 hover:border-slate-300'
-                  }`}
-                  style={confidence === 'unsicher' ? { borderColor: 'var(--primary)', background: 'color-mix(in srgb, var(--primary) 10%, transparent)', color: 'var(--primary)' } : undefined}
-                >
-                  {t('quiz.unsure')}
-                </button>
-                <button
-                  onClick={() => setConfidence('sicher')}
-                  className={`flex-1 py-3 rounded-2xl text-[10px] font-black uppercase tracking-widest border-2 transition-all flex items-center justify-center gap-2 ${
-                    confidence === 'sicher' ? '' : 'border-slate-100 dark:border-slate-800 text-slate-400 hover:border-slate-300'
-                  }`}
-                  style={confidence === 'sicher' ? { borderColor: 'var(--primary)', background: 'color-mix(in srgb, var(--primary) 10%, transparent)', color: 'var(--primary)' } : undefined}
-                >
-                  {t('quiz.sure')}
-                </button>
+          {/* Metakognitive Kalibrierung: Selbsteinschätzung vor Aufdeckung der Lösung.
+              Bleibt dauerhaft gemountet und wird per CSS-Transition (grid-template-rows
+              0fr→1fr + opacity) ein-/ausgeblendet statt per bedingtem Mount/Unmount mit
+              @keyframes — dadurch bleibt die Ein-/Ausblend-Animation unterbrechbar, wenn
+              ein Nutzer bei einer Mehrfachauswahl schnell ab- und wieder anwählt. */}
+          <div
+            data-visible={!showResult && selectedOptions.length > 0}
+            className="grid transition-[grid-template-rows,opacity] duration-300 ease-[var(--ease-out)] opacity-0 [grid-template-rows:0fr] data-[visible=true]:opacity-100 data-[visible=true]:[grid-template-rows:1fr]"
+          >
+            <div className="overflow-hidden">
+              <div className="px-4 pb-4">
+                <p className="text-[9px] font-black uppercase tracking-widest text-slate-400 mb-2 px-1">{t('quiz.confidence')}</p>
+                <div className="flex gap-2">
+                  <button
+                    onClick={() => setConfidence('unsicher')}
+                    className={`flex-1 py-3 rounded-2xl text-[10px] font-black uppercase tracking-widest border-2 transition-all flex items-center justify-center gap-2 ${
+                      confidence === 'unsicher' ? '' : 'border-slate-100 dark:border-slate-800 text-slate-400 hover:border-slate-300'
+                    }`}
+                    style={confidence === 'unsicher' ? { borderColor: 'var(--primary)', background: 'color-mix(in srgb, var(--primary) 10%, transparent)', color: 'var(--primary)' } : undefined}
+                  >
+                    {t('quiz.unsure')}
+                  </button>
+                  <button
+                    onClick={() => setConfidence('sicher')}
+                    className={`flex-1 py-3 rounded-2xl text-[10px] font-black uppercase tracking-widest border-2 transition-all flex items-center justify-center gap-2 ${
+                      confidence === 'sicher' ? '' : 'border-slate-100 dark:border-slate-800 text-slate-400 hover:border-slate-300'
+                    }`}
+                    style={confidence === 'sicher' ? { borderColor: 'var(--primary)', background: 'color-mix(in srgb, var(--primary) 10%, transparent)', color: 'var(--primary)' } : undefined}
+                  >
+                    {t('quiz.sure')}
+                  </button>
+                </div>
               </div>
             </div>
-          )}
+          </div>
         </>
       );
     }
@@ -349,7 +358,7 @@ export const QuizPlayer: React.FC<QuizPlayerProps> = ({
           ) : (
             <div className="space-y-3 animate-in slide-in-from-bottom-4 duration-500">
               <div className="p-5 bg-indigo-50 dark:bg-indigo-900/20 rounded-[20px] border border-indigo-200 dark:border-indigo-800">
-                <p className="text-[8px] font-black uppercase tracking-widest text-indigo-500 mb-2">{t('quiz.sample')}</p>
+                <p className="text-[9px] font-black uppercase tracking-widest text-indigo-500 mb-2">{t('quiz.sample')}</p>
                 <p className="text-sm text-slate-700 dark:text-slate-300 leading-relaxed">{currentQuestion.explanation}</p>
               </div>
               {selfAssessCorrect === null && (
@@ -484,12 +493,12 @@ export const QuizPlayer: React.FC<QuizPlayerProps> = ({
                       const next = [...rankingOrder];
                       [next[i - 1], next[i]] = [next[i], next[i - 1]];
                       setRankingOrder(next);
-                    }} className="w-7 h-7 rounded-lg bg-slate-100 dark:bg-slate-700 text-slate-500 text-xs flex items-center justify-center hover:bg-indigo-100 disabled:opacity-30 transition-colors">▲</button>
+                    }} className="w-7 h-7 rounded-lg bg-slate-100 dark:bg-slate-700 text-slate-500 text-xs flex items-center justify-center hover:bg-indigo-100 disabled:opacity-40 transition-colors">▲</button>
                     <button disabled={i === rankingOrder.length - 1} onClick={() => {
                       const next = [...rankingOrder];
                       [next[i], next[i + 1]] = [next[i + 1], next[i]];
                       setRankingOrder(next);
-                    }} className="w-7 h-7 rounded-lg bg-slate-100 dark:bg-slate-700 text-slate-500 text-xs flex items-center justify-center hover:bg-indigo-100 disabled:opacity-30 transition-colors">▼</button>
+                    }} className="w-7 h-7 rounded-lg bg-slate-100 dark:bg-slate-700 text-slate-500 text-xs flex items-center justify-center hover:bg-indigo-100 disabled:opacity-40 transition-colors">▼</button>
                   </div>
                 )}
               </div>
@@ -604,11 +613,11 @@ export const QuizPlayer: React.FC<QuizPlayerProps> = ({
                 if (e.key === 'Escape') setShowSaveInput(false);
               }}
               placeholder={t('quiz.quizNamePlaceholder')}
-              className="flex-1 px-4 py-2 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-[14px] text-sm font-medium dark:text-white outline-none focus:border-indigo-500 transition-colors"
+              className="flex-1 px-4 py-2 bg-slate-50 dark:bg-slate-800 border-2 border-slate-200 dark:border-slate-700 rounded-[14px] text-sm font-medium dark:text-white outline-none focus:border-indigo-500 transition-colors"
             />
             <button
               onClick={() => { onSave(saveName.trim() || t('quiz.myQuiz'), answers); setShowSaveInput(false); }}
-              className="px-4 py-2 bg-indigo-600 text-white rounded-[14px] text-[10px] font-black uppercase tracking-widest hover:scale-105 active:scale-95 transition-all shrink-0"
+              className="px-4 py-2 bg-indigo-600 text-white rounded-[14px] text-[10px] font-black uppercase tracking-widest hover:scale-105 transition-all shrink-0"
             >
               OK
             </button>
@@ -621,7 +630,7 @@ export const QuizPlayer: React.FC<QuizPlayerProps> = ({
       <div className="mx-4 bg-white dark:bg-slate-900 rounded-[32px] border border-slate-100 dark:border-slate-800 shadow-3d-raised overflow-hidden">
         {badgeLabel && (
           <div className="px-6 pt-5 pb-1">
-            <span className="inline-block bg-indigo-600 text-white text-[8px] font-black uppercase tracking-[0.25em] px-3 py-1 rounded-full">
+            <span className="inline-block bg-indigo-600 text-white text-[9px] font-black uppercase tracking-[0.25em] px-3 py-1 rounded-full">
               {badgeLabel}
             </span>
           </div>
@@ -647,7 +656,7 @@ export const QuizPlayer: React.FC<QuizPlayerProps> = ({
                 : { background: 'var(--bg-sidebar)', borderColor: 'var(--border-color)' }
               }
             >
-              <p className="text-[8px] font-black uppercase tracking-widest mb-1.5"
+              <p className="text-[9px] font-black uppercase tracking-widest mb-1.5"
                 style={{ color: !checkCorrectness() ? 'var(--primary)' : '#94a3b8' }}
               >{t('quiz.explanation')}</p>
               <p className="text-sm text-slate-700 dark:text-slate-300 leading-relaxed">{currentQuestion.explanation}</p>
@@ -691,11 +700,11 @@ export const QuizPlayer: React.FC<QuizPlayerProps> = ({
             {!showResult && !isOpen && (
               <button onClick={handleConfirm} disabled={!canConfirm}
                 className={`flex-1 py-4 rounded-[20px] font-black uppercase tracking-widest text-[10px] transition-all min-h-[52px] ${
-                  canConfirm ? 'shadow-3d-raised hover:scale-[1.02] active:scale-[0.98]' : 'bg-slate-100 dark:bg-slate-800 text-slate-400 cursor-not-allowed'
+                  canConfirm ? 'shadow-3d-raised hover:scale-[1.02]' : 'bg-slate-100 dark:bg-slate-800 text-slate-400 cursor-not-allowed'
                 }`}
                 style={canConfirm ? { background: 'var(--primary)', color: 'var(--primary-text)' } : undefined}
               >
-                {t('quiz.checkAnswer')} <span className="opacity-50 text-[8px] ml-1">↵</span>
+                {t('quiz.checkAnswer')} <span className="opacity-50 text-[9px] ml-1">↵</span>
               </button>
             )}
 
@@ -710,7 +719,7 @@ export const QuizPlayer: React.FC<QuizPlayerProps> = ({
             {/* Next / Finish button */}
             {(showResult || (isOpen && selfAssessCorrect !== null)) && (
               <button onClick={handleNext}
-                className="flex-1 py-4 rounded-[20px] font-black uppercase tracking-widest text-[10px] shadow-3d-raised hover:scale-[1.02] active:scale-[0.98] transition-all flex items-center justify-center gap-2 min-h-[52px]"
+                className="flex-1 py-4 rounded-[20px] font-black uppercase tracking-widest text-[10px] shadow-3d-raised hover:scale-[1.02] transition-all flex items-center justify-center gap-2 min-h-[52px]"
                 style={{ background: 'var(--primary)', color: 'var(--primary-text)' }}
               >
                 {answers.length < questions.length - 1 ? t('quiz.nextQuestion') : t('quiz.showResults')}

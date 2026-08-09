@@ -93,7 +93,7 @@ export const Onboarding: React.FC<OnboardingProps> = ({ onComplete, onStartUploa
   return (
     <div className="fixed inset-0 z-[90] flex items-center justify-center bg-slate-950/60 backdrop-blur-sm p-4">
       <div
-        className="w-full max-w-md rounded-[28px] shadow-2xl overflow-hidden animate-in fade-in zoom-in-95 duration-300"
+        className="w-full max-w-md rounded-[32px] shadow-3d-deep overflow-hidden animate-in fade-in zoom-in-95 duration-300"
         style={{ background: 'var(--bg-sidebar)', border: '1px solid var(--border-color)' }}
       >
 
@@ -167,7 +167,7 @@ export const Onboarding: React.FC<OnboardingProps> = ({ onComplete, onStartUploa
             </p>
 
             <p
-              className="text-[10px] font-bold uppercase tracking-widest px-4 py-2 rounded-xl"
+              className="text-[10px] font-black uppercase tracking-widest px-4 py-2 rounded-xl"
               style={{
                 background: 'color-mix(in srgb, var(--primary) 10%, transparent)',
                 color: 'var(--primary)',
@@ -185,14 +185,14 @@ export const Onboarding: React.FC<OnboardingProps> = ({ onComplete, onStartUploa
             <>
               <button
                 onClick={() => finish(true)}
-                className="w-full py-3.5 rounded-[16px] text-[11px] font-black uppercase tracking-widest hover:scale-[1.02] active:scale-[0.98] transition-all"
+                className="w-full py-3.5 rounded-[16px] text-[11px] font-black uppercase tracking-widest hover:scale-[1.02] transition-all"
                 style={{ background: 'var(--primary)', color: 'var(--primary-text)' }}
               >
                 {t('onboarding.uploadFirst')}
               </button>
               <button
                 onClick={() => finish(false)}
-                className="w-full py-3 text-[10px] font-bold uppercase tracking-widest text-slate-400 hover:text-slate-600 dark:hover:text-slate-300 transition-colors"
+                className="w-full py-3 text-[10px] font-black uppercase tracking-widest text-slate-400 hover:text-slate-600 dark:hover:text-slate-300 transition-colors"
               >
                 {t('onboarding.lookAround')}
               </button>
@@ -201,7 +201,7 @@ export const Onboarding: React.FC<OnboardingProps> = ({ onComplete, onStartUploa
             <>
               <button
                 onClick={() => setStep(step + 1)}
-                className="w-full py-3.5 rounded-[16px] text-[11px] font-black uppercase tracking-widest hover:scale-[1.02] active:scale-[0.98] transition-all"
+                className="w-full py-3.5 rounded-[16px] text-[11px] font-black uppercase tracking-widest hover:scale-[1.02] transition-all"
                 style={{ background: 'var(--primary)', color: 'var(--primary-text)' }}
               >
                 {t('common.next')}
@@ -210,13 +210,13 @@ export const Onboarding: React.FC<OnboardingProps> = ({ onComplete, onStartUploa
                 <button
                   onClick={() => setStep(Math.max(0, step - 1))}
                   disabled={step === 0}
-                  className="py-3 text-[10px] font-bold uppercase tracking-widest text-slate-400 hover:text-slate-600 dark:hover:text-slate-300 transition-colors disabled:opacity-0"
+                  className="py-3 text-[10px] font-black uppercase tracking-widest text-slate-400 hover:text-slate-600 dark:hover:text-slate-300 transition-colors disabled:opacity-0"
                 >
                   ← {t('common.back')}
                 </button>
                 <button
                   onClick={() => finish(false)}
-                  className="py-3 text-[10px] font-bold uppercase tracking-widest text-slate-400 hover:text-slate-600 dark:hover:text-slate-300 transition-colors"
+                  className="py-3 text-[10px] font-black uppercase tracking-widest text-slate-400 hover:text-slate-600 dark:hover:text-slate-300 transition-colors"
                 >
                   {t('onboarding.skip')}
                 </button>

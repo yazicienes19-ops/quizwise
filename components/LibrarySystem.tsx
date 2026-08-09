@@ -1,4 +1,5 @@
 import React, { useState, useMemo, useCallback } from 'react';
+import { Pencil, Trash2 } from 'lucide-react';
 import { ProcessedDocument, ActiveTab, Collection } from '../types';
 import { getAllMeta, saveMeta, deleteMeta, documentDisplayName } from '../services/libraryService';
 import type { SourceMeta } from '../services/libraryService';
@@ -224,7 +225,7 @@ export const LibrarySystem: React.FC<LibrarySystemProps> = ({
         <div className="space-y-8 py-6 lg:py-10 px-4 animate-in fade-in duration-500">
           <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
             <div>
-              <h1 className="text-3xl sm:text-4xl lg:text-6xl font-black tracking-tighter" style={{ color: 'var(--text-main)' }}>
+              <h1 className="text-4xl lg:text-6xl font-black tracking-tighter" style={{ color: 'var(--text-main)' }}>
                 Bibliothek <EmojiImage emoji="📚" size={36} className="inline-block" />
               </h1>
               <p className="text-sm text-slate-400 font-medium mt-1">
@@ -234,7 +235,7 @@ export const LibrarySystem: React.FC<LibrarySystemProps> = ({
             <button
               onClick={() => !isLoading && setShowUpload(true)}
               disabled={isLoading}
-              className="flex items-center gap-2 px-6 py-3 bg-indigo-600 rounded-2xl text-[10px] font-black uppercase tracking-widest shadow-lg hover:scale-105 active:scale-95 transition-all shrink-0 disabled:opacity-60 disabled:scale-100"
+              className="flex items-center gap-2 px-6 py-3 bg-indigo-600 rounded-2xl text-[10px] font-black uppercase tracking-widest shadow-lg hover:scale-105 transition-all shrink-0 disabled:opacity-40 disabled:scale-100"
               style={{ color: 'var(--primary-text)' }}
             >
               {isLoading
@@ -266,10 +267,7 @@ export const LibrarySystem: React.FC<LibrarySystemProps> = ({
                         className="w-8 h-8 rounded-xl flex items-center justify-center bg-white dark:bg-slate-800 shadow text-slate-400 hover:text-indigo-500 transition-colors"
                         title={t('lib.editFolder')}
                       >
-                        <svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round">
-                          <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/>
-                          <path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/>
-                        </svg>
+                        <Pencil className="w-3 h-3" strokeWidth={2.5} />
                       </button>
                       <button
                         onClick={e => {
@@ -281,9 +279,7 @@ export const LibrarySystem: React.FC<LibrarySystemProps> = ({
                         className="w-8 h-8 rounded-xl flex items-center justify-center bg-white dark:bg-slate-800 shadow text-slate-400 hover:text-rose-500 transition-colors"
                         title={t('lib.deleteFolder')}
                       >
-                        <svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round">
-                          <polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/>
-                        </svg>
+                        <Trash2 className="w-3 h-3" strokeWidth={2.5} />
                       </button>
                     </div>
                   )}
@@ -335,7 +331,7 @@ export const LibrarySystem: React.FC<LibrarySystemProps> = ({
                     /* Normal clickable content */
                     <button
                       onClick={() => openFolder(col.id)}
-                      className="text-left p-6 flex flex-col gap-4 flex-1 hover:scale-[1.02] active:scale-[0.98] transition-transform rounded-[28px]"
+                      className="text-left p-6 flex flex-col gap-4 flex-1 hover:scale-[1.02] transition-transform rounded-[28px]"
                     >
                       <div className="flex justify-between items-start">
                         <div
@@ -374,7 +370,7 @@ export const LibrarySystem: React.FC<LibrarySystemProps> = ({
             {/* Alle Dokumente card */}
             <button
               onClick={() => openFolder('all')}
-              className="group text-left rounded-[28px] p-6 border-2 border-dashed hover:border-indigo-400 dark:hover:border-indigo-600 transition-all flex flex-col gap-4 hover:scale-[1.02] active:scale-[0.98]"
+              className="group text-left rounded-[28px] p-6 border-2 border-dashed hover:border-indigo-400 dark:hover:border-indigo-600 transition-all flex flex-col gap-4 hover:scale-[1.02]"
               style={{ borderColor: 'var(--border-color)' }}
             >
               <div className="w-14 h-14 rounded-2xl flex items-center justify-center text-2xl bg-slate-100 dark:bg-slate-800">
@@ -468,7 +464,7 @@ export const LibrarySystem: React.FC<LibrarySystemProps> = ({
                 })()}
               </button>
             )}
-            <h1 className="text-3xl sm:text-4xl lg:text-6xl font-black tracking-tighter" style={{ color: 'var(--text-main)' }}>
+            <h1 className="text-4xl lg:text-6xl font-black tracking-tighter" style={{ color: 'var(--text-main)' }}>
               {activeColId !== 'all' && activeColId !== 'uncategorized'
                 ? (collections.find(c => c.id === activeColId)?.name ?? t('lib.title'))
                 : t('lib.title')
@@ -482,7 +478,7 @@ export const LibrarySystem: React.FC<LibrarySystemProps> = ({
           <button
             onClick={() => !isLoading && setShowUpload(true)}
             disabled={isLoading}
-            className="flex items-center gap-2 px-6 py-3 bg-indigo-600 rounded-2xl text-[10px] font-black uppercase tracking-widest shadow-lg hover:scale-105 active:scale-95 transition-all shrink-0 disabled:opacity-60 disabled:scale-100"
+            className="flex items-center gap-2 px-6 py-3 bg-indigo-600 rounded-2xl text-[10px] font-black uppercase tracking-widest shadow-lg hover:scale-105 transition-all shrink-0 disabled:opacity-40 disabled:scale-100"
             style={{ color: 'var(--primary-text)' }}
           >
             {isLoading
@@ -495,7 +491,7 @@ export const LibrarySystem: React.FC<LibrarySystemProps> = ({
         <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 lg:gap-10 px-4">
           {/* Sidebar */}
           <div className="lg:col-span-3 space-y-6">
-            <div className="rounded-[28px] shadow-3d-raised p-5 space-y-4" style={{ background: 'var(--bg-sidebar)', border: '1px solid var(--border-color)' }}>
+            <div className="rounded-[28px] shadow-3d-raised p-6 space-y-4" style={{ background: 'var(--bg-sidebar)', border: '1px solid var(--border-color)' }}>
               <div className="flex justify-between items-center px-1">
                 <span className="text-[10px] font-black uppercase tracking-widest text-slate-400">{t('lib.collections')}</span>
                 {!isAddingCol && (
@@ -536,10 +532,7 @@ export const LibrarySystem: React.FC<LibrarySystemProps> = ({
                           className="w-6 h-6 rounded-lg flex items-center justify-center bg-white dark:bg-slate-700 shadow text-slate-400 hover:text-indigo-500 transition-colors"
                           title={t('lib.edit')}
                         >
-                          <svg xmlns="http://www.w3.org/2000/svg" width="8" height="8" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round">
-                            <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/>
-                            <path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/>
-                          </svg>
+                          <Pencil className="w-2.5 h-2.5" strokeWidth={2.5} />
                         </button>
                         <button
                           onClick={() => {
@@ -550,7 +543,7 @@ export const LibrarySystem: React.FC<LibrarySystemProps> = ({
                           className="w-6 h-6 rounded-lg flex items-center justify-center bg-rose-500 text-white shadow transition-all hover:scale-110"
                           title={t('lib.delete')}
                         >
-                          <svg xmlns="http://www.w3.org/2000/svg" width="8" height="8" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="4" strokeLinecap="round" strokeLinejoin="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+                          <Trash2 className="w-2.5 h-2.5" strokeWidth={2.5} />
                         </button>
                       </div>
                     </div>
@@ -561,7 +554,7 @@ export const LibrarySystem: React.FC<LibrarySystemProps> = ({
 
             {/* Module filter */}
             {modules.length > 0 && (
-              <div className="rounded-[28px] shadow-3d-raised p-5 space-y-3" style={{ background: 'var(--bg-sidebar)', border: '1px solid var(--border-color)' }}>
+              <div className="rounded-[28px] shadow-3d-raised p-6 space-y-3" style={{ background: 'var(--bg-sidebar)', border: '1px solid var(--border-color)' }}>
                 <span className="text-[10px] font-black uppercase tracking-widest text-slate-400 px-1 block">{t('lib.modules')}</span>
                 <div className="space-y-1">
                   <button
@@ -630,11 +623,13 @@ export const LibrarySystem: React.FC<LibrarySystemProps> = ({
                 <div className="flex rounded-2xl p-1 shadow-3d-raised shrink-0" style={{ background: 'var(--bg-sidebar)', border: '1px solid var(--border-color)' }}>
                   <button
                     onClick={() => setViewMode('grid')}
+                    aria-label={t('lib.gridView')}
                     className={`p-2 rounded-xl transition-all ${viewMode === 'grid' ? 'bg-indigo-600' : 'text-slate-400 hover:text-slate-600'}`}
                     style={viewMode === 'grid' ? { color: 'var(--primary-text)' } : {}}
                   ><IconGrid /></button>
                   <button
                     onClick={() => setViewMode('list')}
+                    aria-label={t('lib.listView')}
                     className={`p-2 rounded-xl transition-all ${viewMode === 'list' ? 'bg-indigo-600' : 'text-slate-400 hover:text-slate-600'}`}
                     style={viewMode === 'list' ? { color: 'var(--primary-text)' } : {}}
                   ><IconList /></button>
@@ -723,7 +718,7 @@ const EmptyLibrary: React.FC<{ onUpload: () => void }> = ({ onUpload }) => {
     </div>
     <button
       onClick={onUpload}
-      className="flex items-center gap-2 px-8 py-4 bg-indigo-600 rounded-2xl font-black uppercase text-[11px] tracking-widest shadow-lg hover:scale-105 active:scale-95 transition-all"
+      className="flex items-center gap-2 px-8 py-4 bg-indigo-600 rounded-2xl font-black uppercase text-[11px] tracking-widest shadow-lg hover:scale-105 transition-all"
       style={{ color: 'var(--primary-text)' }}
     >
       <IconUpload /> {t('lib.uploadFirst')}

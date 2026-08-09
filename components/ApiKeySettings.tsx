@@ -48,12 +48,12 @@ export const ApiKeySettings: React.FC<ApiKeySettingsProps> = ({ onClose }) => {
             </div>
             <div>
               <h2 className="text-base font-black dark:text-white uppercase tracking-tight">{t('aks.title')}</h2>
-              <p className="text-[10px] text-slate-400 font-bold uppercase tracking-widest">{t('aks.geminiConfig')}</p>
+              <p className="text-[10px] text-slate-400 font-black uppercase tracking-widest">{t('aks.geminiConfig')}</p>
             </div>
           </div>
           <button aria-label={t('common.close')}
             onClick={onClose}
-            className="w-8 h-8 flex items-center justify-center rounded-xl text-slate-400 hover:text-slate-700 dark:hover:text-white transition-all active:scale-95"
+            className="w-8 h-8 flex items-center justify-center rounded-xl text-slate-400 hover:text-slate-700 dark:hover:text-white transition-all"
             style={{ background: 'color-mix(in srgb, var(--border-color) 60%, var(--bg-sidebar))' }}
           >
             <X className="w-4 h-4" strokeWidth={2} />
@@ -99,7 +99,7 @@ export const ApiKeySettings: React.FC<ApiKeySettingsProps> = ({ onClose }) => {
         <div className="flex gap-3">
           <button
             onClick={handleSave}
-            className="flex-1 py-3.5 rounded-2xl text-[11px] font-black uppercase tracking-widest text-white transition-all hover:scale-[1.02] active:scale-95 shadow-lg"
+            className="flex-1 py-3.5 rounded-2xl text-[11px] font-black uppercase tracking-widest text-white transition-all hover:scale-[1.02] shadow-lg"
             style={{ background: 'var(--primary)' }}
           >
             {saved ? (
@@ -111,7 +111,7 @@ export const ApiKeySettings: React.FC<ApiKeySettingsProps> = ({ onClose }) => {
           {inputKey && (
             <button
               onClick={handleRemove}
-              className="px-5 py-3.5 rounded-2xl text-[11px] font-black uppercase tracking-widest text-rose-500 hover:bg-rose-50 dark:hover:bg-rose-950/20 transition-all active:scale-95"
+              className="px-5 py-3.5 rounded-2xl text-[11px] font-black uppercase tracking-widest text-rose-500 hover:bg-rose-50 dark:hover:bg-rose-950/20 transition-all"
               style={{ border: '1px solid var(--border-color)' }}
             >
               Löschen

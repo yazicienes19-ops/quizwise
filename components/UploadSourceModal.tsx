@@ -1,8 +1,11 @@
 import React, { useState, useRef, useCallback } from 'react';
+import { createPortal } from 'react-dom';
 import type { SourceMeta } from '../services/libraryService';
 import { detectUrlKind, importFromUrl } from '../services/urlImport';
 import { toast } from '../services/toast';
 import { useTranslation } from '../i18n/I18nProvider';
+import { useModalA11y } from '../hooks/useModalA11y';
+import { ModalCloseButton } from './ModalCloseButton';
 
 interface Props {
   onClose: () => void;
@@ -65,6 +68,11 @@ export const UploadSourceModal: React.FC<Props> = ({ onClose, onUpload }) => {
   const [notes, setNotes]           = useState('');
   const [isAltklausur, setIsAltklausur] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
+  // Guard bestand bereits für Backdrop-Klick (kein Schließen während Upload läuft) —
+  // dieselbe Guard-Funktion geht jetzt auch an ESC über den Hook, statt zwei
+  // unterschiedliche Schließ-Regeln (Backdrop vs. Tastatur) zu haben.
+  const guardedClose = () => { if (!isUploading) onClose(); };
+  const { titleId, dialogProps } = useModalA11y(guardedClose);
 
   const addFiles = useCallback((picked: FileList | File[]) => {
     const list = Array.from(picked);
@@ -164,26 +172,23 @@ export const UploadSourceModal: React.FC<Props> = ({ onClose, onUpload }) => {
   };
 
 
-  return (
+  return createPortal(
     <div
       className="fixed inset-0 bg-black/60 z-50 flex items-center justify-center p-4 animate-in fade-in duration-200"
-      onClick={() => { if (!isUploading) onClose(); }}
+      onClick={guardedClose}
     >
       <div
+        {...dialogProps}
         className="bg-white dark:bg-slate-900 rounded-[32px] w-full max-w-lg shadow-3d-deep overflow-hidden animate-in zoom-in-95 duration-300"
         onClick={e => e.stopPropagation()}
       >
         {/* Header */}
         <div className="flex justify-between items-center px-8 py-6 border-b border-slate-100 dark:border-slate-800">
           <div>
-            <h2 className="text-xl font-black dark:text-white">{t('upl.title')}</h2>
+            <h2 id={titleId} className="text-xl font-black dark:text-white">{t('upl.title')}</h2>
             <p className="text-[10px] font-black uppercase tracking-widest text-slate-400 mt-0.5">{t('upl.subtitle')}</p>
           </div>
-          <button aria-label={t('upl.close')} onClick={onClose} className="p-2 text-slate-400 hover:text-rose-500 transition-colors rounded-xl">
-            <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round">
-              <line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/>
-            </svg>
-          </button>
+          <ModalCloseButton onClick={onClose} label={t('upl.close')} className="p-2 text-slate-400 hover:text-rose-500 transition-colors rounded-xl" />
         </div>
 
         <form onSubmit={handleSubmit} className="px-8 py-6 space-y-5 max-h-[70vh] overflow-y-auto">
@@ -280,7 +285,7 @@ export const UploadSourceModal: React.FC<Props> = ({ onClose, onUpload }) => {
                 >
                   <p className="text-4xl mb-3">📂</p>
                   <p className="font-black dark:text-white text-sm">{t('upl.dropFiles')}</p>
-                  <p className="text-[10px] text-slate-400 mt-1 uppercase tracking-widest">{t('upl.orClick')}</p>
+                  <p className="text-[10px] text-slate-400 mt-1 font-black uppercase tracking-widest">{t('upl.orClick')}</p>
                   <p className="text-[9px] text-slate-300 dark:text-slate-600 mt-3">{t('upl.fileTypes')}</p>
                 </div>
               ) : (
@@ -298,7 +303,7 @@ export const UploadSourceModal: React.FC<Props> = ({ onClose, onUpload }) => {
                             className="w-full bg-transparent text-sm font-black dark:text-white outline-none border-b border-transparent focus:border-indigo-400"
                             aria-label={t('upl.titleOptional')}
                           />
-                          <p className="text-[9px] text-slate-400 uppercase tracking-widest truncate">{f.file.name} · {(f.file.size / 1024 / 1024).toFixed(2)} MB</p>
+                          <p className="text-[9px] text-slate-400 font-black uppercase tracking-widest truncate">{f.file.name} · {(f.file.size / 1024 / 1024).toFixed(2)} MB</p>
                           {f.file.size > ANALYZE_LIMIT_BYTES && (
                             <p className="text-[9px] font-bold text-amber-500">{t('upl.tooLargeForDigest')}</p>
                           )}
@@ -320,7 +325,7 @@ export const UploadSourceModal: React.FC<Props> = ({ onClose, onUpload }) => {
           )}
 
           {/* Metadata form */}
-          <fieldset disabled={isUploading} className="space-y-4 disabled:opacity-60">
+          <fieldset disabled={isUploading} className="space-y-4 disabled:opacity-40">
             {mode !== 'file' && (
               <Field
                 label={t('upl.titleOptional')}
@@ -379,6 +384,7 @@ export const UploadSourceModal: React.FC<Props> = ({ onClose, onUpload }) => {
           </button>
         </form>
       </div>
-    </div>
+    </div>,
+    document.body
   );
 };

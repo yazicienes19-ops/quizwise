@@ -1,7 +1,9 @@
 
 import React, { useState } from 'react';
+import { createPortal } from 'react-dom';
 import { Chapter, extractChapterText } from '../services/chapterService';
 import { useTranslation } from '../i18n/I18nProvider';
+import { useModalA11y } from '../hooks/useModalA11y';
 
 interface ChapterSelectorModalProps {
   docTitle: string;
@@ -21,6 +23,7 @@ export const ChapterSelectorModal: React.FC<ChapterSelectorModalProps> = ({
   onClose,
 }) => {
   const { t } = useTranslation();
+  const { titleId, dialogProps } = useModalA11y(onClose);
   const [selected, setSelected] = useState<Set<number>>(new Set(chapters.map(c => c.index)));
 
   const toggle = (idx: number) =>
@@ -45,19 +48,20 @@ export const ChapterSelectorModal: React.FC<ChapterSelectorModalProps> = ({
     onConfirm(extractChapterText(selectedChapters), selectedChapters);
   };
 
-  return (
+  return createPortal(
     <div
       className="fixed inset-0 bg-black/60 z-50 flex items-center justify-center p-4 animate-in fade-in duration-200"
       onClick={onClose}
     >
       <div
+        {...dialogProps}
         className="bg-white dark:bg-slate-900 rounded-[32px] w-full max-w-lg shadow-3d-deep overflow-hidden animate-in zoom-in-95 duration-300 flex flex-col max-h-[88vh]"
         onClick={e => e.stopPropagation()}
       >
         {/* Header */}
         <div className="px-8 py-6 border-b border-slate-100 dark:border-slate-800 shrink-0">
           <p className="text-[9px] font-black uppercase tracking-widest text-slate-400 mb-1">{t('csm.title')}</p>
-          <h2 className="text-lg font-black dark:text-white break-words">{docTitle}</h2>
+          <h2 id={titleId} className="text-lg font-black dark:text-white break-words">{docTitle}</h2>
           <p className="text-[10px] text-slate-400 mt-1">
             {t('csm.detected', { n: chapters.length })}
           </p>
@@ -148,7 +152,7 @@ export const ChapterSelectorModal: React.FC<ChapterSelectorModalProps> = ({
           <button
             onClick={handleConfirm}
             disabled={noneSelected}
-            className="flex-1 py-3 rounded-2xl text-[10px] font-black uppercase tracking-widest text-white shadow-lg hover:scale-[1.02] active:scale-95 transition-all disabled:opacity-40 disabled:scale-100"
+            className="flex-1 py-3 rounded-2xl text-[10px] font-black uppercase tracking-widest text-white shadow-lg hover:scale-[1.02] transition-all disabled:opacity-40 disabled:scale-100"
             style={{ background: 'var(--primary)' }}
           >
             {noneSelected
@@ -159,6 +163,7 @@ export const ChapterSelectorModal: React.FC<ChapterSelectorModalProps> = ({
           </button>
         </div>
       </div>
-    </div>
+    </div>,
+    document.body
   );
 };

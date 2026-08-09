@@ -276,7 +276,7 @@ export const AppContent: React.FC<AppContentProps> = (p) => {
                 </div>
                 <button
                   onClick={handleStartMistakeReview}
-                  className="px-5 py-3 rounded-[14px] text-[10px] font-black uppercase tracking-widest text-white hover:scale-105 active:scale-95 transition-all shrink-0"
+                  className="px-5 py-3 rounded-[14px] text-[10px] font-black uppercase tracking-widest text-white hover:scale-105 transition-all shrink-0"
                   style={{ background: 'var(--primary)' }}
                 >
                   Wiederholen üben
@@ -294,11 +294,11 @@ export const AppContent: React.FC<AppContentProps> = (p) => {
                       <p className="text-sm font-black dark:text-white break-words">{sq.name}</p>
                       <p className="text-[9px] text-slate-400 font-medium mt-0.5">{tp('dashboard.questionsN', sq.questions.length)} · {formatDate(sq.savedAt, { day: '2-digit', month: 'short', year: '2-digit' })}</p>
                     </div>
-                    <button onClick={() => handleLoadSavedQuiz(sq)} className="flex items-center gap-1.5 px-4 py-2 text-white rounded-[14px] text-[10px] font-black uppercase tracking-widest hover:scale-105 active:scale-95 transition-all shrink-0" style={{ background: 'var(--primary)' }}>
+                    <button onClick={() => handleLoadSavedQuiz(sq)} className="flex items-center gap-1.5 px-4 py-2 text-white rounded-[14px] text-[10px] font-black uppercase tracking-widest hover:scale-105 transition-all shrink-0" style={{ background: 'var(--primary)' }}>
                       <svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round"><polygon points="5 3 19 12 5 21 5 3"/></svg>
                       Starten
                     </button>
-                    <button onClick={() => handleDeleteSavedQuiz(sq.id)} className="w-8 h-8 rounded-[12px] flex items-center justify-center text-slate-400 hover:text-rose-500 hover:bg-rose-50 dark:hover:bg-rose-950/20 transition-all shrink-0">
+                    <button onClick={() => handleDeleteSavedQuiz(sq.id)} aria-label={t('lib.delete')} className="w-8 h-8 rounded-[12px] flex items-center justify-center text-slate-400 hover:text-rose-500 hover:bg-rose-50 dark:hover:bg-rose-950/20 transition-all shrink-0">
                       <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14H6L5 6"/><path d="M10 11v6"/><path d="M14 11v6"/><path d="M9 6V4h6v2"/></svg>
                     </button>
                   </div>
@@ -417,11 +417,11 @@ export const AppContent: React.FC<AppContentProps> = (p) => {
                     <p className="text-sm font-black dark:text-white break-words">{se.name}</p>
                     <p className="text-[9px] text-slate-400 font-medium mt-0.5">{tp('dashboard.questionsN', se.questions.length)} · {formatDate(se.savedAt, { day: '2-digit', month: 'short', year: '2-digit' })}</p>
                   </div>
-                  <button onClick={() => handleLoadSavedExam(se)} className="flex items-center gap-1.5 px-4 py-2 text-white rounded-[14px] text-[10px] font-black uppercase tracking-widest hover:scale-105 active:scale-95 transition-all shrink-0" style={{ background: 'var(--primary)' }}>
+                  <button onClick={() => handleLoadSavedExam(se)} className="flex items-center gap-1.5 px-4 py-2 text-white rounded-[14px] text-[10px] font-black uppercase tracking-widest hover:scale-105 transition-all shrink-0" style={{ background: 'var(--primary)' }}>
                     <svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round"><polygon points="5 3 19 12 5 21 5 3"/></svg>
                     Starten
                   </button>
-                  <button onClick={() => handleDeleteSavedExam(se.id)} className="w-8 h-8 rounded-[12px] flex items-center justify-center text-slate-400 hover:text-rose-500 hover:bg-rose-50 dark:hover:bg-rose-950/20 transition-all shrink-0">
+                  <button onClick={() => handleDeleteSavedExam(se.id)} aria-label={t('lib.delete')} className="w-8 h-8 rounded-[12px] flex items-center justify-center text-slate-400 hover:text-rose-500 hover:bg-rose-50 dark:hover:bg-rose-950/20 transition-all shrink-0">
                     <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14H6L5 6"/><path d="M10 11v6"/><path d="M14 11v6"/><path d="M9 6V4h6v2"/></svg>
                   </button>
                 </div>

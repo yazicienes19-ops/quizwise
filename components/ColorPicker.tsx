@@ -42,7 +42,7 @@ export const ColorPicker: React.FC = () => {
     <div className="relative">
       <button
         onClick={() => setOpen(o => !o)}
-        className="w-full flex items-center justify-between px-4 py-3 rounded-xl text-[10px] font-black uppercase text-slate-500 dark:text-slate-400 transition-all active:scale-95"
+        className="w-full flex items-center justify-between px-4 py-3 rounded-xl text-[10px] font-black uppercase text-slate-500 dark:text-slate-400 transition-all"
         style={{ background: 'color-mix(in srgb, var(--border-color) 40%, var(--bg-sidebar))' }}
       >
         <span className="flex items-center gap-2">
@@ -66,7 +66,7 @@ export const ColorPicker: React.FC = () => {
                   key={p.value}
                   onClick={() => select(p.value)}
                   title={p.name}
-                  className="relative w-full aspect-square rounded-xl transition-all active:scale-90 hover:scale-110 flex items-center justify-center"
+                  className="relative w-full aspect-square rounded-xl transition-all hover:scale-110 flex items-center justify-center"
                   style={{ background: p.value }}
                 >
                   {current === p.value && (

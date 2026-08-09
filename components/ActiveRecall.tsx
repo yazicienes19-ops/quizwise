@@ -274,7 +274,7 @@ export const ActiveRecall: React.FC<ActiveRecallProps> = ({
 
       {/* Header */}
       <div className="text-center space-y-3">
-        <h1 className="text-4xl lg:text-7xl font-black text-slate-900 dark:text-white tracking-tighter flex items-center justify-center gap-3">
+        <h1 className="text-4xl lg:text-6xl font-black text-slate-900 dark:text-white tracking-tighter flex items-center justify-center gap-3">
           {t('ar.headerPre')}<span style={{ color: 'var(--primary)' }}>{t('ar.headerAccent')}</span>
           <GeneratedImage prompt="Human brain active recall, academic illustration" className="w-8 h-8 lg:w-12 lg:h-12 rounded-xl" />
         </h1>
@@ -356,7 +356,7 @@ export const ActiveRecall: React.FC<ActiveRecallProps> = ({
             <button
               onClick={startNewChallenge}
               disabled={isLoading || !activeSource}
-              className="w-full sm:w-auto px-8 lg:px-10 py-4 lg:py-5 rounded-2xl lg:rounded-3xl font-black uppercase tracking-[0.2em] text-[10px] lg:text-[11px] shadow-3d-deep hover:scale-105 active:scale-95 transition-all disabled:opacity-50"
+              className="w-full sm:w-auto px-8 lg:px-10 py-4 lg:py-5 rounded-[24px] font-black uppercase tracking-[0.2em] text-[10px] lg:text-[11px] shadow-3d-deep hover:scale-105 transition-all disabled:opacity-40"
               style={{ background: 'var(--primary)', color: 'var(--primary-text)' }}
             >
               {isLoading ? (
@@ -408,7 +408,7 @@ export const ActiveRecall: React.FC<ActiveRecallProps> = ({
                 onChange={e => setUserAnswer(e.target.value)}
                 placeholder={t('ar.answerPlaceholder')}
                 disabled={isEvaluating}
-                className="w-full h-64 lg:h-72 p-6 lg:p-10 rounded-[32px] lg:rounded-[40px] shadow-3d-raised outline-none focus:border-indigo-400 transition-all text-sm lg:text-base font-medium leading-relaxed disabled:opacity-60"
+                className="w-full h-64 lg:h-72 p-6 lg:p-10 rounded-[32px] lg:rounded-[40px] shadow-3d-raised outline-none focus:border-indigo-400 transition-all text-sm lg:text-base font-medium leading-relaxed disabled:opacity-40"
                 style={{ background: 'var(--bg-sidebar)', border: isListening ? '2px solid var(--primary)' : '1px solid var(--border-color)', color: 'var(--text-main)' }}
               />
               {hasSpeechApi ? (
@@ -456,7 +456,7 @@ export const ActiveRecall: React.FC<ActiveRecallProps> = ({
               <button
                 onClick={handleEvaluate}
                 disabled={isEvaluating || userAnswer.trim().length < 10}
-                className="w-full sm:w-auto bg-indigo-600 px-8 lg:px-10 py-3.5 rounded-xl lg:rounded-2xl font-black uppercase text-[10px] tracking-widest shadow-lg hover:scale-105 active:scale-95 transition-all disabled:opacity-30 order-1 sm:order-2 flex items-center justify-center gap-2"
+                className="w-full sm:w-auto bg-indigo-600 px-8 lg:px-10 py-3.5 rounded-xl lg:rounded-2xl font-black uppercase text-[10px] tracking-widest shadow-lg hover:scale-105 transition-all disabled:opacity-40 order-1 sm:order-2 flex items-center justify-center gap-2"
                 style={{ color: 'var(--primary-text)' }}
               >
                 {isEvaluating ? (
@@ -541,7 +541,7 @@ export const ActiveRecall: React.FC<ActiveRecallProps> = ({
                   {onCreateCardsFromGaps && (
                     <button
                       onClick={() => onCreateCardsFromGaps(focusTopic.trim() || activeSourceName || t('ar.recallFallback'), evaluation.missingPoints)}
-                      className="mt-4 w-full py-3 rounded-xl text-[9px] font-black uppercase tracking-widest transition-all hover:scale-[1.02] active:scale-[0.98]"
+                      className="mt-4 w-full py-3 rounded-xl text-[9px] font-black uppercase tracking-widest transition-all hover:scale-[1.02]"
                       style={{ background: 'color-mix(in srgb, var(--primary) 12%, transparent)', color: 'var(--primary)', border: '1px solid color-mix(in srgb, var(--primary) 30%, transparent)' }}
                     >
                       {t('ar.saveGapsAsCards')}

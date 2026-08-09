@@ -3,7 +3,7 @@ import React, { useState, useEffect, useMemo } from 'react';
 import { ActiveTab, FlashcardDeck, Collection } from '../types';
 import { countDueCards, migrateLegacyCard } from '../services/spacedRepetition';
 import { countDueMistakes } from '../services/mistakeReviewService';
-import { getStreak } from '../services/streakService';
+import { getStreak, STREAK_UPDATED_EVENT } from '../services/streakService';
 import { usePersistentState } from '../hooks/usePersistentState';
 import {
   Home, BookOpen, HelpCircle, Calendar, Brain, GraduationCap,
@@ -100,7 +100,12 @@ export const Layout: React.FC<LayoutProps> = ({
 
   const dueMistakesCount = useMemo(() => countDueMistakes(), []);
 
-  const streak = useMemo(() => getStreak(), []);
+  const [streak, setStreak] = useState(() => getStreak());
+  useEffect(() => {
+    const handleStreakUpdate = () => setStreak(getStreak());
+    window.addEventListener(STREAK_UPDATED_EVENT, handleStreakUpdate);
+    return () => window.removeEventListener(STREAK_UPDATED_EVENT, handleStreakUpdate);
+  }, []);
 
   const EXTRA_LABELS: Partial<Record<ActiveTab, TKey>> = {
     [ActiveTab.EXPLAINER]: 'nav.explainer',
@@ -224,7 +229,7 @@ export const Layout: React.FC<LayoutProps> = ({
             className="flex items-center gap-1.5 -mt-8 mb-6 shrink-0 transition-colors self-start"
             style={{ color: SIDEBAR.textMuted }}
           >
-            {isDark ? <Sun className="w-4 h-4" strokeWidth={1.75} /> : <Moon className="w-4 h-4" strokeWidth={1.75} />}
+            {isDark ? <Sun className="w-[18px] h-[18px]" strokeWidth={1.75} /> : <Moon className="w-[18px] h-[18px]" strokeWidth={1.75} />}
             <span className="text-[9px] font-black uppercase tracking-widest">
               {isDark ? t('layout.dayMode') : t('layout.nightMode')}
             </span>
@@ -234,7 +239,7 @@ export const Layout: React.FC<LayoutProps> = ({
               Auch ohne Ordner sichtbar — sonst wissen Nutzer nicht, dass es das Feature gibt. */}
           {onModuleChange && collections.length === 0 && (
             <div className="mb-6 -mt-6">
-              <p className="text-[8px] font-black uppercase tracking-[0.3em] mb-1.5 px-1" style={{ color: SIDEBAR.textMuted }}>{t('layout.activeSubject')}</p>
+              <p className="text-[9px] font-black uppercase tracking-[0.3em] mb-1.5 px-1" style={{ color: SIDEBAR.textMuted }}>{t('layout.activeSubject')}</p>
               <button
                 onClick={() => onTabChange(ActiveTab.LIBRARY)}
                 className="w-full px-3 py-2.5 rounded-xl text-left transition-all hover:translate-x-0.5"
@@ -247,7 +252,7 @@ export const Layout: React.FC<LayoutProps> = ({
           )}
           {onModuleChange && collections.length > 0 && (
             <div className="mb-6 -mt-6">
-              <p className="text-[8px] font-black uppercase tracking-[0.3em] mb-1.5 px-1" style={{ color: SIDEBAR.textMuted }}>{t('layout.activeSubject')}</p>
+              <p className="text-[9px] font-black uppercase tracking-[0.3em] mb-1.5 px-1" style={{ color: SIDEBAR.textMuted }}>{t('layout.activeSubject')}</p>
               <select
                 value={activeModuleId ?? ''}
                 onChange={e => onModuleChange(e.target.value || null)}
@@ -271,7 +276,7 @@ export const Layout: React.FC<LayoutProps> = ({
             {visibleGroups.map((group, gi) => (
               <div key={gi}>
                 {group.titleKey && (
-                  <p className="px-3 pt-5 pb-1.5 text-[8px] font-black uppercase tracking-[0.3em]" style={{ color: SIDEBAR.textMuted }}>
+                  <p className="px-3 pt-5 pb-1.5 text-[9px] font-black uppercase tracking-[0.3em]" style={{ color: SIDEBAR.textMuted }}>
                     {t(group.titleKey)}
                   </p>
                 )}
@@ -289,7 +294,7 @@ export const Layout: React.FC<LayoutProps> = ({
                       onMouseEnter={e => { if (!isActive) e.currentTarget.style.background = SIDEBAR.hoverBg; }}
                       onMouseLeave={e => { if (!isActive) e.currentTarget.style.background = 'transparent'; }}
                     >
-                      {Icon && <Icon className="w-4 h-4 shrink-0" strokeWidth={1.75} />}
+                      {Icon && <Icon className="w-[18px] h-[18px] shrink-0" strokeWidth={1.75} />}
                       <div className="flex-1 min-w-0">
                         {/* Einzeilig in allen Schriftarten (Garamond & Co. laufen breiter):
                             engere Laufweite statt tracking-widest, truncate als Notbremse */}
@@ -302,13 +307,13 @@ export const Layout: React.FC<LayoutProps> = ({
                       </div>
                       {item.tab === ActiveTab.CARDS && dueCardsCount > 0 && (
                         <span
-                          className="text-[8px] font-black rounded-full px-1.5 py-0.5 shrink-0"
+                          className="text-[9px] font-black rounded-full px-1.5 py-0.5 shrink-0"
                           style={isActive ? { background: SIDEBAR.bg, color: SIDEBAR.gold } : { background: SIDEBAR.gold, color: SIDEBAR.bg }}
                         >{dueCardsCount}</span>
                       )}
                       {item.tab === ActiveTab.QUIZ && dueMistakesCount > 0 && (
                         <span
-                          className="text-[8px] font-black rounded-full px-1.5 py-0.5 shrink-0"
+                          className="text-[9px] font-black rounded-full px-1.5 py-0.5 shrink-0"
                           style={isActive ? { background: SIDEBAR.bg, color: SIDEBAR.gold } : { background: SIDEBAR.gold, color: SIDEBAR.bg }}
                         >{dueMistakesCount}</span>
                       )}
@@ -345,14 +350,14 @@ export const Layout: React.FC<LayoutProps> = ({
                       {user.email}
                     </p>
                   </div>
-                  <button onClick={onLogout} className="transition-colors shrink-0" style={{ color: SIDEBAR.textMuted }}>
-                    <LogOut className="w-4 h-4" strokeWidth={1.75} />
+                  <button onClick={onLogout} aria-label={t('layout.logoutTitle', { email: user.email ?? '' })} className="transition-colors shrink-0" style={{ color: SIDEBAR.textMuted }}>
+                    <LogOut className="w-[18px] h-[18px]" strokeWidth={1.75} />
                   </button>
                 </div>
                 {userPlan !== 'pro' && (
                   <button
                     onClick={onUpgradeClick}
-                    className="w-full flex items-center justify-center gap-2 px-4 py-2.5 rounded-2xl text-[10px] font-black uppercase tracking-widest transition-all hover:scale-[1.02] active:scale-95"
+                    className="w-full flex items-center justify-center gap-2 px-4 py-2.5 rounded-2xl text-[10px] font-black uppercase tracking-widest transition-all hover:scale-[1.02]"
                     style={{ background: 'color-mix(in srgb, #D9A94E 18%, #1B2A4A)', color: SIDEBAR.gold, border: `1px solid ${SIDEBAR.gold}` }}
                   >
                     <Zap className="w-3.5 h-3.5" strokeWidth={2} />
@@ -363,10 +368,10 @@ export const Layout: React.FC<LayoutProps> = ({
             ) : (
               <button
                 onClick={onLoginClick}
-                className="w-full flex items-center justify-center gap-2 px-4 py-3 rounded-2xl text-[10px] font-black uppercase tracking-widest transition-all hover:scale-[1.02] active:scale-95"
+                className="w-full flex items-center justify-center gap-2 px-4 py-3 rounded-2xl text-[10px] font-black uppercase tracking-widest transition-all hover:scale-[1.02]"
                 style={{ background: SIDEBAR.gold, color: SIDEBAR.bg }}
               >
-                <LogIn className="w-4 h-4" strokeWidth={1.75} />
+                <LogIn className="w-[18px] h-[18px]" strokeWidth={1.75} />
                 {t('layout.loginRegister')}
               </button>
             )}
@@ -375,7 +380,7 @@ export const Layout: React.FC<LayoutProps> = ({
           <div className="mt-4 pt-6 space-y-2" style={{ borderTop: `1px solid ${SIDEBAR.border}` }}>
             <button
               onClick={onSettingsClick}
-              className="w-full flex items-center px-4 py-3 rounded-xl text-[10px] font-black uppercase transition-all active:scale-95 group"
+              className="w-full flex items-center px-4 py-3 rounded-xl text-[10px] font-black uppercase transition-all group"
               style={{ background: SIDEBAR.chipBg, color: SIDEBAR.textMuted }}
             >
               <span className="group-hover:translate-x-1 transition-transform flex items-center gap-2">
@@ -388,7 +393,7 @@ export const Layout: React.FC<LayoutProps> = ({
                 <button
                   key={p}
                   onClick={() => setLegalPage(p)}
-                  className="text-[8px] font-bold uppercase tracking-widest transition-colors"
+                  className="text-[9px] font-bold uppercase tracking-widest transition-colors"
                   style={{ color: SIDEBAR.textMuted }}
                 >
                   {p === 'impressum' ? t('legal.imprint') : p === 'datenschutz' ? t('legal.privacy') : t('legal.terms')}
@@ -405,7 +410,7 @@ export const Layout: React.FC<LayoutProps> = ({
           onClick={() => setSidebarCollapsed(false)}
           aria-label={t('layout.expandSidebar')}
           title={t('layout.expandSidebar')}
-          className="hidden lg:flex fixed top-4 left-4 z-30 w-9 h-9 rounded-xl items-center justify-center shadow-lg transition-all hover:scale-105 active:scale-95 animate-in fade-in"
+          className="hidden lg:flex fixed top-4 left-4 z-30 w-9 h-9 rounded-xl items-center justify-center shadow-lg transition-all hover:scale-105 animate-in fade-in"
           style={{ background: 'var(--bg-sidebar)', border: '1px solid var(--border-color)', color: 'var(--text-main)', animationDelay: '200ms', animationDuration: '250ms' }}
         >
           <PanelLeftOpen className="w-4 h-4" strokeWidth={1.75} />
@@ -429,13 +434,12 @@ export const Layout: React.FC<LayoutProps> = ({
                 key={item.tab}
                 onClick={() => onTabChange(item.tab)}
                 title={t(item.labelKey)}
-                className={`w-12 h-12 flex flex-col items-center justify-center gap-[3px] rounded-xl transition-all duration-200 active:scale-90 shrink-0 ${isActive ? 'shadow-[0_2px_12px_rgba(169,119,44,0.35)]' : ''}`}
+                className={`w-12 h-12 flex items-center justify-center rounded-xl transition-all duration-200 shrink-0 ${isActive ? 'shadow-[0_2px_12px_rgba(169,119,44,0.35)]' : ''}`}
                 style={isActive ? { background: SIDEBAR.gold, color: SIDEBAR.bg } : { color: SIDEBAR.textMuted }}
                 onMouseEnter={e => { if (!isActive) e.currentTarget.style.background = SIDEBAR.hoverBg; }}
                 onMouseLeave={e => { if (!isActive) e.currentTarget.style.background = 'transparent'; }}
               >
                 {Icon && <Icon className="w-[18px] h-[18px]" strokeWidth={1.75} />}
-                <span className="text-[7px] font-black uppercase tracking-wide leading-none">{t(item.labelKey).slice(0, 6)}</span>
               </button>
             );
           })}
@@ -449,7 +453,7 @@ export const Layout: React.FC<LayoutProps> = ({
           <button
             onClick={onSettingsClick}
             title={t('layout.settings')}
-            className="w-12 h-12 flex items-center justify-center rounded-xl transition-all active:scale-95"
+            className="w-12 h-12 flex items-center justify-center rounded-xl transition-all"
             style={{ color: SIDEBAR.textMuted }}
             onMouseEnter={e => { e.currentTarget.style.background = SIDEBAR.hoverBg; }}
             onMouseLeave={e => { e.currentTarget.style.background = 'transparent'; }}
@@ -460,14 +464,14 @@ export const Layout: React.FC<LayoutProps> = ({
             <button
               title={t('layout.logoutTitle', { email: user.email ?? '' })}
               onClick={onLogout}
-              className="w-10 h-10 rounded-xl flex items-center justify-center text-[11px] font-black transition-all hover:scale-105 active:scale-90"
+              className="w-10 h-10 rounded-xl flex items-center justify-center text-[11px] font-black transition-all hover:scale-105"
               style={{ background: SIDEBAR.gold, color: SIDEBAR.bg }}
             >{userInitial}</button>
           ) : (
             <button
               onClick={onLoginClick}
               title={t('layout.login')}
-              className="w-12 h-12 flex items-center justify-center rounded-xl transition-all active:scale-95"
+              className="w-12 h-12 flex items-center justify-center rounded-xl transition-all"
               style={{ background: SIDEBAR.gold, color: SIDEBAR.bg }}
             >
               <LogIn className="w-[18px] h-[18px]" strokeWidth={1.75} />
@@ -506,20 +510,21 @@ export const Layout: React.FC<LayoutProps> = ({
           )}
           <button
             onClick={onSettingsClick}
-            className="w-9 h-9 flex items-center justify-center rounded-xl text-slate-500 hover:bg-slate-100 dark:hover:bg-slate-800 transition-all active:scale-90"
+            aria-label={t('layout.settings')}
+            className="w-9 h-9 flex items-center justify-center rounded-xl text-slate-500 hover:bg-slate-100 dark:hover:bg-slate-800 transition-all"
           >
             <Settings className="w-[18px] h-[18px]" strokeWidth={1.75} />
           </button>
           {user ? (
             <button
               onClick={() => setIsMobileMenuOpen(true)}
-              className="w-9 h-9 rounded-xl flex items-center justify-center text-[10px] font-black transition-all active:scale-90"
+              className="w-9 h-9 rounded-xl flex items-center justify-center text-[10px] font-black transition-all"
               style={{ background: 'var(--primary)', color: 'var(--primary-text)' }}
             >{userInitial}</button>
           ) : (
             <button
               onClick={onLoginClick}
-              className="h-9 px-3 flex items-center gap-1.5 rounded-xl text-[9px] font-black uppercase tracking-widest transition-all active:scale-95"
+              className="h-9 px-3 flex items-center gap-1.5 rounded-xl text-[9px] font-black uppercase tracking-widest transition-all"
               style={{ background: 'var(--primary)', color: 'var(--primary-text)' }}
             >
               <LogIn className="w-[14px] h-[14px]" strokeWidth={1.75} />
@@ -541,23 +546,23 @@ export const Layout: React.FC<LayoutProps> = ({
             <button
               key={item.tab}
               onClick={() => handleMobileTabChange(item.tab)}
-              className="flex flex-col items-center gap-1 min-w-[3rem] px-2 py-1 rounded-xl transition-all active:scale-90"
+              className="flex flex-col items-center gap-1 min-w-[3rem] px-2 py-1 rounded-xl transition-all"
               style={isActive ? { color: 'var(--primary)' } : { color: 'rgb(148 163 184)' }}
             >
               {Icon && <Icon className="w-6 h-6" strokeWidth={1.75} />}
-              <span className="text-[8px] font-black uppercase tracking-widest">{t(item.shortKey)}</span>
+              <span className="text-[9px] font-black uppercase tracking-widest">{t(item.shortKey)}</span>
             </button>
           );
         })}
         <button
           onClick={() => setIsMobileMenuOpen(v => !v)}
-          className="flex flex-col items-center gap-1 min-w-[3rem] px-2 py-1 rounded-xl transition-all active:scale-90"
+          className="flex flex-col items-center gap-1 min-w-[3rem] px-2 py-1 rounded-xl transition-all"
           style={isMobileMenuOpen ? { color: 'var(--primary)' } : { color: 'rgb(148 163 184)' }}
         >
           {isMobileMenuOpen
             ? <X className="w-6 h-6" strokeWidth={1.75} />
             : <Menu className="w-6 h-6" strokeWidth={1.75} />}
-          <span className="text-[8px] font-black uppercase tracking-widest">{t('nav.more')}</span>
+          <span className="text-[9px] font-black uppercase tracking-widest">{t('nav.more')}</span>
         </button>
       </nav>
 
@@ -585,14 +590,14 @@ export const Layout: React.FC<LayoutProps> = ({
                     <button
                       key={item.tab}
                       onClick={() => handleMobileTabChange(item.tab)}
-                      className="flex items-center gap-3 p-4 rounded-2xl border transition-all active:scale-95 text-left"
+                      className="flex items-center gap-3 p-4 rounded-2xl border transition-all text-left"
                       style={
                         isActive
                           ? { background: 'var(--primary)', color: 'var(--primary-text)', borderColor: 'var(--primary)' }
                           : { background: 'color-mix(in srgb, var(--border-color) 40%, var(--bg-sidebar))', borderColor: 'var(--border-color)' }
                       }
                     >
-                      <item.icon className="w-5 h-5 shrink-0" strokeWidth={1.75} />
+                      <item.icon className="w-[18px] h-[18px] shrink-0" strokeWidth={1.75} />
                       <span className="text-[9px] font-black uppercase tracking-wider leading-tight">{t(item.labelKey)}</span>
                     </button>
                   );
@@ -604,7 +609,7 @@ export const Layout: React.FC<LayoutProps> = ({
               {/* API Key */}
               <button
                 onClick={() => { setIsMobileMenuOpen(false); setShowApiSettings(true); }}
-                className="w-full flex items-center justify-between px-5 py-4 rounded-2xl border transition-all active:scale-95"
+                className="w-full flex items-center justify-between px-5 py-4 rounded-2xl border transition-all"
                 style={{
                   borderColor: 'var(--border-color)',
                   background: 'color-mix(in srgb, var(--border-color) 40%, var(--bg-sidebar))',
@@ -620,13 +625,13 @@ export const Layout: React.FC<LayoutProps> = ({
               {/* Theme toggle */}
               <button
                 onClick={onToggleTheme}
-                className="w-full flex items-center justify-between px-5 py-4 rounded-2xl border transition-all active:scale-95"
+                className="w-full flex items-center justify-between px-5 py-4 rounded-2xl border transition-all"
                 style={{ background: 'color-mix(in srgb, var(--border-color) 40%, var(--bg-sidebar))', borderColor: 'var(--border-color)' }}
               >
                 <span className="text-[10px] font-black uppercase tracking-wider">
                   {isDark ? t('layout.dayMode') : t('layout.nightMode')}
                 </span>
-                {isDark ? <Sun className="w-5 h-5" strokeWidth={1.75} /> : <Moon className="w-5 h-5" strokeWidth={1.75} />}
+                {isDark ? <Sun className="w-[18px] h-[18px]" strokeWidth={1.75} /> : <Moon className="w-[18px] h-[18px]" strokeWidth={1.75} />}
               </button>
 
               <ColorPicker />
@@ -635,7 +640,7 @@ export const Layout: React.FC<LayoutProps> = ({
               {user ? (
                 <button
                   onClick={() => { onLogout?.(); setIsMobileMenuOpen(false); }}
-                  className="w-full flex items-center justify-center gap-2 px-5 py-4 rounded-2xl text-[10px] font-black uppercase tracking-widest text-rose-500 transition-all active:scale-95"
+                  className="w-full flex items-center justify-center gap-2 px-5 py-4 rounded-2xl text-[10px] font-black uppercase tracking-widest text-rose-500 transition-all"
                   style={{ background: 'color-mix(in srgb, #f43f5e 8%, var(--bg-sidebar))', border: '1px solid color-mix(in srgb, #f43f5e 20%, transparent)' }}
                 >
                   <LogOut className="w-4 h-4" strokeWidth={1.75} />
@@ -644,10 +649,10 @@ export const Layout: React.FC<LayoutProps> = ({
               ) : (
                 <button
                   onClick={() => { onLoginClick?.(); setIsMobileMenuOpen(false); }}
-                  className="w-full flex items-center justify-center gap-2 px-5 py-4 rounded-2xl text-[10px] font-black uppercase tracking-widest transition-all active:scale-95"
+                  className="w-full flex items-center justify-center gap-2 px-5 py-4 rounded-2xl text-[10px] font-black uppercase tracking-widest transition-all"
                   style={{ background: 'var(--primary)', color: 'var(--primary-text)' }}
                 >
-                  <LogIn className="w-4 h-4" strokeWidth={1.75} />
+                  <LogIn className="w-[18px] h-[18px]" strokeWidth={1.75} />
                   {t('layout.loginRegister')}
                 </button>
               )}
@@ -658,7 +663,7 @@ export const Layout: React.FC<LayoutProps> = ({
                   <button
                     key={p}
                     onClick={() => { setIsMobileMenuOpen(false); setLegalPage(p); }}
-                    className="text-[8px] font-bold uppercase tracking-widest text-slate-400 hover:text-slate-600 dark:hover:text-slate-300 transition-colors"
+                    className="text-[9px] font-bold uppercase tracking-widest text-slate-400 hover:text-slate-600 dark:hover:text-slate-300 transition-colors"
                   >
                     {p === 'impressum' ? t('legal.imprint') : p === 'datenschutz' ? t('legal.privacy') : t('legal.terms')}
                   </button>

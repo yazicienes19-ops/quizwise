@@ -13,6 +13,8 @@
 
 const STREAK_KEY = 'studearc_streak';
 
+export const STREAK_UPDATED_EVENT = 'studearc:streak-updated';
+
 interface StreakData {
   /** Aktuelle Streak in Tagen */
   current: number;
@@ -60,6 +62,7 @@ export const recordActivity = (userId?: string | null): StreakData => {
   if (data.current > data.best) data.best = data.current;
 
   save(data);
+  window.dispatchEvent(new CustomEvent(STREAK_UPDATED_EVENT));
   if (userId) {
     import('./syncService').then(({ syncLearningField }) => syncLearningField(userId, 'streak', data)).catch(() => {});
   }

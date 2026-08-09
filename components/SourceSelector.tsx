@@ -243,7 +243,7 @@ export const SourceSelector: React.FC<SourceSelectorProps> = ({
                         key={`folder-${collection.id}`}
                         onClick={() => handleSelectFolder(collection)}
                         disabled={isLoading || !ready}
-                        className="w-full flex items-center gap-4 px-5 py-4 rounded-2xl text-left transition-all hover:scale-[1.01] active:scale-[0.99] disabled:opacity-50 group"
+                        className="w-full flex items-center gap-4 px-5 py-4 rounded-2xl text-left transition-all hover:scale-[1.02] disabled:opacity-40 group"
                         style={{
                           background: 'color-mix(in srgb, var(--primary) 7%, var(--bg-main))',
                           border: '1px solid color-mix(in srgb, var(--primary) 22%, transparent)',
@@ -252,7 +252,7 @@ export const SourceSelector: React.FC<SourceSelectorProps> = ({
                         <FolderOpen size={20} className="shrink-0" style={{ color: 'var(--primary)' }} strokeWidth={1.75} />
                         <div className="flex-1 min-w-0">
                           <p className="text-[12px] font-black dark:text-white break-words">{collection.emoji} {collection.name}</p>
-                          <p className="text-[10px] uppercase tracking-widest mt-0.5" style={{ color: 'var(--primary)' }}>
+                          <p className="text-[10px] font-black uppercase tracking-widest mt-0.5" style={{ color: 'var(--primary)' }}>
                             {t('ssel.wholeFolder')} · {tp('ssel.sourcesN', count)}
                             {ready && included < count && <> · {t('ssel.usableN', { n: included })}</>}
                             {!ready && <> · {t('ssel.processing')}</>}
@@ -272,13 +272,13 @@ export const SourceSelector: React.FC<SourceSelectorProps> = ({
                           key={doc.id}
                           onClick={() => onSelectDocument(doc)}
                           disabled={isLoading}
-                          className="w-full flex items-center gap-4 px-5 py-4 rounded-2xl text-left transition-all hover:scale-[1.01] active:scale-[0.99] disabled:opacity-50 group"
+                          className="w-full flex items-center gap-4 px-5 py-4 rounded-2xl text-left transition-all hover:scale-[1.02] disabled:opacity-40 group"
                           style={{ background: 'color-mix(in srgb, var(--border-color) 25%, var(--bg-main))', border: '1px solid var(--border-color)' }}
                         >
                           <DocIcon type={doc.type} />
                           <div className="flex-1 min-w-0">
                             <p className="text-[12px] font-black dark:text-white break-words">{docTitle(doc)}</p>
-                            <p className="text-[10px] text-slate-400 uppercase tracking-widest mt-0.5 break-words">
+                            <p className="text-[10px] text-slate-400 font-black uppercase tracking-widest mt-0.5 break-words">
                               {doc.type.toUpperCase()}
                               {col && <> · {col.emoji} {col.name}</>}
                             </p>
@@ -318,7 +318,7 @@ export const SourceSelector: React.FC<SourceSelectorProps> = ({
             <button
               onClick={() => fileInputRef.current?.click()}
               disabled={isProcessing || isLoading || (userPlan === 'free' && saveToLib && documents.length >= 5)}
-              className="w-full py-12 rounded-[24px] border-2 border-dashed transition-all flex flex-col items-center gap-4 hover:border-indigo-500 group disabled:opacity-50"
+              className="w-full py-12 rounded-[24px] border-2 border-dashed transition-all flex flex-col items-center gap-4 hover:border-indigo-500 group disabled:opacity-40"
               style={{ borderColor: 'var(--border-color)', background: 'color-mix(in srgb, var(--border-color) 15%, var(--bg-main))' }}
             >
               <span className="text-4xl">{isProcessing ? '⏳' : '📂'}</span>
@@ -353,9 +353,14 @@ export const SourceSelector: React.FC<SourceSelectorProps> = ({
             {/* Option: In Bibliothek speichern */}
             {onSaveToLibrary && (
               <label className="flex items-center gap-3 px-4 py-3 rounded-2xl cursor-pointer hover:opacity-80 transition-opacity" style={{ background: 'color-mix(in srgb, var(--border-color) 25%, var(--bg-main))' }}>
+                <input
+                  type="checkbox"
+                  checked={saveToLib}
+                  onChange={e => setSaveToLib(e.target.checked)}
+                  className="sr-only peer"
+                />
                 <div
-                  onClick={() => setSaveToLib(!saveToLib)}
-                  className={`w-10 h-5 rounded-full transition-all relative shrink-0 ${saveToLib ? 'bg-indigo-600' : 'bg-slate-300 dark:bg-slate-700'}`}
+                  className={`w-10 h-5 rounded-full transition-all relative shrink-0 ${saveToLib ? 'bg-indigo-600' : 'bg-slate-300 dark:bg-slate-700'} peer-focus-visible:ring-2 peer-focus-visible:ring-offset-2 peer-focus-visible:ring-[color:var(--primary)]`}
                 >
                   <div className={`absolute top-0.5 w-4 h-4 bg-white rounded-full shadow transition-all ${saveToLib ? 'left-5' : 'left-0.5'}`} />
                 </div>
@@ -387,7 +392,7 @@ export const SourceSelector: React.FC<SourceSelectorProps> = ({
               <button
                 onClick={handleTextSubmit}
                 disabled={pastedText.trim().length < 20 || isLoading}
-                className="px-6 py-3 rounded-2xl text-[11px] font-black uppercase tracking-widest text-white transition-all hover:scale-[1.02] active:scale-95 disabled:opacity-40"
+                className="px-6 py-3 rounded-2xl text-[11px] font-black uppercase tracking-widest text-white transition-all hover:scale-[1.02] disabled:opacity-40"
                 style={{ background: 'var(--primary)' }}
               >
                 {t('ssel.continue')}

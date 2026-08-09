@@ -195,7 +195,7 @@ export const ExamGenerator: React.FC<ExamGeneratorProps> = ({
   return (
     <div className="max-w-4xl mx-auto space-y-10 lg:space-y-16 animate-in fade-in slide-in-from-bottom-4 duration-700 py-8 sm:py-10 px-4">
       <div className="text-center space-y-3 sm:space-y-4">
-        <h1 className="text-3xl sm:text-4xl lg:text-7xl font-black text-slate-900 dark:text-white tracking-tighter flex flex-wrap items-center justify-center gap-2 sm:gap-3 lg:gap-4">
+        <h1 className="text-4xl lg:text-6xl font-black text-slate-900 dark:text-white tracking-tighter flex flex-wrap items-center justify-center gap-2 sm:gap-3 lg:gap-4">
           {t('eg.title')} <span className="text-indigo-600 dark:text-indigo-400">{t('eg.titleAccent')}</span>
           <GeneratedImage prompt="Graduation cap, academic illustration" className="w-9 h-9 sm:w-12 sm:h-12 lg:w-16 lg:h-16 rounded-2xl" />
         </h1>
@@ -283,7 +283,7 @@ export const ExamGenerator: React.FC<ExamGeneratorProps> = ({
                 ))}
                 <div className="flex items-center gap-3 my-1">
                   <div className="flex-1 h-px bg-slate-200 dark:bg-slate-700" />
-                  <p className="text-[8px] font-black uppercase tracking-widest text-slate-400">{t('eg.or')}</p>
+                  <p className="text-[9px] font-black uppercase tracking-widest text-slate-400">{t('eg.or')}</p>
                   <div className="flex-1 h-px bg-slate-200 dark:bg-slate-700" />
                 </div>
               </div>
@@ -473,7 +473,7 @@ export const ExamGenerator: React.FC<ExamGeneratorProps> = ({
             <button
               onClick={handleStart}
               disabled={!contentSource || isLoading}
-              className="w-full bg-slate-900 dark:bg-slate-700 text-white py-6 rounded-2xl font-black uppercase tracking-[0.3em] text-[12px] shadow-3d-deep hover:scale-[1.02] active:scale-[0.98] transition-all disabled:opacity-30 disabled:cursor-not-allowed mt-4"
+              className="w-full bg-slate-900 dark:bg-slate-700 text-white py-6 rounded-[24px] font-black uppercase tracking-[0.3em] text-[12px] shadow-3d-deep hover:scale-[1.02] transition-all disabled:opacity-40 disabled:cursor-not-allowed mt-4"
             >
               {isLoading ? (
                 <div className="flex items-center justify-center gap-3">

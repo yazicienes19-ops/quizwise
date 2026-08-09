@@ -1,7 +1,9 @@
 import React, { useState } from 'react';
+import { createPortal } from 'react-dom';
 import { X, Zap, Check, Loader2 } from 'lucide-react';
 import { startCheckout } from '../services/stripeService';
 import { useTranslation } from '../i18n/I18nProvider';
+import { useModalA11y } from '../hooks/useModalA11y';
 
 interface UpgradeModalProps {
   onClose: () => void;
@@ -9,6 +11,7 @@ interface UpgradeModalProps {
 
 export const UpgradeModal: React.FC<UpgradeModalProps> = ({ onClose }) => {
   const { t } = useTranslation();
+  const { titleId, dialogProps } = useModalA11y(onClose);
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState('');
 
@@ -30,9 +33,10 @@ export const UpgradeModal: React.FC<UpgradeModalProps> = ({ onClose }) => {
     t('um.prioritySupport'),
   ];
 
-  return (
+  return createPortal(
     <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-sm animate-in fade-in duration-200">
       <div
+        {...dialogProps}
         className="w-full max-w-sm rounded-[32px] shadow-3d-deep animate-in zoom-in-95 duration-300 overflow-hidden"
         style={{ background: 'var(--bg-sidebar)', border: '1px solid var(--border-color)' }}
       >
@@ -43,12 +47,12 @@ export const UpgradeModal: React.FC<UpgradeModalProps> = ({ onClose }) => {
               <Zap className="w-5 h-5 text-white" strokeWidth={2} />
             </div>
             <div>
-              <h2 className="text-base font-black dark:text-white uppercase tracking-tight">{t('um.pro')}</h2>
-              <p className="text-[10px] text-slate-400 font-bold uppercase tracking-widest">{t('um.unlimitedLearn')}</p>
+              <h2 id={titleId} className="text-base font-black dark:text-white uppercase tracking-tight">{t('um.pro')}</h2>
+              <p className="text-[10px] text-slate-400 font-black uppercase tracking-widest">{t('um.unlimitedLearn')}</p>
             </div>
           </div>
           <button aria-label={t('common.close')} onClick={onClose} className="text-slate-400 hover:text-slate-600 dark:hover:text-white transition-colors">
-            <X className="w-5 h-5" strokeWidth={2} />
+            <X className="w-[18px] h-[18px]" strokeWidth={2} />
           </button>
         </div>
 
@@ -60,7 +64,7 @@ export const UpgradeModal: React.FC<UpgradeModalProps> = ({ onClose }) => {
               <p className="text-lg font-black text-slate-300 dark:text-slate-600 line-through mb-1">14,99 €</p>
             </div>
             <p className="text-[10px] font-black uppercase tracking-widest" style={{ color: 'var(--primary)' }}>{t('um.introPriceForever')}</p>
-            <p className="text-[11px] text-slate-400 font-bold uppercase tracking-widest">{t('um.perMonth')}</p>
+            <p className="text-[11px] text-slate-400 font-black uppercase tracking-widest">{t('um.perMonth')}</p>
           </div>
         </div>
 
@@ -88,7 +92,7 @@ export const UpgradeModal: React.FC<UpgradeModalProps> = ({ onClose }) => {
           <button
             onClick={handleUpgrade}
             disabled={isLoading}
-            className="w-full py-4 rounded-2xl text-[11px] font-black uppercase tracking-widest text-white transition-all hover:scale-[1.02] active:scale-95 shadow-lg disabled:opacity-50 flex items-center justify-center gap-2"
+            className="w-full py-4 rounded-2xl text-[11px] font-black uppercase tracking-widest text-white transition-all hover:scale-[1.02] shadow-lg disabled:opacity-40 flex items-center justify-center gap-2"
             style={{ background: 'var(--primary)' }}
           >
             {isLoading
@@ -101,6 +105,7 @@ export const UpgradeModal: React.FC<UpgradeModalProps> = ({ onClose }) => {
           </p>
         </div>
       </div>
-    </div>
+    </div>,
+    document.body
   );
 };

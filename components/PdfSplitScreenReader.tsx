@@ -442,7 +442,7 @@ export const PdfSplitScreenReader: React.FC<PdfSplitScreenReaderProps> = ({ doc,
         <button
           onClick={() => onStartFeynman(handoffTopic)}
           disabled={doneIndices.length === 0}
-          className="shrink-0 px-4 py-2.5 rounded-2xl text-[10px] font-black uppercase tracking-widest transition-all hover:scale-[1.02] active:scale-[0.98] disabled:opacity-30 disabled:cursor-not-allowed"
+          className="shrink-0 px-4 py-2.5 rounded-2xl text-[10px] font-black uppercase tracking-widest transition-all hover:scale-[1.02] disabled:opacity-40 disabled:cursor-not-allowed"
           style={{ background: 'var(--primary)', color: 'var(--primary-text)' }}
         >
           {t('rd.toFeynman')}
@@ -507,7 +507,7 @@ export const PdfSplitScreenReader: React.FC<PdfSplitScreenReaderProps> = ({ doc,
                 onClick={() => setZoom(z => Math.max(1, Math.round((z - 0.25) * 100) / 100))}
                 disabled={zoom <= 1}
                 aria-label={t('rd.zoomOut')}
-                className="w-9 h-9 rounded-xl text-sm font-black transition-all disabled:opacity-30 disabled:cursor-not-allowed"
+                className="w-9 h-9 rounded-xl text-sm font-black transition-all disabled:opacity-40 disabled:cursor-not-allowed"
                 style={{ background: 'var(--bg-main)', border: '1px solid var(--border-color)', color: 'var(--text-main)' }}
               >
                 −
@@ -517,7 +517,7 @@ export const PdfSplitScreenReader: React.FC<PdfSplitScreenReaderProps> = ({ doc,
                 onClick={() => setZoom(z => Math.min(3, Math.round((z + 0.25) * 100) / 100))}
                 disabled={zoom >= 3}
                 aria-label={t('rd.zoomIn')}
-                className="w-9 h-9 rounded-xl text-sm font-black transition-all disabled:opacity-30 disabled:cursor-not-allowed"
+                className="w-9 h-9 rounded-xl text-sm font-black transition-all disabled:opacity-40 disabled:cursor-not-allowed"
                 style={{ background: 'var(--bg-main)', border: '1px solid var(--border-color)', color: 'var(--text-main)' }}
               >
                 +
@@ -526,7 +526,7 @@ export const PdfSplitScreenReader: React.FC<PdfSplitScreenReaderProps> = ({ doc,
             <button
               onClick={handleMarkDone}
               disabled={activeDone}
-              className="px-4 py-2 rounded-xl text-[9px] font-black uppercase tracking-widest transition-all hover:scale-[1.02] active:scale-[0.98] disabled:cursor-not-allowed"
+              className="px-4 py-2 rounded-xl text-[9px] font-black uppercase tracking-widest transition-all hover:scale-[1.02] disabled:cursor-not-allowed"
               style={activeDone
                 ? { background: 'var(--bg-main)', border: '1px solid var(--border-color)', color: 'var(--text-main)', opacity: 0.7 }
                 : { background: 'color-mix(in srgb, var(--primary) 12%, transparent)', color: 'var(--primary)', border: '1px solid color-mix(in srgb, var(--primary) 30%, transparent)' }}
@@ -594,7 +594,7 @@ export const PdfSplitScreenReader: React.FC<PdfSplitScreenReaderProps> = ({ doc,
               <button
                 onClick={() => goToPage(pageNumber - 1)}
                 aria-label={t('rd.prevPage')}
-                className="absolute left-2 top-1/2 -translate-y-1/2 w-11 h-11 rounded-full flex items-center justify-center text-xl font-black shadow-lg transition-all hover:scale-110 active:scale-95"
+                className="absolute left-2 top-1/2 -translate-y-1/2 w-11 h-11 rounded-full flex items-center justify-center text-xl font-black shadow-lg transition-all hover:scale-110"
                 style={{ background: 'var(--bg-sidebar)', border: '1px solid var(--border-color)', color: 'var(--text-main)' }}
               >
                 ‹
@@ -604,7 +604,7 @@ export const PdfSplitScreenReader: React.FC<PdfSplitScreenReaderProps> = ({ doc,
               <button
                 onClick={() => goToPage(pageNumber + 1)}
                 aria-label={t('rd.nextPage')}
-                className="absolute right-2 top-1/2 -translate-y-1/2 w-11 h-11 rounded-full flex items-center justify-center text-xl font-black shadow-lg transition-all hover:scale-110 active:scale-95"
+                className="absolute right-2 top-1/2 -translate-y-1/2 w-11 h-11 rounded-full flex items-center justify-center text-xl font-black shadow-lg transition-all hover:scale-110"
                 style={{ background: 'var(--bg-sidebar)', border: '1px solid var(--border-color)', color: 'var(--text-main)' }}
               >
                 ›
@@ -626,7 +626,7 @@ export const PdfSplitScreenReader: React.FC<PdfSplitScreenReaderProps> = ({ doc,
               >
                 <button
                   onClick={handleAskSelection}
-                  className="flex items-center gap-1.5 px-3.5 py-2 rounded-full text-[10px] font-black uppercase tracking-wide shadow-lg transition-transform hover:scale-105 active:scale-95"
+                  className="flex items-center gap-1.5 px-3.5 py-2 rounded-full text-[10px] font-black uppercase tracking-wide shadow-lg transition-transform hover:scale-105"
                   style={{ background: 'var(--primary)', color: 'var(--primary-text)' }}
                 >
                   <EmojiImage emoji={SELECTION_ACTION_META[selection.action].emoji} size={13} />
@@ -656,7 +656,7 @@ export const PdfSplitScreenReader: React.FC<PdfSplitScreenReaderProps> = ({ doc,
                 <div className="flex items-center gap-2 flex-wrap">
                   <p className="text-sm font-black dark:text-white break-words">{entry.concept}</p>
                   {entry.expandedScope && (
-                    <span className="shrink-0 px-2 py-0.5 rounded-full text-[8px] font-black uppercase tracking-widest" style={{ background: 'color-mix(in srgb, var(--primary) 15%, transparent)', color: 'var(--primary)' }}>
+                    <span className="shrink-0 px-2 py-0.5 rounded-full text-[9px] font-black uppercase tracking-widest" style={{ background: 'color-mix(in srgb, var(--primary) 15%, transparent)', color: 'var(--primary)' }}>
                       {t('rd.expandedScope')}
                     </span>
                   )}
@@ -674,7 +674,7 @@ export const PdfSplitScreenReader: React.FC<PdfSplitScreenReaderProps> = ({ doc,
                     {entry.quote && !entry.expandedScope && (
                       <div className="rounded-2xl p-3.5" style={{ background: 'color-mix(in srgb, var(--primary) 8%, transparent)', border: '1px solid color-mix(in srgb, var(--primary) 25%, transparent)' }}>
                         <div className="flex items-center justify-between gap-2 mb-1">
-                          <p className="text-[8px] font-black uppercase tracking-widest" style={{ color: 'var(--primary)' }}>
+                          <p className="text-[9px] font-black uppercase tracking-widest" style={{ color: 'var(--primary)' }}>
                             {t('rd.quoteSourcePage', { n: pageNumber })}
                           </p>
                           <button
@@ -683,7 +683,7 @@ export const PdfSplitScreenReader: React.FC<PdfSplitScreenReaderProps> = ({ doc,
                                 ? null
                                 : { page: pageNumber, quote: entry.quote! }
                             )}
-                            className="shrink-0 text-[8px] font-black uppercase tracking-widest px-2 py-1 rounded-lg transition-all hover:scale-[1.03] active:scale-95"
+                            className="shrink-0 text-[9px] font-black uppercase tracking-widest px-2 py-1 rounded-lg transition-all hover:scale-[1.03]"
                             style={highlight?.page === pageNumber && highlight?.quote === entry.quote
                               ? { background: 'var(--primary)', color: 'var(--primary-text)' }
                               : { border: '1px solid color-mix(in srgb, var(--primary) 40%, transparent)', color: 'var(--primary)' }}
@@ -713,7 +713,7 @@ export const PdfSplitScreenReader: React.FC<PdfSplitScreenReaderProps> = ({ doc,
             <button
               onClick={() => handleAsk()}
               disabled={concept.trim().length <= 2}
-              className="shrink-0 px-5 py-3 rounded-2xl text-[10px] font-black uppercase tracking-widest transition-all disabled:opacity-30 disabled:cursor-not-allowed"
+              className="shrink-0 px-5 py-3 rounded-2xl text-[10px] font-black uppercase tracking-widest transition-all disabled:opacity-40 disabled:cursor-not-allowed"
               style={{ background: 'var(--primary)', color: 'var(--primary-text)' }}
             >
               {t('rd.ask')}

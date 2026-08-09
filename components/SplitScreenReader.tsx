@@ -294,7 +294,7 @@ export const SplitScreenReader: React.FC<SplitScreenReaderProps> = ({ doc, userI
         <button
           onClick={handleStartFeynman}
           disabled={doneIndices.length === 0}
-          className="shrink-0 px-4 py-2.5 rounded-2xl text-[10px] font-black uppercase tracking-widest transition-all hover:scale-[1.02] active:scale-[0.98] disabled:opacity-30 disabled:cursor-not-allowed"
+          className="shrink-0 px-4 py-2.5 rounded-2xl text-[10px] font-black uppercase tracking-widest transition-all hover:scale-[1.02] disabled:opacity-40 disabled:cursor-not-allowed"
           style={{ background: 'var(--primary)', color: 'var(--primary-text)' }}
         >
           {t('rd.toFeynman')}
@@ -330,7 +330,7 @@ export const SplitScreenReader: React.FC<SplitScreenReaderProps> = ({ doc, userI
           {activeChapter && (
             <>
               <div className="flex-1 overflow-y-auto px-4 py-6 lg:px-8 lg:py-8">
-                <article className="max-w-[660px] mx-auto rounded-2xl p-8 lg:p-12" style={{ background: 'var(--bg-sidebar)', border: '1px solid var(--border-color)', boxShadow: '0 1px 2px rgba(20,22,30,0.04), 0 12px 28px -12px rgba(20,22,30,0.14)' }}>
+                <article className="max-w-[660px] mx-auto rounded-2xl p-8 lg:p-12" style={{ background: 'var(--bg-sidebar)', border: '1px solid var(--border-color)', boxShadow: '0 10px 30px -5px rgba(0, 0, 0, 0.08), 0 4px 10px -2px rgba(0, 0, 0, 0.03), inset 0 1px 0 0 rgba(255, 255, 255, 0.5)' }}>
                   <div className="flex items-center justify-between gap-3 mb-6">
                     <h2 className="text-2xl font-semibold tracking-tight break-words" style={{ fontFamily: 'ui-serif, Georgia, "Iowan Old Style", "Times New Roman", serif', color: 'var(--text-main)' }}>
                       {activeChapter.title}
@@ -365,7 +365,7 @@ export const SplitScreenReader: React.FC<SplitScreenReaderProps> = ({ doc, userI
                 <button
                   onClick={handleMarkDone}
                   disabled={activeDone}
-                  className="w-full max-w-[660px] mx-auto block py-3 rounded-2xl text-[11px] font-black uppercase tracking-widest transition-all hover:scale-[1.01] active:scale-[0.99] disabled:opacity-40 disabled:cursor-not-allowed"
+                  className="w-full max-w-[660px] mx-auto block py-3 rounded-2xl text-[11px] font-black uppercase tracking-widest transition-all hover:scale-[1.02] disabled:opacity-40 disabled:cursor-not-allowed"
                   style={{ background: activeDone ? 'var(--bg-sidebar)' : 'color-mix(in srgb, var(--primary) 12%, transparent)', color: 'var(--primary)', border: '1px solid color-mix(in srgb, var(--primary) 30%, transparent)' }}
                 >
                   {activeDone ? t('rd.chapterDoneRead') : t('rd.markChapterDone')}
@@ -394,12 +394,12 @@ export const SplitScreenReader: React.FC<SplitScreenReaderProps> = ({ doc, userI
                 <div className="flex items-center gap-2 flex-wrap">
                   <p className="text-sm font-black dark:text-white break-words">{entry.concept}</p>
                   {entry.highlight && (
-                    <span className="shrink-0 px-2 py-0.5 rounded-full text-[8px] font-black uppercase tracking-widest" style={{ background: 'color-mix(in srgb, var(--primary) 15%, transparent)', color: 'var(--primary)' }}>
+                    <span className="shrink-0 px-2 py-0.5 rounded-full text-[9px] font-black uppercase tracking-widest" style={{ background: 'color-mix(in srgb, var(--primary) 15%, transparent)', color: 'var(--primary)' }}>
                       {t('rd.textMarked')}
                     </span>
                   )}
                   {entry.expandedScope && (
-                    <span className="shrink-0 px-2 py-0.5 rounded-full text-[8px] font-black uppercase tracking-widest" style={{ background: 'color-mix(in srgb, var(--primary) 15%, transparent)', color: 'var(--primary)' }}>
+                    <span className="shrink-0 px-2 py-0.5 rounded-full text-[9px] font-black uppercase tracking-widest" style={{ background: 'color-mix(in srgb, var(--primary) 15%, transparent)', color: 'var(--primary)' }}>
                       {t('rd.expandedScope')}
                     </span>
                   )}
@@ -431,7 +431,7 @@ export const SplitScreenReader: React.FC<SplitScreenReaderProps> = ({ doc, userI
             <button
               onClick={handleAsk}
               disabled={concept.trim().length <= 2}
-              className="shrink-0 px-5 py-3 rounded-2xl text-[10px] font-black uppercase tracking-widest transition-all disabled:opacity-30 disabled:cursor-not-allowed"
+              className="shrink-0 px-5 py-3 rounded-2xl text-[10px] font-black uppercase tracking-widest transition-all disabled:opacity-40 disabled:cursor-not-allowed"
               style={{ background: 'var(--primary)', color: 'var(--primary-text)' }}
             >
               {t('rd.ask')}

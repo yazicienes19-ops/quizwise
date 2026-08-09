@@ -135,7 +135,7 @@ export const SourceDetailPage: React.FC<Props> = ({ doc, meta, isAdminUser = fal
             {meta.tags?.length ? (
               <div className="flex gap-1.5 flex-wrap">
                 {meta.tags.map(t => (
-                  <span key={t} className="bg-indigo-50 dark:bg-indigo-900/20 text-indigo-600 dark:text-indigo-400 text-[8px] font-black px-2.5 py-1 rounded-full uppercase tracking-tight">
+                  <span key={t} className="bg-indigo-50 dark:bg-indigo-900/20 text-indigo-600 dark:text-indigo-400 text-[9px] font-black px-2.5 py-1 rounded-full uppercase tracking-tight">
                     {t}
                   </span>
                 ))}
@@ -174,14 +174,14 @@ export const SourceDetailPage: React.FC<Props> = ({ doc, meta, isAdminUser = fal
           <div className="flex gap-6">
             <div>
               <p className="text-2xl font-black text-slate-900 dark:text-white">{quizStats.count}</p>
-              <p className="text-[8px] font-black uppercase tracking-widest text-slate-400">{t('quizSetup.quizzes')}</p>
+              <p className="text-[9px] font-black uppercase tracking-widest text-slate-400">{t('quizSetup.quizzes')}</p>
             </div>
             {quizStats.avgAccuracy !== null && (
               <div>
                 <p className={`text-2xl font-black ${quizStats.avgAccuracy >= 70 ? 'text-emerald-600' : quizStats.avgAccuracy >= 50 ? 'text-amber-500' : 'text-rose-500'}`}>
                   {quizStats.avgAccuracy}%
                 </p>
-                <p className="text-[8px] font-black uppercase tracking-widest text-slate-400">{t('quizSetup.avgAccuracy')}</p>
+                <p className="text-[9px] font-black uppercase tracking-widest text-slate-400">{t('quizSetup.avgAccuracy')}</p>
               </div>
             )}
             {quizStats.lastAt && (
@@ -189,20 +189,20 @@ export const SourceDetailPage: React.FC<Props> = ({ doc, meta, isAdminUser = fal
                 <p className="text-2xl font-black text-slate-900 dark:text-white">
                   {formatDate(quizStats.lastAt, { day: '2-digit', month: 'short' })}
                 </p>
-                <p className="text-[8px] font-black uppercase tracking-widest text-slate-400">{t('quizSetup.last')}</p>
+                <p className="text-[9px] font-black uppercase tracking-widest text-slate-400">{t('quizSetup.last')}</p>
               </div>
             )}
           </div>
 
           {quizStats.weakTopics.length > 0 && (
             <div>
-              <p className="text-[8px] font-black uppercase tracking-widest text-rose-500 mb-2 flex items-center gap-1.5">
+              <p className="text-[9px] font-black uppercase tracking-widest text-rose-500 mb-2 flex items-center gap-1.5">
                 <span className="w-1 h-1 rounded-full bg-rose-500" />
                 {t('result.weakTopics')}
               </p>
               <div className="flex flex-wrap gap-1.5">
                 {quizStats.weakTopics.map(t => (
-                  <span key={t} className="text-[8px] font-black px-2 py-0.5 rounded-full bg-rose-50 dark:bg-rose-900/20 text-rose-600 dark:text-rose-400">{t}</span>
+                  <span key={t} className="text-[9px] font-black px-2 py-0.5 rounded-full bg-rose-50 dark:bg-rose-900/20 text-rose-600 dark:text-rose-400">{t}</span>
                 ))}
               </div>
             </div>
@@ -271,12 +271,12 @@ const ActionCard: React.FC<{ action: Action; disabled: boolean; onAction: () => 
     <button
       onClick={onAction}
       disabled={disabled}
-      className={`${base} ${cardClass} ${disabled ? 'opacity-40 cursor-not-allowed' : 'hover:scale-[1.02] active:scale-[0.98]'}`}
+      className={`${base} ${cardClass} ${disabled ? 'opacity-40 cursor-not-allowed' : 'hover:scale-[1.02]'}`}
     >
       <div className="flex items-start justify-between">
         <EmojiImage emoji={action.emoji} size={28} className={action.accent ? 'text-white' : 'text-slate-700 dark:text-slate-300'} />
         {action.directStart && (
-          <span className={`text-[8px] font-black uppercase tracking-widest px-2 py-0.5 rounded-full ${action.accent ? 'bg-white/20 text-white' : 'bg-emerald-50 dark:bg-emerald-900/20 text-emerald-600 dark:text-emerald-400'}`}>
+          <span className={`text-[9px] font-black uppercase tracking-widest px-2 py-0.5 rounded-full ${action.accent ? 'bg-white/20 text-white' : 'bg-emerald-50 dark:bg-emerald-900/20 text-emerald-600 dark:text-emerald-400'}`}>
             ⚡ {t('sd.direct')}
           </span>
         )}

@@ -1,9 +1,11 @@
 import React, { useState } from 'react';
+import { createPortal } from 'react-dom';
 import { X, Mail, Lock, User } from 'lucide-react';
 import { supabase } from '../services/supabaseClient';
 import { useTranslation } from '../i18n/I18nProvider';
 import { BrandMark } from './BrandMark';
 import { BrandSpinner } from './BrandSpinner';
+import { useModalA11y } from '../hooks/useModalA11y';
 
 interface AuthModalProps {
   onClose: () => void;
@@ -28,6 +30,7 @@ const AppleIcon: React.FC = () => (
 
 export const AuthModal: React.FC<AuthModalProps> = ({ onClose, onSuccess }) => {
   const { t } = useTranslation();
+  const { titleId, descriptionId, dialogProps } = useModalA11y(onClose);
   const [mode, setMode] = useState<'login' | 'register'>('login');
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
@@ -87,9 +90,11 @@ export const AuthModal: React.FC<AuthModalProps> = ({ onClose, onSuccess }) => {
     }
   };
 
-  return (
+  return createPortal(
     <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-sm animate-in fade-in duration-200">
       <div
+        {...dialogProps}
+        aria-describedby={descriptionId}
         className="w-full max-w-md rounded-[32px] shadow-3d-deep animate-in zoom-in-95 slide-in-from-bottom-4 duration-300 overflow-hidden"
         style={{ background: 'var(--bg-sidebar)', border: '1px solid var(--border-color)' }}
       >
@@ -98,10 +103,10 @@ export const AuthModal: React.FC<AuthModalProps> = ({ onClose, onSuccess }) => {
           <div className="flex items-center gap-3">
             <BrandMark size={26} strokeColor="var(--mark-stroke)" peakColor="var(--mark-peak)" className="shrink-0" />
             <div>
-              <h2 className="text-base font-black uppercase tracking-tight" style={{ color: 'var(--text-main)' }}>
+              <h2 id={titleId} className="text-base font-black uppercase tracking-tight" style={{ color: 'var(--text-main)' }}>
                 Stude<span style={{ color: 'var(--mark-peak)' }}>Arc</span>
               </h2>
-              <p className="text-[10px] text-slate-400 font-bold uppercase tracking-widest">
+              <p id={descriptionId} className="text-[10px] text-slate-400 font-black uppercase tracking-widest">
                 {mode === 'login' ? t('auth.welcomeBack') : t('auth.createAccount')}
               </p>
             </div>
@@ -111,7 +116,7 @@ export const AuthModal: React.FC<AuthModalProps> = ({ onClose, onSuccess }) => {
             className="w-8 h-8 flex items-center justify-center rounded-xl text-slate-400 hover:text-slate-700 dark:hover:text-white transition-all"
             style={{ background: 'color-mix(in srgb, var(--border-color) 60%, var(--bg-sidebar))' }}
           >
-            <X className="w-4 h-4" strokeWidth={2} />
+            <X className="w-[18px] h-[18px]" strokeWidth={2} />
           </button>
         </div>
 
@@ -140,7 +145,7 @@ export const AuthModal: React.FC<AuthModalProps> = ({ onClose, onSuccess }) => {
             type="button"
             onClick={() => handleOAuth('google')}
             disabled={!!oauthLoading || isLoading}
-            className="w-full py-3.5 rounded-2xl text-[12px] font-bold flex items-center justify-center gap-3 transition-all hover:opacity-80 active:scale-95 disabled:opacity-50 disabled:cursor-not-allowed"
+            className="w-full py-3.5 rounded-2xl text-[12px] font-bold flex items-center justify-center gap-3 transition-all hover:opacity-80 disabled:opacity-40 disabled:cursor-not-allowed"
             style={{ background: 'var(--bg-main)', border: '1px solid var(--border-color)', color: 'var(--text-main)' }}
           >
             {oauthLoading === 'google' ? <BrandSpinner size={18} strokeColor="var(--mark-stroke)" peakColor="var(--mark-peak)" /> : <GoogleIcon />}
@@ -150,7 +155,7 @@ export const AuthModal: React.FC<AuthModalProps> = ({ onClose, onSuccess }) => {
             type="button"
             onClick={() => handleOAuth('apple')}
             disabled={!!oauthLoading || isLoading}
-            className="w-full py-3.5 rounded-2xl text-[12px] font-bold flex items-center justify-center gap-3 transition-all hover:opacity-80 active:scale-95 disabled:opacity-50 disabled:cursor-not-allowed"
+            className="w-full py-3.5 rounded-2xl text-[12px] font-bold flex items-center justify-center gap-3 transition-all hover:opacity-80 disabled:opacity-40 disabled:cursor-not-allowed"
             style={{ background: 'var(--bg-main)', border: '1px solid var(--border-color)', color: 'var(--text-main)' }}
           >
             {oauthLoading === 'apple' ? <BrandSpinner size={18} strokeColor="var(--mark-stroke)" peakColor="var(--mark-peak)" /> : <AppleIcon />}
@@ -160,7 +165,7 @@ export const AuthModal: React.FC<AuthModalProps> = ({ onClose, onSuccess }) => {
 
         <div className="px-8 pt-5 flex items-center gap-3">
           <div className="flex-1 h-px" style={{ background: 'var(--border-color)' }} />
-          <span className="text-[10px] font-bold uppercase tracking-widest text-slate-400">{t('auth.orDivider')}</span>
+          <span className="text-[10px] font-black uppercase tracking-widest text-slate-400">{t('auth.orDivider')}</span>
           <div className="flex-1 h-px" style={{ background: 'var(--border-color)' }} />
         </div>
 
@@ -232,7 +237,7 @@ export const AuthModal: React.FC<AuthModalProps> = ({ onClose, onSuccess }) => {
           <button
             type="submit"
             disabled={isLoading}
-            className="w-full py-4 rounded-2xl text-[11px] font-black uppercase tracking-widest transition-all hover:scale-[1.02] active:scale-95 shadow-lg disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
+            className="w-full py-4 rounded-2xl text-[11px] font-black uppercase tracking-widest transition-all hover:scale-[1.02] shadow-lg disabled:opacity-40 disabled:cursor-not-allowed flex items-center justify-center gap-2"
             style={{ background: 'var(--primary)', color: 'var(--primary-text)' }}
           >
             {isLoading
@@ -242,6 +247,7 @@ export const AuthModal: React.FC<AuthModalProps> = ({ onClose, onSuccess }) => {
           </button>
         </form>
       </div>
-    </div>
+    </div>,
+    document.body
   );
 };

@@ -623,6 +623,8 @@ export const de = {
   'lib.exampleSemester': 'z.B. Semester 1',
   'lib.edit': 'Bearbeiten',
   'lib.delete': 'Löschen',
+  'lib.gridView': 'Rasteransicht',
+  'lib.listView': 'Listenansicht',
   'lib.modules': 'Module',
   'lib.searchPlaceholder': 'Quelle suchen…',
   'lib.allTypes': 'Alle Typen',

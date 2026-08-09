@@ -622,6 +622,8 @@ export const en: Translations = {
   'lib.exampleSemester': 'e.g. Semester 1',
   'lib.edit': 'Edit',
   'lib.delete': 'Delete',
+  'lib.gridView': 'Grid view',
+  'lib.listView': 'List view',
   'lib.modules': 'Modules',
   'lib.searchPlaceholder': 'Search source…',
   'lib.allTypes': 'All types',

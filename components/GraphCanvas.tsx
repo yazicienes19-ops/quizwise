@@ -1,6 +1,6 @@
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import * as d3 from 'd3';
-import { motion, AnimatePresence } from 'framer-motion';
+import { motion, AnimatePresence, useReducedMotion } from 'framer-motion';
 import type { GraphState, GraphNodePosition, GraphEntityChange, HierarchyLevel } from '../services/graph/types';
 import { buildGraphIndex, neighborIds, outgoingEdges, incomingEdges } from '../services/graph/graphIndex';
 import { computeNodeInsights, groupInsightsByNode, type NodeInsightType } from '../services/graph/graphInsightsService';
@@ -401,6 +401,7 @@ export const GraphCanvas: React.FC<GraphCanvasProps> = ({
   const gRef = useRef<SVGGElement | null>(null);
   const zoomBehaviorRef = useRef<d3.ZoomBehavior<SVGSVGElement, unknown> | null>(null);
   const [zoomTransform, setZoomTransform] = useState<ZoomTransform>({ x: 0, y: 0, k: 1 });
+  const shouldReduceMotion = useReducedMotion();
 
   // Kein eigener Wissensnetz-Modus mehr (User-Vorgabe 2026-08-04) — folgt
   // dem globalen App-Theme, das über `isDark` hereinkommt.
@@ -1028,9 +1029,9 @@ export const GraphCanvas: React.FC<GraphCanvasProps> = ({
         </div>
       )}
       <div className="absolute top-3 right-3 z-10 flex gap-1.5">
-        <button onClick={() => zoomBy(1.3)} className="w-8 h-8 flex items-center justify-center rounded-lg text-sm font-black" style={{ background: wnTheme.chipBg, border: `1px solid ${wnTheme.chipBorder}`, color: wnTheme.chipText, backdropFilter: 'blur(6px)' }}>+</button>
-        <button onClick={() => zoomBy(1 / 1.3)} className="w-8 h-8 flex items-center justify-center rounded-lg text-sm font-black" style={{ background: wnTheme.chipBg, border: `1px solid ${wnTheme.chipBorder}`, color: wnTheme.chipText, backdropFilter: 'blur(6px)' }}>−</button>
-        <button onClick={fitView} className="w-8 h-8 flex items-center justify-center rounded-lg" style={{ background: wnTheme.chipBg, border: `1px solid ${wnTheme.chipBorder}`, color: wnTheme.chipText, backdropFilter: 'blur(6px)' }}>
+        <button onClick={() => zoomBy(1.3)} aria-label="Vergrößern" className="w-8 h-8 flex items-center justify-center rounded-lg text-sm font-black" style={{ background: wnTheme.chipBg, border: `1px solid ${wnTheme.chipBorder}`, color: wnTheme.chipText, backdropFilter: 'blur(6px)' }}>+</button>
+        <button onClick={() => zoomBy(1 / 1.3)} aria-label="Verkleinern" className="w-8 h-8 flex items-center justify-center rounded-lg text-sm font-black" style={{ background: wnTheme.chipBg, border: `1px solid ${wnTheme.chipBorder}`, color: wnTheme.chipText, backdropFilter: 'blur(6px)' }}>−</button>
+        <button onClick={fitView} aria-label="Ansicht einpassen" className="w-8 h-8 flex items-center justify-center rounded-lg" style={{ background: wnTheme.chipBg, border: `1px solid ${wnTheme.chipBorder}`, color: wnTheme.chipText, backdropFilter: 'blur(6px)' }}>
           <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><path d="M8 3H5a2 2 0 0 0-2 2v3m18 0V5a2 2 0 0 0-2-2h-3m0 18h3a2 2 0 0 0 2-2v-3M3 16v3a2 2 0 0 0 2 2h3"/></svg>
         </button>
       </div>
@@ -1200,9 +1201,11 @@ export const GraphCanvas: React.FC<GraphCanvasProps> = ({
                 <motion.g
                   key={node.id}
                   {...{ [NODE_DATA_ATTR]: true }}
-                  initial={{ x: pos.x, y: pos.y, opacity: 0, scale: 0.6 }}
+                  initial={shouldReduceMotion
+                    ? { x: pos.x, y: pos.y, opacity: 1, scale: 1 }
+                    : { x: pos.x, y: pos.y, opacity: 0, scale: 0.6 }}
                   animate={{ x: pos.x, y: pos.y, opacity: 1, scale: 1 }}
-                  exit={{ opacity: 0, scale: 0.6 }}
+                  exit={shouldReduceMotion ? { opacity: 1, scale: 1 } : { opacity: 0, scale: 0.6 }}
                   onMouseDown={e => handleNodePointerDown(e, node.id)}
                   onMouseUp={e => handleNodePointerUp(e, node.id)}
                   // Verhindert, dass das native, nach mousedown+mouseup
@@ -1359,7 +1362,7 @@ export const GraphCanvas: React.FC<GraphCanvasProps> = ({
             />
             {edgePromptError && (
               <div
-                className="text-[9px] font-bold text-red-500 bg-white dark:bg-slate-800 rounded px-1.5 py-1 shadow-sm mt-1"
+                className="text-[9px] font-bold text-rose-500 bg-white dark:bg-slate-800 rounded px-1.5 py-1 shadow-sm mt-1"
                 style={{ maxWidth: 220 }}
               >
                 {edgePromptError}
@@ -1412,14 +1415,14 @@ export const GraphCanvas: React.FC<GraphCanvasProps> = ({
             <button
               onClick={deleteSelectedEdge}
               title="Beziehung löschen"
-              className="w-6 h-6 flex items-center justify-center rounded-md bg-white dark:bg-slate-800 text-red-500 border shrink-0 font-bold"
+              className="w-6 h-6 flex items-center justify-center rounded-md bg-white dark:bg-slate-800 text-rose-500 border shrink-0 font-bold"
               style={{ borderColor: 'var(--border-color, #e2e8f0)' }}
             >
               ×
             </button>
             {edgeEditError && (
               <div
-                className="absolute text-[9px] font-bold text-red-500 bg-white dark:bg-slate-800 rounded px-1.5 py-1 shadow-sm"
+                className="absolute text-[9px] font-bold text-rose-500 bg-white dark:bg-slate-800 rounded px-1.5 py-1 shadow-sm"
                 style={{ maxWidth: 220, top: '100%', left: 0, marginTop: 4 }}
               >
                 {edgeEditError}

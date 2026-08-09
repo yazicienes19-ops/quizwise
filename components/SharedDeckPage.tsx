@@ -89,7 +89,7 @@ export const SharedDeckPage: React.FC<SharedDeckPageProps> = ({
         {/* Header */}
         <div className="text-center space-y-3">
           <p className="text-[10px] font-black uppercase tracking-widest text-slate-400">{t('sdp.sharedDeck')}</p>
-          <h1 className="text-4xl font-black tracking-tighter dark:text-white">{deck.name}</h1>
+          <h1 className="text-4xl lg:text-6xl font-black tracking-tighter dark:text-white">{deck.name}</h1>
           <p className="text-sm text-slate-500 dark:text-slate-400">
             {tp('dashboard.cardsN', deck.cards.length)} · {t('sdp.created', { date: formatDate(deck.created_at) })}
           </p>
@@ -101,11 +101,11 @@ export const SharedDeckPage: React.FC<SharedDeckPageProps> = ({
           {deck.cards.slice(0, 6).map((c, i) => (
             <div key={i} className="grid grid-cols-2 gap-4 px-5 py-4 rounded-[20px]" style={{ background: 'var(--bg-sidebar)', border: '1px solid var(--border-color)' }}>
               <div>
-                <p className="text-[8px] font-black uppercase tracking-widest text-slate-400 mb-1">{t('ecm.front')}</p>
+                <p className="text-[9px] font-black uppercase tracking-widest text-slate-400 mb-1">{t('ecm.front')}</p>
                 <p className="text-sm font-medium dark:text-white">{c.front}</p>
               </div>
               <div>
-                <p className="text-[8px] font-black uppercase tracking-widest text-slate-400 mb-1">{t('ecm.back')}</p>
+                <p className="text-[9px] font-black uppercase tracking-widest text-slate-400 mb-1">{t('ecm.back')}</p>
                 <p className="text-sm text-slate-500 dark:text-slate-400">{c.back}</p>
               </div>
             </div>
@@ -130,7 +130,7 @@ export const SharedDeckPage: React.FC<SharedDeckPageProps> = ({
         ) : (
           <button
             onClick={handleAccept}
-            className="w-full py-5 rounded-[24px] font-black uppercase tracking-widest text-[11px] shadow-3d-deep hover:scale-[1.02] active:scale-[0.98] transition-all flex items-center justify-center gap-3"
+            className="w-full py-5 rounded-[24px] font-black uppercase tracking-widest text-[11px] shadow-3d-deep hover:scale-[1.02] transition-all flex items-center justify-center gap-3"
             style={{ background: 'var(--primary)', color: 'var(--primary-text)' }}
           >
             <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round">

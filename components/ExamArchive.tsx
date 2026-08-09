@@ -60,7 +60,7 @@ export const ExamArchive: React.FC = () => {
               </div>
               <div className="flex-1 min-w-0">
                 <p className="text-sm font-black dark:text-white break-words">{exam.docName}</p>
-                <p className="text-[9px] text-slate-400 font-bold uppercase tracking-widest mt-0.5">
+                <p className="text-[9px] text-slate-400 font-black uppercase tracking-widest mt-0.5">
                   {formatDate(exam.timestamp, { day: '2-digit', month: 'short', year: '2-digit' })} · {exam.score}% · {exam.passed ? t('ea.passed') : t('ea.failed')}
                 </p>
               </div>
@@ -72,7 +72,7 @@ export const ExamArchive: React.FC = () => {
                 {exam.categoryBreakdown && exam.categoryBreakdown.length > 0 && (
                   <div className="flex flex-wrap gap-2">
                     {exam.categoryBreakdown.map(cb => (
-                      <span key={cb.category} className="text-[8px] font-black uppercase tracking-widest px-2.5 py-1 rounded-full bg-slate-100 dark:bg-slate-800 text-slate-500 dark:text-slate-400">
+                      <span key={cb.category} className="text-[9px] font-black uppercase tracking-widest px-2.5 py-1 rounded-full bg-slate-100 dark:bg-slate-800 text-slate-500 dark:text-slate-400">
                         {getCategoryLabel(cb.category)} {cb.score}%
                       </span>
                     ))}
@@ -89,7 +89,7 @@ export const ExamArchive: React.FC = () => {
                         <span className="text-[10px] font-black shrink-0 dark:text-white">{t('ea.points', { a: pts, b: q.points })}</span>
                       </div>
                       <p className="text-[11px] text-slate-500 dark:text-slate-400 mt-2 break-words">
-                        <span className="font-black uppercase text-[8px] tracking-widest">{t('ea.yourAnswer')}: </span>
+                        <span className="font-black uppercase text-[9px] tracking-widest">{t('ea.yourAnswer')}: </span>
                         {formatUserAnswer(q, t)}
                       </p>
                       {q.feedback && (
@@ -106,7 +106,7 @@ export const ExamArchive: React.FC = () => {
                       )}
                       {!full && q.solution && (
                         <p className="text-[11px] text-slate-600 dark:text-slate-300 mt-1 break-words">
-                          <span className="font-black uppercase text-[8px] tracking-widest">{t('ea.solutionLabel')}: </span>
+                          <span className="font-black uppercase text-[9px] tracking-widest">{t('ea.solutionLabel')}: </span>
                           {q.solution}
                         </p>
                       )}
@@ -117,7 +117,7 @@ export const ExamArchive: React.FC = () => {
                 )}
 
                 {exam.questions && exam.questions.length > 0 && (
-                  <p className="text-[9px] text-slate-400 font-bold uppercase tracking-widest text-right">
+                  <p className="text-[9px] text-slate-400 font-black uppercase tracking-widest text-right">
                     {tp('dashboard.questionsN', exam.questions.length)} · {exam.achievedPoints}/{exam.totalPoints} P.
                   </p>
                 )}

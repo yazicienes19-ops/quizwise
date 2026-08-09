@@ -39,7 +39,7 @@ export const ResultView: React.FC<ResultViewProps> = ({
       .filter((t): t is string => Boolean(t) && !weakTopics.includes(t))
   )].slice(0, 4);
 
-  const grade = score >= 90 ? { label: t('result.grade.excellent'), icon: '🏆', color: 'text-yellow-500' }
+  const grade = score >= 90 ? { label: t('result.grade.excellent'), icon: '🏆', color: 'text-amber-500' }
     : score >= 75 ? { label: t('result.grade.veryGood'), icon: '🌟', color: 'text-emerald-600' }
     : score >= 55 ? { label: t('result.grade.good'), icon: '📈', color: 'text-indigo-600' }
     : { label: t('result.grade.roomToGrow'), icon: '🎯', color: 'text-rose-500' };
@@ -68,15 +68,15 @@ export const ResultView: React.FC<ResultViewProps> = ({
         <div className="grid grid-cols-3 divide-x divide-slate-100 dark:divide-slate-800 border-t border-slate-100 dark:border-slate-800">
           <div className="py-4 text-center">
             <p className="text-2xl font-black text-emerald-600 dark:text-emerald-400">{correctCount}</p>
-            <p className="text-[8px] font-black uppercase tracking-widest text-slate-400 mt-0.5">{t('result.correct')}</p>
+            <p className="text-[9px] font-black uppercase tracking-widest text-slate-400 mt-0.5">{t('result.correct')}</p>
           </div>
           <div className="py-4 text-center">
             <p className="text-2xl font-black text-rose-500">{wrongCount}</p>
-            <p className="text-[8px] font-black uppercase tracking-widest text-slate-400 mt-0.5">{t('result.wrong')}</p>
+            <p className="text-[9px] font-black uppercase tracking-widest text-slate-400 mt-0.5">{t('result.wrong')}</p>
           </div>
           <div className="py-4 text-center">
             <p className="text-2xl font-black text-slate-800 dark:text-white">{answers.length}</p>
-            <p className="text-[8px] font-black uppercase tracking-widest text-slate-400 mt-0.5">{t('result.total')}</p>
+            <p className="text-[9px] font-black uppercase tracking-widest text-slate-400 mt-0.5">{t('result.total')}</p>
           </div>
         </div>
       </div>
@@ -120,15 +120,15 @@ export const ResultView: React.FC<ResultViewProps> = ({
           <div className="grid grid-cols-3 gap-3">
             <div className="text-center">
               <p className="text-xl font-black text-emerald-600 dark:text-emerald-400">{pct(calibration.wellCalibrated)}%</p>
-              <p className="text-[8px] font-black uppercase tracking-widest text-slate-400 mt-0.5 leading-tight">{t('result.calibrated')}</p>
+              <p className="text-[9px] font-black uppercase tracking-widest text-slate-400 mt-0.5 leading-tight">{t('result.calibrated')}</p>
             </div>
             <div className="text-center">
               <p className="text-xl font-black text-rose-500">{pct(calibration.overconfident)}%</p>
-              <p className="text-[8px] font-black uppercase tracking-widest text-slate-400 mt-0.5 leading-tight">{t('result.overestimated')}</p>
+              <p className="text-[9px] font-black uppercase tracking-widest text-slate-400 mt-0.5 leading-tight">{t('result.overestimated')}</p>
             </div>
             <div className="text-center">
               <p className="text-xl font-black text-amber-500">{pct(calibration.underconfident)}%</p>
-              <p className="text-[8px] font-black uppercase tracking-widest text-slate-400 mt-0.5 leading-tight">{t('result.underestimated')}</p>
+              <p className="text-[9px] font-black uppercase tracking-widest text-slate-400 mt-0.5 leading-tight">{t('result.underestimated')}</p>
             </div>
           </div>
         </div>
@@ -149,12 +149,12 @@ export const ResultView: React.FC<ResultViewProps> = ({
                 autoFocus
                 value={saveName}
                 onChange={e => setSaveName(e.target.value)}
-                className="flex-1 px-4 py-2.5 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-[16px] text-sm font-medium dark:text-white outline-none focus:border-indigo-500 transition-colors"
+                className="flex-1 px-4 py-2.5 bg-slate-50 dark:bg-slate-800 border-2 border-slate-200 dark:border-slate-700 rounded-[16px] text-sm font-medium dark:text-white outline-none focus:border-indigo-500 transition-colors"
                 placeholder={t('quiz.quizNamePlaceholder')}
               />
               <button
                 onClick={() => { onSaveQuiz(saveName.trim() || t('quiz.myQuiz')); setSaved(true); setShowSaveInput(false); }}
-                className="px-5 py-2.5 bg-indigo-600 text-white rounded-[16px] text-[10px] font-black uppercase tracking-widest hover:scale-105 active:scale-95 transition-all shrink-0"
+                className="px-5 py-2.5 bg-indigo-600 text-white rounded-[16px] text-[10px] font-black uppercase tracking-widest hover:scale-105 transition-all shrink-0"
               >
                 {t('quiz.save')}
               </button>
@@ -181,7 +181,7 @@ export const ResultView: React.FC<ResultViewProps> = ({
         {wrongQuestions.length > 0 && onRetryWrong && (
           <button
             onClick={() => onRetryWrong(wrongQuestions)}
-            className="w-full flex items-center justify-between px-6 py-5 bg-indigo-600 text-white rounded-[24px] shadow-3d-deep hover:scale-[1.01] active:scale-[0.99] transition-all"
+            className="w-full flex items-center justify-between px-6 py-5 bg-indigo-600 text-white rounded-[24px] shadow-3d-deep hover:scale-[1.02] transition-all"
           >
             <div className="text-left">
               <p className="text-sm font-black">{t('result.retryWrong')}</p>
@@ -196,7 +196,7 @@ export const ResultView: React.FC<ResultViewProps> = ({
         <div className="grid grid-cols-2 gap-2">
           <button
             onClick={onRestart}
-            className="flex items-center justify-center gap-2 px-4 py-4 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 text-slate-700 dark:text-slate-300 rounded-[20px] shadow-3d-raised hover:scale-[1.02] active:scale-[0.98] transition-all"
+            className="flex items-center justify-center gap-2 px-4 py-4 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 text-slate-700 dark:text-slate-300 rounded-[20px] shadow-3d-raised hover:scale-[1.02] transition-all"
           >
             <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
               <polyline points="23 4 23 10 17 10"/><path d="M20.49 15a9 9 0 1 1-.49-3.1"/>
@@ -207,7 +207,7 @@ export const ResultView: React.FC<ResultViewProps> = ({
           {onCreateFlashcards && wrongQuestions.length > 0 && (
             <button
               onClick={() => onCreateFlashcards(wrongQuestions)}
-              className="flex items-center justify-center gap-2 px-4 py-4 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 text-slate-700 dark:text-slate-300 rounded-[20px] shadow-3d-raised hover:scale-[1.02] active:scale-[0.98] transition-all"
+              className="flex items-center justify-center gap-2 px-4 py-4 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 text-slate-700 dark:text-slate-300 rounded-[20px] shadow-3d-raised hover:scale-[1.02] transition-all"
             >
               <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
                 <rect x="2" y="5" width="20" height="14" rx="2"/><line x1="2" y1="10" x2="22" y2="10"/>
@@ -219,7 +219,7 @@ export const ResultView: React.FC<ResultViewProps> = ({
           {onGoToSource && (
             <button
               onClick={onGoToSource}
-              className="flex items-center justify-center gap-2 px-4 py-4 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 text-slate-700 dark:text-slate-300 rounded-[20px] shadow-3d-raised hover:scale-[1.02] active:scale-[0.98] transition-all"
+              className="flex items-center justify-center gap-2 px-4 py-4 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 text-slate-700 dark:text-slate-300 rounded-[20px] shadow-3d-raised hover:scale-[1.02] transition-all"
             >
               <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
                 <path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20"/><path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z"/>
@@ -251,7 +251,7 @@ export const ResultView: React.FC<ResultViewProps> = ({
                 </div>
                 <div className="flex-grow min-w-0">
                   <p className="text-sm font-bold text-slate-800 dark:text-slate-100 leading-snug">{q.question}</p>
-                  {q.topic && <p className="text-[8px] font-black uppercase tracking-widest text-slate-400 mt-0.5">{q.topic}</p>}
+                  {q.topic && <p className="text-[9px] font-black uppercase tracking-widest text-slate-400 mt-0.5">{q.topic}</p>}
                 </div>
                 <svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" className={`shrink-0 mt-1 transition-transform text-slate-400 ${open ? 'rotate-180' : ''}`}>
                   <polyline points="6 9 12 15 18 9"/>

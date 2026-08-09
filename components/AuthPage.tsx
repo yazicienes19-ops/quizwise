@@ -88,9 +88,9 @@ export const AuthPage: React.FC = () => {
 
         {/* Wordmark */}
         <div className="relative z-10 flex items-center gap-3">
-          <BrandMark size={36} strokeColor="#FBF9F4" peakColor="#D9A94E" />
+          <BrandMark size={36} strokeColor="#FBF9F4" peakColor="var(--primary)" />
           <span className="text-xl font-black uppercase tracking-tighter text-white">
-            Stude<span style={{ color: '#D9A94E' }}>Arc</span>
+            Stude<span style={{ color: 'var(--primary)' }}>Arc</span>
           </span>
         </div>
 
@@ -128,7 +128,7 @@ export const AuthPage: React.FC = () => {
         </div>
 
         {/* Footer */}
-        <p className="relative z-10 text-[10px] text-white/40 font-bold uppercase tracking-widest">
+        <p className="relative z-10 text-[10px] text-white/40 font-black uppercase tracking-widest">
           © 2026 StudeArc
         </p>
       </div>
@@ -241,7 +241,7 @@ export const AuthPage: React.FC = () => {
             <button
               type="submit"
               disabled={isLoading}
-              className="w-full py-4 rounded-2xl text-[11px] font-black uppercase tracking-widest text-white transition-all hover:opacity-90 active:scale-95 shadow-lg disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
+              className="w-full py-4 rounded-2xl text-[11px] font-black uppercase tracking-widest text-white transition-all hover:opacity-90 shadow-lg disabled:opacity-40 disabled:cursor-not-allowed flex items-center justify-center gap-2"
               style={{ background: 'var(--primary, #D9A94E)' }}
             >
               {isLoading
@@ -253,7 +253,7 @@ export const AuthPage: React.FC = () => {
           {/* Demo-Login */}
           <div className="relative flex items-center gap-3">
             <div className="flex-1 h-px bg-slate-200 dark:bg-slate-700" />
-            <span className="text-[10px] font-bold uppercase tracking-widest text-slate-400">oder</span>
+            <span className="text-[10px] font-black uppercase tracking-widest text-slate-400">oder</span>
             <div className="flex-1 h-px bg-slate-200 dark:bg-slate-700" />
           </div>
 
@@ -261,7 +261,7 @@ export const AuthPage: React.FC = () => {
             type="button"
             onClick={handleDemoLogin}
             disabled={isDemoLoading || isLoading}
-            className="w-full py-3.5 rounded-2xl text-[11px] font-black uppercase tracking-widest transition-all hover:opacity-80 active:scale-95 disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2 border-2"
+            className="w-full py-3.5 rounded-2xl text-[11px] font-black uppercase tracking-widest transition-all hover:opacity-80 disabled:opacity-40 disabled:cursor-not-allowed flex items-center justify-center gap-2 border-2"
             style={{ borderColor: 'var(--primary, #D9A94E)', color: 'var(--primary, #D9A94E)' }}
           >
             {isDemoLoading

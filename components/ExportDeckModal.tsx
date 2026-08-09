@@ -1,10 +1,13 @@
 
 import React from 'react';
+import { createPortal } from 'react-dom';
 import { FlashcardDeck } from '../types';
 import { shareDeck } from '../services/sharedDecksService';
 import { toast } from '../services/toast';
 import { useTranslation } from '../i18n/I18nProvider';
 import { formatDate } from '../i18n/dates';
+import { useModalA11y } from '../hooks/useModalA11y';
+import { ModalCloseButton } from './ModalCloseButton';
 
 interface ExportDeckModalProps {
   deck: FlashcardDeck;
@@ -14,6 +17,7 @@ interface ExportDeckModalProps {
 
 export const ExportDeckModal: React.FC<ExportDeckModalProps> = ({ deck, userId, onClose }) => {
   const { t, tp } = useTranslation();
+  const { titleId, dialogProps } = useModalA11y(onClose);
 
   const handleShareLink = async () => {
     if (!userId) {
@@ -271,12 +275,13 @@ export const ExportDeckModal: React.FC<ExportDeckModalProps> = ({ deck, userId, 
     },
   ];
 
-  return (
+  return createPortal(
     <div
       className="fixed inset-0 bg-black/60 z-50 flex items-center justify-center p-4 animate-in fade-in duration-200"
       onClick={onClose}
     >
       <div
+        {...dialogProps}
         className="bg-white dark:bg-slate-900 rounded-[32px] w-full max-w-md shadow-3d-deep overflow-hidden animate-in zoom-in-95 duration-300"
         onClick={e => e.stopPropagation()}
       >
@@ -284,21 +289,14 @@ export const ExportDeckModal: React.FC<ExportDeckModalProps> = ({ deck, userId, 
         <div className="flex justify-between items-start px-8 py-6 border-b border-slate-100 dark:border-slate-800">
           <div className="min-w-0 flex-1 pr-4">
             <p className="text-[10px] font-black uppercase tracking-widest text-slate-400 mb-1">{t('edm.title')}</p>
-            <h2 className="text-xl font-black dark:text-white break-words">{deck.title}</h2>
+            <h2 id={titleId} className="text-xl font-black dark:text-white break-words">{deck.title}</h2>
             <p className="text-[10px] font-bold text-slate-400 mt-0.5">{tp('dashboard.cardsN', deck.cards.length)}</p>
           </div>
-          <button aria-label={t('common.close')}
-            onClick={onClose}
-            className="p-2 text-slate-400 hover:text-rose-500 transition-colors rounded-xl shrink-0"
-          >
-            <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round">
-              <line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/>
-            </svg>
-          </button>
+          <ModalCloseButton onClick={onClose} label={t('common.close')} />
         </div>
 
         {/* Options */}
-        <div className="px-6 py-6 space-y-3">
+        <div className="px-8 py-6 space-y-3">
           {options.map(opt => (
             <button
               key={opt.key}
@@ -312,7 +310,7 @@ export const ExportDeckModal: React.FC<ExportDeckModalProps> = ({ deck, userId, 
                 <div className="flex items-center gap-2">
                   <p className="text-sm font-black dark:text-white">{opt.label}</p>
                   {opt.badge && (
-                    <span className="text-[8px] font-black uppercase tracking-widest bg-slate-100 dark:bg-slate-800 text-slate-400 px-1.5 py-0.5 rounded">
+                    <span className="text-[9px] font-black uppercase tracking-widest bg-slate-100 dark:bg-slate-800 text-slate-400 px-1.5 py-0.5 rounded">
                       {opt.badge}
                     </span>
                   )}
@@ -326,6 +324,7 @@ export const ExportDeckModal: React.FC<ExportDeckModalProps> = ({ deck, userId, 
           ))}
         </div>
       </div>
-    </div>
+    </div>,
+    document.body
   );
 };
