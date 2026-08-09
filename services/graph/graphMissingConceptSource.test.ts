@@ -34,26 +34,34 @@ const makeDoc = (overrides: Partial<ProcessedDocument> & { id: string }): Proces
 });
 
 describe('buildMissingConceptSource', () => {
-  it('liefert null ohne verknüpfte Dokumente', () => {
+  it('meldet "no-linked-documents" ohne verknüpfte Dokumente', () => {
     const state = createEmptyGraphState({ kind: 'all' });
     state.nodesById.set('a', makeNode('a'));
-    expect(buildMissingConceptSource(state, [])).toBeNull();
+    expect(buildMissingConceptSource(state, [])).toEqual({ status: 'no-linked-documents' });
   });
 
-  it('liefert null, wenn verknüpfte Refs nur auf archivierte Nodes zeigen', () => {
+  it('meldet "no-linked-documents", wenn verknüpfte Refs nur auf archivierte Nodes zeigen', () => {
     const state = createEmptyGraphState({ kind: 'all' });
     state.nodesById.set('a', makeNode('a', { archivedAt: 1 }));
     state.nodeDocumentsById.set('r1', makeRef('r1', 'a', 'doc1'));
     const documents = [makeDoc({ id: 'doc1', type: 'text', content: 'Inhalt' })];
-    expect(buildMissingConceptSource(state, documents)).toBeNull();
+    expect(buildMissingConceptSource(state, documents)).toEqual({ status: 'no-linked-documents' });
   });
 
-  it('liefert null, wenn kein verknüpftes Dokument lesbaren Text hat (z.B. PDF ohne Digest)', () => {
+  it('meldet "no-readable-documents" mit Anzahl, wenn kein verknüpftes Dokument lesbaren Text hat (z.B. PDF ohne Digest)', () => {
     const state = createEmptyGraphState({ kind: 'all' });
     state.nodesById.set('a', makeNode('a'));
     state.nodeDocumentsById.set('r1', makeRef('r1', 'a', 'doc1'));
     const documents = [makeDoc({ id: 'doc1', type: 'pdf', content: 'base64...', digestStatus: 'pending' })];
-    expect(buildMissingConceptSource(state, documents)).toBeNull();
+    expect(buildMissingConceptSource(state, documents)).toEqual({ status: 'no-readable-documents', linkedCount: 1 });
+  });
+
+  it('meldet "no-readable-documents", wenn der Digest fehlgeschlagen ist (status "error")', () => {
+    const state = createEmptyGraphState({ kind: 'all' });
+    state.nodesById.set('a', makeNode('a'));
+    state.nodeDocumentsById.set('r1', makeRef('r1', 'a', 'doc1'));
+    const documents = [makeDoc({ id: 'doc1', type: 'pdf', content: 'base64...', digestStatus: 'error' })];
+    expect(buildMissingConceptSource(state, documents)).toEqual({ status: 'no-readable-documents', linkedCount: 1 });
   });
 
   it('bevorzugt Digest-Text vor Volltext', () => {
@@ -62,8 +70,9 @@ describe('buildMissingConceptSource', () => {
     state.nodeDocumentsById.set('r1', makeRef('r1', 'a', 'doc1'));
     const documents = [makeDoc({ id: 'doc1', type: 'text', content: 'Volltext-Inhalt', digestText: 'Digest-Inhalt', digestStatus: 'ready' })];
     const result = buildMissingConceptSource(state, documents);
-    expect(result!.source.text).toContain('Digest-Inhalt');
-    expect(result!.source.text).not.toContain('Volltext-Inhalt');
+    if (result.status !== 'ok') throw new Error('expected ok');
+    expect(result.source.text).toContain('Digest-Inhalt');
+    expect(result.source.text).not.toContain('Volltext-Inhalt');
   });
 
   it('enthält ein Quellen-Label pro Dokument', () => {
@@ -72,7 +81,8 @@ describe('buildMissingConceptSource', () => {
     state.nodeDocumentsById.set('r1', makeRef('r1', 'a', 'doc1'));
     const documents = [makeDoc({ id: 'doc1', name: 'Vorlesung 3.pdf', type: 'text', content: 'Inhalt' })];
     const result = buildMissingConceptSource(state, documents);
-    expect(result!.source.text).toContain('[Quelle:');
+    if (result.status !== 'ok') throw new Error('expected ok');
+    expect(result.source.text).toContain('[Quelle:');
   });
 
   it('listet bereits vorhandene aktive Node-Titel im Prompt auf', () => {
@@ -81,9 +91,10 @@ describe('buildMissingConceptSource', () => {
     state.nodeDocumentsById.set('r1', makeRef('r1', 'a', 'doc1'));
     const documents = [makeDoc({ id: 'doc1', type: 'text', content: 'Inhalt' })];
     const result = buildMissingConceptSource(state, documents);
-    expect(result!.source.text).toContain('Bereits vorhandene Konzepte');
-    expect(result!.source.text).toContain('Konzept A');
-    expect(result!.existingTitles.has('konzept a')).toBe(true);
+    if (result.status !== 'ok') throw new Error('expected ok');
+    expect(result.source.text).toContain('Bereits vorhandene Konzepte');
+    expect(result.source.text).toContain('Konzept A');
+    expect(result.existingTitles.has('konzept a')).toBe(true);
   });
 });
 

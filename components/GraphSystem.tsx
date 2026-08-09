@@ -232,8 +232,12 @@ export const GraphSystem: React.FC<GraphSystemProps> = ({
     setIsCheckingConcepts(true);
     try {
       const built = buildMissingConceptSource(graph.state, documents);
-      if (!built) {
+      if (built.status === 'no-linked-documents') {
         toast.success('Keine mit Nodes verknüpften Dokumente gefunden — zuerst über "Eigene Unterlagen" welche verknüpfen.');
+        return;
+      }
+      if (built.status === 'no-readable-documents') {
+        toast.success(`${built.linkedCount} verknüpfte${built.linkedCount === 1 ? 's' : ''} Dokument${built.linkedCount === 1 ? '' : 'e'} noch nicht lesbar — Digest läuft noch oder ist fehlgeschlagen. Später erneut versuchen.`);
         return;
       }
       const raw = await suggestMissingConcepts(built.source);

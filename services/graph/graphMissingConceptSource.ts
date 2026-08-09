@@ -39,10 +39,21 @@ const readableText = (d: ProcessedDocument): string | null => {
   return null;
 };
 
+/**
+ * Unterscheidet bewusst "gar nichts verknüpft" von "verknüpft, aber (noch)
+ * nicht lesbar" (z.B. PDF-Digest läuft noch oder ist fehlgeschlagen) — die
+ * beiden Fälle brauchen unterschiedliche Nutzer-Hinweise, sonst wirkt das
+ * Feature kaputt, obwohl der Nutzer bereits alles richtig verknüpft hat.
+ */
+export type MissingConceptSourceResult =
+  | { status: 'ok'; source: GenerationSource; existingTitles: Set<string> }
+  | { status: 'no-linked-documents' }
+  | { status: 'no-readable-documents'; linkedCount: number };
+
 export function buildMissingConceptSource(
   state: GraphState,
   documents: ProcessedDocument[],
-): { source: GenerationSource; existingTitles: Set<string> } | null {
+): MissingConceptSourceResult {
   const nodes = activeNodes(state);
   const activeNodeIds = new Set(nodes.map(n => n.id));
 
@@ -51,7 +62,7 @@ export function buildMissingConceptSource(
       .filter(ref => activeNodeIds.has(ref.nodeId))
       .map(ref => ref.documentId),
   );
-  if (linkedDocumentIds.size === 0) return null;
+  if (linkedDocumentIds.size === 0) return { status: 'no-linked-documents' };
 
   const parts: string[] = [];
   let totalChars = 0;
@@ -65,7 +76,7 @@ export function buildMissingConceptSource(
     parts.push(chunk);
     totalChars += chunk.length;
   }
-  if (parts.length === 0) return null;
+  if (parts.length === 0) return { status: 'no-readable-documents', linkedCount: linkedDocumentIds.size };
 
   const existingTitles = new Set(nodes.map(n => n.title.trim().toLowerCase()));
   const existingTitlesBlock = nodes.length > 0
@@ -73,7 +84,7 @@ export function buildMissingConceptSource(
     : '';
 
   const text = `Material:\n${parts.join('\n\n---\n\n')}${existingTitlesBlock}`;
-  return { source: { text }, existingTitles };
+  return { status: 'ok', source: { text }, existingTitles };
 }
 
 export function validateMissingConceptSuggestions(
