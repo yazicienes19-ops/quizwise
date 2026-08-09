@@ -252,7 +252,7 @@ export const GraphSystem: React.FC<GraphSystemProps> = ({
     }
   };
 
-  const handleCreateNodeFromSuggestion = (suggestion: MissingConceptSuggestion, index: number) => {
+  const handleCreateNodeFromSuggestion = (suggestion: MissingConceptSuggestion) => {
     const activeNodeList = [...graph.state.nodesById.values()].filter(n => n.archivedAt === undefined);
     const centroid = activeNodeList.length > 0
       ? {
@@ -267,10 +267,16 @@ export const GraphSystem: React.FC<GraphSystemProps> = ({
     const collectionId = scope.kind === 'collection' ? scope.collectionId : undefined;
     const hierarchyLevel = activeNodeList.length === 0 ? 'hauptthema' : undefined;
 
+    // Bewusst activeNodeList.length statt des Listenindex der Vorschlagszeile
+    // als Versatz-Multiplikator — der Index verschiebt sich nach jedem
+    // Annehmen (die Liste wird gefiltert), wodurch mehrfach angenommene
+    // Vorschläge sonst alle denselben Index (meist 0) hatten und exakt
+    // übereinander landeten. Die Node-Anzahl wächst dagegen garantiert mit
+    // jedem angenommenen Vorschlag, also ist jeder Versatz einzigartig.
     const result = recordCreateNode(graph.history, graph.state, {
       title: suggestion.title,
       description: suggestion.description,
-      position: { x: centroid.x + index * 40, y: centroid.y + index * 40 },
+      position: { x: centroid.x + activeNodeList.length * 40, y: centroid.y + activeNodeList.length * 40 },
       collectionId,
       hierarchyLevel,
     });
@@ -585,7 +591,7 @@ export const GraphSystem: React.FC<GraphSystemProps> = ({
               </div>
               <div className="flex items-center gap-2 ml-auto shrink-0">
                 <button
-                  onClick={() => handleCreateNodeFromSuggestion(s, i)}
+                  onClick={() => handleCreateNodeFromSuggestion(s)}
                   className="text-[10px] font-black uppercase tracking-widest px-3 py-2 rounded-xl text-white transition-colors"
                   style={{ background: 'var(--primary)' }}
                 >
