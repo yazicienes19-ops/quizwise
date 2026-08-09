@@ -151,8 +151,8 @@ export const saveDocumentToSupabase = async (
       if (uploadErr) throw uploadErr;
     }
   } else if (doc.type === 'text' || doc.type === 'docx') {
-    // Extrahierten Text speichern, max. 1 MB (Bilder-Base64 gehört NICHT hierher)
-    contentText = doc.content.slice(0, 1_000_000);
+    // Extrahierten Text speichern, max. 500.000 Zeichen (Bilder-Base64 gehört NICHT hierher)
+    contentText = doc.content.slice(0, 500_000);
   }
 
   const row: Record<string, unknown> = {

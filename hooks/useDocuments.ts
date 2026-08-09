@@ -240,7 +240,7 @@ export const useDocuments = ({ user, userPlan, isOffline, setIsLoading, setShowU
         docType = 'text';
       }
 
-      if ((docType === 'text' || docType === 'docx') && content.length > 900_000) {
+      if ((docType === 'text' || docType === 'docx') && content.length > 450_000) {
         toast.error('Dokument sehr groß — nur der erste Teil wird verarbeitet. Für beste Ergebnisse empfehlen wir PDF.');
       }
 
