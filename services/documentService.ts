@@ -215,7 +215,12 @@ export const triggerDocumentAnalysis = async (docId: string): Promise<void> => {
 // Lädt die Datei aus Supabase Storage und gibt sie als Base64-String zurück.
 // Wird aufgerufen bevor ein PDF an die KI übergeben wird.
 
-export const downloadPdfAsBase64 = async (storagePath: string): Promise<string> => {
+// Cache pro Storage-Pfad (Session-Lebensdauer) — ohne das lädt jeder Aufrufer
+// (DocumentViewerModal, PdfSplitScreenReader, chapterService) dieselbe Datei
+// erneut aus dem Storage, obwohl sie sich nicht geändert hat (unnötiger Egress).
+const pdfDownloadCache = new Map<string, Promise<string>>();
+
+const downloadPdfAsBase64Uncached = async (storagePath: string): Promise<string> => {
   const { data, error } = await supabase.storage
     .from('document-files')
     .download(storagePath);
@@ -226,4 +231,16 @@ export const downloadPdfAsBase64 = async (storagePath: string): Promise<string> 
     reader.onload = () => resolve((reader.result as string).split(',')[1]);
     reader.onerror = reject;
   });
+};
+
+export const downloadPdfAsBase64 = (storagePath: string): Promise<string> => {
+  let cached = pdfDownloadCache.get(storagePath);
+  if (!cached) {
+    cached = downloadPdfAsBase64Uncached(storagePath).catch(err => {
+      pdfDownloadCache.delete(storagePath);
+      throw err;
+    });
+    pdfDownloadCache.set(storagePath, cached);
+  }
+  return cached;
 };
