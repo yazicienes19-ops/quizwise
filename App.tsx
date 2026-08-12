@@ -21,15 +21,30 @@ import { documentDisplayName } from './services/libraryService';
 import { getAllRecallResults } from './services/recallHistoryService';
 import { toast } from './services/toast';
 import { ActiveTab, TopicMetric, SearchResult, FlashcardDeck, ExamTerm, LearningFlowResult } from './types';
+import { isAdmin } from './config/admin';
 import { useAuth } from './hooks/useAuth';
 import { useDocuments } from './hooks/useDocuments';
 import { useQuizState } from './hooks/useQuizState';
 import { AppContent } from './components/AppContent';
 import { loadAllCloudData, syncLearningField, syncMetrics, migrateLocalToCloud } from './services/syncService';
 
+const LAST_TAB_KEY = 'studearc_last_tab';
+// READER bewusst ausgeschlossen — hängt an einem konkreten pendingActionDoc,
+// das nach einem Neuladen nicht mehr vorhanden ist.
+const RESTORABLE_TABS = new Set<ActiveTab>([
+  ActiveTab.DASHBOARD, ActiveTab.LIBRARY, ActiveTab.QUIZ, ActiveTab.CARDS,
+  ActiveTab.PLANNER, ActiveTab.RADAR, ActiveTab.EXPLAINER, ActiveTab.EXAM,
+  ActiveTab.RECALL, ActiveTab.KNOWLEDGE_GRAPH, ActiveTab.PAPER, ActiveTab.SEARCH,
+]);
+
+const getInitialTab = (): ActiveTab => {
+  const saved = localStorage.getItem(LAST_TAB_KEY) as ActiveTab | null;
+  return saved && RESTORABLE_TABS.has(saved) ? saved : ActiveTab.DASHBOARD;
+};
+
 const App: React.FC = () => {
   const auth = useAuth();
-  const [activeTab, setActiveTab] = useState<ActiveTab>(ActiveTab.DASHBOARD);
+  const [activeTab, setActiveTab] = useState<ActiveTab>(getInitialTab);
   // Fach-Kontext (Variante C): gewähltes Modul gilt app-weit als Vorauswahl
   const [activeModuleId, setActiveModuleIdState] = useState<string | null>(() => localStorage.getItem('studearc_active_module'));
   const setActiveModuleId = (id: string | null) => {
@@ -117,6 +132,17 @@ const App: React.FC = () => {
       }
     }).catch(() => {});
   }, [auth.user, isOffline]);
+
+  // Admin-only Tabs (Labor) nicht wiederherstellen, falls der eingeloggte
+  // Account kein Admin (mehr) ist — sonst zeigt AppContent zwar ohnehin nur
+  // das Dashboard, aber die Sidebar würde fälschlich den Labor-Tab markieren.
+  useEffect(() => {
+    if (!auth.authChecked) return;
+    if ((activeTab === ActiveTab.PAPER || activeTab === ActiveTab.SEARCH) && !isAdmin(auth.user?.id)) {
+      setActiveTab(ActiveTab.DASHBOARD);
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [auth.authChecked]);
 
   const handleApiError = (e: any) => {
     if (e?.message === 'LIMIT_REACHED') { setShowUpgradeHint(true); return; }
@@ -276,7 +302,7 @@ const App: React.FC = () => {
       {showSettings && <SettingsModal user={auth.user} isDark={auth.isDark} onToggleTheme={auth.toggleTheme} onLogout={() => supabase.auth.signOut()} onClose={() => setShowSettings(false)} />}
       <Layout
         activeTab={activeTab}
-        onTabChange={(tab) => { setPendingActionDoc(null); setPendingTopic(null); setActiveTab(tab); }}
+        onTabChange={(tab) => { setPendingActionDoc(null); setPendingTopic(null); setActiveTab(tab); localStorage.setItem(LAST_TAB_KEY, tab); }}
         collections={docs.collections}
         activeModuleId={activeModuleId}
         onModuleChange={setActiveModuleId}
