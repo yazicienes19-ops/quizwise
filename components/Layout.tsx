@@ -286,6 +286,7 @@ export const Layout: React.FC<LayoutProps> = ({
                   return (
                     <button
                       key={item.tab}
+                      data-tour={`nav-${item.tab}`}
                       onClick={() => onTabChange(item.tab)}
                       className={`w-full flex items-center gap-3 px-4 py-2.5 rounded-[14px] text-left transition-all duration-200 ${isActive ? 'shadow-[0_2px_12px_rgba(169,119,44,0.35)]' : 'hover:translate-x-0.5'}`}
                       style={isActive
@@ -432,6 +433,7 @@ export const Layout: React.FC<LayoutProps> = ({
             return (
               <button
                 key={item.tab}
+                data-tour={`nav-${item.tab}`}
                 onClick={() => onTabChange(item.tab)}
                 title={t(item.labelKey)}
                 className={`w-12 h-12 flex items-center justify-center rounded-xl transition-all duration-200 shrink-0 ${isActive ? 'shadow-[0_2px_12px_rgba(169,119,44,0.35)]' : ''}`}
@@ -545,6 +547,7 @@ export const Layout: React.FC<LayoutProps> = ({
           return (
             <button
               key={item.tab}
+              data-tour={`nav-${item.tab}`}
               onClick={() => handleMobileTabChange(item.tab)}
               className="flex flex-col items-center gap-1 min-w-[3rem] px-2 py-1 rounded-xl transition-all"
               style={isActive ? { color: 'var(--primary)' } : { color: 'rgb(148 163 184)' }}
@@ -589,6 +592,7 @@ export const Layout: React.FC<LayoutProps> = ({
                   return (
                     <button
                       key={item.tab}
+                      data-tour={`nav-${item.tab}`}
                       onClick={() => handleMobileTabChange(item.tab)}
                       className="flex items-center gap-3 p-4 rounded-2xl border transition-all text-left"
                       style={

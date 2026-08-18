@@ -38,6 +38,15 @@ const GraphDevHarnessLazy = isGraphDevHarness
   ? React.lazy(() => import('./components/GraphDevHarness').then(m => ({ default: m.GraphDevHarness })))
   : null;
 
+// Temporärer Test-Harness für das neue personalisierte Onboarding (Phase 2,
+// s. components/onboarding/OnboardingDevHarness.tsx) — anders als der
+// Wissensnetz-Harness KEINE dauerhafte Infrastruktur, wird entfernt sobald
+// OnboardingFlow in Phase 4 den echten Mount-Punkt in App.tsx ersetzt.
+const isOnboardingDevHarness = import.meta.env.DEV && new URLSearchParams(window.location.search).has('onboardingFlowPreview');
+const OnboardingDevHarnessLazy = isOnboardingDevHarness
+  ? React.lazy(() => import('./components/onboarding/OnboardingDevHarness').then(m => ({ default: m.OnboardingDevHarness })))
+  : null;
+
 const root = ReactDOM.createRoot(rootElement);
 root.render(
   <React.StrictMode>
@@ -48,6 +57,12 @@ root.render(
       <I18nProvider>
         <React.Suspense fallback={null}>
           <GraphDevHarnessLazy />
+        </React.Suspense>
+      </I18nProvider>
+    ) : OnboardingDevHarnessLazy ? (
+      <I18nProvider>
+        <React.Suspense fallback={null}>
+          <OnboardingDevHarnessLazy />
         </React.Suspense>
       </I18nProvider>
     ) : (

@@ -7,7 +7,9 @@ import { Layout } from './components/Layout';
 import { ToastContainer } from './components/Toast';
 import { SplashScreen } from './components/SplashScreen';
 import { AuthPage } from './components/AuthPage';
-import { Onboarding, isOnboardingDone } from './components/Onboarding';
+import { OnboardingFlow } from './components/onboarding/OnboardingFlow';
+import { isOnboardingDone, markOnboardingDone, cacheOnboardingProfile, getCachedOnboardingProfile } from './components/onboarding/onboardingState';
+import { getRecommendation, buildCombinedRecommendation } from './services/onboardingRecommendation';
 import { SharedDeckPage } from './components/SharedDeckPage';
 import { LandingPage } from './components/LandingPage';
 import { ErrorBoundary } from './components/ErrorBoundary';
@@ -20,13 +22,13 @@ import { updateTopicMetric } from './services/topicConfidence';
 import { documentDisplayName } from './services/libraryService';
 import { getAllRecallResults } from './services/recallHistoryService';
 import { toast } from './services/toast';
-import { ActiveTab, TopicMetric, SearchResult, FlashcardDeck, ExamTerm, LearningFlowResult } from './types';
+import { ActiveTab, TopicMetric, SearchResult, FlashcardDeck, ExamTerm, LearningFlowResult, OnboardingProfile } from './types';
 import { isAdmin } from './config/admin';
 import { useAuth } from './hooks/useAuth';
 import { useDocuments } from './hooks/useDocuments';
 import { useQuizState } from './hooks/useQuizState';
 import { AppContent } from './components/AppContent';
-import { loadAllCloudData, syncLearningField, syncMetrics, migrateLocalToCloud } from './services/syncService';
+import { loadAllCloudData, syncLearningField, syncMetrics, migrateLocalToCloud, syncPreferences, type CloudPreferences } from './services/syncService';
 
 const LAST_TAB_KEY = 'studearc_last_tab';
 // READER bewusst ausgeschlossen — hängt an einem konkreten pendingActionDoc,
@@ -60,6 +62,8 @@ const App: React.FC = () => {
   const [showUpgradeModal, setShowUpgradeModal] = useState(false);
   const [showSettings, setShowSettings] = useState(false);
   const [showOnboarding, setShowOnboarding] = useState(() => !isOnboardingDone());
+  const [showTourReplay, setShowTourReplay] = useState(false);
+  const [cloudPreferences, setCloudPreferences] = useState<CloudPreferences | null>(null);
 
   // Cloud sagt „Onboarding längst erledigt" (kommt asynchron nach dem Login,
   // z.B. nach gelöschten Website-Daten): Overlay sofort wieder schließen.
@@ -106,6 +110,7 @@ const App: React.FC = () => {
   useEffect(() => {
     if (!auth.user || isOffline) return;
     loadAllCloudData(auth.user.id).then(cloud => {
+      setCloudPreferences(cloud.preferences);
       if (cloud.learning) {
         if (cloud.learning.exam_terms.length) { setExamTerms(cloud.learning.exam_terms); localStorage.setItem('studearc_exam_terms', JSON.stringify(cloud.learning.exam_terms)); }
         if (cloud.learning.streak.lastDay) localStorage.setItem('studearc_streak', JSON.stringify(cloud.learning.streak));
@@ -296,10 +301,42 @@ const App: React.FC = () => {
   return (
     <>
       <ToastContainer />
-      {showOnboarding && <Onboarding onComplete={() => setShowOnboarding(false)} onStartUpload={() => setActiveTab(ActiveTab.LIBRARY)} />}
+      {showOnboarding && (
+        <OnboardingFlow
+          handleFileUpload={docs.handleFileUpload}
+          documents={docs.documents}
+          setActiveTab={setActiveTab}
+          onComplete={(profile, startContext) => {
+            markOnboardingDone();
+            cacheOnboardingProfile(profile);
+            setCloudPreferences(prev => ({ ...(prev ?? {}), onboarding_done: true, onboarding: profile as OnboardingProfile }));
+            setShowOnboarding(false);
+            if (auth.user) syncPreferences(auth.user.id, { onboarding_done: true, onboarding: profile as OnboardingProfile });
+
+            if (startContext?.docId) {
+              const challenges = profile.challenges ?? [];
+              const tab = challenges.length >= 2
+                ? buildCombinedRecommendation(challenges).steps[0].tab
+                : getRecommendation(challenges[0] ?? 'unsure').primaryTab;
+              setPendingActionDoc(docs.documents.find(d => d.id === startContext.docId) ?? null);
+              setPendingTopic(null);
+              setActiveTab(tab);
+            }
+          }}
+        />
+      )}
+      {showTourReplay && (
+        <OnboardingFlow
+          handleFileUpload={docs.handleFileUpload}
+          documents={docs.documents}
+          setActiveTab={setActiveTab}
+          onComplete={() => setShowTourReplay(false)}
+          replay={{ profile: cloudPreferences?.onboarding ?? getCachedOnboardingProfile() ?? {}, onDone: () => setShowTourReplay(false) }}
+        />
+      )}
       {auth.showAuthModal && <AuthModal onClose={() => auth.setShowAuthModal(false)} onSuccess={() => auth.setShowAuthModal(false)} />}
       {showUpgradeModal && <UpgradeModal onClose={() => setShowUpgradeModal(false)} />}
-      {showSettings && <SettingsModal user={auth.user} isDark={auth.isDark} onToggleTheme={auth.toggleTheme} onLogout={() => supabase.auth.signOut()} onClose={() => setShowSettings(false)} />}
+      {showSettings && <SettingsModal user={auth.user} isDark={auth.isDark} onToggleTheme={auth.toggleTheme} onLogout={() => supabase.auth.signOut()} onClose={() => setShowSettings(false)} onLaunchTour={() => { setShowSettings(false); setShowTourReplay(true); }} />}
       <Layout
         activeTab={activeTab}
         onTabChange={(tab) => { setPendingActionDoc(null); setPendingTopic(null); setActiveTab(tab); localStorage.setItem(LAST_TAB_KEY, tab); }}
@@ -366,7 +403,7 @@ const App: React.FC = () => {
         </React.Suspense>
         </ErrorBoundary>
       </Layout>
-      {!cookieConsent && !auth.showAuthModal && <CookieBanner
+      {!cookieConsent && !auth.showAuthModal && !showOnboarding && !showTourReplay && <CookieBanner
         onAccept={() => { setCookieConsent(true); localStorage.setItem('cookie_consent', 'accepted'); }}
         onDecline={() => { setCookieConsent(true); localStorage.setItem('cookie_consent', 'declined'); }}
         onShowPrivacy={() => setLegalPage('datenschutz')}

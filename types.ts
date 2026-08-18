@@ -249,6 +249,60 @@ export enum QuizType {
   CUSTOM = 'CUSTOM'
 }
 
+// --- Onboarding -------------------------------------------------------------
+
+/** Bildungsweg (Onboarding Schritt 2). 'other' = Sonstiges/Freitext. */
+export type EducationPath = 'university' | 'school' | 'apprenticeship' | 'continuing_education' | 'self_directed' | 'other';
+
+/**
+ * Kontext-Antworten aus Onboarding Schritt 3 — ein einziges flaches, optionales
+ * Feld-Set statt eines diskriminierten Unions pro Bildungsweg, damit spätere
+ * Auswertung nicht pro Bildungsweg verzweigen muss. Nicht relevante Felder
+ * bleiben schlicht undefined. ALLE Felder optional und überspringbar.
+ */
+export interface OnboardingContext {
+  /** Studium: Studiengang / Schule: Klassenstufe / Ausbildung: Berufsbezeichnung / Weiterbildung: Thema / Selbstlerner: Lernfeld */
+  subject?: string;
+  /** Studium: Semester / Ausbildung: Lehrjahr */
+  stage?: string;
+  /** Aktuelles Modul/Fach/Lerninhalt */
+  currentTopic?: string;
+  /** Anstehende Prüfung/Zertifizierung — freier Text, kein erzwungenes Datumsfeld */
+  upcomingExamAt?: string;
+  /** Selbstlerner: "was erreichen?" */
+  goalText?: string;
+  /** Nur bei educationPath === 'other': freier Text ersetzt alle obigen Felder */
+  freeText?: string;
+}
+
+export type OnboardingGoal =
+  | 'exam_prep' | 'understand' | 'improve_performance' | 'efficiency'
+  | 'retain_long_term' | 'new_skill' | 'unsure';
+
+export type OnboardingChallenge =
+  | 'understanding' | 'structure' | 'knowledge_gaps' | 'exam_confidence'
+  | 'retention' | 'effectiveness' | 'motivation' | 'unsure';
+
+/**
+ * Vollständiges Onboarding-Ergebnis — Startpunkt der Personalisierung, nicht
+ * deren Endzustand. `version` erlaubt spätere Schema-Migration; `challenges`
+ * ist bewusst ein geordnetes Array (Reihenfolge = Priorität, max. 2), damit
+ * eine spätere, hier NICHT gebaute adaptive Neubewertung aus echtem
+ * Lernverhalten andocken kann, ohne die Form zu brechen.
+ */
+export interface OnboardingProfile {
+  version: 1;
+  educationPath?: EducationPath;
+  context?: OnboardingContext;
+  goals?: OnboardingGoal[];
+  challenges?: OnboardingChallenge[];
+  /** = challenges?.[0], denormalisiert für einfachen Zugriff ohne Index. */
+  primaryChallenge?: OnboardingChallenge;
+  completedAt?: number;
+  /** true = Flow bis zur ersten Lernaktivität durchlaufen, false = irgendwo übersprungen/verlassen. */
+  completedFully?: boolean;
+}
+
 export type AgentType = 'lernCoach' | 'studyFlow' | 'erklaerer' | 'uxHelper';
 
 export interface AgentMessage {

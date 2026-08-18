@@ -1,5 +1,5 @@
 import { supabase } from './supabaseClient';
-import type { TopicMetric } from '../types';
+import type { TopicMetric, OnboardingProfile } from '../types';
 
 export interface CloudLearningData {
   streak: { current: number; best: number; lastDay: string | null };
@@ -33,6 +33,10 @@ export interface CloudPreferences {
   spaced_planning?: boolean;
   language?: string;
   notification_settings?: Record<string, any>;
+  /** Volles Onboarding-Ergebnis für geräteübergreifende Personalisierung — additiv
+   *  zu onboarding_done (das Flag bleibt für den simplen "schon fertig?"-Check
+   *  bestehen, ohne dieses ganze Objekt parsen zu müssen). */
+  onboarding?: OnboardingProfile;
 }
 
 export interface AllCloudData {

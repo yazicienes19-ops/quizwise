@@ -255,6 +255,7 @@ body {
 
 /* Scale */
 .animate-in.zoom-in-95 { --tw-enter-scale: .95; }
+.animate-in.zoom-in-50 { --tw-enter-scale: .5; }
 
 /* Slide (Tailwind spacing scale: 1 = 0.25rem) */
 .animate-in.slide-in-from-bottom-2  { --tw-enter-translate-y: 0.5rem; }
@@ -266,6 +267,7 @@ body {
 .animate-in.slide-in-from-right-4   { --tw-enter-translate-x: 1rem; }
 .animate-in.slide-in-from-right-8   { --tw-enter-translate-x: 2rem; }
 .animate-in.slide-in-from-right-12  { --tw-enter-translate-x: 3rem; }
+.animate-in.slide-in-from-left-4    { --tw-enter-translate-x: -1rem; }
 
 /* Duration (only takes effect combined with .animate-in — does not change
    the existing Tailwind transition-duration behavior of these same classes

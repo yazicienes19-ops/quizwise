@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { createPortal } from 'react-dom';
 import {
   X, User, CreditCard, Palette, Key, Check, Loader2, Moon, Sun,
-  Zap, LogOut, AlertTriangle, Download, Trash2, Lock, ExternalLink, Shield, Bell
+  Zap, LogOut, AlertTriangle, Download, Trash2, Lock, ExternalLink, Shield, Bell, Compass
 } from 'lucide-react';
 import type { User as SupabaseUser } from '@supabase/supabase-js';
 import { supabase } from '../services/supabaseClient';
@@ -66,9 +66,13 @@ interface Props {
   onLogout: () => void;
   onClose: () => void;
   initialTab?: Tab;
+  /** Startet die App-Tour erneut (Onboarding-Plan Abschnitt 20, Wiedereinstieg
+   *  über "StudeArc kennenlernen") — optional, da nur gesetzt wenn App.tsx den
+   *  Wiedereinstiegs-Mechanismus kennt. */
+  onLaunchTour?: () => void;
 }
 
-export const SettingsModal: React.FC<Props> = ({ user, isDark, onToggleTheme, onLogout, onClose, initialTab }) => {
+export const SettingsModal: React.FC<Props> = ({ user, isDark, onToggleTheme, onLogout, onClose, initialTab, onLaunchTour }) => {
   const { t, locale, changeLocale } = useTranslation();
   const { titleId, dialogProps } = useModalA11y(onClose);
   const [tab, setTab] = useState<Tab>(initialTab || 'profil');
@@ -278,6 +282,17 @@ export const SettingsModal: React.FC<Props> = ({ user, isDark, onToggleTheme, on
                   {t('settings.savePassword')}
                 </button>
               </div>
+
+              {/* App-Tour erneut ansehen */}
+              {onLaunchTour && (
+                <div className="pt-2" style={{ borderTop: '1px solid var(--border-color)' }}>
+                  <button onClick={() => { onLaunchTour(); onClose(); }}
+                    className="flex items-center gap-2 px-5 py-3 rounded-2xl text-[11px] font-black uppercase tracking-widest transition-all hover:scale-[1.02]"
+                    style={{ background: 'color-mix(in srgb, var(--primary) 12%, var(--bg-main))', color: 'var(--primary)', border: '1px solid var(--primary)' }}>
+                    <Compass className="w-4 h-4" strokeWidth={1.75} /> {t('settings.relaunchTour')}
+                  </button>
+                </div>
+              )}
 
               {/* Ausloggen */}
               <div className="pt-2" style={{ borderTop: '1px solid var(--border-color)' }}>
