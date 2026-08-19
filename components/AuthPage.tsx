@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import { Mail, Lock, User, Loader2 } from 'lucide-react';
 import { supabase } from '../services/supabaseClient';
 import { BrandMark } from './BrandMark';
+import { LegalModal } from './LegalModal';
 
 const DEMO_EMAIL = 'demo@quizwise.app';
 const DEMO_PASSWORD = 'QuizWise2026!';
@@ -15,6 +16,7 @@ export const AuthPage: React.FC = () => {
   const [isDemoLoading, setIsDemoLoading] = useState(false);
   const [error, setError] = useState('');
   const [successMsg, setSuccessMsg] = useState('');
+  const [legalPage, setLegalPage] = useState<'agb' | 'datenschutz' | null>(null);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -269,11 +271,17 @@ export const AuthPage: React.FC = () => {
               : 'Demo ausprobieren'}
           </button>
 
-          <p className="text-center text-[10px] text-slate-400">
-            Mit der Nutzung stimmst du unseren Nutzungsbedingungen zu.
-          </p>
+          {mode === 'register' && (
+            <p className="text-center text-[10px] text-slate-400 leading-relaxed">
+              Mit der Registrierung akzeptierst du unsere{' '}
+              <button type="button" onClick={() => setLegalPage('agb')} className="underline font-bold hover:text-slate-600 dark:hover:text-slate-200">AGB</button>
+              {' '}und unsere{' '}
+              <button type="button" onClick={() => setLegalPage('datenschutz')} className="underline font-bold hover:text-slate-600 dark:hover:text-slate-200">Datenschutzerklärung</button>.
+            </p>
+          )}
         </div>
       </div>
+      {legalPage && <LegalModal page={legalPage} onClose={() => setLegalPage(null)} />}
     </div>
   );
 };

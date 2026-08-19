@@ -6,6 +6,7 @@ import { useTranslation } from '../i18n/I18nProvider';
 import { BrandMark } from './BrandMark';
 import { BrandSpinner } from './BrandSpinner';
 import { useModalA11y } from '../hooks/useModalA11y';
+import { LegalModal } from './LegalModal';
 
 interface AuthModalProps {
   onClose: () => void;
@@ -39,6 +40,7 @@ export const AuthModal: React.FC<AuthModalProps> = ({ onClose, onSuccess }) => {
   const [oauthLoading, setOauthLoading] = useState<'google' | 'apple' | null>(null);
   const [error, setError] = useState('');
   const [successMsg, setSuccessMsg] = useState('');
+  const [legalPage, setLegalPage] = useState<'agb' | 'datenschutz' | null>(null);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -90,7 +92,8 @@ export const AuthModal: React.FC<AuthModalProps> = ({ onClose, onSuccess }) => {
     }
   };
 
-  return createPortal(
+  return <>
+    {createPortal(
     <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-sm animate-in fade-in duration-200">
       <div
         {...dialogProps}
@@ -245,9 +248,21 @@ export const AuthModal: React.FC<AuthModalProps> = ({ onClose, onSuccess }) => {
               : mode === 'login' ? t('auth.login') : t('auth.createAccount')
             }
           </button>
+
+          {mode === 'register' && (
+            <p className="text-center text-[10px] text-slate-400 leading-relaxed">
+              {t('auth.legalNoticePre')}{' '}
+              <button type="button" onClick={() => setLegalPage('agb')} className="underline font-bold hover:text-slate-600 dark:hover:text-slate-200">{t('legal.terms')}</button>
+              {' '}{t('auth.legalNoticeAnd')}{' '}
+              <button type="button" onClick={() => setLegalPage('datenschutz')} className="underline font-bold hover:text-slate-600 dark:hover:text-slate-200">{t('legal.privacy')}</button>
+              {t('auth.legalNoticePost')}
+            </p>
+          )}
         </form>
       </div>
     </div>,
     document.body
-  );
+    )}
+    {legalPage && <LegalModal page={legalPage} onClose={() => setLegalPage(null)} />}
+  </>;
 };

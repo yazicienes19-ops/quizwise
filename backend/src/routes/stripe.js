@@ -17,6 +17,15 @@ const findCustomer = async (email) => {
 // POST /api/stripe/create-checkout
 router.post('/create-checkout', requireAuth, async (req, res, next) => {
   try {
+    // § 356 Abs. 4 BGB: das Widerrufsrecht bei digitalen Dienstleistungen
+    // erlischt nur vorzeitig, wenn der Nutzer VOR Vertragsausführung ausdrücklich
+    // zugestimmt und die Kenntnis vom Erlöschen bestätigt hat. Ohne diese
+    // Zustimmung keine Checkout-Session — nicht nur clientseitig, auch hier
+    // serverseitig erzwungen, damit die Zustimmung nicht umgangen werden kann.
+    if (req.body?.consentToEarlyPerformance !== true) {
+      return res.status(400).json({ error: 'Zustimmung zum vorzeitigen Vertragsbeginn fehlt.' });
+    }
+
     let customer = await findCustomer(req.user.email);
     if (!customer) {
       customer = await stripe.customers.create({
@@ -34,7 +43,11 @@ router.post('/create-checkout', requireAuth, async (req, res, next) => {
       line_items: [{ price: PRO_PRICE_ID, quantity: 1 }],
       success_url: `${process.env.FRONTEND_URL}?upgrade=success`,
       cancel_url: `${process.env.FRONTEND_URL}?upgrade=cancelled`,
-      metadata: { userId: req.user.id },
+      metadata: {
+        userId: req.user.id,
+        widerrufZustimmung: 'true',
+        widerrufZustimmungAt: new Date().toISOString(),
+      },
     });
     res.json({ url: session.url });
   } catch (err) { next(err); }

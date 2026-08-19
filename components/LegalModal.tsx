@@ -20,7 +20,7 @@ const CONTENT: Record<LegalPage, { title: string; body: React.ReactNode }> = {
           ⚠️ Adresse noch ausstehend, vor dem Launch in LegalModal.tsx eintragen.
         </p>
         <div>
-          <p className="font-bold text-slate-900 dark:text-white">Angaben gemäß § 5 TMG</p>
+          <p className="font-bold text-slate-900 dark:text-white">Angaben gemäß § 5 DDG</p>
           <p>Enes Yazici</p>
           <p>[Straße Hausnummer]</p>
           <p>[PLZ Ort]</p>
@@ -31,7 +31,7 @@ const CONTENT: Record<LegalPage, { title: string; body: React.ReactNode }> = {
           <p>E-Mail: support@studearc.com</p>
         </div>
         <div>
-          <p className="font-bold text-slate-900 dark:text-white">Verantwortlich für den Inhalt nach § 55 Abs. 2 RStV</p>
+          <p className="font-bold text-slate-900 dark:text-white">Verantwortlich für den Inhalt nach § 18 Abs. 2 MStV</p>
           <p>Enes Yazici, [Adresse]</p>
         </div>
         <div>
@@ -83,12 +83,17 @@ const CONTENT: Record<LegalPage, { title: string; body: React.ReactNode }> = {
         </div>
         <div>
           <p className="font-bold text-slate-900 dark:text-white">5. Drittanbieter</p>
+          <p>
+            Soweit die nachfolgenden Anbieter Daten außerhalb der Europäischen Union verarbeiten,
+            erfolgt dies auf Grundlage von EU-Standardvertragsklauseln gemäß Art. 46 Abs. 2 lit. c
+            DSGVO oder eines Angemessenheitsbeschlusses der EU-Kommission gemäß Art. 45 DSGVO.
+          </p>
           <ul className="list-disc pl-4 space-y-1">
             <li><strong>Supabase Inc.</strong> (Authentifizierung & Datenbank): Daten werden gemäß EU-Standardvertragsklauseln verarbeitet.</li>
-            <li><strong>Google LLC / Gemini API</strong>: Hochgeladene Dokumente und Eingaben werden zur KI-Verarbeitung übermittelt. Rechtsgrundlage: Art. 6 Abs. 1 lit. b DSGVO.</li>
-            <li><strong>Stripe Inc.</strong>: Zahlungsabwicklung nach PCI-DSS-Standard. Stripe hat eigene DSGVO-konforme Datenschutzbestimmungen.</li>
-            <li><strong>Vercel Inc.</strong>: Hosting des Frontends. Serverstandorte in der EU verfügbar.</li>
-            <li><strong>Railway Technologies Inc.</strong>: Hosting des Backends.</li>
+            <li><strong>Google LLC / Gemini API</strong>: Hochgeladene Dokumente und Eingaben werden zur KI-Verarbeitung übermittelt. Rechtsgrundlage: Art. 6 Abs. 1 lit. b DSGVO, Drittlandtransfer gemäß EU-Standardvertragsklauseln.</li>
+            <li><strong>Stripe Inc.</strong>: Zahlungsabwicklung nach PCI-DSS-Standard, Drittlandtransfer gemäß EU-Standardvertragsklauseln. Stripe hat eigene DSGVO-konforme Datenschutzbestimmungen.</li>
+            <li><strong>Cloudflare, Inc.</strong>: Hosting und Auslieferung des Frontends. Drittlandtransfer gemäß EU-Standardvertragsklauseln.</li>
+            <li><strong>Railway Technologies Inc.</strong>: Hosting des Backends. Drittlandtransfer gemäß EU-Standardvertragsklauseln.</li>
           </ul>
         </div>
         <div>
@@ -108,7 +113,7 @@ const CONTENT: Record<LegalPage, { title: string; body: React.ReactNode }> = {
             StudeArc verwendet ausschließlich technisch notwendige Cookies für die Authentifizierung
             (Supabase Session). Darüber hinaus werden Nutzerdaten (Dokumente, Einstellungen)
             im lokalen Speicher des Browsers (localStorage) gespeichert. Eine Einwilligung nach
-            § 25 TTDSG ist nicht erforderlich, da es sich um technisch notwendige Speicherungen handelt.
+            § 25 TDDDG ist nicht erforderlich, da es sich um technisch notwendige Speicherungen handelt.
           </p>
         </div>
       </div>
@@ -180,13 +185,18 @@ const CONTENT: Record<LegalPage, { title: string; body: React.ReactNode }> = {
             entspricht.
           </p>
           <p className="font-bold text-slate-900 dark:text-white mt-3">
-            Vorzeitiges Erlöschen bei digitalen Inhalten
+            Vorzeitiges Erlöschen bei digitalen Dienstleistungen
           </p>
           <p>
-            Das Widerrufsrecht erlischt vorzeitig, wenn die Ausführung des Vertrags mit deiner
-            ausdrücklichen Zustimmung vor Ablauf der Widerrufsfrist begonnen hat und du zur Kenntnis
-            genommen hast, dass du dadurch bei vollständiger Vertragserfüllung dein Widerrufsrecht
-            verlierst.
+            Das StudeArc Pro-Abonnement ist eine digitale Dienstleistung im Sinne des § 327 Abs. 1
+            BGB (fortlaufend bereitgestellte Leistung, kein einmaliger digitaler Inhalt). Dein
+            Widerrufsrecht erlischt bei Verträgen über digitale Dienstleistungen gemäß § 356 Abs. 4
+            BGB vorzeitig, wenn du im Bestellvorgang ausdrücklich zugestimmt hast, dass wir mit der
+            Ausführung des Vertrags vor Ablauf der Widerrufsfrist beginnen, und du zugleich bestätigt
+            hast, dass du durch diese Zustimmung dein Widerrufsrecht bei vollständiger
+            Vertragserfüllung verlierst. Ohne diese gesonderte Zustimmung besteht dein
+            Widerrufsrecht während der vollen vierzehn Tage unabhängig davon fort, ob du den
+            Pro-Zugang bereits genutzt hast.
           </p>
         </div>
         <div>
@@ -218,11 +228,23 @@ const CONTENT: Record<LegalPage, { title: string; body: React.ReactNode }> = {
         <div>
           <p className="font-bold text-slate-900 dark:text-white">§ 6 Haftungsbeschränkung</p>
           <p>
-            Die KI-generierten Inhalte (Quiz-Fragen, Erklärungen, Karteikarten) dienen
-            ausschließlich zu Lernzwecken. Der Anbieter übernimmt keine Garantie für die
-            inhaltliche Korrektheit. StudeArc haftet nicht für Schäden, die durch fehlerhafte
-            KI-Ausgaben entstehen. Die Haftung für Vorsatz und grobe Fahrlässigkeit bleibt
-            unberührt.
+            Der Anbieter haftet unbeschränkt für Schäden aus der Verletzung des Lebens, des Körpers
+            oder der Gesundheit sowie für Schäden, die auf Vorsatz oder grober Fahrlässigkeit
+            beruhen. Für Schäden aus der Verletzung wesentlicher Vertragspflichten (Kardinalpflichten),
+            deren Erfüllung die ordnungsgemäße Durchführung dieses Vertrags überhaupt erst ermöglicht
+            und auf deren Einhaltung du als Vertragspartner regelmäßig vertrauen darfst, haftet der
+            Anbieter auch bei einfacher Fahrlässigkeit, der Höhe nach jedoch begrenzt auf den bei
+            Vertragsschluss vorhersehbaren, vertragstypischen Schaden. Im Übrigen ist die Haftung des
+            Anbieters für einfache Fahrlässigkeit ausgeschlossen. Die vorstehenden
+            Haftungsbeschränkungen gelten nicht für Ansprüche nach dem Produkthaftungsgesetz.
+          </p>
+          <p className="mt-2">
+            Die KI-generierten Inhalte (Quiz-Fragen, Erklärungen, Karteikarten) dienen ausschließlich
+            Lernzwecken. Der Anbieter übernimmt keine Garantie für ihre inhaltliche Korrektheit oder
+            Vollständigkeit; angesichts der Natur automatisiert erzeugter Lernhilfen ist die
+            inhaltliche Fehlerfreiheit keine Kardinalpflicht im Sinne des vorstehenden Absatzes. Für
+            Schäden, die ausschließlich auf einer fehlerhaften KI-Ausgabe beruhen, haftet der Anbieter
+            daher nur nach Maßgabe der vorstehenden Haftungsbeschränkung.
           </p>
         </div>
         <div>
@@ -267,7 +289,7 @@ const CONTENT: Record<LegalPage, { title: string; body: React.ReactNode }> = {
             für Streitigkeiten mit Kaufleuten ist der Sitz des Anbieters.
           </p>
         </div>
-        <p className="text-xs text-slate-400 pt-2">Stand: Juli 2026</p>
+        <p className="text-xs text-slate-400 pt-2">Stand: August 2026</p>
       </div>
     ),
   },

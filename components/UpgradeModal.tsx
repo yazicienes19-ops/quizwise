@@ -4,6 +4,7 @@ import { X, Zap, Check, Loader2 } from 'lucide-react';
 import { startCheckout } from '../services/stripeService';
 import { useTranslation } from '../i18n/I18nProvider';
 import { useModalA11y } from '../hooks/useModalA11y';
+import { WiderrufConsentModal } from './WiderrufConsentModal';
 
 interface UpgradeModalProps {
   onClose: () => void;
@@ -14,15 +15,17 @@ export const UpgradeModal: React.FC<UpgradeModalProps> = ({ onClose }) => {
   const { titleId, dialogProps } = useModalA11y(onClose);
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState('');
+  const [showConsent, setShowConsent] = useState(false);
 
   const handleUpgrade = async () => {
     setIsLoading(true);
     setError('');
     try {
-      await startCheckout(); // leitet zu Stripe weiter
+      await startCheckout(true); // leitet zu Stripe weiter — Zustimmung s. WiderrufConsentModal
     } catch (e: any) {
       setError(e.message || t('um.checkoutError'));
       setIsLoading(false);
+      setShowConsent(false);
     }
   };
 
@@ -33,7 +36,8 @@ export const UpgradeModal: React.FC<UpgradeModalProps> = ({ onClose }) => {
     t('um.prioritySupport'),
   ];
 
-  return createPortal(
+  return <>
+    {createPortal(
     <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-sm animate-in fade-in duration-200">
       <div
         {...dialogProps}
@@ -90,7 +94,7 @@ export const UpgradeModal: React.FC<UpgradeModalProps> = ({ onClose }) => {
         {/* Button */}
         <div className="px-8 pb-8">
           <button
-            onClick={handleUpgrade}
+            onClick={() => setShowConsent(true)}
             disabled={isLoading}
             className="w-full py-4 rounded-2xl text-[11px] font-black uppercase tracking-widest text-white transition-all hover:scale-[1.02] shadow-lg disabled:opacity-40 flex items-center justify-center gap-2"
             style={{ background: 'var(--primary)' }}
@@ -107,5 +111,13 @@ export const UpgradeModal: React.FC<UpgradeModalProps> = ({ onClose }) => {
       </div>
     </div>,
     document.body
-  );
+    )}
+    {showConsent && (
+      <WiderrufConsentModal
+        isLoading={isLoading}
+        onConfirm={handleUpgrade}
+        onClose={() => setShowConsent(false)}
+      />
+    )}
+  </>;
 };

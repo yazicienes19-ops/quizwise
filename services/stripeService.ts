@@ -2,8 +2,13 @@ import { supabase } from './supabaseClient';
 
 const BACKEND_URL = import.meta.env.VITE_BACKEND_URL || 'http://localhost:4000';
 
-// Erstellt eine Stripe-Zahlungsseite und leitet den Nutzer dorthin weiter
-export const startCheckout = async (): Promise<void> => {
+// Erstellt eine Stripe-Zahlungsseite und leitet den Nutzer dorthin weiter.
+// consentToEarlyPerformance: § 356 Abs. 4 BGB — ausdrückliche Zustimmung des
+// Nutzers, dass die Ausführung vor Ablauf der Widerrufsfrist beginnt, samt
+// Kenntnisnahme, dass er dadurch sein Widerrufsrecht verliert. Muss VOR
+// diesem Aufruf über eine eigene Bestätigung eingeholt worden sein
+// (s. WiderrufConsentModal) — das Backend lehnt den Aufruf sonst ab.
+export const startCheckout = async (consentToEarlyPerformance: boolean): Promise<void> => {
   const { data: { session } } = await supabase.auth.getSession();
   if (!session?.access_token) throw new Error('Bitte zuerst einloggen.');
 
@@ -13,6 +18,7 @@ export const startCheckout = async (): Promise<void> => {
       'Content-Type': 'application/json',
       'Authorization': `Bearer ${session.access_token}`,
     },
+    body: JSON.stringify({ consentToEarlyPerformance }),
   });
 
   if (!res.ok) throw new Error('Checkout konnte nicht erstellt werden.');

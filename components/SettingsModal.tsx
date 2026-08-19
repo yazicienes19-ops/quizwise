@@ -12,6 +12,7 @@ import { startCheckout } from '../services/stripeService';
 import { changePassword, deleteAccount, exportUserData, getInvoices, cancelSubscription } from '../services/userService';
 import { NotificationSettingsPanel } from './NotificationSettingsPanel';
 import { CancellationConfirmModal } from './CancellationConfirmModal';
+import { WiderrufConsentModal } from './WiderrufConsentModal';
 import { toast } from '../services/toast';
 import { useTranslation } from '../i18n/I18nProvider';
 import { formatDate } from '../i18n/dates';
@@ -108,6 +109,7 @@ export const SettingsModal: React.FC<Props> = ({ user, isDark, onToggleTheme, on
   // Konto löschen
   const [deleteConfirm, setDeleteConfirm] = useState('');
   const [showCancelConfirm, setShowCancelConfirm] = useState(false);
+  const [showCheckoutConsent, setShowCheckoutConsent] = useState(false);
   const [isDeletingAccount, setIsDeletingAccount] = useState(false);
   const [isExporting, setIsExporting] = useState(false);
 
@@ -150,6 +152,17 @@ export const SettingsModal: React.FC<Props> = ({ user, isDark, onToggleTheme, on
       setShowCancelConfirm(false);
     } catch (e: any) { toast.error(e.message); }
     finally { setIsCancelling(false); }
+  };
+
+  const handleUpgradeConfirm = async () => {
+    setIsCheckingOut(true);
+    try {
+      await startCheckout(true); // Zustimmung s. WiderrufConsentModal
+    } catch (e: any) {
+      toast.error(e.message);
+      setIsCheckingOut(false);
+      setShowCheckoutConsent(false);
+    }
   };
 
   const handleExport = async () => {
@@ -350,7 +363,7 @@ export const SettingsModal: React.FC<Props> = ({ user, isDark, onToggleTheme, on
                       <p className="text-[12px] font-bold dark:text-white">{f}</p>
                     </div>
                   ))}
-                  <button onClick={async () => { setIsCheckingOut(true); try { await startCheckout(); } catch (e: any) { toast.error(e.message); setIsCheckingOut(false); } }}
+                  <button onClick={() => setShowCheckoutConsent(true)}
                     disabled={isCheckingOut}
                     className="w-full py-4 rounded-2xl text-[11px] font-black uppercase tracking-widest text-white flex items-center justify-center gap-2 transition-all hover:scale-[1.02] disabled:opacity-40"
                     style={{ background: 'var(--primary)' }}>
@@ -625,6 +638,13 @@ export const SettingsModal: React.FC<Props> = ({ user, isDark, onToggleTheme, on
         isCancelling={isCancelling}
         onConfirm={handleCancelSubscription}
         onClose={() => setShowCancelConfirm(false)}
+      />
+    )}
+    {showCheckoutConsent && (
+      <WiderrufConsentModal
+        isLoading={isCheckingOut}
+        onConfirm={handleUpgradeConfirm}
+        onClose={() => setShowCheckoutConsent(false)}
       />
     )}
   </>;
