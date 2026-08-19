@@ -11,6 +11,7 @@ import { applyAccentColor } from './ColorPicker';
 import { startCheckout } from '../services/stripeService';
 import { changePassword, deleteAccount, exportUserData, getInvoices, cancelSubscription } from '../services/userService';
 import { NotificationSettingsPanel } from './NotificationSettingsPanel';
+import { CancellationConfirmModal } from './CancellationConfirmModal';
 import { toast } from '../services/toast';
 import { useTranslation } from '../i18n/I18nProvider';
 import { formatDate } from '../i18n/dates';
@@ -106,6 +107,7 @@ export const SettingsModal: React.FC<Props> = ({ user, isDark, onToggleTheme, on
 
   // Konto löschen
   const [deleteConfirm, setDeleteConfirm] = useState('');
+  const [showCancelConfirm, setShowCancelConfirm] = useState(false);
   const [isDeletingAccount, setIsDeletingAccount] = useState(false);
   const [isExporting, setIsExporting] = useState(false);
 
@@ -140,12 +142,12 @@ export const SettingsModal: React.FC<Props> = ({ user, isDark, onToggleTheme, on
   };
 
   const handleCancelSubscription = async () => {
-    if (!confirm(t('settings.cancel.confirm'))) return;
     setIsCancelling(true);
     try {
       const endsAt = await cancelSubscription();
       setCancelledUntil(endsAt);
       toast.success(t('settings.cancel.success', { date: endsAt }));
+      setShowCancelConfirm(false);
     } catch (e: any) { toast.error(e.message); }
     finally { setIsCancelling(false); }
   };
@@ -199,7 +201,8 @@ export const SettingsModal: React.FC<Props> = ({ user, isDark, onToggleTheme, on
     </div>
   );
 
-  return createPortal(
+  return <>
+    {createPortal(
     <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-sm animate-in fade-in duration-200">
       <div
         {...dialogProps}
@@ -361,7 +364,7 @@ export const SettingsModal: React.FC<Props> = ({ user, isDark, onToggleTheme, on
               {profile?.plan === 'pro' && !cancelledUntil && (
                 <div className="space-y-3 pt-2" style={{ borderTop: '1px solid var(--border-color)' }}>
                   <p className="text-[10px] font-black uppercase tracking-widest text-slate-400 pt-2">{t('settings.manageSubscription')}</p>
-                  <button onClick={handleCancelSubscription} disabled={isCancelling}
+                  <button onClick={() => setShowCancelConfirm(true)} disabled={isCancelling}
                     className="flex items-center gap-2 px-5 py-3 rounded-2xl text-[11px] font-black uppercase tracking-widest text-amber-500 hover:bg-amber-50 dark:hover:bg-amber-950/20 transition-all disabled:opacity-40"
                     style={{ border: '1px solid var(--border-color)' }}>
                     {isCancelling ? <Loader2 className="w-4 h-4 animate-spin" /> : null}
@@ -615,5 +618,14 @@ export const SettingsModal: React.FC<Props> = ({ user, isDark, onToggleTheme, on
       </div>
     </div>,
     document.body
-  );
+    )}
+    {showCancelConfirm && (
+      <CancellationConfirmModal
+        email={user?.email || ''}
+        isCancelling={isCancelling}
+        onConfirm={handleCancelSubscription}
+        onClose={() => setShowCancelConfirm(false)}
+      />
+    )}
+  </>;
 };
