@@ -52,7 +52,7 @@ export interface UseKnowledgeGraphResult {
 }
 
 export function useKnowledgeGraph({ scope, userId }: UseKnowledgeGraphOptions): UseKnowledgeGraphResult {
-  const [state, setState] = useState<GraphState>(() => sync.loadCachedState(scope));
+  const [state, setState] = useState<GraphState>(() => sync.loadCachedState(scope, userId));
   const [history, setHistory] = useState<GraphHistory>(createEmptyHistory);
   const [selection, setSelection] = useState<GraphSelectionState>(createEmptySelection);
   const [loading, setLoading] = useState(true);
@@ -76,7 +76,7 @@ export function useKnowledgeGraph({ scope, userId }: UseKnowledgeGraphOptions): 
     setLoading(true);
     setError(undefined);
 
-    const cached = sync.loadCachedState(scope);
+    const cached = sync.loadCachedState(scope, userId);
     stateRef.current = cached;
     setState(cached);
     setHistory(createEmptyHistory());

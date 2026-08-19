@@ -234,7 +234,7 @@ export const GraphDevHarness: React.FC = () => {
     seededRef.current = true;
     if (graph.state.nodesById.size === 0) {
       const fixture = buildFixtureState();
-      saveCachedState(fixture);
+      saveCachedState(fixture, undefined);
       graph.onChange({ state: fixture, history: createEmptyHistory() });
       pushLog('Fixture initial geseedet (leerer Cache)');
     }
@@ -243,7 +243,7 @@ export const GraphDevHarness: React.FC = () => {
 
   const handleReset = () => {
     const fixture = buildFixtureState();
-    saveCachedState(fixture);
+    saveCachedState(fixture, undefined);
     graph.onChange({ state: fixture, history: createEmptyHistory() });
     setLog([]);
   };

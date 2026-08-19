@@ -91,7 +91,7 @@ describe('useKnowledgeGraph — initiales Laden', () => {
     rerender({ scope: COLLECTION_A });
     await waitFor(() => expect(result.current.loading).toBe(false));
     expect(result.current.selection.selectedNodeId).toBeUndefined();
-    expect(sync.loadCachedState).toHaveBeenCalledWith(COLLECTION_A);
+    expect(sync.loadCachedState).toHaveBeenCalledWith(COLLECTION_A, undefined);
   });
 });
 

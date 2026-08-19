@@ -90,12 +90,12 @@ export interface CommitOptions {
 // erneut versucht statt stillschweigend verloren zu gehen.
 
 export function commitNode(node: GraphNode, state: GraphState, options: CommitOptions = {}): void {
-  sync.markPending(state.scope, 'node', node.id, 'upsert');
+  sync.markPending(state.scope, options.userId, 'node', node.id, 'upsert');
   scheduleCommit(`node:${node.id}`, options.debounceMs ?? DEFAULT_DEBOUNCE_MS, () => {
-    sync.saveCachedState(state);
+    sync.saveCachedState(state, options.userId);
     if (options.userId) {
       sync.pushNode(node, options.userId)
-        .then(() => sync.clearPending(state.scope, 'node', node.id))
+        .then(() => sync.clearPending(state.scope, options.userId, 'node', node.id))
         .catch(() => {});
     }
   });
@@ -117,36 +117,36 @@ export function commitNode(node: GraphNode, state: GraphState, options: CommitOp
  * eine Verzögerung bräuchte.
  */
 export function commitPurgeNode(nodeId: string, state: GraphState, options: CommitOptions = {}): void {
-  sync.markPending(state.scope, 'node', nodeId, 'delete');
+  sync.markPending(state.scope, options.userId, 'node', nodeId, 'delete');
   scheduleCommit(`node:${nodeId}`, options.debounceMs ?? 0, () => {
-    sync.saveCachedState(state);
+    sync.saveCachedState(state, options.userId);
     if (options.userId) {
       sync.pushDeleteNode(nodeId, options.userId)
-        .then(() => sync.clearPending(state.scope, 'node', nodeId))
+        .then(() => sync.clearPending(state.scope, options.userId, 'node', nodeId))
         .catch(() => {});
     }
   });
 }
 
 export function commitEdge(edge: GraphEdge, state: GraphState, options: CommitOptions = {}): void {
-  sync.markPending(state.scope, 'edge', edge.id, 'upsert');
+  sync.markPending(state.scope, options.userId, 'edge', edge.id, 'upsert');
   scheduleCommit(`edge:${edge.id}`, options.debounceMs ?? DEFAULT_DEBOUNCE_MS, () => {
-    sync.saveCachedState(state);
+    sync.saveCachedState(state, options.userId);
     if (options.userId) {
       sync.pushEdge(edge, options.userId)
-        .then(() => sync.clearPending(state.scope, 'edge', edge.id))
+        .then(() => sync.clearPending(state.scope, options.userId, 'edge', edge.id))
         .catch(() => {});
     }
   });
 }
 
 export function commitRelationType(relationType: GraphRelationType, state: GraphState, options: CommitOptions = {}): void {
-  sync.markPending(state.scope, 'relationType', relationType.id, 'upsert');
+  sync.markPending(state.scope, options.userId, 'relationType', relationType.id, 'upsert');
   scheduleCommit(`relationType:${relationType.id}`, options.debounceMs ?? DEFAULT_DEBOUNCE_MS, () => {
-    sync.saveCachedState(state);
+    sync.saveCachedState(state, options.userId);
     if (options.userId) {
       sync.pushRelationType(relationType, options.userId)
-        .then(() => sync.clearPending(state.scope, 'relationType', relationType.id))
+        .then(() => sync.clearPending(state.scope, options.userId, 'relationType', relationType.id))
         .catch(() => {});
     }
   });
@@ -156,36 +156,36 @@ export function commitRelationType(relationType: GraphRelationType, state: Graph
  *  werden hier typischerweise debounceMs: 0 verwenden, die Funktion erzwingt
  *  das aber nicht (derselbe generische Mechanismus wie überall sonst). */
 export function commitDeleteRelationType(relationTypeId: string, state: GraphState, options: CommitOptions = {}): void {
-  sync.markPending(state.scope, 'relationType', relationTypeId, 'delete');
+  sync.markPending(state.scope, options.userId, 'relationType', relationTypeId, 'delete');
   scheduleCommit(`relationType:${relationTypeId}`, options.debounceMs ?? 0, () => {
-    sync.saveCachedState(state);
+    sync.saveCachedState(state, options.userId);
     if (options.userId) {
       sync.pushDeleteRelationType(relationTypeId, options.userId)
-        .then(() => sync.clearPending(state.scope, 'relationType', relationTypeId))
+        .then(() => sync.clearPending(state.scope, options.userId, 'relationType', relationTypeId))
         .catch(() => {});
     }
   });
 }
 
 export function commitNodeDocumentRef(ref: GraphNodeDocumentRef, state: GraphState, options: CommitOptions = {}): void {
-  sync.markPending(state.scope, 'nodeDocumentRef', ref.id, 'upsert');
+  sync.markPending(state.scope, options.userId, 'nodeDocumentRef', ref.id, 'upsert');
   scheduleCommit(`nodeDocumentRef:${ref.id}`, options.debounceMs ?? DEFAULT_DEBOUNCE_MS, () => {
-    sync.saveCachedState(state);
+    sync.saveCachedState(state, options.userId);
     if (options.userId) {
       sync.pushNodeDocumentRef(ref, options.userId)
-        .then(() => sync.clearPending(state.scope, 'nodeDocumentRef', ref.id))
+        .then(() => sync.clearPending(state.scope, options.userId, 'nodeDocumentRef', ref.id))
         .catch(() => {});
     }
   });
 }
 
 export function commitRemoveNodeDocumentRef(refId: string, state: GraphState, options: CommitOptions = {}): void {
-  sync.markPending(state.scope, 'nodeDocumentRef', refId, 'delete');
+  sync.markPending(state.scope, options.userId, 'nodeDocumentRef', refId, 'delete');
   scheduleCommit(`nodeDocumentRef:${refId}`, options.debounceMs ?? 0, () => {
-    sync.saveCachedState(state);
+    sync.saveCachedState(state, options.userId);
     if (options.userId) {
       sync.pushDeleteNodeDocumentRef(refId, options.userId)
-        .then(() => sync.clearPending(state.scope, 'nodeDocumentRef', refId))
+        .then(() => sync.clearPending(state.scope, options.userId, 'nodeDocumentRef', refId))
         .catch(() => {});
     }
   });

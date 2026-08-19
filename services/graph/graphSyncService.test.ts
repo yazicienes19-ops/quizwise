@@ -19,6 +19,9 @@ const makeNode = (id: string, updatedAt: number, overrides: Partial<GraphNode> =
   ...overrides,
 });
 
+const USER = 'user-1';
+const OTHER_USER = 'user-2';
+
 describe('scopeKey', () => {
   it('unterscheidet Fach-Scope und Gesamtansicht', () => {
     expect(scopeKey({ kind: 'all' })).toBe('all');
@@ -40,38 +43,62 @@ describe('serializeGraphState / deserializeGraphState', () => {
 
 describe('loadCachedState / saveCachedState', () => {
   it('liefert einen leeren State, wenn noch kein Cache existiert', () => {
-    const state = loadCachedState({ kind: 'all' });
+    const state = loadCachedState({ kind: 'all' }, USER);
     expect(state.nodesById.size).toBe(0);
   });
 
   it('liefert einen leeren State bei kaputtem/nicht parsbarem Cache-Inhalt (kein Crash)', () => {
-    localStorage.setItem('studearc_graph_cache_all', '{invalid json');
-    const state = loadCachedState({ kind: 'all' });
+    localStorage.setItem(`studearc_graph_cache_${USER}_all`, '{invalid json');
+    const state = loadCachedState({ kind: 'all' }, USER);
     expect(state.nodesById.size).toBe(0);
   });
 
   it('speichert und lädt denselben Inhalt unter dem scope-spezifischen Key', () => {
     const state = createEmptyGraphState({ kind: 'collection', collectionId: 'col-1' });
     state.nodesById.set('n1', makeNode('n1', 100));
-    saveCachedState(state);
+    saveCachedState(state, USER);
 
-    const loadedSameScope = loadCachedState({ kind: 'collection', collectionId: 'col-1' });
+    const loadedSameScope = loadCachedState({ kind: 'collection', collectionId: 'col-1' }, USER);
     expect(loadedSameScope.nodesById.get('n1')?.title).toBe('n1');
 
-    const loadedOtherScope = loadCachedState({ kind: 'collection', collectionId: 'col-2' });
+    const loadedOtherScope = loadCachedState({ kind: 'collection', collectionId: 'col-2' }, USER);
     expect(loadedOtherScope.nodesById.size).toBe(0); // eigener Cache-Key, keine Vermischung zwischen Fächern
+  });
+
+  // Regressionstest für den echten Bug vom 2026-08-19: der Cache-Key enthielt
+  // ursprünglich NUR den Scope, keine Nutzer-Kennung — auf demselben Gerät
+  // zeigte ein anderer Account dadurch den Wissensnetz-Inhalt des vorherigen
+  // Accounts, bis (falls überhaupt) ein Server-Pull ihn irgendwann überschrieb.
+  it('hält Accounts getrennt (kein Durchsickern zwischen Nutzern auf demselben Gerät)', () => {
+    const state = createEmptyGraphState({ kind: 'all' });
+    state.nodesById.set('n1', makeNode('n1', 100, { title: 'Echter Account: Allgemeine Psychologie' }));
+    saveCachedState(state, USER);
+
+    const loadedSameUser = loadCachedState({ kind: 'all' }, USER);
+    expect(loadedSameUser.nodesById.get('n1')?.title).toBe('Echter Account: Allgemeine Psychologie');
+
+    const loadedOtherUser = loadCachedState({ kind: 'all' }, OTHER_USER);
+    expect(loadedOtherUser.nodesById.size).toBe(0); // eigener Cache-Key pro Nutzer, keine Vermischung
+
+    const loadedAnon = loadCachedState({ kind: 'all' }, undefined);
+    expect(loadedAnon.nodesById.size).toBe(0); // auch ohne Login kein Zugriff auf fremden Nutzer-Cache
   });
 });
 
 describe('getLastSyncedAt / setLastSyncedAt', () => {
   it('liefert undefined, solange noch nie synchronisiert wurde', () => {
-    expect(getLastSyncedAt({ kind: 'all' })).toBeUndefined();
+    expect(getLastSyncedAt({ kind: 'all' }, USER)).toBeUndefined();
   });
 
   it('speichert und liest den Cursor pro Scope getrennt', () => {
-    setLastSyncedAt({ kind: 'collection', collectionId: 'col-1' }, 12345);
-    expect(getLastSyncedAt({ kind: 'collection', collectionId: 'col-1' })).toBe(12345);
-    expect(getLastSyncedAt({ kind: 'collection', collectionId: 'col-2' })).toBeUndefined();
+    setLastSyncedAt({ kind: 'collection', collectionId: 'col-1' }, USER, 12345);
+    expect(getLastSyncedAt({ kind: 'collection', collectionId: 'col-1' }, USER)).toBe(12345);
+    expect(getLastSyncedAt({ kind: 'collection', collectionId: 'col-2' }, USER)).toBeUndefined();
+  });
+
+  it('hält den Cursor pro Nutzer getrennt', () => {
+    setLastSyncedAt({ kind: 'all' }, USER, 12345);
+    expect(getLastSyncedAt({ kind: 'all' }, OTHER_USER)).toBeUndefined();
   });
 });
 
@@ -117,40 +144,45 @@ const ALL: GraphScope = { kind: 'all' };
 
 describe('markPending / clearPending / loadPendingWrites / hasPendingWrites', () => {
   it('ist anfangs leer', () => {
-    expect(loadPendingWrites(ALL)).toEqual([]);
-    expect(hasPendingWrites(ALL)).toBe(false);
+    expect(loadPendingWrites(ALL, USER)).toEqual([]);
+    expect(hasPendingWrites(ALL, USER)).toBe(false);
   });
 
   it('markiert und liest eine Entität als pending', () => {
-    markPending(ALL, 'node', 'n1', 'upsert');
-    expect(loadPendingWrites(ALL)).toEqual([{ kind: 'node', id: 'n1', op: 'upsert' }]);
-    expect(hasPendingWrites(ALL)).toBe(true);
+    markPending(ALL, USER, 'node', 'n1', 'upsert');
+    expect(loadPendingWrites(ALL, USER)).toEqual([{ kind: 'node', id: 'n1', op: 'upsert' }]);
+    expect(hasPendingWrites(ALL, USER)).toBe(true);
   });
 
   it('ersetzt einen bestehenden Eintrag für dieselbe (kind, id) statt zu duplizieren', () => {
-    markPending(ALL, 'node', 'n1', 'upsert');
-    markPending(ALL, 'node', 'n1', 'delete'); // z.B. archiviert, dann direkt gelöscht
-    expect(loadPendingWrites(ALL)).toEqual([{ kind: 'node', id: 'n1', op: 'delete' }]);
+    markPending(ALL, USER, 'node', 'n1', 'upsert');
+    markPending(ALL, USER, 'node', 'n1', 'delete'); // z.B. archiviert, dann direkt gelöscht
+    expect(loadPendingWrites(ALL, USER)).toEqual([{ kind: 'node', id: 'n1', op: 'delete' }]);
   });
 
   it('führt mehrere unterschiedliche Entitäten unabhängig voneinander', () => {
-    markPending(ALL, 'node', 'n1', 'upsert');
-    markPending(ALL, 'edge', 'e1', 'upsert');
-    expect(loadPendingWrites(ALL)).toHaveLength(2);
+    markPending(ALL, USER, 'node', 'n1', 'upsert');
+    markPending(ALL, USER, 'edge', 'e1', 'upsert');
+    expect(loadPendingWrites(ALL, USER)).toHaveLength(2);
   });
 
   it('clearPending entfernt nur den betroffenen Eintrag', () => {
-    markPending(ALL, 'node', 'n1', 'upsert');
-    markPending(ALL, 'node', 'n2', 'upsert');
-    clearPending(ALL, 'node', 'n1');
-    expect(loadPendingWrites(ALL)).toEqual([{ kind: 'node', id: 'n2', op: 'upsert' }]);
+    markPending(ALL, USER, 'node', 'n1', 'upsert');
+    markPending(ALL, USER, 'node', 'n2', 'upsert');
+    clearPending(ALL, USER, 'node', 'n1');
+    expect(loadPendingWrites(ALL, USER)).toEqual([{ kind: 'node', id: 'n2', op: 'upsert' }]);
   });
 
   it('hält Scopes getrennt (kein Durchsickern zwischen Fächern)', () => {
     const colA: GraphScope = { kind: 'collection', collectionId: 'a' };
     const colB: GraphScope = { kind: 'collection', collectionId: 'b' };
-    markPending(colA, 'node', 'n1', 'upsert');
-    expect(loadPendingWrites(colB)).toEqual([]);
+    markPending(colA, USER, 'node', 'n1', 'upsert');
+    expect(loadPendingWrites(colB, USER)).toEqual([]);
+  });
+
+  it('hält Nutzer getrennt (kein Durchsickern zwischen Accounts)', () => {
+    markPending(ALL, USER, 'node', 'n1', 'upsert');
+    expect(loadPendingWrites(ALL, OTHER_USER)).toEqual([]);
   });
 });
 
@@ -159,58 +191,70 @@ describe('retryPendingWrites', () => {
     const node = { id: 'n1', type: 'begriff', title: 'X', description: '', notes: '', tags: [], position: { x: 0, y: 0 }, pinned: false, version: 1, createdAt: 0, updatedAt: 0 } as GraphNode;
     const state = createEmptyGraphState(ALL);
     state.nodesById.set('n1', node);
-    markPending(ALL, 'node', 'n1', 'upsert');
+    markPending(ALL, USER, 'node', 'n1', 'upsert');
 
     vi.spyOn(repo, 'upsertNode').mockResolvedValue(node);
-    await retryPendingWrites('user-1', state);
+    await retryPendingWrites(USER, state);
 
-    expect(repo.upsertNode).toHaveBeenCalledWith(node, 'user-1');
-    expect(loadPendingWrites(ALL)).toEqual([]);
+    expect(repo.upsertNode).toHaveBeenCalledWith(node, USER);
+    expect(loadPendingWrites(ALL, USER)).toEqual([]);
   });
 
   it('behält einen fehlschlagenden Retry als weiterhin pending', async () => {
     const node = { id: 'n1', type: 'begriff', title: 'X', description: '', notes: '', tags: [], position: { x: 0, y: 0 }, pinned: false, version: 1, createdAt: 0, updatedAt: 0 } as GraphNode;
     const state = createEmptyGraphState(ALL);
     state.nodesById.set('n1', node);
-    markPending(ALL, 'node', 'n1', 'upsert');
+    markPending(ALL, USER, 'node', 'n1', 'upsert');
 
     vi.spyOn(repo, 'upsertNode').mockRejectedValue(new Error('offline'));
-    await retryPendingWrites('user-1', state);
+    await retryPendingWrites(USER, state);
 
-    expect(loadPendingWrites(ALL)).toEqual([{ kind: 'node', id: 'n1', op: 'upsert' }]);
+    expect(loadPendingWrites(ALL, USER)).toEqual([{ kind: 'node', id: 'n1', op: 'upsert' }]);
   });
 
   it('versucht ein ausstehendes Node-Delete erneut (Kern des purgeNode-Fixes)', async () => {
     const state = createEmptyGraphState(ALL); // Node existiert im State schon nicht mehr (bereits lokal gepurged)
-    markPending(ALL, 'node', 'n1', 'delete');
+    markPending(ALL, USER, 'node', 'n1', 'delete');
 
     vi.spyOn(repo, 'deleteNode').mockResolvedValue(undefined);
-    await retryPendingWrites('user-1', state);
+    await retryPendingWrites(USER, state);
 
-    expect(repo.deleteNode).toHaveBeenCalledWith('n1', 'user-1');
-    expect(loadPendingWrites(ALL)).toEqual([]);
+    expect(repo.deleteNode).toHaveBeenCalledWith('n1', USER);
+    expect(loadPendingWrites(ALL, USER)).toEqual([]);
   });
 
   it('überspringt ein upsert, dessen Entität lokal gar nicht mehr existiert, ohne zu werfen', async () => {
     const state = createEmptyGraphState(ALL); // n1 existiert nicht (mehr) im State
-    markPending(ALL, 'node', 'n1', 'upsert');
+    markPending(ALL, USER, 'node', 'n1', 'upsert');
     vi.spyOn(repo, 'upsertNode');
 
-    await expect(retryPendingWrites('user-1', state)).resolves.toBeUndefined();
+    await expect(retryPendingWrites(USER, state)).resolves.toBeUndefined();
     expect(repo.upsertNode).not.toHaveBeenCalled();
   });
 
   it('verarbeitet mehrere unterschiedliche Pending-Writes unabhängig voneinander', async () => {
     const state = createEmptyGraphState(ALL);
-    markPending(ALL, 'relationType', 'rel-1', 'delete');
-    markPending(ALL, 'nodeDocumentRef', 'ref-1', 'delete');
+    markPending(ALL, USER, 'relationType', 'rel-1', 'delete');
+    markPending(ALL, USER, 'nodeDocumentRef', 'ref-1', 'delete');
 
     vi.spyOn(repo, 'deleteRelationType').mockResolvedValue(undefined);
     vi.spyOn(repo, 'deleteNodeDocumentRef').mockResolvedValue(undefined);
-    await retryPendingWrites('user-1', state);
+    await retryPendingWrites(USER, state);
 
-    expect(repo.deleteRelationType).toHaveBeenCalledWith('rel-1', 'user-1');
-    expect(repo.deleteNodeDocumentRef).toHaveBeenCalledWith('ref-1', 'user-1');
-    expect(loadPendingWrites(ALL)).toEqual([]);
+    expect(repo.deleteRelationType).toHaveBeenCalledWith('rel-1', USER);
+    expect(repo.deleteNodeDocumentRef).toHaveBeenCalledWith('ref-1', USER);
+    expect(loadPendingWrites(ALL, USER)).toEqual([]);
+  });
+
+  it('greift nicht auf Pending-Writes eines anderen Accounts zu (kein Cross-Account-Push)', async () => {
+    const node = makeNode('n1', 0, { title: 'Fremder Node' });
+    const state = createEmptyGraphState(ALL);
+    state.nodesById.set('n1', node);
+    markPending(ALL, OTHER_USER, 'node', 'n1', 'upsert');
+
+    vi.spyOn(repo, 'upsertNode');
+    await retryPendingWrites(USER, state); // anderer Account eingeloggt
+
+    expect(repo.upsertNode).not.toHaveBeenCalled();
   });
 });

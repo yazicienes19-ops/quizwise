@@ -44,7 +44,7 @@ describe('commitNode (Debounce pro Entität)', () => {
 
     vi.advanceTimersByTime(400);
 
-    expect(sync.saveCachedState).toHaveBeenCalledWith(state);
+    expect(sync.saveCachedState).toHaveBeenCalledWith(state, 'user-1');
     expect(sync.pushNode).toHaveBeenCalledWith(node, 'user-1');
   });
 
@@ -126,7 +126,7 @@ describe('Pending-Write-Tracking (Fix vom 2026-08-02)', () => {
     commitNode(makeNode('n1'), state, { userId: 'user-1' });
 
     // Kein vi.advanceTimersByTime() — der Debounce ist noch gar nicht gelaufen
-    expect(sync.loadPendingWrites(state.scope)).toEqual([{ kind: 'node', id: 'n1', op: 'upsert' }]);
+    expect(sync.loadPendingWrites(state.scope, 'user-1')).toEqual([{ kind: 'node', id: 'n1', op: 'upsert' }]);
   });
 
   it('löscht den Pending-Eintrag erst NACH erfolgreichem Push', async () => {
@@ -134,11 +134,11 @@ describe('Pending-Write-Tracking (Fix vom 2026-08-02)', () => {
     commitNode(makeNode('n1'), state, { userId: 'user-1' });
 
     vi.advanceTimersByTime(400);
-    expect(sync.loadPendingWrites(state.scope)).toHaveLength(1); // Push ist raus, aber die Promise noch nicht aufgelöst
+    expect(sync.loadPendingWrites(state.scope, 'user-1')).toHaveLength(1); // Push ist raus, aber die Promise noch nicht aufgelöst
     await Promise.resolve(); // pushNode-Promise auflösen lassen
     await Promise.resolve();
 
-    expect(sync.loadPendingWrites(state.scope)).toEqual([]);
+    expect(sync.loadPendingWrites(state.scope, 'user-1')).toEqual([]);
   });
 
   it('behält den Pending-Eintrag, wenn der Push fehlschlägt (Kern des Local-First-Fixes)', async () => {
@@ -150,7 +150,7 @@ describe('Pending-Write-Tracking (Fix vom 2026-08-02)', () => {
     await Promise.resolve();
     await Promise.resolve();
 
-    expect(sync.loadPendingWrites(state.scope)).toEqual([{ kind: 'node', id: 'n1', op: 'upsert' }]);
+    expect(sync.loadPendingWrites(state.scope, 'user-1')).toEqual([{ kind: 'node', id: 'n1', op: 'upsert' }]);
   });
 
   it('bleibt pending, solange kein userId (kein eingeloggter Nutzer) vorhanden ist', () => {
@@ -158,13 +158,13 @@ describe('Pending-Write-Tracking (Fix vom 2026-08-02)', () => {
     commitNode(makeNode('n1'), state, {});
     vi.advanceTimersByTime(400);
 
-    expect(sync.loadPendingWrites(state.scope)).toEqual([{ kind: 'node', id: 'n1', op: 'upsert' }]);
+    expect(sync.loadPendingWrites(state.scope, undefined)).toEqual([{ kind: 'node', id: 'n1', op: 'upsert' }]);
   });
 
   it('commitPurgeNode markiert als pending-delete, nicht als pending-upsert', () => {
     const state = createEmptyGraphState({ kind: 'all' });
     commitPurgeNode('n1', state, { userId: 'user-1' });
-    expect(sync.loadPendingWrites(state.scope)).toEqual([{ kind: 'node', id: 'n1', op: 'delete' }]);
+    expect(sync.loadPendingWrites(state.scope, 'user-1')).toEqual([{ kind: 'node', id: 'n1', op: 'delete' }]);
   });
 });
 
@@ -173,7 +173,7 @@ describe('commitPurgeNode', () => {
     const state = createEmptyGraphState({ kind: 'all' });
     commitPurgeNode('n1', state, { userId: 'user-1' });
 
-    expect(sync.saveCachedState).toHaveBeenCalledWith(state);
+    expect(sync.saveCachedState).toHaveBeenCalledWith(state, 'user-1');
     expect(sync.pushDeleteNode).toHaveBeenCalledWith('n1', 'user-1');
   });
 

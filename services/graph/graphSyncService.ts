@@ -27,8 +27,25 @@ import * as repo from './graphRepository';
 export const scopeKey = (scope: GraphScope): string =>
   scope.kind === 'all' ? 'all' : `collection:${scope.collectionId}`;
 
-const cacheStorageKey = (scope: GraphScope): string => `studearc_graph_cache_${scopeKey(scope)}`;
-const cursorStorageKey = (scope: GraphScope): string => `studearc_graph_cursor_${scopeKey(scope)}`;
+// KRITISCHER FIX (2026-08-19): Die Storage-Keys enthielten bis hierher NUR den
+// Scope, keine Nutzer-Kennung — auf demselben Gerät/Browser landeten Cache,
+// Cursor UND Pending-Writes verschiedener Accounts dadurch im selben
+// localStorage-Slot. Konkret beobachtet: nach einem Wechsel vom echten Account
+// zum Test-Onboarding-Account zeigte das Wissensnetz weiterhin die (aus dem
+// bisherigen, unscoped `studearc_graph_cache_all`-Key lokal gerenderten)
+// echten Nodes des vorherigen Accounts an — der anschließende pullSince()
+// bekam vom Server zurecht eine leere Liste (Test-Account hat keine eigenen
+// Graph-Zeilen), aber mergeIncoming() entfernt nie lokale Einträge, die im
+// (inkrementellen) Server-Response fehlen, also blieben die fremden Nodes im
+// gemergten State und wurden wieder in denselben globalen Key zurückgeschrieben.
+// Kein Server-/RLS-Leck (Supabase-Queries filtern korrekt nach user_id) —
+// reiner Client-Cache-Bug. Fix: jeder Storage-Key bekommt zusätzlich die
+// userId (bzw. 'anon' ohne Login) — Accounts können sich dadurch auf demselben
+// Gerät nie mehr denselben Cache-Slot teilen.
+const cacheStorageKey = (scope: GraphScope, userId: string | undefined): string =>
+  `studearc_graph_cache_${userId ?? 'anon'}_${scopeKey(scope)}`;
+const cursorStorageKey = (scope: GraphScope, userId: string | undefined): string =>
+  `studearc_graph_cursor_${userId ?? 'anon'}_${scopeKey(scope)}`;
 
 // ─── Lokaler Cache (localStorage) ────────────────────────────────────────────
 //
@@ -67,9 +84,9 @@ export function deserializeGraphState(serialized: SerializedGraphState): GraphSt
 /** Liefert einen leeren State für den Scope, falls noch kein Cache existiert
  *  oder er beschädigt ist — niemals eine Exception für einen fehlenden/
  *  kaputten Cache, ein leerer Graph ist ein gültiger Startzustand. */
-export function loadCachedState(scope: GraphScope): GraphState {
+export function loadCachedState(scope: GraphScope, userId: string | undefined): GraphState {
   try {
-    const raw = localStorage.getItem(cacheStorageKey(scope));
+    const raw = localStorage.getItem(cacheStorageKey(scope, userId));
     if (!raw) return createEmptyGraphState(scope);
     return deserializeGraphState(JSON.parse(raw));
   } catch {
@@ -77,19 +94,19 @@ export function loadCachedState(scope: GraphScope): GraphState {
   }
 }
 
-export function saveCachedState(state: GraphState): void {
-  localStorage.setItem(cacheStorageKey(state.scope), JSON.stringify(serializeGraphState(state)));
+export function saveCachedState(state: GraphState, userId: string | undefined): void {
+  localStorage.setItem(cacheStorageKey(state.scope, userId), JSON.stringify(serializeGraphState(state)));
 }
 
-export function getLastSyncedAt(scope: GraphScope): number | undefined {
-  const raw = localStorage.getItem(cursorStorageKey(scope));
+export function getLastSyncedAt(scope: GraphScope, userId: string | undefined): number | undefined {
+  const raw = localStorage.getItem(cursorStorageKey(scope, userId));
   if (!raw) return undefined;
   const parsed = Number(raw);
   return Number.isFinite(parsed) ? parsed : undefined;
 }
 
-export function setLastSyncedAt(scope: GraphScope, timestamp: number): void {
-  localStorage.setItem(cursorStorageKey(scope), String(timestamp));
+export function setLastSyncedAt(scope: GraphScope, userId: string | undefined, timestamp: number): void {
+  localStorage.setItem(cursorStorageKey(scope, userId), String(timestamp));
 }
 
 // ─── Merge (Last-Write-Wins) ─────────────────────────────────────────────────
@@ -160,38 +177,39 @@ export interface PendingWrite {
   op: PendingWriteOp;
 }
 
-const pendingWritesStorageKey = (scope: GraphScope): string => `studearc_graph_pending_${scopeKey(scope)}`;
+const pendingWritesStorageKey = (scope: GraphScope, userId: string | undefined): string =>
+  `studearc_graph_pending_${userId ?? 'anon'}_${scopeKey(scope)}`;
 
-export function loadPendingWrites(scope: GraphScope): PendingWrite[] {
+export function loadPendingWrites(scope: GraphScope, userId: string | undefined): PendingWrite[] {
   try {
-    const raw = localStorage.getItem(pendingWritesStorageKey(scope));
+    const raw = localStorage.getItem(pendingWritesStorageKey(scope, userId));
     return raw ? JSON.parse(raw) : [];
   } catch {
     return [];
   }
 }
 
-function savePendingWrites(scope: GraphScope, writes: PendingWrite[]): void {
-  localStorage.setItem(pendingWritesStorageKey(scope), JSON.stringify(writes));
+function savePendingWrites(scope: GraphScope, userId: string | undefined, writes: PendingWrite[]): void {
+  localStorage.setItem(pendingWritesStorageKey(scope, userId), JSON.stringify(writes));
 }
 
 /** Ersetzt einen ggf. bestehenden Eintrag für dieselbe (kind, id) — es zählt
  *  immer nur die zuletzt gewollte Aktion (z.B. überschreibt ein neues
  *  "upsert" ein älteres "delete", falls der Node zwischenzeitlich doch
  *  wiederhergestellt wurde, bevor die Löschung überhaupt bestätigt war). */
-export function markPending(scope: GraphScope, kind: PendingWriteKind, id: string, op: PendingWriteOp): void {
-  const writes = loadPendingWrites(scope).filter(w => !(w.kind === kind && w.id === id));
+export function markPending(scope: GraphScope, userId: string | undefined, kind: PendingWriteKind, id: string, op: PendingWriteOp): void {
+  const writes = loadPendingWrites(scope, userId).filter(w => !(w.kind === kind && w.id === id));
   writes.push({ kind, id, op });
-  savePendingWrites(scope, writes);
+  savePendingWrites(scope, userId, writes);
 }
 
-export function clearPending(scope: GraphScope, kind: PendingWriteKind, id: string): void {
-  const writes = loadPendingWrites(scope).filter(w => !(w.kind === kind && w.id === id));
-  savePendingWrites(scope, writes);
+export function clearPending(scope: GraphScope, userId: string | undefined, kind: PendingWriteKind, id: string): void {
+  const writes = loadPendingWrites(scope, userId).filter(w => !(w.kind === kind && w.id === id));
+  savePendingWrites(scope, userId, writes);
 }
 
-export function hasPendingWrites(scope: GraphScope): boolean {
-  return loadPendingWrites(scope).length > 0;
+export function hasPendingWrites(scope: GraphScope, userId: string | undefined): boolean {
+  return loadPendingWrites(scope, userId).length > 0;
 }
 
 async function retryOne(write: PendingWrite, userId: string, state: GraphState): Promise<void> {
@@ -247,10 +265,10 @@ async function retryOne(write: PendingWrite, userId: string, state: GraphState):
  * Pending-Delete-Markierung für jede betroffene Kante/jeden Ref bräuchte.
  */
 export async function retryPendingWrites(userId: string, state: GraphState): Promise<void> {
-  for (const write of loadPendingWrites(state.scope)) {
+  for (const write of loadPendingWrites(state.scope, userId)) {
     try {
       await retryOne(write, userId, state);
-      clearPending(state.scope, write.kind, write.id);
+      clearPending(state.scope, userId, write.kind, write.id);
     } catch {
       // bleibt pending — nächster Versuch beim nächsten Aufruf
     }
@@ -260,7 +278,7 @@ export async function retryPendingWrites(userId: string, state: GraphState): Pro
 // ─── Pull (inkrementell, gemergt, cache-aktualisierend) ─────────────────────
 
 export async function pullSince(userId: string, scope: GraphScope): Promise<GraphState> {
-  const cached = loadCachedState(scope);
+  const cached = loadCachedState(scope, userId);
 
   // Erst offene lokale Änderungen bestätigen — sonst könnte der direkt
   // anschließende Pull eine gerade erst lokal gelöschte/geänderte Entität
@@ -268,7 +286,7 @@ export async function pullSince(userId: string, scope: GraphScope): Promise<Grap
   // wiederherstellen (s. retryPendingWrites).
   await retryPendingWrites(userId, cached);
 
-  const cursor = getLastSyncedAt(scope);
+  const cursor = getLastSyncedAt(scope, userId);
   const collectionId = scope.kind === 'collection' ? scope.collectionId : undefined;
   const pullStartedAt = Date.now();
 
@@ -282,7 +300,7 @@ export async function pullSince(userId: string, scope: GraphScope): Promise<Grap
   // Falls ein Node-Delete trotz retryPendingWrites weiterhin offline hängt:
   // nicht aus einer (noch veralteten) Cloud-Antwort wiederbeleben.
   const pendingDeletedNodeIds = new Set(
-    loadPendingWrites(scope).filter(w => w.kind === 'node' && w.op === 'delete').map(w => w.id),
+    loadPendingWrites(scope, userId).filter(w => w.kind === 'node' && w.op === 'delete').map(w => w.id),
   );
   const incomingNodes = nodes.filter(n => !pendingDeletedNodeIds.has(n.id));
 
@@ -294,12 +312,12 @@ export async function pullSince(userId: string, scope: GraphScope): Promise<Grap
     nodeDocumentsById: mergeIncomingServerWins(cached.nodeDocumentsById, nodeDocuments),
   };
 
-  saveCachedState(merged);
+  saveCachedState(merged, userId);
   // Cursor auf den Zeitpunkt VOR dem Request setzen, nicht "jetzt" nach
   // Abschluss — sonst könnte eine Änderung, die serverseitig exakt während
   // des Requests committet wurde, beim nächsten inkrementellen Pull verpasst
   // werden (Race zwischen Uhr des Servers und Laufzeit des Requests).
-  setLastSyncedAt(scope, pullStartedAt);
+  setLastSyncedAt(scope, userId, pullStartedAt);
 
   return merged;
 }
