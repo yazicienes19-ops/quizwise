@@ -1,8 +1,10 @@
 import React, { useState, useMemo, useCallback } from 'react';
-import { Pencil, Trash2 } from 'lucide-react';
+import { Pencil, Trash2, Share2 } from 'lucide-react';
 import { ProcessedDocument, ActiveTab, Collection } from '../types';
 import { getAllMeta, saveMeta, deleteMeta, documentDisplayName } from '../services/libraryService';
 import type { SourceMeta } from '../services/libraryService';
+import { shareCollection, toSharedDocSnapshot } from '../services/sharedLibraryService';
+import { toast } from '../services/toast';
 import { SourceCard } from './SourceCard';
 import { useTranslation } from '../i18n/I18nProvider';
 import { SourceDetailPage } from './SourceDetailPage';
@@ -16,6 +18,10 @@ interface LibrarySystemProps {
   collections: Collection[];
   /** Labor-Features (Hausarbeit) im Aktionen-Menü nur für Admins zeigen — siehe config/admin.ts */
   isAdminUser?: boolean;
+  /** Für "Fach teilen" — Empfänger-Kopie braucht den eingeloggten Owner als Absender. */
+  userId?: string;
+  /** Vorname des Teilenden — zeigt die Vorschau-Seite ("{Name} hat ein Fach geteilt"). */
+  userName?: string | null;
   onUpload: (file: File, collectionId?: string, onProgress?: (fraction: number) => void) => Promise<string | null>;
   onDelete: (id: string) => void;
   onRetryAnalysis?: (docId: string) => void;
@@ -56,6 +62,8 @@ export const LibrarySystem: React.FC<LibrarySystemProps> = ({
   documents,
   collections,
   isAdminUser = false,
+  userId,
+  userName,
   onUpload,
   onDelete,
   onRetryAnalysis,
@@ -171,6 +179,34 @@ export const LibrarySystem: React.FC<LibrarySystemProps> = ({
     setActiveColId(newId);
   };
 
+  const [sharingColId, setSharingColId] = useState<string | null>(null);
+
+  const handleShareCollection = async (col: Collection) => {
+    if (!userId) { toast.error(t('slp.loginToShare')); return; }
+    const colDocs = documents.filter(d => d.collectionId === col.id);
+    if (colDocs.length === 0) { toast.error(t('slp.emptyFolder')); return; }
+    // PDF/Bild ohne fertigen Digest lassen sich beim Empfänger nicht nutzen
+    // (kein Storage-Datei-Kopieren, s. sharedLibraryService.ts) — deshalb
+    // beim Teilen bereits herausfiltern statt eine kaputte Kopie zu erzeugen.
+    const shareable = colDocs.filter(d =>
+      d.type === 'text' || d.type === 'docx' || d.digestStatus === 'ready'
+    );
+    const skipped = colDocs.length - shareable.length;
+    if (shareable.length === 0) { toast.error(t('slp.noneReady')); return; }
+
+    setSharingColId(col.id);
+    try {
+      const id = await shareCollection(col.id, col.name, col.emoji, col.color, shareable.map(toSharedDocSnapshot), userId, userName);
+      const url = `${window.location.origin}/shared-library/${id}`;
+      await navigator.clipboard.writeText(url);
+      toast.success(skipped > 0 ? tp('slp.linkCopiedSkipped', skipped) : t('slp.linkCopied'));
+    } catch {
+      toast.error(t('slp.shareFailed'));
+    } finally {
+      setSharingColId(null);
+    }
+  };
+
   const editDoc = editDocId ? documents.find(d => d.id === editDocId) : null;
   const viewerDoc = viewerDocId ? documents.find(d => d.id === viewerDocId) : null;
 
@@ -259,9 +295,19 @@ export const LibrarySystem: React.FC<LibrarySystemProps> = ({
                   className="group relative rounded-[28px] shadow-3d-raised hover:shadow-3d-deep transition-all flex flex-col"
                   style={{ background: 'var(--bg-sidebar)', border: '1px solid var(--border-color)' }}
                 >
-                  {/* Edit / Delete buttons — appear on hover */}
+                  {/* Edit / Share / Delete buttons — appear on hover */}
                   {!isEditing && (
                     <div className="absolute top-4 right-4 flex gap-1 opacity-0 group-hover:opacity-100 transition-opacity z-10">
+                      <button
+                        onClick={e => { e.stopPropagation(); handleShareCollection(col); }}
+                        disabled={sharingColId === col.id}
+                        className="w-8 h-8 rounded-xl flex items-center justify-center bg-white dark:bg-slate-800 shadow text-slate-400 hover:text-emerald-500 transition-colors disabled:opacity-50"
+                        title={t('slp.shareFolder')}
+                      >
+                        {sharingColId === col.id
+                          ? <span className="w-3 h-3 border-2 border-slate-300 border-t-emerald-500 rounded-full animate-spin" />
+                          : <Share2 className="w-3 h-3" strokeWidth={2.5} />}
+                      </button>
                       <button
                         onClick={e => { e.stopPropagation(); setEditColId(col.id); setEditColName(col.name); setEditColEmoji(col.emoji); }}
                         className="w-8 h-8 rounded-xl flex items-center justify-center bg-white dark:bg-slate-800 shadow text-slate-400 hover:text-indigo-500 transition-colors"
@@ -527,6 +573,16 @@ export const LibrarySystem: React.FC<LibrarySystemProps> = ({
                     <div key={col.id} className="group relative">
                       {colBtn(col.id, col.emoji, col.name, documents.filter(d => d.collectionId === col.id).length)}
                       <div className="absolute right-1 top-1/2 -translate-y-1/2 flex gap-0.5 opacity-0 group-hover:opacity-100 transition-opacity z-10">
+                        <button
+                          onClick={() => handleShareCollection(col)}
+                          disabled={sharingColId === col.id}
+                          className="w-6 h-6 rounded-lg flex items-center justify-center bg-white dark:bg-slate-700 shadow text-slate-400 hover:text-emerald-500 transition-colors disabled:opacity-50"
+                          title={t('slp.shareFolder')}
+                        >
+                          {sharingColId === col.id
+                            ? <span className="w-2.5 h-2.5 border-2 border-slate-300 border-t-emerald-500 rounded-full animate-spin" />
+                            : <Share2 className="w-2.5 h-2.5" strokeWidth={2.5} />}
+                        </button>
                         <button
                           onClick={() => { setShowFolderView(true); setEditColId(col.id); setEditColName(col.name); setEditColEmoji(col.emoji); }}
                           className="w-6 h-6 rounded-lg flex items-center justify-center bg-white dark:bg-slate-700 shadow text-slate-400 hover:text-indigo-500 transition-colors"

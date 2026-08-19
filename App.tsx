@@ -11,6 +11,7 @@ import { OnboardingFlow } from './components/onboarding/OnboardingFlow';
 import { isOnboardingDone, markOnboardingDone, cacheOnboardingProfile, getCachedOnboardingProfile } from './components/onboarding/onboardingState';
 import { getRecommendation, buildCombinedRecommendation } from './services/onboardingRecommendation';
 import { SharedDeckPage } from './components/SharedDeckPage';
+import { SharedLibraryPage } from './components/SharedLibraryPage';
 import { LandingPage } from './components/LandingPage';
 import { ErrorBoundary } from './components/ErrorBoundary';
 import { CookieBanner } from './components/CookieBanner';
@@ -269,6 +270,21 @@ const App: React.FC = () => {
             localStorage.setItem('flashcard_decks', JSON.stringify([...stored, deck]));
             window.location.href = '/';
           }}
+        />
+        {auth.showAuthModal && <AuthModal onClose={() => auth.setShowAuthModal(false)} />}
+      </>
+    );
+  }
+
+  const sharedLibraryMatch = window.location.pathname.match(/^\/shared-library\/([a-z0-9]+)$/i);
+  if (sharedLibraryMatch) {
+    return (
+      <>
+        <ToastContainer />
+        <SharedLibraryPage
+          shareId={sharedLibraryMatch[1]}
+          userId={auth.user?.id}
+          onLoginRequired={() => auth.setShowAuthModal(true)}
         />
         {auth.showAuthModal && <AuthModal onClose={() => auth.setShowAuthModal(false)} />}
       </>

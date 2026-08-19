@@ -136,6 +136,11 @@ export const AppContent: React.FC<AppContentProps> = (p) => {
     handleApiError, updateMetricsAfterSession, isDark,
   } = p;
 
+  // Vorname des eingeloggten Nutzers — für die neuen "{Name} hat ein Deck/Fach
+  // mit dir geteilt"-Vorschau-Seiten (SharedDeckPage/SharedLibraryPage), gleiche
+  // Ableitung wie in Dashboard.tsx/Layout.tsx.
+  const userName = user?.user_metadata?.full_name?.trim().split(/\s+/)[0] || user?.email?.split('@')[0] || null;
+
   // Einzelne Frage dauerhaft aus der Fehler-Wiederholung entfernen (User-Fund
   // 2026-08-04: es gab keine UI dafür, obwohl removeMistake() im Service
   // schon existierte — nur nie irgendwo aufgerufen). Baut questions/
@@ -199,6 +204,8 @@ export const AppContent: React.FC<AppContentProps> = (p) => {
       return <LibrarySystem
         documents={documents} collections={collections}
         isAdminUser={isAdmin(user?.id)}
+        userId={user?.id}
+        userName={userName}
         onUpload={handleFileUpload} onDelete={deleteDoc}
         onRetryAnalysis={retryAnalysis}
         onAction={(tab, doc) => {
@@ -494,7 +501,7 @@ export const AppContent: React.FC<AppContentProps> = (p) => {
         availableDocuments={documents} collections={collections}
         onDeleteDoc={deleteDoc}
         onSaveToLibrary={file => handleFileUpload(file)}
-        getDocumentSource={getDocumentSource} userId={user?.id}
+        getDocumentSource={getDocumentSource} userId={user?.id} userName={userName}
         onGenerateQuizFromDeck={async (deck) => {
           setIsLoading(true);
           try {

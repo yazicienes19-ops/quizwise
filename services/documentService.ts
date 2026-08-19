@@ -166,6 +166,13 @@ export const saveDocumentToSupabase = async (
     content_text: contentText,
     upload_date: doc.uploadDate,
     status: 'ready',
+    // Normalerweise setzt erst die asynchrone Backend-Analyse den Digest —
+    // beim Übernehmen eines geteilten Fachs (SharedLibraryPage) bringt das
+    // Dokument seinen Digest aber schon fertig mit (aus dem Snapshot kopiert),
+    // eine erneute KI-Analyse wäre unnötig. In allen anderen Aufrufpfaden ist
+    // doc.digestText hier ohnehin undefined, also ein reines No-Op (null).
+    digest_text: doc.digestText ?? null,
+    digest_status: doc.digestStatus ?? null,
   };
   let { error } = await supabase.from('documents').upsert(row);
   if (error && /mime_type/i.test(error.message)) {

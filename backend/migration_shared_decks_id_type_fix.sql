@@ -1,0 +1,23 @@
+-- ============================================================
+-- QuizWise — Migration: shared_decks.id von uuid auf text ändern
+-- Ausführen in: Supabase → SQL Editor → New Query → Run
+--
+-- ECHTER, vorbestehender Bug (unabhängig vom heutigen Fach-Teilen-Feature
+-- gefunden): shared_decks.id war als `uuid PRIMARY KEY` angelegt, aber
+-- echte Deck-IDs in der App sind IMMER kurze Base36-Strings
+-- (`Math.random().toString(36).substr(2, 9)`, z.B. "3t9cd8dug" — s.
+-- components/FlashcardSystem.tsx), niemals echte UUIDs. Jeder Versuch,
+-- einen Deck-Link zu teilen (ExportDeckModal.tsx "Link teilen"), ist dadurch
+-- seit jeher an einem Postgres-Typfehler gescheitert
+-- ("invalid input syntax for type uuid"), verifiziert per direktem Insert-
+-- Test. Der Fehler wurde bisher nur als stiller "Teilen fehlgeschlagen"-Toast
+-- sichtbar, nie als echte Fehlermeldung geloggt.
+--
+-- Sicher auszuführen: falls die Tabelle bereits Zeilen enthält, sind das
+-- zwangsläufig nur Zeilen, die NIE über die echte App entstanden sein können
+-- (jeder App-Insert wäre am selben Typfehler gescheitert) — z.B. manuell
+-- angelegte Testdaten. USING id::text castet vorhandene echte UUID-Werte
+-- verlustfrei in ihre Text-Darstellung.
+-- ============================================================
+
+ALTER TABLE public.shared_decks ALTER COLUMN id TYPE text USING id::text;

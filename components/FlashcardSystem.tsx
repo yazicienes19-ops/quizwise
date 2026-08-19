@@ -29,6 +29,7 @@ interface FlashcardSystemProps {
   isQuizLoading?: boolean;
   initialDoc?: ProcessedDocument;
   userId?: string;
+  userName?: string | null;
 }
 
 export const FlashcardSystem: React.FC<FlashcardSystemProps> = ({
@@ -41,6 +42,7 @@ export const FlashcardSystem: React.FC<FlashcardSystemProps> = ({
   isQuizLoading = false,
   initialDoc,
   userId,
+  userName,
 }) => {
   const { t } = useTranslation();
   const [decks, setDecks] = useState<FlashcardDeck[]>([]);
@@ -593,6 +595,7 @@ export const FlashcardSystem: React.FC<FlashcardSystemProps> = ({
         <ExportDeckModal
           deck={exportingDeck}
           userId={userId}
+          userName={userName}
           onClose={() => setExportingDeck(null)}
         />
       )}

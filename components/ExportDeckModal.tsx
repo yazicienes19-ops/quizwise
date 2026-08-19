@@ -12,10 +12,12 @@ import { ModalCloseButton } from './ModalCloseButton';
 interface ExportDeckModalProps {
   deck: FlashcardDeck;
   userId?: string;
+  /** Vorname des Teilenden — zeigt die neue Vorschau-Seite ("{Name} hat ein Deck geteilt"). */
+  userName?: string | null;
   onClose: () => void;
 }
 
-export const ExportDeckModal: React.FC<ExportDeckModalProps> = ({ deck, userId, onClose }) => {
+export const ExportDeckModal: React.FC<ExportDeckModalProps> = ({ deck, userId, userName, onClose }) => {
   const { t, tp } = useTranslation();
   const { titleId, dialogProps } = useModalA11y(onClose);
 
@@ -28,7 +30,7 @@ export const ExportDeckModal: React.FC<ExportDeckModalProps> = ({ deck, userId, 
       // shareDeck() upsert't unter derselben id — erneutes Teilen nach
       // Karten-Änderungen aktualisiert den bestehenden Link statt ihn
       // auf dem alten Stand einzufrieren.
-      const id = await shareDeck(deck.id, deck.title, deck.cards, userId);
+      const id = await shareDeck(deck.id, deck.title, deck.cards, userId, userName);
       const url = `${window.location.origin}/shared/${id}`;
       await navigator.clipboard.writeText(url);
       toast.success(t('edm.linkCopied'));
