@@ -16,6 +16,14 @@ export const changePassword = async (newPassword: string): Promise<void> => {
   if (error) throw new Error(error.message);
 };
 
+export const changeEmail = async (newEmail: string): Promise<void> => {
+  // Supabase verschickt je nach Projekt-Einstellung ("Secure email change")
+  // eine Bestätigung an die neue Adresse oder an beide — die alte Adresse
+  // bleibt bis zur Bestätigung aktiv, es gibt also keinen Session-Bruch.
+  const { error } = await supabase.auth.updateUser({ email: newEmail });
+  if (error) throw new Error(error.message);
+};
+
 export const deleteAccount = async (): Promise<void> => {
   const headers = await authHeaders();
   const res = await fetch(`${BACKEND_URL}/api/user/account`, { method: 'DELETE', headers });

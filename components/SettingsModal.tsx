@@ -2,14 +2,14 @@ import React, { useState, useEffect } from 'react';
 import { createPortal } from 'react-dom';
 import {
   X, User, CreditCard, Palette, Key, Check, Loader2, Moon, Sun,
-  Zap, LogOut, AlertTriangle, Download, Trash2, Lock, ExternalLink, Shield, Bell, Compass
+  Zap, LogOut, AlertTriangle, Download, Trash2, Lock, Mail, ExternalLink, Shield, Bell, Compass
 } from 'lucide-react';
 import type { User as SupabaseUser } from '@supabase/supabase-js';
 import { supabase } from '../services/supabaseClient';
 import { fetchUserProfile } from '../services/geminiService';
 import { applyAccentColor } from './ColorPicker';
 import { startCheckout } from '../services/stripeService';
-import { changePassword, deleteAccount, exportUserData, getInvoices, cancelSubscription } from '../services/userService';
+import { changePassword, changeEmail, deleteAccount, exportUserData, getInvoices, cancelSubscription } from '../services/userService';
 import { NotificationSettingsPanel } from './NotificationSettingsPanel';
 import { CancellationConfirmModal } from './CancellationConfirmModal';
 import { WiderrufConsentModal } from './WiderrufConsentModal';
@@ -83,6 +83,10 @@ export const SettingsModal: React.FC<Props> = ({ user, isDark, onToggleTheme, on
   const [name, setName] = useState(user?.user_metadata?.full_name || '');
   const [isSavingName, setIsSavingName] = useState(false);
 
+  // E-Mail
+  const [newEmail, setNewEmail] = useState('');
+  const [isSavingEmail, setIsSavingEmail] = useState(false);
+
   // Passwort
   const [newPw, setNewPw] = useState('');
   const [confirmPw, setConfirmPw] = useState('');
@@ -129,6 +133,19 @@ export const SettingsModal: React.FC<Props> = ({ user, isDark, onToggleTheme, on
     setIsSavingName(false);
     if (error) toast.error(t('settings.name.saveError'));
     else toast.success(t('settings.name.saved'));
+  };
+
+  const handleChangeEmail = async () => {
+    const trimmed = newEmail.trim();
+    if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(trimmed)) return toast.error(t('settings.email.invalid'));
+    if (trimmed.toLowerCase() === (user?.email || '').toLowerCase()) return toast.error(t('settings.email.same'));
+    setIsSavingEmail(true);
+    try {
+      await changeEmail(trimmed);
+      toast.success(t('settings.email.sent'));
+      setNewEmail('');
+    } catch (e: any) { toast.error(e.message || t('settings.email.error')); }
+    finally { setIsSavingEmail(false); }
   };
 
   const handleChangePassword = async () => {
@@ -278,6 +295,25 @@ export const SettingsModal: React.FC<Props> = ({ user, isDark, onToggleTheme, on
                     {t('common.save')}
                   </button>
                 </div>
+              </div>
+
+              {/* E-Mail */}
+              <div className="space-y-3 pt-2" style={{ borderTop: '1px solid var(--border-color)' }}>
+                <p className="text-[10px] font-black uppercase tracking-widest text-slate-400 flex items-center gap-2 pt-2">
+                  <Mail className="w-3.5 h-3.5" strokeWidth={2} /> {t('settings.changeEmail')}
+                </p>
+                <div className="flex flex-col sm:flex-row gap-3">
+                  <input type="email" value={newEmail} onChange={e => setNewEmail(e.target.value)} placeholder={t('settings.newEmailPlaceholder')} onKeyDown={e => e.key === 'Enter' && handleChangeEmail()}
+                    className="flex-1 min-w-0 px-4 py-3 rounded-2xl text-sm dark:text-white placeholder-slate-400 outline-none focus:ring-2 focus:ring-indigo-500/50 transition-all"
+                    style={{ background: 'color-mix(in srgb, var(--border-color) 30%, var(--bg-main))', border: '1px solid var(--border-color)' }} />
+                  <button onClick={handleChangeEmail} disabled={isSavingEmail || !newEmail}
+                    className="px-5 py-3 rounded-2xl text-[11px] font-black uppercase tracking-widest text-white hover:scale-[1.02] disabled:opacity-40 flex items-center justify-center gap-2 shrink-0"
+                    style={{ background: 'var(--primary)' }}>
+                    {isSavingEmail ? <Loader2 className="w-4 h-4 animate-spin" /> : <Mail className="w-4 h-4" strokeWidth={2} />}
+                    {t('settings.saveEmail')}
+                  </button>
+                </div>
+                <p className="text-[10px] text-slate-400">{t('settings.email.hint')}</p>
               </div>
 
               {/* Passwort */}
