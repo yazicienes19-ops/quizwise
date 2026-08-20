@@ -94,6 +94,7 @@ const CONTENT: Record<LegalPage, { title: string; body: React.ReactNode }> = {
             <li><strong>Stripe Inc.</strong>: Zahlungsabwicklung nach PCI-DSS-Standard, Drittlandtransfer gemäß EU-Standardvertragsklauseln. Stripe hat eigene DSGVO-konforme Datenschutzbestimmungen.</li>
             <li><strong>Cloudflare, Inc.</strong>: Hosting und Auslieferung des Frontends. Drittlandtransfer gemäß EU-Standardvertragsklauseln.</li>
             <li><strong>Railway Technologies Inc.</strong>: Hosting des Backends. Drittlandtransfer gemäß EU-Standardvertragsklauseln.</li>
+            <li><strong>Resend, Inc.</strong>: Versand transaktionaler E-Mails (z.B. Kündigungsbestätigung nach § 312k Abs. 4 BGB). Verarbeitet werden dabei E-Mail-Adresse und Vorname. Drittlandtransfer gemäß EU-Standardvertragsklauseln.</li>
           </ul>
         </div>
         <div>

@@ -32,7 +32,7 @@ const AppleIcon: React.FC = () => (
 export const AuthModal: React.FC<AuthModalProps> = ({ onClose, onSuccess }) => {
   const { t } = useTranslation();
   const { titleId, descriptionId, dialogProps } = useModalA11y(onClose);
-  const [mode, setMode] = useState<'login' | 'register'>('login');
+  const [mode, setMode] = useState<'login' | 'register' | 'forgot'>('login');
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [name, setName] = useState('');
@@ -57,6 +57,12 @@ export const AuthModal: React.FC<AuthModalProps> = ({ onClose, onSuccess }) => {
         });
         if (error) throw error;
         setSuccessMsg(t('auth.confirmSent'));
+      } else if (mode === 'forgot') {
+        const { error } = await supabase.auth.resetPasswordForEmail(email, {
+          redirectTo: `${window.location.origin}/reset-password`,
+        });
+        if (error) throw error;
+        setSuccessMsg(t('auth.resetSent'));
       } else {
         const { error } = await supabase.auth.signInWithPassword({ email, password });
         if (error) throw error;
@@ -110,7 +116,7 @@ export const AuthModal: React.FC<AuthModalProps> = ({ onClose, onSuccess }) => {
                 Stude<span style={{ color: 'var(--mark-peak)' }}>Arc</span>
               </h2>
               <p id={descriptionId} className="text-[10px] text-slate-400 font-black uppercase tracking-widest">
-                {mode === 'login' ? t('auth.welcomeBack') : t('auth.createAccount')}
+                {mode === 'login' ? t('auth.welcomeBack') : mode === 'forgot' ? t('auth.resetTitle') : t('auth.createAccount')}
               </p>
             </div>
           </div>
@@ -124,24 +130,28 @@ export const AuthModal: React.FC<AuthModalProps> = ({ onClose, onSuccess }) => {
         </div>
 
         {/* Mode Toggle */}
-        <div className="px-8 pt-6">
-          <div className="flex p-1 rounded-2xl" style={{ background: 'color-mix(in srgb, var(--border-color) 40%, var(--bg-main))' }}>
-            {(['login', 'register'] as const).map(m => (
-              <button
-                key={m}
-                onClick={() => { setMode(m); setError(''); setSuccessMsg(''); }}
-                className="flex-1 py-2.5 rounded-xl text-[10px] font-black uppercase tracking-widest transition-all"
-                style={mode === m
-                  ? { background: 'var(--primary)', color: 'var(--primary-text)', boxShadow: '0 4px 12px color-mix(in srgb, var(--primary) 30%, transparent)' }
-                  : { color: 'var(--text-secondary)' }
-                }
-              >
-                {m === 'login' ? t('auth.login') : t('auth.register')}
-              </button>
-            ))}
+        {mode !== 'forgot' && (
+          <div className="px-8 pt-6">
+            <div className="flex p-1 rounded-2xl" style={{ background: 'color-mix(in srgb, var(--border-color) 40%, var(--bg-main))' }}>
+              {(['login', 'register'] as const).map(m => (
+                <button
+                  key={m}
+                  onClick={() => { setMode(m); setError(''); setSuccessMsg(''); }}
+                  className="flex-1 py-2.5 rounded-xl text-[10px] font-black uppercase tracking-widest transition-all"
+                  style={mode === m
+                    ? { background: 'var(--primary)', color: 'var(--primary-text)', boxShadow: '0 4px 12px color-mix(in srgb, var(--primary) 30%, transparent)' }
+                    : { color: 'var(--text-secondary)' }
+                  }
+                >
+                  {m === 'login' ? t('auth.login') : t('auth.register')}
+                </button>
+              ))}
+            </div>
           </div>
-        </div>
+        )}
 
+        {mode !== 'forgot' && (
+        <>
         {/* OAuth */}
         <div className="px-8 pt-6 space-y-2.5">
           <button
@@ -171,6 +181,8 @@ export const AuthModal: React.FC<AuthModalProps> = ({ onClose, onSuccess }) => {
           <span className="text-[10px] font-black uppercase tracking-widest text-slate-400">{t('auth.orDivider')}</span>
           <div className="flex-1 h-px" style={{ background: 'var(--border-color)' }} />
         </div>
+        </>
+        )}
 
         {/* Form */}
         <form onSubmit={handleSubmit} className="p-8 pt-5 space-y-4">
@@ -208,6 +220,7 @@ export const AuthModal: React.FC<AuthModalProps> = ({ onClose, onSuccess }) => {
             </div>
           </div>
 
+          {mode !== 'forgot' && (
           <div className="space-y-1.5">
             <label className="text-[10px] font-black uppercase tracking-widest text-slate-400">{t('auth.password')}</label>
             <div className="relative">
@@ -224,6 +237,20 @@ export const AuthModal: React.FC<AuthModalProps> = ({ onClose, onSuccess }) => {
               />
             </div>
           </div>
+          )}
+
+          {mode === 'login' && (
+            <div className="flex justify-end -mt-2">
+              <button
+                type="button"
+                onClick={() => { setMode('forgot'); setError(''); setSuccessMsg(''); }}
+                className="text-[11px] font-bold hover:underline"
+                style={{ color: 'var(--text-secondary)' }}
+              >
+                {t('auth.forgotPassword')}
+              </button>
+            </div>
+          )}
 
           {error && (
             <div className="p-3 bg-rose-50 dark:bg-rose-950/20 rounded-2xl border border-rose-100 dark:border-rose-900/30">
@@ -245,9 +272,22 @@ export const AuthModal: React.FC<AuthModalProps> = ({ onClose, onSuccess }) => {
           >
             {isLoading
               ? <><BrandSpinner size={16} strokeColor="var(--primary-text)" peakColor="var(--primary-text)" /> {t('auth.pleaseWait')}</>
-              : mode === 'login' ? t('auth.login') : t('auth.createAccount')
+              : mode === 'login' ? t('auth.login') : mode === 'forgot' ? t('auth.sendResetLink') : t('auth.createAccount')
             }
           </button>
+
+          {mode === 'forgot' && (
+            <p className="text-center">
+              <button
+                type="button"
+                onClick={() => { setMode('login'); setError(''); setSuccessMsg(''); }}
+                className="text-[11px] font-bold hover:underline"
+                style={{ color: 'var(--text-secondary)' }}
+              >
+                {t('auth.backToLogin')}
+              </button>
+            </p>
+          )}
 
           {mode === 'register' && (
             <p className="text-center text-[10px] text-slate-400 leading-relaxed">

@@ -12,6 +12,7 @@ import { isOnboardingDone, markOnboardingDone, cacheOnboardingProfile, getCached
 import { getRecommendation, buildCombinedRecommendation } from './services/onboardingRecommendation';
 import { SharedDeckPage } from './components/SharedDeckPage';
 import { SharedLibraryPage } from './components/SharedLibraryPage';
+import { ResetPasswordPage } from './components/ResetPasswordPage';
 import { LandingPage } from './components/LandingPage';
 import { ErrorBoundary } from './components/ErrorBoundary';
 import { CookieBanner } from './components/CookieBanner';
@@ -287,6 +288,15 @@ const App: React.FC = () => {
           onLoginRequired={() => auth.setShowAuthModal(true)}
         />
         {auth.showAuthModal && <AuthModal onClose={() => auth.setShowAuthModal(false)} />}
+      </>
+    );
+  }
+
+  if (window.location.pathname === '/reset-password') {
+    return (
+      <>
+        <ToastContainer />
+        <ResetPasswordPage authChecked={auth.authChecked} userId={auth.user?.id} />
       </>
     );
   }

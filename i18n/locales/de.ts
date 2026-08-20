@@ -398,6 +398,26 @@ export const de = {
   'auth.continueWithApple': 'Mit Apple fortfahren',
   'auth.orDivider': 'oder',
   'auth.errOAuth': 'Anmeldung fehlgeschlagen. Bitte versuche es erneut.',
+  'auth.forgotPassword': 'Passwort vergessen?',
+  'auth.resetTitle': 'Passwort zurücksetzen',
+  'auth.sendResetLink': 'Link zum Zurücksetzen senden',
+  'auth.resetSent': 'Falls diese E-Mail registriert ist, haben wir dir einen Link zum Zurücksetzen geschickt.',
+  'auth.backToLogin': 'Zurück zum Login',
+
+  // reset-password (öffentliche Landeseite für den Supabase-Recovery-Link)
+  'rpp.checking': 'Link wird geprüft...',
+  'rpp.invalidTitle': 'Link ungültig oder abgelaufen',
+  'rpp.invalidText': 'Fordere über "Passwort vergessen?" beim Einloggen einen neuen Link an.',
+  'rpp.backToApp': 'Zur App',
+  'rpp.title': 'Neues Passwort festlegen',
+  'rpp.subtitle': 'Wähle ein neues Passwort für dein Konto.',
+  'rpp.newPassword': 'Neues Passwort',
+  'rpp.confirmPassword': 'Passwort bestätigen',
+  'rpp.mismatch': 'Passwörter stimmen nicht überein.',
+  'rpp.genericError': 'Passwort konnte nicht geändert werden.',
+  'rpp.submit': 'Passwort speichern',
+  'rpp.success': 'Passwort erfolgreich geändert.',
+  'rpp.continueToApp': 'Weiter zur App',
 
   // settings (nur die Sprach-Sektion; restliche Settings-Strings folgen in einem späteren Batch)
   'settings.language.title': 'Sprache',

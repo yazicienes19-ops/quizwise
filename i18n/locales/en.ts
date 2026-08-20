@@ -397,6 +397,26 @@ export const en: Translations = {
   'auth.continueWithApple': 'Continue with Apple',
   'auth.orDivider': 'or',
   'auth.errOAuth': 'Login failed. Please try again.',
+  'auth.forgotPassword': 'Forgot password?',
+  'auth.resetTitle': 'Reset password',
+  'auth.sendResetLink': 'Send reset link',
+  'auth.resetSent': 'If this email is registered, we sent a reset link to it.',
+  'auth.backToLogin': 'Back to login',
+
+  // reset-password (public landing page for the Supabase recovery link)
+  'rpp.checking': 'Checking link...',
+  'rpp.invalidTitle': 'Link invalid or expired',
+  'rpp.invalidText': 'Request a new link via "Forgot password?" on the login screen.',
+  'rpp.backToApp': 'Go to app',
+  'rpp.title': 'Set a new password',
+  'rpp.subtitle': 'Choose a new password for your account.',
+  'rpp.newPassword': 'New password',
+  'rpp.confirmPassword': 'Confirm password',
+  'rpp.mismatch': 'Passwords do not match.',
+  'rpp.genericError': 'Could not change password.',
+  'rpp.submit': 'Save password',
+  'rpp.success': 'Password changed successfully.',
+  'rpp.continueToApp': 'Continue to app',
 
   // settings (nur die Sprach-Sektion; restliche Settings-Strings folgen in einem späteren Batch)
   'settings.language.title': 'Language',

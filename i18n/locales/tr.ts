@@ -396,6 +396,26 @@ export const tr: Translations = {
   'auth.continueWithApple': 'Apple ile devam et',
   'auth.orDivider': 'veya',
   'auth.errOAuth': 'Giriş başarısız. Lütfen tekrar dene.',
+  'auth.forgotPassword': 'Şifreni mi unuttun?',
+  'auth.resetTitle': 'Şifreyi sıfırla',
+  'auth.sendResetLink': 'Sıfırlama bağlantısı gönder',
+  'auth.resetSent': 'Bu e-posta kayıtlıysa, sıfırlama bağlantısını gönderdik.',
+  'auth.backToLogin': 'Girişe dön',
+
+  // reset-password (Supabase kurtarma bağlantısının açıldığı genel sayfa)
+  'rpp.checking': 'Bağlantı kontrol ediliyor...',
+  'rpp.invalidTitle': 'Bağlantı geçersiz veya süresi dolmuş',
+  'rpp.invalidText': 'Giriş ekranında "Şifreni mi unuttun?" ile yeni bir bağlantı iste.',
+  'rpp.backToApp': 'Uygulamaya git',
+  'rpp.title': 'Yeni şifre belirle',
+  'rpp.subtitle': 'Hesabın için yeni bir şifre seç.',
+  'rpp.newPassword': 'Yeni şifre',
+  'rpp.confirmPassword': 'Şifreyi onayla',
+  'rpp.mismatch': 'Şifreler eşleşmiyor.',
+  'rpp.genericError': 'Şifre değiştirilemedi.',
+  'rpp.submit': 'Şifreyi kaydet',
+  'rpp.success': 'Şifre başarıyla değiştirildi.',
+  'rpp.continueToApp': 'Uygulamaya devam et',
 
   // settings
   'settings.language.title': 'Dil',
