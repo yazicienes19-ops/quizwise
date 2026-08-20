@@ -113,11 +113,16 @@ export const LibrarySystem: React.FC<LibrarySystemProps> = ({
       const q = search.toLowerCase();
       list = list.filter(d => {
         const meta = allMeta[d.id] ?? {};
+        // content ist bei PDF/Bild base64 (keine Volltextsuche sinnvoll), nur bei
+        // text/docx tatsächlich extrahierter Text — digestText deckt PDFs/Bilder ab.
+        const contentMatch = (d.type === 'text' || d.type === 'docx') && d.content.toLowerCase().includes(q);
         return (
           d.name.toLowerCase().includes(q) ||
           meta.displayTitle?.toLowerCase().includes(q) ||
           meta.module?.toLowerCase().includes(q) ||
-          meta.tags?.some(t => t.toLowerCase().includes(q))
+          meta.tags?.some(t => t.toLowerCase().includes(q)) ||
+          contentMatch ||
+          d.digestText?.toLowerCase().includes(q)
         );
       });
     }
