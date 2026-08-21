@@ -54,6 +54,10 @@ const callBackend = async (payload: {
   parts: any[];
   systemInstruction?: string;
   complexity?: 'light' | 'heavy';
+  /** B+-Free-Tier-Regel: Klausur-Workflow-Calls bekommen die Tages-Garantie
+   *  (1 komplette Simulation/Tag auch bei erschöpftem Limit, s. Migration
+   *  exam_guarantee). Nur die 3 Klausur-Funktionen setzen dieses Flag. */
+  examWorkflow?: boolean;
   config?: {
     responseMimeType?: string;
     responseSchema?: any;
@@ -1534,6 +1538,7 @@ ALLGEMEINE REGELN:
 
   const text = await callBackend({
     complexity: 'heavy',
+    examWorkflow: true,
     parts,
     config: {
       temperature: 1.0,
@@ -1597,6 +1602,7 @@ const classifyBloomLevelsOnce = async (
 ): Promise<{ id: string; bloomLevel?: BloomLevel }[]> => {
   const text = await callBackend({
     complexity: 'heavy',
+    examWorkflow: true,
     parts: [{
       text: `Du bist ein unabhängiger Prüfungsgutachter. Du hast die folgenden Prüfungsfragen NICHT selbst verfasst — du bekommst sie nur zur nachträglichen Einstufung vorgelegt.
 
@@ -1721,6 +1727,7 @@ const evaluateWithRubricOnce = async (
 
   const text = await callBackend({
     complexity: 'heavy',
+    examWorkflow: true,
     parts: [{
       text: `Du bist ein fairer Hochschulprüfer der eine Klausur korrigiert.
 

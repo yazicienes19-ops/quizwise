@@ -6,6 +6,9 @@ const checkUsageLimit = async (req, res, next) => {
   const { data, error } = await sb.rpc('check_and_increment_api_calls', {
     p_user_id: userId,
     p_today:   today,
+    // B+-Regel: Klausur-Workflow-Calls dürfen das Tageslimit einmal pro Tag
+    // überschreiten (Migration exam_guarantee, siehe migration_exam_guarantee.sql).
+    p_exam_workflow: req.body?.examWorkflow === true,
   });
 
   if (error) {

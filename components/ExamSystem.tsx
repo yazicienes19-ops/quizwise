@@ -371,6 +371,31 @@ export const ExamSystem: React.FC<ExamSystemProps> = ({ documents, collections, 
         </div>
       </div>
 
+      {/* Wissensnetz-Brücke: Nach der Klausur die schwachen Themen nicht nur
+          listen, sondern aktiv ins Wissensnetz tragen — der Graph wird aus
+          dem Lernkontext gefüttert statt auf Entdeckung zu warten. */}
+      {mode === 'result' && onNavigate && (() => {
+        const weak = examAnalysis?.topicPerformance.filter(tp => tp.score < 60).slice(0, 3) ?? [];
+        if (weak.length === 0) return null;
+        return (
+          <button
+            onClick={() => onNavigate(ActiveTab.KNOWLEDGE_GRAPH)}
+            className="w-full flex items-center justify-between gap-4 px-6 py-4 rounded-[20px] text-left transition-transform hover:scale-[1.01]"
+            style={{ background: 'color-mix(in srgb, var(--primary) 8%, transparent)', border: '1px dashed color-mix(in srgb, var(--primary) 40%, transparent)' }}
+          >
+            <span className="min-w-0">
+              <span className="block text-[9px] font-black uppercase tracking-widest" style={{ color: 'var(--primary)' }}>{t('es.graphBridge.title')}</span>
+              <span className="block text-[12px] font-bold mt-0.5 truncate" style={{ color: 'var(--text-main)' }}>
+                {t('es.graphBridge.text', { topics: weak.map(w => w.topic).join(', ') })}
+              </span>
+            </span>
+            <span className="text-[9px] font-black uppercase tracking-widest px-3 py-2 rounded-xl shrink-0" style={{ background: 'var(--primary)', color: 'var(--primary-text)' }}>
+              {t('es.graphBridge.cta')}
+            </span>
+          </button>
+        );
+      })()}
+
       <ExamView
         questions={questions}
         mode={mode}
