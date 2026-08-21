@@ -13,6 +13,7 @@ import { changePassword, changeEmail, deleteAccount, exportUserData, getInvoices
 import { NotificationSettingsPanel } from './NotificationSettingsPanel';
 import { CancellationConfirmModal } from './CancellationConfirmModal';
 import { WiderrufConsentModal } from './WiderrufConsentModal';
+import { setFunctionalPref } from '../services/cookieConsent';
 import { toast } from '../services/toast';
 import { useTranslation } from '../i18n/I18nProvider';
 import { formatDate } from '../i18n/dates';
@@ -49,13 +50,13 @@ function applyFont(fontId: string, userId?: string | null) {
   const font = FONTS.find(f => f.id === fontId);
   if (!font) return;
   document.documentElement.style.setProperty('--font-app', font.stack);
-  localStorage.setItem('font_choice', fontId);
+  setFunctionalPref('font_choice', fontId);
   if (userId) import('../services/syncService').then(({ syncPreferences }) => syncPreferences(userId, { font_choice: fontId })).catch(() => {});
 }
 
 function applyLineHeight(lh: string, userId?: string | null) {
   document.documentElement.style.setProperty('--line-height-app', lh);
-  localStorage.setItem('line_height', lh);
+  setFunctionalPref('line_height', lh);
   if (userId) import('../services/syncService').then(({ syncPreferences }) => syncPreferences(userId, { line_height: lh })).catch(() => {});
 }
 

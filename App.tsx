@@ -16,7 +16,9 @@ import { ResetPasswordPage } from './components/ResetPasswordPage';
 import { LandingPage } from './components/LandingPage';
 import { ErrorBoundary } from './components/ErrorBoundary';
 import { CookieBanner } from './components/CookieBanner';
+import { CookieSettingsModal } from './components/CookieSettingsModal';
 import { LegalModal } from './components/LegalModal';
+import { hasDecided, setCookieConsent as saveCookieConsent } from './services/cookieConsent';
 import { resolveErrorMessage } from './services/errorMessages';
 import { getStreak } from './services/streakService';
 import { orchestrateLearningFlow } from './services/geminiService';
@@ -87,7 +89,8 @@ const App: React.FC = () => {
   const [savedSources, setSavedSources] = useState<SearchResult[]>([]);
   const [isSearching, setIsSearching] = useState(false);
   const [streakDismissed, setStreakDismissed] = useState(false);
-  const [cookieConsent, setCookieConsent] = useState(() => !!localStorage.getItem('cookie_consent'));
+  const [cookieConsent, setCookieConsent] = useState(() => hasDecided());
+  const [showCookieSettings, setShowCookieSettings] = useState(false);
   const [legalPage, setLegalPage] = useState<'impressum' | 'datenschutz' | 'agb' | null>(null);
 
   useEffect(() => {
@@ -306,14 +309,16 @@ const App: React.FC = () => {
   if (!auth.user) return (
     <>
       <ToastContainer />
-      <LandingPage onAuthClick={() => auth.setShowAuthModal(true)} onLegalClick={setLegalPage} />
+      <LandingPage onAuthClick={() => auth.setShowAuthModal(true)} onLegalClick={setLegalPage} onCookieSettingsClick={() => setShowCookieSettings(true)} />
       {auth.showAuthModal && <AuthModal onClose={() => auth.setShowAuthModal(false)} />}
       {!cookieConsent && !auth.showAuthModal && <CookieBanner
-        onAccept={() => { setCookieConsent(true); localStorage.setItem('cookie_consent', 'accepted'); }}
-        onDecline={() => { setCookieConsent(true); localStorage.setItem('cookie_consent', 'declined'); }}
+        onAccept={() => { saveCookieConsent({ functional: true, analytics: true }); setCookieConsent(true); }}
+        onDecline={() => { saveCookieConsent({ functional: false, analytics: false }); setCookieConsent(true); }}
         onShowPrivacy={() => setLegalPage('datenschutz')}
+        onShowSettings={() => setShowCookieSettings(true)}
       />}
       {legalPage && <LegalModal page={legalPage} onClose={() => setLegalPage(null)} />}
+      {showCookieSettings && <CookieSettingsModal onClose={() => { setShowCookieSettings(false); setCookieConsent(true); }} onShowPrivacy={() => setLegalPage('datenschutz')} />}
     </>
   );
 
@@ -430,11 +435,13 @@ const App: React.FC = () => {
         </ErrorBoundary>
       </Layout>
       {!cookieConsent && !auth.showAuthModal && !showOnboarding && !showTourReplay && <CookieBanner
-        onAccept={() => { setCookieConsent(true); localStorage.setItem('cookie_consent', 'accepted'); }}
-        onDecline={() => { setCookieConsent(true); localStorage.setItem('cookie_consent', 'declined'); }}
+        onAccept={() => { saveCookieConsent({ functional: true, analytics: true }); setCookieConsent(true); }}
+        onDecline={() => { saveCookieConsent({ functional: false, analytics: false }); setCookieConsent(true); }}
         onShowPrivacy={() => setLegalPage('datenschutz')}
+        onShowSettings={() => setShowCookieSettings(true)}
       />}
       {legalPage && <LegalModal page={legalPage} onClose={() => setLegalPage(null)} />}
+      {showCookieSettings && <CookieSettingsModal onClose={() => { setShowCookieSettings(false); setCookieConsent(true); }} onShowPrivacy={() => setLegalPage('datenschutz')} />}
     </>
   );
 };

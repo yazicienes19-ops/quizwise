@@ -15,6 +15,7 @@ import type { User } from '@supabase/supabase-js';
 import { ColorPicker } from './ColorPicker';
 import { ApiKeySettings } from './ApiKeySettings';
 import { LegalModal } from './LegalModal';
+import { CookieSettingsModal } from './CookieSettingsModal';
 import { NAV_GROUPS, LABOR_GROUP } from './navConfig';
 import { BrandMark } from './BrandMark';
 import { isAdmin } from '../config/admin';
@@ -81,6 +82,7 @@ export const Layout: React.FC<LayoutProps> = ({
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
   const [showApiSettings, setShowApiSettings] = useState(false);
   const [legalPage, setLegalPage] = useState<'impressum' | 'datenschutz' | 'agb' | null>(null);
+  const [showCookieSettings, setShowCookieSettings] = useState(false);
   // Nur die breite Desktop-Sidebar (≥1024px) betroffen — Tablet-Icon-Leiste und
   // Mobile-Menü bleiben unverändert, dort ist Platz ohnehin schon knapp bemessen.
   const [sidebarCollapsed, setSidebarCollapsed] = usePersistentState('studearc_sidebar_collapsed', false);
@@ -389,7 +391,7 @@ export const Layout: React.FC<LayoutProps> = ({
                 {t('layout.settings')}
               </span>
             </button>
-            <div className="flex justify-center gap-3 pt-2">
+            <div className="flex justify-center gap-3 pt-2 flex-wrap">
               {(['impressum', 'datenschutz', 'agb'] as const).map(p => (
                 <button
                   key={p}
@@ -400,6 +402,13 @@ export const Layout: React.FC<LayoutProps> = ({
                   {p === 'impressum' ? t('legal.imprint') : p === 'datenschutz' ? t('legal.privacy') : t('legal.terms')}
                 </button>
               ))}
+              <button
+                onClick={() => setShowCookieSettings(true)}
+                className="text-[9px] font-bold uppercase tracking-widest transition-colors"
+                style={{ color: SIDEBAR.textMuted }}
+              >
+                {t('cookie.settingsLink')}
+              </button>
             </div>
           </div>
         </div>
@@ -662,7 +671,7 @@ export const Layout: React.FC<LayoutProps> = ({
               )}
 
               {/* Legal */}
-              <div className="flex justify-center gap-4 pt-1">
+              <div className="flex justify-center gap-4 pt-1 flex-wrap">
                 {(['impressum', 'datenschutz', 'agb'] as const).map(p => (
                   <button
                     key={p}
@@ -672,6 +681,12 @@ export const Layout: React.FC<LayoutProps> = ({
                     {p === 'impressum' ? t('legal.imprint') : p === 'datenschutz' ? t('legal.privacy') : t('legal.terms')}
                   </button>
                 ))}
+                <button
+                  onClick={() => { setIsMobileMenuOpen(false); setShowCookieSettings(true); }}
+                  className="text-[9px] font-bold uppercase tracking-widest text-slate-400 hover:text-slate-600 dark:hover:text-slate-300 transition-colors"
+                >
+                  {t('cookie.settingsLink')}
+                </button>
               </div>
             </div>
           </div>
@@ -693,6 +708,9 @@ export const Layout: React.FC<LayoutProps> = ({
       )}
       {legalPage && (
         <LegalModal page={legalPage} onClose={() => setLegalPage(null)} />
+      )}
+      {showCookieSettings && (
+        <CookieSettingsModal onClose={() => setShowCookieSettings(false)} onShowPrivacy={() => setLegalPage('datenschutz')} />
       )}
 
     </div>

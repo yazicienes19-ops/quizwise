@@ -5,9 +5,10 @@ interface CookieBannerProps {
   onAccept: () => void;
   onDecline: () => void;
   onShowPrivacy: () => void;
+  onShowSettings: () => void;
 }
 
-export const CookieBanner: React.FC<CookieBannerProps> = ({ onAccept, onDecline, onShowPrivacy }) => {
+export const CookieBanner: React.FC<CookieBannerProps> = ({ onAccept, onDecline, onShowPrivacy, onShowSettings }) => {
   const { t } = useTranslation();
   return (
   <div className="fixed bottom-0 left-0 right-0 z-[9999] p-4 md:p-6 animate-in fade-in duration-500">
@@ -26,7 +27,14 @@ export const CookieBanner: React.FC<CookieBannerProps> = ({ onAccept, onDecline,
           </button>
         </p>
       </div>
-      <div className="flex items-center gap-2 shrink-0">
+      <div className="flex items-center gap-2 shrink-0 flex-wrap">
+        <button
+          onClick={onShowSettings}
+          className="px-4 py-2.5 rounded-xl text-[10px] font-black uppercase tracking-widest hover:scale-105 transition-transform"
+          style={{ color: 'var(--text-main)', background: 'var(--border-color)' }}
+        >
+          {t('cookie.adjust')}
+        </button>
         <button
           onClick={onDecline}
           className="px-4 py-2.5 rounded-xl text-[10px] font-black uppercase tracking-widest hover:scale-105 transition-transform"

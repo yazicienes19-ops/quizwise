@@ -2,6 +2,7 @@
 import React, { useState } from 'react';
 import { Palette, Check } from 'lucide-react';
 import { useTranslation } from '../i18n/I18nProvider';
+import { setFunctionalPref } from '../services/cookieConsent';
 
 const PRESETS = [
   { name: 'StudeArc Gold', value: '#D9A94E' },
@@ -23,7 +24,7 @@ export function applyAccentColor(color: string) {
     const lum = (0.299 * r + 0.587 * g + 0.114 * b) / 255;
     document.documentElement.style.setProperty('--primary-text', lum > 0.52 ? '#1a1a2e' : '#ffffff');
   }
-  localStorage.setItem('accent_color', color);
+  setFunctionalPref('accent_color', color);
 }
 
 export const ColorPicker: React.FC = () => {

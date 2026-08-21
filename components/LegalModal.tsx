@@ -111,11 +111,29 @@ const CONTENT: Record<LegalPage, { title: string; body: React.ReactNode }> = {
         <div>
           <p className="font-bold text-slate-900 dark:text-white">7. Cookies & lokale Speicherung</p>
           <p>
-            StudeArc verwendet ausschließlich technisch notwendige Cookies für die Authentifizierung
-            (Supabase Session). Darüber hinaus werden Nutzerdaten (Dokumente, Einstellungen)
-            im lokalen Speicher des Browsers (localStorage) gespeichert. Eine Einwilligung nach
-            § 25 TDDDG ist nicht erforderlich, da es sich um technisch notwendige Speicherungen handelt.
+            StudeArc unterscheidet drei Kategorien lokaler Speicherung, über die du beim ersten
+            Besuch sowie jederzeit über den Link „Cookie-Einstellungen" entscheiden kannst:
           </p>
+          <ul className="list-disc pl-4 mt-1 space-y-1">
+            <li>
+              <strong>Essenziell</strong> (immer aktiv): das Supabase-Session-Cookie für die
+              Authentifizierung sowie lokal gespeicherte Kernfunktionen wie deine hochgeladenen
+              Dokumente und Bibliothek. Für diese Speicherung ist gemäß § 25 Abs. 2 TDDDG keine
+              Einwilligung erforderlich, da sie zur Erbringung des von dir ausdrücklich gewünschten
+              Dienstes zwingend notwendig ist.
+            </li>
+            <li>
+              <strong>Funktional</strong> (optional): Komfort-Einstellungen wie Design, Schriftart,
+              Sprache und Benachrichtigungspräferenzen. Ohne deine Zustimmung werden diese
+              Einstellungen nicht dauerhaft gespeichert.
+            </li>
+            <li>
+              <strong>Analyse</strong> (optional): aktuell nicht im Einsatz. StudeArc setzt derzeit
+              keine Analyse- oder Statistik-Werkzeuge ein; die Kategorie ist für mögliche künftige
+              Funktionen vorgesehen und wird erst nach einer entsprechenden Aktualisierung dieser
+              Datenschutzerklärung tatsächlich genutzt.
+            </li>
+          </ul>
         </div>
       </div>
     ),

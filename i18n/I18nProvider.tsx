@@ -1,5 +1,6 @@
 import React, { createContext, useContext, useState, useEffect, useCallback } from 'react';
 import { Locale, getLocale, setLocale, localeTag, t, tp, _registerListener } from './index';
+import { setFunctionalPref } from '../services/cookieConsent';
 
 interface I18nContextValue {
   locale: Locale;
@@ -22,7 +23,7 @@ export const I18nProvider: React.FC<{ children: React.ReactNode }> = ({ children
   }, []);
 
   const changeLocale = useCallback((l: Locale, userId?: string | null) => {
-    localStorage.setItem('studearc_language', l);
+    setFunctionalPref('studearc_language', l);
     setLocale(l); // benachrichtigt den Listener → setLocaleState
     if (userId) {
       import('../services/syncService')
