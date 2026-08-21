@@ -1,6 +1,24 @@
 import { supabase } from './supabaseClient';
 import type { TopicMetric, OnboardingProfile } from '../types';
 
+/** Wie STREAK_UPDATED_EVENT: App hört darauf und zeigt einen Hinweis, dass
+ *  der Cloud-Sync gerade nicht erreichbar ist (Daten bleiben lokal). */
+export const SYNC_DEGRADED_EVENT = 'studearc-sync-degraded';
+
+// 3 Syncs in Folge fehlgeschlagen → einmalig Event feuern. Ein einzelner
+// Fehlschlag (kurz offline, Supabase-Hickser) soll niemanden beunruhigen.
+let consecutiveSyncFailures = 0;
+const noteSyncOutcome = (failed: boolean): void => {
+  if (failed) {
+    consecutiveSyncFailures += 1;
+    if (consecutiveSyncFailures === 3) {
+      try { window.dispatchEvent(new CustomEvent(SYNC_DEGRADED_EVENT)); } catch {}
+    }
+  } else {
+    consecutiveSyncFailures = 0;
+  }
+};
+
 export interface CloudLearningData {
   streak: { current: number; best: number; lastDay: string | null };
   exam_terms: any[];
@@ -121,14 +139,14 @@ export function syncLearningField(userId: string, field: keyof CloudLearningData
   supabase
     .from('user_learning_data')
     .upsert({ user_id: userId, [field]: value, updated_at: new Date().toISOString() }, { onConflict: 'user_id' })
-    .then(({ error }) => { if (error) console.error('syncLearningField:', error.message); });
+    .then(({ error }) => { noteSyncOutcome(!!error); if (error) console.error('syncLearningField:', error.message); });
 }
 
 export function syncSavedField(userId: string, field: keyof CloudSavedContent, value: any): void {
   supabase
     .from('user_saved_content')
     .upsert({ user_id: userId, [field]: value, updated_at: new Date().toISOString() }, { onConflict: 'user_id' })
-    .then(({ error }) => { if (error) console.error('syncSavedField:', error.message); });
+    .then(({ error }) => { noteSyncOutcome(!!error); if (error) console.error('syncSavedField:', error.message); });
 }
 
 export function syncPreferences(userId: string, prefs: Partial<CloudPreferences>): void {
@@ -137,10 +155,12 @@ export function syncPreferences(userId: string, prefs: Partial<CloudPreferences>
     .select('preferences')
     .eq('id', userId)
     .single()
-    .then(({ data }) => {
-      const merged = { ...(data?.preferences || {}), ...prefs };
+    .then(({ data, error }) => {
+      noteSyncOutcome(!!error);
+      if (error || !data) return;
+      const merged = { ...(data.preferences || {}), ...prefs };
       supabase.from('profiles').update({ preferences: merged }).eq('id', userId)
-        .then(({ error }) => { if (error) console.error('syncPreferences:', error.message); });
+        .then(({ error }) => { noteSyncOutcome(!!error); if (error) console.error('syncPreferences:', error.message); });
     });
 }
 
@@ -158,11 +178,12 @@ export function syncMetrics(userId: string, metrics: TopicMetric[]): void {
   }));
   supabase.from('metrics').upsert(rows, { onConflict: 'user_id,topic' })
     .then(({ error }) => {
+      noteSyncOutcome(!!error);
       if (error && /sub_scores/i.test(error.message)) {
         // Ältere DB ohne sub_scores-Spalte: ohne das Feld erneut versuchen
         const withoutSubScores = rows.map(({ sub_scores, ...rest }) => rest);
         supabase.from('metrics').upsert(withoutSubScores, { onConflict: 'user_id,topic' })
-          .then(({ error: retryError }) => { if (retryError) console.error('syncMetrics:', retryError.message); });
+          .then(({ error: retryError }) => { noteSyncOutcome(!!retryError); if (retryError) console.error('syncMetrics:', retryError.message); });
       } else if (error) {
         console.error('syncMetrics:', error.message);
       }

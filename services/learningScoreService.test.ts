@@ -44,20 +44,21 @@ describe('buildLearningScore', () => {
     expect(score.dimensions[0].score).toBe(70);
   });
 
-  it('Wissen behalten: null unter 10 etablierten Karten; Anteil stabiler Intervalle + Streak-Bonus, Cap 100', () => {
+  it('Wissen behalten: null unter 10 etablierten Karten; Anteil stabiler Intervalle OHNE Streak-Bonus', () => {
     const fewCards: FlashcardDeck[] = [{ id: 'd', title: 'T', cards: Array.from({ length: 5 }, () => mkCard(10, 2)) }];
     expect(buildLearningScore({ ...emptyInput, decks: fewCards }).dimensions[1].score).toBeNull();
 
-    // 10 etablierte Karten, alle interval >= 7 → 100% + Bonus, Cap 100
+    // 10 etablierte Karten, alle interval >= 7 → 100%, Streak darf nichts aufaddieren
     const stable: FlashcardDeck[] = [{ id: 'd', title: 'T', cards: Array.from({ length: 10 }, () => mkCard(10, 2)) }];
     expect(buildLearningScore({ ...emptyInput, decks: stable, streakCurrent: 30 }).dimensions[1].score).toBe(100);
 
-    // Hälfte stabil, Streak 4 → 50 + 4
+    // Hälfte stabil → exakt 50, unabhängig vom Streak (Aktivität ≠ Wissen)
     const mixed: FlashcardDeck[] = [{
       id: 'd', title: 'T',
       cards: [...Array.from({ length: 5 }, () => mkCard(10, 2)), ...Array.from({ length: 5 }, () => mkCard(2, 1))],
     }];
-    expect(buildLearningScore({ ...emptyInput, decks: mixed, streakCurrent: 4 }).dimensions[1].score).toBe(54);
+    expect(buildLearningScore({ ...emptyInput, decks: mixed, streakCurrent: 4 }).dimensions[1].score).toBe(50);
+    expect(buildLearningScore({ ...emptyInput, decks: mixed, streakCurrent: 0 }).dimensions[1].score).toBe(50);
   });
 
   it('Karten ohne srs oder ohne Wiederholungen zählen nicht als etabliert', () => {

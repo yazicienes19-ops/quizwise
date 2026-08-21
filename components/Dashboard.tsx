@@ -119,6 +119,22 @@ export const Dashboard: React.FC<DashboardProps> = ({
     [quizResults, examResults, recallResults, metrics, scopedDecks, streak.current],
   );
 
+  // Transparenz hinter dem Prozentwert: Woraus er sich überhaupt speist.
+  // Ein "72%" aus 2 Sessions ist etwas anderes als eines aus 20 — ohne diese
+  // Zeile trägt die Zahl Scheingenauigkeit mit sich herum.
+  const learnedCardsCount = useMemo(
+    () => scopedDecks.reduce((sum, d) => sum + d.cards.filter(c => c.srs && c.srs.repetitions > 0).length, 0),
+    [scopedDecks],
+  );
+  const scoreBasisLine = learningScore.overall != null
+    ? t('dashboardV2.progress.basis', {
+        quiz: quizResults.length,
+        exam: examResults.length,
+        recall: recallResults.length,
+        cards: learnedCardsCount,
+      })
+    : null;
+
   const weiterlernCard = useMemo(() => {
     try {
       const raw = localStorage.getItem('studearc_quiz_progress');
@@ -331,6 +347,11 @@ export const Dashboard: React.FC<DashboardProps> = ({
           <p className="text-[11px]" style={{ color: 'var(--text-secondary)' }}>
             {t('dashboardV2.progress.detail', { pct: learningScore.overall, left: 100 - learningScore.overall })}
           </p>
+          {scoreBasisLine && (
+            <p className="text-[9px] mt-1.5 uppercase tracking-wider truncate" style={{ color: 'var(--text-secondary)', opacity: 0.7 }} title={scoreBasisLine}>
+              {scoreBasisLine}
+            </p>
+          )}
         </div>
       )}
 

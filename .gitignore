@@ -31,3 +31,9 @@ ios/App/App/public
 ios/App/App.xcodeproj/xcuserdata
 ios/App/App.xcodeproj/project.xcworkspace/xcuserdata
 ios/App/DerivedData
+
+# Experimentelle/tool-generierte Ordner (nicht Teil der App)
+graphify-out/
+components/graphify-out/
+quizwise-graph-dialog/
+.claude/

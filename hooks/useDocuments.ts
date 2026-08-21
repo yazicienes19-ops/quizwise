@@ -21,8 +21,6 @@ import { deleteResultsForDocName as deleteExamResultsForDocName } from '../servi
 import { deleteResultsForDocName as deleteRecallResultsForDocName } from '../services/recallHistoryService';
 import { deleteLogForDoc } from '../services/readerLogService';
 import { removeMistakesByDocId } from '../services/mistakeReviewService';
-import mammoth from 'mammoth';
-import heic2any from 'heic2any';
 
 interface UseDocumentsParams {
   user: User | null;
@@ -211,6 +209,10 @@ export const useDocuments = ({ user, userPlan, isOffline, setIsLoading, setShowU
 
       if (ext === 'heic' || ext === 'heif') {
         try {
+          // mammoth (DOCX) und heic2any (HEIC) sind schwere Dependencies und
+          // werden nur bei den seltenen Uploads dieser Formate gebraucht —
+          // dynamischer Import hält sie aus dem initialen Bundle.
+          const { default: heic2any } = await import('heic2any');
           const converted = await heic2any({ blob: file, toType: 'image/jpeg', quality: 0.92 }) as Blob;
           file = new File([converted], file.name.replace(/\.(heic|heif)$/i, '.jpg'), { type: 'image/jpeg' });
         } catch {
@@ -232,6 +234,7 @@ export const useDocuments = ({ user, userPlan, isOffline, setIsLoading, setShowU
           reader.readAsDataURL(file);
         });
       } else if (ext === 'docx') {
+        const { default: mammoth } = await import('mammoth');
         const arrayBuffer = await file.arrayBuffer();
         content = (await mammoth.extractRawText({ arrayBuffer })).value;
         docType = 'docx';

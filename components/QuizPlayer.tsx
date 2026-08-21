@@ -56,6 +56,10 @@ export const QuizPlayer: React.FC<QuizPlayerProps> = ({
   // Open
   const [showSampleAnswer, setShowSampleAnswer] = useState(false);
   const [selfAssessCorrect, setSelfAssessCorrect] = useState<boolean | null>(null);
+  // Optionale eigene Antwort vor der Selbstbewertung — echtes Abrufen
+  // (hinschreiben) statt nur gedanklich "wusste ich". Bleibt leer = altes
+  // Verhalten, der Flow zwingt niemanden zum Tippen.
+  const [openText, setOpenText] = useState('');
   // Matching
   const [matchAnswer, setMatchAnswer]           = useState<Record<number, string>>({});
   // Cloze
@@ -100,6 +104,7 @@ export const QuizPlayer: React.FC<QuizPlayerProps> = ({
     setShowExplanation(false);
     setShowSampleAnswer(false);
     setSelfAssessCorrect(null);
+    setOpenText('');
     setMatchAnswer({});
     setClozeAnswer([]);
     setNumericInput('');
@@ -180,7 +185,7 @@ export const QuizPlayer: React.FC<QuizPlayerProps> = ({
       questionIndex: shownIndex,
       selectedOptionIndices: selectedOptions,
       isCorrect,
-      ...(isOpen               ? { textAnswer: '' }           : {}),
+      ...(isOpen               ? { textAnswer: openText.trim() } : {}),
       ...(isMatching           ? { matchAnswer }              : {}),
       ...(isCloze              ? { clozeAnswer }              : {}),
       ...(isNumeric            ? { numericAnswer: parseFloat(numericInput) } : {}),
@@ -197,7 +202,7 @@ export const QuizPlayer: React.FC<QuizPlayerProps> = ({
       onComplete(newAnswers);
     }
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [shownIndex, questions, answers, selectedOptions, confidence, isOpen, isMatching, isCloze, isNumeric, isRanking, matchAnswer, clozeAnswer, numericInput, rankingOrder, onComplete]);
+  }, [shownIndex, questions, answers, selectedOptions, confidence, isOpen, openText, isMatching, isCloze, isNumeric, isRanking, matchAnswer, clozeAnswer, numericInput, rankingOrder, onComplete]);
 
   // Keyboard: 1–4 select option, Enter confirm/next
   useEffect(() => {
@@ -349,6 +354,15 @@ export const QuizPlayer: React.FC<QuizPlayerProps> = ({
     if (isOpen) {
       return (
         <div className="px-4 pb-4 space-y-3">
+          {!showSampleAnswer && (
+            <textarea
+              value={openText}
+              onChange={e => setOpenText(e.target.value)}
+              placeholder={t('quiz.openAnswerPlaceholder')}
+              rows={4}
+              className="w-full p-4 bg-white dark:bg-slate-800 rounded-[20px] border-2 border-slate-200 dark:border-slate-700 text-sm font-medium dark:text-white outline-none focus:border-indigo-500 transition-colors resize-y placeholder:text-slate-400 dark:placeholder:text-slate-500"
+            />
+          )}
           {!showSampleAnswer ? (
             <button onClick={() => setShowSampleAnswer(true)}
               className="w-full py-4 rounded-[20px] bg-indigo-50 dark:bg-indigo-900/20 border-2 border-indigo-200 dark:border-indigo-800 text-indigo-600 dark:text-indigo-400 font-black text-[10px] uppercase tracking-widest hover:bg-indigo-100 transition-colors"

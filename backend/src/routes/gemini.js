@@ -38,7 +38,9 @@ const resolveStorageRefs = async (parts, userId, sb) => {
 
 // Wählt das passende Gemini-Modell basierend auf User-Plan und Aufgaben-Komplexität.
 // free  → immer flash-lite
-// pro   → flash-lite bei leichten, flash bei schweren Aufgaben
+// pro   → flash-lite bei leichten Aufgaben, bei schweren das neuere flash-lite-Modell
+//         (3.1) — bewusst dieselbe Modell-Familie, nur der neuere Stand.
+// HINWEIS: Modell-Strings bewusst an EINER Stelle pflegbar/exportiert für Tests.
 const selectModel = (plan, complexity) => {
   if (plan === 'pro' && complexity === 'heavy') return 'gemini-3.1-flash-lite';
   return 'gemini-2.5-flash-lite';
@@ -149,3 +151,7 @@ router.post('/generate', async (req, res, next) => {
 });
 
 module.exports = router;
+// Reine Logik exportiert für Unit-Tests (kein Express/Gemini nötig).
+module.exports.selectModel = selectModel;
+module.exports.isTransient = isTransient;
+module.exports.MAX_TOTAL_STORAGE_BYTES = MAX_TOTAL_STORAGE_BYTES;

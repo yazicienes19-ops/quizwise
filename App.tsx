@@ -32,7 +32,8 @@ import { useAuth } from './hooks/useAuth';
 import { useDocuments } from './hooks/useDocuments';
 import { useQuizState } from './hooks/useQuizState';
 import { AppContent } from './components/AppContent';
-import { loadAllCloudData, syncLearningField, syncMetrics, migrateLocalToCloud, syncPreferences, type CloudPreferences } from './services/syncService';
+import { loadAllCloudData, syncLearningField, syncMetrics, migrateLocalToCloud, syncPreferences, SYNC_DEGRADED_EVENT, type CloudPreferences } from './services/syncService';
+import { useTranslation } from './i18n/I18nProvider';
 
 const LAST_TAB_KEY = 'studearc_last_tab';
 // READER bewusst ausgeschlossen — hängt an einem konkreten pendingActionDoc,
@@ -48,8 +49,18 @@ const getInitialTab = (): ActiveTab => {
   return saved && RESTORABLE_TABS.has(saved) ? saved : ActiveTab.DASHBOARD;
 };
 
+// Browser-Back für Tab-Wechsel: jeder User-Tab-Wechsel landet als History-
+// Eintrag (state statt URL — die App hat keinen Router, pathname bleibt '/'),
+// popstate stellt den vorherigen Tab wieder her. Programmgesteuerte Wechsel
+// (Onboarding, Flow-Empfehlungen) schreiben bewusst KEINEN Eintrag, damit
+// "Zurück" nicht durch Auto-Navigation springt.
+const pushTabHistory = (tab: ActiveTab) => {
+  try { history.pushState({ studearcTab: tab }, ''); } catch {}
+};
+
 const App: React.FC = () => {
   const auth = useAuth();
+  const { t } = useTranslation();
   const [activeTab, setActiveTab] = useState<ActiveTab>(getInitialTab);
   // Fach-Kontext (Variante C): gewähltes Modul gilt app-weit als Vorauswahl
   const [activeModuleId, setActiveModuleIdState] = useState<string | null>(() => localStorage.getItem('studearc_active_module'));
@@ -92,6 +103,15 @@ const App: React.FC = () => {
   const [cookieConsent, setCookieConsent] = useState(() => hasDecided());
   const [showCookieSettings, setShowCookieSettings] = useState(false);
   const [legalPage, setLegalPage] = useState<'impressum' | 'datenschutz' | 'agb' | null>(null);
+  // Sync 3x in Folge fehlgeschlagen → Hinweis statt stiller Datenverlust-Angst.
+  // Dismissibel; erfolgreiche Syncs setzen den Zähler im Service zurück, das
+  // Banner bleibt bewusst sitzen, bis der Nutzer es wegklickt (kein Flackern).
+  const [syncDegraded, setSyncDegraded] = useState(false);
+  useEffect(() => {
+    const onDegraded = () => setSyncDegraded(true);
+    window.addEventListener(SYNC_DEGRADED_EVENT, onDegraded);
+    return () => window.removeEventListener(SYNC_DEGRADED_EVENT, onDegraded);
+  }, []);
 
   useEffect(() => {
     const handleStatus = () => setIsOffline(!navigator.onLine);
@@ -153,6 +173,22 @@ const App: React.FC = () => {
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [auth.authChecked]);
+
+  // History-Integration: Back/Forward stellt den jeweiligen Tab wieder her.
+  // Tabs außerhalb RESTORABLE_TABS (READER hängt an pendingActionDoc) werden
+  // ignoriert — der Browser-Status bleibt dann einfach unverändert stehen.
+  useEffect(() => {
+    const onPopState = (e: PopStateEvent) => {
+      const tab = (e.state as { studearcTab?: ActiveTab } | null)?.studearcTab;
+      if (tab && RESTORABLE_TABS.has(tab)) {
+        setPendingActionDoc(null);
+        setPendingTopic(null);
+        setActiveTab(tab);
+      }
+    };
+    window.addEventListener('popstate', onPopState);
+    return () => window.removeEventListener('popstate', onPopState);
+  }, []);
 
   const handleApiError = (e: any) => {
     if (e?.message === 'LIMIT_REACHED') { setShowUpgradeHint(true); return; }
@@ -370,8 +406,9 @@ const App: React.FC = () => {
       {showSettings && <SettingsModal user={auth.user} isDark={auth.isDark} onToggleTheme={auth.toggleTheme} onLogout={() => supabase.auth.signOut()} onClose={() => setShowSettings(false)} onLaunchTour={() => { setShowSettings(false); setShowTourReplay(true); }} />}
       <Layout
         activeTab={activeTab}
-        onTabChange={(tab) => { setPendingActionDoc(null); setPendingTopic(null); setActiveTab(tab); localStorage.setItem(LAST_TAB_KEY, tab); }}
+        onTabChange={(tab) => { setPendingActionDoc(null); setPendingTopic(null); setActiveTab(tab); localStorage.setItem(LAST_TAB_KEY, tab); pushTabHistory(tab); }}
         collections={docs.collections}
+        decks={decks}
         activeModuleId={activeModuleId}
         onModuleChange={setActiveModuleId}
         user={auth.user} userPlan={auth.userPlan} onLoginClick={() => auth.setShowAuthModal(true)}
@@ -399,6 +436,18 @@ const App: React.FC = () => {
         {isOffline && (
           <div className="mb-4 p-3 bg-amber-500/10 border border-amber-500/30 rounded-2xl flex items-center justify-center gap-2">
             <p className="text-[10px] font-bold text-amber-600 dark:text-amber-400 uppercase tracking-widest">Offline-Modus aktiv</p>
+          </div>
+        )}
+        {syncDegraded && !isOffline && (
+          <div className="mb-4 p-4 bg-amber-50 dark:bg-amber-950/30 border border-amber-300 dark:border-amber-700 rounded-2xl flex items-center justify-between gap-4">
+            <p className="text-[11px] font-bold text-amber-800 dark:text-amber-300">{t('app.syncDegraded')}</p>
+            <button
+              onClick={() => setSyncDegraded(false)}
+              aria-label="Banner schließen"
+              className="text-amber-400 hover:text-amber-600 transition-colors shrink-0"
+            >
+              <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+            </button>
           </div>
         )}
         {showUpgradeHint && (

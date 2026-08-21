@@ -36,21 +36,26 @@ export const buildLearningScore = (input: {
   recallResults: RecallResult[];
   metrics: TopicMetric[];
   decks: FlashcardDeck[];
+  /** Wird nicht mehr für den Score verwendet (Streak = Aktivität, kein Wissen),
+   *  bleibt im Signatur-Typ, um Aufrufer nicht zu brechen. */
   streakCurrent: number;
 }): LearningScore => {
-  const { quizResults, examResults, recallResults, metrics, decks, streakCurrent } = input;
+  const { quizResults, examResults, recallResults, metrics, decks } = input;
 
   // 🧠 Verständnis — Erklären in eigenen Worten (Feynman + KI-Erklärer-Bewertungen)
   const verstaendnis: number | null = recallResults.length >= 2
     ? avg(recallResults.map(r => r.score))
     : null;
 
-  // 📚 Wissen behalten — Anteil der etablierten Karten mit stabilem Intervall (>= 7 Tage)
+  // 📚 Wissen behalten — Anteil der etablierten Karten mit stabilem Intervall (>= 7 Tage).
+  // Bewusst OHNE Streak-Bonus: Ein Streak misst Aktivität, kein Wissen — ihn auf
+  // einen Wissens-% zu addieren würde der Zahl eine Genauigkeit vortäuschen, die
+  // sie nicht hat (Scheingenauigkeit). Aktivität zählt woanders (Volumen/Motivation).
   const establishedCards = decks.flatMap(d => d.cards).filter(c => c.srs && c.srs.repetitions > 0);
   let langzeit: number | null = null;
   if (establishedCards.length >= 10) {
     const stableShare = establishedCards.filter(c => (c.srs?.interval ?? 0) >= 7).length / establishedCards.length;
-    langzeit = Math.min(100, Math.round(stableShare * 100) + Math.min(streakCurrent, 10));
+    langzeit = Math.round(stableShare * 100);
   }
 
   // ⚡ Wissen abrufen — Quiz-Genauigkeit + Karteikarten-Konfidenz

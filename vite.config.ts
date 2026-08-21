@@ -56,6 +56,13 @@ export default defineConfig(() => {
               },
             ],
             globPatterns: ['**/*.{js,css,html,svg,png,ico,woff2}'],
+            // Schwere On-Demand-Chunks bewusst NICHT vorcachen: PDF-Reader,
+            // PDF-Export (jsPDF) und html2canvas laufen nur in ihren Lazy-Tabs.
+            // Sie werden beim ersten echten Einsatz normal vom Netz geladen
+            // (und landen im HTTP-Cache) — die Installations-/Update-Last der
+            // PWA sinkt um ~1,6 MB, der Offline-Kern (Shell + Quiz/Karten/
+            // Dashboard) bleibt vollständig precached.
+            globIgnores: ['**/pdf-*.js', '**/pdf.worker*', '**/jspdf*', '**/html2canvas*'],
           },
         }),
       ],

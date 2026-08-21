@@ -28,6 +28,11 @@ const MAX_ITEMS = 200;
 const GRADUATE_REPETITIONS = 3;
 const GRADUATE_INTERVAL_DAYS = 30;
 
+/** Wie STREAK_UPDATED_EVENT im streakService: Badges (Layout-Sidebar,
+ *  Dashboard-Aufgaben) hören darauf und rechnen fällige Fehler neu, statt
+ *  bis zum nächsten Reload einen veralteten Zähler zu zeigen. */
+export const MISTAKES_UPDATED_EVENT = 'studearc-mistakes-updated';
+
 /** Identität einer Frage: normalisierter Fragetext (Dedupe über Quiz-Läufe hinweg). */
 const normalizeQuestion = (text: string): string =>
   text.trim().toLowerCase().replace(/\s+/g, ' ');
@@ -38,6 +43,7 @@ const readAll = (): MistakeItem[] => {
 
 const write = (items: MistakeItem[], userId?: string | null): void => {
   try { localStorage.setItem(STORAGE_KEY, JSON.stringify(items)); } catch {}
+  try { window.dispatchEvent(new CustomEvent(MISTAKES_UPDATED_EVENT)); } catch {}
   if (userId) {
     import('./syncService').then(({ syncLearningField }) => syncLearningField(userId, 'mistake_queue', items)).catch(() => {});
   }

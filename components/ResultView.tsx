@@ -260,6 +260,12 @@ export const ResultView: React.FC<ResultViewProps> = ({
               {open && (
                 <div className="px-5 pb-4 space-y-2 border-t border-slate-50 dark:border-slate-800 animate-in slide-in-from-top-2 duration-200">
                   <div className="text-xs space-y-1 pt-3">
+                    {answers[i]?.textAnswer?.trim() && (
+                      <p className="text-slate-500 dark:text-slate-400">
+                        <span className="font-black text-[9px] uppercase tracking-widest mr-2">{t('result.yourAnswerLabel')}</span>
+                        {answers[i].textAnswer}
+                      </p>
+                    )}
                     {answers[i]?.selectedOptionIndices?.length > 0 && (
                       <p className="text-slate-500 dark:text-slate-400">
                         <span className="font-black text-[9px] uppercase tracking-widest mr-2">{t('result.yourChoice')}</span>

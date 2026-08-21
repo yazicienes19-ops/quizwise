@@ -2,7 +2,7 @@
 import React, { useState, useEffect, useMemo } from 'react';
 import { ActiveTab, FlashcardDeck, Collection } from '../types';
 import { countDueCards, migrateLegacyCard } from '../services/spacedRepetition';
-import { countDueMistakes } from '../services/mistakeReviewService';
+import { countDueMistakes, MISTAKES_UPDATED_EVENT } from '../services/mistakeReviewService';
 import { getStreak, STREAK_UPDATED_EVENT } from '../services/streakService';
 import { usePersistentState } from '../hooks/usePersistentState';
 import {
@@ -28,6 +28,9 @@ interface LayoutProps {
   onTabChange: (tab: ActiveTab) => void;
   /** Fach-Kontext (Variante C): Ordner als app-weite Vorauswahl */
   collections?: Collection[];
+  /** App-weiter Deck-Zustand — Basis für das fällig-Karten-Badge, damit es
+   *  nach einer Lern-Session sofort mitrechnet statt bis zum Reload stale zu sein. */
+  decks?: FlashcardDeck[];
   activeModuleId?: string | null;
   onModuleChange?: (id: string | null) => void;
   user?: User | null;
@@ -74,7 +77,7 @@ const SIDEBAR = {
 } as const;
 
 export const Layout: React.FC<LayoutProps> = ({
-  children, activeTab, onTabChange, collections = [], activeModuleId = null, onModuleChange, user, userPlan = 'free',
+  children, activeTab, onTabChange, collections = [], decks = [], activeModuleId = null, onModuleChange, user, userPlan = 'free',
   onLoginClick, onLogout, onUpgradeClick, onSettingsClick,
   isDark, onToggleTheme
 }) => {
@@ -92,15 +95,20 @@ export const Layout: React.FC<LayoutProps> = ({
   const visibleGroups = isAdmin(user?.id) ? [...NAV_GROUPS, LABOR_GROUP] : NAV_GROUPS;
   const allNavItems = visibleGroups.flatMap(g => g.items);
 
-  const dueCardsCount = useMemo(() => {
-    try {
-      const decks: FlashcardDeck[] = JSON.parse(localStorage.getItem('flashcard_decks') || '[]');
-      const allCards = decks.flatMap(d => d.cards.map(c => c.srs ? c : { ...c, srs: migrateLegacyCard(c) }));
-      return countDueCards(allCards);
-    } catch { return 0; }
-  }, []);
+  // Badge-Zähler: decks als Prop (reaktiv auf Sessions) bzw. Fehler-Queue per
+  // Event (Service schreibt nur localStorage, kein React-State) — vorher wurden
+  // beide einmal beim Mount berechnet und blieben nach einer Session veraltet stehen.
+  const dueCardsCount = useMemo(
+    () => countDueCards(decks.flatMap(d => d.cards.map(c => c.srs ? c : { ...c, srs: migrateLegacyCard(c) }))),
+    [decks],
+  );
 
-  const dueMistakesCount = useMemo(() => countDueMistakes(), []);
+  const [dueMistakesCount, setDueMistakesCount] = useState(() => countDueMistakes());
+  useEffect(() => {
+    const update = () => setDueMistakesCount(countDueMistakes());
+    window.addEventListener(MISTAKES_UPDATED_EVENT, update);
+    return () => window.removeEventListener(MISTAKES_UPDATED_EVENT, update);
+  }, []);
 
   const [streak, setStreak] = useState(() => getStreak());
   useEffect(() => {
