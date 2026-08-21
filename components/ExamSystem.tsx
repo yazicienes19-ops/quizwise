@@ -4,7 +4,9 @@ import { ExamGenerator } from './ExamGenerator';
 import { ExamArchive } from './ExamArchive';
 import { ExamView } from './ExamView';
 import { ExamQuestion, ProcessedDocument, Collection, ActiveTab, ScoringProfile, ExamAnalysis, TopicMetric, FlashcardDeck, ExamTypePreset } from '../types';
-import { generateFullExam, evaluateWithRubric, analyzeExamResults, classifyBloomLevels, GenerationSource } from '../services/geminiService';
+import { generateFullExam, evaluateWithRubric, classifyBloomLevels, GenerationSource } from '../services/geminiService';
+import { buildExamAnalysis } from '../services/examAnalysisService';
+import { track } from '../services/analyticsService';
 import { formatFeedbackContext } from '../services/examFeedbackService';
 import { normalizeExamQuestions } from '../services/examNormalize';
 import { scoreMc, scoreFillblank, scoreRanking } from '../services/examScoring';
@@ -85,6 +87,7 @@ export const ExamSystem: React.FC<ExamSystemProps> = ({ documents, collections, 
     setLoadingHint('');
 
     const maxAttempts = 3;
+    const startedAt = Date.now();
     try {
       for (let attempt = 1; attempt <= maxAttempts; attempt++) {
         try {
@@ -94,12 +97,28 @@ export const ExamSystem: React.FC<ExamSystemProps> = ({ documents, collections, 
             saveUsedTopics(sourceTopicsKey(docName), exam);
             saveUsedExamQuestions(sourceTopicsKey(docName), exam);
           }
-          // Zweistufig: Bloom-Stufe erst NACH der Generierung, in einem eigenen,
-          // unabhängigen Call vergeben (services/geminiService.ts classifyBloomLevels)
-          // — verhindert das Selbst-Überschätzungs-Muster beim Selbst-Labeling.
-          const withBloom = await classifyBloomLevels(exam).catch(() => exam);
-          setQuestions(interleaveQuestionsByTopic(withBloom));
+          // Fragen SOFORT anzeigen — die Bloom-Klassifikation (zweiter, unabhängiger
+          // Call gegen das Selbst-Überschätzungs-Muster) blockiert die Klausur nicht:
+          // Sie läuft im Hintergrund und merged ihre Labels nach, sobald der Nutzer
+          // noch keine Antworten gegeben hat. Vorher wartete der Nutzer auf beide
+          // seriellen Calls, obwohl Bloom-Level erst für die spätere Analyse zählen.
+          setQuestions(interleaveQuestionsByTopic(exam));
           setMode('edit');
+          track('exam_generated', {
+            count: exam.length,
+            durationMs: Date.now() - startedAt,
+            attempt,
+          });
+          classifyBloomLevels(exam)
+            .then(withBloom => {
+              setQuestions(prev => {
+                // Nur nachziehen, solange nichts gelöst/bewertet wurde — sonst
+                // würden laufende Antworten überschrieben.
+                if (!prev || prev.some(q => q.userAnswer !== undefined || q.achievedPoints !== undefined)) return prev;
+                return interleaveQuestionsByTopic(withBloom);
+              });
+            })
+            .catch(() => {});
           return;
         } catch (e: any) {
           const msg = e?.message || translate('es.unknownError');
@@ -267,10 +286,11 @@ export const ExamSystem: React.FC<ExamSystemProps> = ({ documents, collections, 
       setCategoryBreakdown(categoryBreakdown);
       setFatigue(fatigue);
 
-      // Analyse asynchron im Hintergrund (kein Blocker)
-      analyzeExamResults(evaluated)
-        .then(setExamAnalysis)
-        .catch(() => {});
+      // Analyse deterministisch aus den bewerteten Fragen (services/
+      // examAnalysisService.ts): sofort verfügbar, ohne weiteren Gemini-Call —
+      // topicPerformance/Stärken/Schwächen/Empfehlungen sind reine Arithmetik
+      // über points/achievedPoints/category/bloomLevel/fatigue.
+      setExamAnalysis(buildExamAnalysis(evaluated, fatigue));
     } catch (e) {
       toast.error(t('es.evalFailed'));
     } finally {

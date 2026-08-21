@@ -59,7 +59,9 @@ const PRIORITY_COLOR: Record<Priority, string> = { red: '#f43f5e', yellow: '#f59
 interface TodayTask {
   priority: Priority;
   text: string;
-  meta?: string;
+  /** Datenbegründung — jede Empfehlung muss nachvollziehbar sein, keine
+   * generischen "Lerne heute X"-Sätze ohne Herkunft. */
+  reason?: string;
   onClick: () => void;
 }
 
@@ -169,19 +171,52 @@ export const Dashboard: React.FC<DashboardProps> = ({
   const todayTasks = useMemo(() => {
     const tasks: TodayTask[] = [];
     if (nextExam && nextExam.days <= 7) {
-      tasks.push({ priority: 'red', text: t('dashboardV2.today.examSoon', { title: nextExam.title }), onClick: () => onTabChange(ActiveTab.EXAM) });
+      tasks.push({
+        priority: 'red',
+        text: t('dashboardV2.today.examSoon', { title: nextExam.title }),
+        reason: tp('dashboardV2.today.examReason', nextExam.days),
+        onClick: () => onTabChange(ActiveTab.EXAM),
+      });
     }
     if (dueCardsCount > 0) {
-      tasks.push({ priority: 'red', text: tp('dashboardV2.today.cards', dueCardsCount), onClick: () => onTabChange(ActiveTab.CARDS) });
+      const decksDue = scopedDecks.filter(d => countDueCards(withSrs(d.cards)) > 0).length;
+      tasks.push({
+        priority: 'red',
+        text: tp('dashboardV2.today.cards', dueCardsCount),
+        reason: tp('dashboardV2.today.cardsReason', decksDue),
+        onClick: () => onTabChange(ActiveTab.CARDS),
+      });
     }
     if (dueMistakesCount > 0 && onStartMistakeReview) {
-      tasks.push({ priority: 'yellow', text: tp('dashboardV2.today.mistakes', dueMistakesCount), onClick: onStartMistakeReview });
+      tasks.push({
+        priority: 'yellow',
+        text: tp('dashboardV2.today.mistakes', dueMistakesCount),
+        reason: t('dashboardV2.today.mistakesReason'),
+        onClick: onStartMistakeReview,
+      });
     }
     if (streak.current > 0 && !streak.todayDone) {
-      tasks.push({ priority: 'green', text: t('dashboardV2.today.streak'), onClick: () => onTabChange(dueCardsCount > 0 ? ActiveTab.CARDS : ActiveTab.QUIZ) });
+      tasks.push({
+        priority: 'green',
+        text: t('dashboardV2.today.streak'),
+        reason: tp('dashboardV2.today.streakReason', streak.current),
+        onClick: () => onTabChange(dueCardsCount > 0 ? ActiveTab.CARDS : ActiveTab.QUIZ),
+      });
     }
     return tasks;
-  }, [nextExam, dueCardsCount, dueMistakesCount, onStartMistakeReview, streak.current, streak.todayDone, t, tp, onTabChange]);
+  }, [nextExam, dueCardsCount, dueMistakesCount, onStartMistakeReview, streak.current, streak.todayDone, t, tp, onTabChange, scopedDecks]);
+
+  // Klausur-Countdown: ab 3 Wochen Sichtbarkeit + ehrliche Themen-Priorisierung
+  // aus den echten Konfidenz-Metriken (niedrigste zuerst, ab <70 genannt).
+  const examCountdown = useMemo(() => {
+    if (!nextExam || nextExam.days > 21) return null;
+    const weak = [...metrics]
+      .filter(m => m.confidence < 70)
+      .sort((a, b) => a.confidence - b.confidence)
+      .slice(0, 3)
+      .map(m => ({ topic: m.topic, confidence: m.confidence, level: m.confidence < 50 ? 'red' : 'yellow' as Priority }));
+    return { exam: nextExam, weak, hasBasis: metrics.length > 0 };
+  }, [nextExam, metrics]);
 
   const statCards = useMemo(() => {
     const cards = [
@@ -288,7 +323,12 @@ export const Dashboard: React.FC<DashboardProps> = ({
                   style={{ background: 'var(--bg-sidebar)', border: '1px solid var(--border-color)' }}
                 >
                   <span className="w-2 h-2 rounded-full shrink-0" style={{ background: PRIORITY_COLOR[task.priority] }} />
-                  <span className="flex-1 text-[13px] font-semibold" style={{ color: 'var(--text-main)' }}>{task.text}</span>
+                  <span className="flex-1 min-w-0">
+                    <span className="block text-[13px] font-semibold" style={{ color: 'var(--text-main)' }}>{task.text}</span>
+                    {task.reason && (
+                      <span className="block text-[10px] mt-0.5 leading-snug" style={{ color: 'var(--text-secondary)' }}>{task.reason}</span>
+                    )}
+                  </span>
                 </button>
               ))}
             </div>
@@ -303,6 +343,47 @@ export const Dashboard: React.FC<DashboardProps> = ({
           </div>
         )}
       </div>
+
+      {/* Klausur-Countdown — nicht nur Zahl, sondern priorisierte Themen aus
+          echten Konfidenz-Metriken (Phase 11: Prüfungsmodus light). */}
+      {examCountdown && (
+        <div className="p-4 rounded-[16px] animate-card-enter" style={{ background: 'var(--bg-sidebar)', border: `1px solid ${examCountdown.exam.days <= 7 ? 'color-mix(in srgb, #f43f5e 35%, transparent)' : 'var(--border-color)'}`, ['--stagger-i' as string]: 1 }}>
+          <div className="flex items-center justify-between gap-3 mb-2">
+            <p className="text-[10px] font-black uppercase tracking-widest" style={{ color: examCountdown.exam.days <= 7 ? '#f43f5e' : 'var(--text-secondary)' }}>
+              {tp('dashboardV2.countdown.title', examCountdown.exam.days)}
+            </p>
+            <button
+              onClick={() => onTabChange(ActiveTab.EXAM)}
+              className="px-3 py-1.5 rounded-[10px] text-[9px] font-black uppercase tracking-widest hover:scale-105 transition-all"
+              style={{ background: 'var(--primary)', color: 'var(--primary-text)' }}
+            >
+              {t('dashboardV2.countdown.cta')}
+            </button>
+          </div>
+          <p className="text-sm font-black mb-2 truncate" style={{ color: 'var(--text-main)' }}>{examCountdown.exam.title}</p>
+          {examCountdown.weak.length > 0 ? (
+            <div className="space-y-1.5">
+              {examCountdown.weak.map(w => (
+                <button
+                  key={w.topic}
+                  onClick={() => onTabChange(ActiveTab.QUIZ)}
+                  className="w-full flex items-center gap-2.5 px-3 py-2 rounded-[12px] text-left transition-transform hover:scale-[1.01]"
+                  style={{ background: 'color-mix(in srgb, var(--border-color) 30%, var(--bg-sidebar))' }}
+                >
+                  <span className="w-2 h-2 rounded-full shrink-0" style={{ background: PRIORITY_COLOR[w.level] }} />
+                  <span className="flex-1 min-w-0 text-[12px] font-bold truncate" style={{ color: 'var(--text-main)' }}>{w.topic}</span>
+                  <span className="text-[10px] font-black shrink-0" style={{ color: PRIORITY_COLOR[w.level] }}>{w.confidence}%</span>
+                </button>
+              ))}
+              <p className="text-[9px] leading-snug" style={{ color: 'var(--text-secondary)' }}>{t('dashboardV2.countdown.basis')}</p>
+            </div>
+          ) : (
+            <p className="text-[11px]" style={{ color: 'var(--text-secondary)' }}>
+              {examCountdown.hasBasis ? t('dashboardV2.countdown.noWeak') : t('dashboardV2.countdown.noData')}
+            </p>
+          )}
+        </div>
+      )}
 
       {/* Stat-Zeile */}
       <div className="grid grid-cols-3 gap-2 animate-card-enter" style={{ ['--stagger-i' as string]: 1 }}>
@@ -406,8 +487,11 @@ export const Dashboard: React.FC<DashboardProps> = ({
         </div>
       )}
 
-      {/* Prioritäts-Grid */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-2 animate-card-enter" style={{ ['--stagger-i' as string]: 5 }}>
+      {/* Prioritäts-Grid — bewusst NUR ab sm: auf Mobile ist das eine Feature-
+          Liste ohne Entscheidungswert; die Navigation (Bottom-Bar + Mehr-Sheet)
+          erschließt dieselben Bereiche task-orientierter. Ein Screen, eine
+          Hauptentscheidung: die steht oben bei "Heute". */}
+      <div className="hidden sm:grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-2 animate-card-enter" style={{ ['--stagger-i' as string]: 5 }}>
         {ACTION_CARDS.map((card, i) => {
           const Icon = card.Icon;
           // Ungerade Kartenzahl (7): letzte Karte bekommt die volle Zeilenbreite,

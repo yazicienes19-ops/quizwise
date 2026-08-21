@@ -297,17 +297,17 @@ export const ExamView: React.FC<ExamViewProps> = ({
               <div key={item} className="flex items-center gap-3">
                 <span className="w-7 h-7 rounded-lg bg-indigo-100 dark:bg-indigo-900/30 text-indigo-600 text-[11px] font-black flex items-center justify-center shrink-0">{i + 1}</span>
                 <div className="flex-1 p-3 rounded-2xl border-2 border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-sm font-medium dark:text-white">{item}</div>
-                <div className="flex flex-col gap-1">
+                <div className="flex flex-col gap-1 shrink-0">
                   <button disabled={i === 0} onClick={() => {
                     const next = [...userOrder];
                     [next[i - 1], next[i]] = [next[i], next[i - 1]];
                     setAnswer(q.id, next);
-                  }} className="w-7 h-7 rounded-lg bg-slate-100 dark:bg-slate-700 text-slate-500 text-xs flex items-center justify-center hover:bg-indigo-100 disabled:opacity-40 transition-colors">▲</button>
+                  }} aria-label="Nach oben" className="w-11 h-11 rounded-xl bg-slate-100 dark:bg-slate-700 text-slate-500 text-sm flex items-center justify-center hover:bg-indigo-100 disabled:opacity-40 transition-colors">▲</button>
                   <button disabled={i === userOrder.length - 1} onClick={() => {
                     const next = [...userOrder];
                     [next[i], next[i + 1]] = [next[i + 1], next[i]];
                     setAnswer(q.id, next);
-                  }} className="w-7 h-7 rounded-lg bg-slate-100 dark:bg-slate-700 text-slate-500 text-xs flex items-center justify-center hover:bg-indigo-100 disabled:opacity-40 transition-colors">▼</button>
+                  }} aria-label="Nach unten" className="w-11 h-11 rounded-xl bg-slate-100 dark:bg-slate-700 text-slate-500 text-sm flex items-center justify-center hover:bg-indigo-100 disabled:opacity-40 transition-colors">▼</button>
                 </div>
               </div>
             ))}

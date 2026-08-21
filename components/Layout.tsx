@@ -125,23 +125,26 @@ export const Layout: React.FC<LayoutProps> = ({
   const currentItem = allNavItems.find(i => i.tab === activeTab);
   const currentPageLabel = currentItem ? t(currentItem.labelKey) : EXTRA_LABELS[activeTab] ? t(EXTRA_LABELS[activeTab]!) : '';
 
-  // Mobile bottom bar: 4 wichtigste Tabs
+  // Mobile bottom bar: der TÄGLICHE Lernkreislauf als primäre Navigation —
+  // Heute (was ist fällig) → Quiz (lernen) → Klausur (prüfen) → Coach (Analysieren).
+  // Bibliothek/Kalender sind Verwaltung, keine tägliche Schleife → "Mehr".
   const mobileBottomTabs: { tab: ActiveTab; shortKey: TKey }[] = [
     { tab: ActiveTab.DASHBOARD, shortKey: 'nav.start' },
     { tab: ActiveTab.QUIZ,      shortKey: 'nav.quiz'  },
-    { tab: ActiveTab.LIBRARY,   shortKey: 'nav.short.library' },
-    { tab: ActiveTab.PLANNER,   shortKey: 'nav.planner' },
+    { tab: ActiveTab.EXAM,      shortKey: 'nav.short.exam' },
+    { tab: ActiveTab.RADAR,     shortKey: 'nav.short.coach' },
   ];
 
-  // Mobile "Mehr"-Sheet: alle anderen Tabs. SEARCH/PAPER sind Labor-Features
+  // Mobile "Mehr"-Sheet: Verwaltung + vertiefende Methoden. Reihenfolge =
+  // Nutzen fürs Lernen, nicht Katalog. SEARCH/PAPER sind Labor-Features
   // (siehe navConfig.ts LABOR_GROUP) und daher nur für Admins sichtbar.
   const mobileSheetItems: { tab: ActiveTab; labelKey: TKey; icon: LucideIcon }[] = [
+    { tab: ActiveTab.LIBRARY,   labelKey: 'nav.library',   icon: BookOpen },
     { tab: ActiveTab.CARDS,     labelKey: 'nav.cards',     icon: Layers },
     { tab: ActiveTab.RECALL,    labelKey: 'nav.recall',    icon: Brain },
-    { tab: ActiveTab.EXAM,      labelKey: 'nav.exam',      icon: GraduationCap },
-    { tab: ActiveTab.RADAR,     labelKey: 'nav.radar',     icon: BarChart2 },
     { tab: ActiveTab.EXPLAINER, labelKey: 'nav.explainer', icon: Lightbulb },
     { tab: ActiveTab.KNOWLEDGE_GRAPH, labelKey: 'nav.knowledgeGraph', icon: Network },
+    { tab: ActiveTab.PLANNER,   labelKey: 'nav.planner',   icon: Calendar },
     ...(isAdmin(user?.id) ? [
       { tab: ActiveTab.SEARCH, labelKey: 'nav.search' as TKey, icon: Search },
       { tab: ActiveTab.PAPER,  labelKey: 'nav.paper'  as TKey, icon: FileText },

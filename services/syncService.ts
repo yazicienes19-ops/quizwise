@@ -64,6 +64,71 @@ export interface AllCloudData {
   metrics: TopicMetric[];
 }
 
+// ─── Merge-Helfer für den Cloud-Pull ─────────────────────────────────────────
+// Der Pull darf lokale Daten NIEMALS blind überschreiben: Wer offline (oder bei
+// gestörtem Sync) gelernt hat, hat neuere lokale Einträge als die Cloud. Ge-
+// merged wird per id — bei Konfliktduplikat gewinnt der Eintrag mit neuerem
+// Zeitstempel; ohne Zeitstempel-Feld gewinnt lokal (die aktivere Quelle).
+
+/** Arrays aus local + cloud per `id` vereinigen, Konflikt = neuerer Zeitstempel. */
+export function mergeById<T extends { id?: string | number }>(
+  local: T[] | undefined | null,
+  cloud: T[] | undefined | null,
+  tsKey?: string,
+): T[] {
+  if (!cloud?.length) return (local as T[]) ?? [];
+  if (!local?.length) return cloud;
+  const byId = new Map<string, T>();
+  for (const item of local) byId.set(String(item.id), item);
+  for (const item of cloud) {
+    const key = String(item.id);
+    const existing = byId.get(key);
+    if (!existing) { byId.set(key, item); continue; }
+    if (!tsKey) continue; // ohne Zeitstempel-Feld: lokal gewinnt
+    const lt = Number((existing as Record<string, unknown>)[tsKey] ?? 0);
+    const ct = Number((item as Record<string, unknown>)[tsKey] ?? 0);
+    if (ct > lt) byId.set(key, item);
+  }
+  const merged = [...byId.values()];
+  if (tsKey) {
+    merged.sort((a, b) =>
+      Number((b as Record<string, unknown>)[tsKey] ?? 0) - Number((a as Record<string, unknown>)[tsKey] ?? 0));
+  }
+  return merged;
+}
+
+/** Kapitel-Lesefortschritt: pro Dokument Kapitel-Union, done=true gewinnt, sonst neueres doneAt. */
+type ReadingProgress = Record<string, Record<string | number, { done?: boolean; doneAt?: number }>>;
+export function mergeReadingProgress(local: ReadingProgress | null | undefined, cloud: ReadingProgress | null | undefined): ReadingProgress {
+  const out: ReadingProgress = { ...(local ?? {}) };
+  for (const [docId, cloudChapters] of Object.entries(cloud ?? {})) {
+    const localChapters = out[docId];
+    if (!localChapters) { out[docId] = cloudChapters; continue; }
+    const mergedChapters: Record<string | number, { done?: boolean; doneAt?: number }> = { ...localChapters };
+    for (const [ch, cloudState] of Object.entries(cloudChapters)) {
+      const localState = mergedChapters[ch];
+      if (!localState) { mergedChapters[ch] = cloudState; continue; }
+      if (localState.done && !cloudState.done) continue;
+      if (cloudState.done && !localState.done) { mergedChapters[ch] = cloudState; continue; }
+      if ((cloudState.doneAt ?? 0) > (localState.doneAt ?? 0)) mergedChapters[ch] = cloudState;
+    }
+    out[docId] = mergedChapters;
+  }
+  return out;
+}
+
+/** TopicMetrics per Thema vereinigen — neueres lastReviewed gewinnt. */
+export function mergeMetrics(local: TopicMetric[] | undefined | null, cloud: TopicMetric[] | undefined | null): TopicMetric[] {
+  if (!cloud?.length) return local ?? [];
+  if (!local?.length) return cloud;
+  const byTopic = new Map(local.map(m => [m.topic, m]));
+  for (const cm of cloud) {
+    const lm = byTopic.get(cm.topic);
+    if (!lm || (cm.lastReviewed ?? 0) > (lm.lastReviewed ?? 0)) byTopic.set(cm.topic, cm);
+  }
+  return [...byTopic.values()];
+}
+
 const EMPTY_LEARNING: CloudLearningData = {
   streak: { current: 0, best: 0, lastDay: null },
   exam_terms: [],

@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import { createPortal } from 'react-dom';
 import { X, Zap, Check, Loader2 } from 'lucide-react';
 import { startCheckout } from '../services/stripeService';
+import { track } from '../services/analyticsService';
 import { useTranslation } from '../i18n/I18nProvider';
 import { useModalA11y } from '../hooks/useModalA11y';
 import { WiderrufConsentModal } from './WiderrufConsentModal';
@@ -16,10 +17,14 @@ export const UpgradeModal: React.FC<UpgradeModalProps> = ({ onClose }) => {
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState('');
   const [showConsent, setShowConsent] = useState(false);
+  // Funnel-Marker: jede Paywall-Ansicht zählt (kein once — Wiederholungen sind
+  // selbst ein Signal).
+  React.useEffect(() => { track('paywall_view'); }, []);
 
   const handleUpgrade = async () => {
     setIsLoading(true);
     setError('');
+    track('upgrade_checkout_started');
     try {
       await startCheckout(true); // leitet zu Stripe weiter — Zustimmung s. WiderrufConsentModal
     } catch (e: any) {

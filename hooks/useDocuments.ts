@@ -15,6 +15,7 @@ import {
   UploadTimeoutError,
 } from '../services/documentService';
 import { toast } from '../services/toast';
+import { track } from '../services/analyticsService';
 import { documentDisplayName } from '../services/libraryService';
 import { deleteResultsForDoc as deleteQuizResultsForDoc } from '../services/quizHistoryService';
 import { deleteResultsForDocName as deleteExamResultsForDocName } from '../services/examHistoryService';
@@ -279,6 +280,7 @@ export const useDocuments = ({ user, userPlan, isOffline, setIsLoading, setShowU
             .catch(() => toast.error('Cloud-Sync fehlgeschlagen. Dokument nur lokal gespeichert.'));
         }
       }
+      track('first_upload', { type: docType }, true);
       return newDoc.id;
     } catch (e) {
       if (e instanceof UploadStalledError) {

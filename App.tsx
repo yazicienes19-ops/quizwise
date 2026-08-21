@@ -20,6 +20,7 @@ import { CookieSettingsModal } from './components/CookieSettingsModal';
 import { LegalModal } from './components/LegalModal';
 import { hasDecided, setCookieConsent as saveCookieConsent } from './services/cookieConsent';
 import { resolveErrorMessage } from './services/errorMessages';
+import { track, trackSessionStart } from './services/analyticsService';
 import { getStreak } from './services/streakService';
 import { orchestrateLearningFlow } from './services/geminiService';
 import { updateTopicMetric } from './services/topicConfidence';
@@ -32,7 +33,7 @@ import { useAuth } from './hooks/useAuth';
 import { useDocuments } from './hooks/useDocuments';
 import { useQuizState } from './hooks/useQuizState';
 import { AppContent } from './components/AppContent';
-import { loadAllCloudData, syncLearningField, syncMetrics, migrateLocalToCloud, syncPreferences, SYNC_DEGRADED_EVENT, type CloudPreferences } from './services/syncService';
+import { loadAllCloudData, syncLearningField, syncMetrics, migrateLocalToCloud, syncPreferences, SYNC_DEGRADED_EVENT, mergeById, mergeReadingProgress, mergeMetrics, type CloudPreferences } from './services/syncService';
 import { useTranslation } from './i18n/I18nProvider';
 
 const LAST_TAB_KEY = 'studearc_last_tab';
@@ -44,18 +45,39 @@ const RESTORABLE_TABS = new Set<ActiveTab>([
   ActiveTab.RECALL, ActiveTab.KNOWLEDGE_GRAPH, ActiveTab.PAPER, ActiveTab.SEARCH,
 ]);
 
+// Deep-Link-Pfade pro Bereich — bewusst kurz und deutsch, passend zur Marke.
+// READER/PAPER/SEARCH bewusst ohne Pfad (Reader hängt an pendingActionDoc,
+// Labor-Tabs sind admin-gegate).
+const TAB_PATH: Partial<Record<ActiveTab, string>> = {
+  [ActiveTab.DASHBOARD]: '/',
+  [ActiveTab.LIBRARY]: '/library',
+  [ActiveTab.QUIZ]: '/quiz',
+  [ActiveTab.CARDS]: '/cards',
+  [ActiveTab.RECALL]: '/erklarung',
+  [ActiveTab.EXAM]: '/klausur',
+  [ActiveTab.RADAR]: '/coach',
+  [ActiveTab.EXPLAINER]: '/tutor',
+  [ActiveTab.PLANNER]: '/planer',
+  [ActiveTab.KNOWLEDGE_GRAPH]: '/wissensnetz',
+};
+
 const getInitialTab = (): ActiveTab => {
+  // 1. Deep-Link: /quiz, /exam, /coach … (nach Reload/Share bleibt der Kontext)
+  const pathTab = (Object.entries(TAB_PATH) as [ActiveTab, string][]).find(([, p]) => p === window.location.pathname);
+  if (pathTab && RESTORABLE_TABS.has(pathTab[0])) return pathTab[0];
+  // 2. zuletzt genutzter Tab
   const saved = localStorage.getItem(LAST_TAB_KEY) as ActiveTab | null;
   return saved && RESTORABLE_TABS.has(saved) ? saved : ActiveTab.DASHBOARD;
 };
 
 // Browser-Back für Tab-Wechsel: jeder User-Tab-Wechsel landet als History-
-// Eintrag (state statt URL — die App hat keinen Router, pathname bleibt '/'),
+// Eintrag (state + URL-Pfad, der Express/Vercel-SPA-Fallback liefert die App),
 // popstate stellt den vorherigen Tab wieder her. Programmgesteuerte Wechsel
 // (Onboarding, Flow-Empfehlungen) schreiben bewusst KEINEN Eintrag, damit
 // "Zurück" nicht durch Auto-Navigation springt.
 const pushTabHistory = (tab: ActiveTab) => {
-  try { history.pushState({ studearcTab: tab }, ''); } catch {}
+  const path = TAB_PATH[tab] ?? '/';
+  try { history.pushState({ studearcTab: tab }, '', path); } catch {}
 };
 
 const App: React.FC = () => {
@@ -112,6 +134,9 @@ const App: React.FC = () => {
     window.addEventListener(SYNC_DEGRADED_EVENT, onDegraded);
     return () => window.removeEventListener(SYNC_DEGRADED_EVENT, onDegraded);
   }, []);
+  // Produkt-Analytics (local-first, keine personenbezogenen Daten): Session-
+  // Start + abgeleitete Retention-Marker (day_1/day_7_return).
+  useEffect(() => { trackSessionStart(); }, []);
 
   useEffect(() => {
     const handleStatus = () => setIsOffline(!navigator.onLine);
@@ -136,25 +161,69 @@ const App: React.FC = () => {
     if (!auth.user || isOffline) return;
     loadAllCloudData(auth.user.id).then(cloud => {
       setCloudPreferences(cloud.preferences);
+      // Cloud-Pull MERGT statt zu überschreiben: Wer offline gelernt hat (oder
+      // bei gestörtem Sync), hat neuere lokale Einträge — ein Blind-Overwrite
+      // würde diese still vernichten. Konflikte: neuerer Zeitstempel gewinnt.
+      const readArr = (key: string): any[] => { try { return JSON.parse(localStorage.getItem(key) || '[]'); } catch { return []; } };
+      // Bei Änderung zusätzlich zurück zur Cloud pushen — sonst bliebe sie
+      // stale, bis der Nutzer das nächste Mal lokal schreibt (Self-Healing-Pull).
+      const writeArr = (key: string, merged: any[], cloudField: string, table: 'learning' | 'saved') => {
+        const prev = readArr(key);
+        if (merged.length === prev.length && merged.every((m, i) => m.id === prev[i]?.id)) return;
+        localStorage.setItem(key, JSON.stringify(merged));
+        if (table === 'learning') syncLearningField(auth.user!.id, cloudField as any, merged);
+        else import('./services/syncService').then(m => m.syncSavedField(auth.user!.id, cloudField as any, merged)).catch(() => {});
+      };
       if (cloud.learning) {
-        if (cloud.learning.exam_terms.length) { setExamTerms(cloud.learning.exam_terms); localStorage.setItem('studearc_exam_terms', JSON.stringify(cloud.learning.exam_terms)); }
-        if (cloud.learning.streak.lastDay) localStorage.setItem('studearc_streak', JSON.stringify(cloud.learning.streak));
-        if (cloud.learning.quiz_history.length) localStorage.setItem('studearc_quiz_history', JSON.stringify(cloud.learning.quiz_history));
-        if (cloud.learning.exam_history.length) localStorage.setItem('studearc_exam_history', JSON.stringify(cloud.learning.exam_history));
-        if (cloud.learning.recall_history.length) localStorage.setItem('studearc_recall_history', JSON.stringify(cloud.learning.recall_history));
-        if (cloud.learning.mistake_queue.length) localStorage.setItem('studearc_mistake_queue', JSON.stringify(cloud.learning.mistake_queue));
+        if (cloud.learning.exam_terms.length) {
+          const mergedExamTerms = mergeById(readArr('studearc_exam_terms'), cloud.learning.exam_terms);
+          writeArr('studearc_exam_terms', mergedExamTerms, 'exam_terms', 'learning');
+          setExamTerms(mergedExamTerms);
+        }
+        // Streak: der weiter fortgeschrittenere Stand gewinnt (höheres current;
+        // bei Gleichstand Cloud, falls lastDay neuer ist — getStreak liest localStorage).
+        try {
+          const localStreak = JSON.parse(localStorage.getItem('studearc_streak') || 'null');
+          const cs = cloud.learning.streak;
+          const cloudBetter = !localStreak || cs.current > localStreak.current
+            || (cs.current === localStreak.current && (cs.lastDay ?? '') > (localStreak.lastDay ?? ''));
+          if (cs.lastDay && cloudBetter) localStorage.setItem('studearc_streak', JSON.stringify(cs));
+        } catch {}
+        writeArr('studearc_quiz_history', mergeById(readArr('studearc_quiz_history'), cloud.learning.quiz_history, 'timestamp'), 'quiz_history', 'learning');
+        writeArr('studearc_exam_history', mergeById(readArr('studearc_exam_history'), cloud.learning.exam_history, 'timestamp'), 'exam_history', 'learning');
+        writeArr('studearc_recall_history', mergeById(readArr('studearc_recall_history'), cloud.learning.recall_history, 'timestamp'), 'recall_history', 'learning');
+        writeArr('studearc_mistake_queue', mergeById(readArr('studearc_mistake_queue'), cloud.learning.mistake_queue, 'addedAt'), 'mistake_queue', 'learning');
       }
-      if (cloud.metrics.length) { setMetrics(cloud.metrics); localStorage.setItem('studearc_metrics', JSON.stringify(cloud.metrics)); }
+      if (cloud.metrics.length) {
+        const localMetrics = (() => { try { return JSON.parse(localStorage.getItem('studearc_metrics') || '[]'); } catch { return []; } })();
+        const mergedMetrics = mergeMetrics(localMetrics, cloud.metrics);
+        setMetrics(mergedMetrics);
+        localStorage.setItem('studearc_metrics', JSON.stringify(mergedMetrics));
+        syncMetrics(auth.user.id, mergedMetrics);
+      }
       if (cloud.saved) {
-        if (cloud.saved.saved_quizzes.length) localStorage.setItem('studearc_saved_quizzes', JSON.stringify(cloud.saved.saved_quizzes));
-        if (cloud.saved.saved_exams.length) localStorage.setItem('studearc_saved_exams', JSON.stringify(cloud.saved.saved_exams));
-        if (Object.keys(cloud.saved.lib_meta).length) localStorage.setItem('studearc_lib_meta', JSON.stringify(cloud.saved.lib_meta));
-        if (cloud.saved.study_events.length) localStorage.setItem('study_events', JSON.stringify(cloud.saved.study_events));
-        if (cloud.saved.study_templates.length) localStorage.setItem('study_templates', JSON.stringify(cloud.saved.study_templates));
-        if (Object.keys(cloud.saved.reading_progress).length) localStorage.setItem('studearc_reading_progress', JSON.stringify(cloud.saved.reading_progress));
-        if (cloud.saved.reader_log.length) localStorage.setItem('studearc_reader_log', JSON.stringify(cloud.saved.reader_log));
-        if (cloud.saved.recurring_sessions.length) localStorage.setItem('studearc_recurring_sessions', JSON.stringify(cloud.saved.recurring_sessions));
-        if (cloud.saved.calendar_sessions.length) localStorage.setItem('studearc_calendar_sessions', JSON.stringify(cloud.saved.calendar_sessions));
+        writeArr('studearc_saved_quizzes', mergeById(readArr('studearc_saved_quizzes'), cloud.saved.saved_quizzes, 'savedAt'), 'saved_quizzes', 'saved');
+        writeArr('studearc_saved_exams', mergeById(readArr('studearc_saved_exams'), cloud.saved.saved_exams, 'savedAt'), 'saved_exams', 'saved');
+        writeArr('study_events', mergeById(readArr('study_events'), cloud.saved.study_events), 'study_events', 'saved');
+        writeArr('study_templates', mergeById(readArr('study_templates'), cloud.saved.study_templates), 'study_templates', 'saved');
+        writeArr('studearc_reader_log', mergeById(readArr('studearc_reader_log'), cloud.saved.reader_log, 'timestamp'), 'reader_log', 'saved');
+        writeArr('studearc_recurring_sessions', mergeById(readArr('studearc_recurring_sessions'), cloud.saved.recurring_sessions), 'recurring_sessions', 'saved');
+        writeArr('studearc_calendar_sessions', mergeById(readArr('studearc_calendar_sessions'), cloud.saved.calendar_sessions), 'calendar_sessions', 'saved');
+        // Lesefortschritt: Kapitel-Union, done gewinnt, sonst neueres doneAt.
+        if (Object.keys(cloud.saved.reading_progress).length) {
+          try {
+            const localRp = JSON.parse(localStorage.getItem('studearc_reading_progress') || '{}');
+            const mergedRp = mergeReadingProgress(localRp, cloud.saved.reading_progress);
+            localStorage.setItem('studearc_reading_progress', JSON.stringify(mergedRp));
+          } catch {}
+        }
+        // lib_meta: Key-Union, Cloud gewinnt pro vorhandenem Key.
+        if (Object.keys(cloud.saved.lib_meta).length) {
+          try {
+            const localMeta = JSON.parse(localStorage.getItem('studearc_lib_meta') || '{}');
+            localStorage.setItem('studearc_lib_meta', JSON.stringify({ ...localMeta, ...cloud.saved.lib_meta }));
+          } catch {}
+        }
       }
       if (!cloud.learning && !cloud.metrics.length) {
         const hasLocal = localStorage.getItem('studearc_metrics') || localStorage.getItem('studearc_streak') || localStorage.getItem('studearc_quiz_history');
@@ -175,11 +244,17 @@ const App: React.FC = () => {
   }, [auth.authChecked]);
 
   // History-Integration: Back/Forward stellt den jeweiligen Tab wieder her.
-  // Tabs außerhalb RESTORABLE_TABS (READER hängt an pendingActionDoc) werden
-  // ignoriert — der Browser-Status bleibt dann einfach unverändert stehen.
+  // Fehlt der State (initialer Eintrag), wird der Tab aus der URL abgeleitet —
+  // sonst stünde nach "Zurück bis zum Start" ein Tab da, der nicht mehr zur
+  // Adresse passt. Tabs außerhalb RESTORABLE_TABS (READER hängt an
+  // pendingActionDoc) werden ignoriert.
   useEffect(() => {
     const onPopState = (e: PopStateEvent) => {
-      const tab = (e.state as { studearcTab?: ActiveTab } | null)?.studearcTab;
+      let tab = (e.state as { studearcTab?: ActiveTab } | null)?.studearcTab;
+      if (!tab) {
+        const pathTab = (Object.entries(TAB_PATH) as [ActiveTab, string][]).find(([, p]) => p === window.location.pathname);
+        tab = pathTab?.[0] ?? ActiveTab.DASHBOARD;
+      }
       if (tab && RESTORABLE_TABS.has(tab)) {
         setPendingActionDoc(null);
         setPendingTopic(null);
@@ -208,6 +283,9 @@ const App: React.FC = () => {
   };
 
   const updateMetricsAfterSession = async (score: number, topicName: string, type: 'quiz' | 'exam' | 'recall' | 'cards') => {
+    // Funnel-Marker: jede Session-Art zählt, die erste je Art nur einmal.
+    track(`${type}_complete` as 'quiz_complete', { score });
+    track(`first_${type}` as 'first_quiz', undefined, true);
     const prev = [...metrics];
     const idx = prev.findIndex(m => m.topic === topicName);
     let updated: TopicMetric[];
@@ -376,6 +454,7 @@ const App: React.FC = () => {
           onComplete={(profile, startContext) => {
             markOnboardingDone();
             cacheOnboardingProfile(profile);
+            track('onboarding_complete', { path: startContext?.docId ? 'with-upload' : 'skip' }, true);
             setCloudPreferences(prev => ({ ...(prev ?? {}), onboarding_done: true, onboarding: profile as OnboardingProfile }));
             setShowOnboarding(false);
             if (auth.user) syncPreferences(auth.user.id, { onboarding_done: true, onboarding: profile as OnboardingProfile });

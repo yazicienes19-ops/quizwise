@@ -4,6 +4,7 @@ import { EmojiImage } from './EmojiImage';
 import { AnimatedBar } from './AnimatedBar';
 import { CountUp } from './CountUp';
 import { computeCalibration, calibrationPct, MIN_CALIBRATED_FOR_DISPLAY } from '../services/calibration';
+import { reportQuestion, type QuestionFeedbackReason } from '../services/questionFeedbackService';
 import { useTranslation } from '../i18n/I18nProvider';
 
 interface ResultViewProps {
@@ -26,6 +27,28 @@ export const ResultView: React.FC<ResultViewProps> = ({
   const [showSaveInput, setShowSaveInput] = useState(false);
   const [saveName, setSaveName] = useState(docName ? t('result.quizNameDefault', { name: docName }) : t('quiz.myQuiz'));
   const [saved, setSaved] = useState(false);
+  // Frage-Meldung: welche Frage ist aufgeklappt (Index → Reason-Auswahl sichtbar)
+  // und welche Indizes wurden bereits gemeldet (Bestätigung statt Doppelmeldung).
+  const [reportOpenIdx, setReportOpenIdx] = useState<number | null>(null);
+  const [reportedIdx, setReportedIdx] = useState<Set<number>>(new Set());
+
+  const FEEDBACK_REASONS: { key: QuestionFeedbackReason; labelKey: 'result.fb.unclear' | 'result.fb.wrong' | 'result.fb.duplicate' | 'result.fb.tooEasy' | 'result.fb.tooHard' | 'result.fb.noCorrect' | 'result.fb.other' }[] = [
+    { key: 'unclear', labelKey: 'result.fb.unclear' },
+    { key: 'wrong', labelKey: 'result.fb.wrong' },
+    { key: 'no_correct', labelKey: 'result.fb.noCorrect' },
+    { key: 'duplicate', labelKey: 'result.fb.duplicate' },
+    { key: 'too_easy', labelKey: 'result.fb.tooEasy' },
+    { key: 'too_hard', labelKey: 'result.fb.tooHard' },
+    { key: 'other', labelKey: 'result.fb.other' },
+  ];
+
+  const handleReport = (idx: number, reason: QuestionFeedbackReason) => {
+    const q = questions[idx];
+    if (!q) return;
+    reportQuestion(q.question, reason, docName);
+    setReportedIdx(prev => new Set(prev).add(idx));
+    setReportOpenIdx(null);
+  };
 
   const correctCount    = answers.filter(a => a.isCorrect).length;
   const wrongCount      = answers.length - correctCount;
@@ -285,6 +308,30 @@ export const ResultView: React.FC<ResultViewProps> = ({
                       </p>
                     )}
                   </div>
+                  {/* Frage-Qualität melden — Grundlage für späteres Prompt-Tuning */}
+                  {reportedIdx.has(i) ? (
+                    <p className="text-[10px] font-bold text-emerald-600 dark:text-emerald-400 pt-1">{t('result.fb.thanks')}</p>
+                  ) : reportOpenIdx === i ? (
+                    <div className="flex flex-wrap gap-1.5 pt-1">
+                      {FEEDBACK_REASONS.map(r => (
+                        <button
+                          key={r.key}
+                          onClick={() => handleReport(i, r.key)}
+                          className="px-2.5 py-1.5 rounded-[10px] text-[10px] font-bold bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300 hover:bg-rose-50 dark:hover:bg-rose-950/30 hover:text-rose-600 dark:hover:text-rose-400 transition-colors"
+                        >
+                          {t(r.labelKey)}
+                        </button>
+                      ))}
+                    </div>
+                  ) : (
+                    <button
+                      onClick={() => setReportOpenIdx(i)}
+                      className="flex items-center gap-1.5 text-[10px] font-bold text-slate-400 hover:text-rose-500 transition-colors pt-1"
+                    >
+                      <svg xmlns="http://www.w3.org/2000/svg" width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><path d="M4 15s1-1 4-1 5 2 8 2 4-1 4-1V3s-1 1-4 1-5-2-8-2-4 1-4 1z"/><line x1="4" y1="22" x2="4" y2="15"/></svg>
+                      {t('result.fb.report')}
+                    </button>
+                  )}
                 </div>
               )}
             </div>
