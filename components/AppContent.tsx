@@ -471,7 +471,7 @@ export const AppContent: React.FC<AppContentProps> = (p) => {
         getDocumentSource={getDocumentSource}
         onSaveToLibrary={file => handleFileUpload(file)}
         initialDoc={pendingActionDoc ?? undefined}
-        metrics={metrics} decks={decks}
+        metrics={metrics} decks={decks} setDecks={setDecks}
         onOpenReader={doc => { setPendingActionDoc(doc); setActiveTab(ActiveTab.READER); }}
       />;
 

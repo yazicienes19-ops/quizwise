@@ -25,6 +25,8 @@ interface ChatEntry {
   /** true, wenn dieses Kapitel allein die Frage nicht abdeckte und stattdessen
    *  im gesamten Dokument nachgesehen wurde. */
   expandedScope?: boolean;
+  /** Klickbare Weiterfragen aus der Antwort (nur am jüngsten Eintrag aktiv). */
+  followUps?: string[] | null;
 }
 
 interface SplitScreenReaderProps {
@@ -86,6 +88,11 @@ export const SplitScreenReader: React.FC<SplitScreenReaderProps> = ({ doc, userI
   const activeChapter: Chapter | undefined = chapters[activeIndex];
   const activeChat = activeChapter ? (chatByChapter[activeChapter.index] ?? []) : [];
   const activeDone = activeChapter ? doneIndices.includes(activeChapter.index) : false;
+  // Index der jüngsten abgeschlossenen Antwort — nur dort Weiterfragen-Chips
+  let lastAnsweredChatIdx = -1;
+  for (let i = activeChat.length - 1; i >= 0; i--) {
+    if (!activeChat[i].loading && activeChat[i].answer !== null) { lastAnsweredChatIdx = i; break; }
+  }
 
   // Verschachteltes Inhaltsverzeichnis aus den Kapiteln — dieselbe Baumlogik wie
   // beim PDF-Reader (services/pdfOutlineService.ts), da echte Skripte oft
@@ -139,24 +146,30 @@ export const SplitScreenReader: React.FC<SplitScreenReaderProps> = ({ doc, userI
   // Chat persistieren (nur abgeschlossene Antworten — Lade-/Fehlerzustände
   // sind nach einem Reload sowieso hinfällig).
   useEffect(() => {
-    const persistable: Record<number, { concept: string; answer: string; quote: string | null; expandedScope?: boolean }[]> = {};
+    const persistable: Record<number, { concept: string; answer: string; quote: string | null; expandedScope?: boolean; followUps?: string[] | null }[]> = {};
     (Object.entries(chatByChapter) as [string, ChatEntry[]][]).forEach(([idx, entries]) => {
       const done = entries.filter(e => !e.loading && e.answer !== null);
       if (done.length > 0) {
         persistable[Number(idx)] = done.map(e => ({
           concept: e.concept, answer: e.answer!, quote: e.highlight?.text ?? null, expandedScope: e.expandedScope,
+          followUps: e.followUps && e.followUps.length > 0 ? e.followUps : null,
         }));
       }
     });
     saveReaderChat(doc.id, persistable);
   }, [chatByChapter, doc.id]);
 
-  const handleAsk = useCallback(async () => {
-    const trimmed = concept.trim();
+  const handleAsk = useCallback(async (questionOverride?: string) => {
+    const trimmed = (questionOverride ?? concept).trim();
     if (trimmed.length <= 2 || !activeChapter) { toast.error(t('rd.enterQuestion')); return; }
     const chapterIndex = activeChapter.index;
     const chapterContent = activeChapter.content;
     const entry: ChatEntry = { concept: trimmed, answer: null, loading: true };
+    // Abgeschlossene Runden dieses Kapitels als Dialog-Historie mitgeben —
+    // Nachfragen ("und der zweite Punkt?") brauchen den Verlauf.
+    const history = (chatByChapter[chapterIndex] ?? [])
+      .filter(e => !e.loading && e.answer !== null)
+      .map(e => ({ question: e.concept, answer: e.answer! }));
     setChatByChapter(prev => ({ ...prev, [chapterIndex]: [...(prev[chapterIndex] ?? []), entry] }));
     setConcept('');
     try {
@@ -165,22 +178,24 @@ export const SplitScreenReader: React.FC<SplitScreenReaderProps> = ({ doc, userI
       // dann transparent im GANZEN Dokument nachsehen, statt fälschlich
       // "steht nicht im Dokument" zu zeigen.
       const context = { subject: doc.subject, chapterTitle: activeChapter.title };
-      const scoped = await generateGroundedExplanation({ text: chapterContent }, trimmed, context);
+      const scoped = await generateGroundedExplanation({ text: chapterContent }, trimmed, context, history);
       let finalAnswer = scoped.answer;
       let quote = scoped.sourceQuote;
+      let followUps = scoped.followUps;
       let expandedScope = false;
       if (!scoped.found) {
         // Auch hier die grounded Variante nutzen — sonst könnte ein erfundenes
         // Zitat als Beleg für eine Nicht-Antwort auftauchen (s. Audit-Fund 3).
-        const wholeDoc = await generateGroundedExplanation({ text: fullText }, trimmed, context);
+        const wholeDoc = await generateGroundedExplanation({ text: fullText }, trimmed, context, history);
         finalAnswer = wholeDoc.answer;
         quote = wholeDoc.sourceQuote;
+        followUps = wholeDoc.followUps;
         expandedScope = true;
       }
       const highlight = quote ? findQuoteInChapter(quote, chapterContent) : null;
       setChatByChapter(prev => ({
         ...prev,
-        [chapterIndex]: (prev[chapterIndex] ?? []).map(e => e === entry ? { ...e, answer: finalAnswer, loading: false, highlight, expandedScope } : e),
+        [chapterIndex]: (prev[chapterIndex] ?? []).map(e => e === entry ? { ...e, answer: finalAnswer, loading: false, highlight, expandedScope, followUps } : e),
       }));
       logReaderQuestion({
         docId: doc.id, docName: documentDisplayName(doc), chapterIndex,
@@ -195,7 +210,7 @@ export const SplitScreenReader: React.FC<SplitScreenReaderProps> = ({ doc, userI
         [chapterIndex]: (prev[chapterIndex] ?? []).filter(e => e !== entry),
       }));
     }
-  }, [concept, activeChapter, doc.id, userId, fullText]);
+  }, [concept, chatByChapter, activeChapter, doc.id, userId, fullText]);
 
   const handleMarkDone = () => {
     if (!activeChapter) return;
@@ -424,9 +439,29 @@ export const SplitScreenReader: React.FC<SplitScreenReaderProps> = ({ doc, userI
                     <span className="text-xs font-medium">{t('rd.loadingAnswer')}</span>
                   </div>
                 ) : entry.answer ? (
-                  <div className="rounded-2xl p-4" style={{ background: 'var(--bg-main)', border: '1px solid var(--border-color)' }}>
-                    {renderMarkdown(entry.answer)}
-                  </div>
+                  <>
+                    <div className="rounded-2xl p-4" style={{ background: 'var(--bg-main)', border: '1px solid var(--border-color)' }}>
+                      {renderMarkdown(entry.answer)}
+                    </div>
+                    {entry.followUps && entry.followUps.length > 0 && i === lastAnsweredChatIdx && (
+                      <div className="flex flex-wrap gap-2">
+                        {entry.followUps.map(q => (
+                          <button
+                            key={q}
+                            onClick={() => handleAsk(q)}
+                            className="px-3 py-1.5 rounded-xl text-[10px] font-black transition-all hover:scale-[1.03] text-left"
+                            style={{
+                              background: 'color-mix(in srgb, var(--primary) 10%, transparent)',
+                              color: 'var(--primary)',
+                              border: '1px solid color-mix(in srgb, var(--primary) 25%, transparent)',
+                            }}
+                          >
+                            {q}
+                          </button>
+                        ))}
+                      </div>
+                    )}
+                  </>
                 ) : null}
               </div>
             ))}

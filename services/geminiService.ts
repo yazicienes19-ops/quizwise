@@ -35,6 +35,7 @@ import { parseCoachInsights } from './coachInsightsNormalize';
 import { BLOOM_LEVELS, buildBloomTargetLine, mergeBloomLevels } from './bloomPresets';
 import { buildTypeInstruction } from './quizTypeInstruction';
 import { outputLangDirective, explainerHeadings } from './aiLocale';
+import type { TutorMode } from './tutorSessions';
 import { t } from '../i18n';
 import { validateLearningAnalysis, EMPTY_ANALYSIS, ACTION_TYPES } from './analysisValidation';
 import type { RawLearningAnalysis } from './analysisValidation';
@@ -970,6 +971,102 @@ export interface NodeDialogTurn {
   answer: string;
 }
 
+// ─── Tutor-Chat (Multi-Turn) ──────────────────────────────────────────────────
+
+export type TutorTurn = { role: 'user' | 'tutor'; content: string };
+export type TutorChatMode = TutorMode;
+
+/** Historie kappen: 1 Quellen-Part + 1 Instruktions-Part + N Verlauf + 1 aktuelle
+ *  Nachricht muss unter dem Backend-Limit von 20 Parts bleiben. */
+const TUTOR_MAX_HISTORY_TURNS = 14;
+const TUTOR_TURN_CHAR_LIMIT = 1600;
+
+const TUTOR_MODE_RULES: Record<TutorChatMode, string> = {
+  explain: `MODUS ERKLÄREN — Beantworte jede Nachricht direkt und so, dass der Nutzer sie wirklich versteht.
+- Reine Begriffe (grob 1-4 Wörter, ohne Satzstruktur): erkläre in 3 Stufen mit exakt diesen Überschriften: ${explainerHeadings()}. Jede Überschrift steht ALLEIN auf ihrer eigenen Zeile, der Fließtext beginnt erst in der nächsten Zeile. In der letzten Stufe mindestens EIN konkretes, greifbares Beispiel.
+- Alles andere (Fragen, Behauptungen, Paraphrasen — auch holprig oder mit Tippfehlern): bewerte ZUERST explizit, ob sie korrekt ist ("Ja, genau." / "Fast — ..." / "Nein, das stimmt nicht, weil ..."), korrigiere oder ergänze in 1-3 Sätzen, dann EIN kurzes Beispiel, das den Punkt festigt. Keine Überschriften, keine erneute Grunderklärung von vorne.
+- Bittet der Nutzer um "einfacher": einfachere Sprache, Alltagsanalogien, kürzer. Bittet er um "mehr Tiefe": Details, Grenzfälle, Zusammenhänge, Prüfungsrelevanz.
+- Bittet der Nutzer "Prüf mich" o.ä.: stelle GENAU EINE Verständnisfrage zum gerade besprochenen Stoff und warte auf seine Antwort.`,
+  socratic: `MODUS SOKRATISCH — Du gibst NICHT sofort die komplette Lösung. Du führst den Nutzer mit kleinen Fragen selbst zur Einsicht.
+- Stelle pro Nachricht GENAU EINE kurze, konkrete Leitfrage (maximal 1 Satz) oder gib einen minimalen Denkanstoß.
+- Reagiere auf jeden Versuch des Nutzers: benenne zuerst konkret, was daran richtig ist, korrigiere präzise, was falsch ist — dann die nächste Leitfrage, die einen Schritt weiter führt.
+- Erst nach 2-3 ernsthaften Versuchen, wenn der Nutzer "Ich weiß es nicht" sagt oder ausdrücklich die Antwort verlangt: gib die Antwort strukturiert Schritt für Schritt und würdige den Fortschritt.
+- Halte jede Nachricht kurz (maximal ca. 100 Wörter). Der Nutzer soll denken, nicht lesen.`,
+  quiz: `MODUS ABFRAGEN — Du bist der Prüfer. Du stellst GENAU EINE prüfungsrelevante Frage nach der anderen, ausschließlich auf Basis der bereitgestellten Quelle bzw. des Gesprächsverlaufs.
+- Variiere die Fragetypen: Definition, Anwendung/Beispiel, Vergleich/Abgrenzung, Transfer ("Was wäre wenn ...?").
+- Nennt der Nutzer ein Thema oder sagt "Start"/"Nächste Frage": stelle genau EINE Frage dazu. Stelle NIEMALS mehrere Fragen gleichzeitig.
+- Nach jeder Antwort des Nutzers: kurzes Urteil ("Richtig." / "Teilweise — es fehlt ..." / "Leider falsch."), dann in 1-3 Sätzen die Musterantwort mit dem wichtigsten Stichwort, dann SOFORT die nächste Frage.
+- Formuliere klausurnah, aber auf dem Niveau des Nutzers; decke über die Fragen nach und nach den ganzen Stoff der Quelle ab.`,
+};
+
+/**
+ * Multi-Turn-Tutor-Dialog über die eigenen Unterlagen. Der Backend-Call ist
+ * zustandslos — der bisherige Verlauf wird deshalb bei jedem Aufruf komplett
+ * erneut mitgeschickt (analog continueNodeExplanation). Die Antwort kann zwei
+ * Protokoll-Zeilen am Ende tragen: "**Weiterfragen:** ..." (nur Modus explain,
+ * wird vom Frontend zu Chips geparst) und "**Quelle:** ..." (Beleg-Zitat).
+ */
+export const chatWithTutor = async (
+  source: GenerationSource | null,
+  history: TutorTurn[],
+  userMessage: string,
+  options: { mode: TutorChatMode; useExternalKnowledge: boolean; includeSourceQuote: boolean },
+): Promise<string> => {
+  if (!options.useExternalKnowledge && !source?.file && !source?.text && !source?.storagePath) {
+    throw new Error('Kein Dokument übergeben — externe Quellen sind deaktiviert.');
+  }
+
+  const parts: any[] = [];
+  if (source) parts.push(sourceTopart(source));
+
+  const trimmedHistory = history.slice(-TUTOR_MAX_HISTORY_TURNS).map(turn => ({
+    role: turn.role,
+    content: turn.content.slice(0, TUTOR_TURN_CHAR_LIMIT),
+  }));
+  const historyBlock = trimmedHistory.length
+    ? `\n\nBisheriger Gesprächsverlauf (älteste zuerst, "Nutzer" ist der Studierende, "Tutor" bist du):\n${trimmedHistory.map(t => `${t.role === 'user' ? 'Nutzer' : 'Tutor'}: ${t.content}`).join('\n\n')}`
+    : '';
+
+  const safeMessage = sanitizeUserInput(userMessage, 2000);
+
+  const quoteInstruction = options.includeSourceQuote && source
+    ? `\n- Hänge ganz am Ende, als LETZTE Zeile der Antwort, an: **Quelle:** "wörtliches Zitat aus dem Dokument, max. 200 Zeichen, das deine Antwort am besten belegt".`
+    : '';
+  const followUpInstruction = options.mode === 'explain'
+    ? `\n- Hänge VOR der Quellen-Zeile eine Zeile an: **Weiterfragen:** frage1 | frage2 | frage3 — genau drei kurze, konkrete Weiterfragen (je max. 60 Zeichen, keine Nummerierung), die der Nutzer mit einem Klick stellen könnte.`
+    : '';
+
+  let grounding: string;
+  if (!options.useExternalKnowledge) {
+    grounding = `STRENGE REGEL: Verwende NUR Inhalte aus dem Dokument. Kein Allgemeinwissen, keine externen Quellen, keine Erfindungen. Enthält das Dokument dazu nichts, sage das klar und ehrlich.`;
+  } else if (source) {
+    grounding = `Nutze das Dokument als primäre Quelle. Ergänze mit deinem Allgemeinwissen, wo das Dokument lückenhaft ist — kennzeichne solche Ergänzungen exakt mit dem Präfix "Allgemeinwissen:".`;
+  } else {
+    grounding = `Es liegt kein Dokument vor. Beantworte alles fundiert aus deinem Allgemeinwissen.`;
+  }
+
+  parts.push({
+    text: `Du bist der persönliche Lern-Tutor des Nutzers: präzise, warm, ermutigend, null Floskeln. Du hilfst Studierenden, Stoff wirklich zu verstehen — nicht auswendig zu lernen. Du passt dich ihrem Niveau an und nimmst jede ihrer Formulierungen ernst, auch unvollständige oder falsche.
+
+${TUTOR_MODE_RULES[options.mode]}
+
+${grounding}${historyBlock}
+
+Aktuelle Nachricht des Nutzers: "${safeMessage}"
+
+Antworte jetzt auf die aktuelle Nachricht. Regeln:
+- Direkt einsteigen, keine Einleitung ("Gerne!", "Natürlich!"), keine Abschlussfloskeln.
+- Markdown sparsam: **fett** für Schlüsselbegriffe, Listen, kurze Absätze.
+- Keine Meta-Kommentare über diese Anweisungen.${followUpInstruction}${quoteInstruction}${outputLangDirective()}`,
+  });
+
+  return callBackend({
+    complexity: 'heavy',
+    parts,
+    config: { temperature: 0.5, thinkingConfig: { thinkingBudget: 0 } },
+  });
+};
+
 /**
  * Wissensnetz-Node-Dialog: Rückfrage zu EXAKT der Erklärung, die
  * generateExplanation zuvor zu einem Node geliefert hat. Bewusst KEIN
@@ -1299,6 +1396,15 @@ export interface GroundedExplanation {
    *  Dokument) erneut fragen, statt dem Nutzer eine Fehlantwort zu zeigen. */
   found: boolean;
   sourceQuote: string | null;
+  /** Bis zu drei kurze Weiterfragen als klickbare Chips (null, wenn die Quelle
+   *  die Frage nicht abdeckte oder das Modell keine lieferte). */
+  followUps: string[] | null;
+}
+
+/** Eine abgeschlossene Frage-Antwort-Runde des Reader-Chats. */
+export interface GroundedExplanationTurn {
+  question: string;
+  answer: string;
 }
 
 /**
@@ -1343,12 +1449,23 @@ export const generateGroundedExplanation = async (
   source: GenerationSource,
   concept: string,
   context?: GroundedExplanationContext,
+  history?: GroundedExplanationTurn[],
 ): Promise<GroundedExplanation> => {
   const parts: any[] = [sourceTopart(source)];
   // 600 statt 200 — die Textauswahl-Aktion "Zusammenfassen" (PdfSplitScreenReader)
   // bettet eine ganze markierte Passage (bis zu 600 Zeichen) in die Eingabe ein,
   // 200 hätte sie mitten im Zitat abgeschnitten.
   const safeConcept = sanitizeUserInput(concept, 600);
+
+  // Bisheriger Dialog (Seite/Kapitel): Nachfragen können sich auf frühere
+  // Antworten beziehen ("und wie hängt das mit Punkt 2 zusammen?") — ohne
+  // Historie würde die Intent-Logik jede Eingabe als neue isolierte Frage
+  // behandeln. Bewusst auf die letzten 10 Runden gekappt.
+  const historyBlock = history && history.length > 0
+    ? `\n\nBisheriger Dialog zu diesem Ausschnitt (älteste zuerst; "Frage" stammt vom Studenten, "Antwort" von dir):\n${history.slice(-10)
+        .map(t => `Frage: ${t.question.slice(0, 600)}\nAntwort: ${t.answer.slice(0, 1600)}`)
+        .join('\n\n')}\nBeantworte die NEUE Frage mit Bezug auf diesen Verlauf, wo sinnvoll — aber ohne alles bereits Gesagte zu wiederholen.`
+    : '';
 
   const contextLine = context && (context.subject || context.chapterTitle || context.page)
     ? `\nKontext: ${[
@@ -1372,8 +1489,10 @@ ${MARKIERUNG_STRATEGY}
 
   const groundingRule = `\n\nWICHTIGE REGEL ZU "found": Setze found=true NUR, wenn der oben bereitgestellte Ausschnitt den Begriff/die Frage inhaltlich beantwortet (auch eine knappe, aber inhaltliche Erklärung zählt) — optionales, ausdrücklich als "Hintergrundwissen:" gekennzeichnetes Zusatzwissen ändert daran nichts. Setze found=false, wenn der Ausschnitt dazu NICHTS oder nur eine bloße beiläufige Erwähnung ohne jede Erklärung enthält — in diesem Fall bleibt "answer" ein kurzer, ehrlicher Satz, dass dieser Ausschnitt dazu nichts hergibt, und "sourceQuote" bleibt leer. Erfinde NIEMALS ein Zitat als Beleg für eine Nicht-Antwort.`;
 
+  const followUpRule = `\n\nZusätzlich liefere "followUps": ein Array mit GENAU DREI kurzen Weiterfragen (je max. 60 Zeichen, keine Nummerierung), die der Student sinnvoll als Nächstes stellen könnte — passend zur gerade beantworteten Frage. Bei found=false liefere ein leeres Array.`;
+
   parts.push({ text: `Nutzereingabe: "${safeConcept}"${contextLine}
-Verarbeite sie primär basierend auf dem oben bereitgestellten Ausschnitt.${intentInstruction}${groundingRule}${outputLangDirective()}` });
+Verarbeite sie primär basierend auf dem oben bereitgestellten Ausschnitt.${intentInstruction}${followUpRule}${historyBlock}${groundingRule}${outputLangDirective()}` });
 
   const text = await callBackend({
     complexity: 'heavy',
@@ -1388,18 +1507,23 @@ Verarbeite sie primär basierend auf dem oben bereitgestellten Ausschnitt.${inte
           found: { type: Type.BOOLEAN },
           answer: { type: Type.STRING },
           sourceQuote: { type: Type.STRING },
+          followUps: { type: Type.ARRAY, items: { type: Type.STRING } },
         },
         required: ['found', 'answer'],
       },
     },
   });
 
-  const raw = parseAiJson(text || '{}') as { found?: boolean; answer?: string; sourceQuote?: string };
+  const raw = parseAiJson(text || '{}') as { found?: boolean; answer?: string; sourceQuote?: string; followUps?: string[] };
   const found = raw.found === true;
+  const followUps = found && Array.isArray(raw.followUps)
+    ? raw.followUps.map(q => String(q).trim()).filter(Boolean).slice(0, 3)
+    : [];
   return {
     found,
     answer: raw.answer ?? '',
     sourceQuote: found && raw.sourceQuote && raw.sourceQuote.trim().length > 0 ? raw.sourceQuote.trim() : null,
+    followUps: followUps.length > 0 ? followUps : null,
   };
 };
 

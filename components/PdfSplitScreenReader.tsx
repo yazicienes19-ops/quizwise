@@ -42,6 +42,8 @@ interface ChatEntry {
   /** true, wenn diese Seite allein die Frage nicht abdeckte und stattdessen
    *  im gesamten Dokument nachgesehen wurde. */
   expandedScope?: boolean;
+  /** Klickbare Weiterfragen aus der Antwort (nur am jüngsten Eintrag aktiv). */
+  followUps?: string[] | null;
 }
 
 interface PdfSplitScreenReaderProps {
@@ -107,6 +109,11 @@ export const PdfSplitScreenReader: React.FC<PdfSplitScreenReaderProps> = ({ doc,
   const pageIndex = pageNumber - 1;
   const activeChat = chatByPage[pageIndex] ?? [];
   const activeDone = doneIndices.includes(pageIndex);
+  // Index der jüngsten abgeschlossenen Antwort — nur dort Weiterfragen-Chips
+  let lastAnsweredChatIdx = -1;
+  for (let i = activeChat.length - 1; i >= 0; i--) {
+    if (!activeChat[i].loading && activeChat[i].answer !== null) { lastAnsweredChatIdx = i; break; }
+  }
 
   // PDF einmalig laden (Storage bevorzugt, sonst lokales Base64)
   useEffect(() => {
@@ -257,6 +264,11 @@ export const PdfSplitScreenReader: React.FC<PdfSplitScreenReaderProps> = ({ doc,
     const askedPageNumber = pageNumber;
     const askedPageIndex = askedPageNumber - 1;
     const entry: ChatEntry = { concept: trimmed, answer: null, loading: true };
+    // Abgeschlossene Runden dieser Seite als Dialog-Historie mitgeben —
+    // Nachfragen ("und der zweite Punkt?") brauchen den Verlauf.
+    const history = (chatByPage[askedPageIndex] ?? [])
+      .filter(e => !e.loading && e.answer !== null)
+      .map(e => ({ question: e.concept, answer: e.answer! }));
     setChatByPage(prev => ({ ...prev, [askedPageIndex]: [...(prev[askedPageIndex] ?? []), entry] }));
     setConcept('');
     try {
@@ -280,22 +292,24 @@ export const PdfSplitScreenReader: React.FC<PdfSplitScreenReaderProps> = ({ doc,
       // im GANZEN Dokument nachsehen, statt fälschlich "steht nicht im Dokument" zu
       // zeigen, nur weil die aktuelle Seite zufällig nichts dazu hergibt.
       const context = { subject: doc.subject, chapterTitle: `Seite ${askedPageNumber}`, page: askedPageNumber };
-      const scoped = await generateGroundedExplanation(pageSource, trimmed, context);
+      const scoped = await generateGroundedExplanation(pageSource, trimmed, context, history);
       let finalAnswer = scoped.answer;
       let quote = scoped.sourceQuote;
+      let followUps = scoped.followUps;
       let expandedScope = false;
       if (!scoped.found) {
         // Auch hier die grounded Variante nutzen, nicht die einfache generateExplanation
         // — sonst fordert der alte Prompt weiterhin IMMER ein Zitat an und erfindet
         // eines, wenn das Dokument die Frage am Ende doch nirgends beantwortet.
-        const wholeDoc = await generateGroundedExplanation(getDocumentSource(doc), trimmed, context);
+        const wholeDoc = await generateGroundedExplanation(getDocumentSource(doc), trimmed, context, history);
         finalAnswer = wholeDoc.answer;
         quote = wholeDoc.sourceQuote;
+        followUps = wholeDoc.followUps;
         expandedScope = true;
       }
       setChatByPage(prev => ({
         ...prev,
-        [askedPageIndex]: (prev[askedPageIndex] ?? []).map(e => e === entry ? { ...e, answer: finalAnswer, loading: false, quote, expandedScope } : e),
+        [askedPageIndex]: (prev[askedPageIndex] ?? []).map(e => e === entry ? { ...e, answer: finalAnswer, loading: false, quote, expandedScope, followUps } : e),
       }));
       logReaderQuestion({
         docId: doc.id, docName: documentDisplayName(doc), chapterIndex: askedPageIndex,
@@ -309,7 +323,7 @@ export const PdfSplitScreenReader: React.FC<PdfSplitScreenReaderProps> = ({ doc,
         [askedPageIndex]: (prev[askedPageIndex] ?? []).filter(e => e !== entry),
       }));
     }
-  }, [concept, pdf, pageNumber, doc, userId, getDocumentSource]);
+  }, [concept, chatByPage, pdf, pageNumber, doc, userId, getDocumentSource]);
 
   // Maus-Auswahl auf der Textebene → schwebende Aktions-Leiste, die sich wie die
   // native Textauswahl unter macOS/iOS verhält: sitzt ÜBER der Markierung (und
@@ -709,6 +723,24 @@ export const PdfSplitScreenReader: React.FC<PdfSplitScreenReaderProps> = ({ doc,
                           </button>
                         </div>
                         <p className="text-xs font-medium italic text-slate-600 dark:text-slate-300 break-words">„{entry.quote}"</p>
+                      </div>
+                    )}
+                    {entry.followUps && entry.followUps.length > 0 && i === lastAnsweredChatIdx && (
+                      <div className="flex flex-wrap gap-2">
+                        {entry.followUps.map(q => (
+                          <button
+                            key={q}
+                            onClick={() => handleAsk(q)}
+                            className="px-3 py-1.5 rounded-xl text-[10px] font-black transition-all hover:scale-[1.03] text-left"
+                            style={{
+                              background: 'color-mix(in srgb, var(--primary) 10%, transparent)',
+                              color: 'var(--primary)',
+                              border: '1px solid color-mix(in srgb, var(--primary) 25%, transparent)',
+                            }}
+                          >
+                            {q}
+                          </button>
+                        ))}
                       </div>
                     )}
                   </div>

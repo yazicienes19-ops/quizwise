@@ -47,6 +47,19 @@ describe('saveReaderChat / getReaderChat', () => {
     ]);
   });
 
+  it('speichert Weiterfragen nur, wenn welche existieren, und kappt auf drei', () => {
+    saveReaderChat('docA', {
+      0: [
+        { concept: 'X', answer: 'Y', followUps: ['a?', 'b?', 'c?', 'd?'] },
+        { concept: 'A', answer: 'B', followUps: null },
+      ],
+    });
+    expect(getReaderChat('docA')[0]).toEqual([
+      { concept: 'X', answer: 'Y', quote: null, followUps: ['a?', 'b?', 'c?'] },
+      { concept: 'A', answer: 'B', quote: null },
+    ]);
+  });
+
   it('kappt sehr lange Antworten auf eine Maximallänge (Schutz vor Storage-Überlastung)', () => {
     const longAnswer = 'x'.repeat(5000);
     saveReaderChat('docA', { 0: [{ concept: 'X', answer: longAnswer }] });

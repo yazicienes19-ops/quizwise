@@ -13,6 +13,8 @@ export interface StoredChatEntry {
   /** true, wenn die Antwort erst nach Ausweiten auf das Gesamtdokument entstand
    *  (Seite/Kapitel allein deckte die Frage nicht ab). */
   expandedScope?: boolean;
+  /** Klickbare Weiterfragen zur Antwort (null/leer = keine Chips). */
+  followUps?: string[] | null;
 }
 
 export type DocChat = Record<number, StoredChatEntry[]>;
@@ -58,6 +60,7 @@ export function saveReaderChat(docId: string, chat: DocChat): void {
       answer: e.answer.slice(0, MAX_ANSWER_LENGTH),
       quote: e.quote ?? null,
       ...(e.expandedScope ? { expandedScope: true } : {}),
+      ...(e.followUps && e.followUps.length > 0 ? { followUps: e.followUps.slice(0, 3) } : {}),
     }));
   });
   all[docId] = { updatedAt: nextUpdatedAt(), chat: trimmed };
