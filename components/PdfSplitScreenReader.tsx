@@ -6,7 +6,7 @@ import { loadPdf, getPageText, getPageTextItems, renderPageToCanvas, renderPageT
 import { buildPdfOutline, type PdfTocEntry } from '../services/pdfOutlineService';
 import { TocList } from './DocTocList';
 import { findQuoteRects, type HighlightRect } from '../services/pdfHighlightService';
-import { markChapterDone, getDoneChapterIndices } from '../services/chapterProgressService';
+import { markChapterDone, getDoneChapterIndices, getLastPage, saveLastPage } from '../services/chapterProgressService';
 import { logReaderQuestion, getReaderLog } from '../services/readerLogService';
 import { saveReaderChat, getReaderChat } from '../services/readerChatService';
 import { buildFeynmanHandoff, pickHandoffTopic } from '../services/feynmanHandoffService';
@@ -62,7 +62,9 @@ export const PdfSplitScreenReader: React.FC<PdfSplitScreenReaderProps> = ({ doc,
   const { t } = useTranslation();
   const [pdf, setPdf] = useState<PdfHandle | null>(null);
   const [loadError, setLoadError] = useState(false);
-  const [pageNumber, setPageNumber] = useState(1);
+  // Beim erneuten Öffnen dort weiterlesen, wo zuletzt aufgehört wurde, statt
+  // immer bei Seite 1 zu starten (s. saveLastPage-Effekt weiter unten).
+  const [pageNumber, setPageNumber] = useState(() => (getLastPage(doc.id) ?? 0) + 1);
   const [pageText, setPageText] = useState<string | null>(null);
   /** 1 = an Spaltenbreite angepasst; >1 zoomt hinein (Container scrollt). */
   const [zoom, setZoom] = useState(1);
@@ -114,7 +116,12 @@ export const PdfSplitScreenReader: React.FC<PdfSplitScreenReaderProps> = ({ doc,
         const base64 = doc.storagePath ? await downloadPdfAsBase64(doc.storagePath) : doc.content;
         if (!base64) throw new Error(t('rd.noPdfContent'));
         const handle = await loadPdf(base64);
-        if (!cancelled) setPdf(handle);
+        if (!cancelled) {
+          setPdf(handle);
+          // Gespeicherte Seite kann außerhalb liegen (z.B. Datei seither ersetzt) —
+          // dann lieber vorne beginnen als in einen ungültigen Zustand rendern.
+          setPageNumber(p => (p > handle.numPages ? 1 : p));
+        }
       } catch {
         if (!cancelled) setLoadError(true);
       }
@@ -162,6 +169,16 @@ export const PdfSplitScreenReader: React.FC<PdfSplitScreenReaderProps> = ({ doc,
   }, [pdf, pageNumber, zoom]);
 
   useEffect(() => { setConcept(''); }, [pageNumber]);
+
+  // Zuletzt besuchte Seite merken — sofort bei jedem Seitenwechsel, nicht erst
+  // ab der Auto-Gelesen-Schwelle (auch kurzes Reinschauen soll beim nächsten
+  // Öffnen an dieser Stelle fortsetzen). Erst nach PDF-Laden aktiv, damit der
+  // initiale Wert (aus dem Speicher gelesen) nicht sofort mit sich selbst
+  // überschrieben wird, bevor ein etwaiges Clamping greifen konnte.
+  useEffect(() => {
+    if (!pdf) return;
+    saveLastPage(doc.id, pageNumber - 1, userId);
+  }, [pdf, pageNumber, doc.id, userId]);
 
   // Auto-Gelesen: die Verweildauer wird beim Verlassen der Seite (Blättern oder
   // Reader schließen) ausgewertet — kein Timer nötig, kein Klick-Zwang mehr.

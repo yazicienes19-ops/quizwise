@@ -5,7 +5,7 @@ import { generateGroundedExplanation } from '../services/geminiService';
 import { getChaptersOrWhole, getTextForChapterDetection, type Chapter } from '../services/chapterService';
 import { buildTocTree, type PdfTocEntry } from '../services/pdfOutlineService';
 import { TocList } from './DocTocList';
-import { markChapterDone, getDoneChapterIndices, isChapterDone } from '../services/chapterProgressService';
+import { markChapterDone, getDoneChapterIndices, isChapterDone, getLastPage, saveLastPage } from '../services/chapterProgressService';
 import { logReaderQuestion, getReaderLog } from '../services/readerLogService';
 import { saveReaderChat, getReaderChat } from '../services/readerChatService';
 import { buildFeynmanHandoff, pickHandoffTopic } from '../services/feynmanHandoffService';
@@ -49,7 +49,15 @@ export const SplitScreenReader: React.FC<SplitScreenReaderProps> = ({ doc, userI
   const isSupported = hasDirectText || !!fullText;
   const chapters = useMemo(() => (isSupported ? getChaptersOrWhole(fullText) : []), [isSupported, fullText]);
 
-  const [activeIndex, setActiveIndex] = useState(0);
+  // Beim erneuten Öffnen beim zuletzt besuchten Kapitel weitermachen statt
+  // immer bei Kapitel 0 zu starten — `chapters` steht hier (anders als beim
+  // PDF-Reader) schon synchron zur Verfügung, kein Nachladen nötig.
+  const [activeIndex, setActiveIndex] = useState(() => {
+    const lastChapterIndex = getLastPage(doc.id);
+    if (lastChapterIndex == null) return 0;
+    const pos = chapters.findIndex(c => c.index === lastChapterIndex);
+    return pos >= 0 ? pos : 0;
+  });
   const [doneIndices, setDoneIndices] = useState<number[]>(() => getDoneChapterIndices(doc.id));
   // Gespeicherten Chat wiederherstellen — sonst geht die komplette Konversation
   // beim Verlassen und Wiederöffnen des Readers verloren (nur die reine
@@ -115,6 +123,12 @@ export const SplitScreenReader: React.FC<SplitScreenReaderProps> = ({ doc, userI
   const highlightRef = useRef<HTMLSpanElement>(null);
 
   useEffect(() => { setConcept(''); }, [activeIndex]);
+
+  // Zuletzt besuchtes Kapitel merken — für "beim nächsten Öffnen dort
+  // weiterlesen" (s. activeIndex-Initialisierung oben).
+  useEffect(() => {
+    if (activeChapter) saveLastPage(doc.id, activeChapter.index, userId);
+  }, [activeChapter?.index, doc.id, userId]);
 
   useEffect(() => {
     if (displayedHighlight && highlightRef.current) {

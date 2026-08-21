@@ -1,5 +1,5 @@
 import { describe, it, expect, beforeEach } from 'vitest';
-import { markChapterDone, isChapterDone, getDoneChapterIndices, getDocProgress } from './chapterProgressService';
+import { markChapterDone, isChapterDone, getDoneChapterIndices, getDocProgress, saveLastPage, getLastPage } from './chapterProgressService';
 
 beforeEach(() => {
   localStorage.clear();
@@ -41,5 +41,41 @@ describe('markChapterDone / isChapterDone', () => {
   it('unbekanntes Dokument liefert leeren Fortschritt statt Crash', () => {
     expect(getDocProgress('nie-existiert')).toEqual({});
     expect(getDoneChapterIndices('nie-existiert')).toEqual([]);
+  });
+});
+
+describe('saveLastPage / getLastPage', () => {
+  it('unbekanntes Dokument liefert undefined statt Crash', () => {
+    expect(getLastPage('nie-existiert')).toBeUndefined();
+  });
+
+  it('speichert und liest die zuletzt besuchte Seite', () => {
+    saveLastPage('docA', 4);
+    expect(getLastPage('docA')).toBe(4);
+  });
+
+  it('überschreibt den vorherigen Stand bei erneutem Speichern', () => {
+    saveLastPage('docA', 4);
+    saveLastPage('docA', 7);
+    expect(getLastPage('docA')).toBe(7);
+  });
+
+  it('ist zwischen Dokumenten isoliert', () => {
+    saveLastPage('docA', 4);
+    expect(getLastPage('docB')).toBeUndefined();
+  });
+
+  it('kollidiert nicht mit dem Kapitel-Fortschritt desselben Dokuments', () => {
+    markChapterDone('docA', 0);
+    markChapterDone('docA', 1);
+    saveLastPage('docA', 3);
+    expect(getDoneChapterIndices('docA')).toEqual([0, 1]);
+    expect(getLastPage('docA')).toBe(3);
+  });
+
+  it('Seite 0 (erste Seite) ist von "nie besucht" unterscheidbar', () => {
+    saveLastPage('docA', 0);
+    expect(getLastPage('docA')).toBe(0);
+    expect(getLastPage('docA')).not.toBeUndefined();
   });
 });

@@ -7,7 +7,11 @@ export interface ChapterReadState {
 }
 
 export type DocReadingProgress = Record<number, ChapterReadState>;
-type AllProgress = Record<string, DocReadingProgress>;
+// `__lastPages` ist ein reservierter Schlüssel im selben Speicher (localStorage
+// + reading_progress-Cloud-Spalte) für "zuletzt besuchte Seite/Kapitel" pro
+// Dokument — kollidiert praktisch nie mit einer echten Dokument-ID (9-stellige
+// Base36-Strings), spart aber eine eigene Migration/Cloud-Spalte.
+type AllProgress = Record<string, DocReadingProgress> & { __lastPages?: Record<string, number> };
 
 const readAll = (): AllProgress => {
   try { return JSON.parse(localStorage.getItem(STORAGE_KEY) || '{}'); } catch { return {}; }
@@ -19,6 +23,20 @@ const writeAll = (all: AllProgress, userId?: string | null): void => {
     import('./syncService').then(({ syncSavedField }) => syncSavedField(userId, 'reading_progress', all)).catch(() => {});
   }
 };
+
+/** Speichert die zuletzt besuchte Seite/Kapitel (0-basierter Index, wie
+ *  chapterIndex überall sonst in diesem Service) — Grundlage für "beim
+ *  Wiederöffnen dort weiterlesen, wo aufgehört wurde". */
+export function saveLastPage(docId: string, pageIndex: number, userId?: string | null): void {
+  const all = readAll();
+  all.__lastPages = { ...(all.__lastPages ?? {}), [docId]: pageIndex };
+  writeAll(all, userId);
+}
+
+/** undefined = noch nie geöffnet oder keine gespeicherte Position. */
+export function getLastPage(docId: string): number | undefined {
+  return readAll().__lastPages?.[docId];
+}
 
 export function markChapterDone(docId: string, chapterIndex: number, userId?: string | null): void {
   const all = readAll();
