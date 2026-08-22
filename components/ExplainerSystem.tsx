@@ -636,7 +636,10 @@ export const ExplainerSystem: React.FC<ExplainerSystemProps> = ({
     <div className="max-w-3xl mx-auto py-4 lg:py-6 px-4 flex flex-col min-h-[70vh]">
       {/* Kopfzeile */}
       <div
-        className="sticky top-0 z-20 -mx-4 px-4 py-3 mb-4 flex items-center gap-2 rounded-b-2xl"
+        // Mobil unter der fixen App-Topbar andocken (Notch-Inset + 3.5rem),
+        // ab md klebt der Header wie bisher am oberen Rand — die Topbar ist
+        // unter 768px das Einzige, was sonst davor läge.
+        className="sticky top-[calc(3.5rem+env(safe-area-inset-top))] md:top-0 z-20 -mx-4 px-4 py-3 mb-4 flex items-center gap-2 rounded-b-2xl"
         style={{ background: 'linear-gradient(to bottom, var(--bg-main) 82%, transparent)' }}
       >
         <button
@@ -833,7 +836,10 @@ export const ExplainerSystem: React.FC<ExplainerSystemProps> = ({
 
       {/* Composer */}
       <div
-        className="sticky bottom-0 z-20 -mx-4 px-4 pt-2 pb-3"
+        // Mobil über der fixen Bottom-Nav schweben (Nav-Höhe ~4rem + Home-
+        // Indikator-Inset), sonst läge der Senden-Button hinter ihr — ab md
+        // (Nav verschwindet) klebt der Composer normal am unteren Rand.
+        className="sticky bottom-[calc(env(safe-area-inset-bottom)+4rem)] md:bottom-0 z-20 -mx-4 px-4 pt-2 pb-3"
         style={{ background: 'linear-gradient(to top, var(--bg-main) 78%, transparent)' }}
       >
         {/* Quick-Actions */}

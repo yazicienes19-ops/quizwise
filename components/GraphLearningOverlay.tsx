@@ -5,7 +5,8 @@ import { QuizType } from '../types';
 import type { GraphNode } from '../services/graph/types';
 import type { RelatedConceptEntry } from '../services/graph/graphIndex';
 import { buildNodeGenerationSource, buildNodeSyntheticDocument, buildNodeDialogSource } from '../services/graph/graphLearningSource';
-import { generateFlashcardsFromDocument, generateQuizFromDocument, generateExplanation, continueNodeExplanation, type NodeDialogTurn } from '../services/geminiService';
+import { generateFlashcardsFromDocument, generateQuizFromDocument, chatWithTutor, type TutorTurn } from '../services/geminiService';
+import { parseTutorResponse } from '../services/tutorFollowUpParser';
 import { createSrsState, reviewCard, migrateLegacyCard, QUALITY_MAP } from '../services/spacedRepetition';
 import { saveDeckToSupabase } from '../services/flashcardService';
 import { saveQuizResult } from '../services/quizHistoryService';
@@ -102,7 +103,10 @@ const OverlayShell: React.FC<{ node: GraphNode; activity: GraphLearningActivity;
 
   return createPortal(
     <div className="fixed inset-0 z-50 flex flex-col animate-in fade-in duration-200" style={{ background: 'var(--bg-main)' }}>
-      <div className="flex items-center gap-3 px-4 py-3 border-b shrink-0" style={{ borderColor: 'var(--border-color)', background: 'var(--bg-sidebar)' }}>
+      <div
+        className="flex items-center gap-3 px-4 pb-3 pt-[calc(0.75rem+env(safe-area-inset-top))] border-b shrink-0"
+        style={{ borderColor: 'var(--border-color)', background: 'var(--bg-sidebar)' }}
+      >
         <button
           ref={closeButtonRef}
           onClick={onClose}
@@ -365,11 +369,11 @@ const FeynmanActivity: React.FC<{
 };
 
 // ── KI-Erklärung ─────────────────────────────────────────────────────────
-// Node-Dialog: die einmalige Erklärung von generateExplanation bleibt der
-// Einstieg (unverändert), danach kann der Nutzer Rückfragen zu GENAU diesem
-// Node stellen (continueNodeExplanation, s. geminiService.ts). Bewusst KEIN
-// allgemeiner Chat — jede Rückfrage bleibt an den Node-Kontext gebunden, die
-// Regel dafür sitzt im Prompt selbst, nicht in der UI.
+// Node-Dialog über denselben Multi-Turn-Tutor wie der Tutor-Tab
+// (chatWithTutor, s. geminiService.ts) — inklusive klickbarer Weiterfragen
+// (followUps). Bewusst weiterhin KEIN offener Chat: conceptLock hält jede
+// Antwort an GENAU diesen Node gebunden (Regel im Prompt, nicht in der UI),
+// dieselbe Grenze wie bisher bei continueNodeExplanation.
 const QuickActionButton: React.FC<{ label: string; onClick: () => void }> = ({ label, onClick }) => (
   <button
     onClick={onClick}
@@ -388,8 +392,9 @@ const ExplainActivity: React.FC<{
 }> = ({ node, relatedConceptEntries, onClose, onApiError }) => {
   const { t } = useTranslation();
   const [explanation, setExplanation] = useState<string | null>(null);
+  const [initialFollowUps, setInitialFollowUps] = useState<string[] | null>(null);
   const [error, setError] = useState<string | null>(null);
-  const [history, setHistory] = useState<NodeDialogTurn[]>([]);
+  const [history, setHistory] = useState<{ question: string; answer: string; followUps: string[] | null }[]>([]);
   const [followUpInput, setFollowUpInput] = useState('');
   const [isAsking, setIsAsking] = useState(false);
   const startedRef = useRef(false);
@@ -401,8 +406,12 @@ const ExplainActivity: React.FC<{
       try {
         const hasOwnContext = node.description.trim().length > 0 || node.notes.trim().length > 0;
         const source = hasOwnContext ? buildNodeGenerationSource(node) : null;
-        const result = await generateExplanation(source, node.title, true, false);
-        setExplanation(result);
+        const raw = await chatWithTutor(source, [], node.title, {
+          mode: 'explain', useExternalKnowledge: true, includeSourceQuote: false, conceptLock: node.title,
+        });
+        const parsed = parseTutorResponse(raw);
+        setExplanation(parsed.content);
+        setInitialFollowUps(parsed.followUps);
       } catch (e) {
         onApiError(e);
         setError(resolveErrorMessage(e));
@@ -418,8 +427,15 @@ const ExplainActivity: React.FC<{
     setFollowUpInput('');
     try {
       const dialogSource = buildNodeDialogSource(node, relatedConceptEntries);
-      const answer = await continueNodeExplanation(dialogSource, node.title, history, question);
-      setHistory(prev => [...prev, { question, answer }]);
+      const tutorHistory: TutorTurn[] = history.map(turn => ([
+        { role: 'user' as const, content: turn.question },
+        { role: 'tutor' as const, content: turn.answer },
+      ])).flat();
+      const raw = await chatWithTutor(dialogSource, tutorHistory, question, {
+        mode: 'explain', useExternalKnowledge: false, includeSourceQuote: false, conceptLock: node.title,
+      });
+      const { content, followUps } = parseTutorResponse(raw);
+      setHistory(prev => [...prev, { question, answer: content, followUps }]);
     } catch (e) {
       onApiError(e);
       toast.error(resolveErrorMessage(e));
@@ -438,12 +454,49 @@ const ExplainActivity: React.FC<{
             {renderMarkdown(explanation)}
           </div>
 
+          {initialFollowUps && initialFollowUps.length > 0 && history.length === 0 && !isAsking && (
+            <div className="flex flex-wrap gap-2 px-2">
+              {initialFollowUps.map(q => (
+                <button
+                  key={q}
+                  onClick={() => handleAsk(q)}
+                  className="px-3 py-1.5 rounded-xl text-[10px] font-black transition-all hover:scale-[1.03] text-left"
+                  style={{
+                    background: 'color-mix(in srgb, var(--primary) 10%, transparent)',
+                    color: 'var(--primary)',
+                    border: '1px solid color-mix(in srgb, var(--primary) 25%, transparent)',
+                  }}
+                >
+                  {q}
+                </button>
+              ))}
+            </div>
+          )}
+
           {history.map((turn, i) => (
             <div key={i} className="space-y-2">
               <p className="text-sm font-bold px-2" style={{ color: 'var(--primary)' }}>{turn.question}</p>
               <div className="rounded-[20px] p-6 border" style={{ borderColor: 'var(--border-color)', background: 'var(--bg-sidebar)' }}>
                 {renderMarkdown(turn.answer)}
               </div>
+              {turn.followUps && turn.followUps.length > 0 && i === history.length - 1 && !isAsking && (
+                <div className="flex flex-wrap gap-2 px-2">
+                  {turn.followUps.map(q => (
+                    <button
+                      key={q}
+                      onClick={() => handleAsk(q)}
+                      className="px-3 py-1.5 rounded-xl text-[10px] font-black transition-all hover:scale-[1.03] text-left"
+                      style={{
+                        background: 'color-mix(in srgb, var(--primary) 10%, transparent)',
+                        color: 'var(--primary)',
+                        border: '1px solid color-mix(in srgb, var(--primary) 25%, transparent)',
+                      }}
+                    >
+                      {q}
+                    </button>
+                  ))}
+                </div>
+              )}
             </div>
           ))}
 

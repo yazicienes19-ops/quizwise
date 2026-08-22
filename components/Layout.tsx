@@ -504,8 +504,13 @@ export const Layout: React.FC<LayoutProps> = ({
 
       {/* ── MOBILE TOPBAR (< 768px) ── */}
       <header
-        className="md:hidden fixed top-0 inset-x-0 z-30 h-14 flex items-center justify-between px-4 backdrop-blur-xl"
-        style={{ background: 'color-mix(in srgb, var(--bg-sidebar) 95%, transparent)', borderBottom: '1px solid var(--border-color)' }}
+        className="md:hidden fixed top-0 inset-x-0 z-30 flex items-center justify-between px-4 backdrop-blur-xl"
+        style={{
+          background: 'color-mix(in srgb, var(--bg-sidebar) 95%, transparent)',
+          borderBottom: '1px solid var(--border-color)',
+          paddingTop: 'env(safe-area-inset-top)',
+          height: 'calc(3.5rem + env(safe-area-inset-top))',
+        }}
       >
         <div className="flex items-center gap-2 shrink-0">
           <BrandMark size={20} strokeColor="var(--mark-stroke)" peakColor="var(--mark-peak)" className="shrink-0" />
@@ -709,8 +714,8 @@ export const Layout: React.FC<LayoutProps> = ({
           Bei eingeklappter Sidebar zusätzlicher linker Platz (nur ≥1024px, wo der Einblenden-Button schwebt) —
           sonst überlappt er knapp bemessene Header-Zeilen wie im Reader ("← Zurück" sitzt sonst genau darunter). */}
       <main className={`flex-grow overflow-y-auto w-full relative ${activeTab === ActiveTab.READER
-        ? 'pt-16 pb-20 px-2 sm:px-4 md:pt-4 md:pb-4 md:px-4'
-        : 'pt-16 pb-24 px-4 sm:px-6 md:pt-8 md:pb-8 md:px-8 lg:pt-16 lg:pb-16 lg:px-16'} ${sidebarCollapsed ? 'lg:pl-14' : ''}`}>
+        ? 'pt-[calc(4rem+env(safe-area-inset-top))] pb-20 px-2 sm:px-4 md:pt-4 md:pb-4 md:px-4'
+        : 'pt-[calc(4rem+env(safe-area-inset-top))] pb-24 px-4 sm:px-6 md:pt-8 md:pb-8 md:px-8 lg:pt-16 lg:pb-16 lg:px-16'} ${sidebarCollapsed ? 'lg:pl-14' : ''}`}>
         <div className={`relative z-10 ${activeTab === ActiveTab.READER || activeTab === ActiveTab.KNOWLEDGE_GRAPH ? 'w-full' : 'max-w-6xl mx-auto'}`}>{children}</div>
       </main>
 

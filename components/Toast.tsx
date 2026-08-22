@@ -36,7 +36,7 @@ export const ToastContainer: React.FC = () => {
   const remove = (id: number) => setToasts(prev => prev.filter(t => t.id !== id));
 
   return (
-    <div className="fixed top-6 right-6 z-[9999] flex flex-col gap-3 pointer-events-none" aria-live="polite" role="status">
+    <div className="fixed top-[calc(1.5rem+env(safe-area-inset-top))] right-6 z-[9999] flex flex-col gap-3 pointer-events-none" aria-live="polite" role="status">
       {toasts.map(t => (
         <div
           key={t.id}

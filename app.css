@@ -56,6 +56,12 @@ body {
     transition: background-color 0.3s ease, color 0.3s ease;
     margin: 0;
     padding: 0;
+    /* iOS-App-Charakter: kein Doppeltipp-Zoom auf Buttons/Links (entfällt auch
+       ohne user-scalable), kein Gummizug-Scrollen der ganzen Seite nach oben
+       (Overlays/Canvas reagieren sonst mit versehentlichem Page-Bounce). */
+    touch-action: manipulation;
+    overscroll-behavior-y: none;
+    -webkit-text-size-adjust: 100%;
 }
 ::-webkit-scrollbar { width: 6px; height: 6px; }
 ::-webkit-scrollbar-track { background: transparent; }

@@ -1010,7 +1010,7 @@ export const chatWithTutor = async (
   source: GenerationSource | null,
   history: TutorTurn[],
   userMessage: string,
-  options: { mode: TutorChatMode; useExternalKnowledge: boolean; includeSourceQuote: boolean },
+  options: { mode: TutorChatMode; useExternalKnowledge: boolean; includeSourceQuote: boolean; conceptLock?: string },
 ): Promise<string> => {
   if (!options.useExternalKnowledge && !source?.file && !source?.text && !source?.storagePath) {
     throw new Error('Kein Dokument übergeben — externe Quellen sind deaktiviert.');
@@ -1035,6 +1035,12 @@ export const chatWithTutor = async (
   const followUpInstruction = options.mode === 'explain'
     ? `\n- Hänge VOR der Quellen-Zeile eine Zeile an: **Weiterfragen:** frage1 | frage2 | frage3 — genau drei kurze, konkrete Weiterfragen (je max. 60 Zeichen, keine Nummerierung), die der Nutzer mit einem Klick stellen könnte.`
     : '';
+  // Konzept-Riegel für node-gebundene Dialoge (Wissensnetz): derselbe Rahmen wie
+  // continueNodeExplanation — kein offener Chat, jede Antwort bleibt an EIN
+  // Konzept gebunden, auch bei allgemein formulierten Rückfragen.
+  const conceptLockInstruction = options.conceptLock
+    ? `\nRAHMEN: Dieser Dialog dreht sich ausschließlich um das Konzept "${sanitizeUserInput(options.conceptLock, 200)}". Beantworte jede Nachricht mit Bezug auf genau dieses Konzept, auch wenn sie allgemein formuliert ist ("Warum ist das wichtig?", "Gib mir ein Beispiel."). Bezieht sich eine Frage eindeutig auf etwas völlig anderes, weise kurz darauf hin, dass du hier nur zu diesem Konzept antworten kannst, statt die fremde Frage zu beantworten.`
+    : '';
 
   let grounding: string;
   if (!options.useExternalKnowledge) {
@@ -1049,7 +1055,7 @@ export const chatWithTutor = async (
     text: `Du bist der persönliche Lern-Tutor des Nutzers: präzise, warm, ermutigend, null Floskeln. Du hilfst Studierenden, Stoff wirklich zu verstehen — nicht auswendig zu lernen. Du passt dich ihrem Niveau an und nimmst jede ihrer Formulierungen ernst, auch unvollständige oder falsche.
 
 ${TUTOR_MODE_RULES[options.mode]}
-
+${conceptLockInstruction}
 ${grounding}${historyBlock}
 
 Aktuelle Nachricht des Nutzers: "${safeMessage}"

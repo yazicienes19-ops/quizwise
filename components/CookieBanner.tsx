@@ -11,7 +11,7 @@ interface CookieBannerProps {
 export const CookieBanner: React.FC<CookieBannerProps> = ({ onAccept, onDecline, onShowPrivacy, onShowSettings }) => {
   const { t } = useTranslation();
   return (
-  <div className="fixed bottom-0 left-0 right-0 z-[9999] p-4 md:p-6 animate-in fade-in duration-500">
+  <div className="fixed bottom-0 left-0 right-0 z-[9999] p-4 md:p-6 pb-[calc(1rem+env(safe-area-inset-bottom))] animate-in fade-in duration-500">
     <div
       className="max-w-2xl mx-auto rounded-2xl border shadow-3d-deep p-5 flex flex-col sm:flex-row items-start sm:items-center gap-4"
       style={{ background: 'var(--bg-sidebar)', borderColor: 'var(--border-color)' }}

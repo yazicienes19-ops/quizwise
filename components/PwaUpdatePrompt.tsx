@@ -94,7 +94,12 @@ export const PwaUpdatePrompt: React.FC = () => {
   if (!needRefresh) return null;
 
   return (
-    <div className="fixed bottom-5 left-1/2 -translate-x-1/2 z-[10000] flex items-center gap-4 px-5 py-3 rounded-2xl bg-slate-900 text-white shadow-3d-deep border border-white/10 animate-in slide-in-from-bottom-4 duration-300 max-w-[calc(100vw-2rem)]">
+    // Mobil bewusst ÜBER der Bottom-Nav positioniert (md:bottom-5 erst ab
+    // 768px, wo die Nav verschwindet): iOS-WKWebKit malt Fixed-Elemente mit
+    // backdrop-filter (die Nav) teils über Elemente mit höherem z-index hinweg —
+    // überlappende Bereiche waren dort praktisch nicht anklickbar. Kein
+    // Überlappen + eigenes backdrop-blur schließen das zuverlässig ab.
+    <div className="fixed left-1/2 -translate-x-1/2 z-[10000] bottom-[calc(env(safe-area-inset-bottom)+5.5rem)] md:bottom-5 flex items-center gap-4 px-5 py-3 rounded-2xl bg-slate-900/95 backdrop-blur-xl text-white shadow-3d-deep border border-white/10 animate-in slide-in-from-bottom-4 duration-300 max-w-[calc(100vw-2rem)]">
       <span className="text-sm font-semibold whitespace-nowrap">{t('pwa.newVersion')}</span>
       <button
         onClick={applyUpdate}

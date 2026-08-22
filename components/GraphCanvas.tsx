@@ -79,6 +79,12 @@ export interface GraphCanvasProps {
    *  in der Kanten-Bearbeitungsleiste. Optional statt Pflicht, damit
    *  GraphDevHarness.tsx (zweiter Aufrufer) unverändert bleiben kann. */
   onExplainEdge?: (edgeId: string) => void;
+  /** ⌘K-Palette: Node-ID + Zähler (statt nur ID, damit dieselbe Node auch
+   *  zweimal hintereinander erneut zentriert werden kann). Nur lesend —
+   *  die Kamera bleibt vollständig GraphCanvas-eigener State, hier gibt es
+   *  bewusst keinen Rückkanal nach außen (kein Kontrolliert-Machen der
+   *  Pan/Zoom-Transforms, das würde den d3-Zoom-Zustand duplizieren). */
+  centerOnNode?: { id: string; nonce: number };
 }
 
 interface ZoomTransform { x: number; y: number; k: number; }
@@ -395,7 +401,7 @@ function wrapTitleAdaptive(text: string, maxWidthPx: number, fontWeight: number)
 }
 
 export const GraphCanvas: React.FC<GraphCanvasProps> = ({
-  state, history, selection, onChange, onSelectionChange, onEntityChanged, isDark, showInsights, onExplainEdge,
+  state, history, selection, onChange, onSelectionChange, onEntityChanged, isDark, showInsights, onExplainEdge, centerOnNode,
 }) => {
   const svgRef = useRef<SVGSVGElement | null>(null);
   const gRef = useRef<SVGGElement | null>(null);
@@ -661,6 +667,25 @@ export const GraphCanvas: React.FC<GraphCanvasProps> = ({
     didInitialFit.current = true;
     fitView();
   }, [activeNodes.length, fitView]);
+
+  // ⌘K-Palette: Kamera animiert auf den gewählten Node zentrieren. Zoom bleibt
+  // mindestens bei 0.9, damit der Ziel-Node auch in einem weit ausgezoomten
+  // Graphen sicher lesbar ist — sonst springt die Kamera auf einen winzigen
+  // Punkt mitten in der Fläche. Bewusst NICHT per fitView über die Nachbarschaft:
+  // Der Sprung soll exakt DAsein, wo der Nutzer gesucht hat, nicht wo der Graph
+  // insgesamt gut aussieht.
+  useEffect(() => {
+    if (!centerOnNode || !svgRef.current || !zoomBehaviorRef.current) return;
+    const node = state.nodesById.get(centerOnNode.id);
+    if (!node || node.archivedAt !== undefined) return;
+    const svgW = svgRef.current.clientWidth || 800;
+    const svgH = svgRef.current.clientHeight || 500;
+    const k = Math.max(zoomTransform.k, 0.9);
+    const tx = svgW / 2 - k * positionOf(node.id).x;
+    const ty = svgH / 2 - k * positionOf(node.id).y;
+    d3.select(svgRef.current).transition().duration(350)
+      .call(zoomBehaviorRef.current.transform, d3.zoomIdentity.translate(tx, ty).scale(k));
+  }, [centerOnNode?.nonce]); // eslint-disable-line react-hooks/exhaustive-deps
 
   const zoomBy = (factor: number) => {
     if (!svgRef.current || !zoomBehaviorRef.current) return;

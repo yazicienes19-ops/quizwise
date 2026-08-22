@@ -3,7 +3,11 @@
 <html lang="de">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+    <!-- maximum-scale/user-scalable=no: App-Charakter auf iOS — kein Fokus-Zoom
+         in den vielen kleinen Eingabefeldern (iOS zoomt sonst bei font-size<16px
+         automatisch rein), kein Pinch-/Doppeltipp-Zoom der Seite. Zoom bleibt
+         bewusst dort, wo er hingehört: im Wissensnetz-Canvas (d3-Zoom). -->
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover, maximum-scale=1.0, user-scalable=no">
     <meta name="apple-mobile-web-app-capable" content="yes">
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
     <!-- ICO/PNG-Fallbacks zuerst: Safari zeigt bei reinem SVG-Favicon im Tab

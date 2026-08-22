@@ -1,10 +1,12 @@
 import React, { useEffect, useMemo, useState } from 'react';
 import { createPortal } from 'react-dom';
+import { Search as SearchIcon } from 'lucide-react';
 import { Collection, FlashcardDeck, ProcessedDocument } from '../types';
 import type { GraphScope, GraphState } from '../services/graph/types';
 import { canUndo, canRedo, recordUpdateNode, recordCreateEdge, recordCreateNode, type GraphHistory } from '../services/graph/graphHistoryService';
 import { clearSelection, selectNode } from '../services/graph/graphSelectionService';
 import { buildGraphIndex, outgoingEdges, incomingEdges, describeRelatedEntry } from '../services/graph/graphIndex';
+import { searchNodes } from '../services/graph/graphSearchService';
 import { computeNodeInsights, groupInsightsByNode } from '../services/graph/graphInsightsService';
 import { buildRelationSuggestionSource, validateRelationSuggestions, type RelationSuggestion } from '../services/graph/graphRelationSuggestionSource';
 import { buildDuplicateSuggestionSource, validateDuplicateSuggestions, type DuplicateSuggestion } from '../services/graph/graphDuplicateSuggestionSource';
@@ -16,6 +18,7 @@ import { GraphEdgeExplainOverlay } from './GraphEdgeExplainOverlay';
 import { GraphNodeDetailPanel } from './GraphNodeDetailPanel';
 import { GraphLearningOverlay, type GraphLearningActivity } from './GraphLearningOverlay';
 import { useTranslation } from '../i18n/I18nProvider';
+import type { TKey } from '../i18n';
 import { toast } from '../services/toast';
 import { resolveErrorMessage } from '../services/errorMessages';
 import { suggestMissingRelationships, suggestDuplicateConcepts, suggestMissingConcepts, type GenerationSource } from '../services/geminiService';
@@ -127,6 +130,100 @@ export const GraphSystem: React.FC<GraphSystemProps> = ({
     : [];
   const [moveTargetId, setMoveTargetId] = useState('');
   const [isMoving, setIsMoving] = useState(false);
+
+  // ── ⌘K-Befehlsleiste (KNOWLEDGE_GRAPH_KONZEPT.md Abschnitt 2: Pflicht ab
+  // Phase 1, Service existierte in graphSearchService.ts, UI fehlte) —
+  // Konzept suchen → Kamera springt hin und wählt aus; keine Treffer →
+  // Node direkt aus der Sucheingabe anlegen (gleiches Muster wie die
+  // KI-Vorschlags-Annahme: recordCreateNode + onEntityChanged, die KI schreibt
+  // weiterhin nichts selbst — hier tippt der Nutzer den Titel).
+  const activeNodeList = useMemo(
+    () => [...graph.state.nodesById.values()].filter(n => n.archivedAt === undefined),
+    [graph.state],
+  );
+  const [paletteOpen, setPaletteOpen] = useState(false);
+  const [paletteQuery, setPaletteQuery] = useState('');
+  const [paletteIndex, setPaletteIndex] = useState(0);
+  const [centerRequest, setCenterRequest] = useState<{ id: string; nonce: number } | undefined>(undefined);
+
+  const searchResults = useMemo(
+    () => searchNodes(activeNodeList, paletteQuery, 8),
+    [activeNodeList, paletteQuery],
+  );
+  const hasExactTitle = activeNodeList.some(
+    n => n.title.trim().toLowerCase() === paletteQuery.trim().toLowerCase(),
+  );
+  const canCreateFromPalette = paletteQuery.trim().length > 1 && !hasExactTitle;
+
+  useEffect(() => {
+    const onKey = (e: KeyboardEvent) => {
+      if ((e.metaKey || e.ctrlKey) && e.key.toLowerCase() === 'k') {
+        e.preventDefault();
+        setPaletteQuery('');
+        setPaletteIndex(0);
+        setPaletteOpen(o => !o);
+      }
+    };
+    window.addEventListener('keydown', onKey);
+    return () => window.removeEventListener('keydown', onKey);
+  }, []);
+
+  const closePalette = () => {
+    setPaletteOpen(false);
+    setPaletteQuery('');
+    setPaletteIndex(0);
+  };
+
+  const jumpToNode = (id: string) => {
+    graph.onSelectionChange(selectNode(graph.selection, id));
+    setCenterRequest({ id, nonce: Date.now() });
+    closePalette();
+  };
+
+  const handlePaletteCreate = () => {
+    const title = paletteQuery.trim();
+    if (title.length <= 1) return;
+    const centroid = activeNodeList.length > 0
+      ? {
+          x: activeNodeList.reduce((sum, n) => sum + n.position.x, 0) / activeNodeList.length,
+          y: activeNodeList.reduce((sum, n) => sum + n.position.y, 0) / activeNodeList.length,
+        }
+      : { x: 0, y: 0 };
+    const result = recordCreateNode(graph.history, graph.state, {
+      title,
+      position: { x: centroid.x + activeNodeList.length * 40, y: centroid.y + activeNodeList.length * 40 },
+      collectionId: scope.kind === 'collection' ? scope.collectionId : undefined,
+      hierarchyLevel: activeNodeList.length === 0 ? 'hauptthema' : undefined,
+    });
+    if (!result.error && result.entity) {
+      graph.onChange({ state: result.state, history: result.history });
+      graph.onEntityChanged({ kind: 'node', entity: result.entity });
+      graph.onSelectionChange(selectNode(graph.selection, result.entity.id));
+      setCenterRequest({ id: result.entity.id, nonce: Date.now() });
+    }
+    closePalette();
+  };
+
+  const paletteOptionCount = searchResults.length + (canCreateFromPalette ? 1 : 0);
+  const handlePaletteInputKey = (e: React.KeyboardEvent<HTMLInputElement>) => {
+    // stopPropagation: das Node-Panel darunter hört global auf Escape — ein
+    // Escape-Schließen der Palette darf die Auswahl nicht gleich mit wegnehmen.
+    if (e.key === 'Escape') { e.preventDefault(); e.stopPropagation(); closePalette(); return; }
+    if (e.key === 'ArrowDown' || e.key === 'ArrowUp') {
+      e.preventDefault();
+      e.stopPropagation();
+      if (paletteOptionCount === 0) return;
+      setPaletteIndex(i => e.key === 'ArrowDown'
+        ? (i + 1) % paletteOptionCount
+        : (i - 1 + paletteOptionCount) % paletteOptionCount);
+      return;
+    }
+    if (e.key === 'Enter') {
+      e.preventDefault();
+      if (paletteIndex < searchResults.length) jumpToNode(searchResults[paletteIndex].node.id);
+      else if (canCreateFromPalette) handlePaletteCreate();
+    }
+  };
 
   // Wissensnetz-Coach, Punkt 3 (rein strukturell, kein KI-Call) — s. Memory
   // project_quizwise_wissensnetz_coach.md. Standardmäßig aus, damit die
@@ -363,6 +460,14 @@ export const GraphSystem: React.FC<GraphSystemProps> = ({
           <p className="text-[9px] font-black uppercase tracking-widest text-slate-400">{t('nav.knowledgeGraph.hint')}</p>
         </div>
         <div className="ml-auto flex items-center gap-1.5">
+          <button
+            onClick={() => { setPaletteQuery(''); setPaletteIndex(0); setPaletteOpen(true); }}
+            title={t('kg.search.tooltip')}
+            className="h-8 px-3 flex items-center gap-2 rounded-lg text-[9px] font-black uppercase tracking-widest text-slate-500 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-800 transition-colors"
+          >
+            <SearchIcon size={13} strokeWidth={2} />
+            <span className="hidden sm:inline">{t('kg.search.tooltip')}</span>
+          </button>
           <button
             onClick={() => setShowInsights(v => !v)}
             title={showInsights ? 'Coach-Hinweise ausblenden' : 'Coach-Hinweise einblenden'}
@@ -629,7 +734,31 @@ export const GraphSystem: React.FC<GraphSystemProps> = ({
               isDark={isDark}
               showInsights={showInsights}
               onExplainEdge={setExplainingEdgeId}
+              centerOnNode={centerRequest}
             />
+            {/* Kaltstart (Konzept-Risiko "Der leere Graph"): ohne Führung bleibt
+                die Fläche einschüchternd. Wrapper pointer-events-none, damit
+                Doppelklick-Node-Anlegen auf der freien Fläche weiterhin
+                funktioniert — nur die Karte selbst fängt Klicks. */}
+            {activeNodeList.length === 0 && (
+              <div className="absolute inset-0 flex items-center justify-center p-6 pointer-events-none z-10">
+                <div
+                  className="max-w-sm w-full text-center space-y-4 pointer-events-auto rounded-[24px] p-8 animate-in fade-in duration-500"
+                  style={{ background: 'color-mix(in srgb, var(--bg-sidebar) 90%, transparent)', border: '1px solid var(--border-color)' }}
+                >
+                  <p className="text-base font-black dark:text-white">{t('kg.empty.title')}</p>
+                  <p className="text-xs text-slate-500 dark:text-slate-400 font-medium leading-relaxed">{t('kg.empty.body')}</p>
+                  <button
+                    onClick={() => { setPaletteQuery(''); setPaletteIndex(0); setPaletteOpen(true); }}
+                    className="px-5 py-3 rounded-2xl text-[10px] font-black uppercase tracking-widest text-white transition-all hover:scale-[1.02]"
+                    style={{ background: 'var(--primary)' }}
+                  >
+                    {t('kg.empty.cta')}
+                  </button>
+                  <p className="text-[10px] text-slate-400 font-medium">{t('kg.empty.hint')}</p>
+                </div>
+              </div>
+            )}
             {explainingEdgeId && (
               <GraphEdgeExplainOverlay
                 state={graph.state}
@@ -676,8 +805,88 @@ export const GraphSystem: React.FC<GraphSystemProps> = ({
         )}
       </div>
 
+      {paletteOpen && (
+        <div
+          className="fixed inset-0 z-50 flex items-start justify-center pt-[14vh] px-4"
+          style={{ background: 'rgba(0,0,0,0.45)' }}
+          onClick={closePalette}
+        >
+          <div
+            className="w-full max-w-lg rounded-[24px] overflow-hidden animate-in fade-in zoom-in-95 duration-150 shadow-2xl"
+            style={{ background: 'var(--bg-sidebar)', border: '1px solid var(--border-color)' }}
+            onClick={e => e.stopPropagation()}
+          >
+            <div className="flex items-center gap-3 px-5 py-4 border-b" style={{ borderColor: 'var(--border-color)' }}>
+              <SearchIcon size={16} className="text-slate-400 shrink-0" strokeWidth={2} />
+              <input
+                value={paletteQuery}
+                onChange={e => { setPaletteQuery(e.target.value); setPaletteIndex(0); }}
+                onKeyDown={handlePaletteInputKey}
+                placeholder={t('kg.search.placeholder')}
+                autoFocus
+                className="flex-1 bg-transparent outline-none text-sm font-bold dark:text-white placeholder-slate-400"
+              />
+              <kbd className="hidden sm:inline-block text-[9px] font-black uppercase tracking-widest text-slate-400 px-2 py-1 rounded-lg" style={{ border: '1px solid var(--border-color)' }}>Esc</kbd>
+            </div>
+            <div className="max-h-[46vh] overflow-y-auto p-2">
+              {searchResults.map((result, i) => (
+                <button
+                  key={result.node.id}
+                  onClick={() => jumpToNode(result.node.id)}
+                  onMouseEnter={() => setPaletteIndex(i)}
+                  className="w-full flex items-center gap-3 px-4 py-3 rounded-2xl text-left transition-colors"
+                  style={i === paletteIndex
+                    ? { background: 'color-mix(in srgb, var(--primary) 12%, transparent)' }
+                    : undefined}
+                >
+                  <span
+                    className="w-2 h-2 rounded-full shrink-0"
+                    style={{ background: 'var(--primary)' }}
+                  />
+                  <span className="flex-1 min-w-0 text-sm font-black truncate dark:text-white">{result.node.title}</span>
+                  <span className="text-[9px] font-black uppercase tracking-widest text-slate-400 shrink-0">
+                    {t(`kg.search.match.${result.matchedOn}` as TKey)}
+                  </span>
+                </button>
+              ))}
+              {searchResults.length === 0 && (
+                <p className="text-center text-xs text-slate-400 font-medium py-4 italic">{t('kg.search.noHits')}</p>
+              )}
+              {canCreateFromPalette && (
+                <button
+                  onClick={handlePaletteCreate}
+                  onMouseEnter={() => setPaletteIndex(searchResults.length)}
+                  className="w-full flex items-center gap-3 px-4 py-3 rounded-2xl text-left transition-colors mt-1"
+                  style={paletteIndex === searchResults.length
+                    ? { background: 'color-mix(in srgb, var(--primary) 12%, transparent)' }
+                    : undefined}
+                >
+                  <span
+                    className="w-5 h-5 rounded-full flex items-center justify-center text-xs font-black shrink-0 text-white"
+                    style={{ background: 'var(--primary)' }}
+                  >
+                    +
+                  </span>
+                  <span className="flex-1 min-w-0 text-sm font-black truncate dark:text-white">
+                    {t('kg.search.create', { q: paletteQuery.trim() })}
+                  </span>
+                </button>
+              )}
+            </div>
+            <div className="px-5 py-2.5 border-t flex items-center justify-between" style={{ borderColor: 'var(--border-color)' }}>
+              <p className="text-[9px] font-black uppercase tracking-widest text-slate-400">{t('kg.search.kbdHint')}</p>
+              <p className="text-[9px] font-black uppercase tracking-widest text-slate-400">
+                {t('kg.search.count', { n: activeNodeList.length })}
+              </p>
+            </div>
+          </div>
+        </div>
+      )}
+
       {openDocument && createPortal(
-        <div className="fixed inset-0 z-50 bg-white dark:bg-slate-900">
+        <div
+          className="fixed inset-0 z-50 bg-white dark:bg-slate-900 pt-[env(safe-area-inset-top)] pb-[env(safe-area-inset-bottom)]"
+        >
           <React.Suspense fallback={null}>
             {shouldUsePdfReader(openDocument) ? (
               <PdfSplitScreenReader
