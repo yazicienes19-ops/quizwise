@@ -13,6 +13,9 @@ import {
   recordCreateEdge, recordUpdateEdge, recordArchiveEdge,
 } from '../services/graph/graphHistoryService';
 import { createRelationType } from '../services/graph/graphMutationService';
+import {
+  segmentIntersectsRect, bundleStrength, quadControlPoint, quadMidpoint, type GraphRect,
+} from '../services/graph/graphCanvasMetrics';
 
 /**
  * Phase 3 — reine Graph Engine: SVG-Rendering, Pan/Zoom, Selection,
@@ -145,6 +148,42 @@ const NODE_DATA_ATTR = 'data-graph-node';
 const EDGE_LABEL_MAX_WIDTH = 130;
 const EDGE_LABEL_MAX_LINES = 4;
 
+// ── Skalierungsschutz: Culling, LOD und Kanten-Bündelung ───────────────────
+// Alles hier ist reine Darstellungs-Ökonomie für große Netze (100+ Nodes) —
+// die Daten-/Selektions-/Undo-Schicht bleibt unberührt. Kleine Netze
+// verhalten sich exakt wie bisher.
+// Rand in SCREEN-Pixeln, um den der sichtbare Ausschnitt erweitert wird,
+// bevor Nodes/Kanten geculled werden — großzügig genug, dass Mount/Unmount
+// (und ihre Enter/Exit-Animationen) immer OFF-SCREEN passieren statt als
+// Flackern am Bildrand sichtbar zu werden.
+const CULL_MARGIN_PX = 280;
+// Culling lohnt erst ab einer gewissen Node-Zahl — darunter wäre es reine
+// Komplexität ohne messbaren Gewinn (27-Node-Netz rendert heute flüssig).
+const CULL_MIN_NODES = 50;
+// Unter diesem Zoom werden die dezenten Details ausgeschaltet: Wander-Puls
+// und Coach-Hinweispunkte sind bei Overview-Zoom ohnehin nur wenige Pixel,
+// kosten aber SMIL-Animationen bzw. DOM-Nodes pro Kante/Node.
+const LOD_MIN_ZOOM_K = 0.45;
+// Kanten-Bündelung: ab BUNDLE_MIN_NODES Nodes und unter FADE_START_K faden
+// alle Kanten weich von gerader Linie (wie immer) zu einer sanften Bézier-
+// Krümmung Richtung Netz-Schwerpunkt. Beim Hineinzoomen löst sich die
+// Bündelung vollständig auf — der vertraute Blick auf einzelne Beziehungen
+// bleibt exakt so, wie er war; gebündelt wird NUR der Überblick.
+const EDGE_BUNDLE_MIN_NODES = 40;
+const EDGE_BUNDLE_FADE_START_K = 0.6;
+const EDGE_BUNDLE_FADE_END_K = 0.3;
+// Maximale Auslenkung des Bézier-Kontrollpunkts Richtung Schwerpunkt,
+// relativ zur Sehnenlänge der jeweiligen Kante — kurze Kanten biegen sich
+// weniger als lange, sonst zerschnitten sich Nachbarschafts-Kanten gegenseitig.
+const EDGE_BUNDLE_MAX_BEND = 0.30;
+const EDGE_BUNDLE_SHORT_EDGE_FACTOR = 0.16;
+// Harte Grenze für den Kontrollpunkt-Abstand von der Sehnenmitte (× Netz-
+// Ausdehnung) — verhindert absurde Schlaufen bei Kanten weit draußen.
+const EDGE_BUNDLE_MAX_OFFSET_FACTOR = 0.24;
+// Stabile Leer-Referenz für kanten ohne Label — ein frisches `[]` pro Render
+// würde React.memo der GraphEdgeView laufend aushebeln.
+const NO_EDGE_LABEL_LINES: string[] = [];
+
 // ── Visuelle Sprache "Wissensnetz/Synapsen-Netz" (Design-Abnahme 2026-08-04,
 // Handoff design_handoff_studearc_wissnetz/StudeArc Wissnetz.dc.html) ───────
 // Drei Nähe-Stufen zum AUSGEWÄHLTEN Node steuern Farbe/Glut/Unschärfe (nicht
@@ -179,6 +218,15 @@ interface WnTierColors {
 }
 interface WnTheme {
   canvasBg: string;
+  /** Weicher Vignetten-Saum am Kanvasrand (inset box-shadow auf einer
+   *  Overlay-Ebene) — im Nachtmodus übernimmt das der dunkle Gradient-
+   *  Rand selbst, im Hellmodus ist er die wichtigste Tiefe-Quelle ("Lampe
+   *  über dem Pergament" statt flacher Creme-Fläche). */
+  vignette?: string;
+  /** Farbe für den weichen Halo-Schatten hinter Kantenlabels — muss pro
+   *  Theme zur jeweiligen Hintergrundmitte passen, sonst wirken Labels
+   *  wie ausgestanzt statt in der Fläche liegend. */
+  labelShadow: string;
   focusEyebrow: string; focusLabel: string;
   chipBg: string; chipBorder: string; chipText: string;
   tier: Record<Exclude<GraphTier, 'neutral'>, WnTierColors>;
@@ -190,6 +238,7 @@ interface WnTheme {
 const WN_THEME: Record<'night' | 'day', WnTheme> = {
   night: {
     canvasBg: 'radial-gradient(ellipse at 50% 35%,#101E38 0%,#08111E 68%)',
+    labelShadow: '#08111E',
     focusEyebrow: '#5E75A8', focusLabel: '#F3D48B',
     chipBg: 'rgba(255,255,255,.06)', chipBorder: 'rgba(255,255,255,.12)', chipText: '#D9A94E',
     tier: {
@@ -202,16 +251,29 @@ const WN_THEME: Record<'night' | 'day', WnTheme> = {
     gradientId: { focus: 'wnGradFocusNight', neighbor: 'wnGradNeighborNight', far: 'wnGradFarNight' },
   },
   day: {
-    canvasBg: 'radial-gradient(ellipse at 50% 35%,#F5F1E7 0%,#E4DFD2 70%)',
+    // Hellmodus-Kalibrierung 2026-08-22 ("schwächerer Zwilling"): dieselbe
+    // Spotlight-Struktur wie der Nachtmodus — heller warmer Kern, der zum
+    // Rand deutlich in tiefes Pergament abdunkelt (Vignette), statt der
+    // früheren nahezu flachen Creme-Fläche. Gold bleibt Identitätsfarbe,
+    // gewinnt aber durch den dunkleren Saum an Kontrast.
+    canvasBg: 'radial-gradient(ellipse at 50% 30%,#FCF9F1 0%,#F3EDDC 40%,#E1D7C0 74%,#CFC2A3 100%)',
+    vignette: 'inset 0 0 120px rgba(148,122,72,.14), inset 0 0 420px rgba(148,122,72,.08)',
+    labelShadow: '#F2ECDB',
     focusEyebrow: '#9A8F73', focusLabel: '#8A5A1E',
     chipBg: 'rgba(27,42,74,.05)', chipBorder: 'rgba(27,42,74,.12)', chipText: '#A9772C',
     tier: {
-      focus: { bg: '#C08B33', border: 'rgba(160,110,35,.85)', text: '#FBF9F4', glow: '#C08B33', glowOpacity: .3, opacity: 1, blurPx: 0 },
-      neighbor: { bg: '#3D5290', border: 'rgba(80,105,170,.45)', text: '#F4F6FC', glow: '#6D82BC', glowOpacity: .2, opacity: .97, blurPx: 0 },
-      far: { bg: '#9BA3C0', border: 'rgba(120,130,165,.18)', text: '#4B5568', glow: '#9BA3C0', glowOpacity: .08, opacity: .45, blurPx: 1.1 },
+      // Etwas tieferes, gesättigteres Gold als zuvor (#C08B33) — weißer
+      // Titel gewinnt Lesbarkeit, und die dunklere Kante gibt dem Node
+      // auf hellem Grund endlich eine sichtbare "Wucht" wie im Nachtmodus.
+      focus: { bg: '#B4821F', border: 'rgba(133,90,17,.92)', text: '#FFFCF2', glow: '#C89B3F', glowOpacity: .38, opacity: 1, blurPx: 0 },
+      neighbor: { bg: '#36519B', border: 'rgba(70,100,180,.55)', text: '#F5F8FF', glow: '#5F7CC8', glowOpacity: .26, opacity: .97, blurPx: 0 },
+      // Fern-Nodes waschen ins PAPIER aus (heller + entsättigt statt
+      // mittleres Schiefergrau) — das Hellmodus-Gegenstück dazu, wie
+      // Fern-Nodes im Nachtmodus in die Dunkelheit versinken.
+      far: { bg: '#C9CBD6', border: 'rgba(130,138,165,.14)', text: '#878DA0', glow: '#DADCE2', glowOpacity: .06, opacity: .42, blurPx: 1.1 },
     },
-    edge: { focus: '#B99A5C', neighbor: '#8A96BE', far: '#B7BDD4' },
-    label: { focus: '#8A5A1E', far: '#6B7BA8' },
+    edge: { focus: '#AC8840', neighbor: '#7D8BB8', far: '#C9CDDA' },
+    label: { focus: '#8A5A1E', far: '#8A93B4' },
     gradientId: { focus: 'wnGradFocusDay', neighbor: 'wnGradNeighborDay', far: 'wnGradFarDay' },
   },
 };
@@ -409,6 +471,224 @@ function wrapTitleAdaptive(text: string, maxWidthPx: number, fontWeight: number)
   return result;
 }
 
+// ── Memoisierte View-Komponenten (Skalierungs-Sicherung) ───────────────────
+// Ohne sie re-rendert bei JEDEM Pan-/Zoom-Tick (setZoomTransform im d3-
+// Handler) das komplette Netz durch React — bei 100+ Nodes mit je Glow-Blob,
+// Titel-Tspans und SMIL-Pulsen merklich Jank. Diese beiden Komponenten
+// bekommen ausschließlich primitive/stabile Props (Zahlen, Strings,
+// Arrays aus memoisierten Caches, stabile Dispatcher-Callbacks): Während
+// Pan/Zoom ändert sich an einem einzelnen Node/Kante NICHTS (Positionen sind
+// Graph-Koordinaten, der Viewport-Transform passiert am übergeordneten
+// <g> direkt in d3) — React.memo überspringt den ganzen Subtree. Nur echte
+// Änderungen (Auswahl, Drag dieser einen Kante, Bündel-Schwellwert) rendern
+// neu, und zwar nur die betroffenen Elemente.
+interface GraphEdgeViewProps {
+  edgeId: string;
+  x1: number; y1: number; x2: number; y2: number;
+  /** Kontrollpunkt der Bündel-Bézier — null/null = gerade Linie wie bisher. */
+  cx: number | null; cy: number | null;
+  midX: number; midY: number;
+  selected: boolean;
+  symmetric: boolean;
+  stroke: string;
+  width: number;
+  symmetricWidth: number;
+  opacity: number;
+  /** begin-Verzögerung des Wander-Pulses oder null = kein Puls (LOD oder
+   *  Kante nicht im Aktivierungspfad). */
+  pulseBegin: string | null;
+  pulseFill: string;
+  labelLines: string[];
+  labelOffsetY: number;
+  labelFill: string;
+  labelOpacity: number;
+  labelShadowColor: string;
+  onHitSelect: (e: React.MouseEvent, edgeId: string) => void;
+}
+
+const GraphEdgeView = React.memo(function GraphEdgeView({
+  edgeId, x1, y1, x2, y2, cx, cy, midX, midY, selected, symmetric, stroke,
+  width, symmetricWidth, opacity, pulseBegin, pulseFill, labelLines,
+  labelOffsetY, labelFill, labelOpacity, labelShadowColor, onHitSelect,
+}: GraphEdgeViewProps) {
+  const pathD = useMemo(
+    () => cx !== null && cy !== null
+      ? `M${x1},${y1} Q${cx},${cy} ${x2},${y2}`
+      : `M${x1},${y1} L${x2},${y2}`,
+    [x1, y1, x2, y2, cx, cy],
+  );
+  return (
+    <motion.g initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}>
+      {/* Unsichtbarer breiter Hit-Bereich (Phase 5B) — die sichtbare Linie
+          selbst ist zu schmal zum Zuverlässig-Klicken. Jetzt als Pfad, damit
+          er gebündelten Kurven exakt folgt. */}
+      <path
+        d={pathD}
+        stroke="transparent" strokeWidth={14} fill="none"
+        onClick={e => onHitSelect(e, edgeId)}
+        style={{ cursor: 'pointer' }}
+      />
+      {symmetric && (
+        <path
+          d={pathD}
+          stroke={stroke} strokeWidth={symmetricWidth} strokeLinecap="round"
+          opacity={opacity} transform="translate(0,3)" fill="none"
+          style={{ pointerEvents: 'none' }}
+        />
+      )}
+      <path
+        d={pathD}
+        stroke={stroke} strokeWidth={width} strokeLinecap="round"
+        opacity={opacity} fill="none"
+        style={{ pointerEvents: 'none' }}
+      />
+      {/* Wandernder Lichtpuls (Design-Handoff: "Golden dots exist ONLY as
+          these traveling pulses") — folgt jetzt derselben (ggf. gebündelten)
+          Kurve wie die Linie. */}
+      {pulseBegin !== null && (
+        <circle r={3.2} fill={pulseFill} className="wn-pulse" style={{ pointerEvents: 'none' }}>
+          <animateMotion dur="3.6s" begin={pulseBegin} repeatCount="indefinite" path={pathD} calcMode="linear" />
+        </circle>
+      )}
+      {!selected && labelLines.length > 0 && (
+        <text
+          textAnchor="middle"
+          fontStyle="italic"
+          className="text-[9px] font-medium select-none"
+          fill={labelFill}
+          opacity={labelOpacity}
+          style={{ pointerEvents: 'none', filter: `drop-shadow(0 0 3px ${labelShadowColor})`, transition: 'opacity .25s ease' }}
+        >
+          {labelLines.map((line, i) => (
+            <tspan key={i} x={midX} y={midY + labelOffsetY + 3 + i * 11}>{line}</tspan>
+          ))}
+        </text>
+      )}
+    </motion.g>
+  );
+});
+
+interface GraphNodeViewProps {
+  nodeId: string;
+  x: number; y: number; rx: number; ry: number;
+  fill: string;
+  glowColor: string; glowOpacity: number;
+  bodyOpacity: number;
+  blurPx: number;
+  borderColor: string; borderWidth: number;
+  titleLines: string[]; titleFontSize: number; titleFontWeight: number; titleColor: string;
+  breathe: boolean;
+  showHandle: boolean; handleColor: string;
+  insightText: string | null; insightDotFill: string; insightDotStroke: string;
+  reduceMotion: boolean;
+  onNodePointerDown: (e: React.PointerEvent, nodeId: string) => void;
+  onNodePointerUp: (e: React.PointerEvent, nodeId: string) => void;
+  onTitleDoubleClick: (e: React.MouseEvent, nodeId: string) => void;
+  onHoverChange: (nodeId: string | null) => void;
+  onHandlePointerDown: (e: React.PointerEvent, nodeId: string) => void;
+}
+
+const GraphNodeView = React.memo(function GraphNodeView({
+  nodeId, x, y, rx, ry, fill, glowColor, glowOpacity, bodyOpacity, blurPx,
+  borderColor, borderWidth, titleLines, titleFontSize, titleFontWeight,
+  titleColor, breathe, showHandle, handleColor, insightText, insightDotFill,
+  insightDotStroke, reduceMotion, onNodePointerDown, onNodePointerUp,
+  onTitleDoubleClick, onHoverChange, onHandlePointerDown,
+}: GraphNodeViewProps) {
+  // Blob-Kontur & Animationsversatz sind deterministisch pro Node-ID — im
+  // Kind berechnet (statt als Objekt-Prop), damit die Props rein primitiv
+  // bleiben und memo bei jedem Pan/Zoom-Tick greift.
+  const blobD = useMemo(() => blobPathD(rx, ry, nodeId), [rx, ry, nodeId]);
+  const animationShorthand = useMemo(() => {
+    const h = hashId(nodeId);
+    return `${breathe ? 'wnBreathe 6s' : `wnFloat ${(5 + (h % 30) / 10).toFixed(1)}s`} ease-in-out ${(h % 30) / 10}s infinite`;
+  }, [breathe, nodeId]);
+  const lineStep = titleFontSize * 1.1;
+  return (
+    <motion.g
+      {...{ [NODE_DATA_ATTR]: true }}
+      initial={reduceMotion
+        ? { x, y, opacity: 1, scale: 1 }
+        : { x, y, opacity: 0, scale: 0.6 }}
+      animate={{ x, y, opacity: 1, scale: 1 }}
+      exit={reduceMotion ? { opacity: 1, scale: 1 } : { opacity: 0, scale: 0.6 }}
+      onPointerDown={e => onNodePointerDown(e, nodeId)}
+      onPointerUp={e => onNodePointerUp(e, nodeId)}
+      // Verhindert, dass das native click-Event zum Hintergrund hochbubbelt
+      // und dort die gerade gesetzte Auswahl sofort löscht; Doppelklick
+      // öffnet die Titel-Bearbeitung statt einen zweiten Node anzulegen.
+      onClick={e => e.stopPropagation()}
+      onDoubleClick={e => onTitleDoubleClick(e, nodeId)}
+      onMouseEnter={() => onHoverChange(nodeId)}
+      onMouseLeave={() => onHoverChange(null)}
+      style={{ cursor: 'pointer' }}
+    >
+      {/* Leichtes, pro Node festes Schweben/Atmen (Design-Handoff) — CSS-
+          Animation parallel zu Drag/Zoom-Transforms. */}
+      <g
+        className={breathe ? 'wn-breathe' : 'wn-float'}
+        style={{
+          animation: animationShorthand,
+          // Ohne transformBox bezieht sich transform-origin bei SVG auf den
+          // Viewport der gesamten Kanvas, nicht auf den Node selbst.
+          transformBox: 'fill-box',
+          transformOrigin: 'center',
+          filter: blurPx ? `blur(${blurPx}px)` : undefined,
+        }}
+      >
+        {/* Glut hinter dem Node — reine Deko, nimmt keine Klicks entgegen. */}
+        <path d={blobD} fill={glowColor} opacity={glowOpacity} style={{ filter: `blur(${Math.max(8, ry * 0.35)}px)`, pointerEvents: 'none' }} transform="scale(1.15)" />
+        <path
+          d={blobD}
+          fill={fill}
+          opacity={bodyOpacity}
+          stroke={borderColor}
+          strokeWidth={borderWidth}
+        />
+        {titleLines.length > 0 && (
+          <text
+            textAnchor="middle"
+            fontSize={titleFontSize}
+            className="select-none"
+            fontWeight={titleFontWeight}
+            fill={titleColor}
+            style={{ pointerEvents: 'none' }}
+          >
+            {titleLines.length === 1 ? (
+              <tspan x={0} y={4}>{titleLines[0]}</tspan>
+            ) : (
+              titleLines.map((line, li) => (
+                <tspan key={li} x={0} y={(li - (titleLines.length - 1) / 2) * lineStep + 4}>
+                  {line}
+                </tspan>
+              ))
+            )}
+          </text>
+        )}
+      </g>
+      {showHandle && (
+        <g onPointerDown={e => onHandlePointerDown(e, nodeId)} style={{ cursor: 'crosshair' }}>
+          {/* Unsichtbarer, deutlich größerer Trefferbereich um den sichtbaren
+              Punkt — verpasste Klicks landen sonst auf dem Node darunter und
+              lösten unbeabsichtigt den Doppelklick-Titel-Editor aus. */}
+          <circle cx={rx + HANDLE_OFFSET} cy={0} r={HANDLE_RADIUS + 8} fill="transparent" />
+          <circle cx={rx + HANDLE_OFFSET} cy={0} r={HANDLE_RADIUS} fill={handleColor} style={{ pointerEvents: 'none' }} />
+        </g>
+      )}
+      {/* Wissensnetz-Coach: dezenter, immer sichtbarer Hinweis-Punkt — bewusst
+          KEINE Warnfarbe (rot/rose ist app-weit für "kritisch/schwach"
+          reserviert). Native <title> statt eigenem Tooltip-Bau. */}
+      {insightText !== null && (
+        <g style={{ pointerEvents: 'none' }}>
+          <circle cx={-rx * 0.72} cy={-ry * 0.72} r={5} fill={insightDotFill} opacity={0.85} stroke={insightDotStroke} strokeWidth={1.5}>
+            <title>{insightText}</title>
+          </circle>
+        </g>
+      )}
+    </motion.g>
+  );
+});
+
 export const GraphCanvas: React.FC<GraphCanvasProps> = ({
   state, history, selection, onChange, onSelectionChange, onEntityChanged, isDark, showInsights, onExplainEdge, centerOnNode, initialView, onViewChange,
 }) => {
@@ -421,13 +701,6 @@ export const GraphCanvas: React.FC<GraphCanvasProps> = ({
   // Kein eigener Wissensnetz-Modus mehr (User-Vorgabe 2026-08-04) — folgt
   // dem globalen App-Theme, das über `isDark` hereinkommt.
   const wnTheme = isDark ? WN_THEME.night : WN_THEME.day;
-
-  // Kanten-Labels erst ab sinnvollem Zoom einblenden (weicher Übergang):
-  // Im ausgezoomten Überblick sind 9px-Labels nicht lesbar, aber pures
-  // visuelles Rauschen, das die Hierarchie-Farben überdeckt. Unter k=0.55
-  // unsichtbar, ab k=0.8 voll sichtbar — die vollständige Beziehung steht
-  // weiterhin NIE gekürzt da (User-Vorgabe 2026-08-05 bleibt unangetastet).
-  const edgeLabelOpacity = Math.max(0, Math.min(1, (zoomTransform.k - 0.55) / 0.25));
 
   // ── Sichtbare Nodes/Kanten ──────────────────────────────────────────────
   const activeNodes = useMemo(
@@ -635,6 +908,187 @@ export const GraphCanvas: React.FC<GraphCanvasProps> = ({
     const y2 = to.y - Math.sin(angle) * tgtDist;
     return { x1, y1, x2, y2, midX: (x1 + x2) / 2, midY: (y1 + y2) / 2 };
   }, [positionOf, nodeExtentsOf]);
+
+  // ── Skalierungsschutz: Culling, LOD & Bündelung (Berechnungsebene) ───────
+  // Drei Darstellungs-Optimierungen für große Netze (100+ Nodes); bei kleinen
+  // Netzen sind alle drei bewusst ein No-op, damit sich dort nichts ändert.
+  // Interface für die finale Render-Geometrie einer Kante.
+  interface EdgeRenderGeom {
+    x1: number; y1: number; x2: number; y2: number;
+    cx: number | null; cy: number | null;
+    midX: number; midY: number;
+  }
+
+  // Kanvasgröße in Screen-Pixeln — ResizeObserver statt window-Resize-Listener,
+  // weil die Kanvas in einem flexiblen Layout lebt (Split-Screen auf/zu etc.).
+  const [svgSize, setSvgSize] = useState({ w: 800, h: 500 });
+  useEffect(() => {
+    const el = svgRef.current;
+    if (!el || typeof ResizeObserver === 'undefined') return;
+    const update = () => setSvgSize(prev => {
+      const w = el.clientWidth || 800;
+      const h = el.clientHeight || 500;
+      return prev.w === w && prev.h === h ? prev : { w, h };
+    });
+    update();
+    const ro = new ResizeObserver(update);
+    ro.observe(el);
+    return () => ro.disconnect();
+  }, []);
+
+  // Netz-Schwerpunkt (Attraktor der Bündel-Krümmung) und Ausdehnung des
+  // Netzes als Maßstab — beide hängen nur von Positionen ab, NICHT vom Zoom,
+  // bleiben also während reinem Pan stabil.
+  const graphAttractor = useMemo(() => {
+    if (activeNodes.length === 0) return { x: 0, y: 0 };
+    let sx = 0, sy = 0;
+    for (const n of activeNodes) {
+      const p = positionOf(n.id);
+      sx += p.x; sy += p.y;
+    }
+    return { x: sx / activeNodes.length, y: sy / activeNodes.length };
+  }, [activeNodes, positionOf]);
+  const graphSpan = useMemo(() => {
+    if (activeNodes.length === 0) return 1;
+    let minX = Infinity, maxX = -Infinity, minY = Infinity, maxY = -Infinity;
+    for (const n of activeNodes) {
+      const p = positionOf(n.id);
+      const e = nodeExtentsOf(n.id);
+      minX = Math.min(minX, p.x - e.rx); maxX = Math.max(maxX, p.x + e.rx);
+      minY = Math.min(minY, p.y - e.ry); maxY = Math.max(maxY, p.y + e.ry);
+    }
+    return Math.max(1, maxX - minX, maxY - minY);
+  }, [activeNodes, positionOf, nodeExtentsOf]);
+
+  // Bündel-Stärke auf 2 Dezimalstellen quantisiert — sonst würde jede
+  // Mikro-Bewegung beim Rauszoomen sämtliche Kanten neu berechnen, obwohl
+  // sich die Krümmung pro Schritt visuell kaum unterscheidet. Bei kleinen
+  // Netzen oder nah genug herangezoomt konstant 0 (= exakt bisherige Optik).
+  const bundleBend = useMemo(
+    () => Number((bundleStrength(zoomTransform.k, activeNodes.length, EDGE_BUNDLE_MIN_NODES, EDGE_BUNDLE_FADE_START_K, EDGE_BUNDLE_FADE_END_K) * EDGE_BUNDLE_MAX_BEND).toFixed(2)),
+    [zoomTransform.k, activeNodes.length],
+  );
+
+  /** Endpunkte + Bündel-Krümmung in EINEM Schritt — dieselbe Quelle fürs
+   *  SVG-Rendering UND die HTML-Overlays (Kanten-Editor sitzt am Kurven-
+   *  Mittelpunkt, sonst läge sein Label woanders als das gerenderte). */
+  const curveForEndpoints = useCallback((x1: number, y1: number, x2: number, y2: number): { cx: number | null; cy: number | null; midX: number; midY: number } => {
+    if (bundleBend <= 0) return { cx: null, cy: null, midX: (x1 + x2) / 2, midY: (y1 + y2) / 2 };
+    const len = Math.hypot(x2 - x1, y2 - y1);
+    // Kurze Nachbarschafts-Kanten biegen sich weniger als lange Fern-
+    // verbindungen — sonst schnüren kurze Kanten ihre eigenen Endpunkte ab.
+    const damp = Math.min(1, len / (graphSpan * EDGE_BUNDLE_SHORT_EDGE_FACTOR));
+    const cp = quadControlPoint(x1, y1, x2, y2, graphAttractor.x, graphAttractor.y, bundleBend * damp, graphSpan * EDGE_BUNDLE_MAX_OFFSET_FACTOR);
+    const mid = quadMidpoint(x1, y1, cp.cx, cp.cy, x2, y2);
+    return { cx: cp.cx, cy: cp.cy, midX: mid.x, midY: mid.y };
+  }, [bundleBend, graphAttractor, graphSpan]);
+
+  // Finale Render-Geometrie je Kante — einmal je Positions-/Bündel-Stufen-
+  // Änderung berechnet, vom Rendering UND den Overlays gelesen.
+  const edgeRenderById = useMemo(() => {
+    const map = new Map<string, EdgeRenderGeom>();
+    for (const edge of visibleEdges) {
+      const g = computeEdgeGeometry(edge);
+      map.set(edge.id, { ...g, ...curveForEndpoints(g.x1, g.y1, g.x2, g.y2) });
+    }
+    return map;
+  }, [visibleEdges, computeEdgeGeometry, curveForEndpoints]);
+
+  // Kantenlabels (Umbruch + Parallel-Versatz) — die teure Textmessung läuft
+  // nur bei Änderungen der Kantenmenge/-typen, nicht bei jedem Zoom-Tick.
+  const edgeLabelDataById = useMemo(() => {
+    const map = new Map<string, { lines: string[]; offsetY: number }>();
+    for (const edge of visibleEdges) {
+      const relationType = edge.relationTypeId ? state.relationTypesById.get(edge.relationTypeId) : undefined;
+      const rawLabel = edge.label || relationType?.label || '';
+      if (!rawLabel) continue;
+      const lines = wrapTitleAllLines(rawLabel, EDGE_LABEL_MAX_WIDTH, 9, 500, EDGE_LABEL_MAX_LINES).lines;
+      map.set(edge.id, { lines, offsetY: (edgeParallelIndex.get(edge.id) ?? 0) * (14 + Math.max(0, lines.length - 1) * 11) });
+    }
+    return map;
+  }, [visibleEdges, state.relationTypesById, edgeParallelIndex]);
+
+  // Startverzögerung des Wander-Pulses je Kante (Tiefe × Staffelung +
+  // organischer Jitter) — identisches Verhalten wie zuvor, nur vorberechnet.
+  const pulseBeginById = useMemo(() => {
+    const map = new Map<string, string>();
+    for (const [edgeId, depth] of pulseDepthByEdge) {
+      map.set(edgeId, `${depth * PULSE_DEPTH_STAGGER_S + (hashId(`wnpulse-${edgeId}`) % 10) / 10 * PULSE_JITTER_MAX_S}s`);
+    }
+    return map;
+  }, [pulseDepthByEdge]); // PULSE_* sind stabile Zahlenkonstanten
+
+  // Titel-Umbruch je Node — wrapTitleAdaptive misst per Canvas; auch das
+  // gehört nicht in den Render-Pfad jedes Zoom-Ticks.
+  const nodeTitleById = useMemo(() => {
+    const map = new Map<string, { lines: string[]; fontSize: number; fontWeight: number }>();
+    for (const node of activeNodes) {
+      const fontWeight = node.hierarchyLevel === 'hauptthema' ? 800 : node.hierarchyLevel === 'detail' ? 600 : 700;
+      const { rx } = nodeExtentsOf(node.id);
+      const { lines, fontSize } = wrapTitleAdaptive(node.title, rx * 2 * 0.86, fontWeight);
+      map.set(node.id, { lines, fontSize, fontWeight });
+    }
+    return map;
+  }, [activeNodes, nodeExtentsOf]);
+
+  // Coach-Hinweistexte vorformatiert ("Erster Typ (+N weitere)") — String-
+  // Prop statt Objektzugriffen im Kind.
+  const insightTextById = useMemo(() => {
+    if (!nodeInsightsByNode) return undefined;
+    const map = new Map<string, string>();
+    for (const [nodeId, insights] of nodeInsightsByNode) {
+      map.set(nodeId, `${INSIGHT_LABELS[insights[0].type]}${insights.length > 1 ? ` (+${insights.length - 1} weitere)` : ''}`);
+    }
+    return map;
+  }, [nodeInsightsByNode]);
+
+  // Sichtbarer Ausschnitt in Graph-Koordinaten, um CULL_MARGIN_PX Screen-
+  // Pixel erweitert (Rand/k Umrechnung) — Mount/Unmount samt Enter-/Exit-
+  // Animationen passieren dadurch immer OFF-SCREEN statt am sichtbaren Rand.
+  // Kleine Netze (< CULL_MIN_NODES): null = Culling aus, alles rendert wie
+  // bisher.
+  const cullRect = useMemo<GraphRect | null>(() => {
+    if (activeNodes.length <= CULL_MIN_NODES) return null;
+    const k = Math.max(zoomTransform.k, 1e-4);
+    const margin = CULL_MARGIN_PX / k;
+    return {
+      x: -zoomTransform.x / k - margin,
+      y: -zoomTransform.y / k - margin,
+      w: svgSize.w / k + margin * 2,
+      h: svgSize.h / k + margin * 2,
+    };
+  }, [activeNodes, zoomTransform, svgSize]);
+
+  const culledNodes = useMemo(() => {
+    if (!cullRect) return activeNodes;
+    const r = cullRect;
+    return activeNodes.filter(n => {
+      const p = positionOf(n.id);
+      const e = nodeExtentsOf(n.id);
+      return p.x + e.rx >= r.x && p.x - e.rx <= r.x + r.w && p.y + e.ry >= r.y && p.y - e.ry <= r.y + r.h;
+    });
+  }, [activeNodes, cullRect, positionOf, nodeExtentsOf]);
+
+  // Eine Kante bleibt sichtbar, solange ihr VERLAUF durch den Ausschnitt
+  // läuft — beide Endpunkte dürfen dabei außerhalb liegen (Liang-Barsky).
+  const culledEdges = useMemo(() => {
+    if (!cullRect) return visibleEdges;
+    const r = cullRect;
+    return visibleEdges.filter(e => {
+      const g = edgeRenderById.get(e.id);
+      return !!g && segmentIntersectsRect(g.x1, g.y1, g.x2, g.y2, r);
+    });
+  }, [visibleEdges, cullRect, edgeRenderById]);
+
+  // LOD-Schalter: Labels unter dem Fade-Beginn gar nicht erst ins DOM setzen
+  // (statt sie mit opacity 0 zu rendern), Pulse/Hinweis-Dots unter
+  // LOD_MIN_ZOOM_K aus — bei Overview-Zoom nur winzige Pixel, echte Kosten.
+  const showEdgeLabels = zoomTransform.k >= 0.55;
+  const lodDetailOn = zoomTransform.k >= LOD_MIN_ZOOM_K;
+  // Label-Fade ebenfalls quantisiert (~21 Stufen statt kontinuierlich),
+  // damit das Ausblenden beim Rauszoomen nicht jede Kante jede Frame rendert.
+  const labelOpacityStep = Math.round(Math.max(0, Math.min(1, (zoomTransform.k - 0.55) / 0.25)) * 20) / 20;
+  const pulseFill = `url(#wnPulseGrad${isDark ? '' : 'Day'})`;
 
   // ── Pan/Zoom (Muster aus MindmapCanvas.tsx, angepasst) ──────────────────
   const fitView = useCallback(() => {
@@ -1085,8 +1539,58 @@ export const GraphCanvas: React.FC<GraphCanvasProps> = ({
     }
   };
 
+  // ── Stabile Dispatcher für die memoisierten Views ────────────────────────
+  // Die Refs halten stets den frischesten Closure-Stand (state/selection/
+  // Handler des aktuellen Renders), die useCallback-Hüllen bleiben über die
+  // gesamte Komponenten-Lebenszeit identisch — sonst würde jede neue
+  // Funktions-Identität bei jedem Render React.memo aller Nodes/Kanten
+  // aushebeln und der Culling-/Memo-Gewinn wäre weg.
+  const stateRef = useRef(state);
+  stateRef.current = state;
+  const selectionRef = useRef(selection);
+  selectionRef.current = selection;
+  const onSelectionChangeRef = useRef(onSelectionChange);
+  onSelectionChangeRef.current = onSelectionChange;
+
+  const nodePointerDownRef = useRef(handleNodePointerDown);
+  nodePointerDownRef.current = handleNodePointerDown;
+  const nodePointerUpRef = useRef(handleNodePointerUp);
+  nodePointerUpRef.current = handleNodePointerUp;
+  const handlePointerDownRef = useRef(handleHandlePointerDown);
+  handlePointerDownRef.current = handleHandlePointerDown;
+  const beginEditingTitleRef = useRef(beginEditingTitle);
+  beginEditingTitleRef.current = beginEditingTitle;
+
+  const stableNodePointerDown = useCallback((e: React.PointerEvent, nodeId: string) => {
+    nodePointerDownRef.current(e, nodeId);
+  }, []);
+  const stableNodePointerUp = useCallback((e: React.PointerEvent, nodeId: string) => {
+    nodePointerUpRef.current(e, nodeId);
+  }, []);
+  const stableHandlePointerDown = useCallback((e: React.PointerEvent, nodeId: string) => {
+    handlePointerDownRef.current(e, nodeId);
+  }, []);
+  const stableTitleDoubleClick = useCallback((e: React.MouseEvent, nodeId: string) => {
+    e.stopPropagation();
+    beginEditingTitleRef.current(nodeId, stateRef.current.nodesById.get(nodeId)?.title ?? '');
+  }, []);
+  const stableHoverChange = useCallback((nodeId: string | null) => {
+    onSelectionChangeRef.current(hoverNode(selectionRef.current, nodeId ?? undefined));
+  }, []);
+  const stableEdgeHitSelect = useCallback((e: React.MouseEvent, edgeId: string) => {
+    e.stopPropagation();
+    onSelectionChangeRef.current(selectEdge(selectionRef.current, edgeId));
+  }, []);
+
   return (
     <div className="relative w-full h-full overflow-hidden" style={{ background: wnTheme.canvasBg, transition: 'background .4s ease' }}>
+      {/* Vignetten-Ebene (nur Hellmodus definiert) — liegt über dem
+          Hintergrund, aber UNTER allen interaktiven Elementen und nimmt
+          keine Klicks entgegen. Gibt dem Pergament die Tiefenwirkung, die
+          der Nachtmodus aus seinem dunklen Gradient-Rand zieht. */}
+      {wnTheme.vignette && (
+        <div aria-hidden className="absolute inset-0 pointer-events-none" style={{ boxShadow: wnTheme.vignette }} />
+      )}
       <style>{`
         @keyframes wnFloat { 0%, 100% { transform: translateY(0); } 50% { transform: translateY(-4px); } }
         @keyframes wnBreathe { 0%, 100% { transform: scale(1); } 50% { transform: scale(1.025); } }
@@ -1123,6 +1627,15 @@ export const GraphCanvas: React.FC<GraphCanvasProps> = ({
             <stop offset="40%" stopColor="#D9A94E" stopOpacity=".9" />
             <stop offset="100%" stopColor="#D9A94E" stopOpacity="0" />
           </radialGradient>
+          {/* Tageslicht-Puls: derselbe wandernde Lichtpunkt, aber mit
+              deutlich tieferem Bernstein-Kern — die Nacht-Variante ist ein
+              HELLES Leuchten auf dunklem Grund, auf Creme wäre sie fast
+              unsichtbar. Hier leuchtet der Punkt als gesättigtes Gold. */}
+          <radialGradient id="wnPulseGradDay" cx="50%" cy="50%" r="50%">
+            <stop offset="0%" stopColor="#FFF6DE" stopOpacity="1" />
+            <stop offset="45%" stopColor="#B98A28" stopOpacity=".95" />
+            <stop offset="100%" stopColor="#B98A28" stopOpacity="0" />
+          </radialGradient>
           {/* Dezentes Millimeterpapier-Raster — statisch im Screen-Space (bewegt
               sich NICHT mit Pan/Zoom), gibt dem Netz einen wissenschaftlichen
               "Laborheft"-Untergrund ohne mit den Nodes zu konkurrieren. */}
@@ -1130,7 +1643,7 @@ export const GraphCanvas: React.FC<GraphCanvasProps> = ({
             <circle cx="1.4" cy="1.4" r="1.4" fill="rgba(140,170,230,.09)" />
           </pattern>
           <pattern id="wnDotsDay" width="36" height="36" patternUnits="userSpaceOnUse">
-            <circle cx="1.4" cy="1.4" r="1.4" fill="rgba(60,80,130,.10)" />
+            <circle cx="1.4" cy="1.4" r="1.4" fill="rgba(60,80,130,.13)" />
           </pattern>
           {(['night', 'day'] as const).map(mode => (
             (['focus', 'neighbor', 'far'] as const).map(tier => {
@@ -1152,110 +1665,44 @@ export const GraphCanvas: React.FC<GraphCanvasProps> = ({
         <rect x="0" y="0" width="100%" height="100%" fill={`url(#wnDots${isDark ? 'Night' : 'Day'})`} style={{ pointerEvents: 'none' }} />
         <g ref={gRef}>
           <AnimatePresence initial={false}>
-            {visibleEdges.map(edge => {
-              const { x1, y1, x2, y2, midX, midY } = computeEdgeGeometry(edge);
+            {culledEdges.map(edge => {
+              const geom = edgeRenderById.get(edge.id)!;
               const edgeSelected = isEdgeSelected(selection, edge.id);
               // Bedeutung direkt auf der Fläche sichtbar (Phase 5B Punkt 2) —
-              // ohne Menü/Inspector. `label` ist der Freitext-Override am
-              // Edge-Datensatz (heute von keiner UI gesetzt, aber
-              // vorrangig falls vorhanden), sonst der Name des Beziehungstyps.
+              // `label` ist der Freitext-Override am Edge-Datensatz, sonst
+              // der Name des Beziehungstyps; Umbruch/Versatz liefert der
+              // Cache (edgeLabelDataById).
               const relationType = edge.relationTypeId ? state.relationTypesById.get(edge.relationTypeId) : undefined;
-              const rawLabel = edge.label || relationType?.label || '';
-              // Kein Abschneiden mehr (User-Vorgabe 2026-08-04, verschärft
-              // 2026-08-05) — bei Bedarf mehrzeilig statt mit "…" gekürzt,
-              // wie bei den Node-Titeln (bis zu EDGE_LABEL_MAX_LINES Zeilen).
-              const labelLines = rawLabel ? wrapTitleAllLines(rawLabel, EDGE_LABEL_MAX_WIDTH, 9, 500, EDGE_LABEL_MAX_LINES).lines : [];
-              const labelOffsetY = (edgeParallelIndex.get(edge.id) ?? 0) * (14 + Math.max(0, labelLines.length - 1) * 11);
               // Kanten-Nähe-Stufe wie bei Nodes: berührt sie den Fokus-Node
               // ODER einen Gold-Hauptthema-Node (User-Feedback: der Gold-Node
               // sieht sonst wie der Fokus aus, ohne dass seine Kanten
-              // mitpulsen), ist sie 'focus' (bekommt den wandernden
-              // Lichtpuls, s. Design-Handoff — Gold NUR als Puls, nie als
-              // Ambient-Deko), berührt sie nur einen Nachbarn, 'neighbor',
-              // sonst 'far'.
+              // mitpulsen), ist sie 'focus', sonst 'neighbor'/'far'.
               const touchesFocus =
                 (selection.selectedNodeId != null && (edge.sourceNodeId === selection.selectedNodeId || edge.targetNodeId === selection.selectedNodeId)) ||
                 isGoldIdentityNode(edge.sourceNodeId) || isGoldIdentityNode(edge.targetNodeId);
               const edgeTier: 'focus' | 'neighbor' | 'far' = touchesFocus ? 'focus' : (!selection.selectedNodeId ? 'neighbor' : 'far');
-              const edgeColor = wnTheme.edge[edgeTier];
-              const edgeOpacity = edgeTier === 'focus' ? 0.75 : edgeTier === 'neighbor' ? 0.5 : 0.16;
-              const pulseId = `wnpulse-${edge.id}`;
+              const label = edgeLabelDataById.get(edge.id);
               return (
-                <motion.g
+                <GraphEdgeView
                   key={edge.id}
-                  initial={{ opacity: 0 }}
-                  animate={{ opacity: 1 }}
-                  exit={{ opacity: 0 }}
-                >
-                  {/* Unsichtbarer breiter Hit-Bereich (Phase 5B) — die
-                      sichtbare Linie selbst ist mit 2px zu schmal, um
-                      zuverlässig klickbar zu sein. */}
-                  <line
-                    x1={x1} y1={y1} x2={x2} y2={y2}
-                    stroke="transparent" strokeWidth={14}
-                    onClick={e => { e.stopPropagation(); onSelectionChange(selectEdge(selection, edge.id)); }}
-                    style={{ cursor: 'pointer' }}
-                  />
-                  {relationType?.symmetric && (
-                    <line
-                      x1={x1} y1={y1 + 3} x2={x2} y2={y2 + 3}
-                      stroke={edgeSelected ? wnTheme.focusLabel : edgeColor}
-                      strokeWidth={edgeSelected ? 2 : 1.2}
-                      strokeLinecap="round"
-                      opacity={edgeSelected ? 1 : edgeOpacity}
-                      style={{ pointerEvents: 'none' }}
-                    />
-                  )}
-                  <line
-                    x1={x1} y1={y1} x2={x2} y2={y2}
-                    stroke={edgeSelected ? wnTheme.focusLabel : edgeColor}
-                    strokeWidth={edgeSelected ? 3 : 1.4}
-                    strokeLinecap="round"
-                    opacity={edgeSelected ? 1 : edgeOpacity}
-                    style={{ pointerEvents: 'none' }}
-                  />
-                  {/* Wandernder Lichtpuls (Design-Handoff: "Golden dots exist
-                      ONLY as these traveling pulses") — auf jeder Kante, die
-                      über einen durchgehenden Pfad mit dem ausgewählten/
-                      Gold-Hauptthema-Node zusammenhängt (pulseDepthByEdge),
-                      nicht mehr nur 1 Hop weit. Tiefen-abhängige Verzögerung
-                      zusätzlich zum bisherigen Pro-Kante-Jitter (organischer
-                      Startversatz) lässt das Signal sichtbar nach außen
-                      wandern statt überall gleichzeitig aufzuleuchten. */}
-                  {pulseDepthByEdge.has(edge.id) && (
-                    <circle r={3.2} fill="url(#wnPulseGrad)" className="wn-pulse" style={{ pointerEvents: 'none' }}>
-                      <animateMotion
-                        dur="3.6s"
-                        begin={`${(pulseDepthByEdge.get(edge.id) ?? 0) * PULSE_DEPTH_STAGGER_S + (hashId(pulseId) % 10) / 10 * PULSE_JITTER_MAX_S}s`}
-                        repeatCount="indefinite"
-                        path={`M${x1},${y1} L${x2},${y2}`}
-                        calcMode="linear"
-                      />
-                    </circle>
-                  )}
-                  {/* Während der Bearbeitung übernimmt das HTML-Overlay
-                      (Editier-Input) exakt dieselbe Stelle — Label hier
-                      ausblenden statt doppelt zu rendern. Bewusst horizontal
-                      (nicht mit der Kante rotiert): bleibt bei jedem
-                      Kantenwinkel aufrecht lesbar, wie die Node-Titel auch.
-                      Design-Handoff v3: keine Pillen-Kapsel mehr — schlichter
-                      kursiver Text mit weichem Leucht-Schatten, wirkt als Teil
-                      der Synapse statt als schwebendes UI-Badge. */}
-                  {!edgeSelected && labelLines.length > 0 && (
-                    <text
-                      textAnchor="middle"
-                      fontStyle="italic"
-                      className="text-[9px] font-medium select-none"
-                      fill={edgeTier === 'focus' ? wnTheme.label.focus : wnTheme.label.far}
-                      opacity={edgeLabelOpacity}
-                      style={{ pointerEvents: 'none', filter: `drop-shadow(0 0 3px ${isDark ? '#08111E' : '#F5F1E7'})`, transition: 'opacity .25s ease' }}
-                    >
-                      {labelLines.map((line, i) => (
-                        <tspan key={i} x={midX} y={midY + labelOffsetY + 3 + i * 11}>{line}</tspan>
-                      ))}
-                    </text>
-                  )}
-                </motion.g>
+                  x1={geom.x1} y1={geom.y1} x2={geom.x2} y2={geom.y2}
+                  cx={geom.cx} cy={geom.cy}
+                  midX={geom.midX} midY={geom.midY}
+                  selected={edgeSelected}
+                  symmetric={!!relationType?.symmetric}
+                  stroke={edgeSelected ? wnTheme.focusLabel : wnTheme.edge[edgeTier]}
+                  width={edgeSelected ? 3 : 1.4}
+                  symmetricWidth={edgeSelected ? 2 : 1.2}
+                  opacity={edgeSelected ? 1 : edgeTier === 'focus' ? 0.75 : edgeTier === 'neighbor' ? 0.5 : 0.16}
+                  pulseBegin={(lodDetailOn && pulseBeginById.get(edge.id)) || null}
+                  pulseFill={pulseFill}
+                  labelLines={!showEdgeLabels || !label ? NO_EDGE_LABEL_LINES : label.lines}
+                  labelOffsetY={label?.offsetY ?? 0}
+                  labelFill={edgeTier === 'focus' ? wnTheme.label.focus : wnTheme.label.far}
+                  labelOpacity={labelOpacityStep}
+                  labelShadowColor={wnTheme.labelShadow}
+                  onHitSelect={stableEdgeHitSelect}
+                />
               );
             })}
             {edgeDraft && (
@@ -1265,145 +1712,55 @@ export const GraphCanvas: React.FC<GraphCanvasProps> = ({
                 stroke={wnTheme.focusLabel} strokeWidth={2} strokeDasharray="4 4"
               />
             )}
-            {activeNodes.map(node => {
+            {culledNodes.map(node => {
               const pos = nodeDrag?.nodeId === node.id ? nodeDrag.currentPos : positionOf(node.id);
               const selected = isSelected(selection, node.id);
               const hovered = isHovered(selection, node.id);
               const tier = tierOf(node.id);
               const tc = tierColorsOf(tier);
               const { rx, ry } = nodeExtentsOf(node.id);
-              const blobD = blobPathD(rx, ry, node.id);
               // Hauptthema-Nodes sind standardmäßig Gold — ihre "Identität",
-              // nicht nur der Fokus-Zustand (User-Wunsch 2026-08-04, "wie im
-              // Bsp"). Bleibt bewusst golden auch als Nachbar/Fern-Node (nur
-              // Deckkraft/Unschärfe folgen weiterhin der Nähe-Stufe wie bei
-              // jedem anderen Node) — eine eigene, nutzerdefinierte Farbe
-              // (node.color) hat immer Vorrang.
-              const identityTier = identityTierOf(node.id);
+              // nicht nur der Fokus-Zustand (User-Wunsch 2026-08-04). Bleibt
+              // bewusst golden auch als Nachbar/Fern-Node — eine eigene,
+              // nutzerdefinierte Farbe (node.color) hat immer Vorrang.
               // identityTier === 'far' kommt ausschließlich von
-              // hierarchyLevel === 'detail' (s. HIERARCHY_IDENTITY_TIER) —
-              // eindeutig genug, kein zusätzlicher hierarchyLevel-Check nötig.
+              // hierarchyLevel === 'detail' (s. HIERARCHY_IDENTITY_TIER).
+              const identityTier = identityTierOf(node.id);
               const isDetailIdentity = identityTier === 'far';
               const fill = node.color
                 || (isDetailIdentity ? DETAIL_IDENTITY_COLOR : undefined)
                 || `url(#${wnTheme.gradientId[identityTier ?? (tier === 'neutral' ? 'neighbor' : tier)]})`;
               const glowColor = isDetailIdentity ? DETAIL_IDENTITY_COLOR : identityTier ? wnTheme.tier[identityTier].glow : tc.glow;
-              const isFocusTier = tier === 'focus';
+              const title = nodeTitleById.get(node.id);
               return (
-                <motion.g
+                <GraphNodeView
                   key={node.id}
-                  {...{ [NODE_DATA_ATTR]: true }}
-                  initial={shouldReduceMotion
-                    ? { x: pos.x, y: pos.y, opacity: 1, scale: 1 }
-                    : { x: pos.x, y: pos.y, opacity: 0, scale: 0.6 }}
-                  animate={{ x: pos.x, y: pos.y, opacity: 1, scale: 1 }}
-                  exit={shouldReduceMotion ? { opacity: 1, scale: 1 } : { opacity: 0, scale: 0.6 }}
-                  onPointerDown={e => handleNodePointerDown(e, node.id)}
-                  onPointerUp={e => handleNodePointerUp(e, node.id)}
-                  // Verhindert, dass das native, nach mousedown+mouseup
-                  // automatisch ausgelöste click-Event zum Hintergrund
-                  // hochbubbelt und dort die gerade erst gesetzte Auswahl
-                  // sofort wieder löscht (handleBackgroundClick).
-                  onClick={e => e.stopPropagation()}
-                  // stopPropagation verhindert weiterhin, dass der Doppelklick
-                  // bis zum Hintergrund durchbubbelt und dort einen zweiten
-                  // Node anlegt (Phase 5A Punkt 1) — zusätzlich öffnet er jetzt
-                  // die Titel-Bearbeitung (Punkt 2), statt nur ins Leere zu laufen.
-                  onDoubleClick={e => { e.stopPropagation(); beginEditingTitle(node.id, node.title); }}
-                  onMouseEnter={() => onSelectionChange(hoverNode(selection, node.id))}
-                  onMouseLeave={() => onSelectionChange(hoverNode(selection, undefined))}
-                  style={{ cursor: 'pointer' }}
-                >
-                  {/* Leichtes, pro Node festes Schweben/Atmen (Design-Handoff)
-                      — CSS-Animation statt framer-motion, damit sie parallel
-                      zu Drag/Zoom-Transforms unabhängig läuft. */}
-                  <g
-                    className={isFocusTier ? 'wn-breathe' : 'wn-float'}
-                    style={{
-                      // Verzögerung bewusst IN der Shorthand statt als
-                      // separates animationDelay — React warnt sonst vor
-                      // widersprüchlichen Kurz-/Langform-Eigenschaften im
-                      // selben Style-Objekt (Reihenfolge-abhängiger Bug).
-                      animation: `${isFocusTier ? 'wnBreathe 6s' : `wnFloat ${(5 + (hashId(node.id) % 30) / 10).toFixed(1)}s`} ease-in-out ${(hashId(node.id) % 30) / 10}s infinite`,
-                      // Ohne transformBox bezieht sich transform-origin bei
-                      // SVG-Elementen auf den Viewport der gesamten Kanvas,
-                      // nicht auf den Node selbst — die Animation lief zwar,
-                      // war aber je nach Node-Position unsichtbar oder verzerrt.
-                      transformBox: 'fill-box',
-                      transformOrigin: 'center',
-                      filter: tc.blurPx ? `blur(${tc.blurPx}px)` : undefined,
-                    }}
-                  >
-                    {/* Glut hinter dem Node — reine Deko, nimmt keine Klicks entgegen. */}
-                    <path d={blobD} fill={glowColor} opacity={tc.glowOpacity} style={{ filter: `blur(${Math.max(8, ry * 0.35)}px)`, pointerEvents: 'none' }} transform="scale(1.15)" />
-                    <path
-                      d={blobD}
-                      fill={fill}
-                      opacity={tc.opacity}
-                      stroke={tc.border}
-                      strokeWidth={(node.hierarchyLevel ? HIERARCHY_STROKE_WIDTH[node.hierarchyLevel] : HIERARCHY_STROKE_WIDTH.unterthema) + (selected ? SELECTED_STROKE_BONUS : 0)}
-                    />
-                    {editingNodeId !== node.id && (() => {
-                      const titleFontWeight = node.hierarchyLevel === 'hauptthema' ? 800 : node.hierarchyLevel === 'detail' ? 600 : 700;
-                      // 0.86 statt voller Durchmesser als Sicherheitsabstand
-                      // zum Rand — die Messung selbst ist jetzt exakt, der
-                      // Puffer ist reiner Gestaltungsspielraum, kein Ausgleich
-                      // für eine ungenaue Schätzung mehr.
-                      const maxWidth = rx * 2 * 0.86;
-                      const { lines: titleLines, fontSize: titleFontSize } = wrapTitleAdaptive(node.title, maxWidth, titleFontWeight);
-                      const titleColor = node.color ? '#fff' : tc.text;
-                      // Zeilenabstand skaliert mit der (ggf. verkleinerten)
-                      // Schrift, statt bei kleinerer Schrift unnötig viel
-                      // Luft zwischen den Zeilen zu lassen.
-                      const lineStep = titleFontSize * 1.1;
-                      return (
-                        <text
-                          textAnchor="middle"
-                          fontSize={titleFontSize}
-                          className="select-none"
-                          fontWeight={titleFontWeight}
-                          fill={titleColor}
-                          style={{ pointerEvents: 'none' }}
-                        >
-                          {titleLines.length === 1 ? (
-                            <tspan x={0} y={4}>{titleLines[0]}</tspan>
-                          ) : (
-                            titleLines.map((line, li) => (
-                              <tspan key={li} x={0} y={(li - (titleLines.length - 1) / 2) * lineStep + 4}>
-                                {line}
-                              </tspan>
-                            ))
-                          )}
-                        </text>
-                      );
-                    })()}
-                  </g>
-                  {(hovered || selected) && (
-                    <g onPointerDown={e => handleHandlePointerDown(e, node.id)} style={{ cursor: 'crosshair' }}>
-                      {/* Unsichtbarer, deutlich größerer Trefferbereich um den
-                          sichtbaren Punkt (User-Fund 2026-08-04: der 6px-Punkt
-                          allein war kaum zu treffen — verpasste Klicks landeten
-                          auf dem Node darunter, wiederholte Versuche lösten
-                          dabei unbeabsichtigt den Doppelklick-Titel-Editor
-                          aus). Rein fürs Hit-Testing, keine visuelle Änderung
-                          über den sichtbaren Punkt hinaus. */}
-                      <circle cx={rx + HANDLE_OFFSET} cy={0} r={HANDLE_RADIUS + 8} fill="transparent" />
-                      <circle cx={rx + HANDLE_OFFSET} cy={0} r={HANDLE_RADIUS} fill={wnTheme.focusLabel} style={{ pointerEvents: 'none' }} />
-                    </g>
-                  )}
-                  {/* Wissensnetz-Coach, erster Baustein: dezenter, immer
-                      sichtbarer Hinweis-Punkt (nicht nur bei Hover/Auswahl wie
-                      der Handle) — bewusst KEINE Warnfarbe (rot/rose ist app-weit
-                      für "kritisch/schwach" reserviert), reiner Beobachtungston.
-                      Native <title> statt eigenem Tooltip-Bau — genügt für v1. */}
-                  {nodeInsightsByNode?.has(node.id) && (
-                    <g style={{ pointerEvents: 'none' }}>
-                      <circle cx={-rx * 0.72} cy={-ry * 0.72} r={5} fill={wnTheme.chipText} opacity={0.85} stroke={wnTheme.chipBg} strokeWidth={1.5}>
-                        <title>{INSIGHT_LABELS[nodeInsightsByNode.get(node.id)![0].type]}{nodeInsightsByNode.get(node.id)!.length > 1 ? ` (+${nodeInsightsByNode.get(node.id)!.length - 1} weitere)` : ''}</title>
-                      </circle>
-                    </g>
-                  )}
-                </motion.g>
+                  nodeId={node.id}
+                  x={pos.x} y={pos.y} rx={rx} ry={ry}
+                  fill={fill}
+                  glowColor={glowColor}
+                  glowOpacity={tc.glowOpacity}
+                  bodyOpacity={tc.opacity}
+                  blurPx={lodDetailOn ? tc.blurPx : 0}
+                  borderColor={tc.border}
+                  borderWidth={(node.hierarchyLevel ? HIERARCHY_STROKE_WIDTH[node.hierarchyLevel] : HIERARCHY_STROKE_WIDTH.unterthema) + (selected ? SELECTED_STROKE_BONUS : 0)}
+                  titleLines={editingNodeId === node.id || !title ? NO_EDGE_LABEL_LINES : title.lines}
+                  titleFontSize={title?.fontSize ?? 10}
+                  titleFontWeight={title?.fontWeight ?? 700}
+                  titleColor={node.color ? '#fff' : tc.text}
+                  breathe={tier === 'focus'}
+                  showHandle={hovered || selected}
+                  handleColor={wnTheme.focusLabel}
+                  insightText={(lodDetailOn && insightTextById?.get(node.id)) || null}
+                  insightDotFill={wnTheme.chipText}
+                  insightDotStroke={wnTheme.chipBg}
+                  reduceMotion={shouldReduceMotion}
+                  onNodePointerDown={stableNodePointerDown}
+                  onNodePointerUp={stableNodePointerUp}
+                  onTitleDoubleClick={stableTitleDoubleClick}
+                  onHoverChange={stableHoverChange}
+                  onHandlePointerDown={stableHandlePointerDown}
+                />
               );
             })}
           </AnimatePresence>
