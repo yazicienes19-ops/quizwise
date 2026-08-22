@@ -51,6 +51,13 @@ export interface UseKnowledgeGraphResult {
   redo: () => void;
 }
 
+// Session-lokaler In-Memory-Cache der Undo-History pro Scope. Ein Tab-Wechsel
+// unmountet GraphSystem (und damit den Hook) — ohne Cache wäre jede Undo-
+// Fähigkeit beim Zurückkehren weg, obwohl der Nutzer nur kurz woanders
+// geschaut hat. Bewusst KEIN localStorage: HistoryEntry besteht aus Closures
+// und ist laut graphHistoryService.ts bewusst sessionlokal/nicht serialisierbar.
+const historyCacheByScope = new Map<string, GraphHistory>();
+
 export function useKnowledgeGraph({ scope, userId }: UseKnowledgeGraphOptions): UseKnowledgeGraphResult {
   const [state, setState] = useState<GraphState>(() => sync.loadCachedState(scope, userId));
   const [history, setHistory] = useState<GraphHistory>(createEmptyHistory);
@@ -79,7 +86,7 @@ export function useKnowledgeGraph({ scope, userId }: UseKnowledgeGraphOptions): 
     const cached = sync.loadCachedState(scope, userId);
     stateRef.current = cached;
     setState(cached);
-    setHistory(createEmptyHistory());
+    setHistory(historyCacheByScope.get(scopeIdentity) ?? createEmptyHistory());
     setSelection(createEmptySelection());
 
     // Egal ob eingeloggt oder rein lokal: ein Scope-/User-Wechsel darf einen
@@ -128,7 +135,8 @@ export function useKnowledgeGraph({ scope, userId }: UseKnowledgeGraphOptions): 
     stateRef.current = next.state;
     setState(next.state);
     setHistory(next.history);
-  }, []);
+    historyCacheByScope.set(sync.scopeKey(scope), next.history);
+  }, [sync, scope]);
 
   const onEntityChanged = useCallback((change: GraphEntityChange) => {
     // 'relationType' kam mit Phase 5A Punkt 5 dazu (GraphCanvas legt jetzt

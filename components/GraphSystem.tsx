@@ -1,4 +1,4 @@
-import React, { useEffect, useMemo, useState } from 'react';
+import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { createPortal } from 'react-dom';
 import { Search as SearchIcon } from 'lucide-react';
 import { Collection, FlashcardDeck, ProcessedDocument } from '../types';
@@ -10,10 +10,11 @@ import { searchNodes } from '../services/graph/graphSearchService';
 import { computeNodeInsights, groupInsightsByNode } from '../services/graph/graphInsightsService';
 import { buildRelationSuggestionSource, validateRelationSuggestions, type RelationSuggestion } from '../services/graph/graphRelationSuggestionSource';
 import { buildDuplicateSuggestionSource, validateDuplicateSuggestions, type DuplicateSuggestion } from '../services/graph/graphDuplicateSuggestionSource';
+import { previewMergeNodes, mergeNodes } from '../services/graph/graphMergeService';
 import { buildMissingConceptSource, validateMissingConceptSuggestions, type MissingConceptSuggestion } from '../services/graph/graphMissingConceptSource';
 import { shouldUsePdfReader } from '../services/libraryService';
 import { useKnowledgeGraph } from '../hooks/useKnowledgeGraph';
-import { GraphCanvas } from './GraphCanvas';
+import { GraphCanvas, type ZoomTransform } from './GraphCanvas';
 import { GraphEdgeExplainOverlay } from './GraphEdgeExplainOverlay';
 import { GraphNodeDetailPanel } from './GraphNodeDetailPanel';
 import { GraphLearningOverlay, type GraphLearningActivity } from './GraphLearningOverlay';
@@ -115,6 +116,22 @@ export const GraphSystem: React.FC<GraphSystemProps> = ({
     : undefined;
 
   const graph = useKnowledgeGraph({ scope, userId });
+
+  // Letzter Kamera-Zustand dieses Graphen (View-Persistenz): pro Scope ein
+  // Key, beim Mount einmal gelesen, nach jeder Pan-/Zoom-Geste vom Canvas
+  // zurückgeschrieben — nach einem Reload steht der Ausschnitt wieder dort,
+  // wo der Nutzer aufgehört hat (vorher: immer Anfangs-Fit).
+  const graphViewKey = `studearc_graph_view_${scope.kind === 'collection' ? scope.collectionId : 'all'}`;
+  const [initialGraphView] = useState<ZoomTransform | undefined>(() => {
+    try {
+      const raw = localStorage.getItem(graphViewKey);
+      const parsed = raw ? JSON.parse(raw) : undefined;
+      return parsed && typeof parsed.x === 'number' && typeof parsed.y === 'number' && typeof parsed.k === 'number' ? parsed : undefined;
+    } catch { return undefined; }
+  });
+  const handleGraphViewChange = useCallback((view: ZoomTransform) => {
+    try { localStorage.setItem(graphViewKey, JSON.stringify(view)); } catch {}
+  }, [graphViewKey]);
 
   // Nodes einem Fach nachträglich zuordnen (User-Fund 2026-08-05): unter
   // "Alle Fächer" angelegte Nodes bekommen KEINE collectionId (s.
@@ -315,6 +332,39 @@ export const GraphSystem: React.FC<GraphSystemProps> = ({
 
   const handleDiscardDuplicateSuggestion = (suggestion: DuplicateSuggestion) => {
     setDuplicateSuggestions(prev => (prev ?? []).filter(s => s !== suggestion));
+    setMergingPairKey(null);
+  };
+
+  // Geführter Duplikat-Merge (s. graphMergeService.ts): nodeA bleibt, nodeB
+  // wird archiviert — Kanten ziehen um, Notizen/Beschreibung übernehmen.
+  // Läuft komplett über die record*-Funktionen und ist dadurch über
+  // Rückgängig vollständig wiederherstellbar.
+  const [mergingPairKey, setMergingPairKey] = useState<string | null>(null);
+  const pairKey = (s: DuplicateSuggestion) => `${s.nodeAId}|${s.nodeBId}`;
+
+  const handleMergeDuplicateSuggestion = (suggestion: DuplicateSuggestion) => {
+    const result = mergeNodes(graph.history, graph.state, suggestion.nodeAId, suggestion.nodeBId);
+    if (result.error) {
+      toast.error(result.error);
+      return;
+    }
+    const before = graph.state;
+    graph.onChange({ state: result.state, history: result.history });
+    // Persistenz: geänderte/neue/archivierte Kanten + beide Nodes committen
+    for (const [id, edge] of result.state.edgesById) {
+      const old = before.edgesById.get(id);
+      if (!old || old.archivedAt !== edge.archivedAt || old.version !== edge.version) {
+        graph.onEntityChanged({ kind: 'edge', entity: edge });
+      }
+    }
+    const keepNode = result.state.nodesById.get(suggestion.nodeAId);
+    const removedNode = result.state.nodesById.get(suggestion.nodeBId);
+    if (keepNode) graph.onEntityChanged({ kind: 'node', entity: keepNode });
+    if (removedNode) graph.onEntityChanged({ kind: 'node', entity: removedNode });
+    graph.onSelectionChange(selectNode(graph.selection, suggestion.nodeAId));
+    toast.success(`Zusammengeführt: ${result.movedEdges} Kante${result.movedEdges === 1 ? '' : 'n'} übernommen${result.notesAppended ? ', Notizen ergänzt' : ''}. Rückgängig möglich.`);
+    setDuplicateSuggestions(prev => (prev ?? []).filter(s => s !== suggestion));
+    setMergingPairKey(null);
   };
 
   // Wissensnetz-Coach, Baustein 6 ("Fehlende Konzepte erkennen", Punkt 2,
@@ -642,27 +692,71 @@ export const GraphSystem: React.FC<GraphSystemProps> = ({
           {duplicateSuggestions.map((s, i) => {
             const titleA = graph.state.nodesById.get(s.nodeAId)?.title ?? s.nodeAId;
             const titleB = graph.state.nodesById.get(s.nodeBId)?.title ?? s.nodeBId;
+            const key = pairKey(s);
+            const confirming = mergingPairKey === key;
+            const preview = confirming ? previewMergeNodes(graph.state, s.nodeAId, s.nodeBId) : null;
+            const previewOk = preview && !('error' in preview) ? preview : null;
             return (
-              <div key={`${s.nodeAId}-${s.nodeBId}-${i}`} className="flex items-center gap-3 flex-wrap">
-                <div className="min-w-0">
-                  <p className="text-xs font-bold text-slate-700 dark:text-slate-200 break-words">{titleA} ↔ {titleB}</p>
-                  <p className="text-[11px] text-slate-500 dark:text-slate-400 break-words">{s.reason}</p>
+              <div key={`${s.nodeAId}-${s.nodeBId}-${i}`} className="space-y-1.5">
+                <div className="flex items-center gap-3 flex-wrap">
+                  <div className="min-w-0">
+                    <p className="text-xs font-bold text-slate-700 dark:text-slate-200 break-words">{titleA} ↔ {titleB}</p>
+                    <p className="text-[11px] text-slate-500 dark:text-slate-400 break-words">{s.reason}</p>
+                  </div>
+                  <div className="flex items-center gap-2 ml-auto shrink-0">
+                    <button
+                      onClick={() => setMergingPairKey(confirming ? null : key)}
+                      className="text-[10px] font-black uppercase tracking-widest px-3 py-2 rounded-xl text-white transition-colors"
+                      style={{ background: 'var(--primary)' }}
+                    >
+                      Zusammenführen
+                    </button>
+                    <button
+                      onClick={() => handleViewDuplicateSuggestion(s)}
+                      className="text-[10px] font-black uppercase tracking-widest px-3 py-2 rounded-xl text-slate-500 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors"
+                    >
+                      Ansehen
+                    </button>
+                    <button
+                      onClick={() => handleDiscardDuplicateSuggestion(s)}
+                      className="text-[10px] font-black uppercase tracking-widest px-3 py-2 rounded-xl text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors"
+                    >
+                      Ignorieren
+                    </button>
+                  </div>
                 </div>
-                <div className="flex items-center gap-2 ml-auto shrink-0">
-                  <button
-                    onClick={() => handleViewDuplicateSuggestion(s)}
-                    className="text-[10px] font-black uppercase tracking-widest px-3 py-2 rounded-xl text-white transition-colors"
-                    style={{ background: 'var(--primary)' }}
-                  >
-                    Ansehen
-                  </button>
-                  <button
-                    onClick={() => handleDiscardDuplicateSuggestion(s)}
-                    className="text-[10px] font-black uppercase tracking-widest px-3 py-2 rounded-xl text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors"
-                  >
-                    Ignorieren
-                  </button>
-                </div>
+                {confirming && (
+                  <div className="rounded-2xl px-4 py-3 space-y-2" style={{ background: 'var(--bg-sidebar)', border: '1px solid var(--border-color)' }}>
+                    <p className="text-[11px] text-slate-600 dark:text-slate-300 break-words">
+                      <strong>{titleA}</strong> bleibt, <strong>{titleB}</strong> wird archiviert.{' '}
+                      {previewOk && (
+                        <>
+                          {previewOk.movedEdges} Kante{previewOk.movedEdges === 1 ? '' : 'n'} zieht um
+                          {previewOk.skippedEdges > 0 ? `, ${previewOk.skippedEdges} besteht schon` : ''}
+                          {previewOk.hasNotes ? ', Notizen werden ergänzt' : ''}
+                          {previewOk.hasDescription ? ', Beschreibung wird übernommen' : ''}.
+                          {previewOk.linkedDocuments > 0 && ` Achtung: ${previewOk.linkedDocuments} verknüpfte${previewOk.linkedDocuments === 1 ? 's' : ''} Dokument${previewOk.linkedDocuments === 1 ? '' : 'e'} am Duplikat werden NICHT übernommen.`}
+                        </>
+                      )}
+                      {' '}Über Rückgängig wiederherstellbar.
+                    </p>
+                    <div className="flex gap-2">
+                      <button
+                        onClick={() => handleMergeDuplicateSuggestion(s)}
+                        className="text-[10px] font-black uppercase tracking-widest px-4 py-2 rounded-xl text-white transition-colors"
+                        style={{ background: 'var(--primary)' }}
+                      >
+                        Zusammenführen
+                      </button>
+                      <button
+                        onClick={() => setMergingPairKey(null)}
+                        className="text-[10px] font-black uppercase tracking-widest px-4 py-2 rounded-xl text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors"
+                      >
+                        Abbrechen
+                      </button>
+                    </div>
+                  </div>
+                )}
               </div>
             );
           })}
@@ -735,6 +829,8 @@ export const GraphSystem: React.FC<GraphSystemProps> = ({
               showInsights={showInsights}
               onExplainEdge={setExplainingEdgeId}
               centerOnNode={centerRequest}
+              initialView={initialGraphView}
+              onViewChange={handleGraphViewChange}
             />
             {/* Kaltstart (Konzept-Risiko "Der leere Graph"): ohne Führung bleibt
                 die Fläche einschüchternd. Wrapper pointer-events-none, damit

@@ -85,9 +85,18 @@ export interface GraphCanvasProps {
    *  bewusst keinen Rückkanal nach außen (kein Kontrolliert-Machen der
    *  Pan/Zoom-Transforms, das würde den d3-Zoom-Zustand duplizieren). */
   centerOnNode?: { id: string; nonce: number };
+  /** Letzter Kamera-Zustand dieses Graphen (aus localStorage) — wird beim
+   *  Mount statt des initialen FitView angewendet: Nach einem Reload steht
+   *  der Nutzer dort weiter, wo er aufgehört hat. Optional, damit der
+   *  Dev-Harness unverändert bleibt. */
+  initialView?: ZoomTransform;
+  /** Feuert einmal am ENDE jeder Pan-/Zoom-Geste mit dem finalen Transform
+   *  (d3-'end'-Event, kein Feuern während der Bewegung) — Aufrufer speichert
+   *  ihn z.B. pro Graph in localStorage. */
+  onViewChange?: (view: ZoomTransform) => void;
 }
 
-interface ZoomTransform { x: number; y: number; k: number; }
+export interface ZoomTransform { x: number; y: number; k: number; }
 
 // Basisgröße — gilt auch für hierarchyLevel === undefined ("noch nicht
 // festgelegt"), damit bestehende Graphen ohne gesetzte Hierarchie optisch
@@ -163,7 +172,7 @@ const HIERARCHY_IDENTITY_TIER: Record<HierarchyLevel, Exclude<GraphTier, 'neutra
 };
 // Muss exakt dem letzten Wert in NODE_COLOR_SWATCHES (GraphNodeDetailPanel.tsx)
 // entsprechen — dieselbe Farbe, die der Nutzer auch manuell auswählen könnte.
-const DETAIL_IDENTITY_COLOR = '#64748B';
+const DETAIL_IDENTITY_COLOR = '#7C8899';
 
 interface WnTierColors {
   bg: string; border: string; text: string; glow: string; glowOpacity: number; opacity: number; blurPx: number;
@@ -184,9 +193,9 @@ const WN_THEME: Record<'night' | 'day', WnTheme> = {
     focusEyebrow: '#5E75A8', focusLabel: '#F3D48B',
     chipBg: 'rgba(255,255,255,.06)', chipBorder: 'rgba(255,255,255,.12)', chipText: '#D9A94E',
     tier: {
-      focus: { bg: '#D9A94E', border: 'rgba(255,236,180,.75)', text: '#1B2A4A', glow: '#D9A94E', glowOpacity: .4, opacity: 1, blurPx: 0 },
-      neighbor: { bg: '#4E6CA8', border: 'rgba(140,170,230,.42)', text: '#DCE6FA', glow: '#4E6CA8', glowOpacity: .3, opacity: .97, blurPx: 0 },
-      far: { bg: '#26355C', border: 'rgba(90,110,160,.16)', text: '#7186B4', glow: '#1B2740', glowOpacity: .1, opacity: .5, blurPx: .8 },
+      focus: { bg: '#D9A94E', border: 'rgba(255,242,200,.9)', text: '#1B2A4A', glow: '#D9A94E', glowOpacity: .4, opacity: 1, blurPx: 0 },
+      neighbor: { bg: '#4A7BD4', border: 'rgba(150,190,255,.55)', text: '#EAF0FD', glow: '#4A7BD4', glowOpacity: .3, opacity: .97, blurPx: 0 },
+      far: { bg: '#26355C', border: 'rgba(90,110,160,.16)', text: '#7186B4', glow: '#1B2740', glowOpacity: .1, opacity: .38, blurPx: 1.1 },
     },
     edge: { focus: '#7B93C8', neighbor: '#4E6CA8', far: '#26355C' },
     label: { focus: '#F3D48B', far: '#8CA0D0' },
@@ -197,9 +206,9 @@ const WN_THEME: Record<'night' | 'day', WnTheme> = {
     focusEyebrow: '#9A8F73', focusLabel: '#8A5A1E',
     chipBg: 'rgba(27,42,74,.05)', chipBorder: 'rgba(27,42,74,.12)', chipText: '#A9772C',
     tier: {
-      focus: { bg: '#C08B33', border: 'rgba(191,140,50,.7)', text: '#FBF9F4', glow: '#C08B33', glowOpacity: .3, opacity: 1, blurPx: 0 },
-      neighbor: { bg: '#405482', border: 'rgba(70,90,140,.3)', text: '#FBF9F4', glow: '#7C90BE', glowOpacity: .2, opacity: .97, blurPx: 0 },
-      far: { bg: '#9BA3C0', border: 'rgba(120,130,165,.18)', text: '#4B5568', glow: '#9BA3C0', glowOpacity: .08, opacity: .6, blurPx: .8 },
+      focus: { bg: '#C08B33', border: 'rgba(160,110,35,.85)', text: '#FBF9F4', glow: '#C08B33', glowOpacity: .3, opacity: 1, blurPx: 0 },
+      neighbor: { bg: '#3D5290', border: 'rgba(80,105,170,.45)', text: '#F4F6FC', glow: '#6D82BC', glowOpacity: .2, opacity: .97, blurPx: 0 },
+      far: { bg: '#9BA3C0', border: 'rgba(120,130,165,.18)', text: '#4B5568', glow: '#9BA3C0', glowOpacity: .08, opacity: .45, blurPx: 1.1 },
     },
     edge: { focus: '#B99A5C', neighbor: '#8A96BE', far: '#B7BDD4' },
     label: { focus: '#8A5A1E', far: '#6B7BA8' },
@@ -401,7 +410,7 @@ function wrapTitleAdaptive(text: string, maxWidthPx: number, fontWeight: number)
 }
 
 export const GraphCanvas: React.FC<GraphCanvasProps> = ({
-  state, history, selection, onChange, onSelectionChange, onEntityChanged, isDark, showInsights, onExplainEdge, centerOnNode,
+  state, history, selection, onChange, onSelectionChange, onEntityChanged, isDark, showInsights, onExplainEdge, centerOnNode, initialView, onViewChange,
 }) => {
   const svgRef = useRef<SVGSVGElement | null>(null);
   const gRef = useRef<SVGGElement | null>(null);
@@ -412,6 +421,13 @@ export const GraphCanvas: React.FC<GraphCanvasProps> = ({
   // Kein eigener Wissensnetz-Modus mehr (User-Vorgabe 2026-08-04) — folgt
   // dem globalen App-Theme, das über `isDark` hereinkommt.
   const wnTheme = isDark ? WN_THEME.night : WN_THEME.day;
+
+  // Kanten-Labels erst ab sinnvollem Zoom einblenden (weicher Übergang):
+  // Im ausgezoomten Überblick sind 9px-Labels nicht lesbar, aber pures
+  // visuelles Rauschen, das die Hierarchie-Farben überdeckt. Unter k=0.55
+  // unsichtbar, ab k=0.8 voll sichtbar — die vollständige Beziehung steht
+  // weiterhin NIE gekürzt da (User-Vorgabe 2026-08-05 bleibt unangetastet).
+  const edgeLabelOpacity = Math.max(0, Math.min(1, (zoomTransform.k - 0.55) / 0.25));
 
   // ── Sichtbare Nodes/Kanten ──────────────────────────────────────────────
   const activeNodes = useMemo(
@@ -640,6 +656,11 @@ export const GraphCanvas: React.FC<GraphCanvasProps> = ({
       .call(zoomBehaviorRef.current.transform, d3.zoomIdentity.translate(tx, ty).scale(scale));
   }, [activeNodes, positionOf, nodeExtentsOf]);
 
+  // Ref statt Dependency: das Zoom-Verhalten wird bewusst nur EINMAL gebunden
+  // ([]-Deps) — ein neuer Callback pro Render würde sonst ständig neu binden.
+  const onViewChangeRef = useRef(onViewChange);
+  onViewChangeRef.current = onViewChange;
+
   useEffect(() => {
     if (!svgRef.current || !gRef.current) return;
     const svgSel = d3.select(svgRef.current);
@@ -652,6 +673,11 @@ export const GraphCanvas: React.FC<GraphCanvasProps> = ({
       .on('zoom', event => {
         g.attr('transform', event.transform.toString());
         setZoomTransform({ x: event.transform.x, y: event.transform.y, k: event.transform.k });
+      })
+      // Einmal pro GESTEN-ENDE (nicht während der Bewegung) — Basis der
+      // View-Persistenz: letzter Ausschnitt pro Graph, Aufrufer speichert ihn.
+      .on('end', event => {
+        onViewChangeRef.current?.({ x: event.transform.x, y: event.transform.y, k: event.transform.k });
       });
     svgSel.call(zoomBehavior);
     // Eigener Doppelklick-Handler (Node anlegen) statt d3s eingebautem
@@ -663,10 +689,22 @@ export const GraphCanvas: React.FC<GraphCanvasProps> = ({
 
   const didInitialFit = useRef(false);
   useEffect(() => {
-    if (didInitialFit.current || activeNodes.length === 0 || !zoomBehaviorRef.current) return;
+    if (didInitialFit.current || activeNodes.length === 0 || !zoomBehaviorRef.current || !svgRef.current) return;
     didInitialFit.current = true;
-    fitView();
-  }, [activeNodes.length, fitView]);
+    // Gespeicherter Ausschnitt dieses Graphen? Dann dort weitermachen, wo der
+    // Nutzer zuletzt aufgehört hat — sonst alles einpassen (bisheriges
+    // Verhalten, bleibt für Graphen ohne gespeicherten View).
+    if (initialView) {
+      d3.select(svgRef.current).call(
+        zoomBehaviorRef.current.transform,
+        d3.zoomIdentity.translate(initialView.x, initialView.y).scale(initialView.k),
+      );
+      setZoomTransform({ x: initialView.x, y: initialView.y, k: initialView.k });
+    } else {
+      fitView();
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [activeNodes.length]);
 
   // ⌘K-Palette: Kamera animiert auf den gewählten Node zentrieren. Zoom bleibt
   // mindestens bei 0.9, damit der Ziel-Node auch in einem weit ausgezoomten
@@ -754,15 +792,20 @@ export const GraphCanvas: React.FC<GraphCanvasProps> = ({
   interface NodeDragState { nodeId: string; startClientX: number; startClientY: number; startPos: GraphNodePosition; currentPos: GraphNodePosition; moved: boolean; }
   const [nodeDrag, setNodeDrag] = useState<NodeDragState | null>(null);
 
-  const handleNodePointerDown = (e: React.MouseEvent, nodeId: string) => {
+  // Pointer-Events statt Mouse-Events: iOS feuert bei echten Wisch-Gesten
+  // keine kontinuierlichen mousemove-Events — Node verschieben und Kante
+  // ziehen waren auf Touch dadurch schlicht nicht bedienbar. Pointer-Events
+  // decken Maus/Touch/Stift einheitlich ab; isPrimary verhindert, dass ein
+  // zweiter Finger (Pinch) einen weiteren Drag startet.
+  const handleNodePointerDown = (e: React.PointerEvent, nodeId: string) => {
     e.stopPropagation();
-    if (e.button !== 0) return;
+    if (e.button !== 0 || !e.isPrimary) return;
     setNodeDrag({ nodeId, startClientX: e.clientX, startClientY: e.clientY, startPos: positionOf(nodeId), currentPos: positionOf(nodeId), moved: false });
   };
 
   useEffect(() => {
     if (!nodeDrag) return;
-    const handleMove = (e: MouseEvent) => {
+    const handleMove = (e: PointerEvent) => {
       const dx = (e.clientX - nodeDrag.startClientX) / zoomTransform.k;
       const dy = (e.clientY - nodeDrag.startClientY) / zoomTransform.k;
       const moved = nodeDrag.moved || Math.hypot(e.clientX - nodeDrag.startClientX, e.clientY - nodeDrag.startClientY) > DRAG_THRESHOLD_PX;
@@ -780,11 +823,16 @@ export const GraphCanvas: React.FC<GraphCanvasProps> = ({
       }
       setNodeDrag(null);
     };
-    window.addEventListener('mousemove', handleMove);
-    window.addEventListener('mouseup', handleUp);
+    // pointercancel (z.B. System-Geste übernimmt) bricht STILL ab — weder
+    // Position committen noch Auswahl setzen, der Node bleibt wo er war.
+    const handleCancel = () => setNodeDrag(null);
+    window.addEventListener('pointermove', handleMove);
+    window.addEventListener('pointerup', handleUp);
+    window.addEventListener('pointercancel', handleCancel);
     return () => {
-      window.removeEventListener('mousemove', handleMove);
-      window.removeEventListener('mouseup', handleUp);
+      window.removeEventListener('pointermove', handleMove);
+      window.removeEventListener('pointerup', handleUp);
+      window.removeEventListener('pointercancel', handleCancel);
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [nodeDrag, zoomTransform.k]);
@@ -793,23 +841,25 @@ export const GraphCanvas: React.FC<GraphCanvasProps> = ({
   interface EdgeDraftState { sourceNodeId: string; pointer: GraphNodePosition; }
   const [edgeDraft, setEdgeDraft] = useState<EdgeDraftState | null>(null);
 
-  const handleHandlePointerDown = (e: React.MouseEvent, nodeId: string) => {
+  const handleHandlePointerDown = (e: React.PointerEvent, nodeId: string) => {
     e.stopPropagation();
-    if (e.button !== 0) return;
+    if (e.button !== 0 || !e.isPrimary) return;
     setEdgeDraft({ sourceNodeId: nodeId, pointer: clientToGraphPoint(e.clientX, e.clientY) });
   };
 
   useEffect(() => {
     if (!edgeDraft) return;
-    const handleMove = (e: MouseEvent) => {
+    const handleMove = (e: PointerEvent) => {
       setEdgeDraft(prev => prev && { ...prev, pointer: clientToGraphPoint(e.clientX, e.clientY) });
     };
     const handleUp = () => setEdgeDraft(null); // Fallback: Loslassen außerhalb eines Nodes bricht ab
-    window.addEventListener('mousemove', handleMove);
-    window.addEventListener('mouseup', handleUp);
+    window.addEventListener('pointermove', handleMove);
+    window.addEventListener('pointerup', handleUp);
+    window.addEventListener('pointercancel', handleUp);
     return () => {
-      window.removeEventListener('mousemove', handleMove);
-      window.removeEventListener('mouseup', handleUp);
+      window.removeEventListener('pointermove', handleMove);
+      window.removeEventListener('pointerup', handleUp);
+      window.removeEventListener('pointercancel', handleUp);
     };
   }, [edgeDraft, clientToGraphPoint]);
 
@@ -833,7 +883,7 @@ export const GraphCanvas: React.FC<GraphCanvasProps> = ({
     if (edgePrompt) edgePromptInputRef.current?.focus();
   }, [edgePrompt]);
 
-  const handleNodePointerUp = (e: React.MouseEvent, targetNodeId: string) => {
+  const handleNodePointerUp = (e: React.PointerEvent, targetNodeId: string) => {
     if (!edgeDraft) return;
     e.stopPropagation();
     const { sourceNodeId } = edgeDraft;
@@ -1065,6 +1115,7 @@ export const GraphCanvas: React.FC<GraphCanvasProps> = ({
         className="w-full h-full"
         onClick={handleBackgroundClick}
         onDoubleClick={handleBackgroundDoubleClick}
+        style={{ touchAction: 'none' }}
       >
         <defs>
           <radialGradient id="wnPulseGrad" cx="50%" cy="50%" r="50%">
@@ -1072,6 +1123,15 @@ export const GraphCanvas: React.FC<GraphCanvasProps> = ({
             <stop offset="40%" stopColor="#D9A94E" stopOpacity=".9" />
             <stop offset="100%" stopColor="#D9A94E" stopOpacity="0" />
           </radialGradient>
+          {/* Dezentes Millimeterpapier-Raster — statisch im Screen-Space (bewegt
+              sich NICHT mit Pan/Zoom), gibt dem Netz einen wissenschaftlichen
+              "Laborheft"-Untergrund ohne mit den Nodes zu konkurrieren. */}
+          <pattern id="wnDotsNight" width="36" height="36" patternUnits="userSpaceOnUse">
+            <circle cx="1.4" cy="1.4" r="1.4" fill="rgba(140,170,230,.09)" />
+          </pattern>
+          <pattern id="wnDotsDay" width="36" height="36" patternUnits="userSpaceOnUse">
+            <circle cx="1.4" cy="1.4" r="1.4" fill="rgba(60,80,130,.10)" />
+          </pattern>
           {(['night', 'day'] as const).map(mode => (
             (['focus', 'neighbor', 'far'] as const).map(tier => {
               const c = WN_THEME[mode].tier[tier];
@@ -1084,6 +1144,12 @@ export const GraphCanvas: React.FC<GraphCanvasProps> = ({
             })
           ))}
         </defs>
+        {/* Raster liegt bewusst AUSSERHALB des transformierten <g> — es ist
+            Screen-space-statisch und wandert nicht mit Pan/Zoom mit (ruhiger
+            Untergrund statt mitwanderndem Karopapier). pointerEvents none,
+            damit Hintergrund-Klicks/Doppelklicks unverändert beim <svg>
+            ankommen. */}
+        <rect x="0" y="0" width="100%" height="100%" fill={`url(#wnDots${isDark ? 'Night' : 'Day'})`} style={{ pointerEvents: 'none' }} />
         <g ref={gRef}>
           <AnimatePresence initial={false}>
             {visibleEdges.map(edge => {
@@ -1112,7 +1178,7 @@ export const GraphCanvas: React.FC<GraphCanvasProps> = ({
                 isGoldIdentityNode(edge.sourceNodeId) || isGoldIdentityNode(edge.targetNodeId);
               const edgeTier: 'focus' | 'neighbor' | 'far' = touchesFocus ? 'focus' : (!selection.selectedNodeId ? 'neighbor' : 'far');
               const edgeColor = wnTheme.edge[edgeTier];
-              const edgeOpacity = edgeTier === 'focus' ? 0.75 : edgeTier === 'neighbor' ? 0.5 : 0.22;
+              const edgeOpacity = edgeTier === 'focus' ? 0.75 : edgeTier === 'neighbor' ? 0.5 : 0.16;
               const pulseId = `wnpulse-${edge.id}`;
               return (
                 <motion.g
@@ -1181,7 +1247,8 @@ export const GraphCanvas: React.FC<GraphCanvasProps> = ({
                       fontStyle="italic"
                       className="text-[9px] font-medium select-none"
                       fill={edgeTier === 'focus' ? wnTheme.label.focus : wnTheme.label.far}
-                      style={{ pointerEvents: 'none', filter: `drop-shadow(0 0 3px ${isDark ? '#08111E' : '#F5F1E7'})` }}
+                      opacity={edgeLabelOpacity}
+                      style={{ pointerEvents: 'none', filter: `drop-shadow(0 0 3px ${isDark ? '#08111E' : '#F5F1E7'})`, transition: 'opacity .25s ease' }}
                     >
                       {labelLines.map((line, i) => (
                         <tspan key={i} x={midX} y={midY + labelOffsetY + 3 + i * 11}>{line}</tspan>
@@ -1231,8 +1298,8 @@ export const GraphCanvas: React.FC<GraphCanvasProps> = ({
                     : { x: pos.x, y: pos.y, opacity: 0, scale: 0.6 }}
                   animate={{ x: pos.x, y: pos.y, opacity: 1, scale: 1 }}
                   exit={shouldReduceMotion ? { opacity: 1, scale: 1 } : { opacity: 0, scale: 0.6 }}
-                  onMouseDown={e => handleNodePointerDown(e, node.id)}
-                  onMouseUp={e => handleNodePointerUp(e, node.id)}
+                  onPointerDown={e => handleNodePointerDown(e, node.id)}
+                  onPointerUp={e => handleNodePointerUp(e, node.id)}
                   // Verhindert, dass das native, nach mousedown+mouseup
                   // automatisch ausgelöste click-Event zum Hintergrund
                   // hochbubbelt und dort die gerade erst gesetzte Auswahl
@@ -1312,7 +1379,7 @@ export const GraphCanvas: React.FC<GraphCanvasProps> = ({
                     })()}
                   </g>
                   {(hovered || selected) && (
-                    <g onMouseDown={e => handleHandlePointerDown(e, node.id)} style={{ cursor: 'crosshair' }}>
+                    <g onPointerDown={e => handleHandlePointerDown(e, node.id)} style={{ cursor: 'crosshair' }}>
                       {/* Unsichtbarer, deutlich größerer Trefferbereich um den
                           sichtbaren Punkt (User-Fund 2026-08-04: der 6px-Punkt
                           allein war kaum zu treffen — verpasste Klicks landeten

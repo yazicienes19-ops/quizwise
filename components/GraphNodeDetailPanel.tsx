@@ -101,7 +101,7 @@ const typeLabel = (type: string): string => type.length > 0 ? type.charAt(0).toU
  *  Standard-Farbe von Hauptthema-Nodes in GraphCanvas.tsx entspricht —
  *  Nutzer können sie so bewusst UND explizit wählen, nicht nur implizit
  *  über die Ebene bekommen. */
-const NODE_COLOR_SWATCHES = ['#D9A94E', '#6366F1', '#38BDF8', '#10B981', '#F43F5E', '#F97316', '#64748B'];
+const NODE_COLOR_SWATCHES = ['#D9A94E', '#6366F1', '#38BDF8', '#10B981', '#F43F5E', '#F97316', '#7C8899'];
 
 // describeRelatedEntry lebt jetzt in services/graph/graphIndex.ts (seit der
 // Node-Dialog-KI-Schicht von mehr als nur diesem Panel gebraucht).
