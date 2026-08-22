@@ -91,9 +91,11 @@ export const LandingPage: React.FC<LandingPageProps> = ({ onAuthClick, onLegalCl
   return (
     <div style={{ background: '#FBF9F4', color: '#1B2A4A' }}>
 
-      {/* Nav */}
-      <nav className="sticky top-0 z-40 backdrop-blur-xl border-b" style={{ background: 'rgba(251,249,244,0.82)', borderColor: 'rgba(27,42,74,0.08)' }}>
-        <div className="max-w-6xl mx-auto px-6 sm:px-8 h-16 flex items-center justify-between">
+      {/* Nav — Safe-Area oben wie die App-Topbar (Layout.tsx): mit
+          viewport-fit=cover reicht die Fläche unter die Notch/Statusleiste,
+          ohne Inset-Padding läge "Kostenlos starten" dahinter (iPhone-Fund). */}
+      <nav className="sticky top-0 z-40 backdrop-blur-xl border-b" style={{ background: 'rgba(251,249,244,0.82)', borderColor: 'rgba(27,42,74,0.08)', paddingTop: 'env(safe-area-inset-top)' }}>
+        <div className="max-w-6xl mx-auto px-6 sm:px-8 flex items-center justify-between" style={{ height: '4rem' }}>
           <div className="flex items-center gap-2.5">
             <BrandMark size={26} strokeColor="#1B2A4A" peakColor="var(--primary)" />
             <span className="text-xl" style={{ ...serif, letterSpacing: '-0.01em' }}>
@@ -163,7 +165,7 @@ export const LandingPage: React.FC<LandingPageProps> = ({ onAuthClick, onLegalCl
       </section>
 
       {/* Akt I — Tiefpunkt */}
-      <section id="akt1" style={{ background: '#1B2A4A', color: '#FBF9F4', padding: '120px 24px' }} className="sm:px-14">
+      <section id="akt1" style={{ background: '#1B2A4A', color: '#FBF9F4', padding: '120px 24px', scrollMarginTop: 'calc(4rem + env(safe-area-inset-top))' }} className="sm:px-14">
         <div className="max-w-5xl mx-auto grid grid-cols-1 lg:grid-cols-2 gap-16 items-center">
           <Reveal>
             <p style={{ ...serif, fontSize: 15, fontWeight: 600, color: 'var(--primary)', marginBottom: 18 }}>{t('landing.act1.eyebrow')}</p>
@@ -181,7 +183,7 @@ export const LandingPage: React.FC<LandingPageProps> = ({ onAuthClick, onLegalCl
       </section>
 
       {/* Akt II — Features */}
-      <section id="akt2" className="max-w-6xl mx-auto px-6 sm:px-8 py-24 sm:py-32">
+      <section id="akt2" className="max-w-6xl mx-auto px-6 sm:px-8 py-24 sm:py-32" style={{ scrollMarginTop: 'calc(4rem + env(safe-area-inset-top))' }}>
         <Reveal className="text-center mb-16">
           <p style={{ ...serif, fontSize: 15, fontWeight: 600, color: 'var(--primary)', marginBottom: 18 }}>{t('landing.act2.eyebrow')}</p>
           <h2 style={{ ...serif, fontSize: 'clamp(30px, 3.6vw, 46px)', fontWeight: 600, lineHeight: 1.12 }}>{t('landing.features.title')}</h2>
@@ -208,7 +210,7 @@ export const LandingPage: React.FC<LandingPageProps> = ({ onAuthClick, onLegalCl
       </section>
 
       {/* Akt III — Aufstieg */}
-      <section id="akt3" style={{ background: '#EDE8DE', padding: '120px 24px' }} className="sm:px-14">
+      <section id="akt3" style={{ background: '#EDE8DE', padding: '120px 24px', scrollMarginTop: 'calc(4rem + env(safe-area-inset-top))' }} className="sm:px-14">
         <div className="max-w-5xl mx-auto grid grid-cols-1 lg:grid-cols-2 gap-16 items-center">
           <Reveal className="flex justify-center order-2 lg:order-1">
             <ArcArt flip />
@@ -309,7 +311,7 @@ export const LandingPage: React.FC<LandingPageProps> = ({ onAuthClick, onLegalCl
       </section>
 
       {/* Footer */}
-      <footer className="border-t py-9" style={{ borderColor: 'rgba(27,42,74,0.1)' }}>
+      <footer className="border-t py-9" style={{ borderColor: 'rgba(27,42,74,0.1)', paddingBottom: 'calc(2.25rem + env(safe-area-inset-bottom))' }}>
         <div className="max-w-6xl mx-auto px-6 sm:px-8 flex flex-col sm:flex-row justify-between items-center gap-5">
           <div className="flex items-center gap-2.5">
             <BrandMark size={20} strokeColor="#1B2A4A" peakColor="var(--primary)" />

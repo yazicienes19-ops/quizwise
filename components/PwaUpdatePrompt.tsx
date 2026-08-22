@@ -99,20 +99,26 @@ export const PwaUpdatePrompt: React.FC = () => {
     // backdrop-filter (die Nav) teils über Elemente mit höherem z-index hinweg —
     // überlappende Bereiche waren dort praktisch nicht anklickbar. Kein
     // Überlappen + eigenes backdrop-blur schließen das zuverlässig ab.
-    <div className="fixed left-1/2 -translate-x-1/2 z-[10000] bottom-[calc(env(safe-area-inset-bottom)+5.5rem)] md:bottom-5 flex items-center gap-4 px-5 py-3 rounded-2xl bg-slate-900/95 backdrop-blur-xl text-white shadow-3d-deep border border-white/10 animate-in slide-in-from-bottom-4 duration-300 max-w-[calc(100vw-2rem)]">
-      <span className="text-sm font-semibold whitespace-nowrap">{t('pwa.newVersion')}</span>
-      <button
-        onClick={applyUpdate}
-        className="px-4 py-2 rounded-xl bg-indigo-600 hover:bg-indigo-500 text-[11px] font-black uppercase tracking-widest transition-colors shrink-0"
-      >
-        {t('pwa.reload')}
-      </button>
-      <button
-        onClick={() => setNeedRefresh(false)}
-        className="text-white/50 hover:text-white text-xs shrink-0"
-      >
-        {t('pwa.later')}
-      </button>
+    // Zweiter iPhone-Fund: Text + beide Buttons passen bei 390px NICHT
+    // nebeneinander — whitespace-nowrap + shrink-0 drückten die Buttons aus
+    // dem sichtbaren Bereich („Banner ohne Buttons", nur quer klickbar).
+    // Deshalb mobil gestapelt (Text über Buttons), ab sm wieder nebeneinander.
+    <div className="fixed left-1/2 -translate-x-1/2 z-[10000] bottom-[calc(env(safe-area-inset-bottom)+5.5rem)] md:bottom-5 flex flex-col sm:flex-row items-center sm:items-center gap-3 sm:gap-4 px-5 py-3.5 sm:py-3 rounded-2xl bg-slate-900/95 backdrop-blur-xl text-white shadow-3d-deep border border-white/10 animate-in slide-in-from-bottom-4 duration-300 max-w-[calc(100vw-2rem)]">
+      <span className="text-sm font-semibold text-center sm:whitespace-nowrap">{t('pwa.newVersion')}</span>
+      <div className="flex items-center gap-3 shrink-0">
+        <button
+          onClick={applyUpdate}
+          className="px-5 py-2.5 rounded-xl bg-indigo-600 hover:bg-indigo-500 text-[11px] font-black uppercase tracking-widest transition-colors shrink-0"
+        >
+          {t('pwa.reload')}
+        </button>
+        <button
+          onClick={() => setNeedRefresh(false)}
+          className="text-white/50 hover:text-white text-xs shrink-0 py-2.5"
+        >
+          {t('pwa.later')}
+        </button>
+      </div>
     </div>
   );
 };
