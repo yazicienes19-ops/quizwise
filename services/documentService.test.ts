@@ -1,5 +1,21 @@
-import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
-import { uploadFileWithProgress, UploadStalledError, UploadTimeoutError } from './documentService';
+import { describe, it, expect, vi, beforeEach, afterEach, type Mock } from 'vitest';
+import { uploadFileWithProgress, UploadStalledError, UploadTimeoutError, saveDocumentToSupabase } from './documentService';
+import type { ProcessedDocument } from '../types';
+
+// Supabase-Client wird für die saveDocumentToSupabase-Tests unten gedoppelt;
+// die XHR-Tests darüber berühren ihn nicht.
+const upsertMock = vi.fn(async () => ({ error: null }));
+const storageUploadMock = vi.fn(async () => ({ error: null }));
+vi.mock('./supabaseClient', () => ({
+  supabase: {
+    auth: {
+      getUser: async () => ({ data: { user: { id: 'user-1' } } }),
+      getSession: async () => ({ data: { session: null } }),
+    },
+    from: () => ({ upsert: upsertMock }),
+    storage: { from: () => ({ upload: storageUploadMock }) },
+  },
+}));
 
 // Minimaler XHR-Doppelgänger — genug um send/open/setRequestHeader/abort und
 // die Event-Handler nachzubilden, die uploadFileWithProgress tatsächlich nutzt.
@@ -97,4 +113,43 @@ describe('uploadFileWithProgress', () => {
     await assertion;
     expect(xhr.aborted).toBe(true);
   }, 15_000);
+});
+
+// ── Regression: Quota-Audit 2026-08-22 — Cloud-Invariante ────────────────────
+// Der lokale Cache darf Bild-/PDF-Base64 nie mehr halten (docLocalCache); diese
+// Tests sichern die Cloud-Seite derselben Ursache: Binärdaten leben AUSSCHLIESSLICH
+// im Storage (storage_path), die documents-Zeile trägt sie niemals als Text.
+describe('saveDocumentToSupabase — Binärdaten landen nie in content_text', () => {
+  beforeEach(() => {
+    upsertMock.mockClear();
+    storageUploadMock.mockClear();
+  });
+
+  it('Bild mit (hypothetischer) Base64-Restmenge: content_text bleibt null, Storage wird beschrieben', async () => {
+    const doc: ProcessedDocument = {
+      id: 'img-9', name: 'foto.jpg', type: 'image', mimeType: 'image/jpeg',
+      content: 'QUJDREVGRw==', uploadDate: 1,
+    };
+    const file = new File([new Uint8Array([255, 216, 255])], 'foto.jpg', { type: 'image/jpeg' });
+
+    const path = await saveDocumentToSupabase(doc, file);
+
+    expect(path).toBe('user-1/img-9/foto.jpg');
+    expect(storageUploadMock).toHaveBeenCalledTimes(1);
+    const row = (upsertMock.mock.calls[0] as unknown as [Record<string, unknown>])[0];
+    expect(row.content_text).toBeNull();
+    expect(row.storage_path).toBe('user-1/img-9/foto.jpg');
+  });
+
+  it('text/docx-Inhalt landet gekappt (500.000 Zeichen) in content_text', async () => {
+    const doc: ProcessedDocument = {
+      id: 'txt-1', name: 'skript.txt', type: 'text',
+      content: 'a'.repeat(500_500), uploadDate: 2,
+    };
+
+    await saveDocumentToSupabase(doc);
+
+    const row = (upsertMock.mock.calls[0] as unknown as [Record<string, unknown>])[0];
+    expect((row.content_text as string).length).toBe(500_000);
+  });
 });

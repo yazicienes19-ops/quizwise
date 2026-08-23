@@ -202,7 +202,7 @@ export interface FlashcardDeck {
 export interface ProcessedDocument {
   id: string;
   name: string;
-  content: string;        // base64 (PDF/Bild) oder extrahierter Text; leer wenn aus Storage noch nicht geladen
+  content: string;        // extrahierter Text (text/docx) oder leer; PDF/Bild liegen in Supabase Storage (storagePath), Base64 nur als Legacy-Fallback alter Nur-lokal-Dokumente
   type: 'pdf' | 'text' | 'docx' | 'image';
   mimeType?: string;      // nur für type='image': 'image/png', 'image/jpeg', 'image/webp'
   uploadDate: number;

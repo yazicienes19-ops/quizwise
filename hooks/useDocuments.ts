@@ -17,6 +17,7 @@ import {
 import { toast } from '../services/toast';
 import { track } from '../services/analyticsService';
 import { documentDisplayName } from '../services/libraryService';
+import { persistDocs, loadCachedDocs } from '../services/docLocalCache';
 import { deleteResultsForDoc as deleteQuizResultsForDoc } from '../services/quizHistoryService';
 import { deleteResultsForDocName as deleteExamResultsForDocName } from '../services/examHistoryService';
 import { deleteResultsForDocName as deleteRecallResultsForDocName } from '../services/recallHistoryService';
@@ -38,10 +39,17 @@ export const useDocuments = ({ user, userPlan, isOffline, setIsLoading, setShowU
   const [refreshTick, setRefreshTick] = useState(0);
   /** Verhindert doppelte Analyse-Trigger für dasselbe Dokument in dieser Session. */
   const triggeredDigestsRef = useRef<Set<string>>(new Set());
+  // Spiegel des aktuellen Bestands für Codepfade ohne documents-Dependency
+  // (Cloud-Merge im Effect unten) — verhindert stale Closures OHNE Side-Effects
+  // im setState-Updater (dort wären sie bei Concurrent Rendering doppelt-fähig).
+  const docsRef = useRef<ProcessedDocument[]>([]);
+  docsRef.current = documents;
 
   useEffect(() => {
-    const saved = localStorage.getItem('studearc_docs');
-    if (saved) setDocuments(JSON.parse(saved));
+    // Gesicherter Lesepfad (korruptes JSON → leerer Bestand statt Crash) mit
+    // eingebauter Legacy-Heilung: übernommene Base64-Riesen aus alten Versionen
+    // werden beim ersten Start automatisch aus dem Cache entfernt.
+    setDocuments(loadCachedDocs());
     const savedCols = localStorage.getItem('studearc_collections');
     if (savedCols) setCollections(JSON.parse(savedCols));
   }, []);
@@ -64,13 +72,11 @@ export const useDocuments = ({ user, userPlan, isOffline, setIsLoading, setShowU
         const cloudDocs = await loadDocumentsFromSupabase();
         if (cancelled) return;
 
-        // Lokale, noch nicht gesyncte Dokumente nicht verwerfen
-        setDocuments(prev => {
-          const cloudIds = new Set(cloudDocs.map(d => d.id));
-          const merged = [...cloudDocs, ...prev.filter(d => !cloudIds.has(d.id))];
-          localStorage.setItem('studearc_docs', JSON.stringify(merged));
-          return merged;
-        });
+        // Lokale, noch nicht gesyncte Dokumente nicht verwerfen. Merge bewusst
+        // außerhalb des State-Updaters berechnet und über saveDocs EINMALig
+        // persistiert (niemals rohes setItem — Quota-Schutz liegt im Cache).
+        const cloudIds = new Set(cloudDocs.map(d => d.id));
+        saveDocs([...cloudDocs, ...docsRef.current.filter(d => !cloudIds.has(d.id))]);
 
         // Nachhol-Lauf: Digest für Dokumente anstoßen, die nie einen bekommen
         // haben oder deren Verarbeitung fehlgeschlagen ist
@@ -101,7 +107,10 @@ export const useDocuments = ({ user, userPlan, isOffline, setIsLoading, setShowU
 
   const saveDocs = (docs: ProcessedDocument[]) => {
     setDocuments(docs);
-    localStorage.setItem('studearc_docs', JSON.stringify(docs));
+    // Zentraler, niemals-werfender Cache-Schreibpfad: Quota-Druck wird in
+    // docLocalCache stufenlos abgebaut (Binär-Redundanz raus → Text-Budget →
+    // ohne Inhalte), statt den Upload mit QuotaExceededError abstürzen zu lassen.
+    persistDocs(docs);
   };
 
   const saveCollections = (cols: Collection[]) => {
@@ -162,6 +171,8 @@ export const useDocuments = ({ user, userPlan, isOffline, setIsLoading, setShowU
     if (doc.type === 'text' || doc.type === 'docx') return { text: doc.content };
     if (doc.type === 'image') {
       const mime = doc.mimeType || 'image/jpeg';
+      // storagePath ist der Normalfall; der Base64-Fallback dient nur noch
+      // historischen Nur-lokal-Bildern aus Zeiten vor dem Storage-Pflicht.
       if (doc.storagePath) return { storagePath: doc.storagePath, mimeType: mime };
       if (doc.content) return { file: { data: doc.content, mimeType: mime } };
       throw new Error('Bild-Inhalt nicht verfügbar.');
@@ -226,14 +237,15 @@ export const useDocuments = ({ user, userPlan, isOffline, setIsLoading, setShowU
         docType = 'pdf';
         if (!user) { toast.error('Zum Speichern von PDFs bitte zuerst anmelden.'); return null; }
       } else if (ext && IMAGE_MIME[ext]) {
+        // Bilder folgen derselben Regel wie PDFs: Datei gehört in den Supabase
+        // Storage, NICHT als Base64 in content. Historisch wurde hier parallel
+        // zur Storage-Kopie eine Base64-Zweitkopie im localStorage geparkt —
+        // ein einzelnes großes Foto sprengte damit allein das ~5-MB-Quota
+        // (Feature-Audit 2026-08-22). Ohne Login gibt es keinen Storage-Pfad,
+        // also keine persistierbare Kopie → gleiche Anmeldung-Pflicht wie PDF.
         docType = 'image';
         imageMimeType = IMAGE_MIME[ext];
-        content = await new Promise<string>((resolve, reject) => {
-          const reader = new FileReader();
-          reader.onload = () => resolve((reader.result as string).split(',')[1]);
-          reader.onerror = reject;
-          reader.readAsDataURL(file);
-        });
+        if (!user) { toast.error('Zum Speichern von Bildern bitte zuerst anmelden.'); return null; }
       } else if (ext === 'docx') {
         const { default: mammoth } = await import('mammoth');
         const arrayBuffer = await file.arrayBuffer();
@@ -300,11 +312,7 @@ export const useDocuments = ({ user, userPlan, isOffline, setIsLoading, setShowU
   const retryAnalysis = (docId: string) => {
     triggeredDigestsRef.current.add(docId);
     triggerDocumentAnalysis(docId);
-    setDocuments(prev => {
-      const updated = prev.map(d => d.id === docId ? { ...d, digestStatus: 'pending' as const } : d);
-      localStorage.setItem('studearc_docs', JSON.stringify(updated));
-      return updated;
-    });
+    saveDocs(documents.map(d => d.id === docId ? { ...d, digestStatus: 'pending' as const } : d));
     setRefreshTick(t => t + 1);
   };
 
