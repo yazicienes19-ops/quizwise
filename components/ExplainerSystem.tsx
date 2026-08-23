@@ -863,21 +863,22 @@ export const ExplainerSystem: React.FC<ExplainerSystemProps> = ({
         )}
 
         <div className="flex items-end gap-2">
-          {hasSpeechApi && (
-            <button
-              onClick={toggleListening}
-              aria-label={t('tut.mic')}
-              title={t('tut.mic')}
-              className="p-3.5 rounded-2xl transition-all shrink-0"
-              style={{
-                background: isListening ? 'var(--primary)' : 'var(--bg-sidebar)',
-                border: '1px solid var(--border-color)',
-                color: isListening ? 'var(--primary-text)' : 'var(--text-main)',
-              }}
-            >
-              <Mic size={16} strokeWidth={2} className={isListening ? 'animate-pulse' : ''} />
-            </button>
-          )}
+          {/* Auch ohne Speech-Support sichtbar (deaktiviert) — Firefox-Nutzer
+              sollen sehen, dass es Diktat gibt, statt dass der Button fehlt. */}
+          <button
+            onClick={toggleListening}
+            disabled={!hasSpeechApi || isListening}
+            aria-label={hasSpeechApi ? t('tut.mic') : t('ar.dictationUnsupported')}
+            title={hasSpeechApi ? t('tut.mic') : t('ar.dictationUnsupported')}
+            className={`p-3.5 rounded-2xl transition-all shrink-0 ${!hasSpeechApi ? 'opacity-40 cursor-not-allowed' : ''}`}
+            style={{
+              background: isListening ? 'var(--primary)' : 'var(--bg-sidebar)',
+              border: '1px solid var(--border-color)',
+              color: isListening ? 'var(--primary-text)' : 'var(--text-main)',
+            }}
+          >
+            <Mic size={16} strokeWidth={2} className={isListening ? 'animate-pulse' : ''} />
+          </button>
           <textarea
             ref={inputRef}
             value={input}
@@ -898,6 +899,11 @@ export const ExplainerSystem: React.FC<ExplainerSystemProps> = ({
             <Send size={16} strokeWidth={2} />
           </button>
         </div>
+        {!hasSpeechApi && (
+          <p className="text-[10px] font-semibold text-center mt-1" style={{ color: 'var(--text-secondary)' }}>
+            {t('ar.dictationUnsupported')}
+          </p>
+        )}
       </div>
     </div>
   );

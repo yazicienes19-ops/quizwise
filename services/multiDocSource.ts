@@ -14,10 +14,40 @@ import { documentDisplayName } from './libraryService';
 // Marker anderer Prompts (collectionSource, graphMissingConceptSource) bleiben
 // unangetastet — dort wird keine pro-Frage-Zuordnung benötigt.
 
-/** Nummerierte Quellblöcke für den Generierungs-Prompt (1-basiert). */
+/** Grobe Obergrenze je Kombination — gleiche Schwelle wie collectionSource
+ *  (Einzel-Ordner), damit Multi-Doc den Kontext nicht sprengen kann. */
+const MAX_TOTAL_CHARS = 80_000;
+/** Pauschaler Framing-Reserveanteil je Block ([DOKUMENT n: Name]-Kopf,
+ *  Kürzungsmarker, Trenner) — damit das Gesamtergebnis inklusive Rahmen
+ *  unter dem Cap bleibt, ohne die Namen vorab messen zu müssen. */
+const PER_DOC_FRAMING_CHARS = 160;
+/** Unter diese Kürzung kürzt es nicht mehr — lieber ein knappes, aber
+ *  repräsentatives Excerpt pro Dokument als leere Blöcke. */
+const MIN_DOC_BUDGET = 1_000;
+
+/**
+ * Nummerierte Quellblöcke für den Generierungs-Prompt (1-basiert).
+ *
+ * Token-Cap (Feature-Audit 2026-08-22): übersteigt die Summe der Texte das
+ * Budget, wird JEDES Dokument auf seinen Anteil gekürzt statt ganze Dokumente
+ * wegzulassen — die Block-Nummerierung muss stabil bleiben, weil
+ * attachMultiDocSources sourceNumber gegen den Index in `docs` mappt.
+ */
 export function buildCombinedMultiDocText(docs: ProcessedDocument[]): string {
+  const texts = docs.map(d => (d.digestText || (d.type === 'text' ? d.content : '')).trim());
+  const totalChars = texts.reduce((sum, t) => sum + t.length, 0);
+  const overBudget = totalChars > MAX_TOTAL_CHARS && docs.length > 0;
+  // Gleichmäßiges Anteils-Budget abzüglich Framing-Reserve; mindestens
+  // MIN_DOC_BUDGET, damit ein einzelnes riesiges Dokument neben kleinen
+  // nicht alle anderen auf null kürzt.
+  const budget = Math.max(MIN_DOC_BUDGET, Math.floor((MAX_TOTAL_CHARS - PER_DOC_FRAMING_CHARS * docs.length) / Math.max(1, docs.length)));
+
   return docs
-    .map((d, i) => `[DOKUMENT ${i + 1}: ${documentDisplayName(d)}]\n${d.digestText || (d.type === 'text' ? d.content : '')}`)
+    .map((d, i) => {
+      let text = texts[i];
+      if (overBudget && text.length > budget) text = `${text.slice(0, budget)}\n[…gekürzt]`;
+      return `[DOKUMENT ${i + 1}: ${documentDisplayName(d)}]\n${text}`;
+    })
     .join('\n\n---\n\n');
 }
 

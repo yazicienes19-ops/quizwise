@@ -219,14 +219,15 @@ export const Dashboard: React.FC<DashboardProps> = ({
   }, [nextExam, metrics]);
 
   const statCards = useMemo(() => {
-    const cards = [
+    const cards: { label: string; value: number; sub?: string }[] = [
       { label: t('dashboardV2.stat.dueCards'), value: dueCardsCount },
-      { label: t('dashboardV2.stat.streak'), value: streak.current },
+      // Paket-2-Kriterium: "Streak: X · Rekord: Y" + heutiger Status
+      { label: t('dashboardV2.stat.streak'), value: streak.current, sub: t(streak.todayDone ? 'dashboard.recordDone' : 'dashboard.recordOpen', { best: streak.best }) },
     ];
     if (nextExam) cards.push({ label: t('dashboardV2.stat.examDays'), value: nextExam.days });
     else cards.push({ label: t('dashboardV2.stat.progress'), value: learningScore.overall ?? 0 });
     return cards;
-  }, [t, dueCardsCount, streak.current, nextExam, learningScore.overall]);
+  }, [t, dueCardsCount, streak.current, streak.best, streak.todayDone, nextExam, learningScore.overall]);
 
   const handleAcceptSuggestion = (suggestion: any) => {
     let plan: unknown[];
@@ -391,6 +392,9 @@ export const Dashboard: React.FC<DashboardProps> = ({
           <div key={i} className="text-center px-2 py-3 rounded-[14px]" style={{ background: 'var(--bg-sidebar)', border: '1px solid var(--border-color)' }}>
             <p className="text-lg font-black" style={{ color: 'var(--text-main)' }}><CountUp value={s.value} /></p>
             <p className="text-[9px] font-medium mt-0.5 truncate" style={{ color: 'var(--text-secondary)' }}>{s.label}</p>
+            {s.sub && (
+              <p className="text-[8px] font-semibold mt-0.5 truncate" title={s.sub} style={{ color: 'var(--text-secondary)' }}>{s.sub}</p>
+            )}
           </div>
         ))}
       </div>

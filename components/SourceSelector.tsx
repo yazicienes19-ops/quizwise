@@ -170,12 +170,17 @@ export const SourceSelector: React.FC<SourceSelectorProps> = ({
               key={tb.id}
               onClick={() => setTab(tb.id)}
               title={tb.label}
-              className={`flex-1 min-w-0 flex items-center justify-center gap-2 py-2.5 rounded-xl text-[10px] font-black uppercase tracking-wider transition-all ${
+              // Icon über Text statt nebeneinander — nebeneinander brauchte pro Tab
+              // mehr Breite, als in schmalen Zwei-Spalten-Layouts (Karteikarten-
+              // Generator, Klausur-Simulator) zur Verfügung steht; die "Text bei
+              // schmalem Bildschirm ausblenden"-Regel griff dort nicht, weil sie
+              // sich am Viewport orientiert, nicht an der (schmalen) Kartenbreite.
+              className={`flex-1 min-w-0 flex flex-col items-center justify-center gap-1 py-2 px-1 rounded-xl text-[9px] font-black uppercase tracking-wider transition-all ${
                 tab === tb.id ? 'bg-indigo-600 text-white shadow-lg' : 'text-slate-400 hover:text-slate-600 dark:hover:text-slate-200'
               }`}
             >
               <span className="shrink-0">{tb.icon}</span>
-              <span className="hidden sm:inline break-words">{tb.label}</span>
+              <span className="break-words text-center leading-tight">{tb.label}</span>
             </button>
           ))}
         </div>

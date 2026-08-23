@@ -26,6 +26,14 @@ describe('reviewCard (SM-2)', () => {
     expect(r.interval).toBe(1);
   });
 
+  it('erste Easy-Bewertung → direkt 6 Tage (Paket-1-Kriterium)', () => {
+    const s = createSrsState();
+    const r = reviewCard(s, 5);
+    expect(r.repetitions).toBe(1);
+    expect(r.interval).toBe(6);
+    expect(r.nextReview).toBeGreaterThanOrEqual(Date.now() + 6 * 24 * 60 * 60 * 1000 - 1000);
+  });
+
   it('zweite korrekte Bewertung → 6 Tage Intervall', () => {
     let s = createSrsState();
     s = reviewCard(s, 4);

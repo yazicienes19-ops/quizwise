@@ -1,35 +1,10 @@
 import React, { useMemo, useState } from 'react';
-import type { ExamQuestion } from '../types';
 import { getAllExamResults } from '../services/examHistoryService';
 import type { ExamResult } from '../services/examHistoryService';
+import { formatUserAnswer } from '../services/examAnswerFormat';
 import { germanGradeFromPercentage, getCategoryLabel } from '../services/learningProfileService';
 import { useTranslation } from '../i18n/I18nProvider';
 import { formatDate } from '../i18n/dates';
-
-/** Antwort des Nutzers je Fragetyp als lesbaren Text aufbereiten. */
-const formatUserAnswer = (q: ExamQuestion, t: (k: any, p?: any) => string): string => {
-  const a = q.userAnswer;
-  if (a === undefined || a === null || (Array.isArray(a) && a.length === 0) || a === '') return t('ea.noAnswer');
-  switch (q.type) {
-    case 'mc':
-      return (a as number[]).map(i => q.options?.[i] ?? `#${i + 1}`).join(' · ');
-    case 'truefalse': {
-      const tf = (a as { tf?: boolean; reason?: number });
-      if (tf.tf === undefined) return t('ea.noAnswer');
-      const base = tf.tf ? t('tf.true') : t('tf.false');
-      const reason = tf.reason !== undefined ? q.tfReasonOptions?.[tf.reason] : undefined;
-      return reason ? `${base} · ${reason}` : base;
-    }
-    case 'matching':
-      return (a as number[]).map((ri, li) => `${q.matchLeft?.[li] ?? li + 1} → ${q.matchRight?.[ri] ?? '—'}`).join(' · ');
-    case 'fillblank':
-      return (a as string[]).map(x => x || '—').join(' · ');
-    case 'ranking':
-      return (a as string[]).join(' → ');
-    default:
-      return String(a);
-  }
-};
 
 export const ExamArchive: React.FC = () => {
   const { t, tp } = useTranslation();

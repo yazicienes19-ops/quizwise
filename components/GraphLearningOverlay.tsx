@@ -160,6 +160,9 @@ const FlashcardsActivity: React.FC<{
   const [deck, setDeck] = useState<FlashcardDeck | null>(null);
   const [error, setError] = useState<string | null>(null);
   const startedRef = useRef(false);
+  // Gleiche Streak-Schwelle wie FlashcardSystem: erst ab 5 Reviews zählt die
+  // Aktivität (recordActivity ist pro Tag idempotent, >= erlaubt Nachholen).
+  const sessionReviewCount = useRef(0);
 
   // FlashcardPlayer hat kein eigenes Escape-Verhalten (nur den sichtbaren
   // ✕-Button) — sobald es übernimmt, greift OverlayShells Escape-Listener
@@ -226,7 +229,8 @@ const FlashcardsActivity: React.FC<{
       localStorage.setItem('flashcard_decks', JSON.stringify(updatedDecks));
       if (userId) saveDeckToSupabase(changedDeck, userId).catch(() => {});
     }
-    recordActivity(userId);
+    sessionReviewCount.current += 1;
+    if (sessionReviewCount.current >= 5) recordActivity(userId);
   };
 
   if (deck) {

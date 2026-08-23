@@ -2,6 +2,7 @@
 import React, { useState, useEffect, useRef, useCallback, useMemo } from 'react';
 import { ExamQuestion, ActiveTab, ScoringProfile, ExamAnalysis, QuestionFeedbackType, ExamTypePreset } from '../types';
 import { saveQuestionFeedback } from '../services/examFeedbackService';
+import { formatUserAnswer, formatCorrectAnswer } from '../services/examAnswerFormat';
 import { germanGradeFromPercentage, getCategoryLabel, getTypeLabel } from '../services/learningProfileService';
 import { BLOOM_LEVELS, BLOOM_LEVEL_LABELS, EXAM_TYPE_BLOOM_TARGETS, computeActualBloomDistribution } from '../services/bloomPresets';
 import type { TKey } from '../i18n';
@@ -221,8 +222,10 @@ export const ExamView: React.FC<ExamViewProps> = ({
         userText = String(userAns || '—');
         correctText = q.solution || '';
       } else {
-        userText = String(userAns ?? '—');
-        correctText = q.solution || '';
+        // matching/fillblank/ranking/numeric: lesbare Aufbereitung statt
+        // Rohdaten (services/examAnswerFormat, dieselbe wie im Archiv).
+        userText = formatUserAnswer(q, translate);
+        correctText = formatCorrectAnswer(q, translate);
       }
 
       const isCorrect = (q.achievedPoints ?? 0) === q.points;

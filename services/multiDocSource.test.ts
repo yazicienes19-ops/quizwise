@@ -34,6 +34,34 @@ describe('buildCombinedMultiDocText', () => {
   it('leeres Array ergibt leeren Text', () => {
     expect(buildCombinedMultiDocText([])).toBe('');
   });
+
+  it('Token-Cap: kürzt Dokumente anteilig statt sie wegzulassen (Nummerierung stabil)', () => {
+    const big = 'x'.repeat(60_000);
+    const docs = [
+      mkDoc({ id: 'd1', name: 'A.pdf', digestText: big }),
+      mkDoc({ id: 'd2', name: 'B.pdf', digestText: big }),
+      mkDoc({ id: 'd3', name: 'C.pdf', digestText: big }),
+    ];
+    const text = buildCombinedMultiDocText(docs);
+    // Alle drei Blöcke bleiben vorhanden (sourceNumber-Mapping!)
+    expect(text).toContain('[DOKUMENT 1: A]');
+    expect(text).toContain('[DOKUMENT 2: B]');
+    expect(text).toContain('[DOKUMENT 3: C]');
+    // Gesamtlänge deutlich unter der ungekürzten Summe, Kürzung markiert
+    expect(text.length).toBeLessThan(80_000);
+    expect(text).toContain('[…gekürzt]');
+  });
+
+  it('kleine Dokumente werden vom Cap nicht angetastet', () => {
+    const docs = [
+      mkDoc({ id: 'd1', name: 'A.txt', type: 'text', content: 'kurz eins' }),
+      mkDoc({ id: 'd2', name: 'B.txt', type: 'text', content: 'kurz zwei' }),
+    ];
+    const text = buildCombinedMultiDocText(docs);
+    expect(text).toContain('kurz eins');
+    expect(text).toContain('kurz zwei');
+    expect(text).not.toContain('[…gekürzt]');
+  });
 });
 
 describe('multiDocPromptRules', () => {

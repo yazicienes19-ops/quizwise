@@ -51,7 +51,8 @@ export const createSrsState = (): SrsState => ({
 /**
  * SM-2 Kernlogik. quality: 0–5.
  * < 3 → Karte gilt als vergessen, Intervall resettet.
- * >= 3 → Intervall wächst: 1 Tag → 6 Tage → interval * ease.
+ * >= 3 → Intervall wächst: 1 Tag → 6 Tage → interval * ease
+ * (Easy schon bei der ersten Bewertung direkt 6 Tage).
  */
 export const reviewCard = (state: SrsState, quality: number): SrsState => {
   const q = Math.max(0, Math.min(5, Math.round(quality)));
@@ -64,7 +65,11 @@ export const reviewCard = (state: SrsState, quality: number): SrsState => {
     interval = 1;
   } else {
     repetitions += 1;
-    if (repetitions === 1) interval = 1;
+    // Paket-1-Kriterium ("Easy-Karte ≥ 6 Tage weg"): schon die ERSTE Easy-
+    // Bewertung (5) springt direkt aufs 6-Tage-Intervall — SM-2-Standard
+    // würde sie 1 Tag später wieder fällig machen.
+    if (repetitions === 1 && q === 5) interval = 6;
+    else if (repetitions === 1) interval = 1;
     else if (repetitions === 2) interval = 6;
     else interval = Math.round(interval * ease);
   }

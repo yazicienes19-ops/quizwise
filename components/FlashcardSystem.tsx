@@ -274,7 +274,9 @@ export const FlashcardSystem: React.FC<FlashcardSystemProps> = ({
     const changedDeck = newDecks.find(d => d.id === activeDeckId);
     saveDecks(newDecks, changedDeck);
     sessionReviewCount.current += 1;
-    if (sessionReviewCount.current === 5) recordActivity(userId);
+    // >= statt ===: recordActivity ist pro Tag idempotent (streakService),
+    // ein zweiter Anlauf am selben Tag darf den Streak also noch auslösen.
+    if (sessionReviewCount.current >= 5) recordActivity(userId);
   };
 
 
@@ -386,7 +388,7 @@ export const FlashcardSystem: React.FC<FlashcardSystemProps> = ({
   // anzufassen, damit man beliebig oft am Tag wiederholen kann.
   const handlePracticed = () => {
     sessionReviewCount.current += 1;
-    if (sessionReviewCount.current === 5) recordActivity(userId);
+    if (sessionReviewCount.current >= 5) recordActivity(userId);
   };
 
   // Lernrunden-Kontext: bei großen Decks (> SESSION_BATCH_SIZE) wird pro

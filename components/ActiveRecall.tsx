@@ -467,6 +467,11 @@ export const ActiveRecall: React.FC<ActiveRecallProps> = ({
                 {t('ar.recordingNow')}
               </p>
             )}
+            {!hasSpeechApi && (
+              <p className="text-[10px] font-semibold text-center" style={{ color: 'var(--text-secondary)' }}>
+                {t('ar.dictationUnsupported')}
+              </p>
+            )}
             <div className="flex flex-col sm:flex-row justify-between items-center gap-4 px-4 lg:px-6">
               <span className="text-[9px] font-black uppercase tracking-widest order-2 sm:order-1 text-slate-400">
                 {t('ar.wordsN', { n: userAnswer.trim().split(/\s+/).filter(x => x).length })}

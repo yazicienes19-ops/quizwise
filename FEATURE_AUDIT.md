@@ -194,13 +194,13 @@
 ## Top-Prioritäten (quer über alle Features)
 
 1. ~~🔴 **indigo-Hartkodierungen migrieren**~~ → **ERLEDIGT/FEHLALARM (2026-08-23)**: Override-Katalog `app.css` deckt alle 69 genutzten Varianten ab — kein Handlungsbedarf.
-2. 🔴 **localStorage-Quota absichern**: try/catch um `localStorage.setItem` in `useDocuments.saveDocs` (+ ggf. Bilder konsequent nach Storage statt Base64). Real crashende Klasse.
-3. 🔴 **Multi-Doc „pro Frage das Dokument"**: Doc-Feld am `QuizQuestion` (Prompt-Instruktion „ Antworte mit sourceDoc") + Badge im Player — letztes offenes Paket-3-Kriterium.
-4. 🟠 **resolveErrorMessage flächendeckend** — v. a. Auth-Flows zeigen rohe Tech-Meldungen (Trust-Fehler Nr. 1 beim Login).
+2. 🔴 **localStorage-Quota absichern**: try/catch um `localStorage.setItem` in `useDocuments.saveDocs` (+ ggf. Bilder konsequent nach Storage statt Base64). Real crashende Klasse. *(✅ erledigt — Commit `10a69eb`, Fix an der Ursache)*
+3. 🔴 **Multi-Doc „pro Frage das Dokument"**: Doc-Feld am `QuizQuestion` (Prompt-Instruktion „ Antworte mit sourceDoc") + Badge im Player — letztes offenes Paket-3-Kriterium. *(✅ erledigt — Commit `6a94e06`, `services/multiDocSource.ts`)*
+4. 🟠 **resolveErrorMessage flächendeckend** — v. a. Auth-Flows zeigen rohe Tech-Meldungen (Trust-Fehler Nr. 1 beim Login). *(✅ erledigt 2026-08-23 — Commit `a499433`)*
 5. 🟠 **Wissensnetz Last-Write-Wins**: Commits aus Drag/Edit gegen frischesten State (stateRef) statt Closure — sonst verschwinden Remote-Änderungen bis Reload.
-6. 🟠 **Streak-Details**: Schwelle `=== 5` → `>= 5` (oder Vorgabe anpassen), „Rekord" im Dashboard ergänzen (Keys existieren schon), GraphOverlay an gleiche Schwelle binden.
-7. 🟠 **SM-2 erste Easy-Bewertung** → direkt 6 Tage (einzeilig in `spacedRepetition.ts:67`), sonst Paket-1-Kriterium literal unerfüllt.
-8. 🟠 **Mic-Fallback-Hinweis** + **PDF-Export lesbare Antworten** (`formatUserAnswer` wiederverwenden) + **Multi-Doc-Token-Cap**.
+6. ~~🟠 **Streak-Details**~~ → **ERLEDIGT (2026-08-24)**: Schwelle `>= 5` in FlashcardSystem (beide Aufrufstellen) + GraphOverlay mit eigenem Session-Zähler auf gleiche Schwelle; „Rekord"-Zeile in der Streak-Stat-Karte (`dashboard.recordDone/recordOpen`).
+7. ~~🟠 **SM-2 erste Easy-Bewertung**~~ → **ERLEDIGT (2026-08-24)**: erste Easy-Bewertung (q=5, repetitions=1) springt direkt auf 6 Tage (`spacedRepetition.reviewCard`), Test ergänzt.
+8. ~~🟠 **Mic-Fallback-Hinweis** + **PDF-Export lesbare Antworten** + **Multi-Doc-Token-Cap**~~ → **ERLEDIGT (2026-08-24)**: deaktivierter Mic-Button + sichtbarer Hinweis in ActiveRecall & ExplainerSystem; PDF-Export nutzt `services/examAnswerFormat.ts` (formatUserAnswer + neues formatCorrectAnswer, geteilt mit dem Archiv); Multi-Doc-Cap 80k mit anteiliger Kürzung je Dokument (Nummerierung bleibt stabil), Tests ergänzt.
 9. 🟠 **Testlücken schließen** (höchster Nutzen zuerst): AnkiImport-Parsing, useDocuments-Upload-Pfade, examHistory/savedExams, errorMessages *(✅ erledigt 2026-08-23)*, recallHistoryService, relationType/nodeDocumentRef-Commits. ⚠️ Neu beobachtet: die beiden `waitFor`-basierten stateRef/Commit-Tests in `useKnowledgeGraph.test.ts` sind unter Volllast flaky (schlagen ~1/3 aller Voll-Suite-Läufe fehl, einzeln immer grün — Debounce-Fenster zu knapp für Parallel-Worker). Vor Paket-Arbeit am Wissensnetz stabilisieren (explizite Timer/Fakes statt Real-Timer-Rennen).
 
 **Fazit:** 13 von 13 Feature-Bereichen sind implementiert und produktiv; 6 Bereiche erfüllen ihre Paket-Kriterien vollständig (Klausur, Dashboard, Import, Teilen, Wissensnetz, PWA-Kern). Die offenen Punkte sind überwiegend Präzisions-Lücken einzelner Kriterien (Multi-Doc-Ursprung, Easy-Intervall, Rekord-Anzeige, Mic-Hinweis) plus zwei Querschnittsthemen (Farb-Tokens, Fehlermeldungen) — keine Struktur- oder Verdrahtungsprobleme. Die Service-Schicht ist durchgehend getestet (885 Tests grün); die Lücken liegen fast ausschließlich bei Komponenten-/Upload-/Sync-Pfaden.
