@@ -379,7 +379,7 @@ export const ExamGenerator: React.FC<ExamGeneratorProps> = ({
                     <button
                       key={p}
                       onClick={() => setExamTypePreset(p)}
-                      className={`py-3 px-2 rounded-xl text-[10px] font-black transition-all uppercase tracking-wide text-center border-2 ${examTypePreset === p ? 'border-indigo-500 bg-indigo-600 text-white shadow-lg' : 'border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 text-slate-400 hover:text-slate-600'}`}
+                      className={`py-3 px-2 rounded-xl text-[10px] font-black transition-all uppercase tracking-wide text-center leading-tight break-words border-2 ${examTypePreset === p ? 'border-indigo-500 bg-indigo-600 text-white shadow-lg' : 'border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 text-slate-400 hover:text-slate-600'}`}
                     >
                       {t((`eg.examType.${p}`) as TKey)}
                     </button>
@@ -401,7 +401,7 @@ export const ExamGenerator: React.FC<ExamGeneratorProps> = ({
                   <button
                     key={m.id}
                     onClick={() => setScoringMode(m.id)}
-                    className={`flex-1 py-3 rounded-xl text-[10px] font-black transition-all uppercase tracking-widest ${scoringMode === m.id ? 'bg-indigo-600 text-white shadow-lg' : 'text-slate-400 hover:text-slate-600'}`}
+                    className={`flex-1 py-3 rounded-xl text-[10px] font-black transition-all uppercase tracking-widest break-words leading-tight ${scoringMode === m.id ? 'bg-indigo-600 text-white shadow-lg' : 'text-slate-400 hover:text-slate-600'}`}
                   >{m.label}</button>
                 ))}
               </div>
