@@ -4,7 +4,6 @@ import { createEmptyHistory, undo as undoHistory, redo as redoHistory, type Grap
 import { createEmptySelection, type GraphSelectionState } from '../services/graph/graphSelectionService';
 import * as sync from '../services/graph/graphSyncService';
 import * as persistence from '../services/graph/graphPersistenceService';
-import { resolveErrorMessage } from '../services/errorMessages';
 
 /**
  * Application-Schicht — der einzige Ort, der GraphCanvas (UI) mit
@@ -114,7 +113,7 @@ export function useKnowledgeGraph({ scope, userId }: UseKnowledgeGraphOptions): 
       })
       .catch(err => {
         if (cancelled) return;
-        setError(resolveErrorMessage(err));
+        setError(err instanceof Error ? err.message : String(err));
       })
       .finally(() => {
         if (!cancelled) setLoading(false);

@@ -35,11 +35,11 @@
 |---|---|---|
 | SplashScreen statt `return null` bei !authChecked | ✅ | `App.tsx:421`, `SplashScreen.tsx:9-41` |
 | Onboarding via isOnboardingDone-Flag | ✅ | `App.tsx:101,449-473`, `onboarding/onboardingState.ts:7,15`, Cloud-Restore `useAuth.ts:67-70`. Abweichung: nach Upload → KI-empfohlener Tab statt Bibliothek (`OnboardingFlow.tsx:156-168`) — bewusst weiterentwickelt |
-| resolveErrorMessage() in ALLEN catch-Blöcken | ⚠️ | ✅ in App/Graph/Reader/Explainer/geminiService; ❌ eigene Fallbacks in `useQuizState.ts:205-211`, `useDocuments.ts:280`, `GapRadar.tsx:630`, `LearningCoach.tsx:245`, `NotificationSettingsPanel.tsx:92`, `UploadSourceModal.tsx:168`; rohe Supabase-Meldungen möglich in `AuthModal.tsx:72-79`, `AuthPage.tsx:40-65`, `ResetPasswordPage.tsx:37-40` |
+| resolveErrorMessage() in ALLEN catch-Blöcken | ✅ *(nachgereicht 2026-08-23)* | Resolver um Auth-Mappings erweitert (`errorMessages.ts`: Invalid login/already registered/Password should/Email not confirmed/rate limit); zentral eingesetzt in AuthModal, AuthPage, SettingsModal (6×), ResetPasswordPage, UpgradeModal, NotificationSettingsPanel, UploadSourceModal, OnboardingFlow, LearningCoach, GapRadar, TermPaperSystem (2×); Tests neu: `errorMessages.test.ts` (4 Fälle). Bewusst ausgenommen: ErrorBoundary-Crash-Screen (diagnostischer `<pre>`) |
 | Auth-Timeout 1500 ms | ✅ | `useAuth.ts:20` |
 | saveQuizProgress debounced 250 ms | ✅ | `useQuizState.ts:126-135` (Debounce selbst ungetestet) |
 | design-tokens.css eingebunden | ⚠️ | Datei existiert nicht; Tokens in `app.css:72,96` + Laufzeit-Injektion `index.html:76-86` — funktional gleichwertig |
-| Keine indigo-Hartkodierung | ❌ 🔴 | **497 Treffer** `indigo-` in 33 Dateien (TermPaperSystem 45×, ExamView 32×, LibrarySystem 25×, FlashcardSystem 25×, QuizPlayer 19× …); auch Suspense-Fallback `App.tsx:539`. Akzent-Wechsel greift dort nicht |
+| Keine indigo-Hartkodierung | ✅ *(Korrektur 2026-08-23, ursprünglich ❌ 🔴)* | Die 497 `indigo-`-Klassen-Treffer sind **keine Hartkodierung im Effekt**: der Override-Katalog in `app.css:100-235` biegt JEDE genutzte Variante per `!important` auf `var(--primary)`/`--p50…--p950` um (color-mix-Ableitungen). Verifiziert: alle **69** im Code genutzten Varianten (Voll-Repo-Scan inkl. Dark/Hover/Focus/Group-Hover/Opacity/Gradient) sind abgedeckt, 0 Lücken. Die Hex-Werte in `tailwind.config.cjs` sind nur toter Fallback für ungenutzte Klassen. Akzentwechsel greift also app-weit |
 | Layout auf NAV_GROUPS | ✅ | `Layout.tsx:19,95`, `navConfig.ts:27-70` |
 | Cookies: echte Kategorien | ⚠️ | Modal granular (Essenziell/Funktional/Analyse, `CookieSettingsModal.tsx:47-84,102`), Banner selbst binär (`App.tsx:429-430`) |
 | i18n (de/en/tr) | ✅ | `I18nProvider.tsx:16-46`, Cloud-Sync `:25-33` — **einziger getesteter Bereich hier** (`i18n/index.test.ts`) |
@@ -193,7 +193,7 @@
 
 ## Top-Prioritäten (quer über alle Features)
 
-1. 🔴 **indigo-Hartkodierungen migrieren** (Paket 0.7): 497 Treffer/33 Dateien — Theme-/Akzentwechsel wirkt in großen Teilen der UI nicht. Größter einzelner Schuldenergie-Posten.
+1. ~~🔴 **indigo-Hartkodierungen migrieren**~~ → **ERLEDIGT/FEHLALARM (2026-08-23)**: Override-Katalog `app.css` deckt alle 69 genutzten Varianten ab — kein Handlungsbedarf.
 2. 🔴 **localStorage-Quota absichern**: try/catch um `localStorage.setItem` in `useDocuments.saveDocs` (+ ggf. Bilder konsequent nach Storage statt Base64). Real crashende Klasse.
 3. 🔴 **Multi-Doc „pro Frage das Dokument"**: Doc-Feld am `QuizQuestion` (Prompt-Instruktion „ Antworte mit sourceDoc") + Badge im Player — letztes offenes Paket-3-Kriterium.
 4. 🟠 **resolveErrorMessage flächendeckend** — v. a. Auth-Flows zeigen rohe Tech-Meldungen (Trust-Fehler Nr. 1 beim Login).
@@ -201,6 +201,6 @@
 6. 🟠 **Streak-Details**: Schwelle `=== 5` → `>= 5` (oder Vorgabe anpassen), „Rekord" im Dashboard ergänzen (Keys existieren schon), GraphOverlay an gleiche Schwelle binden.
 7. 🟠 **SM-2 erste Easy-Bewertung** → direkt 6 Tage (einzeilig in `spacedRepetition.ts:67`), sonst Paket-1-Kriterium literal unerfüllt.
 8. 🟠 **Mic-Fallback-Hinweis** + **PDF-Export lesbare Antworten** (`formatUserAnswer` wiederverwenden) + **Multi-Doc-Token-Cap**.
-9. 🟠 **Testlücken schließen** (höchster Nutzen zuerst): AnkiImport-Parsing, useDocuments-Upload-Pfade, examHistory/savedExams, errorMessages, recallHistoryService, relationType/nodeDocumentRef-Commits.
+9. 🟠 **Testlücken schließen** (höchster Nutzen zuerst): AnkiImport-Parsing, useDocuments-Upload-Pfade, examHistory/savedExams, errorMessages *(✅ erledigt 2026-08-23)*, recallHistoryService, relationType/nodeDocumentRef-Commits. ⚠️ Neu beobachtet: die beiden `waitFor`-basierten stateRef/Commit-Tests in `useKnowledgeGraph.test.ts` sind unter Volllast flaky (schlagen ~1/3 aller Voll-Suite-Läufe fehl, einzeln immer grün — Debounce-Fenster zu knapp für Parallel-Worker). Vor Paket-Arbeit am Wissensnetz stabilisieren (explizite Timer/Fakes statt Real-Timer-Rennen).
 
 **Fazit:** 13 von 13 Feature-Bereichen sind implementiert und produktiv; 6 Bereiche erfüllen ihre Paket-Kriterien vollständig (Klausur, Dashboard, Import, Teilen, Wissensnetz, PWA-Kern). Die offenen Punkte sind überwiegend Präzisions-Lücken einzelner Kriterien (Multi-Doc-Ursprung, Easy-Intervall, Rekord-Anzeige, Mic-Hinweis) plus zwei Querschnittsthemen (Farb-Tokens, Fehlermeldungen) — keine Struktur- oder Verdrahtungsprobleme. Die Service-Schicht ist durchgehend getestet (885 Tests grün); die Lücken liegen fast ausschließlich bei Komponenten-/Upload-/Sync-Pfaden.
