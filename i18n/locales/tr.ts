@@ -720,6 +720,7 @@ export const tr: Translations = {
   'quiz.myQuiz': 'Testim',
   'quiz.quizNamePlaceholder': 'Test adı...',
   'quiz.topic': 'Konu: {topic}',
+  'quiz.fromDoc': '"{doc}" kaynağından',
   'quiz.explanation': 'Açıklama',
   'quiz.checkAnswer': 'Cevabı kontrol et',
   'quiz.nextQuestion': 'Sonraki soru',

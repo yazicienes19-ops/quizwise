@@ -1,5 +1,6 @@
 import { Type } from "@google/genai";
 import { countDueCards, migrateLegacyCard } from './spacedRepetition';
+import { multiDocPromptRules } from './multiDocSource';
 import {
   QuizQuestion,
   Flashcard,
@@ -465,6 +466,11 @@ export const generateQuizFromDocument = async (
      *  Kein zweiter Klassifikations-Call: die KI liefert bloomLevel direkt im selben
      *  Call mit (s. services/bloomProgression.ts für die Herleitung der Stufen). */
     topicBloomHints?: { topic: string; bloomLevel: BloomLevel }[];
+    /** Nur bei Quizzen über MEHRERE Dokumente: Anzahl der nummerierten Quellblöcke
+     *  im Material ("[DOKUMENT n: …]", gebaut von services/multiDocSource.ts). Ab 2
+     *  wird sourceNumber als Pflichtfeld ins Schema genommen und die Zuordnungs-
+     *  Regel in den Prompt aufgenommen. */
+    multiDocCount?: number;
   }
 ): Promise<QuizQuestion[]> => {
   const parts: any[] = [sourceTopart(source)];
@@ -497,6 +503,12 @@ export const generateQuizFromDocument = async (
   const bloomHintLine = bloomHints.length > 0
     ? `\nBLOOM-STUFEN-HINWEIS (nur anwenden, WENN eine Frage ohnehin zu einem dieser Themen passt — ändert NICHTS an der oben geforderten Gesamtanzahl, erzwingt KEINE zusätzlichen Themen): Falls eine Frage zu einem der folgenden Themen entsteht, wähle bewusst die dort genannte kognitive Stufe (erinnern=Fakten abrufen, verstehen=erklären/zusammenfassen, anwenden=auf einen neuen Fall anwenden, analysieren=Zusammenhänge zerlegen/vergleichen). Bei allen anderen Themen: freie Wahl, tendenziell "erinnern" bis "verstehen".\n${bloomHints.slice(-12).map(h => `${h.topic} → ${h.bloomLevel}`).join('\n')}\nWeise jeder Frage über das Feld bloomLevel ehrlich die Stufe zu, die du tatsächlich verwendet hast.\n`
     : '';
+
+  // Multi-Doc: ab 2 nummerierten Quellen bekommt JEDE Frage ein Pflichtfeld
+  // sourceNumber — der Client (attachMultiDocSources) übersetzt sie in das
+  // Ursprungs-Dokument, das der Player pro Frage als Badge anzeigt.
+  const multiDocCount = options?.multiDocCount ?? 0;
+  const multiDocRules = multiDocCount > 1 ? multiDocPromptRules(multiDocCount) : '';
 
   const quizSchema = {
     type: Type.ARRAY,
@@ -534,8 +546,10 @@ export const generateQuizFromDocument = async (
         numericTolerance:      { type: Type.NUMBER },
         // Bloom-Taxonomie (self-gelabelt im selben Call, s. bloomHintLine unten)
         bloomLevel:            { type: Type.STRING, format: 'enum', enum: BLOOM_LEVELS },
+        // Multi-Doc-Ursprung (nur wenn mehrere Quellen nummeriert sind)
+        ...(multiDocCount > 1 ? { sourceNumber: { type: Type.INTEGER } } : {}),
       },
-      required: ['question', 'questionType', 'explanation', 'sourceReference']
+      required: ['question', 'questionType', 'explanation', 'sourceReference', ...(multiDocCount > 1 ? ['sourceNumber'] : [])]
     }
   };
 
@@ -552,7 +566,7 @@ export const generateQuizFromDocument = async (
 Schwierigkeit: ${difficulty}.${focusLine}
 Seed: ${seedSuffix}
 ${focusHint}${excludeLine}${bloomHintLine}
-${typeInstruction}
+${typeInstruction}${multiDocRules}
 
 STRENGE DIVERSITÄTS-REGELN (zwingend einhalten):
 1. Jede Frage MUSS ein komplett anderes Unterthema abdecken — kein Thema darf auch nur ähnlich zweimal vorkommen

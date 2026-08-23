@@ -163,6 +163,15 @@ export interface QuizQuestion {
   // Numerisch
   numericAnswer?: number;
   numericTolerance?: number;
+  /** Nur bei Multi-Dokument-Quizzes: Ursprungs-Dokument der Frage. Die KI
+   *  liefert im Generierungs-Prompt nur die Quellnummer (sourceNumber), der
+   *  Client übersetzt sie in ID+Name (services/multiDocSource.ts). Felder fehlen
+   *  bewusst bei Single-Doc-/Altsessions — Badge erscheint dann einfach nicht. */
+  sourceDocId?: string;
+  sourceDocName?: string;
+  /** Zwischenwert aus dem Generierungs-Call (1-basiert); nach attachMultiDocSources
+   *  nicht mehr benötigt, bleibt aber in gespeicherten Sessions erhalten. */
+  sourceNumber?: number;
 }
 
 /** Konkrete, einzeln wählbare Fragetypen (Basis + "Weitere Fragetypen"-Bereich in QuizSetup).

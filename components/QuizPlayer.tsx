@@ -611,6 +611,13 @@ export const QuizPlayer: React.FC<QuizPlayerProps> = ({
         {currentQuestion.topic && (
           <p className="text-[9px] font-black uppercase tracking-widest text-slate-400 break-words">{t('quiz.topic', { topic: currentQuestion.topic })}</p>
         )}
+        {/* Multi-Doc-Quizzes: Ursprungs-Dokument der aktuellen Frage
+            (services/multiDocSource.ts) — bei Single-Doc-Sessions nicht gesetzt. */}
+        {currentQuestion.sourceDocName && (
+          <p className="text-[9px] font-black uppercase tracking-widest break-words" style={{ color: 'var(--primary)' }}>
+            {t('quiz.fromDoc', { doc: currentQuestion.sourceDocName })}
+          </p>
+        )}
       </div>
 
       {/* Speichern-Panel */}

@@ -16,6 +16,7 @@ import { getAllResults } from '../services/quizHistoryService';
 import { getAllExamResults } from '../services/examHistoryService';
 import { getAllRecallResults } from '../services/recallHistoryService';
 import { buildRealTopicMastery } from '../services/learningProfileService';
+import { buildCombinedMultiDocText, attachMultiDocSources } from '../services/multiDocSource';
 
 /** Bloom-Stufen-Hinweise pro Thema aus der bisherigen Historie (services/bloomProgression.ts) —
  *  steuert die adaptive Quiz-Generierung, ohne einen eigenen State/eine eigene
@@ -229,11 +230,10 @@ export const useQuizState = (params: UseQuizStateParams) => {
       let metaName: string;
       let metaDocId: string;
       if (selectedDocs.length > 1) {
-        const combined = selectedDocs.map(d => {
-          const txt = d.digestText || (d.type === 'text' ? d.content : '');
-          return `[Quelle: ${documentDisplayName(d)}]\n${txt}`;
-        }).join('\n\n---\n\n');
-        source = { text: combined };
+        // Nummerierte Quellblöcke ("[DOKUMENT n: Name]") — die KI muss je Frage
+        // sourceNumber liefern, attachMultiDocSources übersetzt sie danach in
+        // ID+Name (Paket-3-Kriterium, s. services/multiDocSource.ts).
+        source = { text: buildCombinedMultiDocText(selectedDocs) };
         metaName = `${selectedDocs.length} Dokumente`;
         metaDocId = multiDocId(selectedDocs.map(d => d.id));
       } else {
@@ -257,9 +257,12 @@ export const useQuizState = (params: UseQuizStateParams) => {
         questionType: config.questionType,
         excludeTopics,
         topicBloomHints,
+        multiDocCount: selectedDocs.length > 1 ? selectedDocs.length : undefined,
       });
       if (!rawQuiz.length) throw new Error('Daraus ließen sich keine Fragen erstellen. Bitte versuche es noch einmal.');
-      const quiz = interleaveQuestionsByTopic(rawQuiz);
+      const quiz = interleaveQuestionsByTopic(
+        selectedDocs.length > 1 ? attachMultiDocSources(rawQuiz, selectedDocs) : rawQuiz
+      );
       setQuestions(quiz);
       setQuizInitialAnswers(undefined);
       saveUsedTopics(metaDocId, quiz);

@@ -722,6 +722,7 @@ export const de = {
   'quiz.myQuiz': 'Mein Quiz',
   'quiz.quizNamePlaceholder': 'Quiz-Name...',
   'quiz.topic': 'Thema: {topic}',
+  'quiz.fromDoc': 'Aus „{doc}"',
   'quiz.explanation': 'Erklärung',
   'quiz.checkAnswer': 'Antwort prüfen',
   'quiz.nextQuestion': 'Nächste Frage',

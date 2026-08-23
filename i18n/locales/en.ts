@@ -721,6 +721,7 @@ export const en: Translations = {
   'quiz.myQuiz': 'My quiz',
   'quiz.quizNamePlaceholder': 'Quiz name...',
   'quiz.topic': 'Topic: {topic}',
+  'quiz.fromDoc': 'From "{doc}"',
   'quiz.explanation': 'Explanation',
   'quiz.checkAnswer': 'Check answer',
   'quiz.nextQuestion': 'Next question',
