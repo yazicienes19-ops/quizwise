@@ -16,6 +16,15 @@ interface ErrorMapping {
 }
 
 const ERROR_MAP: ErrorMapping[] = [
+  // ── Auth (Supabase GoTrue-Rohmeldungen) — Trust-Fehler Nr. 1 laut Feature-
+  // Audit 2026-08-22: Login/Register zeigten vorher technische Englishtexte.
+  // Die auth.err*-Keys existieren seit der AuthModal-Übersetzung in allen
+  // Sprachen; der Resolver ist jetzt die einzige Stelle, die sie zuweist.
+  { match: m => m.includes('Invalid login') || m.includes('invalid credentials'), key: 'auth.errInvalid' },
+  { match: m => m.includes('already registered') || m.includes('already been registered'), key: 'auth.errExists' },
+  { match: m => m.includes('Password should'), key: 'auth.errShortPw' },
+  { match: m => m.includes('Email not confirmed'), key: 'errors.authNotConfirmed' },
+  { match: m => m.toLowerCase().includes('rate limit') || m.includes('Too many requests'), key: 'errors.authRateLimit' },
   { match: m => m.includes('LIMIT_REACHED'), key: 'errors.limitReached' },
   { match: m => m.includes('einloggen') || m.includes('not authenticated') || m.includes('JWT'), key: 'errors.notAuthenticated' },
   { match: m => m.includes('nicht verfügbar') || m.includes('storage'), key: 'errors.docUnavailable' },

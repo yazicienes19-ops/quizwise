@@ -3,6 +3,7 @@ import { Mail, Lock, User, Loader2 } from 'lucide-react';
 import { supabase } from '../services/supabaseClient';
 import { BrandMark } from './BrandMark';
 import { LegalModal } from './LegalModal';
+import { resolveErrorMessage } from '../services/errorMessages';
 
 const DEMO_EMAIL = 'demo@quizwise.app';
 const DEMO_PASSWORD = 'QuizWise2026!';
@@ -38,11 +39,8 @@ export const AuthPage: React.FC = () => {
         // App.tsx-Listener setzt user → AuthPage verschwindet automatisch
       }
     } catch (err: any) {
-      const msg = err.message || '';
-      if (msg.includes('Invalid login')) setError('E-Mail oder Passwort falsch.');
-      else if (msg.includes('already registered')) setError('Diese E-Mail ist bereits registriert.');
-      else if (msg.includes('Password should')) setError('Passwort muss mindestens 6 Zeichen haben.');
-      else setError(msg);
+      // Zentrale Übersetzung der Supabase-Rohmeldungen (services/errorMessages.ts)
+      setError(resolveErrorMessage(err));
     } finally {
       setIsLoading(false);
     }
@@ -61,7 +59,7 @@ export const AuthPage: React.FC = () => {
       const msg = err.message || '';
       if (msg.includes('Invalid login')) setError('Demo-Konto: Zugangsdaten ungültig. Bitte neu anlegen.');
       else if (msg.includes('Email not confirmed')) setError('Demo-Konto: E-Mail nicht bestätigt. Bitte im Supabase-Dashboard bestätigen.');
-      else setError(`Demo-Login fehlgeschlagen: ${msg}`);
+      else setError(`Demo-Login fehlgeschlagen: ${resolveErrorMessage(err)}`);
     } finally {
       setIsDemoLoading(false);
     }

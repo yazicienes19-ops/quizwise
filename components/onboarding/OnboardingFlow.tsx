@@ -20,6 +20,7 @@ import { SystemOverviewStep } from './steps/SystemOverviewStep';
 import { AppOverviewStep } from './steps/AppOverviewStep';
 import { LibraryImportStep, type ImportMode } from './steps/LibraryImportStep';
 import { FirstLearningMomentStep } from './steps/FirstLearningMomentStep';
+import { resolveErrorMessage } from '../../services/errorMessages';
 
 type StepId = 'intro' | 'education_path' | 'context' | 'goals' | 'challenges' | 'recommendation' | 'learning_path' | 'tour_intro'
   | TourStepId | 'system_overview' | 'app_overview' | 'library_import' | 'first_moment';
@@ -194,7 +195,7 @@ export const OnboardingFlow: React.FC<OnboardingFlowProps> = ({ handleFileUpload
           const imported = await importFromUrl(importLink);
           file = new File([imported.text], `${(imported.title || 'Import').slice(0, 100)}.txt`, { type: 'text/plain' });
         } catch (err) {
-          toast.error(err instanceof Error ? err.message : 'Link konnte nicht importiert werden.');
+          toast.error(resolveErrorMessage(err));
           return;
         }
       }

@@ -379,6 +379,8 @@ export const de = {
   'errors.safety': 'Dieser Inhalt konnte nicht verarbeitet werden. Versuche einen anderen Abschnitt des Dokuments.',
   'errors.badJson': 'Die Antwort war fehlerhaft. Einfach nochmal versuchen, das passiert selten zweimal.',
   'errors.generic': 'Etwas ist schiefgelaufen. Lade die Seite neu und versuche es erneut.',
+  'errors.authNotConfirmed': 'Bitte bestätige zuerst deine E-Mail – schau in dein Postfach (auch im Spam-Ordner).',
+  'errors.authRateLimit': 'Zu viele Versuche. Bitte warte eine Minute und versuche es dann erneut.',
 
   // auth
   'auth.welcomeBack': 'Willkommen zurück',
@@ -775,6 +777,11 @@ export const de = {
   'fc.due': 'Fällig',
   'fc.closeSession': 'Lernsession schließen',
   'fc.showAnswer': 'Antwort anzeigen',
+  'fc.roundDone': 'Runde geschafft!',
+  'fc.cardsThisRound': '{n} Karte in dieser Runde|{n} Karten in dieser Runde',
+  'fc.moreWaiting': '{n} weitere warten',
+  'fc.continueLearning': 'Weiter lernen',
+  'fc.doneForNow': 'Fertig für jetzt',
   'fc.again': 'Nochmal',
   'fc.known': 'Gewusst',
   'fc.hard': 'Schwer',
@@ -1434,6 +1441,8 @@ export const de = {
   'ar.otherDoc': 'Anderes Dokument',
   'ar.recallFallback': 'Recall',
   'ar.challengeFailed': 'Herausforderung konnte nicht geladen werden. Versuche es erneut.',
+  'ar.focusFailed': 'Es konnte keine passende Frage zu deinem Fokus-Thema erstellt werden. Versuche es erneut oder lasse den Fokus frei.',
+  'ar.duplicateFailed': 'Es konnte keine neue, unterschiedliche Frage erstellt werden. Versuche es gleich noch einmal.',
   'ar.evalFailed': 'Bewertung fehlgeschlagen. Versuche es erneut.',
 
   // explainer system

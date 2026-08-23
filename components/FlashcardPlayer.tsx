@@ -12,13 +12,19 @@ interface FlashcardPlayerProps {
   // Freies Üben: alle Karten beliebig oft, OHNE die SRS-Planung zu verändern.
   practiceMode?: boolean;
   onPracticed?: () => void;
+  /** Lernrunden bei großen Decks (wie beim Recall): Anzahl weiterer wartender
+   *  Karten — > 0 zeigt nach Rundenende einen Abschluss statt einfachem
+   *  Zuklappen, mit "Weiter lernen" für die nächste Runde. */
+  moreWaiting?: number;
+  onContinue?: () => void;
 }
 
-export const FlashcardPlayer: React.FC<FlashcardPlayerProps> = ({ cards, onReview, onClose, practiceMode = false, onPracticed }) => {
-  const { t } = useTranslation();
+export const FlashcardPlayer: React.FC<FlashcardPlayerProps> = ({ cards, onReview, onClose, practiceMode = false, onPracticed, moreWaiting = 0, onContinue }) => {
+  const { t, tp } = useTranslation();
   const [remainingCards, setRemainingCards] = useState<Flashcard[]>(() => [...cards]);
   const [completed, setCompleted] = useState(0);
   const [showAnswer, setShowAnswer] = useState(false);
+  const [sessionDone, setSessionDone] = useState(false);
 
   const currentCard = remainingCards[0];
 
@@ -44,17 +50,27 @@ export const FlashcardPlayer: React.FC<FlashcardPlayerProps> = ({ cards, onRevie
       });
     } else {
       if (remainingCards.length <= 1) {
-        onClose();
+        setCompleted(c => c + 1);
+        setRemainingCards([]);
+        // Mehr Karten da? Abschluss zeigen (Recall-Prinzip: Runden statt
+        // endloser Liste). Sonst wie bisher direkt schließen.
+        if (moreWaiting > 0 && onContinue) setSessionDone(true);
+        else onClose();
       } else {
         setRemainingCards(r => r.slice(1));
         setCompleted(c => c + 1);
       }
     }
-  }, [showAnswer, currentCard, remainingCards, onReview, onClose, practiceMode, onPracticed]);
+  }, [showAnswer, currentCard, remainingCards, onReview, onClose, practiceMode, onPracticed, moreWaiting, onContinue]);
 
   // Keyboard Support
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
+      if (sessionDone) {
+        if (e.code === 'Enter' && onContinue) { e.preventDefault(); onContinue(); }
+        if (e.code === 'Escape') { e.preventDefault(); onClose(); }
+        return;
+      }
       if (e.code === 'Space' || e.code === 'Enter') {
         e.preventDefault();
         if (!showAnswer) setShowAnswer(true);
@@ -69,7 +85,7 @@ export const FlashcardPlayer: React.FC<FlashcardPlayerProps> = ({ cards, onRevie
 
     window.addEventListener('keydown', handleKeyDown);
     return () => window.removeEventListener('keydown', handleKeyDown);
-  }, [showAnswer, handleDifficulty]);
+  }, [showAnswer, handleDifficulty, sessionDone, onContinue, onClose]);
 
   const stats = useMemo(() => {
     const newCount = remainingCards.filter(c => !c.srs?.lastReview).length;
@@ -94,7 +110,41 @@ export const FlashcardPlayer: React.FC<FlashcardPlayerProps> = ({ cards, onRevie
   const total = completed + remainingCards.length;
   const progress = total > 0 ? (completed / total) * 100 : 0;
 
-  if (!currentCard) return null;
+  if (sessionDone || !currentCard) {
+    if (!sessionDone) return null;
+    return createPortal(
+      <div className="fixed inset-0 z-[100] bg-[#f8fafc] dark:bg-[#020617] flex items-center justify-center p-6 animate-in fade-in duration-300">
+        <div className="max-w-md w-full text-center space-y-6 rounded-[28px] p-10 bg-white dark:bg-slate-900 shadow-2xl border border-slate-100 dark:border-slate-800">
+          <div className="w-16 h-16 mx-auto rounded-2xl flex items-center justify-center" style={{ background: 'color-mix(in srgb, var(--primary) 15%, transparent)' }}>
+            <svg xmlns="http://www.w3.org/2000/svg" width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="var(--primary)" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round"><polyline points="20 6 9 17 4 12"/></svg>
+          </div>
+          <div className="space-y-2">
+            <h2 className="text-2xl font-black text-slate-900 dark:text-white">{t('fc.roundDone')}</h2>
+            <p className="text-sm text-slate-500 dark:text-slate-400 font-medium">
+              {tp('fc.cardsThisRound', completed, { n: completed })} · {t('fc.moreWaiting', { n: moreWaiting })}
+            </p>
+          </div>
+          <div className="flex flex-col sm:flex-row gap-3 justify-center pt-2">
+            <button
+              onClick={onContinue}
+              className="px-8 py-4 rounded-full text-[11px] font-black uppercase tracking-widest text-white shadow-xl hover:scale-105 transition-all"
+              style={{ background: 'var(--primary)', color: 'var(--primary-text)' }}
+            >
+              {t('fc.continueLearning')}
+            </button>
+            <button
+              onClick={onClose}
+              className="px-8 py-4 rounded-full text-[11px] font-black uppercase tracking-widest transition-all hover:opacity-70"
+              style={{ border: '1px solid rgba(27,42,74,0.2)', color: 'var(--text-main)' }}
+            >
+              {t('fc.doneForNow')}
+            </button>
+          </div>
+        </div>
+      </div>,
+      document.body,
+    );
+  }
 
   return createPortal(
     <div className="fixed inset-0 z-[100] bg-[#f8fafc] dark:bg-[#020617] flex flex-col animate-in fade-in duration-300">

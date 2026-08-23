@@ -6,6 +6,7 @@ import { useTranslation } from '../i18n/I18nProvider';
 import { BrandMark } from './BrandMark';
 import { BrandSpinner } from './BrandSpinner';
 import { useModalA11y } from '../hooks/useModalA11y';
+import { resolveErrorMessage } from '../services/errorMessages';
 import { LegalModal } from './LegalModal';
 
 interface AuthModalProps {
@@ -70,12 +71,8 @@ export const AuthModal: React.FC<AuthModalProps> = ({ onClose, onSuccess }) => {
         onClose();
       }
     } catch (err: any) {
-      // Supabase-Fehlermeldungen auf Deutsch übersetzen
-      const msg = err.message || '';
-      if (msg.includes('Invalid login')) setError(t('auth.errInvalid'));
-      else if (msg.includes('already registered')) setError(t('auth.errExists'));
-      else if (msg.includes('Password should')) setError(t('auth.errShortPw'));
-      else setError(msg);
+      // Zentrale Übersetzung der Supabase-Rohmeldungen (services/errorMessages.ts)
+      setError(resolveErrorMessage(err));
     } finally {
       setIsLoading(false);
     }

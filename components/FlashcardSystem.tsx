@@ -11,7 +11,7 @@ import { SourceSelector } from './SourceSelector';
 import { loadDecksFromSupabase, saveDeckToSupabase, deleteDeckFromSupabase, uploadAllDecksToSupabase } from '../services/flashcardService';
 import { mergeDecks } from '../services/deckMerge';
 import { documentDisplayName } from '../services/libraryService';
-import { getDueCards, createSrsState, migrateLegacyCard, countDueCards, QUALITY_MAP, reviewCard } from '../services/spacedRepetition';
+import { getDueCards, createSrsState, migrateLegacyCard, countDueCards, QUALITY_MAP, reviewCard, buildSessionBatch, SESSION_BATCH_SIZE } from '../services/spacedRepetition';
 import { recordActivity } from '../services/streakService';
 import { AnkiImportModal } from './AnkiImportModal';
 import { buildPrintHtml } from '../services/printDeckService';
@@ -389,45 +389,82 @@ export const FlashcardSystem: React.FC<FlashcardSystemProps> = ({
     if (sessionReviewCount.current === 5) recordActivity(userId);
   };
 
-  const handleOpenDeck = (deckId: string, mode: 'due' | 'all' | 'free' = 'due') => {
+  // Lernrunden-Kontext: bei großen Decks (> SESSION_BATCH_SIZE) wird pro
+  // Runde kuratiert gespielt (Schwäche zuerst, Neu-Karten begrenzt, Rest
+  // wartet) — selbes Prinzip wie die Themenwahl beim Recall (recallGaps.ts).
+  const [sessionMode, setSessionMode] = useState<'due' | 'all' | 'free'>('due');
+  const [moreWaiting, setMoreWaiting] = useState(0);
+
+  /** true = Session gestartet, false = nichts zu lernen (Toast ging raus). */
+  const handleOpenDeck = (deckId: string, mode: 'due' | 'all' | 'free' = 'due'): boolean => {
     const deck = decks.find(d => d.id === deckId);
-    if (!deck) return;
-    const migratedCards = deck.cards.map(c => c.srs ? c : { ...c, srs: migrateLegacyCard(c) });
+    if (!deck) return false;
+    // Explizite Annotation: die map-returnte Union (Flashcard | Spread mit
+    // srs) ist zu Flashcard[] zuweisbar, und die Typ-Inferenz der
+    // Session-Batch-Funktion bleibt sauber auf Flashcard statt Constraint.
+    const migratedCards: Flashcard[] = deck.cards.map(c => c.srs ? c : { ...c, srs: migrateLegacyCard(c) });
 
     let cardsToLearn: Flashcard[];
+    let remaining = 0;
     if (mode === 'free') {
       // Frei lernen: ALLE Karten, zufällig gemischt, SRS bleibt unberührt.
-      if (migratedCards.length === 0) { toast.error(t('fcs.noCardsInDeck')); return; }
-      cardsToLearn = [...migratedCards];
-      for (let i = cardsToLearn.length - 1; i > 0; i--) {
+      if (migratedCards.length === 0) { toast.error(t('fcs.noCardsInDeck')); return false; }
+      const shuffled = [...migratedCards];
+      for (let i = shuffled.length - 1; i > 0; i--) {
         const j = Math.floor(Math.random() * (i + 1));
-        [cardsToLearn[i], cardsToLearn[j]] = [cardsToLearn[j], cardsToLearn[i]];
+        [shuffled[i], shuffled[j]] = [shuffled[j], shuffled[i]];
       }
+      // Auch im freien Üben in Runden teilen — 60+ Karten am Stück sind
+      // motivativ eine Wand, egal ob mit oder ohne SRS.
+      cardsToLearn = shuffled.slice(0, SESSION_BATCH_SIZE);
+      remaining = shuffled.length - cardsToLearn.length;
     } else if (mode === 'all') {
-      cardsToLearn = [...migratedCards].sort((a, b) => (a.srs?.nextReview ?? 0) - (b.srs?.nextReview ?? 0));
-      if (cardsToLearn.length === 0) { toast.error(t('fcs.noCardsInDeck')); return; }
+      const sorted = [...migratedCards].sort((a, b) => (a.srs?.nextReview ?? 0) - (b.srs?.nextReview ?? 0));
+      if (sorted.length === 0) { toast.error(t('fcs.noCardsInDeck')); return false; }
+      cardsToLearn = sorted.slice(0, SESSION_BATCH_SIZE);
+      remaining = sorted.length - cardsToLearn.length;
     } else {
-      cardsToLearn = getDueCards(migratedCards);
-      if (cardsToLearn.length === 0) {
+      const batch = buildSessionBatch(migratedCards);
+      if (batch.cards.length === 0) {
         toast.success(t('fcs.deckDoneToday'));
-        return;
+        return false;
       }
+      cardsToLearn = batch.cards;
+      remaining = batch.remainingAfter;
     }
 
     sessionReviewCount.current = 0;
     setIsPracticeSession(mode === 'free');
+    setSessionMode(mode);
+    setMoreWaiting(remaining);
     setSessionCards(cardsToLearn);
     setActiveDeckId(deckId);
+    return true;
   };
 
   if (activeDeckId) {
     return (
       <FlashcardPlayer
+        key={`fc-session-${sessionCards.length}-${sessionCards[0]?.id ?? 'x'}`}
         cards={sessionCards}
         practiceMode={isPracticeSession}
         onReview={handleReview}
         onPracticed={handlePracticed}
-        onClose={() => { setActiveDeckId(null); setSessionCards([]); setIsPracticeSession(false); }}
+        moreWaiting={moreWaiting}
+        onContinue={moreWaiting > 0 ? () => {
+          // Nächste Runde aus demselben Deck im selben Modus — Bewertungen der
+          // gerade beendeten Runde sind längst in `decks` gespeichert, damit
+          // wählt buildSessionBatch sauber die nächsten Karten. Kann leer
+          // ausgehen (Rest doch noch geschafft): dann Session sauber schließen.
+          const started = handleOpenDeck(activeDeckId, sessionMode);
+          if (!started) {
+            setActiveDeckId(null);
+            setSessionCards([]);
+            setIsPracticeSession(false);
+            setMoreWaiting(0);
+          }
+        } : undefined}
+        onClose={() => { setActiveDeckId(null); setSessionCards([]); setIsPracticeSession(false); setMoreWaiting(0); }}
       />
     );
   }
@@ -475,8 +512,8 @@ export const FlashcardSystem: React.FC<FlashcardSystemProps> = ({
                 </button>
               </form>
             ) : (
-              <div className="flex items-center gap-3">
-                <h2 className="text-3xl font-black dark:text-white break-words">{deck.title}</h2>
+              <div className="flex items-start gap-3">
+                <h2 className="min-w-0 flex-1 text-2xl sm:text-3xl font-black dark:text-white break-words" style={{ textWrap: 'balance' as any }}>{deck.title}</h2>
                 <button
                   onClick={() => { setRenameTitle(deck.title); setIsRenamingDeck(true); }}
                   className="p-2 rounded-xl text-slate-300 hover:text-indigo-500 hover:bg-indigo-50 dark:hover:bg-indigo-950/30 transition-all shrink-0"
@@ -745,8 +782,8 @@ export const FlashcardSystem: React.FC<FlashcardSystemProps> = ({
                     className="flex flex-col sm:flex-row items-center justify-between p-6 lg:p-8 hover:bg-slate-50 dark:hover:bg-slate-800/30 transition-all group gap-6"
                   >
                     <div className="flex-grow min-w-0 text-center sm:text-left">
-                      <div className="flex items-center gap-2 justify-center sm:justify-start">
-                        <h4 className="text-lg lg:text-xl font-black text-slate-900 dark:text-white break-words group-hover:text-indigo-600 transition-colors cursor-pointer" onClick={() => handleOpenDeck(deck.id)}>
+                      <div className="flex items-center gap-2 flex-wrap justify-center sm:justify-start">
+                        <h4 className="text-base lg:text-lg font-black text-slate-900 dark:text-white break-words group-hover:text-indigo-600 transition-colors cursor-pointer" style={{ textWrap: 'balance' as any }} onClick={() => handleOpenDeck(deck.id)}>
                           {deck.title}
                         </h4>
                         {!deck.sourceDocumentId && <span className="bg-slate-100 dark:bg-slate-800 text-[9px] font-black uppercase px-2 py-0.5 rounded text-slate-400 tracking-tighter">{t('fcs.manual')}</span>}

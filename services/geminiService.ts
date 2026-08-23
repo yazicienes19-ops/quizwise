@@ -156,12 +156,18 @@ GIB IMMER NUR STRIKTES JSON ZURÜCK.`;
 export const generateRecallChallenge = async (
   source: GenerationSource,
   focusTopic?: string,
-  steering?: { excludeTopics?: string[]; preferTopics?: string[]; coverTopics?: string[] }
+  steering?: { excludeTopics?: string[]; preferTopics?: string[]; coverTopics?: string[] },
+  extra?: { avoidQuestions?: string[]; retryHint?: string },
 ): Promise<RecallChallenge> => {
   const parts: any[] = [sourceTopart(source)];
 
+  // Fokus (Bug-1-Live-Fund 2026-08-22: das Modell ignorierte die weiche
+  // "beziehe dich auf"-Formulierung): jetzt hart — topic MUSS exakt dem Fokus
+  // entsprechen. Die Ausstiegsklausel (Dokument schweigt) bleibt, aber auch
+  // dann MUSS topic das tatsächlich gewählte Thema nennen — nur so kann der
+  // Guard (recallChallengeGuard.ts) Abweichung deterministisch erkennen.
   const focusLine = focusTopic?.trim()
-    ? `\nFOKUS: Die Frage muss sich auf das Thema "${sanitizeUserInput(focusTopic, 120)}" beziehen. Enthält das Dokument dazu nichts, wähle das inhaltlich nächstliegende Thema aus dem Dokument.\n`
+    ? `\nFOKUS: Die Frage muss sich auf das Thema "${sanitizeUserInput(focusTopic, 120)}" beziehen, und topic muss EXAKT "${sanitizeUserInput(focusTopic, 120)}" lauten. Enthält das Dokument dazu wirklich nichts, wähle das inhaltlich nächstliegende Thema — dann MUSS topic exakt dieses nächstliegende Thema nennen, niemals etwas anderes.\n`
     : '';
 
   // Themen-Steuerung nur ohne expliziten Fokus — ein gesetztes Fokus-Thema gewinnt immer.
@@ -180,8 +186,15 @@ export const generateRecallChallenge = async (
     ? `\nSCHWÄCHEN DES NUTZERS — behandelt das Dokument eines dieser Themen, wähle bevorzugt daraus:\n${preferTopics.map(t => sanitizeUserInput(t, 80)).join(' | ')}\n`
     : '';
 
+  // Dedup-Prävention (recallQuestionDedup.ts): die zuletzt gestellten Fragen
+  // sind dem Modell bekannt, damit es thematisch woanders hingeht.
+  const avoidLine = extra?.avoidQuestions?.length
+    ? `\nBEREITS GESTELLTE FRAGEN — stelle KEINE Frage, die einer davon inhaltlich entspricht oder stark ähnelt (auch keine Umformulierung):\n${extra.avoidQuestions.slice(0, 8).map(q => `- ${sanitizeUserInput(q, 200)}`).join('\n')}\n`
+    : '';
+  const retryLine = extra?.retryHint ? `\n${extra.retryHint}\n` : '';
+
   parts.push({ text: `Erzeuge eine Active-Recall-Herausforderung nach der Feynman-Technik.
-${focusLine}${coverLine}${excludeLine}${preferLine}
+${focusLine}${coverLine}${excludeLine}${preferLine}${avoidLine}${retryLine}
 STRENGE REGEL: Verwende AUSSCHLIESSLICH Inhalte aus dem oben bereitgestellten Dokument. Kein Allgemeinwissen, keine Ergänzungen aus dem Internet, keine Erfindungen. Wenn das Dokument zu einem Thema schweigt, stelle keine Frage dazu.
 
 Die Frage soll tiefes Verständnis prüfen — Zusammenhänge, Ursachen und Bedeutung, nicht bloßes Faktenwissen.

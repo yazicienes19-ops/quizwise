@@ -19,6 +19,7 @@ import { useTranslation } from '../i18n/I18nProvider';
 import { formatDate } from '../i18n/dates';
 import type { Locale } from '../i18n';
 import { useModalA11y } from '../hooks/useModalA11y';
+import { resolveErrorMessage } from '../services/errorMessages';
 
 const PRESETS = [
   { name: 'StudeArc Gold', value: '#D9A94E' },
@@ -145,7 +146,7 @@ export const SettingsModal: React.FC<Props> = ({ user, isDark, onToggleTheme, on
       await changeEmail(trimmed);
       toast.success(t('settings.email.sent'));
       setNewEmail('');
-    } catch (e: any) { toast.error(e.message || t('settings.email.error')); }
+    } catch (e: any) { toast.error(e.message ? resolveErrorMessage(e) : t('settings.email.error')); }
     finally { setIsSavingEmail(false); }
   };
 
@@ -157,7 +158,7 @@ export const SettingsModal: React.FC<Props> = ({ user, isDark, onToggleTheme, on
       await changePassword(newPw);
       toast.success(t('settings.pw.changed'));
       setNewPw(''); setConfirmPw('');
-    } catch (e: any) { toast.error(e.message); }
+    } catch (e: any) { toast.error(resolveErrorMessage(e)); }
     finally { setIsSavingPw(false); }
   };
 
@@ -168,7 +169,7 @@ export const SettingsModal: React.FC<Props> = ({ user, isDark, onToggleTheme, on
       setCancelledUntil(endsAt);
       toast.success(t('settings.cancel.success', { date: endsAt }));
       setShowCancelConfirm(false);
-    } catch (e: any) { toast.error(e.message); }
+    } catch (e: any) { toast.error(resolveErrorMessage(e)); }
     finally { setIsCancelling(false); }
   };
 
@@ -177,7 +178,7 @@ export const SettingsModal: React.FC<Props> = ({ user, isDark, onToggleTheme, on
     try {
       await startCheckout(true); // Zustimmung s. WiderrufConsentModal
     } catch (e: any) {
-      toast.error(e.message);
+      toast.error(resolveErrorMessage(e));
       setIsCheckingOut(false);
       setShowCheckoutConsent(false);
     }
@@ -186,7 +187,7 @@ export const SettingsModal: React.FC<Props> = ({ user, isDark, onToggleTheme, on
   const handleExport = async () => {
     setIsExporting(true);
     try { await exportUserData(); toast.success(t('settings.export.success')); }
-    catch (e: any) { toast.error(e.message); }
+    catch (e: any) { toast.error(resolveErrorMessage(e)); }
     finally { setIsExporting(false); }
   };
 
@@ -198,7 +199,7 @@ export const SettingsModal: React.FC<Props> = ({ user, isDark, onToggleTheme, on
       await supabase.auth.signOut();
       onLogout(); onClose();
       toast.success(t('settings.delete.success'));
-    } catch (e: any) { toast.error(e.message); setIsDeletingAccount(false); }
+    } catch (e: any) { toast.error(resolveErrorMessage(e)); setIsDeletingAccount(false); }
   };
 
   const handleAccentColor = (color: string) => {

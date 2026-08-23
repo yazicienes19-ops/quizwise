@@ -94,6 +94,62 @@ export const getDueCards = <T extends { srs?: SrsState }>(cards: T[]): T[] => {
 export const countDueCards = <T extends { srs?: SrsState }>(cards: T[]): number =>
   getDueCards(cards).length;
 
+// ── Lernrunden für große Decks (wie beim Recall: "Erklären üben") ────────────
+// Decks mit sehr vielen fälligen Karten sollen keine endlose Liste spielen,
+// sondern kuratierte Runden — dieselbe Philosophie wie recallGaps.ts:
+// Schwäche vor Stärke, Abdeckung vor Vertiefung, Gemeistertes ruht (macht
+// SM-2 über nextReview ohnehin schon).
+
+/** Max. Karten pro Lernrunde. */
+export const SESSION_BATCH_SIZE = 30;
+/** Max. NEUE Karten pro Runde (Anki-Prinzip: Neu-Lernen begrenzen, sonst
+ *  ertrinken frische Karten in den Wiederholungen). */
+export const NEW_CARDS_PER_SESSION = 15;
+
+export interface SessionBatch<T> {
+  /** Die Karten dieser Runde, in Spiel-Reihenfolge (Lernen → Neu → Wiederholen). */
+  cards: T[];
+  /** Wie viele fällige Karten nach dieser Runde noch warten. */
+  remainingAfter: number;
+}
+
+/**
+ * Baut die nächste Lernrunde: bei <= batchSize fälligen Karten alles (wie
+ * bisher), darüber hinaus eine priorisierte Auswahl —
+ * 1. Lern-Karten (kurzes Intervall oder niedriger Ease-Faktor): "schwierig/
+ *    gerade gescheitert" — Analog zu recallGaps' "häufige Fehler zuerst"
+ * 2. neue Karten, auf NEW_CARDS_PER_SESSION begrenzt — "Abdeckung vor
+ *    Vertiefung", wie das Kapitel-Coverage beim Recall
+ * 3. weiterführende Wiederholungen, überfälligste zuerst
+ */
+export function buildSessionBatch<T extends { srs?: SrsState }>(cards: T[], batchSize: number = SESSION_BATCH_SIZE): SessionBatch<T> {
+  const now = Date.now();
+  const due = getDueCards(cards);
+
+  const dayMs = 24 * 60 * 60 * 1000;
+  const isNew = (c: T) => !c.srs?.lastReview;
+  const isLearning = (c: T) => {
+    const srs = c.srs;
+    return !!srs?.lastReview && (srs.interval < 1 || srs.ease < 2.3);
+  };
+  const overdueDays = (c: T) => Math.max(0, (now - (c.srs?.nextReview ?? now)) / dayMs);
+
+  const learning = due.filter(isLearning);
+  // Neu-Karten-Limit greift NUR, wenn mehr fällig ist als in eine Runde passt —
+  // ein kleines Deck spielt alles, nur in sinnvoller Reihenfolge.
+  const freshLimit = due.length > batchSize ? NEW_CARDS_PER_SESSION : due.length;
+  const fresh = due.filter(isNew).slice(0, freshLimit);
+  const inBatch = new Set([...learning, ...fresh]);
+  // Neue Karten, die das Limit nicht schafften, zählen NICHT alsReviews-Füller
+  // — sonst würde das Neu-Limit wirkungslos (Fund aus dem Unit-Test).
+  const reviews = due
+    .filter(c => !inBatch.has(c) && !isNew(c))
+    .sort((a, b) => overdueDays(b) - overdueDays(a));
+
+  const batch = [...learning, ...fresh, ...reviews].slice(0, batchSize);
+  return { cards: batch, remainingAfter: due.length - batch.length };
+}
+
 /** Migration: bestehende Karten mit level/nextReview auf SRS umstellen */
 export const migrateLegacyCard = (legacy: { level?: number; nextReview?: number }): SrsState => ({
   ease: 2.5,

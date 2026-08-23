@@ -7,6 +7,7 @@ import {
 import { isPushSupported, getExistingSubscription, subscribeToPush, unsubscribeFromPush } from '../services/pushService';
 import { toast } from '../services/toast';
 import { useTranslation } from '../i18n/I18nProvider';
+import { resolveErrorMessage } from '../services/errorMessages';
 
 interface Props {
   userId?: string | null;
@@ -89,7 +90,7 @@ export const NotificationSettingsPanel: React.FC<Props> = ({ userId }) => {
         toast.success(t('settings.push.enabled'));
       }
     } catch (e: any) {
-      toast.error(e?.message || t('settings.push.error'));
+      toast.error(resolveErrorMessage(e));
       if (isPushSupported()) setPermission(Notification.permission);
     } finally {
       setPushBusy(false);

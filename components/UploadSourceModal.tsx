@@ -4,6 +4,7 @@ import type { SourceMeta } from '../services/libraryService';
 import { detectUrlKind, importFromUrl } from '../services/urlImport';
 import { toast } from '../services/toast';
 import { useTranslation } from '../i18n/I18nProvider';
+import { resolveErrorMessage } from '../services/errorMessages';
 import { useModalA11y } from '../hooks/useModalA11y';
 import { ModalCloseButton } from './ModalCloseButton';
 
@@ -165,7 +166,7 @@ export const UploadSourceModal: React.FC<Props> = ({ onClose, onUpload }) => {
       await onUpload(uploadFile, meta);
       onClose();
     } catch (err) {
-      toast.error(err instanceof Error ? err.message : t('upl.importFailed'));
+      toast.error(resolveErrorMessage(err));
     } finally {
       setIsUploading(false);
     }

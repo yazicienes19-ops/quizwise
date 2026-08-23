@@ -37,13 +37,18 @@ const resolveStorageRefs = async (parts, userId, sb) => {
 };
 
 // Wählt das passende Gemini-Modell basierend auf User-Plan und Aufgaben-Komplexität.
-// free  → immer flash-lite
-// pro   → flash-lite bei leichten Aufgaben, bei schweren das neuere flash-lite-Modell
-//         (3.1) — bewusst dieselbe Modell-Familie, nur der neuere Stand.
+// free  → immer flash-lite (3.5: schlägt 2.5-Lite an Qualität bei ~350 tok/s —
+//         schnellste 3.5-Klasse, Preis bleibt Lite-Klasse)
+// pro   → light: flash-lite (3.5) / heavy: gemini-3.5-flash (Frontier-Qualität
+//         für die Premium-Aufgaben: Tutor-Chat, Feynman-Bewertung, Klausur,
+//         Karten/Wissensnetz-Generierung). Bewusst zweistufig statt Vollsprung
+//         auf 3.5 Flash überall: ~15-22x Input-/Output-Preis wäre bei den
+//         token-hungrigen Chat-Historien untragbar — Free-Standard bleibt
+//         in der Lite-Preisklasse, nur Pro+heavy zahlt Frontier.
 // HINWEIS: Modell-Strings bewusst an EINER Stelle pflegbar/exportiert für Tests.
 const selectModel = (plan, complexity) => {
-  if (plan === 'pro' && complexity === 'heavy') return 'gemini-3.1-flash-lite';
-  return 'gemini-2.5-flash-lite';
+  if (plan === 'pro' && complexity === 'heavy') return 'gemini-3.5-flash';
+  return 'gemini-3.5-flash-lite';
 };
 
 const sleep = (ms) => new Promise(r => setTimeout(r, ms));

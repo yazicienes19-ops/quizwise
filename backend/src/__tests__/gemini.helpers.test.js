@@ -3,18 +3,18 @@ import { selectModel, isTransient, MAX_TOTAL_STORAGE_BYTES } from '../routes/gem
 
 describe('selectModel (Plan-basierte Modellwahl)', () => {
   it('free-Nutzer bekommen immer das Basis-Modell', () => {
-    expect(selectModel('free', 'light')).toBe('gemini-2.5-flash-lite');
-    expect(selectModel('free', 'heavy')).toBe('gemini-2.5-flash-lite');
+    expect(selectModel('free', 'light')).toBe('gemini-3.5-flash-lite');
+    expect(selectModel('free', 'heavy')).toBe('gemini-3.5-flash-lite');
   });
 
   it('pro bekommt bei heavy das neuere Modell, bei light das Basis-Modell', () => {
-    expect(selectModel('pro', 'heavy')).toBe('gemini-3.1-flash-lite');
-    expect(selectModel('pro', 'light')).toBe('gemini-2.5-flash-lite');
+    expect(selectModel('pro', 'heavy')).toBe('gemini-3.5-flash');
+    expect(selectModel('pro', 'light')).toBe('gemini-3.5-flash-lite');
   });
 
   it('unbekannter Plan fällt auf das Basis-Modell zurück', () => {
-    expect(selectModel(undefined, 'heavy')).toBe('gemini-2.5-flash-lite');
-    expect(selectModel('free', undefined)).toBe('gemini-2.5-flash-lite');
+    expect(selectModel(undefined, 'heavy')).toBe('gemini-3.5-flash-lite');
+    expect(selectModel('free', undefined)).toBe('gemini-3.5-flash-lite');
   });
 });
 

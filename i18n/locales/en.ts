@@ -378,6 +378,8 @@ export const en: Translations = {
   'errors.safety': 'This content could not be processed. Try a different section of the document.',
   'errors.badJson': 'The response was malformed. Just try again, this rarely happens twice.',
   'errors.generic': 'Something went wrong. Reload the page and try again.',
+  'errors.authNotConfirmed': 'Please confirm your email first – check your inbox (and spam folder).',
+  'errors.authRateLimit': 'Too many attempts. Please wait a minute and try again.',
 
   // auth
   'auth.welcomeBack': 'Welcome back',
@@ -774,6 +776,11 @@ export const en: Translations = {
   'fc.due': 'Due',
   'fc.closeSession': 'Close study session',
   'fc.showAnswer': 'Show answer',
+  'fc.roundDone': 'Round complete!',
+  'fc.cardsThisRound': '{n} card this round|{n} cards this round',
+  'fc.moreWaiting': '{n} more waiting',
+  'fc.continueLearning': 'Keep learning',
+  'fc.doneForNow': 'Done for now',
   'fc.again': 'Again',
   'fc.known': 'Knew it',
   'fc.hard': 'Hard',
@@ -1433,6 +1440,8 @@ export const en: Translations = {
   'ar.otherDoc': 'Other document',
   'ar.recallFallback': 'Recall',
   'ar.challengeFailed': 'Challenge could not be loaded. Please try again.',
+  'ar.focusFailed': 'Could not create a question matching your focus topic. Try again or leave the focus empty.',
+  'ar.duplicateFailed': 'Could not create a new, distinct question. Please try again in a moment.',
   'ar.evalFailed': 'Evaluation failed. Please try again.',
 
   // explainer system

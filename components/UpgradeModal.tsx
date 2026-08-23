@@ -4,6 +4,7 @@ import { X, Zap, Check, Loader2 } from 'lucide-react';
 import { startCheckout } from '../services/stripeService';
 import { track } from '../services/analyticsService';
 import { useTranslation } from '../i18n/I18nProvider';
+import { resolveErrorMessage } from '../services/errorMessages';
 import { useModalA11y } from '../hooks/useModalA11y';
 import { WiderrufConsentModal } from './WiderrufConsentModal';
 
@@ -28,7 +29,7 @@ export const UpgradeModal: React.FC<UpgradeModalProps> = ({ onClose }) => {
     try {
       await startCheckout(true); // leitet zu Stripe weiter — Zustimmung s. WiderrufConsentModal
     } catch (e: any) {
-      setError(e.message || t('um.checkoutError'));
+      setError(resolveErrorMessage(e));
       setIsLoading(false);
       setShowConsent(false);
     }

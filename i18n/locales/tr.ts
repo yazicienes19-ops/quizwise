@@ -377,6 +377,8 @@ export const tr: Translations = {
   'errors.safety': 'Bu içerik işlenemedi. Belgenin başka bir bölümünü dene.',
   'errors.badJson': 'Yanıt hatalıydı. Tekrar dene, bu nadiren iki kez olur.',
   'errors.generic': 'Bir şeyler ters gitti. Sayfayı yenileyip tekrar dene.',
+  'errors.authNotConfirmed': 'Önce e-postanı onayla – gelen kutana (ve spam klasörüne) bak.',
+  'errors.authRateLimit': 'Çok fazla deneme yaptın. Bir dakika bekle ve tekrar dene.',
 
   // auth
   'auth.welcomeBack': 'Tekrar hoş geldin',
@@ -773,6 +775,11 @@ export const tr: Translations = {
   'fc.due': 'Zamanı gelen',
   'fc.closeSession': 'Çalışma oturumunu kapat',
   'fc.showAnswer': 'Cevabı göster',
+  'fc.roundDone': 'Tur tamamlandı!',
+  'fc.cardsThisRound': 'Bu turda {n} kart|Bu turda {n} kart',
+  'fc.moreWaiting': '{n} kart daha bekliyor',
+  'fc.continueLearning': 'Devam et',
+  'fc.doneForNow': 'Şimdilik bu kadar',
   'fc.again': 'Tekrar',
   'fc.known': 'Bildim',
   'fc.hard': 'Zor',
@@ -1426,6 +1433,8 @@ export const tr: Translations = {
   'ar.otherDoc': 'Başka belge',
   'ar.recallFallback': 'Recall',
   'ar.challengeFailed': 'Görev yüklenemedi. Tekrar dene.',
+  'ar.focusFailed': 'Odak konuna uygun bir soru oluşturulamadı. Tekrar dene ya da odağı boş bırak.',
+  'ar.duplicateFailed': 'Yeni ve farklı bir soru oluşturulamadı. Birazdan tekrar dene.',
   'ar.evalFailed': 'Değerlendirme başarısız. Tekrar dene.',
 
   // explainer system

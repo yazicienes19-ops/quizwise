@@ -4,6 +4,7 @@ import { EmojiImage } from './EmojiImage';
 import { generatePaperFramework, formatCitationFull, GenerationSource, magicFormatCitation, lookupCitationSource } from '../services/geminiService';
 import { documentDisplayName } from '../services/libraryService';
 import { toast } from '../services/toast';
+import { resolveErrorMessage } from '../services/errorMessages';
 
 interface TermPaperSystemProps {
   availableDocuments: ProcessedDocument[];
@@ -445,7 +446,7 @@ export const TermPaperSystem: React.FC<TermPaperSystemProps> = ({
       setQuickUrl('');
       toast.success('Quelle hinzugefügt.');
     } catch (e: any) {
-      toast.error(e?.message || 'Für diesen Link ließen sich keine Angaben finden. Bitte manuell eintragen.');
+      toast.error(e?.message ? resolveErrorMessage(e) : 'Für diesen Link ließen sich keine Angaben finden. Bitte manuell eintragen.');
     } finally {
       setIsQuickAdding(false);
     }
@@ -462,7 +463,7 @@ export const TermPaperSystem: React.FC<TermPaperSystemProps> = ({
       setManualJournal(r.journal);
       toast.success('Felder automatisch ausgefüllt — bitte prüfen.');
     } catch (e: any) {
-      toast.error(e?.message || 'Für diese DOI/URL ließen sich keine Angaben finden.');
+      toast.error(e?.message ? resolveErrorMessage(e) : 'Für diese DOI/URL ließen sich keine Angaben finden.');
     } finally {
       setIsLookingUp(false);
     }

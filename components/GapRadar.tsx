@@ -17,6 +17,7 @@ import { getAllRecallResults, deleteRecallResult } from '../services/recallHisto
 import { getAllExamResults, deleteExamResult } from '../services/examHistoryService';
 import { getAllReaderLog } from '../services/readerLogService';
 import { toast } from '../services/toast';
+import { resolveErrorMessage } from '../services/errorMessages';
 import {
   LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip,
   ReferenceLine, ResponsiveContainer,
@@ -627,7 +628,7 @@ export const GapRadar: React.FC<GapRadarProps> = ({ metrics, onNavigate, onActio
       const key = await computeFingerprint();
       saveCachedAnalysis(key, result);
     } catch (e: any) {
-      toast.error(`Analyse fehlgeschlagen: ${e?.message || 'Unbekannter Fehler'}`);
+      toast.error(`Analyse fehlgeschlagen: ${resolveErrorMessage(e)}`);
     } finally {
       setIsAnalyzing(false);
     }

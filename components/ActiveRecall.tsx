@@ -2,7 +2,9 @@
 import React, { useState, useEffect, useRef, useCallback, useMemo } from 'react';
 import { ProcessedDocument, Collection, RecallChallenge, RecallEvaluation } from '../types';
 import type { GenerationSource } from '../services/geminiService';
-import { generateRecallChallenge, evaluateRecallResponse } from '../services/geminiService';
+import { evaluateRecallResponse, generateRecallChallenge } from '../services/geminiService';
+import { generateValidatedChallenge, resolveActualTopic } from '../services/recallChallengeGuard';
+import { getRecentRecallQuestions, rememberRecallQuestion } from '../services/recallQuestionDedup';
 import { useTranslation } from '../i18n/I18nProvider';
 import { localeTag } from '../i18n';
 import type { TKey } from '../i18n';
@@ -193,15 +195,32 @@ export const ActiveRecall: React.FC<ActiveRecallProps> = ({
         topicSuggestions.map(s => s.topic),
         relevantResults,
       );
-      const res = await generateRecallChallenge(activeSource, focusTopic.trim() || undefined, {
-        // Abdeckung vor Vertiefung: offene Kapitel zuerst — sind alle einmal
-        // durch, übernimmt die adaptive Steuerung (Ausschluss + Schwächen).
-        coverTopics: coverage?.uncovered ?? [],
-        excludeTopics,
-        preferTopics,
+      // Guard-Orchestrierung (recallChallengeGuard.ts): deterministische
+      // Fokus-Validierung + Frage-Dedup, EINE Regeneration bei Verstoß,
+      // danach sauberer Fehler — kein blindes Vertrauen in Prompt-Befolgung
+      // (Live-Fund 2026-08-22: Fokus "Extinktion" wurde ignoriert).
+      const result = await generateValidatedChallenge({
+        source: activeSource,
+        focusTopic: focusTopic.trim() || undefined,
+        steering: {
+          // Abdeckung vor Vertiefung: offene Kapitel zuerst — sind alle einmal
+          // durch, übernimmt die adaptive Steuerung (Ausschluss + Schwächen).
+          coverTopics: coverage?.uncovered ?? [],
+          excludeTopics,
+          preferTopics,
+        },
+        recentQuestions: getRecentRecallQuestions(),
+        generate: generateRecallChallenge,
       });
-      if (!res || !res.question) throw new Error(t('ar.invalidResponse'));
-      setChallenge(res);
+      if ('error' in result) {
+        toast.error(result.error === 'focus' ? t('ar.focusFailed') : t('ar.duplicateFailed'));
+        return;
+      }
+      if (!result.challenge || !result.challenge.question) throw new Error(t('ar.invalidResponse'));
+      // Ausgelieferte Frage für künftige Dedup merken (auch bei Abbruch —
+      // eine unbeantwortete Challenge soll nicht identisch nachkommen).
+      rememberRecallQuestion(result.challenge.question);
+      setChallenge(result.challenge);
     } catch (e: any) {
       console.error('Recall Start Error:', e);
       toast.error(t('ar.challengeFailed'));
@@ -228,9 +247,11 @@ export const ActiveRecall: React.FC<ActiveRecallProps> = ({
     try {
       const res = await evaluateRecallResponse(challenge, userAnswer, activeSource);
       setEvaluation(res);
-      // Themen-Ebene: Fokus-Thema > KI-gewähltes Thema > Quellname. Das echte Thema
-      // speist Ausschlussliste und Lernprofil — der Quellname ist nur letzter Fallback.
-      const usedTopic = focusTopic.trim() || challenge.topic?.trim() || activeSourceName || 'Recall Session';
+      // BUG-2-Fix (Live-Fund 2026-08-22): Das gespeicherte Topic ist das
+      // TATSÄCHLICH abgefragte Thema (strukturiertes topic-Feld der KI-Antwort),
+      // NICHT der gewünschte Fokus — sonst landet "Extinktion" in der History,
+      // obwohl "Behaviorismus" gefragt wurde, und Cooldown/Dedup greifen ins Leere.
+      const usedTopic = resolveActualTopic(challenge, focusTopic, activeSourceName);
       onComplete(res.score, usedTopic, res.missingPoints ?? []);
       if (activeDoc) {
         markTopicCovered(activeDoc.id, usedTopic);

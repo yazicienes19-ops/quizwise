@@ -4,6 +4,7 @@ import { changePassword } from '../services/userService';
 import { BrandMark } from './BrandMark';
 import { BrandSpinner } from './BrandSpinner';
 import { useTranslation } from '../i18n/I18nProvider';
+import { resolveErrorMessage } from '../services/errorMessages';
 
 interface ResetPasswordPageProps {
   authChecked: boolean;
@@ -35,7 +36,7 @@ export const ResetPasswordPage: React.FC<ResetPasswordPageProps> = ({ authChecke
       await changePassword(password);
       setDone(true);
     } catch (err: any) {
-      setError(err.message || t('rpp.genericError'));
+      setError(resolveErrorMessage(err));
     } finally {
       setIsLoading(false);
     }

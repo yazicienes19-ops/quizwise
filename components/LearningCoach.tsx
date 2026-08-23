@@ -17,6 +17,7 @@ import { useTranslation } from '../i18n/I18nProvider';
 import { formatDate } from '../i18n/dates';
 import { t as translate } from '../i18n';
 import type { TKey } from '../i18n';
+import { resolveErrorMessage } from '../services/errorMessages';
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
 
@@ -242,7 +243,7 @@ export const LearningCoach: React.FC<LearningCoachProps> = ({ metrics, decks, on
         }));
       } catch {}
     } catch (e: any) {
-      toast.error(t('lc.coachFailed', { msg: e?.message || translate('es.unknownError') }));
+      toast.error(t('lc.coachFailed', { msg: resolveErrorMessage(e) }));
     } finally {
       setIsLoading(false);
     }
