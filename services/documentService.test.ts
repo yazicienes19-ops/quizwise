@@ -141,6 +141,20 @@ describe('saveDocumentToSupabase — Binärdaten landen nie in content_text', ()
     expect(row.storage_path).toBe('user-1/img-9/foto.jpg');
   });
 
+  it('Regression: Dateiname mit Umlauten/türkischen Sonderzeichen wird für den Storage-Pfad bereinigt (Supabase Storage lehnt Nicht-ASCII-Objektschlüssel als "InvalidKey" ab)', async () => {
+    const doc: ProcessedDocument = {
+      id: 'pdf-tr', name: 'Matematik_Ünlü_Sınav.pdf', type: 'pdf',
+      content: '', uploadDate: 3,
+    };
+    const file = new File([new Uint8Array([1, 2, 3])], 'Matematik_Ünlü_Sınav.pdf', { type: 'application/pdf' });
+
+    const path = await saveDocumentToSupabase(doc, file);
+
+    expect(path).toBe('user-1/pdf-tr/Matematik_Unlu_Sinav.pdf');
+    const [calledPath] = storageUploadMock.mock.calls[0] as unknown as [string, File, unknown];
+    expect(calledPath).toMatch(/^[a-zA-Z0-9._\/-]+$/);
+  });
+
   it('text/docx-Inhalt landet gekappt (500.000 Zeichen) in content_text', async () => {
     const doc: ProcessedDocument = {
       id: 'txt-1', name: 'skript.txt', type: 'text',

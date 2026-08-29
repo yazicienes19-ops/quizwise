@@ -2,6 +2,19 @@ import { supabase } from './supabaseClient';
 import { ProcessedDocument, Collection } from '../types';
 import { getLocale } from '../i18n';
 
+/** Supabase Storage lehnt Objekt-Schlüssel mit Nicht-ASCII-Zeichen als "InvalidKey"
+ *  ab (bestätigt per direktem Upload-Test) — betrifft nicht nur Sonderfälle wie
+ *  türkisches ı/İ, sondern jeden Dateinamen mit Umlauten (ä/ö/ü/ß), die bei
+ *  deutschsprachigen Nutzern alltäglich sind. doc.id ist bereits eindeutig,
+ *  der Dateiname dient im Pfad nur der Lesbarkeit — deshalb hier bereinigen
+ *  statt den Original-Namen zu verwerfen (bleibt separat in documents.name
+ *  unverändert für die Anzeige erhalten). */
+const sanitizeFilenameForStorage = (name: string): string =>
+  name
+    .replace(/ı/g, 'i').replace(/İ/g, 'I').replace(/ß/g, 'ss')
+    .normalize('NFD').replace(/[\u0300-\u036f]/g, '')
+    .replace(/[^a-zA-Z0-9._-]/g, '_');
+
 // ── Storage-Upload mit echtem Fortschritt ────────────────────────────────────
 // supabase-js nutzt intern fetch() ohne Fortschritts-Events. Für große PDFs
 // (Vorlesungsfolien u.ä.) reicht ein reiner Spinner nicht — Nutzer können
@@ -138,7 +151,7 @@ export const saveDocumentToSupabase = async (
   if ((doc.type === 'pdf' || doc.type === 'image') && originalFile) {
     // PDFs UND Bilder (Tafelfotos, Notizen) in den Storage — sonst kann das
     // Backend sie nie analysieren und die Ordner-Wissensbasis bleibt leer
-    storagePath = `${user.id}/${doc.id}/${originalFile.name}`;
+    storagePath = `${user.id}/${doc.id}/${sanitizeFilenameForStorage(originalFile.name)}`;
     const { data: { session } } = await supabase.auth.getSession();
     if (session?.access_token) {
       // Echter Fortschritt + Stall-Erkennung — wichtig bei großen Dateien
