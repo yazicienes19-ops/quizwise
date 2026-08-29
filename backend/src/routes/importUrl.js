@@ -4,6 +4,7 @@ const { JSDOM } = require('jsdom');
 const { Readability } = require('@mozilla/readability');
 const { checkUsageLimit } = require('../middleware/limits');
 const { validatePublicHttpUrl } = require('../utils/urlSafety');
+const { MODEL_LITE } = require('../config/geminiModels');
 
 const router = express.Router();
 const ai = new GoogleGenAI({ apiKey: process.env.GEMINI_API_KEY });
@@ -77,9 +78,14 @@ router.post('/youtube', checkUsageLimit, async (req, res) => {
 
   try {
     const response = await ai.models.generateContent({
-      // 3.1-flash-lite statt 2.5: Video-Verstehen dort verifiziert stabil,
-      // 2.5-flash-lite lieferte beim Test durchgehend 503 (overloaded)
-      model: 'gemini-3.1-flash-lite',
+      // War lange fest auf 'gemini-3.1-flash-lite' gepinnt, weil 2.5-flash-lite
+      // beim Video-Verstehen damals durchgehend 503 (overloaded) lieferte.
+      // Live gegen ein echtes YouTube-Video getestet (2026-08-29): MODEL_LITE
+      // (jetzt 3.5) liefert stabil ein korrektes Ergebnis — daher hier auf die
+      // zentrale Konstante umgestellt statt weiter einen eigenen Literal zu
+      // pflegen. Falls künftig wieder 503-Häufungen speziell bei diesem Call
+      // auftauchen, zuerst hier nachsehen, bevor an anderer Stelle gesucht wird.
+      model: MODEL_LITE,
       contents: [{
         role: 'user',
         parts: [

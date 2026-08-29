@@ -1,5 +1,6 @@
 const express = require('express');
 const { GoogleGenAI, createPartFromUri } = require('@google/genai');
+const { MODEL_LITE } = require('../config/geminiModels');
 
 const router = express.Router();
 const ai = new GoogleGenAI({ apiKey: process.env.GEMINI_API_KEY });
@@ -103,7 +104,7 @@ router.post('/:id/analyze', async (req, res) => {
       }
 
       const response = await ai.models.generateContent({
-        model: 'gemini-2.5-flash-lite',
+        model: MODEL_LITE,
         contents: [{ role: 'user', parts: [part, { text: digestPrompt(language) }] }],
         config: { temperature: 0.2, thinkingConfig: { thinkingBudget: 0 } },
       });

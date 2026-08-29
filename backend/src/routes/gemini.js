@@ -1,5 +1,6 @@
 const express = require('express');
 const { GoogleGenAI } = require('@google/genai');
+const { MODEL_LITE, MODEL_HEAVY } = require('../config/geminiModels');
 
 const router = express.Router();
 const ai = new GoogleGenAI({ apiKey: process.env.GEMINI_API_KEY });
@@ -47,8 +48,8 @@ const resolveStorageRefs = async (parts, userId, sb) => {
 //         in der Lite-Preisklasse, nur Pro+heavy zahlt Frontier.
 // HINWEIS: Modell-Strings bewusst an EINER Stelle pflegbar/exportiert für Tests.
 const selectModel = (plan, complexity) => {
-  if (plan === 'pro' && complexity === 'heavy') return 'gemini-3.5-flash';
-  return 'gemini-3.5-flash-lite';
+  if (plan === 'pro' && complexity === 'heavy') return MODEL_HEAVY;
+  return MODEL_LITE;
 };
 
 const sleep = (ms) => new Promise(r => setTimeout(r, ms));
