@@ -1386,6 +1386,8 @@ export const en: Translations = {
   'es.cancelExam': 'Cancel exam?',
   'es.no': 'No',
   'es.examSaved': 'Exam saved!',
+  'es.startSimBtn': 'Start simulation',
+  'es.cancelNew': 'Cancel / New',
   'es.retryHint': 'Currently under heavy load – retrying ({attempt}/{max})…',
   'es.genFailed': 'Exam generation failed: {msg}',
 

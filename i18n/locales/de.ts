@@ -1387,6 +1387,8 @@ export const de = {
   'es.cancelExam': 'Klausur abbrechen?',
   'es.no': 'Nein',
   'es.examSaved': 'Klausur gespeichert!',
+  'es.startSimBtn': 'Simulation starten',
+  'es.cancelNew': 'Abbrechen / Neu',
   'es.retryHint': 'Gerade stark ausgelastet – neuer Versuch ({attempt}/{max})…',
   'es.genFailed': 'Klausur-Generierung fehlgeschlagen: {msg}',
 

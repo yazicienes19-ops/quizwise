@@ -26,6 +26,12 @@ afterEach(() => cleanup());
 beforeEach(() => {
   vi.restoreAllMocks();
   vi.spyOn(sync, 'loadCachedState').mockReturnValue(createEmptyGraphState(ALL));
+  // Default-Mock für ALLE userId-Tests: ohne ihn läuft die echte
+  // pullSince-Kette bis in graphRepository/supabaseClient und macht aus
+  // jsdom heraus Netzwerk-Calls — unter Volllast der Voll-Suite rennen
+  // diese Tests dann gegen variable Timings (historische Flakiness).
+  // Einzelne Tests überschreiben den Spy bei Bedarf selbst.
+  vi.spyOn(sync, 'pullSince').mockResolvedValue(createEmptyGraphState(ALL));
   vi.spyOn(persistence, 'commitNode').mockImplementation(() => {});
   vi.spyOn(persistence, 'commitEdge').mockImplementation(() => {});
   vi.spyOn(persistence, 'initAutoFlush').mockReturnValue(() => {});
@@ -104,6 +110,30 @@ describe('useKnowledgeGraph — onChange / onSelectionChange', () => {
     act(() => { result.current.onChange({ state: created.state, history: createEmptyHistory() }); });
 
     expect(result.current.state.nodesById.get(created.entity!.id)?.title).toBe('Neu');
+  });
+
+  it('getState liefert nach einem Pull-Merge den gemergten Stand (LWW-Fix, Feature-Audit 2026-08-22)', async () => {
+    const pulled = createEmptyGraphState(ALL);
+    pulled.nodesById.set('remote', makeNode('remote'));
+    vi.spyOn(sync, 'pullSince').mockResolvedValue(pulled);
+
+    const { result } = renderHook(() => useKnowledgeGraph({ scope: ALL, userId: 'user-1' }));
+    await waitFor(() => expect(result.current.loading).toBe(false));
+
+    // Ein Commit über getState() sieht die Remote-Änderung, selbst wenn die
+    // aufrufende Closure (Drag/Edit-Geste) vor dem Merge begonnen hat.
+    expect(result.current.getState().nodesById.has('remote')).toBe(true);
+  });
+
+  it('getState sieht einen synchron per onChange gesetzten Stand ohne Render dazwischen', async () => {
+    const { result } = renderHook(() => useKnowledgeGraph({ scope: ALL }));
+    await waitFor(() => expect(result.current.loading).toBe(false));
+
+    const created = createNode(result.current.state, { title: 'Frisch', position: { x: 1, y: 2 } });
+    act(() => {
+      result.current.onChange({ state: created.state, history: createEmptyHistory() });
+      expect(result.current.getState().nodesById.get(created.entity!.id)?.title).toBe('Frisch');
+    });
   });
 });
 

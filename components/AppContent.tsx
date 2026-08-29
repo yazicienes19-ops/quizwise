@@ -184,7 +184,14 @@ export const AppContent: React.FC<AppContentProps> = (p) => {
     }
   };
 
-  if (isLoading && activeTab !== ActiveTab.EXAM && activeTab !== ActiveTab.QUIZ && activeTab !== ActiveTab.PLANNER && activeTab !== ActiveTab.RECALL) {
+  // LIBRARY ausgenommen: handleFileUpload (hooks/useDocuments.ts) setzt isLoading
+  // schon für den reinen Datei-Upload, lange bevor irgendeine KI-Analyse beginnt.
+  // Dieser generische Vollbild-Screen hätte sonst UploadSourceModal.tsx samt
+  // seiner echten Fortschrittsanzeige (Prozent, Datei-Batch-Zähler, Stall-Hinweis)
+  // komplett verdeckt — bei großen Dateien (Lehrbücher, Skripte) sah ein Upload,
+  // der über eine normale Verbindung genauso realistisch 30-60+ Sekunden dauert,
+  // dadurch aus wie ein Absturz, obwohl er im Hintergrund korrekt weiterlief.
+  if (isLoading && activeTab !== ActiveTab.EXAM && activeTab !== ActiveTab.QUIZ && activeTab !== ActiveTab.PLANNER && activeTab !== ActiveTab.RECALL && activeTab !== ActiveTab.LIBRARY) {
     return (
       <div className="flex flex-col items-center justify-center py-20 lg:py-32 space-y-8 animate-in fade-in zoom-in-95 duration-500 px-4">
         <div className="relative">

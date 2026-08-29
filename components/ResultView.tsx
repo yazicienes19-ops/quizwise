@@ -50,14 +50,19 @@ export const ResultView: React.FC<ResultViewProps> = ({
     setReportOpenIdx(null);
   };
 
+  // Bei adaptiver Umsortierung innerhalb der Session (services/adaptiveQuizOrder.ts)
+  // weicht die Beantwortungs-Reihenfolge vom questions-Array ab — answers[i]
+  // gehört dann NICHT zwingend zu questions[i]. Zuordnung über questionIndex.
+  const answerByIndex = new Map<number, UserAnswer>(answers.map(a => [a.questionIndex, a]));
+
   const correctCount    = answers.filter(a => a.isCorrect).length;
   const wrongCount      = answers.length - correctCount;
   const score           = Math.round((correctCount / answers.length) * 100);
-  const wrongQuestions  = questions.filter((_, i) => !answers[i]?.isCorrect);
+  const wrongQuestions  = questions.filter((_, i) => !answerByIndex.get(i)?.isCorrect);
 
   const weakTopics  = [...new Set(wrongQuestions.map(q => q.topic).filter((t): t is string => Boolean(t)))];
   const strongTopics = [...new Set(
-    questions.filter((_, i) => answers[i]?.isCorrect)
+    questions.filter((_, i) => answerByIndex.get(i)?.isCorrect)
       .map(q => q.topic)
       .filter((t): t is string => Boolean(t) && !weakTopics.includes(t))
   )].slice(0, 4);
@@ -257,7 +262,8 @@ export const ResultView: React.FC<ResultViewProps> = ({
       <div className="space-y-3">
         <p className="text-[9px] font-black uppercase tracking-widest text-slate-400 px-1">{t('result.questionOverview')}</p>
         {questions.map((q, i) => {
-          const correct = answers[i]?.isCorrect;
+          const a = answerByIndex.get(i);
+          const correct = a?.isCorrect;
           const open    = expandedIdx === i;
           return (
             <div key={i} className="bg-white dark:bg-slate-900 border border-slate-100 dark:border-slate-800 rounded-[20px] overflow-hidden shadow-sm">
@@ -283,16 +289,16 @@ export const ResultView: React.FC<ResultViewProps> = ({
               {open && (
                 <div className="px-5 pb-4 space-y-2 border-t border-slate-50 dark:border-slate-800 animate-in slide-in-from-top-2 duration-200">
                   <div className="text-xs space-y-1 pt-3">
-                    {answers[i]?.textAnswer?.trim() && (
+                    {a?.textAnswer?.trim() && (
                       <p className="text-slate-500 dark:text-slate-400">
                         <span className="font-black text-[9px] uppercase tracking-widest mr-2">{t('result.yourAnswerLabel')}</span>
-                        {answers[i].textAnswer}
+                        {a.textAnswer}
                       </p>
                     )}
-                    {answers[i]?.selectedOptionIndices?.length > 0 && (
+                    {a?.selectedOptionIndices && a.selectedOptionIndices.length > 0 && (
                       <p className="text-slate-500 dark:text-slate-400">
                         <span className="font-black text-[9px] uppercase tracking-widest mr-2">{t('result.yourChoice')}</span>
-                        {answers[i].selectedOptionIndices.map(idx => q.options[idx]).join(', ')}
+                        {a.selectedOptionIndices.map(idx => q.options[idx]).join(', ')}
                       </p>
                     )}
                     {!correct && q.correctAnswerIndices?.length > 0 && q.options.length > 0 && (

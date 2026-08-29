@@ -292,7 +292,11 @@ export const useQuizState = (params: UseQuizStateParams) => {
     setAnswers(ans);
     const correct = ans.filter(a => a.isCorrect).length;
     const score = Math.round((correct / ans.length) * 100);
-    const wrongQs = questions.filter((_, i) => !ans[i]?.isCorrect);
+    // Bei adaptiver Umsortierung innerhalb der Session (services/adaptiveQuizOrder.ts)
+    // weicht die Beantwortungs-Reihenfolge vom questions-Array ab — ans[i]
+    // gehört dann NICHT zwingend zu questions[i]. Zuordnung über questionIndex.
+    const answerByIndex = new Map<number, UserAnswer>(ans.map(a => [a.questionIndex, a]));
+    const wrongQs = questions.filter((_, i) => !answerByIndex.get(i)?.isCorrect);
     const allTopics = wrongQs.map(q => q.topic).filter((t): t is string => Boolean(t));
     const weakTopics = allTopics.filter((t, i) => allTopics.indexOf(t) === i);
 

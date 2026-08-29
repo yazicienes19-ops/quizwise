@@ -348,7 +348,7 @@ export const ExamSystem: React.FC<ExamSystemProps> = ({ documents, collections, 
               onClick={handleStartExam}
               className="bg-indigo-600 text-white px-8 py-3 rounded-2xl font-black uppercase text-[10px] tracking-[0.2em] shadow-lg hover:scale-105 transition-all flex items-center gap-2"
             >
-              Simulation starten
+              {t('es.startSimBtn')}
               <GeneratedImage prompt="Rocket launch icon, minimalist" className="w-4 h-4 rounded-full" />
             </button>
           )}
@@ -365,7 +365,7 @@ export const ExamSystem: React.FC<ExamSystemProps> = ({ documents, collections, 
               onClick={() => mode === 'solve' ? setShowCancelConfirm(true) : resetExam()}
               className="text-slate-400 hover:text-rose-500 font-black uppercase text-[9px] tracking-widest p-2 transition-colors"
             >
-              Abbrechen / Neu
+              {t('es.cancelNew')}
             </button>
           ) : null}
         </div>

@@ -179,6 +179,12 @@ body {
 .border-indigo-900 { border-color: var(--p900) !important; }
 .border-t-indigo-500 { border-top-color: var(--p500) !important; }
 .border-t-indigo-600 { border-top-color: var(--p600) !important; }
+/* border-t-transparent fehlte hier: der obige .border-indigo-600-!important-Override
+   (Rebranding indigo -> Markenfarbe) überschrieb sonst auch die transparente Lücke
+   des klassischen Spinner-Musters (border-indigo-600 border-t-transparent
+   animate-spin) — der Ring drehte sich zwar (Animation lief), sah aber
+   dauerhaft komplett geschlossen aus, die Rotation war optisch unsichtbar. */
+.border-t-transparent { border-top-color: transparent !important; }
 .dark .dark\:border-indigo-400 { border-color: var(--p400) !important; }
 .dark .dark\:border-indigo-600 { border-color: var(--p600) !important; }
 .dark .dark\:border-indigo-800 { border-color: var(--p800) !important; }

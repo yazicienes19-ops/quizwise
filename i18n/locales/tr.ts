@@ -1379,6 +1379,8 @@ export const tr: Translations = {
   'es.cancelExam': 'Sınav iptal edilsin mi?',
   'es.no': 'Hayır',
   'es.examSaved': 'Sınav kaydedildi!',
+  'es.startSimBtn': 'Simülasyonu başlat',
+  'es.cancelNew': 'İptal / Yeni',
   'es.retryHint': 'Şu anda çok yoğun – yeni deneme ({attempt}/{max})…',
   'es.genFailed': 'Sınav oluşturma başarısız: {msg}',
 

@@ -49,6 +49,16 @@ export interface UseKnowledgeGraphResult {
   onEntityChanged: (change: GraphEntityChange) => void;
   undo: () => void;
   redo: () => void;
+  /**
+   * Frischester State zum Commit-Zeitpunkt (Last-Write-Wins-Fix,
+   * Feature-Audit 2026-08-22): Drag/Edit-Gesten in GraphCanvas committen
+   * beim Gesten-ENDE. Läuft zwischen Gesten-Beginn und -Ende ein
+   * Hintergrund-Cloud-Pull, ist die `state`-Closure der Effekt-/Handler-
+   * Umgebung veraltet — ein Commit dagegen würde den gemergten Stand
+   * überschreiben (bis zum nächsten Reload). `state` als Prop bleibt fürs
+   * RENDERING; Commits rufen `getState()` auf.
+   */
+  getState: () => GraphState;
 }
 
 // Session-lokaler In-Memory-Cache der Undo-History pro Scope. Ein Tab-Wechsel
@@ -174,8 +184,10 @@ export function useKnowledgeGraph({ scope, userId }: UseKnowledgeGraphOptions): 
     setHistory(result.history);
   }, [history, state]);
 
+  const getState = useCallback(() => stateRef.current, []);
+
   return {
     state, history, selection, loading, error,
-    onChange, onSelectionChange: setSelection, onEntityChanged, undo, redo,
+    onChange, onSelectionChange: setSelection, onEntityChanged, undo, redo, getState,
   };
 }

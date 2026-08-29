@@ -70,6 +70,16 @@ export interface GraphCanvasProps {
   onChange: (next: { state: GraphState; history: GraphHistory }) => void;
   onSelectionChange: (next: GraphSelectionState) => void;
   onEntityChanged?: (change: GraphEntityChange) => void;
+  /**
+   * Last-Write-Wins-Fix (Feature-Audit 2026-08-22): Mutationen werden beim
+   * Commit gegen DIESEN State angewendet statt gegen die `state`-Closure —
+   * zwischen Gesten-Beginn (Drag aufnehmen, Editierfeld öffnen) und -Ende
+   * kann ein Hintergrund-Cloud-Pull den State gemergt haben; ein Commit
+   * gegen die alte Closure würde diese Remote-Änderungen bis zum Reload
+   * überschreiben. Kommt von useKnowledgeGraph (stateRef). Optional mit
+   * Fallback auf `state`, damit GraphDevHarness unverändert bleibt.
+   */
+  getState?: () => GraphState;
   /** Globaler App-Theme-Zustand (User-Vorgabe 2026-08-04: KEIN eigener
    *  Wissensnetz-Modus mehr) — kommt von useAuth() über GraphSystem.tsx
    *  durchgereicht, exakt derselbe Zustand wie der Rest der App. */
@@ -690,13 +700,20 @@ const GraphNodeView = React.memo(function GraphNodeView({
 });
 
 export const GraphCanvas: React.FC<GraphCanvasProps> = ({
-  state, history, selection, onChange, onSelectionChange, onEntityChanged, isDark, showInsights, onExplainEdge, centerOnNode, initialView, onViewChange,
+  state, history, selection, onChange, onSelectionChange, onEntityChanged, getState, isDark, showInsights, onExplainEdge, centerOnNode, initialView, onViewChange,
 }) => {
   const svgRef = useRef<SVGSVGElement | null>(null);
   const gRef = useRef<SVGGElement | null>(null);
   const zoomBehaviorRef = useRef<d3.ZoomBehavior<SVGSVGElement, unknown> | null>(null);
   const [zoomTransform, setZoomTransform] = useState<ZoomTransform>({ x: 0, y: 0, k: 1 });
   const shouldReduceMotion = useReducedMotion();
+
+  // Last-Write-Wins-Fix: ALLE Mutationen committen gegen diesen Stand, nie
+  // direkt gegen die `state`-Closure — die kann zwischen Gesten-Beginn und
+  // -Ende (Node-Drag, offenes Editierfeld/Prompt) hinter einem
+  // Hintergrund-Cloud-Pull zurückbleiben. `state` selbst bleibt unangetastet
+  // fürs Rendering.
+  const stateForCommit = (): GraphState => (getState ? getState() : state);
 
   // Kein eigener Wissensnetz-Modus mehr (User-Vorgabe 2026-08-04) — folgt
   // dem globalen App-Theme, das über `isDark` hereinkommt.
@@ -1228,7 +1245,7 @@ export const GraphCanvas: React.FC<GraphCanvasProps> = ({
     // leeren Titel) — die Bearbeitung schließt einfach, ohne den
     // bestehenden Titel zu verwerfen. Kein Fehler-UI nötig dafür.
     if (trimmed.length > 0) {
-      const result = recordUpdateNode(history, state, editingNodeId, { title: trimmed });
+      const result = recordUpdateNode(history, stateForCommit(), editingNodeId, { title: trimmed });
       if (!result.error && result.entity) {
         onChange({ state: result.state, history: result.history });
         onEntityChanged?.({ kind: 'node', entity: result.entity });
@@ -1267,7 +1284,7 @@ export const GraphCanvas: React.FC<GraphCanvasProps> = ({
     };
     const handleUp = () => {
       if (nodeDrag.moved) {
-        const result = recordUpdateNode(history, state, nodeDrag.nodeId, { position: nodeDrag.currentPos });
+        const result = recordUpdateNode(history, stateForCommit(), nodeDrag.nodeId, { position: nodeDrag.currentPos });
         if (!result.error && result.entity) {
           onChange({ state: result.state, history: result.history });
           onEntityChanged?.({ kind: 'node', entity: result.entity });
@@ -1363,7 +1380,7 @@ export const GraphCanvas: React.FC<GraphCanvasProps> = ({
     // bewusst NICHT über die History (s. Datei-Kommentar oben), nur die
     // Kante selbst ist undo-fähig.
     const resolved: { workingState: GraphState; relationTypeId?: string; error?: string } = label.length === 0
-      ? { workingState: state, relationTypeId: undefined }
+      ? { workingState: stateForCommit(), relationTypeId: undefined }
       : resolveRelationTypeId(label);
     if (resolved.error) { setEdgePromptError(resolved.error); return; }
 
@@ -1388,12 +1405,16 @@ export const GraphCanvas: React.FC<GraphCanvasProps> = ({
    *  Logik wie beim Kantenziehen (commitEdgePrompt), jetzt auch fürs
    *  nachträgliche Umbenennen einer bestehenden Kante gebraucht (Phase 5B). */
   const resolveRelationTypeId = (label: string): { workingState: GraphState; relationTypeId?: string; error?: string } => {
-    const existing = [...state.relationTypesById.values()].find(
+    // LWW-Fix: gegen den frischesten Stand auflösen — zwischen Öffnen des
+    // Prompts und Bestätigen kann ein Pull neue Beziehungstypen mitgebracht
+    // haben (sonst Duplikat-Anlage) bzw. die Closure-Kante ins Leere fallen.
+    const commitState = stateForCommit();
+    const existing = [...commitState.relationTypesById.values()].find(
       rt => rt.label.trim().toLowerCase() === label.toLowerCase(),
     );
-    if (existing) return { workingState: state, relationTypeId: existing.id };
-    const createResult = createRelationType(state, { label });
-    if (createResult.error || !createResult.entity) return { workingState: state, error: createResult.error };
+    if (existing) return { workingState: commitState, relationTypeId: existing.id };
+    const createResult = createRelationType(commitState, { label });
+    if (createResult.error || !createResult.entity) return { workingState: commitState, error: createResult.error };
     onEntityChanged?.({ kind: 'relationType', entity: createResult.entity });
     return { workingState: createResult.state, relationTypeId: createResult.entity.id };
   };
@@ -1436,7 +1457,10 @@ export const GraphCanvas: React.FC<GraphCanvasProps> = ({
     const label = edgeEditDraft.value.trim();
     if (label.length === 0) { cancelEdgeEdit(); return; } // leer = keine Änderung, bestehender Typ bleibt
 
-    const edge = state.edgesById.get(edgeEditDraft.edgeId);
+    // LWW-Fix: Kante aus dem frischesten Stand lesen — die im Entwurf
+    // gespeicherte edgeId kann sich auf eine zwischenzeitlich gezogene
+    // Remote-Kante beziehen, aber der Rest des States darf nicht alt sein.
+    const edge = stateForCommit().edgesById.get(edgeEditDraft.edgeId);
     if (!edge) return;
 
     const resolved = resolveRelationTypeId(label);
@@ -1459,7 +1483,7 @@ export const GraphCanvas: React.FC<GraphCanvasProps> = ({
 
   const deleteSelectedEdge = () => {
     if (!selection.selectedEdgeId) return;
-    const result = recordArchiveEdge(history, state, selection.selectedEdgeId);
+    const result = recordArchiveEdge(history, stateForCommit(), selection.selectedEdgeId);
     if (!result.error && result.entity) {
       onChange({ state: result.state, history: result.history });
       onSelectionChange(clearSelection(selection));
@@ -1493,7 +1517,7 @@ export const GraphCanvas: React.FC<GraphCanvasProps> = ({
       if (e.key !== 'Delete') return;
       if (selection.selectedNodeId) {
         e.preventDefault();
-        const result = recordArchiveNode(history, state, selection.selectedNodeId);
+        const result = recordArchiveNode(history, stateForCommit(), selection.selectedNodeId);
         if (!result.error && result.entity) {
           onChange({ state: result.state, history: result.history });
           onSelectionChange(clearSelection(selection));
@@ -1519,14 +1543,15 @@ export const GraphCanvas: React.FC<GraphCanvasProps> = ({
     // aktiven Fach immer ohne Fach-Zuordnung, dadurch verschwanden sie beim
     // nächsten Laden aus dem fachspezifischen Wissensnetz. state.scope
     // trägt bereits, welches Fach aktuell aktiv ist (s. GraphSystem.tsx).
-    const collectionId = state.scope.kind === 'collection' ? state.scope.collectionId : undefined;
+    const commitState = stateForCommit();
+    const collectionId = commitState.scope.kind === 'collection' ? commitState.scope.collectionId : undefined;
     // User-Vorgabe 2026-08-04: der erste Node eines Fachs ist in der Praxis
     // immer das Hauptthema (z.B. "Bio", benannt wie das Modul) — soll direkt
     // golden starten statt erst über den Hierarchie-Klick-Zyklus manuell
     // dorthin geschaltet werden zu müssen. Nur beim allerersten Node
     // (activeNodes leer), jeder weitere bleibt ohne Vorbelegung wie bisher.
     const hierarchyLevel = activeNodes.length === 0 ? 'hauptthema' : undefined;
-    const result = recordCreateNode(history, state, { title: 'Neuer Node', position, collectionId, hierarchyLevel });
+    const result = recordCreateNode(history, commitState, { title: 'Neuer Node', position, collectionId, hierarchyLevel });
     if (!result.error && result.entity) {
       onChange({ state: result.state, history: result.history });
       onSelectionChange(selectNode(selection, result.entity.id));

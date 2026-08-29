@@ -825,6 +825,7 @@ export const GraphSystem: React.FC<GraphSystemProps> = ({
               onChange={graph.onChange}
               onSelectionChange={graph.onSelectionChange}
               onEntityChanged={graph.onEntityChanged}
+              getState={graph.getState}
               isDark={isDark}
               showInsights={showInsights}
               onExplainEdge={setExplainingEdgeId}
