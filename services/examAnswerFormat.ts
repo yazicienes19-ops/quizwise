@@ -31,6 +31,12 @@ export const formatUserAnswer = (q: ExamQuestion, t: (k: any, p?: any) => string
       return (a as string[]).map(x => x || '—').join(SEPARATOR);
     case 'ranking':
       return (a as string[]).join(' → ');
+    case 'expression':
+      return String(a);
+    case 'step_by_step':
+      // Zeilenweise Schritte wie im ExamSystem.tsx-Splitting, lesbar mit " / " statt
+      // Original-Zeilenumbrüchen (PDF/Archiv sind einzeilige Textkontexte).
+      return String(a).split('\n').map(s => s.trim()).filter(Boolean).join(' / ') || t('ea.noAnswer');
     default:
       return String(a);
   }
@@ -58,6 +64,10 @@ export const formatCorrectAnswer = (q: ExamQuestion, t: (k: any, p?: any) => str
       return q.numericAnswer !== undefined
         ? `${q.numericAnswer}${q.numericTolerance ? ` ±${q.numericTolerance}` : ''}`
         : q.solution;
+    case 'expression':
+      return q.expressionAnswer?.trim() ? q.expressionAnswer : q.solution;
+    case 'step_by_step':
+      return q.expectedSteps?.length ? q.expectedSteps.join(' / ') : q.solution;
     default:
       return q.solution;
   }

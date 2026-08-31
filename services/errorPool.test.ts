@@ -204,4 +204,44 @@ describe('buildErrorPool', () => {
       expect(pool).toHaveLength(1);
     });
   });
+
+  describe('Phase 2: distractorErrorTypes → mathErrorHint', () => {
+    const mkExamWithMc = (id: string, ts: number, over: { selectedDistractorErrorType?: string | null }): ExamResult => ({
+      id, docName: 'Doc', timestamp: ts, score: 0, passed: false, totalPoints: 0, achievedPoints: 0, weakTopics: [],
+      questions: [{
+        id: 'eq0', type: 'mc', category: 'rechnung', question: 'Was ist 8/3?', solution: '8/3',
+        points: 3, achievedPoints: 0, topic: 'Bruchrechnung', feedback: 'Falsch.',
+        ...over,
+      } as any],
+    });
+
+    it('ein gesetztes selectedDistractorErrorType wird als deutscher mathErrorHint in den Pool-Eintrag übernommen', () => {
+      const pool = buildErrorPool({ quiz: [], exam: [mkExamWithMc('e1', now, { selectedDistractorErrorType: 'sign_error' })], recall: [] });
+      expect(pool).toHaveLength(1);
+      expect(pool[0].mathErrorHint).toBeDefined();
+      expect(pool[0].mathErrorHint).toMatch(/Vorzeichenfehler/);
+    });
+
+    it('unterschiedliche Fehlertypen ergeben unterschiedliche Hinweistexte', () => {
+      const pool = buildErrorPool({ quiz: [], exam: [mkExamWithMc('e1', now, { selectedDistractorErrorType: 'calc_error' })], recall: [] });
+      expect(pool[0].mathErrorHint).toMatch(/Rechenfehler/);
+    });
+
+    it('ohne selectedDistractorErrorType bleibt mathErrorHint unbesetzt', () => {
+      const pool = buildErrorPool({ quiz: [], exam: [mkExamWithMc('e1', now, {})], recall: [] });
+      expect(pool).toHaveLength(1);
+      expect(pool[0].mathErrorHint).toBeUndefined();
+    });
+
+    it('selectedDistractorErrorType: null (korrekte Option/kein eindeutiger Fehler) ergibt ebenfalls keinen Hinweis', () => {
+      const pool = buildErrorPool({ quiz: [], exam: [mkExamWithMc('e1', now, { selectedDistractorErrorType: null })], recall: [] });
+      expect(pool[0].mathErrorHint).toBeUndefined();
+    });
+
+    it('nicht-MC-Klausurfehler (z.B. open) bleiben unberührt, da sie das Feld nie setzen', () => {
+      const exam = mkExam('e1', 'Doc', now, [{ topic: 'X', points: 10, achieved: 5 }]);
+      const pool = buildErrorPool({ quiz: [], exam: [exam], recall: [] });
+      expect(pool[0].mathErrorHint).toBeUndefined();
+    });
+  });
 });

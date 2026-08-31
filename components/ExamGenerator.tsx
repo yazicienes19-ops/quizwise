@@ -1,6 +1,6 @@
 
 import React, { useState, useMemo, useEffect } from 'react';
-import { ProcessedDocument, Collection, ScoringProfile, ScoringMode, ExamQuestion, TopicMetric, FlashcardDeck, ExamTypePreset } from '../types';
+import { ProcessedDocument, Collection, ScoringProfile, ScoringMode, ExamQuestion, TopicMetric, FlashcardDeck, ExamTypePreset, QuantModeConfig, QuantTypeDistribution } from '../types';
 import { GenerationSource } from '../services/geminiService';
 import { GeneratedImage } from './GeneratedImage';
 import { SourceSelector } from './SourceSelector';
@@ -23,9 +23,27 @@ type ExamOptions = {
   excludeTopics?: string[];
   recentQuestions?: string[];
   examTypePreset?: ExamTypePreset;
+  quantMode?: QuantModeConfig;
 };
 
 const EXAM_TYPE_PRESETS: ExamTypePreset[] = ['wissensabfrage', 'universitaetsklausur', 'transfer', 'gemischt'];
+
+// Quantitativer Modus (Phase 1 Mathe-Ausbau): Presets nur als Vorschläge, kein starres
+// Enum — quantSubject bleibt ein Freitextfeld (services/geminiService.ts buildQuantModeBlock).
+const QUANT_SUBJECT_PRESETS = ['Mathematik', 'Statistik', 'Analysis', 'Lineare Algebra', 'Finanzmathematik', 'Physik', 'VWL', 'Ingenieurwesen', 'Informatik'];
+const QUANT_TYPE_IDS: (keyof QuantTypeDistribution)[] = ['mc', 'numeric', 'expression', 'step_by_step', 'truefalse'];
+const QUANT_TYPE_LABELS: Record<keyof QuantTypeDistribution, string> = {
+  mc: 'Multiple Choice', numeric: 'Numerisch', expression: 'Term/Ausdruck', step_by_step: 'Rechenweg', truefalse: 'Wahr/Falsch',
+};
+// Phase 2: 5. Slider "Rechenweg" (step_by_step) dazu, Prozente neu balanciert.
+// Begründung: MC (schnell auswertbar, breite Abdeckung) und Numerisch (Kernfertigkeit
+// "richtiges Ergebnis berechnen") bleiben die größten Anteile. Rechenweg bekommt trotz
+// höherem Bewertungsaufwand (KI-Call statt deterministisch) einen spürbaren Anteil, weil
+// es das eigentliche USP dieser Phase ist (Bewertung des GANZEN Lösungswegs, nicht nur
+// des Ergebnisses) — aber nicht so groß, dass eine Klausur nur noch aus zeitaufwändigen
+// Herleitungsfragen besteht. Term/Ausdruck etwas reduziert, Wahr/Falsch bleibt kleinster
+// Anteil als schnelle Auflockerung.
+const DEFAULT_QUANT_DISTRIBUTION: QuantTypeDistribution = { mc: 30, numeric: 20, expression: 15, step_by_step: 25, truefalse: 10 };
 
 interface ExamGeneratorProps {
   onGenerate: (content: GenerationSource, style?: GenerationSource, options?: ExamOptions, docName?: string, totalMinutes?: number, scoringProfile?: ScoringProfile) => void;
@@ -95,6 +113,15 @@ export const ExamGenerator: React.FC<ExamGeneratorProps> = ({
   const [customMinutes, setCustomMinutes] = useState<number | null>(null);
   const [adaptiveEnabled, setAdaptiveEnabled] = useState(false);
   const [examTypePreset, setExamTypePreset] = useState<ExamTypePreset>('universitaetsklausur');
+
+  // Quantitativer Modus (Phase 1 Mathe-Ausbau) — rein additiv: ist quantModeEnabled
+  // false, ändert sich am bestehenden Generierungspfad nichts (kein quantMode in den
+  // Options, exakt wie vorher).
+  const [quantModeEnabled, setQuantModeEnabled] = useState(false);
+  const [quantSubject, setQuantSubject] = useState('');
+  const [quantAutoTopics, setQuantAutoTopics] = useState(true);
+  const [quantTopics, setQuantTopics] = useState('');
+  const [quantDistribution, setQuantDistribution] = useState<QuantTypeDistribution>(DEFAULT_QUANT_DISTRIBUTION);
 
   const profile = useMemo(() => buildLearningProfile({
     metrics, decks,
@@ -171,9 +198,25 @@ export const ExamGenerator: React.FC<ExamGeneratorProps> = ({
       // Einzelfragen aus früheren Klausuren zu diesem Modul, die excludeTopics
       // allein (nur Themen-Labels) durchrutschen lässt.
       const recentQuestions = contentName ? getUsedExamQuestions(sourceTopicsKey(contentName)) : [];
+
+      // Quantitativer Modus: überschreibt NUR die Fragetypen-Auswahl (auf die 4
+      // quant-relevanten Typen mit tatsächlich gewünschtem Gewicht > 0) und gibt eine
+      // zusätzliche quantMode-Konfiguration mit — alles andere (Bewertungsprofil,
+      // Adaptiv, Altklausur-Stil, ...) bleibt unverändert nutzbar.
+      const quantMode: QuantModeConfig | undefined = quantModeEnabled ? {
+        enabled: true,
+        subject: quantSubject.trim() || undefined,
+        topics: quantAutoTopics ? undefined : (quantTopics.trim() || undefined),
+        typeDistribution: quantDistribution,
+      } : undefined;
+      const quantSelectedTypes = QUANT_TYPE_IDS.filter(id => quantDistribution[id] > 0);
+      const effectiveTypes = quantModeEnabled
+        ? (quantSelectedTypes.length > 0 ? quantSelectedTypes : QUANT_TYPE_IDS)
+        : selectedTypes;
+
       onGenerate(
         contentSource, styleSource,
-        { count: questionCount, difficulty, types: selectedTypes, adaptive, excludeTopics, recentQuestions, examTypePreset },
+        { count: questionCount, difficulty, types: effectiveTypes, adaptive, excludeTopics, recentQuestions, examTypePreset, quantMode },
         contentName, effectiveMinutes, scoringProfile
       );
     } catch (e) {
@@ -386,6 +429,90 @@ export const ExamGenerator: React.FC<ExamGeneratorProps> = ({
                   ))}
                 </div>
                 <p className="text-[9px] text-slate-400 italic">{t((`eg.examTypeHint.${examTypePreset}`) as TKey)}</p>
+              </div>
+
+              {/* Quantitativer Modus (Phase 1 Mathe-Ausbau) — rein additiv, überschreibt
+                  bei Aktivierung nur die Fragetypen-Auswahl oben (s. handleStart). */}
+              <div className={`p-4 sm:p-5 rounded-[20px] border-2 transition-all space-y-4 ${quantModeEnabled ? 'border-indigo-500 bg-indigo-50/50 dark:bg-indigo-950/20' : 'border-slate-200 dark:border-slate-700'}`}>
+                <button
+                  type="button"
+                  onClick={() => setQuantModeEnabled(v => !v)}
+                  className="w-full flex items-start gap-4 text-left"
+                >
+                  <div className={`w-5 h-5 rounded-lg border-2 flex items-center justify-center shrink-0 mt-0.5 transition-all ${quantModeEnabled ? 'bg-indigo-600 border-indigo-600' : 'border-slate-300 dark:border-slate-600'}`}>
+                    {quantModeEnabled && (
+                      <svg width="10" height="10" viewBox="0 0 10 10" fill="none"><polyline points="1.5,5 4,7.5 8.5,2.5" stroke="white" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/></svg>
+                    )}
+                  </div>
+                  <div>
+                    <p className="text-[11px] font-black uppercase tracking-widest dark:text-white">{t('eg.quantMode')}</p>
+                    <p className="text-[10px] text-slate-400 font-medium mt-1">{t('eg.quantModeHint')}</p>
+                  </div>
+                </button>
+
+                {quantModeEnabled && (
+                  <div className="space-y-5 animate-in fade-in slide-in-from-top-2 duration-300 pl-9">
+                    {/* Fach */}
+                    <div className="space-y-2">
+                      <p className="text-[9px] font-black uppercase tracking-widest text-slate-400">{t('eg.quantSubject')}</p>
+                      <input
+                        type="text"
+                        value={quantSubject}
+                        onChange={e => setQuantSubject(e.target.value)}
+                        placeholder={t('eg.quantSubjectPlaceholder')}
+                        list="quant-subject-presets"
+                        className="w-full p-3 bg-white dark:bg-slate-800 rounded-xl border-2 border-slate-200 dark:border-slate-700 text-sm font-medium dark:text-white outline-none focus:border-indigo-500 transition-colors"
+                      />
+                      <datalist id="quant-subject-presets">
+                        {QUANT_SUBJECT_PRESETS.map(s => <option key={s} value={s} />)}
+                      </datalist>
+                    </div>
+
+                    {/* Themen */}
+                    <div className="space-y-2">
+                      <div className="flex items-center justify-between">
+                        <p className="text-[9px] font-black uppercase tracking-widest text-slate-400">{t('eg.quantTopics')}</p>
+                        <button
+                          type="button"
+                          onClick={() => setQuantAutoTopics(v => !v)}
+                          className={`text-[9px] font-black uppercase tracking-widest px-2 py-1 rounded-lg transition-all ${quantAutoTopics ? 'bg-indigo-600 text-white' : 'bg-slate-100 dark:bg-slate-800 text-slate-400'}`}
+                        >
+                          {t('eg.quantTopicsAuto')}
+                        </button>
+                      </div>
+                      {!quantAutoTopics && (
+                        <input
+                          type="text"
+                          value={quantTopics}
+                          onChange={e => setQuantTopics(e.target.value)}
+                          placeholder={t('eg.quantTopicsPlaceholder')}
+                          className="w-full p-3 bg-white dark:bg-slate-800 rounded-xl border-2 border-slate-200 dark:border-slate-700 text-sm font-medium dark:text-white outline-none focus:border-indigo-500 transition-colors"
+                        />
+                      )}
+                    </div>
+
+                    {/* Fragetyp-Verteilung */}
+                    <div className="space-y-3">
+                      <p className="text-[9px] font-black uppercase tracking-widest text-slate-400">{t('eg.quantDistribution')}</p>
+                      {QUANT_TYPE_IDS.map(id => (
+                        <div key={id} className="flex items-center gap-3">
+                          <span className="text-[10px] font-bold dark:text-slate-300 w-24 shrink-0">{QUANT_TYPE_LABELS[id]}</span>
+                          <input
+                            type="range"
+                            min={0}
+                            max={100}
+                            step={5}
+                            value={quantDistribution[id]}
+                            onChange={e => setQuantDistribution(prev => ({ ...prev, [id]: parseInt(e.target.value) }))}
+                            className="flex-1 accent-indigo-600"
+                          />
+                          <span className="text-[10px] font-black dark:text-white w-8 text-right shrink-0">{quantDistribution[id]}</span>
+                        </div>
+                      ))}
+                      <p className="text-[9px] text-slate-400 italic">{t('eg.quantDistributionHint')}</p>
+                    </div>
+                  </div>
+                )}
               </div>
             </div>
 

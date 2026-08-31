@@ -3,6 +3,7 @@ import type { ExamResult } from './examHistoryService';
 import type { RecallResult } from './recallHistoryService';
 import type { ReaderLogEntry } from './readerLogService';
 import type { WrongAnswerContext } from './geminiService';
+import type { DistractorErrorType } from '../types';
 
 const SESSIONS_PER_SOURCE = 8;
 const MAX_PER_SESSION = { quiz: 3, exam: 3, feynman: 2, tutor: 2 } as const;
@@ -62,6 +63,19 @@ function fromQuiz(results: QuizResult[]): Timed[] {
   );
 }
 
+/** Phase 2: deutscher Kontext-Satz aus dem Fehlertyp einer falsch gewählten
+ *  MC-"Rechnung"-Distraktor-Option — reine Textualisierung, keine neue Taxonomie.
+ *  Fließt nur als zusätzlicher Hinweis in den analyzeLearningProgress-Prompt ein
+ *  (services/geminiService.ts WrongAnswerContext.mathErrorHint), ändert nichts
+ *  am festen causeType-Enum. */
+const MATH_ERROR_HINT_TEXT: Record<DistractorErrorType, string> = {
+  sign_error: 'Die gewählte Antwort deutet auf einen Vorzeichenfehler hin.',
+  calc_error: 'Die gewählte Antwort deutet auf einen Rechenfehler hin.',
+  formula_error: 'Die gewählte Antwort deutet auf eine falsch angewendete Formel hin.',
+  wrong_operation: 'Die gewählte Antwort deutet auf eine falsche Rechenoperation hin.',
+  other: 'Die gewählte Antwort deutet auf einen unspezifizierten Rechenfehler hin.',
+};
+
 /** Sortiert nach relativem Punktverlust (Schweregrad) statt nach Reihenfolge im
  *  Dokument — ein 1-von-50-Punkte-Abzug soll einen 8-von-10-Totalausfall nicht
  *  aus den Top-3 verdrängen. */
@@ -76,6 +90,7 @@ function fromExam(results: ExamResult[]): Timed[] {
       id: `${result.id}:${q.id}`, sessionId: result.id, source: 'exam' as const,
       question: q.question, topic: q.topic, explanation: q.feedback || q.solution,
       docName: result.docName, ts: result.timestamp,
+      ...(q.selectedDistractorErrorType ? { mathErrorHint: MATH_ERROR_HINT_TEXT[q.selectedDistractorErrorType] } : {}),
     }));
   });
 }

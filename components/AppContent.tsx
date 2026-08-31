@@ -452,8 +452,8 @@ export const AppContent: React.FC<AppContentProps> = (p) => {
           initialDoc={pendingActionDoc ?? undefined}
           initialQuestions={examInitialQuestions?.questions}
           metrics={metrics} decks={decks}
-          onComplete={({ score, docName, passed, totalPoints, achievedPoints, weakTopics, categoryBreakdown, typeBreakdown, fatigue, questions: examQuestions, examTypePreset }) => {
-            saveExamResult({ docName, timestamp: Date.now(), score, passed, totalPoints, achievedPoints, weakTopics, categoryBreakdown, typeBreakdown, fatigue, questions: examQuestions, examTypePreset }, user?.id);
+          onComplete={({ score, docName, passed, totalPoints, achievedPoints, weakTopics, categoryBreakdown, typeBreakdown, topicBreakdown, fatigue, questions: examQuestions, examTypePreset }) => {
+            saveExamResult({ docName, timestamp: Date.now(), score, passed, totalPoints, achievedPoints, weakTopics, categoryBreakdown, typeBreakdown, topicBreakdown, fatigue, questions: examQuestions, examTypePreset }, user?.id);
             // Falsche mc/truefalse-Klausurfragen in die SM-2-Wiederholungs-Queue
             const enqueued = addExamMistakes(examQuestions, { docId: `exam-${docName}`, docName }, user?.id);
             if (enqueued > 0) toast.info(tp('ac.examMistakesQueuedN', enqueued));

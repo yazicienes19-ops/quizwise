@@ -456,15 +456,58 @@ export type BloomLevel = 'erinnern' | 'verstehen' | 'anwenden' | 'analysieren' |
 /** Klausurtyp-Preset mit eigenem Bloom-Zielprofil (services/bloomPresets.ts EXAM_TYPE_BLOOM_TARGETS). */
 export type ExamTypePreset = 'wissensabfrage' | 'universitaetsklausur' | 'transfer' | 'gemischt';
 
+/** Fehlertyp eines Distraktors bei quantitativen MC-Fragen (category "rechnung") —
+ *  von Gemini bei der Generierung mitgeschätzt, services/geminiService.ts generateFullExam.
+ *  Phase 1: nur generiert & gespeichert (ExamQuestion.distractorErrorTypes), noch NICHT
+ *  in services/analysisValidation.ts / die Fehleranalyse verdrahtet. */
+export type DistractorErrorType = 'sign_error' | 'calc_error' | 'formula_error' | 'wrong_operation' | 'other';
+
+/** Quantitativer Modus (Klausursimulator, Phase 1 Mathe-Ausbau): weiches Ziel für die
+ *  Verteilung der quant-relevanten Fragetypen — analog zu EXAM_TYPE_BLOOM_TARGETS eine
+ *  Prompt-Gewichtung, KEINE exakte Vorgabe/Retry-Schleife. Werte sind relative Gewichte,
+ *  keine Prozentangaben (wie bei EXAM_TYPE_WEIGHTS in geminiService.ts). */
+export interface QuantTypeDistribution {
+  mc: number;
+  numeric: number;
+  expression: number;
+  truefalse: number;
+  /** Rechenweg/Herleitung (Phase 2) — Schlüssel bewusst identisch zum ExamQuestion['type']-
+   *  Token "step_by_step" (wie bei den übrigen 4 Feldern), keine separate Umbenennung. */
+  step_by_step: number;
+}
+
+/** Konfiguration des "Quantitativ-Modus" im Klausur-Generator (ExamGenerator.tsx) —
+ *  rein additiv: ist quantMode nicht gesetzt/aktiv, verhält sich alles wie vorher. */
+export interface QuantModeConfig {
+  enabled: boolean;
+  /** Freitext-Fach, z.B. "Mathematik", "Statistik" — Presets nur Vorschläge, kein starres Enum. */
+  subject?: string;
+  /** Freitext-Themen, kommagetrennt. Leer/undefined = "aus Dokument erkennen" (bestehender
+   *  Dokumentinhalt-Flow entscheidet, keine Themen extra vorgeben). */
+  topics?: string;
+  typeDistribution?: QuantTypeDistribution;
+}
+
 export interface ExamQuestion {
   id: string;
   question: string;
-  type: 'mc' | 'open' | 'matching' | 'truefalse' | 'fillblank' | 'ranking' | 'numeric';
+  type: 'mc' | 'open' | 'matching' | 'truefalse' | 'fillblank' | 'ranking' | 'numeric' | 'expression' | 'step_by_step';
 
   // MC & Szenario-MC
   options?: string[];
   correctIndices?: number[];
   scenarioText?: string;
+  /** Quantitativer Modus (services/mathValidation.ts): pro Distraktor-Option (parallel
+   *  zu options[], Länge/Reihenfolge identisch, korrekte Option(en) = null) ein von
+   *  Gemini bei der Generierung mitgeschätzter Fehlertyp — Phase 2: wird jetzt bei
+   *  falscher Antwort in ExamSystem.tsx autoEvaluate zu selectedDistractorErrorType
+   *  aufgelöst und in die Fehleranalyse eingespeist (services/errorPool.ts fromExam). */
+  distractorErrorTypes?: (DistractorErrorType | null)[];
+  /** Phase 2: bei falscher MC-"Rechnung"-Antwort aus distractorErrorTypes[gewählterIndex]
+   *  aufgelöst (ExamSystem.tsx autoEvaluate) — überlebt in ExamResult/History wie
+   *  achievedPoints/feedback, Grundlage für das Fehlertyp-Label im Ergebnis-Modus
+   *  (ExamView.tsx) und den Kontext-Hinweis in analyzeLearningProgress. */
+  selectedDistractorErrorType?: DistractorErrorType | null;
 
   // Wahr/Falsch
   tfCorrect?: boolean;
@@ -486,6 +529,38 @@ export interface ExamQuestion {
   // Numerisch
   numericAnswer?: number;
   numericTolerance?: number;
+
+  // Ausdruck / Term (Quantitativer Modus, type="expression") — Musterausdruck als
+  // mathjs-parsbarer String (z.B. "3x^2+4x-5"), Bewertung per numerischem Sampling
+  // statt Stringvergleich (services/mathValidation.ts checkExpressionEquivalence).
+  /** Korrekter Ausdruck laut Musterlösung. */
+  expressionAnswer?: string;
+  /** Variablen, die beim Äquivalenz-Check substituiert werden — optional, wird sonst
+   *  automatisch aus expressionAnswer/der Nutzereingabe erkannt (detectVariables). */
+  expressionVariables?: string[];
+
+  // Rechenweg / Herleitung (Quantitativer Modus Phase 2, type="step_by_step") — mehrschrittige
+  // Herleitung/Rechnung, bewertet über MEHR als nur das Endergebnis: Ansatz, einzelne
+  // Umformungsschritte, Fehler in konkreten Schritten, fehlende Schritte. Bewertung über
+  // services/geminiService.ts evaluateStepByStep (gebatchter KI-Call, analog zu
+  // evaluateWithRubric für type="open"), NICHT deterministisch in examScoring.ts.
+  /** Musterlösung als Herleitung, EIN String pro Schritt — von Gemini bei der
+   *  Generierung mitgeliefert (parallel zur Frage, nicht nachträglich erzeugt). */
+  expectedSteps?: string[];
+  /** Pro Schritt der (client-seitig aus userAnswer per Zeilenumbruch gesplitteten)
+   *  Nutzereingabe ein Bewertungsurteil — vom evaluateStepByStep-Call geliefert, NUR
+   *  im Ergebnis-Modus gerendert (ExamView.tsx), nie während mode="solve". errorType
+   *  nutzt bewusst dieselben 5 Tokens wie distractorErrorTypes statt einer zweiten,
+   *  parallelen Fehlertaxonomie. */
+  stepFeedback?: { stepIndex: number; verdict: 'correct' | 'error' | 'missing'; note?: string; errorType?: DistractorErrorType }[];
+  /** Ob der grundsätzliche Lösungsansatz/die Methode stimmte, unabhängig vom Endergebnis
+   *  — von evaluateStepByStep geliefert (Gesamturteil, ergänzt die Pro-Schritt-Details). */
+  correctApproach?: boolean;
+  /** Ob das Endergebnis (letzte nicht-leere Zeile der Nutzereingabe) mit der Musterlösung
+   *  übereinstimmt — von evaluateStepByStep geliefert, deterministisch vor-geprüft per
+   *  checkNumericEquivalence/checkExpressionEquivalence als Hinweis an das Modell, wo
+   *  möglich (services/mathValidation.ts), letztlich aber vom Modell zurückgegeben. */
+  finalResultCorrect?: boolean;
 
   solution: string;
   points: number;

@@ -2,6 +2,7 @@ import type {
   TopicMetric, LearningProfile, MethodStat, TopicSecurity, ForgettingItem,
   TimeOfDayStat, ExamPrognosis, FlashcardDeck, LearnMethod, CategoryMastery, ExamCategory,
   TypeMastery, CauseAnalysisItem, LongTermTrendItem, DayOfWeekStat, LearningFlowResult,
+  DistractorErrorType,
 } from '../types';
 import { ActiveTab } from '../types';
 import type { QuizResult } from './quizHistoryService';
@@ -25,13 +26,26 @@ const METHOD_KEYS: Record<LearnMethod, TKey> = {
 const TYPE_KEYS: Record<string, TKey> = {
   mc: 'lp.type.mc', single: 'lp.type.mc', truefalse: 'lp.type.truefalse', matching: 'lp.type.matching',
   cloze: 'lp.type.cloze', fillblank: 'lp.type.cloze', ranking: 'lp.type.ranking', numeric: 'lp.type.numeric',
-  open: 'lp.type.open', scenario: 'lp.type.scenario',
+  expression: 'lp.type.expression', open: 'lp.type.open', scenario: 'lp.type.scenario',
+  step_by_step: 'lp.type.stepByStep',
+};
+
+/** Fehlertyp eines quantitativen MC-Distraktors (Phase 1 generiert, Phase 2 verdrahtet,
+ *  s. types.ts DistractorErrorType) → lokalisiertes Label für die kleine Fehlertyp-
+ *  Anzeige im Ergebnis-Modus (ExamView.tsx). */
+const DISTRACTOR_ERROR_TYPE_KEYS: Record<DistractorErrorType, TKey> = {
+  sign_error: 'ev.distractorType.signError',
+  calc_error: 'ev.distractorType.calcError',
+  formula_error: 'ev.distractorType.formulaError',
+  wrong_operation: 'ev.distractorType.wrongOperation',
+  other: 'ev.distractorType.other',
 };
 
 /** Locale-abhängige Anzeige-Labels (zur Aufrufzeit übersetzt). */
 export const getCategoryLabel = (c: string): string => (CATEGORY_KEYS[c] ? t(CATEGORY_KEYS[c]) : c);
 export const getMethodLabel = (m: LearnMethod): string => (METHOD_KEYS[m] ? t(METHOD_KEYS[m]) : m);
 export const getTypeLabel = (ty: string): string => (TYPE_KEYS[ty] ? t(TYPE_KEYS[ty]) : ty);
+export const getDistractorErrorTypeLabel = (ty: DistractorErrorType): string => t(DISTRACTOR_ERROR_TYPE_KEYS[ty]);
 
 /**
  * Deutsche Notenskala (Standard-Notenschlüssel), aus ExamView.tsx extrahiert

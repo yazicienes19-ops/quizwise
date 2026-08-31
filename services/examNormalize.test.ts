@@ -117,4 +117,94 @@ describe('normalizeExamQuestions', () => {
     expect(normalizeExamQuestions([{ id: 'q1', question: 'Fülle', type: 'fillblank', solution: 'x', points: 2, blankText: '', blanks: ['Hund'] }])).toHaveLength(0);
     expect(normalizeExamQuestions([{ id: 'q1', question: 'Sortiere', type: 'ranking', solution: 'x', points: 2, rankingItems: ['a'] }])).toHaveLength(0);
   });
+
+  // ── Quantitativer Modus (Phase 1 Mathe-Ausbau): expression-Typ + CAS-Selbstcheck ──
+
+  const expr = (over: object = {}) => ({
+    id: 'q1', question: 'Leite f(x)=x^3+2x ab.', type: 'expression', solution: '3x^2+2',
+    points: 3, expressionAnswer: '3x^2+2', ...over,
+  });
+
+  it('expression: gültiger Ausdruck passiert', () => {
+    const out = normalizeExamQuestions([expr()]);
+    expect(out).toHaveLength(1);
+    expect(out[0].expressionAnswer).toBe('3x^2+2');
+  });
+
+  it('expression ohne expressionAnswer fliegt raus', () => {
+    expect(normalizeExamQuestions([expr({ expressionAnswer: undefined })])).toHaveLength(0);
+    expect(normalizeExamQuestions([expr({ expressionAnswer: '' })])).toHaveLength(0);
+  });
+
+  it('expression mit strukturell kaputtem Ausdruck fliegt durch den CAS-Selbstcheck raus', () => {
+    expect(normalizeExamQuestions([expr({ expressionAnswer: '3x^2+' })])).toHaveLength(0);
+  });
+
+  it('numeric: nicht-endliche numericAnswer fliegt durch den CAS-Selbstcheck raus', () => {
+    expect(normalizeExamQuestions([{ id: 'q1', question: '2+2?', type: 'numeric', solution: '4', points: 2, numericAnswer: Infinity }])).toHaveLength(0);
+  });
+
+  const rechnungMc = (over: object = {}) => ({
+    id: 'q1', question: 'Was ist 8/3?', type: 'mc', category: 'rechnung', solution: '8/3',
+    points: 3, options: ['8/3', '3', '4', '-8/3'], correctIndices: [0], ...over,
+  });
+
+  it('Rechnungs-MC mit genau einer korrekten, echt verschiedenen Optionen passiert', () => {
+    expect(normalizeExamQuestions([rechnungMc()])).toHaveLength(1);
+  });
+
+  it('Rechnungs-MC mit mehreren korrekten Optionen fliegt raus (Single-Choice-Pflicht)', () => {
+    expect(normalizeExamQuestions([rechnungMc({ correctIndices: [0, 1] })])).toHaveLength(0);
+  });
+
+  it('Rechnungs-MC mit numerisch äquivalentem Distraktor fliegt raus', () => {
+    expect(normalizeExamQuestions([rechnungMc({ options: ['8/3', '2.6667', '4', '-8/3'] })])).toHaveLength(0);
+  });
+
+  it('normale MC-Frage (keine category "rechnung") ist von der Single-Choice-Pflicht ausgenommen', () => {
+    const out = normalizeExamQuestions([mc({ category: 'verstaendnis', correctIndices: [0, 1] })]);
+    expect(out).toHaveLength(1);
+    expect(out[0].correctIndices).toEqual([0, 1]);
+  });
+
+  it('distractorErrorTypes wird nur bei passender Länge übernommen', () => {
+    const withTypes = normalizeExamQuestions([rechnungMc({ distractorErrorTypes: [null, 'calc_error', 'sign_error', 'other'] })]);
+    expect(withTypes[0].distractorErrorTypes).toEqual([null, 'calc_error', 'sign_error', 'other']);
+    const mismatched = normalizeExamQuestions([rechnungMc({ distractorErrorTypes: ['calc_error'] })]);
+    expect(mismatched[0].distractorErrorTypes).toBeUndefined();
+  });
+
+  // ── Phase 2: Rechenweg (type="step_by_step") ──────────────────────────────
+
+  const stepByStep = (over: object = {}) => ({
+    id: 'q1', question: 'Löse x²-5x+6=0 durch Faktorisieren.', type: 'step_by_step', solution: 'x=2 oder x=3',
+    points: 6, expectedSteps: ['x²-5x+6=0', '(x-2)(x-3)=0', 'x=2 oder x=3'], ...over,
+  });
+
+  it('step_by_step: gültige expectedSteps passieren, werden getrimmt', () => {
+    const out = normalizeExamQuestions([stepByStep({ expectedSteps: ['  x²-5x+6=0  ', '(x-2)(x-3)=0'] })]);
+    expect(out).toHaveLength(1);
+    expect(out[0].expectedSteps).toEqual(['x²-5x+6=0', '(x-2)(x-3)=0']);
+  });
+
+  it('step_by_step ohne expectedSteps fliegt raus', () => {
+    expect(normalizeExamQuestions([stepByStep({ expectedSteps: undefined })])).toHaveLength(0);
+  });
+
+  it('step_by_step mit leerem expectedSteps-Array fliegt raus', () => {
+    expect(normalizeExamQuestions([stepByStep({ expectedSteps: [] })])).toHaveLength(0);
+  });
+
+  it('step_by_step mit nur leeren/blank Schritt-Strings fliegt raus (CAS-Selbstcheck)', () => {
+    expect(normalizeExamQuestions([stepByStep({ expectedSteps: ['   ', ''] })])).toHaveLength(0);
+  });
+
+  it('step_by_step mit gemischt gültigen/leeren Schritten wird von isStrArr schon vor dem CAS-Check verworfen', () => {
+    expect(normalizeExamQuestions([stepByStep({ expectedSteps: ['x=2', '   '] })])).toHaveLength(0);
+  });
+
+  it('step_by_step mit falschem Typ für expectedSteps fliegt raus', () => {
+    expect(normalizeExamQuestions([stepByStep({ expectedSteps: 'kein array' })])).toHaveLength(0);
+    expect(normalizeExamQuestions([stepByStep({ expectedSteps: [1, 2, 3] })])).toHaveLength(0);
+  });
 });

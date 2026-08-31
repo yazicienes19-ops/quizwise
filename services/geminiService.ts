@@ -27,6 +27,7 @@ import {
   BloomLevel,
   ExamTypePreset,
   ConcreteQuestionType,
+  QuantModeConfig,
 } from "../types";
 
 // ─── Backend-Verbindung ──────────────────────────────────────────────────────
@@ -41,6 +42,7 @@ import { t } from '../i18n';
 import { validateLearningAnalysis, EMPTY_ANALYSIS, ACTION_TYPES } from './analysisValidation';
 import type { RawLearningAnalysis } from './analysisValidation';
 import type { TopicCalibrationGap } from './calibrationGap';
+import { checkNumericEquivalence, checkExpressionEquivalence } from './mathValidation';
 
 const BACKEND_URL = import.meta.env.VITE_BACKEND_URL || 'http://localhost:4000';
 
@@ -850,6 +852,13 @@ export interface WrongAnswerContext {
    *  das Thema trat über ≥2 verschiedene Sessions hinweg wiederholt als Fehler auf,
    *  unabhängig davon, wie lange dieser konkrete Fehler schon zurückliegt. */
   isRecurringTopic?: boolean;
+  /** Phase 2: bei Klausur-Fehlern aus einer MC-"Rechnung"-Frage mit gesetztem
+   *  selectedDistractorErrorType — ein fertig formulierter deutscher Kontext-Satz
+   *  (services/errorPool.ts fromExam), der NUR als zusätzlicher Hinweis in den
+   *  Prompt von analyzeLearningProgress einfließt. Beeinflusst NICHT das feste
+   *  causeType-Enum (concept/application/recall/structure bleibt unverändert) —
+   *  reine Zusatzinformation für eine besser informierte Klassifikation. */
+  mathErrorHint?: string;
 }
 
 /** Feste Ursachen-Klassifikation — entscheidet über RECOMMENDED_ACTION_BY_CAUSE
@@ -876,7 +885,7 @@ export const analyzeLearningProgress = async (
     metrics.map(m => ({ thema: m.topic, konfidenz: m.confidence + '%', versuche: m.totalAttempts }))
   );
   const wrongText = `\n\nFalsch beantwortete Fragen/Lücken (referenziere sie über ihre ID im Feld sourceErrorIds bzw. overallHealthErrorIds — NIEMALS eine ID erfinden, die hier nicht auftaucht):\n` +
-    wrongAnswers.map(w => `[${w.id}]${w.isRecurringTopic ? ' [WIEDERKEHREND: dieses Thema trat bereits in mehreren früheren, unabhängigen Sessions als Fehler auf]' : ''} Thema "${w.topic || 'Allgemein'}": "${w.question}"\n   Richtige Erklärung: ${w.explanation}`).join('\n\n');
+    wrongAnswers.map(w => `[${w.id}]${w.isRecurringTopic ? ' [WIEDERKEHREND: dieses Thema trat bereits in mehreren früheren, unabhängigen Sessions als Fehler auf]' : ''} Thema "${w.topic || 'Allgemein'}": "${w.question}"\n   Richtige Erklärung: ${w.explanation}${w.mathErrorHint ? `\n   Zusatzhinweis: ${w.mathErrorHint}` : ''}`).join('\n\n');
 
   const calibrationText = calibrationGaps.length > 0
     ? `\n\nKalibrierung (Selbsteinschätzung vs. tatsächliches Ergebnis im Quiz):\n` +
@@ -1563,9 +1572,16 @@ Verarbeite sie primär basierend auf dem oben bereitgestellten Ausschnitt.${inte
 const EXAM_TYPE_WEIGHTS: Record<string, number> = {
   mc: 0.25, matching: 0.15, truefalse: 0.15, fillblank: 0.10, ranking: 0.10, numeric: 0.05, open: 0.20,
 };
+// "expression"/"step_by_step" bewusst NICHT in EXAM_TYPE_WEIGHTS/EXAM_ALL_TYPES (Standard-
+// Fallback, wenn options.types fehlt) — beide Typen sind nur erreichbar, wenn sie explizit über
+// options.types angefordert werden (Quantitativ-Modus, buildQuantModeBlock), sonst würde
+// JEDE Klausur unabhängig vom Fach plötzlich Term-Eingabe-/Rechenweg-Fragen bekommen.
 const EXAM_ALL_TYPES = Object.keys(EXAM_TYPE_WEIGHTS);
+const EXPRESSION_TYPE_WEIGHT_DEFAULT = 0.05;
+const STEP_BY_STEP_TYPE_WEIGHT_DEFAULT = 0.05;
+const EXAM_VALID_TYPES = [...EXAM_ALL_TYPES, 'expression', 'step_by_step'];
 // Reihenfolge, in der Rundungs-Rest zugeschlagen wird (bevorzugt "open", da am flexibelsten)
-const EXAM_REMAINDER_ORDER = ['open', 'mc', 'matching', 'truefalse', 'fillblank', 'ranking', 'numeric'];
+const EXAM_REMAINDER_ORDER = ['open', 'mc', 'matching', 'truefalse', 'fillblank', 'ranking', 'numeric', 'expression', 'step_by_step'];
 
 const EXAM_TYPE_BULLETS: Record<string, (n: number) => string> = {
   mc: n => `- ${n} MC (type "mc"): Klassische Faktenabfrage ODER — NUR wenn das Material Fälle/Kasuistiken/Szenarien enthält — Fallbeispiel im Feld scenarioText (2-4 Sätze), danach Frage. options[]: genau 4 Antworten. correctIndices[]: Indizes der richtigen (1-3 korrekte). solution: kurze Begründung. Punkte: 2-4.`,
@@ -1573,7 +1589,9 @@ const EXAM_TYPE_BULLETS: Record<string, (n: number) => string> = {
   truefalse: n => `- ${n} Wahr/Falsch (type "truefalse"): tfCorrect: true oder false. tfReasonOptions[]: genau 3 Begründungsoptionen. tfCorrectReasonIndex: Index (0-2) der richtigen. options[]: leer. solution: Erklärung. Punkte: 2-3.`,
   fillblank: n => `- ${n} Lückentext (type "fillblank"): blankText: Satz mit [LÜCKE] als Platzhalter (max. 4 Lücken). blanks[]: korrekte Füllwörter in gleicher Reihenfolge. options[]: leer. solution: kompletter Text. Punkte: 3-5.`,
   ranking: n => `- ${n} Sortierung (type "ranking"): rankingItems[]: 4-5 Konzepte/Schritte/Phasen in KORREKTER Reihenfolge. options[]: leer. solution: Begründung der Reihenfolge. Punkte: 3-5. NUR wenn das Material Prozesse, Phasen oder geordnete Abläufe enthält.`,
-  numeric: n => `- ${n} Numerisch (type "numeric"): numericAnswer: korrekte Zahl. numericTolerance: akzeptabler Spielraum. options[]: leer. solution: Erklärung. Punkte: 2-3. NUR wenn das Material konkrete Zahlen/Formeln/Statistiken enthält. Wenn nicht: als "open" ersetzen.`,
+  numeric: n => `- ${n} Numerisch (type "numeric"): numericAnswer: korrekte Zahl (als reine Zahl, kein Bruch-String). numericTolerance: akzeptabler Spielraum (0 wenn exakt). options[]: leer. solution: Rechenweg/Erklärung. Punkte: 2-3. NUR wenn das Material konkrete Zahlen/Formeln/Statistiken enthält. Wenn nicht: als "open" ersetzen.`,
+  expression: n => `- ${n} Term/Ausdruck (type "expression"): Ergebnis ist ein mathematischer Term (z.B. Ableitung, vereinfachter Ausdruck, Gleichungslösung mit einer Variable). expressionAnswer: korrekter Term als einfacher, per Taschenrechner-Syntax auswertbarer String (implizite Multiplikation wie "4x" erlaubt, Exponent mit "^", z.B. "3x^2+4x-5"). expressionVariables[]: optional, nur wenn nicht eindeutig aus dem Term ableitbar. options[]: leer. solution: Lösungsweg. Punkte: 3-5. NUR im Quantitativen Modus verwenden.`,
+  step_by_step: n => `- ${n} Rechenweg/Herleitung (type "step_by_step"): eine mehrschrittige Rechnung/Ableitung/Gleichungslösung, bei der der VOLLSTÄNDIGE Lösungsweg gefragt ist, nicht nur das Endergebnis (z.B. "Löse x²-5x+6=0 durch Faktorisieren, zeige jeden Schritt"). expectedSteps[]: die korrekte Herleitung als Array, EIN eigenständiger, in sich verständlicher Rechen-/Umformungsschritt pro Array-Element, in der richtigen Reihenfolge, letzter Eintrag = Endergebnis. options[]: leer. solution: kurze Zusammenfassung des Lösungswegs (zusätzlich zu expectedSteps, nicht redundant nacherzählt). Punkte: 4-8 (mehr als "numeric"/"expression", da mehrere Teilschritte bewertet werden). NUR im Quantitativen Modus verwenden.`,
   open: n => `- ${n} Freitext/Kurzantwort (type "open"): Transfer oder 2-3-Satz-Erklärung unter Zeitdruck. options[]: leer. solution: Musterantwort mit Kernbegriffen. rubricCriteria[]: 2-4 Bewertungskriterien als Erwartungshorizont — je {name: prüfbares Teilkriterium aus der Musterlösung, maxPoints: Teilpunkte, sourceReference: PFLICHTFELD, fülle es IMMER mit dem Satz oder der Textstelle aus dem Material, die dieses Kriterium stützt (Paraphrase reicht, kein wörtliches Zitat nötig) — NUR wenn das Kriterium wirklich rein abstrakt ohne jeden Bezug im Material ist (seltener Ausnahmefall), Feld weglassen statt zu erfinden}; die Summe aller maxPoints ergibt exakt points. Punkte: 5-10.`,
 };
 
@@ -1594,6 +1612,35 @@ const EXAM_TYPE_ACADEMIC_MINIMUM: Record<string, string> = {
   open: 'Freitext: erzeuge sowohl Definitions-/Konzepterklärungs- als auch Anwendungs-/Fallanalyse-/Bewertungs-Freitextfragen, in einer Mischung passend zur Ziel-Verteilung oben — nicht ausschließlich reine Definitionsfragen.',
 };
 
+/**
+ * Quantitativer Modus (Phase 1 Mathe-Ausbau, ExamGenerator.tsx "Quantitativ-Modus"-
+ * Sektion): weiche Prompt-Injektion analog zu buildBloomTargetLine (services/
+ * bloomPresets.ts) — Fach/Themen als Kontext, verbindliche Formatregeln für die
+ * quant-Fragetypen und die optionale Distraktor-Fehlertyp-Kennzeichnung. KEIN
+ * zusätzlicher Gemini-Call: alles läuft im selben generateFullExam-Call mit; die
+ * CAS-Selbstcheck-Validierung selbst läuft danach lokal (services/mathValidation.ts,
+ * verdrahtet in services/examNormalize.ts) — hier wird nur die Generierung gesteuert.
+ * Überschreibt für "mc" bewusst die generische EXAM_TYPE_ACADEMIC_MINIMUM-Regel
+ * (Fallbeispiel/Theorievergleich) — im Quantitativ-Modus ist MC ausschließlich Rechnung.
+ */
+function buildQuantModeBlock(quantMode?: QuantModeConfig): string {
+  if (!quantMode?.enabled) return '';
+  const subjectLine = quantMode.subject?.trim() ? `Fachrichtung: ${sanitizeUserInput(quantMode.subject, 60)}.\n` : '';
+  const topicsLine = quantMode.topics?.trim()
+    ? `Fokussiere ausschließlich auf folgende Themen: ${sanitizeUserInput(quantMode.topics, 300)}.`
+    : 'Themen aus dem Lernmaterial selbst ableiten (nicht vorgegeben).';
+  return `
+QUANTITATIVER MODUS (aktiv) — diese Klausur prüft primär Rechenfertigkeit, nicht nur Konzeptwissen:
+${subjectLine}${topicsLine}
+- MC-Aufgaben (type "mc") sind in diesem Modus AUSSCHLIESSLICH Rechenaufgaben: category MUSS "rechnung" sein, genau EINE korrekte Option (correctIndices mit exakt einem Index, kein Multiple-Select), und die 3 falschen Optionen müssen numerisch/mathematisch ECHT verschieden vom korrekten Ergebnis sein (nie z.B. "8/3" und "2.667" gleichzeitig als angeblich unterschiedliche Optionen).
+- Optional, pro falscher Option (parallel zu options[], gleiche Länge wie options[], bei der korrekten Option ein leerer String ""): distractorErrorTypes[] mit je einem Fehlertyp-Token, der plausibel erklärt, WARUM diese falsche Antwort entstehen könnte — nur diese exakten Tokens: "sign_error" (Vorzeichenfehler), "calc_error" (Rechenfehler), "formula_error" (falsche Formel angewendet), "wrong_operation" (falsche Rechenoperation), "other".
+- "numeric"-Aufgaben: numericAnswer als exakte Zahl, numericTolerance als sinnvoller Rundungsspielraum (0 wenn ein exaktes Ergebnis erwartet wird).
+- "expression"-Aufgaben: expressionAnswer als einfacher, taschenrechner-artiger Term-String (implizite Multiplikation wie "4x" erlaubt, Exponent mit "^", z.B. "3x^2+4x-5"), KEIN LaTeX, KEINE Erklärung im Feld selbst.
+- "step_by_step"-Aufgaben: expectedSteps[] als vollständige, in sich nachvollziehbare Schritt-für-Schritt-Herleitung (je Element genau EIN Rechen-/Umformungsschritt, letzter Schritt = Endergebnis) — keine übersprungenen Zwischenschritte, an denen ein Student typischerweise Fehler macht.
+- Jede Rechnung muss aus dem Material ableitbar/nachvollziehbar sein (Formel, Datensatz oder Verfahren aus dem Material oder eine direkte Anwendung eines dort behandelten Verfahrens) — keine frei erfundenen Zahlenwerte ohne Bezug zum Material.
+`;
+}
+
 export const generateFullExam = async (
   content: GenerationSource,
   style?: GenerationSource,
@@ -1604,6 +1651,7 @@ export const generateFullExam = async (
     excludeTopics?: string[];
     recentQuestions?: string[];
     examTypePreset?: ExamTypePreset;
+    quantMode?: QuantModeConfig;
   }
 ): Promise<ExamQuestion[]> => {
   const parts: any[] = [sourceTopart(content)];
@@ -1619,13 +1667,28 @@ export const generateFullExam = async (
 
   const count      = options?.count || 10;
   const difficulty = options?.difficulty || 'mittel';
-  const selectedTypes = (options?.types && options.types.length > 0) ? options.types.filter(t => EXAM_ALL_TYPES.includes(t)) : EXAM_ALL_TYPES;
+  // "expression" ist absichtlich NICHT Teil von EXAM_ALL_TYPES (Standard-Fallback) —
+  // nur erreichbar, wenn explizit in options.types angefordert (Quantitativ-Modus).
+  const selectedTypes = (options?.types && options.types.length > 0) ? options.types.filter(t => EXAM_VALID_TYPES.includes(t)) : EXAM_ALL_TYPES;
   const activeTypes = selectedTypes.length > 0 ? selectedTypes : EXAM_ALL_TYPES;
-  const activeWeightSum = activeTypes.reduce((s, t) => s + EXAM_TYPE_WEIGHTS[t], 0);
+
+  // Gewichte: Standardgewichte + Default für "expression"/"step_by_step" (nur relevant,
+  // wenn aktiv ausgewählt) + optionaler Quantitativ-Modus-Override für die 5 quant-
+  // Fragetypen (weiche Prompt-/Gewichtungssteuerung analog zu bloomPresets.ts, KEIN
+  // Retry-Loop — die Verteilung wird wie bei allen Fragetypen hier über Ziel-
+  // STÜCKZAHLEN gesteuert, nicht über eine nachträgliche Validierungsschleife).
+  const typeWeights: Record<string, number> = { ...EXAM_TYPE_WEIGHTS, expression: EXPRESSION_TYPE_WEIGHT_DEFAULT, step_by_step: STEP_BY_STEP_TYPE_WEIGHT_DEFAULT };
+  if (options?.quantMode?.enabled && options.quantMode.typeDistribution) {
+    const qd = options.quantMode.typeDistribution;
+    (['mc', 'numeric', 'expression', 'truefalse', 'step_by_step'] as const).forEach(k => {
+      if (typeof qd[k] === 'number' && qd[k] > 0) typeWeights[k] = qd[k];
+    });
+  }
+  const activeWeightSum = activeTypes.reduce((s, t) => s + (typeWeights[t] ?? 0), 0) || 1;
 
   const typeCounts: Record<string, number> = {};
-  EXAM_ALL_TYPES.forEach(t => {
-    typeCounts[t] = activeTypes.includes(t) ? Math.max(1, Math.round(count * (EXAM_TYPE_WEIGHTS[t] / activeWeightSum))) : 0;
+  EXAM_VALID_TYPES.forEach(t => {
+    typeCounts[t] = activeTypes.includes(t) ? Math.max(1, Math.round(count * ((typeWeights[t] ?? 0) / activeWeightSum))) : 0;
   });
   // Rundungsdifferenz ausgleichen, damit die Summe exakt "count" ergibt
   const diff = count - Object.values(typeCounts).reduce((s, n) => s + n, 0);
@@ -1634,7 +1697,7 @@ export const generateFullExam = async (
     if (target) typeCounts[target] = Math.max(0, typeCounts[target] + diff);
   }
 
-  const typeBullets = EXAM_ALL_TYPES
+  const typeBullets = EXAM_VALID_TYPES
     .filter(t => typeCounts[t] > 0)
     .map(t => EXAM_TYPE_BULLETS[t](typeCounts[t]))
     .join('\n');
@@ -1669,20 +1732,26 @@ Gewichte die Fragenverteilung stärker auf diese Kategorien und bevorzuge Fragen
 
   const bloomTargetLine = options?.examTypePreset ? buildBloomTargetLine(options.examTypePreset) : '';
 
+  // Im Quantitativen Modus überschreibt buildQuantModeBlock die MC-Regeln vollständig
+  // (Rechnung statt Fallbeispiel/Theorievergleich) — die generische mc-Regel würde
+  // sonst widersprüchliche Anweisungen im selben Prompt erzeugen.
+  const quantModeActive = !!options?.quantMode?.enabled;
   const academicMinimumLines = EXAM_ALL_TYPES
-    .filter(t => typeCounts[t] > 0 && EXAM_TYPE_ACADEMIC_MINIMUM[t])
+    .filter(t => typeCounts[t] > 0 && EXAM_TYPE_ACADEMIC_MINIMUM[t] && !(quantModeActive && t === 'mc'))
     .map(t => `- ${EXAM_TYPE_ACADEMIC_MINIMUM[t]}`)
     .join('\n');
   const academicMinimumBlock = academicMinimumLines
     ? `\nAKADEMISCHER MINDESTANSPRUCH (verhindert reine Trivia-/Faktenabfrage unterhalb des Hochschulniveaus):\n${academicMinimumLines}\n`
     : '';
 
+  const quantModeBlock = buildQuantModeBlock(options?.quantMode);
+
   parts.push({ text: `Erstelle eine akademische Klausur mit genau ${count} Aufgaben auf Niveau "${difficulty}".
 Zufalls-Seed: ${seed}
 
 FRAGETYPEN-VERTEILUNG (zwingend einhalten, Summe = ${count}):
 ${typeBullets}
-${excludeLine}${recentQuestionsLine}${bloomTargetLine}${academicMinimumBlock}
+${excludeLine}${recentQuestionsLine}${bloomTargetLine}${academicMinimumBlock}${quantModeBlock}
 ALLGEMEINE REGELN:
 - Jede Aufgabe deckt einen ANDEREN Aspekt des Materials ab
 - id: fortlaufend "q1", "q2", ...
@@ -1723,6 +1792,10 @@ ALLGEMEINE REGELN:
             rankingItems:         { type: Type.ARRAY, items: { type: Type.STRING } },
             numericAnswer:        { type: Type.NUMBER },
             numericTolerance:     { type: Type.NUMBER },
+            expressionAnswer:     { type: Type.STRING },
+            expressionVariables:  { type: Type.ARRAY, items: { type: Type.STRING } },
+            expectedSteps:        { type: Type.ARRAY, items: { type: Type.STRING } },
+            distractorErrorTypes: { type: Type.ARRAY, items: { type: Type.STRING } },
             solution:             { type: Type.STRING },
             points:               { type: Type.NUMBER },
             topic:                { type: Type.STRING },
@@ -1985,6 +2058,144 @@ export const evaluateWithRubric = async (
   return merged.map(q => q.achievedPoints === undefined
     ? { ...q, points: 0, achievedPoints: 0, feedback: t('es.evalMissing'), evaluationConfidence: 0, criterionScores: [] }
     : q);
+};
+
+// ─── Rechenweg-Bewertung (type="step_by_step", Phase 2 Mathe-Ausbau) ─────────
+// Analog zu evaluateWithRubric/evaluateWithRubricOnce (open-Typ): EIN gebatchter
+// Call, gleiches Retry-auf-fehlende-ID-Muster, komplexity "heavy" (nuancierte
+// Teilpunkt-Entscheidung: falscher Ansatz mit zufällig richtigem Endergebnis vs.
+// fast richtiger Ansatz mit einem Rechenfehler — genau die Art Urteil, die auf
+// dem starken statt dem schnellen Modell landet, s. Spec-Vorgabe).
+export interface StepByStepGradeInput {
+  id: string;
+  question: string;
+  expectedSteps: string[];
+  /** Client-seitig aus dem Nutzer-Freitext gesplittet (Zeilenumbruch, getrimmt,
+   *  Leerzeilen entfernt) — das Splitten passiert in ExamSystem.tsx, NICHT hier. */
+  userSteps: string[];
+  points: number;
+}
+
+export interface StepByStepGradeResult {
+  id: string;
+  achievedPoints?: number;
+  correctApproach?: boolean;
+  finalResultCorrect?: boolean;
+  stepFeedback?: ExamQuestion['stepFeedback'];
+}
+
+const STEP_VERDICTS = ['correct', 'error', 'missing'];
+const STEP_ERROR_TYPES = ['sign_error', 'calc_error', 'formula_error', 'wrong_operation', 'other'];
+
+/**
+ * Deterministischer Hinweis auf Basis von services/mathValidation.ts statt die
+ * Endergebnis-Arithmetik der KI zu überlassen (gleiches Prinzip wie beim
+ * numeric-/expression-Typ in Phase 1). Nur ein POSITIVES Match wird als Hinweis
+ * in den Prompt gegeben — ein negatives Ergebnis kann genauso gut "nicht
+ * parsbar" bedeuten (z.B. Freitext-Zwischenschritt) und würde die KI sonst
+ * fälschlich in Richtung "falsch" lenken.
+ */
+const buildFinalResultHint = (userSteps: string[], expectedSteps: string[]): string => {
+  const lastExpected = expectedSteps[expectedSteps.length - 1];
+  const lastUser = [...userSteps].reverse().find(s => s.trim().length > 0);
+  if (!lastExpected || !lastUser) return '';
+  try {
+    if (checkNumericEquivalence(lastUser, lastExpected) || checkExpressionEquivalence(lastUser, lastExpected)) {
+      return ' [Deterministischer Hinweis: die letzte Zeile der Nutzereingabe ist mathematisch/numerisch äquivalent zum erwarteten Endergebnis — werte finalResultCorrect entsprechend, sofern kein offensichtlicher Zufallstreffer bei falschem Ansatz vorliegt.]';
+    }
+  } catch { /* Hinweis bleibt einfach weg, keine harte Aussage ohne sichere Basis */ }
+  return '';
+};
+
+const evaluateStepByStepOnce = async (
+  questions: StepByStepGradeInput[]
+): Promise<StepByStepGradeResult[]> => {
+  const questionsJson = JSON.stringify(
+    questions.map(q => ({
+      id: q.id,
+      question: q.question,
+      expectedSteps: q.expectedSteps,
+      userSteps: q.userSteps,
+      points: q.points,
+      finalResultHint: buildFinalResultHint(q.userSteps, q.expectedSteps),
+    }))
+  );
+
+  const text = await callBackend({
+    complexity: 'heavy',
+    examWorkflow: true,
+    parts: [{
+      text: `Du bist ein fairer Hochschulprüfer, der mehrschrittige Rechenwege/Herleitungen korrigiert.
+
+AUFGABE: Für jede Frage bekommst du die Musterlösung als Schrittfolge (expectedSteps) und die tatsächlich eingereichten Schritte des Studierenden (userSteps, bereits zeilenweise gesplittet). Bewerte NICHT nur, ob das Endergebnis stimmt — bewerte den GESAMTEN Lösungsweg: richtiger Ansatz, korrekte Umformungen, konkrete Fehler in einzelnen Schritten, fehlende Schritte.
+
+REGELN:
+- correctApproach: true wenn die grundsätzliche Methode/der Ansatz stimmt, unabhängig davon ob am Ende ein Rechenfehler passiert ist.
+- finalResultCorrect: true wenn das Endergebnis (letzte inhaltlich sinnvolle Zeile bei userSteps) mit dem Endergebnis in expectedSteps übereinstimmt. Nutze finalResultHint als Anhaltspunkt, wo vorhanden, aber widersprich ihm wenn der Kontext eindeutig etwas anderes zeigt (z.B. offensichtlicher Zufallstreffer bei komplett falschem Ansatz).
+- stepFeedback: für JEDEN Schritt in userSteps ein Eintrag mit stepIndex (0-basiert, Index in userSteps), verdict ("correct" = inhaltlich richtige Umformung/richtiger Schritt, "error" = mathematisch falsch, "missing" = kein sinnvoller Bezug zum erwarteten Schritt an dieser Stelle erkennbar) und optional note (1 kurzer Satz, nur bei "error"/"missing"). Fehlt in userSteps ein ganzer erwarteter Schritt komplett (Sprung von Schritt N zu N+2), ergänze dafür einen zusätzlichen Eintrag mit stepIndex = -1 - (Position im erwarteten Ablauf) und verdict "missing" — erfinde aber keinen Nutzertext, der nicht da ist.
+- errorType: NUR bei verdict "error" und NUR wenn einer dieser exakten Tokens plausibel passt: "sign_error" (Vorzeichenfehler), "calc_error" (Rechenfehler), "formula_error" (falsche Formel angewendet), "wrong_operation" (falsche Rechenoperation), "other". Sonst weglassen.
+- PARTIALPUNKTE SIND PFLICHT: achievedPoints ist eine differenzierte Teilpunktzahl aus points, KEIN reines 0-oder-voll. Ein größtenteils korrekter Lösungsweg mit einem einzelnen Rechenfehler in einem Zwischenschritt soll SPÜRBAR mehr Punkte bekommen als ein grundsätzlich falscher Ansatz, der zufällig auf die richtige Endzahl kommt (letzterer bekommt trotz finalResultCorrect=true nur wenige Punkte, wenn der Weg dorthin nicht nachvollziehbar/falsch ist) — der LösungsWEG zählt, nicht nur das Endergebnis.
+- achievedPoints: nie negativ, nie größer als points.
+- Wenn userSteps komplett leer ist: achievedPoints=0, correctApproach=false, finalResultCorrect=false, stepFeedback=[].
+- Bewerte AUSSCHLIESSLICH auf Basis von expectedSteps — kein externes Wissen, keine alternative Lösungswege erfinden, die nicht durch expectedSteps gedeckt sind, außer sie sind offensichtlich mathematisch gleichwertig.
+
+Fragen: ${questionsJson}${outputLangDirective()}`
+    }],
+    config: {
+      temperature: 0,
+      thinkingConfig: { thinkingBudget: 0 },
+      responseMimeType: 'application/json',
+      responseSchema: {
+        type: Type.ARRAY,
+        items: {
+          type: Type.OBJECT,
+          properties: {
+            id:                { type: Type.STRING },
+            achievedPoints:    { type: Type.NUMBER },
+            correctApproach:   { type: Type.BOOLEAN },
+            finalResultCorrect:{ type: Type.BOOLEAN },
+            stepFeedback: {
+              type: Type.ARRAY,
+              items: {
+                type: Type.OBJECT,
+                properties: {
+                  stepIndex: { type: Type.NUMBER },
+                  verdict:   { type: Type.STRING, format: 'enum', enum: STEP_VERDICTS },
+                  note:      { type: Type.STRING },
+                  errorType: { type: Type.STRING, format: 'enum', enum: STEP_ERROR_TYPES },
+                },
+                required: ['stepIndex', 'verdict'],
+              },
+            },
+          },
+          required: ['id', 'achievedPoints', 'correctApproach', 'finalResultCorrect', 'stepFeedback'],
+        },
+      },
+    },
+  });
+
+  return parseAiJson<StepByStepGradeResult[]>(text || '[]');
+};
+
+export const evaluateStepByStep = async (
+  questions: StepByStepGradeInput[]
+): Promise<StepByStepGradeResult[]> => {
+  if (questions.length === 0) return [];
+  let results = await evaluateStepByStepOnce(questions);
+
+  // Gleiches Nachbewertungs-Muster wie evaluateWithRubric: eine von der KI
+  // ausgelassene ID darf nicht stillschweigend als "nicht bewertet" durchrutschen.
+  const foundIds = new Set(results.map(r => r.id));
+  const missed = questions.filter(q => !foundIds.has(q.id));
+  if (missed.length > 0) {
+    const retried = await evaluateStepByStepOnce(missed).catch(() => [] as StepByStepGradeResult[]);
+    results = [...results, ...retried];
+  }
+
+  // Was danach immer noch fehlt, fliegt mit expliziten 0 Punkten OHNE erfundenes
+  // Feedback aus der Wertung heraus statt den Fragebogen crashen zu lassen.
+  const stillMissing = questions.filter(q => !results.some(r => r.id === q.id));
+  return [...results, ...stillMissing.map(q => ({ id: q.id, achievedPoints: 0, correctApproach: false, finalResultCorrect: false, stepFeedback: [] }))];
 };
 
 // ─── Klausur-Analyse ─────────────────────────────────────────────────────────

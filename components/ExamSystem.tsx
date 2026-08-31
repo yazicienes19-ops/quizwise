@@ -3,13 +3,14 @@ import React, { useState } from 'react';
 import { ExamGenerator } from './ExamGenerator';
 import { ExamArchive } from './ExamArchive';
 import { ExamView } from './ExamView';
-import { ExamQuestion, ProcessedDocument, Collection, ActiveTab, ScoringProfile, ExamAnalysis, TopicMetric, FlashcardDeck, ExamTypePreset } from '../types';
-import { generateFullExam, evaluateWithRubric, classifyBloomLevels, GenerationSource } from '../services/geminiService';
+import { ExamQuestion, ProcessedDocument, Collection, ActiveTab, ScoringProfile, ExamAnalysis, TopicMetric, FlashcardDeck, ExamTypePreset, QuantModeConfig } from '../types';
+import { generateFullExam, evaluateWithRubric, evaluateStepByStep, classifyBloomLevels, GenerationSource } from '../services/geminiService';
 import { buildExamAnalysis } from '../services/examAnalysisService';
 import { track } from '../services/analyticsService';
 import { formatFeedbackContext } from '../services/examFeedbackService';
 import { normalizeExamQuestions } from '../services/examNormalize';
 import { scoreMc, scoreFillblank, scoreRanking } from '../services/examScoring';
+import { checkNumericEquivalence, checkExpressionEquivalence } from '../services/mathValidation';
 import { GeneratedImage } from './GeneratedImage';
 import { toast } from '../services/toast';
 import { useTranslation } from '../i18n/I18nProvider';
@@ -27,6 +28,7 @@ interface ExamSystemProps {
     score: number; docName: string; passed: boolean; totalPoints: number; achievedPoints: number;
     weakTopics: string[]; categoryBreakdown: { category: string; score: number }[];
     typeBreakdown: { type: string; score: number }[];
+    topicBreakdown: { topic: string; score: number }[];
     fatigue?: { earlyScore: number; lateScore: number };
     questions: ExamQuestion[];
     examTypePreset?: ExamTypePreset;
@@ -76,7 +78,7 @@ export const ExamSystem: React.FC<ExamSystemProps> = ({ documents, collections, 
 
   const handleGenerate = async (
     content: GenerationSource, style?: GenerationSource,
-    options?: { count: number; difficulty: string; types?: string[]; adaptive?: { weakCategories: string[]; weakTopics: string[] }; excludeTopics?: string[]; recentQuestions?: string[]; examTypePreset?: ExamTypePreset },
+    options?: { count: number; difficulty: string; types?: string[]; adaptive?: { weakCategories: string[]; weakTopics: string[] }; excludeTopics?: string[]; recentQuestions?: string[]; examTypePreset?: ExamTypePreset; quantMode?: QuantModeConfig },
     docName?: string, totalMinutes?: number, profile?: ScoringProfile
   ) => {
     if (docName) setExamDocName(docName.replace(/\.[^/.]+$/, ''));
@@ -153,9 +155,18 @@ export const ExamSystem: React.FC<ExamSystemProps> = ({ documents, collections, 
       // als Strategie und belohnt Teilwissen statt pauschal 0 zu geben.
       const { fraction, hits, wrong, totalCorrect } = scoreMc(user, correct);
       const pts = Math.round(fraction * q.points);
+      // Phase 2: bei genau EINER falsch gewählten Option (Rechnungs-MC ist ohnehin
+      // Single-Choice) den mitgenerierten Distraktor-Fehlertyp auflösen — Grundlage
+      // für das Fehlertyp-Label im Ergebnis-Modus und den Kontext-Hinweis in
+      // analyzeLearningProgress (services/errorPool.ts fromExam). Bei mehreren
+      // falschen Kreuzen ist die Zuordnung nicht eindeutig, dann bleibt es weg.
+      const wrongSelected = user.filter(i => !correct.includes(i));
+      const selectedDistractorErrorType = wrongSelected.length === 1
+        ? (q.distractorErrorTypes?.[wrongSelected[0]] ?? undefined)
+        : undefined;
       if (pts === q.points) return { ...q, achievedPoints: q.points, feedback: t('es.fullyCorrect') };
-      if (pts > 0)          return { ...q, achievedPoints: pts, feedback: t('es.mcPartial', { hits, total: totalCorrect, wrong }) };
-      return { ...q, achievedPoints: 0, feedback: t('es.wrongCorrect', { list: correct.map(i => q.options?.[i] ?? translate('ev.pdf.optionN', { n: i + 1 })).join(', ') }) };
+      if (pts > 0)          return { ...q, achievedPoints: pts, feedback: t('es.mcPartial', { hits, total: totalCorrect, wrong }), selectedDistractorErrorType };
+      return { ...q, achievedPoints: 0, feedback: t('es.wrongCorrect', { list: correct.map(i => q.options?.[i] ?? translate('ev.pdf.optionN', { n: i + 1 })).join(', ') }), selectedDistractorErrorType };
     }
 
     if (q.type === 'truefalse') {
@@ -198,13 +209,32 @@ export const ExamSystem: React.FC<ExamSystemProps> = ({ documents, collections, 
     }
 
     if (q.type === 'numeric') {
-      const user = parseFloat(q.userAnswer);
+      // Mathematische Äquivalenz statt reinem Delta-Vergleich (services/mathValidation.ts):
+      // Bruch (8/3), exakte Dezimalzahl (2.6666667) und gerundete Dezimalzahl (2.6667)
+      // gelten alle als dieselbe Antwort, zusätzlich zur pädagogischen numericTolerance.
       const correct = q.numericAnswer ?? 0;
       const tolerance = q.numericTolerance ?? 0;
-      if (!isNaN(user) && Math.abs(user - correct) <= tolerance) {
-        return { ...q, achievedPoints: q.points, feedback: t('es.numCorrect', { value: user }) };
+      const rawAnswer = typeof q.userAnswer === 'string' ? q.userAnswer : String(q.userAnswer ?? '');
+      const ok = rawAnswer.trim() !== '' && checkNumericEquivalence(rawAnswer, correct, { tolerance });
+      if (ok) {
+        return { ...q, achievedPoints: q.points, feedback: t('es.numCorrect', { value: rawAnswer }) };
       }
       return { ...q, achievedPoints: 0, feedback: t('es.numWrong', { answer: correct, tol: tolerance > 0 ? ` (±${tolerance})` : '' }) };
+    }
+
+    if (q.type === 'expression') {
+      // Symbolische/mathematische Äquivalenz per numerischem Sampling statt Stringvergleich
+      // (services/mathValidation.ts checkExpressionEquivalence) — erkennt z.B. "3x^2+4x-5"
+      // und "-5+4x+3x²" als dieselbe Lösung, lehnt echte Vorzeichen-/Rechenfehler ab.
+      const userExpr = typeof q.userAnswer === 'string' ? q.userAnswer : '';
+      const correctExpr = q.expressionAnswer ?? '';
+      if (!userExpr.trim() || !correctExpr.trim()) {
+        return { ...q, achievedPoints: 0, feedback: t('ev.noAnswer') };
+      }
+      const ok = checkExpressionEquivalence(userExpr, correctExpr, q.expressionVariables);
+      return ok
+        ? { ...q, achievedPoints: q.points, feedback: t('es.exprCorrect') }
+        : { ...q, achievedPoints: 0, feedback: t('es.exprWrong', { answer: correctExpr }) };
     }
 
     return q;
@@ -213,8 +243,9 @@ export const ExamSystem: React.FC<ExamSystemProps> = ({ documents, collections, 
   const handleSubmitExam = async (finalQuestions: ExamQuestion[]) => {
     setIsLoading(true);
     try {
-      // Automatische Auswertung für alle nicht-open Typen
-      const preEvaluated = finalQuestions.map(q => q.type === 'open' ? q : autoEvaluate(q));
+      // Automatische Auswertung für alle deterministisch bewertbaren Typen — "open"
+      // (Rubrik) und "step_by_step" (Rechenweg) sind beide KI-bewertet, nicht deterministisch.
+      const preEvaluated = finalQuestions.map(q => (q.type === 'open' || q.type === 'step_by_step') ? q : autoEvaluate(q));
 
       // Rubrik-basierte KI-Bewertung für offene Fragen
       const openQs = preEvaluated.filter(q => q.type === 'open');
@@ -226,9 +257,37 @@ export const ExamSystem: React.FC<ExamSystemProps> = ({ documents, collections, 
           if (ctx) feedbackContexts[q.id] = ctx;
         });
         const aiResults = await evaluateWithRubric(openQs, scoringProfile, feedbackContexts);
-        evaluated = preEvaluated.map(q => {
+        evaluated = evaluated.map(q => {
           if (q.type !== 'open') return q;
           return aiResults.find(r => r.id === q.id) ?? q;
+        });
+      }
+
+      // KI-Bewertung für Rechenweg-Aufgaben (Quantitativer Modus Phase 2) — Zeilen-
+      // Splitting passiert HIER, nicht in geminiService.ts (Spec-Vorgabe): leere
+      // Zeilen raus, trimmen, damit "userSteps" wirklich nur echte Schritte enthält.
+      const stepQs = preEvaluated.filter(q => q.type === 'step_by_step');
+      if (stepQs.length > 0) {
+        const splitSteps = (raw: any): string[] =>
+          (typeof raw === 'string' ? raw : '').split('\n').map(s => s.trim()).filter(Boolean);
+        const stepResults = await evaluateStepByStep(stepQs.map(q => ({
+          id: q.id,
+          question: q.question,
+          expectedSteps: q.expectedSteps ?? [],
+          userSteps: splitSteps(q.userAnswer),
+          points: q.points,
+        })));
+        evaluated = evaluated.map(q => {
+          if (q.type !== 'step_by_step') return q;
+          const r = stepResults.find(res => res.id === q.id);
+          if (!r) return { ...q, achievedPoints: 0, feedback: t('es.evalMissing') };
+          return {
+            ...q,
+            achievedPoints: Math.min(Math.max(0, r.achievedPoints ?? 0), q.points),
+            correctApproach: r.correctApproach ?? false,
+            finalResultCorrect: r.finalResultCorrect ?? false,
+            stepFeedback: r.stepFeedback ?? [],
+          };
         });
       }
 
@@ -270,6 +329,23 @@ export const ExamSystem: React.FC<ExamSystemProps> = ({ documents, collections, 
         type, score: total > 0 ? Math.round((achieved / total) * 100) : 0,
       }));
 
+      // Themen-Aufschlüsselung: Score je Thema (dasselbe Reduce-Muster wie Kategorie/Typ
+      // oben) — insb. für den Quantitativen Modus relevant, wo "topic" oft granularer als
+      // "category" ist (z.B. "Kettenregel" statt nur "rechnung"). examAnalysisService.ts
+      // berechnet dieselbe Größe schon für die Session-Analyse (topicPerformance); hier
+      // zusätzlich persistiert, damit sie auch nach dem Neuladen der Klausurhistorie bleibt.
+      const topicPoints: Record<string, { achieved: number; total: number }> = {};
+      evaluated.forEach(q => {
+        if (!q.topic || q.points <= 0) return;
+        const entry = topicPoints[q.topic] ?? { achieved: 0, total: 0 };
+        entry.achieved += q.achievedPoints ?? 0;
+        entry.total += q.points;
+        topicPoints[q.topic] = entry;
+      });
+      const topicBreakdown = Object.entries(topicPoints).map(([topic, { achieved, total }]) => ({
+        topic, score: total > 0 ? Math.round((achieved / total) * 100) : 0,
+      }));
+
       // Fatigue-Signal: Score erste vs. zweite Hälfte der Fragen in Original-Reihenfolge
       const withPoints = evaluated.filter(q => q.points > 0);
       const mid = Math.floor(withPoints.length / 2);
@@ -282,7 +358,7 @@ export const ExamSystem: React.FC<ExamSystemProps> = ({ documents, collections, 
         ? { earlyScore: scoreOf(withPoints.slice(0, mid)), lateScore: scoreOf(withPoints.slice(mid)) }
         : undefined;
 
-      onComplete?.({ score, docName: examDocName, passed: score >= 50, totalPoints, achievedPoints, weakTopics, categoryBreakdown, typeBreakdown, fatigue, questions: evaluated, examTypePreset });
+      onComplete?.({ score, docName: examDocName, passed: score >= 50, totalPoints, achievedPoints, weakTopics, categoryBreakdown, typeBreakdown, topicBreakdown, fatigue, questions: evaluated, examTypePreset });
       setCategoryBreakdown(categoryBreakdown);
       setFatigue(fatigue);
 

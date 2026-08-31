@@ -16,6 +16,10 @@ export interface ExamResult {
   weakTopics: string[];
   categoryBreakdown?: { category: string; score: number }[];
   typeBreakdown?: { type: string; score: number }[];
+  /** Score je Thema (dasselbe Aggregations-Muster wie category-/typeBreakdown) — vor
+   *  allem für den Quantitativen Modus relevant, wo "topic" granularer ist als
+   *  "category" (z.B. "Kettenregel" statt nur "rechnung"). services/mathValidation.ts. */
+  topicBreakdown?: { topic: string; score: number }[];
   /** Score erste vs. zweite Hälfte der Fragen (Original-Reihenfolge) — Signal für Konzentrationsabfall */
   fatigue?: { earlyScore: number; lateScore: number };
   /** Bewertete Fragen inkl. userAnswer/achievedPoints — nur bei den neuesten Klausuren vorhanden. */

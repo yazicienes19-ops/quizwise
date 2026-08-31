@@ -3,7 +3,8 @@ import React, { useState, useEffect, useRef, useCallback, useMemo } from 'react'
 import { ExamQuestion, ActiveTab, ScoringProfile, ExamAnalysis, QuestionFeedbackType, ExamTypePreset } from '../types';
 import { saveQuestionFeedback } from '../services/examFeedbackService';
 import { formatUserAnswer, formatCorrectAnswer } from '../services/examAnswerFormat';
-import { germanGradeFromPercentage, getCategoryLabel, getTypeLabel } from '../services/learningProfileService';
+import { checkNumericEquivalence, checkExpressionEquivalence } from '../services/mathValidation';
+import { germanGradeFromPercentage, getCategoryLabel, getTypeLabel, getDistractorErrorTypeLabel } from '../services/learningProfileService';
 import { BLOOM_LEVELS, BLOOM_LEVEL_LABELS, EXAM_TYPE_BLOOM_TARGETS, computeActualBloomDistribution } from '../services/bloomPresets';
 import type { TKey } from '../i18n';
 import { EmojiImage } from './EmojiImage';
@@ -343,7 +344,8 @@ export const ExamView: React.FC<ExamViewProps> = ({
           <div className="pl-4 lg:pl-10">
             <div className="flex items-center gap-3 max-w-xs">
               <input
-                type="number"
+                type="text"
+                inputMode="decimal"
                 value={(ans as string) || ''}
                 onChange={e => setAnswer(q.id, e.target.value)}
                 placeholder={t('ev.numericPlaceholder')}
@@ -354,15 +356,143 @@ export const ExamView: React.FC<ExamViewProps> = ({
           </div>
         );
       }
+      // Mathematische Äquivalenz statt reinem Delta-Vergleich (services/mathValidation.ts):
+      // Bruch/Dezimalzahl/gerundete Dezimalzahl gelten als dieselbe Antwort (dieselbe
+      // Logik wie in ExamSystem.tsx autoEvaluate, keine zweite Wertungsquelle).
+      const rawAnswer = typeof q.userAnswer === 'string' ? q.userAnswer : String(q.userAnswer ?? '');
       const user = parseFloat(q.userAnswer);
       const correct = q.numericAnswer ?? 0;
-      const ok = !isNaN(user) && Math.abs(user - correct) <= (q.numericTolerance ?? 0);
+      const ok = rawAnswer.trim() !== '' && checkNumericEquivalence(rawAnswer, correct, { tolerance: q.numericTolerance ?? 0 });
       return (
         <div className="pl-4 lg:pl-10 flex items-center gap-4">
-          <span className={`text-2xl font-black ${ok ? 'text-emerald-600' : 'text-rose-600'}`}>{isNaN(user) ? '—' : user}</span>
+          <span className={`text-2xl font-black ${ok ? 'text-emerald-600' : 'text-rose-600'}`}>{isNaN(user) ? '—' : rawAnswer}</span>
           {!ok && <span className="text-sm text-slate-500 dark:text-slate-400">{t('ev.correctPrefix')}<strong className="text-emerald-600">{correct}</strong>{q.numericTolerance ? ` ±${q.numericTolerance}` : ''}</span>}
           {ok && <span className="text-sm text-emerald-600 font-black">✓ Korrekt</span>}
         </div>
+      );
+    }
+
+    /* ── Ausdruck / Term (Quantitativer Modus) ── */
+    if (q.type === 'expression') {
+      if (mode === 'solve') {
+        return (
+          <div className="pl-4 lg:pl-10">
+            <input
+              type="text"
+              value={(ans as string) || ''}
+              onChange={e => setAnswer(q.id, e.target.value)}
+              placeholder={t('ev.expressionPlaceholder')}
+              className="w-full max-w-md p-4 bg-slate-50 dark:bg-slate-800 rounded-[20px] border-2 border-transparent focus:border-indigo-500 outline-none transition-all dark:text-white font-mono text-lg"
+            />
+          </div>
+        );
+      }
+      // Ergebnis-Modus: mathematische Äquivalenz per checkExpressionEquivalence
+      // (services/mathValidation.ts) — nie ein Stringvergleich, s. autoEvaluate.
+      const userExpr = (q.userAnswer as string) || '';
+      const correctExpr = q.expressionAnswer ?? '';
+      const ok = !!userExpr.trim() && !!correctExpr.trim() && checkExpressionEquivalence(userExpr, correctExpr, q.expressionVariables);
+      return (
+        <div className="pl-4 lg:pl-10 flex flex-col gap-2">
+          <span className={`font-mono text-lg font-black ${ok ? 'text-emerald-600' : 'text-rose-600'}`}>{userExpr || '—'}</span>
+          {!ok && <span className="text-sm text-slate-500 dark:text-slate-400">{t('ev.correctPrefix')}<strong className="text-emerald-600 font-mono">{correctExpr}</strong></span>}
+          {ok && <span className="text-sm text-emerald-600 font-black">✓ Korrekt</span>}
+        </div>
+      );
+    }
+
+    /* ── Rechenweg / Herleitung (Quantitativer Modus Phase 2) ── */
+    if (q.type === 'step_by_step') {
+      if (mode === 'solve') {
+        // Solve-Modus zeigt NUR das leere Eingabefeld — expectedSteps/stepFeedback
+        // werden erst weiter unten (mode === 'result') gelesen, hier gar nicht
+        // referenziert. Gleiche Leak-Disziplin wie bei jedem anderen Fragetyp.
+        return (
+          <div className="pl-4 lg:pl-10">
+            <textarea
+              value={(ans as string) || ''}
+              onChange={e => setAnswer(q.id, e.target.value)}
+              placeholder={t('ev.stepByStepPlaceholder')}
+              rows={6}
+              className="w-full p-6 bg-slate-50 dark:bg-slate-800 rounded-[32px] border-2 border-transparent focus:border-indigo-500 outline-none transition-all dark:text-white font-mono text-sm resize-y"
+            />
+            <p className="text-[9px] font-black uppercase tracking-widest text-slate-400 mt-2">{t('ev.stepByStepHint')}</p>
+          </div>
+        );
+      }
+      if (mode === 'result') {
+        const userSteps = (typeof q.userAnswer === 'string' ? q.userAnswer : '')
+          .split('\n').map(s => s.trim()).filter(Boolean);
+        const feedbackByIndex = new Map((q.stepFeedback ?? []).filter(f => f.stepIndex >= 0).map(f => [f.stepIndex, f]));
+        const missingSteps = (q.stepFeedback ?? []).filter(f => f.stepIndex < 0);
+        const verdictCls: Record<string, string> = {
+          correct: 'border-emerald-400 bg-emerald-50 dark:bg-emerald-950/20 text-emerald-700 dark:text-emerald-300',
+          error:   'border-rose-400 bg-rose-50 dark:bg-rose-950/20 text-rose-700 dark:text-rose-300',
+          missing: 'border-amber-400 bg-amber-50 dark:bg-amber-950/20 text-amber-700 dark:text-amber-300',
+        };
+        const verdictLabel: Record<string, string> = {
+          correct: t('ev.stepVerdictCorrect'), error: t('ev.stepVerdictError'), missing: t('ev.stepVerdictMissing'),
+        };
+        return (
+          <div className="pl-4 lg:pl-10 space-y-4">
+            {(q.correctApproach !== undefined || q.finalResultCorrect !== undefined) && (
+              <div className="flex flex-wrap gap-2">
+                {q.correctApproach !== undefined && (
+                  <span className={`text-[9px] font-black uppercase tracking-widest px-2.5 py-1 rounded-full ${q.correctApproach ? 'bg-emerald-100 dark:bg-emerald-900/30 text-emerald-600' : 'bg-rose-100 dark:bg-rose-900/30 text-rose-600'}`}>
+                    {q.correctApproach ? t('ev.stepApproachOk') : t('ev.stepApproachIssue')}
+                  </span>
+                )}
+                {q.finalResultCorrect !== undefined && (
+                  <span className={`text-[9px] font-black uppercase tracking-widest px-2.5 py-1 rounded-full ${q.finalResultCorrect ? 'bg-emerald-100 dark:bg-emerald-900/30 text-emerald-600' : 'bg-rose-100 dark:bg-rose-900/30 text-rose-600'}`}>
+                    {q.finalResultCorrect ? t('ev.stepFinalOk') : t('ev.stepFinalWrong')}
+                  </span>
+                )}
+              </div>
+            )}
+            {userSteps.length === 0 ? (
+              <p className="text-sm text-slate-400 italic">{t('ev.noAnswer')}</p>
+            ) : (
+              <ol className="space-y-2">
+                {userSteps.map((step, i) => {
+                  const fb = feedbackByIndex.get(i);
+                  const cls = fb ? verdictCls[fb.verdict] : 'border-slate-200 dark:border-slate-700 text-slate-600 dark:text-slate-300';
+                  return (
+                    <li key={i} className={`p-3 rounded-2xl border-2 font-mono text-sm ${cls}`}>
+                      <div className="flex items-start justify-between gap-3">
+                        <span className="min-w-0 break-words">{i + 1}. {step}</span>
+                        {fb && <span className="text-[9px] font-black uppercase tracking-widest shrink-0">{verdictLabel[fb.verdict]}</span>}
+                      </div>
+                      {fb?.note && <p className="text-xs mt-1 font-sans opacity-90">{fb.note}</p>}
+                      {fb?.errorType && <p className="text-[9px] mt-1 font-sans font-black uppercase tracking-widest opacity-75">{t('ev.distractorErrorTypeLabel')}: {getDistractorErrorTypeLabel(fb.errorType)}</p>}
+                    </li>
+                  );
+                })}
+              </ol>
+            )}
+            {missingSteps.length > 0 && (
+              <ul className="space-y-2">
+                {missingSteps.map((fb, i) => (
+                  <li key={`missing-${i}`} className="p-3 rounded-2xl border-2 border-dashed border-amber-400 bg-amber-50 dark:bg-amber-950/20 text-amber-700 dark:text-amber-300 text-sm">
+                    <span className="text-[9px] font-black uppercase tracking-widest">{t('ev.stepVerdictMissing')}</span>
+                    {fb.note && <p className="text-xs mt-1">{fb.note}</p>}
+                  </li>
+                ))}
+              </ul>
+            )}
+            {q.expectedSteps && q.expectedSteps.length > 0 && (
+              <div className="pt-2">
+                <p className="text-[9px] font-black uppercase tracking-widest text-slate-400 mb-2">{t('ev.stepExpectedTitle')}</p>
+                <ol className="space-y-1 list-decimal list-inside text-sm text-slate-500 dark:text-slate-400 font-mono">
+                  {q.expectedSteps.map((s, i) => <li key={i}>{s}</li>)}
+                </ol>
+              </div>
+            )}
+          </div>
+        );
+      }
+      // Edit-Vorschau: kein Leak, nur ein Platzhalter-Hinweis wie beim open-Typ.
+      return (
+        <div className="pl-4 lg:pl-10 h-24 border-b-2 border-slate-200 dark:border-slate-800 opacity-20 pointer-events-none bg-[linear-gradient(transparent_39px,#cbd5e1_40px)] dark:bg-[linear-gradient(transparent_39px,#334155_40px)] bg-[size:100%_40px]" />
       );
     }
 
@@ -944,7 +1074,7 @@ export const ExamView: React.FC<ExamViewProps> = ({
                         <div className="flex justify-between items-center mb-4">
                           <div className="flex items-center gap-2">
                             <h4 className="text-[10px] font-black uppercase tracking-widest text-slate-400">
-                              {q.type === 'open' ? t('ev.correction') : t('ev.evaluation')}
+                              {q.type === 'open' || q.type === 'step_by_step' ? t('ev.correction') : t('ev.evaluation')}
                             </h4>
                             {q.evaluationConfidence !== undefined && (
                               <span className={`text-[9px] font-black uppercase tracking-widest px-2 py-0.5 rounded-full ${q.evaluationConfidence >= 80 ? 'bg-emerald-100 dark:bg-emerald-900/30 text-emerald-600' : q.evaluationConfidence >= 60 ? 'bg-amber-100 dark:bg-amber-900/30 text-amber-600' : 'bg-rose-100 dark:bg-rose-900/30 text-rose-600'}`}>
@@ -984,6 +1114,15 @@ export const ExamView: React.FC<ExamViewProps> = ({
                               );
                             })}
                           </div>
+                        )}
+
+                        {/* Vermuteter Fehlertyp (Phase 2, nur MC-"Rechnung" mit gesetztem
+                            selectedDistractorErrorType — bei den meisten falschen Antworten
+                            ist das Feld nicht gesetzt, dann erscheint hier nichts). */}
+                        {q.type === 'mc' && q.selectedDistractorErrorType && (
+                          <p className="text-[10px] font-black uppercase tracking-widest text-amber-600 dark:text-amber-400 mb-3">
+                            {t('ev.distractorErrorTypeLabel')}: {getDistractorErrorTypeLabel(q.selectedDistractorErrorType)}
+                          </p>
                         )}
 
                         {/* Gesamtfeedback */}
