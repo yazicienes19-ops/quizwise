@@ -123,6 +123,18 @@ router.post('/generate', async (req, res, next) => {
     if (config?.thinkingConfig)   generationConfig.thinkingConfig   = config.thinkingConfig;
     if (systemInstruction)        generationConfig.systemInstruction = systemInstruction;
 
+    // gemini-3.5-flash-lite lehnt thinkingBudget:0 mit 400 INVALID_ARGUMENT ab
+    // (anders als 2.5-Modelle, wo das Thinking vollständig deaktivierte) — der
+    // Client fordert thinkingBudget:0 überall zur Geschwindigkeit an, ohne zu
+    // wissen, welches Modell serverseitig tatsächlich gewählt wird (Free-Plan
+    // landet z.B. auch bei complexity:"heavy" auf MODEL_LITE). Weglassen statt
+    // z.B. auf -1 (dynamisches Thinking) zu ändern, weil das unvorhersehbar
+    // Kosten/Latenz erhöhen würde — die Anfrage läuft dann einfach ohne
+    // expliziten Thinking-Parameter (Modell-Default).
+    if (selectedModel === MODEL_LITE && generationConfig.thinkingConfig?.thinkingBudget === 0) {
+      delete generationConfig.thinkingConfig;
+    }
+
     const request = {
       model: selectedModel,
       contents: [{ role: 'user', parts: resolvedParts }],

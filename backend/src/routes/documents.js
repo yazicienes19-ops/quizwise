@@ -106,7 +106,12 @@ router.post('/:id/analyze', async (req, res) => {
       const response = await ai.models.generateContent({
         model: MODEL_LITE,
         contents: [{ role: 'user', parts: [part, { text: digestPrompt(language) }] }],
-        config: { temperature: 0.2, thinkingConfig: { thinkingBudget: 0 } },
+        // KEIN thinkingConfig: gemini-3.5-flash-lite lehnt thinkingBudget:0 mit
+        // 400 INVALID_ARGUMENT ab (anders als die früheren 2.5-Modelle) — ließ
+        // JEDEN Digest hier scheitern, egal welches Dokument. Weglassen statt
+        // z.B. auf -1 umzustellen, damit kein unvorhersehbares zusätzliches
+        // Thinking-Budget die Digest-Kosten/Latenz erhöht.
+        config: { temperature: 0.2 },
       });
 
       const digestText = response.candidates?.[0]?.content?.parts?.[0]?.text || '';
