@@ -1,8 +1,9 @@
 import { describe, it, expect } from 'vitest';
 import { renderToStaticMarkup } from 'react-dom/server';
-import { renderMarkdown } from './markdownRenderer';
+import { renderMarkdown, parseInline } from './markdownRenderer';
 
 const html = (md: string) => renderToStaticMarkup(<>{renderMarkdown(md)}</>);
+const inlineHtml = (text: string) => renderToStaticMarkup(<>{parseInline(text, 'test')}</>);
 
 describe('renderMarkdown — Überschriften', () => {
   it('Überschrift auf eigener Zeile bleibt wie bisher (h3 + folgender Absatz)', () => {
@@ -38,5 +39,36 @@ describe('renderMarkdown — Überschriften', () => {
     const out = html('Temel Bilgiler Bu bir açıklamadır.');
     expect(out).toMatch(/<h3[^>]*>Temel Bilgiler<\/h3>/);
     expect(out).toContain('Bu bir açıklamadır.');
+  });
+});
+
+describe('parseInline — Formeln (KaTeX)', () => {
+  // Regression: ExplainerSystem.tsx zeigte den "Beleg aus: [Quelle]"-Zitatblock
+  // bisher als reinen String (kein renderMarkdown/parseInline-Aufruf), roh
+  // gequotete LaTeX-Formeln aus der KI-Antwort blieben dort unrenderd sichtbar
+  // ("$f(x) = ...$" statt echter Formel), obwohl der Haupttext direkt darüber
+  // dieselbe Formel bereits korrekt rendert. Fix: Zitat läuft jetzt ebenfalls
+  // durch parseInline. Diese Tests sichern die zugrunde liegende Funktion ab.
+  it('$...$ (inline) wird als KaTeX gerendert, kein rohes Dollarzeichen bleibt übrig', () => {
+    const out = inlineHtml("Für $f(x) = x^3 + 2x^2 - 5x$ gilt $f'(x) = 3x^2 + 4x - 5$.");
+    expect(out).toContain('class="katex"');
+    expect(out).not.toContain('$f(x)');
+    expect(out).not.toContain("$f'(x)");
+  });
+
+  it('\\(...\\) (alternative Inline-Delimiter) wird ebenfalls gerendert', () => {
+    const out = inlineHtml('Es gilt \\(x^2 + 1\\).');
+    expect(out).toContain('class="katex"');
+    expect(out).not.toContain('\\(x^2');
+  });
+
+  it('ungültiges LaTeX crasht nicht (throwOnError:false greift), Fallback bleibt lesbar', () => {
+    expect(() => inlineHtml('Kaputt: $\\frac{1$')).not.toThrow();
+  });
+
+  it('einzelnes Dollarzeichen ohne Gegenstück wird NICHT als Formel fehlinterpretiert', () => {
+    const out = inlineHtml('Der Preis beträgt 5$ pro Stück, kein Mathe hier.');
+    expect(out).not.toContain('class="katex"');
+    expect(out).toContain('5$ pro Stück');
   });
 });

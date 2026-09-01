@@ -25,7 +25,7 @@ import { getAllResults } from '../services/quizHistoryService';
 import { getAllRecallResults } from '../services/recallHistoryService';
 import { getAllExamResults } from '../services/examHistoryService';
 import { getStreak } from '../services/streakService';
-import { renderMarkdown } from './markdownRenderer';
+import { renderMarkdown, parseInline } from './markdownRenderer';
 
 // ─── Typen ────────────────────────────────────────────────────────────────────
 
@@ -753,7 +753,7 @@ export const ExplainerSystem: React.FC<ExplainerSystemProps> = ({
                       <p className="text-[9px] font-black uppercase tracking-widest mb-1" style={{ color: 'var(--primary)' }}>
                         {activeSourceName ? t('ex.quoteFrom', { source: activeSourceName }) : t('ex.quoteLabel')}
                       </p>
-                      <p className="text-xs font-medium italic text-slate-600 dark:text-slate-300 break-words">„{m.quote}"</p>
+                      <p className="text-xs font-medium italic text-slate-600 dark:text-slate-300 break-words">„{parseInline(m.quote, `${m.id}-quote`)}"</p>
                     </div>
                   )}
 
