@@ -8,11 +8,36 @@ export type Translations = Record<TKey, string>;
 
 const DICTS: Record<Locale, Translations> = { de, tr, en };
 
+function isLocale(v: string | null): v is Locale {
+  return v === 'de' || v === 'tr' || v === 'en';
+}
+
+// Cookie statt localStorage, weil der Cloudflare-Worker (worker/index.js) das
+// Land nur SERVERSEITIG kennt (request.cf.country) — er setzt einmalig beim
+// allerersten Besuch (noch kein Cookie) diesen Cookie per IP-Geolocation, der
+// dann schon im allerersten Response mitkommt (kein Flackern/zweiter Request).
+function readLangCookie(): string | null {
+  if (typeof document === 'undefined') return null;
+  const match = document.cookie.match(/(?:^|;\s*)studearc_language=([^;]*)/);
+  return match ? decodeURIComponent(match[1]) : null;
+}
+
 // --- Modul-State: von React UND von Services (ohne React) geteilt ---
 function detectInitial(): Locale {
   try {
     const stored = localStorage.getItem('studearc_language');
-    if (stored === 'de' || stored === 'tr' || stored === 'en') return stored;
+    if (isLocale(stored)) return stored;
+
+    // Zweite Stufe: vom Worker per IP-Land gesetztes Cookie (nur bei WIRKLICH
+    // erstem Besuch überhaupt vorhanden — s. Kommentar in worker/index.js).
+    const cookieLang = readLangCookie();
+    if (isLocale(cookieLang)) {
+      localStorage.setItem('studearc_language', cookieLang);
+      return cookieLang;
+    }
+
+    // Letzter Fallback (z.B. lokal ohne Worker, oder Cookies blockiert):
+    // Browser-Spracheinstellung statt Standort.
     const lang = navigator.language?.toLowerCase();
     const detected: Locale = lang?.startsWith('tr') ? 'tr' : lang?.startsWith('en') ? 'en' : 'de';
     localStorage.setItem('studearc_language', detected);

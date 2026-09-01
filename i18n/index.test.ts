@@ -1,4 +1,4 @@
-import { describe, it, expect, beforeEach } from 'vitest';
+import { describe, it, expect, beforeEach, vi } from 'vitest';
 import { t, tp, setLocale, getLocale, localeTag } from './index';
 import { de } from './locales/de';
 import { tr } from './locales/tr';
@@ -35,5 +35,44 @@ describe('i18n', () => {
     const bad = (v: string) => v.includes(' — ') || v.includes('KI ') || v.includes('KI-');
     expect(Object.values(de).filter(bad)).toEqual([]);
     expect(Object.values(tr).filter(bad)).toEqual([]);
+  });
+});
+
+describe('detectInitial (Ersteinstieg: localStorage > Worker-Cookie > Browser-Sprache)', () => {
+  // Bewusst KEIN Modul-Import hier — sonst würde detectInitial() schon beim
+  // Aufräumen selbst einmal laufen und via seinem eigenen Fallback etwas in
+  // localStorage schreiben, bevor das jeweilige Testszenario überhaupt
+  // aufgesetzt ist (genau dieser Bug hat die ersten Testversuche verfälscht).
+  const reset = () => {
+    localStorage.clear();
+    document.cookie = 'studearc_language=; expires=Thu, 01 Jan 1970 00:00:00 UTC; path=/;';
+  };
+
+  it('bevorzugt localStorage vor Cookie und Browser-Sprache', async () => {
+    reset();
+    localStorage.setItem('studearc_language', 'tr');
+    document.cookie = 'studearc_language=de; path=/';
+    vi.resetModules();
+    const { getLocale } = await import('./index');
+    expect(getLocale()).toBe('tr');
+  });
+
+  it('nutzt das vom Worker gesetzte Cookie, wenn kein localStorage-Wert existiert', async () => {
+    reset();
+    document.cookie = 'studearc_language=tr; path=/';
+    vi.resetModules();
+    const { getLocale } = await import('./index');
+    expect(getLocale()).toBe('tr');
+    // Übernommen in localStorage, damit künftige Besuche nicht mehr vom Cookie abhängen.
+    expect(localStorage.getItem('studearc_language')).toBe('tr');
+  });
+
+  it('fällt ohne localStorage und ohne Cookie auf die Browser-Sprache zurück', async () => {
+    reset();
+    const spy = vi.spyOn(navigator, 'language', 'get').mockReturnValue('tr-TR');
+    vi.resetModules();
+    const { getLocale } = await import('./index');
+    expect(getLocale()).toBe('tr');
+    spy.mockRestore();
   });
 });
