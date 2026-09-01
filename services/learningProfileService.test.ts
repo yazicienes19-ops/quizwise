@@ -1,5 +1,5 @@
 import { describe, it, expect, beforeEach } from 'vitest';
-import { buildLearningProfile, buildRealTopicMastery, buildDailyPlan, buildMethodCommentary, buildContextMotivation, germanGradeFromPercentage } from './learningProfileService';
+import { buildLearningProfile, buildRealTopicMastery, buildDailyPlan, buildMethodCommentary, buildContextMotivation, gradeFromPercentage } from './learningProfileService';
 import { setLocale } from '../i18n';
 import type { QuizResult } from './quizHistoryService';
 import type { ExamResult } from './examHistoryService';
@@ -22,12 +22,29 @@ const emptyInput = {
   streak: { current: 0, best: 0 },
 };
 
-describe('germanGradeFromPercentage', () => {
-  it('mappt Grenzwerte auf die deutsche Notenskala', () => {
-    expect(germanGradeFromPercentage(95).grade).toBe('1.0');
-    expect(germanGradeFromPercentage(50).grade).toBe('4.0');
-    expect(germanGradeFromPercentage(49).grade).toBe('5.0');
-    expect(germanGradeFromPercentage(49).label).toBe('Nicht Bestanden');
+describe('gradeFromPercentage', () => {
+  it('mappt Grenzwerte auf die deutsche Notenskala (Standard)', () => {
+    expect(gradeFromPercentage(95).grade).toBe('1.0');
+    expect(gradeFromPercentage(50).grade).toBe('4.0');
+    expect(gradeFromPercentage(49).grade).toBe('5.0');
+    expect(gradeFromPercentage(49).label).toBe('Nicht Bestanden');
+    expect(gradeFromPercentage(50).passed).toBe(true);
+    expect(gradeFromPercentage(49).passed).toBe(false);
+    expect(gradeFromPercentage(50).system).toBe('numeric');
+  });
+
+  it('mappt Grenzwerte auf die türkische Bologna-Notenskala (tr-Locale)', () => {
+    setLocale('tr');
+    expect(gradeFromPercentage(90).grade).toBe('AA');
+    expect(gradeFromPercentage(60).grade).toBe('DD');
+    expect(gradeFromPercentage(59).grade).toBe('FD');
+    expect(gradeFromPercentage(0).grade).toBe('FF');
+    // Bestehensgrenze liegt in TR bei 60%, nicht bei 50% wie in DE — genau der
+    // Fall, den 55% real unterscheidet (in DE noch "ausreichend"/bestanden).
+    expect(gradeFromPercentage(60).passed).toBe(true);
+    expect(gradeFromPercentage(55).passed).toBe(false);
+    expect(gradeFromPercentage(60).system).toBe('letter');
+    setLocale('de');
   });
 });
 

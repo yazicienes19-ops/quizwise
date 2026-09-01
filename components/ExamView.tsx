@@ -4,7 +4,7 @@ import { ExamQuestion, ActiveTab, ScoringProfile, ExamAnalysis, QuestionFeedback
 import { saveQuestionFeedback } from '../services/examFeedbackService';
 import { formatUserAnswer, formatCorrectAnswer } from '../services/examAnswerFormat';
 import { checkNumericEquivalence, checkExpressionEquivalence } from '../services/mathValidation';
-import { germanGradeFromPercentage, getCategoryLabel, getTypeLabel, getDistractorErrorTypeLabel } from '../services/learningProfileService';
+import { gradeFromPercentage, passThresholdPercent, getCategoryLabel, getTypeLabel, getDistractorErrorTypeLabel } from '../services/learningProfileService';
 import { BLOOM_LEVELS, BLOOM_LEVEL_LABELS, EXAM_TYPE_BLOOM_TARGETS, computeActualBloomDistribution } from '../services/bloomPresets';
 import type { TKey } from '../i18n';
 import { EmojiImage } from './EmojiImage';
@@ -124,13 +124,13 @@ export const ExamView: React.FC<ExamViewProps> = ({
   // Farbe/Hintergrund sind UI-spezifisch und bleiben hier; die Note selbst kommt
   // aus der geteilten Notenskala (auch von der Klausurprognose des Lern-Coaches genutzt).
   const getGrade = (p: number) => {
-    const { grade, label } = germanGradeFromPercentage(p);
-    if (p >= 90) return { grade, label, color: 'text-emerald-600', bg: 'bg-emerald-50' };
-    if (p >= 80) return { grade, label, color: 'text-emerald-500', bg: 'bg-emerald-50/50' };
-    if (p >= 70) return { grade, label, color: 'text-indigo-500',  bg: 'bg-indigo-50/50' };
-    if (p >= 60) return { grade, label, color: 'text-amber-500',   bg: 'bg-amber-50/50' };
-    if (p >= 50) return { grade, label, color: 'text-amber-600',   bg: 'bg-amber-100/50' };
-    return        { grade, label, color: 'text-rose-600',          bg: 'bg-rose-50' };
+    const { grade, label, passed, system } = gradeFromPercentage(p);
+    if (p >= 90) return { grade, label, passed, system, color: 'text-emerald-600', bg: 'bg-emerald-50' };
+    if (p >= 80) return { grade, label, passed, system, color: 'text-emerald-500', bg: 'bg-emerald-50/50' };
+    if (p >= 70) return { grade, label, passed, system, color: 'text-indigo-500',  bg: 'bg-indigo-50/50' };
+    if (p >= 60) return { grade, label, passed, system, color: 'text-amber-500',   bg: 'bg-amber-50/50' };
+    if (p >= 50) return { grade, label, passed, system, color: 'text-amber-600',   bg: 'bg-amber-100/50' };
+    return        { grade, label, passed, system, color: 'text-rose-600',          bg: 'bg-rose-50' };
   };
   const gradeInfo = getGrade(percentage);
 
@@ -190,7 +190,7 @@ export const ExamView: React.FC<ExamViewProps> = ({
     y += 4;
 
     // Grade box line
-    const gradeColor: [number, number, number] = percentage >= 50 ? [16, 185, 129] : [239, 68, 68];
+    const gradeColor: [number, number, number] = gradeInfo.passed ? [16, 185, 129] : [239, 68, 68];
     doc.setDrawColor(...gradeColor);
     doc.setLineWidth(0.8);
     doc.roundedRect(margin, y, lw, 20, 3, 3, 'S');
@@ -201,7 +201,7 @@ export const ExamView: React.FC<ExamViewProps> = ({
     doc.setFontSize(9);
     doc.setFont('helvetica', 'normal');
     doc.setTextColor(80, 80, 80);
-    doc.text(translate('ev.pdf.summary', { pct: Math.round(percentage), achieved: achievedTotal, total: totalPoints, status: percentage >= 50 ? translate('ev.passed') : translate('ev.notPassed') }), margin + 6, y + 15);
+    doc.text(translate('ev.pdf.summary', { pct: Math.round(percentage), achieved: achievedTotal, total: totalPoints, status: gradeInfo.passed ? translate('ev.passed') : translate('ev.notPassed') }), margin + 6, y + 15);
     y += 27;
 
     // Questions
@@ -728,11 +728,13 @@ export const ExamView: React.FC<ExamViewProps> = ({
 
       {/* Note + Ergebnis-Aktionen */}
       {mode === 'result' && (
-        <div className={`grid grid-cols-1 md:grid-cols-3 gap-6 sm:gap-8 ${gradeInfo.bg} dark:bg-slate-900/40 p-5 sm:p-10 rounded-[28px] sm:rounded-[40px] border-2 ${percentage >= 50 ? 'border-emerald-500' : 'border-rose-500'} animate-in zoom-in-95`}>
+        <div className={`grid grid-cols-1 md:grid-cols-3 gap-6 sm:gap-8 ${gradeInfo.bg} dark:bg-slate-900/40 p-5 sm:p-10 rounded-[28px] sm:rounded-[40px] border-2 ${gradeInfo.passed ? 'border-emerald-500' : 'border-rose-500'} animate-in zoom-in-95`}>
           <div className="flex flex-col items-center justify-center border-b md:border-b-0 md:border-r border-slate-200 dark:border-slate-800 pb-6 md:pb-0">
             <span className="text-[10px] font-black uppercase tracking-widest text-slate-400 mb-2">{t('ev.finalGrade')}</span>
             <span className={`text-6xl sm:text-7xl font-black ${gradeInfo.color}`}>
-              <CountUp value={parseFloat(gradeInfo.grade)} from={5} decimals={1} duration={900} finalText={gradeInfo.grade} />
+              {gradeInfo.system === 'letter'
+                ? <CountUp value={percentage} from={0} decimals={0} duration={900} finalText={gradeInfo.grade} />
+                : <CountUp value={parseFloat(gradeInfo.grade)} from={5} decimals={1} duration={900} finalText={gradeInfo.grade} />}
             </span>
             <span className={`text-xs font-black uppercase mt-2 tracking-widest ${gradeInfo.color}`}>{gradeInfo.label}</span>
           </div>
@@ -740,19 +742,19 @@ export const ExamView: React.FC<ExamViewProps> = ({
             <div className="space-y-2">
               <div className="flex justify-between items-center text-[10px] font-black uppercase tracking-widest text-slate-400">
                 <span>{t('ev.performance')}</span>
-                <span>{percentage >= 50 ? t('ev.passed') : t('ev.notPassed')}</span>
+                <span>{gradeInfo.passed ? t('ev.passed') : t('ev.notPassed')}</span>
               </div>
               <div className="h-4 bg-slate-200 dark:bg-slate-800 rounded-full overflow-hidden shadow-inner">
-                <AnimatedBar percent={percentage} className={`h-full ${percentage >= 50 ? 'bg-emerald-500' : 'bg-rose-500'}`} duration={1000} />
+                <AnimatedBar percent={percentage} className={`h-full ${gradeInfo.passed ? 'bg-emerald-500' : 'bg-rose-500'}`} duration={1000} />
               </div>
               <div className="flex justify-between text-[9px] font-bold text-slate-400">
-                <span>0%</span><span className="text-amber-500">50% Bestanden</span><span>100%</span>
+                <span>0%</span><span className="text-amber-500">{t('ev.passThreshold', { pct: passThresholdPercent() })}</span><span>100%</span>
               </div>
             </div>
             <p className="text-sm font-medium text-slate-600 dark:text-slate-400 italic">
               {percentage >= 90 ? t('ev.perf90') :
                percentage >= 70 ? t('ev.perf80') :
-               percentage >= 50 ? t('ev.perf50') :
+               gradeInfo.passed ? t('ev.perf50') :
                t('ev.perfFail')}
             </p>
             {onSaveExam && (

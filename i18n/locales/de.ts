@@ -1318,6 +1318,7 @@ export const de = {
   'ev.perf80': 'Gute Leistung. Du beherrschst die wesentlichen Inhalte sicher.',
   'ev.perf50': 'Bestanden. Es sind jedoch noch Lücken in der Tiefe vorhanden.',
   'ev.perfFail': 'Leider hat es diesmal nicht gereicht. Nutze die Fehleranalyse für die Nachbereitung.',
+  'ev.passThreshold': '{pct}% zum Bestehen',
   'ev.examNamePlaceholder': 'Klausur-Name...',
   'ev.scoringProfileLabel': 'Bewertungsprofil:',
   'ev.categoryBreakdown': 'Kategorie-Aufschlüsselung',

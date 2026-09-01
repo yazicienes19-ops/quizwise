@@ -1317,6 +1317,7 @@ export const en: Translations = {
   'ev.perf80': 'Good performance. You have a solid grasp of the key content.',
   'ev.perf50': 'Passed. However, there are still some gaps in depth.',
   'ev.perfFail': 'Unfortunately it wasn\'t enough this time. Use the error analysis for follow-up review.',
+  'ev.passThreshold': '{pct}% to pass',
   'ev.examNamePlaceholder': 'Exam name...',
   'ev.scoringProfileLabel': 'Scoring profile:',
   'ev.categoryBreakdown': 'Category breakdown',

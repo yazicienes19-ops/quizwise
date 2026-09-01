@@ -11,6 +11,7 @@ import { formatFeedbackContext } from '../services/examFeedbackService';
 import { normalizeExamQuestions } from '../services/examNormalize';
 import { scoreMc, scoreFillblank, scoreRanking } from '../services/examScoring';
 import { checkNumericEquivalence, checkExpressionEquivalence } from '../services/mathValidation';
+import { passThresholdPercent } from '../services/learningProfileService';
 import { GeneratedImage } from './GeneratedImage';
 import { toast } from '../services/toast';
 import { useTranslation } from '../i18n/I18nProvider';
@@ -358,7 +359,7 @@ export const ExamSystem: React.FC<ExamSystemProps> = ({ documents, collections, 
         ? { earlyScore: scoreOf(withPoints.slice(0, mid)), lateScore: scoreOf(withPoints.slice(mid)) }
         : undefined;
 
-      onComplete?.({ score, docName: examDocName, passed: score >= 50, totalPoints, achievedPoints, weakTopics, categoryBreakdown, typeBreakdown, topicBreakdown, fatigue, questions: evaluated, examTypePreset });
+      onComplete?.({ score, docName: examDocName, passed: score >= passThresholdPercent(), totalPoints, achievedPoints, weakTopics, categoryBreakdown, typeBreakdown, topicBreakdown, fatigue, questions: evaluated, examTypePreset });
       setCategoryBreakdown(categoryBreakdown);
       setFatigue(fatigue);
 

@@ -1,6 +1,6 @@
 import type { FlashcardDeck, TopicSecurity } from '../types';
 import type { ExamResult } from './examHistoryService';
-import { germanGradeFromPercentage } from './learningProfileService';
+import { gradeFromPercentage } from './learningProfileService';
 
 /**
  * examForecastService — faire, transparente Klausurprognose in drei Stufen.
@@ -165,7 +165,7 @@ export const buildExamForecast = (input: ForecastInput): ExamForecast | null => 
     trend,
     trendAvailable,
     projection,
-    grade: germanGradeFromPercentage(expected).grade,
+    grade: gradeFromPercentage(expected).grade,
     passProbability: Math.round(clamp(expected * 0.7 + passShare * 0.3, 0, 100)),
     parts: {
       examScore: Math.round(examScore),

@@ -2,7 +2,7 @@ import React, { useMemo, useState } from 'react';
 import { getAllExamResults } from '../services/examHistoryService';
 import type { ExamResult } from '../services/examHistoryService';
 import { formatUserAnswer } from '../services/examAnswerFormat';
-import { germanGradeFromPercentage, getCategoryLabel } from '../services/learningProfileService';
+import { gradeFromPercentage, getCategoryLabel } from '../services/learningProfileService';
 import { useTranslation } from '../i18n/I18nProvider';
 import { formatDate } from '../i18n/dates';
 
@@ -21,7 +21,7 @@ export const ExamArchive: React.FC = () => {
       </div>
 
       {exams.map(exam => {
-        const { grade } = germanGradeFromPercentage(exam.score);
+        const { grade } = gradeFromPercentage(exam.score);
         const isOpen = openId === exam.id;
         return (
           <div key={exam.id} className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-[24px] shadow-sm overflow-hidden">

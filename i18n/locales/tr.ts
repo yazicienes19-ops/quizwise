@@ -1310,6 +1310,7 @@ export const tr: Translations = {
   'ev.perf80': 'İyi performans. Temel içeriklere sağlam hâkimsin.',
   'ev.perf50': 'Geçtin. Yine de derinlikte hâlâ boşluklar var.',
   'ev.perfFail': 'Maalesef bu sefer yetmedi. Hata analizini tekrar için kullan.',
+  'ev.passThreshold': 'Geçme notu: {pct}%',
   'ev.examNamePlaceholder': 'Sınav adı...',
   'ev.scoringProfileLabel': 'Puanlama profili:',
   'ev.categoryBreakdown': 'Kategori dağılımı',

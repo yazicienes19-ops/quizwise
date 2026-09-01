@@ -8,7 +8,7 @@ import { ActiveTab } from '../types';
 import type { QuizResult } from './quizHistoryService';
 import type { ExamResult } from './examHistoryService';
 import type { RecallResult } from './recallHistoryService';
-import { t, tp } from '../i18n';
+import { t, tp, getLocale } from '../i18n';
 import type { TKey } from '../i18n';
 import { computeBloomStage } from './bloomProgression';
 
@@ -47,24 +47,67 @@ export const getMethodLabel = (m: LearnMethod): string => (METHOD_KEYS[m] ? t(ME
 export const getTypeLabel = (ty: string): string => (TYPE_KEYS[ty] ? t(TYPE_KEYS[ty]) : ty);
 export const getDistractorErrorTypeLabel = (ty: DistractorErrorType): string => t(DISTRACTOR_ERROR_TYPE_KEYS[ty]);
 
+export interface GradeInfo {
+  grade: string;
+  label: string;
+  /** Bestanden gemäß der jeweiligen Landes-Notenskala — Schwellen unterscheiden
+   *  sich real (DE: ab 4.0/50% bestanden, TR: ab DD/60% bestanden), deshalb hier
+   *  explizit statt an einen festen Prozentwert im UI gekoppelt. */
+  passed: boolean;
+  /** Steuert im UI, wie die CountUp-Animation läuft — deutsche Note zählt (wie
+   *  gewohnt) absteigend auf die Zahl, türkische Buchstabennote zählt aufsteigend
+   *  auf den Prozentwert hoch und zeigt den Buchstaben erst am Ende. */
+  system: 'numeric' | 'letter';
+}
+
+/**
+ * Türkische Notenskala (Bologna-Buchstaben AA–FF, an türkischen Unis üblich).
+ * DD ist die niedrigste bestandene Note — bewusst eigene Tabelle statt
+ * Wiederverwendung der deutschen Prozent-Schwellen, weil sich die Bestanden-
+ * Grenze unterscheidet (TR: ab 60%, DE: ab 50%) und die Bänder nicht 1:1
+ * übereinanderliegen (z.B. 55% ist in DE noch "ausreichend"/bestanden, in TR
+ * schon FD/nicht bestanden).
+ */
+const turkishGradeFromPercentage = (p: number): GradeInfo => {
+  if (p >= 90) return { grade: 'AA', label: t('lp.grade.sehrGut'), passed: true, system: 'letter' };
+  if (p >= 85) return { grade: 'BA', label: t('lp.grade.sehrGut'), passed: true, system: 'letter' };
+  if (p >= 80) return { grade: 'BB', label: t('lp.grade.gut'), passed: true, system: 'letter' };
+  if (p >= 75) return { grade: 'CB', label: t('lp.grade.gut'), passed: true, system: 'letter' };
+  if (p >= 70) return { grade: 'CC', label: t('lp.grade.befriedigend'), passed: true, system: 'letter' };
+  if (p >= 65) return { grade: 'DC', label: t('lp.grade.befriedigend'), passed: true, system: 'letter' };
+  if (p >= 60) return { grade: 'DD', label: t('lp.grade.ausreichend'), passed: true, system: 'letter' };
+  if (p >= 50) return { grade: 'FD', label: t('lp.grade.nichtBestanden'), passed: false, system: 'letter' };
+  return { grade: 'FF', label: t('lp.grade.nichtBestanden'), passed: false, system: 'letter' };
+};
+
 /**
  * Deutsche Notenskala (Standard-Notenschlüssel), aus ExamView.tsx extrahiert
  * damit sie auch für die Klausurprognose des Lern-Coaches wiederverwendbar ist.
  * Die Note (1.0–5.0) bleibt sprachneutral, nur das Label wird lokalisiert.
  */
-export const germanGradeFromPercentage = (p: number): { grade: string; label: string } => {
-  if (p >= 95) return { grade: '1.0', label: t('lp.grade.sehrGut') };
-  if (p >= 90) return { grade: '1.3', label: t('lp.grade.sehrGut') };
-  if (p >= 85) return { grade: '1.7', label: t('lp.grade.gut') };
-  if (p >= 80) return { grade: '2.0', label: t('lp.grade.gut') };
-  if (p >= 75) return { grade: '2.3', label: t('lp.grade.gut') };
-  if (p >= 70) return { grade: '2.7', label: t('lp.grade.befriedigend') };
-  if (p >= 65) return { grade: '3.0', label: t('lp.grade.befriedigend') };
-  if (p >= 60) return { grade: '3.3', label: t('lp.grade.befriedigend') };
-  if (p >= 55) return { grade: '3.7', label: t('lp.grade.ausreichend') };
-  if (p >= 50) return { grade: '4.0', label: t('lp.grade.ausreichend') };
-  return { grade: '5.0', label: t('lp.grade.nichtBestanden') };
+const germanGradeFromPercentageOnly = (p: number): GradeInfo => {
+  if (p >= 95) return { grade: '1.0', label: t('lp.grade.sehrGut'), passed: true, system: 'numeric' };
+  if (p >= 90) return { grade: '1.3', label: t('lp.grade.sehrGut'), passed: true, system: 'numeric' };
+  if (p >= 85) return { grade: '1.7', label: t('lp.grade.gut'), passed: true, system: 'numeric' };
+  if (p >= 80) return { grade: '2.0', label: t('lp.grade.gut'), passed: true, system: 'numeric' };
+  if (p >= 75) return { grade: '2.3', label: t('lp.grade.gut'), passed: true, system: 'numeric' };
+  if (p >= 70) return { grade: '2.7', label: t('lp.grade.befriedigend'), passed: true, system: 'numeric' };
+  if (p >= 65) return { grade: '3.0', label: t('lp.grade.befriedigend'), passed: true, system: 'numeric' };
+  if (p >= 60) return { grade: '3.3', label: t('lp.grade.befriedigend'), passed: true, system: 'numeric' };
+  if (p >= 55) return { grade: '3.7', label: t('lp.grade.ausreichend'), passed: true, system: 'numeric' };
+  if (p >= 50) return { grade: '4.0', label: t('lp.grade.ausreichend'), passed: true, system: 'numeric' };
+  return { grade: '5.0', label: t('lp.grade.nichtBestanden'), passed: false, system: 'numeric' };
 };
+
+/**
+ * Notenskala je Account-Sprache: Türkisch → Bologna-Buchstaben (AA–FF),
+ * Deutsch/Englisch → deutsches 1,0–5,0-Schema (bisheriges Standardverhalten).
+ */
+export const gradeFromPercentage = (p: number): GradeInfo =>
+  getLocale() === 'tr' ? turkishGradeFromPercentage(p) : germanGradeFromPercentageOnly(p);
+
+/** Bestehensgrenze der aktiven Landes-Notenskala (DE: 50% = 4.0, TR: 60% = DD). */
+export const passThresholdPercent = (): number => (getLocale() === 'tr' ? 60 : 50);
 
 const trendOf = (scoresNewestFirst: number[]): 'up' | 'down' | 'stable' => {
   if (scoresNewestFirst.length < 4) return 'stable';
@@ -409,7 +452,7 @@ const buildExamPrognosis = (examResults: ExamResult[]): ExamPrognosis | null => 
   const weightedScore = recent.reduce((s, r, i) => s + r.score * weights[i], 0) / totalWeight;
   const passedShare = (recent.filter(r => r.passed).length / recent.length) * 100;
   const passProbability = Math.round(weightedScore * 0.7 + passedShare * 0.3);
-  return { grade: germanGradeFromPercentage(weightedScore).grade, passProbability, basis: recent.length };
+  return { grade: gradeFromPercentage(weightedScore).grade, passProbability, basis: recent.length };
 };
 
 // ─── Motivations-Banner (regelbasiert, kein KI-Call) ───────────────────────────────
