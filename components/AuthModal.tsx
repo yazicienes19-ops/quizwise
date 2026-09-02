@@ -54,7 +54,9 @@ export const AuthModal: React.FC<AuthModalProps> = ({ onClose, onSuccess }) => {
         const { error } = await supabase.auth.signUp({
           email,
           password,
-          options: { data: { full_name: name } }
+          // Muss zusätzlich unter Supabase → Authentication → URL Configuration
+          // → Redirect URLs freigegeben sein, sonst fällt Supabase still auf die Site URL zurück.
+          options: { data: { full_name: name }, emailRedirectTo: window.location.origin }
         });
         if (error) throw error;
         setSuccessMsg(t('auth.confirmSent'));
