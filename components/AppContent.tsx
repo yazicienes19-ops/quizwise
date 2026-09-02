@@ -451,7 +451,7 @@ export const AppContent: React.FC<AppContentProps> = (p) => {
           onSaveToLibrary={file => handleFileUpload(file)}
           initialDoc={pendingActionDoc ?? undefined}
           initialQuestions={examInitialQuestions?.questions}
-          metrics={metrics} decks={decks}
+          metrics={metrics} decks={decks} examTerms={examTerms}
           onComplete={({ score, docName, passed, totalPoints, achievedPoints, weakTopics, categoryBreakdown, typeBreakdown, topicBreakdown, fatigue, questions: examQuestions, examTypePreset }) => {
             saveExamResult({ docName, timestamp: Date.now(), score, passed, totalPoints, achievedPoints, weakTopics, categoryBreakdown, typeBreakdown, topicBreakdown, fatigue, questions: examQuestions, examTypePreset }, user?.id);
             // Falsche mc/truefalse-Klausurfragen in die SM-2-Wiederholungs-Queue

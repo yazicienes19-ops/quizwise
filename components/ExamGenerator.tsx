@@ -1,6 +1,6 @@
 
 import React, { useState, useMemo, useEffect } from 'react';
-import { ProcessedDocument, Collection, ScoringProfile, ScoringMode, ExamQuestion, TopicMetric, FlashcardDeck, ExamTypePreset, QuantModeConfig, QuantTypeDistribution } from '../types';
+import { ProcessedDocument, Collection, ScoringProfile, ScoringMode, ExamQuestion, TopicMetric, FlashcardDeck, ExamTypePreset, QuantModeConfig, QuantTypeDistribution, ExamTerm } from '../types';
 import { GenerationSource } from '../services/geminiService';
 import { GeneratedImage } from './GeneratedImage';
 import { SourceSelector } from './SourceSelector';
@@ -12,14 +12,16 @@ import { buildCollectionSource } from '../services/collectionSource';
 import { buildLearningProfile } from '../services/learningProfileService';
 import { getAllResults } from '../services/quizHistoryService';
 import { getAllRecallResults } from '../services/recallHistoryService';
-import { getAllExamResults } from '../services/examHistoryService';
+import { getAllExamResults, getRecentAverageScore } from '../services/examHistoryService';
 import { getStreak } from '../services/streakService';
 import { sourceTopicsKey, getUsedTopics, getUsedExamQuestions } from '../hooks/useQuizState';
+import { computeTopicWeights, computeDifficultyMix, TopicWeight, DifficultyMix } from '../services/examAdaptive';
+import { daysUntilDate } from '../services/calendarSessions';
 
 type ExamOptions = {
   count: number; difficulty: string;
   types?: string[];
-  adaptive?: { weakCategories: string[]; weakTopics: string[] };
+  adaptive?: { weakCategories: string[]; weakTopics: string[]; topicWeights?: TopicWeight[]; difficultyMix?: DifficultyMix };
   excludeTopics?: string[];
   recentQuestions?: string[];
   examTypePreset?: ExamTypePreset;
@@ -55,6 +57,7 @@ interface ExamGeneratorProps {
   initialDoc?: ProcessedDocument;
   metrics: TopicMetric[];
   decks: FlashcardDeck[];
+  examTerms?: ExamTerm[];
 }
 
 const EXAM_TYPE_IDS: ExamQuestion['type'][] = ['mc', 'matching', 'truefalse', 'fillblank', 'ranking', 'numeric', 'open'];
@@ -69,6 +72,7 @@ export const ExamGenerator: React.FC<ExamGeneratorProps> = ({
   initialDoc,
   metrics,
   decks,
+  examTerms,
 }) => {
   const { t } = useTranslation();
   const [contentSource, setContentSource] = useState<GenerationSource | null>(null);
@@ -132,6 +136,16 @@ export const ExamGenerator: React.FC<ExamGeneratorProps> = ({
   }), [metrics, decks]);
   const hasAdaptiveData = profile.categoryMastery.length > 0 || profile.topicMastery.length > 0;
 
+  // Nächster künftiger Klausurtermin, egal zu welchem Fach (ExamTerm ist nicht an ein Fach
+  // gebunden) — dasselbe Signal wie Dashboard.tsx "examCountdown", hier als Eingabe für
+  // computeDifficultyMix (Paket 11, Phase 3A).
+  const daysUntilNextExam = useMemo(() => {
+    if (!examTerms || examTerms.length === 0) return null;
+    const now = new Date();
+    const days = examTerms.map(term => daysUntilDate(term.date, now)).filter(d => d >= 0);
+    return days.length > 0 ? Math.min(...days) : null;
+  }, [examTerms]);
+
   const autoMinutes = useMemo(() => {
     const baseTimePerQuestion = difficulty === 'leicht' ? 4 : difficulty === 'mittel' ? 6 : 9;
     return questionCount * baseTimePerQuestion + 5;
@@ -190,6 +204,8 @@ export const ExamGenerator: React.FC<ExamGeneratorProps> = ({
       const adaptive = adaptiveEnabled ? {
         weakCategories: profile.categoryMastery.filter(c => c.avgScore < 60).map(c => c.category),
         weakTopics: profile.topicMastery.filter(t => t.security !== 'sicher').slice(0, 5).map(t => t.topic),
+        topicWeights: computeTopicWeights(profile.topicMastery, questionCount),
+        difficultyMix: computeDifficultyMix(difficulty, getRecentAverageScore(5), daysUntilNextExam),
       } : undefined;
       // Wiederholungsgefahr wie beim Quiz: kürzlich aus derselben Quelle geprüfte
       // Themen nicht gleich nochmal abfragen (services/hooks/useQuizState.ts).

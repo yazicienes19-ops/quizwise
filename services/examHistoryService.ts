@@ -47,6 +47,14 @@ export const saveExamResult = (data: Omit<ExamResult, 'id'>, userId?: string | n
 
 export const getAllExamResults = (): ExamResult[] => readAll();
 
+/** Durchschnittsscore der letzten n Klausuren (readAll liefert neueste zuerst) —
+ *  null ohne jede Historie, Grundlage für services/examAdaptive.ts computeDifficultyMix. */
+export const getRecentAverageScore = (n = 5): number | null => {
+  const recent = readAll().slice(0, n);
+  if (recent.length === 0) return null;
+  return recent.reduce((s, r) => s + r.score, 0) / recent.length;
+};
+
 export const deleteExamResult = (id: string, userId?: string | null): void => {
   const updated = readAll().filter(r => r.id !== id);
   localStorage.setItem(STORAGE_KEY, JSON.stringify(updated));

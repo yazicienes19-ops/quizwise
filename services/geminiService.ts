@@ -43,6 +43,7 @@ import { validateLearningAnalysis, EMPTY_ANALYSIS, ACTION_TYPES } from './analys
 import type { RawLearningAnalysis } from './analysisValidation';
 import type { TopicCalibrationGap } from './calibrationGap';
 import { checkNumericEquivalence, checkExpressionEquivalence } from './mathValidation';
+import type { TopicWeight, DifficultyMix } from './examAdaptive';
 
 const BACKEND_URL = import.meta.env.VITE_BACKEND_URL || 'http://localhost:4000';
 
@@ -1647,7 +1648,7 @@ export const generateFullExam = async (
   options?: {
     count: number; difficulty: string;
     types?: string[];
-    adaptive?: { weakCategories: string[]; weakTopics: string[] };
+    adaptive?: { weakCategories: string[]; weakTopics: string[]; topicWeights?: TopicWeight[]; difficultyMix?: DifficultyMix };
     excludeTopics?: string[];
     recentQuestions?: string[];
     examTypePreset?: ExamTypePreset;
@@ -1704,12 +1705,40 @@ export const generateFullExam = async (
 
   const seed = Math.random().toString(36).slice(2, 8);
 
+  // Paket 11 (Phase 3A): topicWeights ersetzt die bisherige weiche "Bisher schwache
+  // Themen"-Formulierung durch verbindliche Mindest-Stückzahlen (services/examAdaptive.ts
+  // computeTopicWeights) — analog zu FRAGETYPEN-VERTEILUNG unten. weakCategories bleibt
+  // bewusst als weicher Hinweis (Kategorien sind ein fixes 6er-Enum, kein Umbau nötig).
+  // weakTopics greift nur noch als Fallback, falls ein Aufrufer topicWeights nicht mitgibt.
   let adaptiveBlock = '';
-  if (options?.adaptive && (options.adaptive.weakCategories.length > 0 || options.adaptive.weakTopics.length > 0)) {
-    adaptiveBlock = `\n\nADAPTIVE GEWICHTUNG (aus dem echten Lernprofil des Studierenden):
-Bisher schwache Kategorien: ${options.adaptive.weakCategories.join(', ') || '—'}.
-Bisher schwache Themen: ${options.adaptive.weakTopics.join(', ') || '—'}.
-Gewichte die Fragenverteilung stärker auf diese Kategorien und bevorzuge Fragen zu diesen Themen, SOFERN das Lernmaterial dazu Inhalte hergibt. Ignoriere dies, wenn das Material keinen Bezug dazu hat — erfinde keine Fragen zu Themen, die nicht im Material stehen.`;
+  if (options?.adaptive?.weakCategories && options.adaptive.weakCategories.length > 0) {
+    adaptiveBlock += `\n\nADAPTIVE GEWICHTUNG (aus dem echten Lernprofil des Studierenden):
+Bisher schwache Kategorien: ${options.adaptive.weakCategories.join(', ')}.
+Gewichte die Fragenverteilung stärker auf diese Kategorien, SOFERN das Lernmaterial dazu Inhalte hergibt. Ignoriere dies, wenn das Material keinen Bezug dazu hat.`;
+  }
+  if (options?.adaptive?.topicWeights && options.adaptive.topicWeights.length > 0) {
+    const topicBullets = options.adaptive.topicWeights.map(w => `- Thema "${w.topic}": mindestens ${w.minCount} Fragen`).join('\n');
+    adaptiveBlock += `\n\nTHEMEN-MINDESTKONTINGENT (verbindlich, SOFERN das Material dazu Inhalte hergibt — erfinde keine Fragen zu Themen ohne Bezug im Material):\n${topicBullets}`;
+  } else if (options?.adaptive?.weakTopics && options.adaptive.weakTopics.length > 0) {
+    adaptiveBlock += `\n\nBisher schwache Themen: ${options.adaptive.weakTopics.join(', ')}. Bevorzuge Fragen zu diesen Themen, SOFERN das Material dazu Inhalte hergibt.`;
+  }
+
+  // Paket 11 (Phase 3A): harte Schwierigkeits-Stückzahl statt nur der einzelnen
+  // "Niveau"-Stufe — steuert das difficulty-Feld pro Frage (types.ts ExamQuestion.difficulty),
+  // Rundungsrest immer der mittleren Stufe zugeschlagen (wie EXAM_REMAINDER_ORDER unten für Typen).
+  let difficultyMixLine = '';
+  if (options?.adaptive?.difficultyMix) {
+    const mix = options.adaptive.difficultyMix;
+    const counts = {
+      leicht: Math.round(count * mix.leicht / 100),
+      mittel: Math.round(count * mix.mittel / 100),
+      schwer: Math.round(count * mix.schwer / 100),
+    };
+    counts.mittel += count - (counts.leicht + counts.mittel + counts.schwer);
+    difficultyMixLine = `\nSCHWIERIGKEITS-VERTEILUNG (zwingend einhalten, Summe = ${count}, steuert das difficulty-Feld jeder Frage):
+- ${counts.leicht} Fragen mit difficulty "leicht"
+- ${counts.mittel} Fragen mit difficulty "mittel"
+- ${counts.schwer} Fragen mit difficulty "schwer"\n`;
   }
 
   // Wiederholungsgefahr wie beim Quiz: ohne das würde dieselbe Klausur-Quelle bei
@@ -1751,13 +1780,13 @@ Zufalls-Seed: ${seed}
 
 FRAGETYPEN-VERTEILUNG (zwingend einhalten, Summe = ${count}):
 ${typeBullets}
-${excludeLine}${recentQuestionsLine}${bloomTargetLine}${academicMinimumBlock}${quantModeBlock}
+${difficultyMixLine}${excludeLine}${recentQuestionsLine}${bloomTargetLine}${academicMinimumBlock}${quantModeBlock}
 ALLGEMEINE REGELN:
 - Jede Aufgabe deckt einen ANDEREN Aspekt des Materials ab
 - id: fortlaufend "q1", "q2", ...
 - topic: das fachliche Thema der Aufgabe in 1-3 Worten (z.B. "Kognitive Dissonanz"), konsistent benannt wenn mehrere Aufgaben dasselbe Thema betreffen
 - category: die am besten passende Kategorie — "definition" (Begriffsdefinition), "verstaendnis" (Verständnisfrage), "transfer" (Anwendung auf neue Situation/Fallbeispiel), "beispiel" (konkretes Beispiel nennen/erkennen), "rechnung" (Berechnung/Formel), "fachbegriff" (Fachterminologie)
-- difficulty: die TATSÄCHLICHE Schwierigkeit DIESER EINEN Aufgabe — "leicht", "mittel" oder "schwer". Unabhängig vom allgemeinen Klausur-Niveau: auch in einer insgesamt "${difficulty}"-Klausur können einzelne Aufgaben objektiv leichter oder schwerer sein, bewerte jede für sich.
+- difficulty: die TATSÄCHLICHE Schwierigkeit DIESER EINEN Aufgabe — "leicht", "mittel" oder "schwer".${difficultyMixLine ? ' Halte dich dabei an die SCHWIERIGKEITS-VERTEILUNG oben (Stückzahl pro Stufe).' : ` Unabhängig vom allgemeinen Klausur-Niveau: auch in einer insgesamt "${difficulty}"-Klausur können einzelne Aufgaben objektiv leichter oder schwerer sein, bewerte jede für sich.`}
 - Alle Arrays die nicht für den Typ relevant sind: als leeres Array [] angeben
 - Nicht relevante Felder weglassen oder mit 0/false/null als Default
 - Die category-Werte (definition, verstaendnis, transfer, beispiel, rechnung, fachbegriff) bleiben immer exakt diese Tokens, unabhängig von der Sprache${adaptiveBlock}${outputLangDirective()}` });

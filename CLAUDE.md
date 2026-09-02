@@ -152,6 +152,61 @@ muss `npm run dev` fehlerfrei laufen.
   "Labor"; initiales JS-Bundle messbar kleiner (vite build Ausgabe
   vergleichen); App.tsx < 300 Zeilen
 
+## PAKET 11 — Adaptive Klausur: Themengewichtung & Schwierigkeitsmix (Phase 3A)
+Kontext: Die Klausur wird komplett vorab in einem Gemini-Call generiert,
+danach frei navigierbar und einmal abgegeben (kein Frage-für-Frage-Ablauf).
+Echtes Live-CAT ("Antwort auf Frage N bestimmt Schwierigkeit von Frage N+1")
+ist damit nicht sinnvoll umsetzbar — bewusste Entscheidung: stattdessen wird
+die Schwierigkeits-/Themenverteilung schon bei der Generierung deterministisch
+gesteuert, analog zum bestehenden `EXAM_TYPE_WEIGHTS`-Muster (services/
+geminiService.ts:1572) statt wie bisher nur als weicher Text-Hinweis
+("adaptiveBlock", geminiService.ts:1707-1713, gespeist vom bereits
+existierenden "Adaptive Klausur"-Toggle in ExamGenerator.tsx:126-133/190-193).
+1. services/examAdaptive.ts (neu), reine Funktionen:
+   - computeTopicWeights(topicMastery: TopicSecurity[], totalCount: number)
+     → {topic, minCount}[] — kritisch > unsicher > sicher, Summe ≈ totalCount
+   - computeDifficultyMix(baseDifficulty, recentAvgScore: number | null,
+     daysUntilNextExam: number | null) → {leicht, mittel, schwer} (Summe 100)
+2. services/examHistoryService.ts: neue Funktion getRecentAverageScore(n=5)
+   — Durchschnitt der letzten n ExamResult.score.
+3. Nächster fälliger Termin: dieselbe Logik wie in Dashboard.tsx:107-117
+   (daysUntilDate aus services/calendarSessions.ts) auf examTerms anwenden.
+   Zuerst prüfen, ob ExamGenerator.tsx bereits Zugriff auf examTerms hat —
+   falls nicht, als Prop durchreichen (App.tsx hält den State schon).
+4. ExamGenerator.tsx: "Adaptive Klausur"-Toggle erweitern — zusätzlich zu
+   den bisherigen weakCategories/weakTopics jetzt topicWeights/difficultyMix
+   aus Schritt 1–3 berechnen und in options.adaptive mitgeben.
+5. services/geminiService.ts: adaptiveBlock (Zeilen ~1707-1713) durch harte
+   Bullet-Listen ersetzen, analog EXAM_TYPE_BULLETS (Zeilen 1586-1596):
+   "Thema X: mind. N Fragen", "Zielverteilung Schwierigkeit: X% leicht /
+   Y% mittel / Z% schwer". Bestehendes difficulty?-Feld pro Frage
+   (types.ts:551-553) bleibt vom Modell befüllt, jetzt aber gegen die
+   Zielverteilung instruiert statt gegen eine einzelne globale Stufe.
+6. Ohne Historie (topicMastery/examHistory leer) müssen sich Distribution-
+   Funktionen auf das bisherige Verhalten zurückfallen lassen (aktuelle
+   globale Gewichte, keine Verzerrung).
+7. Unit-Tests für computeTopicWeights/computeDifficultyMix mit Fixtures
+   klar unterschiedlicher Konfidenz/Scores — kein Snapshot-Test gegen den
+   vollen Gemini-Prompt nötig.
+✓ Fertig wenn: Klausur mit vorhandener Historie (≥1 kritisches Thema)
+  enthält bei gleicher Gesamtfragenzahl sichtbar mehr Fragen zu diesem
+  Thema als zu einem "sicheren" Thema; ein Account mit niedrigem
+  recentAvgScore bekommt einen spürbar leichteren Mix als einer mit
+  hohem; ein Account ohne Historie sieht exakt das bisherige Verhalten.
+
+**Bekannte Grenzen (bewusst NICHT in Paket 11 gebaut, erst nach echter Nutzung prüfen ob nötig):**
+- Kein Enforcement: adaptiveBlock/difficultyMixLine sind Prompt-Anweisungen, kein Retry/Repair falls Gemini die Mindestkontingente oder die Schwierigkeitsverteilung verfehlt (dieselbe Vertrauensbasis wie das bestehende FRAGETYPEN-VERTEILUNG-Muster). Möglicher Folgeschritt: ein Exam-Validator nach der Generierung, der Ist- gegen Soll-Verteilung prüft und bei Abweichung gezielt nachgeneriert — bei Quant-Klausuren ließe sich das direkt an den bestehenden CAS-Selbstcheck (services/mathValidation.ts) andocken.
+- computeDifficultyMix nutzt harte Schwellen (recentAvgScore ≥80/<50, Tage >21) statt einer stetigen Kurve — 79% vs. 80% erzeugen einen Sprung. Später ggf. auf eine graduelle Funktion umstellen.
+
+**Danach (Phase 3B/3C, erst nach Validierung von Paket 11, noch nicht spezifiziert):**
+Fehler → gezielte Karteikarten/Mini-Quiz, SRS-Priorisierung nach Klausur-
+fehlern (spacedRepetition.ts direkt wiederverwendbar, generisch über
+{srs?: SrsState}), Quant-Operationstraining aus DistractorErrorType
+(types.ts:463, bereits vorhanden, bisher nur Erzähltext in errorPool.ts),
+danach vorsichtig formulierter Bereitschaftsscore/Notenprognose
+("entspricht ungefähr einer X, basiert auf den letzten N Simulationen" —
+nie als Vorhersage formulieren).
+
 ---
 
 ## Nicht anfassen

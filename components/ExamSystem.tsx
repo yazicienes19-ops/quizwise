@@ -3,7 +3,7 @@ import React, { useState } from 'react';
 import { ExamGenerator } from './ExamGenerator';
 import { ExamArchive } from './ExamArchive';
 import { ExamView } from './ExamView';
-import { ExamQuestion, ProcessedDocument, Collection, ActiveTab, ScoringProfile, ExamAnalysis, TopicMetric, FlashcardDeck, ExamTypePreset, QuantModeConfig } from '../types';
+import { ExamQuestion, ProcessedDocument, Collection, ActiveTab, ScoringProfile, ExamAnalysis, TopicMetric, FlashcardDeck, ExamTypePreset, QuantModeConfig, ExamTerm } from '../types';
 import { generateFullExam, evaluateWithRubric, evaluateStepByStep, classifyBloomLevels, GenerationSource } from '../services/geminiService';
 import { buildExamAnalysis } from '../services/examAnalysisService';
 import { track } from '../services/analyticsService';
@@ -40,11 +40,12 @@ interface ExamSystemProps {
   initialQuestions?: ExamQuestion[];
   metrics: TopicMetric[];
   decks: FlashcardDeck[];
+  examTerms?: ExamTerm[];
 }
 
 const DEFAULT_SCORING_PROFILE: ScoringProfile = { mode: 'standard', emphases: [] };
 
-export const ExamSystem: React.FC<ExamSystemProps> = ({ documents, collections, getDocumentSource, onSaveToLibrary, onComplete, onNavigate, onAction, initialDoc, initialQuestions, metrics, decks }) => {
+export const ExamSystem: React.FC<ExamSystemProps> = ({ documents, collections, getDocumentSource, onSaveToLibrary, onComplete, onNavigate, onAction, initialDoc, initialQuestions, metrics, decks, examTerms }) => {
   const { t } = useTranslation();
   // Auch gespeicherte/ältere Klausuren durch die Normalisierung schicken —
   // unbewertbare Aufgaben dürfen nie in die Wertung zählen.
@@ -407,6 +408,7 @@ export const ExamSystem: React.FC<ExamSystemProps> = ({ documents, collections, 
         initialDoc={initialDoc}
         metrics={metrics}
         decks={decks}
+        examTerms={examTerms}
       />
       <ExamArchive />
     </>;
