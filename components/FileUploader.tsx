@@ -100,7 +100,7 @@ export const FileUploader: React.FC<FileUploaderProps> = ({
           <div className="grid grid-cols-2 gap-4">
             <div className="space-y-1">
               <label className="text-[9px] font-bold text-slate-400 uppercase">{t('fu.questionCount', { n: customCount })}</label>
-              <input type="range" min="5" max="30" step="5" value={customCount} onChange={e => setCustomCount(parseInt(e.target.value))} className="w-full accent-indigo-600" />
+              <input type="range" min="5" max="30" step="5" value={customCount} onChange={e => setCustomCount(parseInt(e.target.value))} className="w-full range-fill" style={{ '--range-progress': `${((customCount - 5) / (30 - 5)) * 100}%` } as React.CSSProperties} />
             </div>
             <div className="space-y-1">
               <label className="text-[9px] font-bold text-slate-400 uppercase">{t('fu.difficulty')}</label>

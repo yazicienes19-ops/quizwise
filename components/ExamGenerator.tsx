@@ -520,7 +520,8 @@ export const ExamGenerator: React.FC<ExamGeneratorProps> = ({
                             step={5}
                             value={quantDistribution[id]}
                             onChange={e => setQuantDistribution(prev => ({ ...prev, [id]: parseInt(e.target.value) }))}
-                            className="flex-1 accent-indigo-600"
+                            className="flex-1 range-fill"
+                            style={{ '--range-progress': `${quantDistribution[id]}%` } as React.CSSProperties}
                           />
                           <span className="text-[10px] font-black dark:text-white w-8 text-right shrink-0">{quantDistribution[id]}</span>
                         </div>

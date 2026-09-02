@@ -209,8 +209,57 @@ body {
 .focus\:border-indigo-500:focus { border-color: var(--p500) !important; }
 .focus\:border-indigo-600:focus { border-color: var(--p600) !important; }
 
-/* ── accent (native range/checkbox controls) ── */
+/* ── accent (native checkbox controls) ── */
 .accent-indigo-600 { accent-color: var(--p600) !important; }
+
+/* ── custom range slider ── native accent-color rendering of type="range"
+   desynced fill vs. thumb position on macOS Safari (Klausur-Generator
+   Fragetyp-Verteilung) — fill jetzt über --range-progress (inline von React
+   aus value/min/max gesetzt) statt dem Browser-eigenen Fill überlassen, in
+   Chrome/Safari über die eigene Input-Background, in Firefox zusätzlich über
+   ::-moz-range-track, damit beide immer exakt zum Wert passen. */
+input[type="range"].range-fill {
+  -webkit-appearance: none;
+  appearance: none;
+  width: 100%;
+  height: 6px;
+  border-radius: 999px;
+  background: linear-gradient(to right, var(--primary) 0%, var(--primary) var(--range-progress, 0%), #e2e8f0 var(--range-progress, 0%), #e2e8f0 100%);
+  outline: none;
+}
+.dark input[type="range"].range-fill {
+  background: linear-gradient(to right, var(--primary) 0%, var(--primary) var(--range-progress, 0%), #334155 var(--range-progress, 0%), #334155 100%);
+}
+input[type="range"].range-fill::-webkit-slider-thumb {
+  -webkit-appearance: none;
+  appearance: none;
+  width: 16px;
+  height: 16px;
+  border-radius: 50%;
+  background: var(--primary);
+  border: 2px solid #fff;
+  box-shadow: 0 1px 3px rgba(0,0,0,.3);
+  cursor: pointer;
+}
+.dark input[type="range"].range-fill::-webkit-slider-thumb { border-color: #1e293b; }
+input[type="range"].range-fill::-moz-range-thumb {
+  width: 16px;
+  height: 16px;
+  border-radius: 50%;
+  background: var(--primary);
+  border: 2px solid #fff;
+  box-shadow: 0 1px 3px rgba(0,0,0,.3);
+  cursor: pointer;
+}
+.dark input[type="range"].range-fill::-moz-range-thumb { border-color: #1e293b; }
+input[type="range"].range-fill::-moz-range-track {
+  height: 6px;
+  border-radius: 999px;
+  background: linear-gradient(to right, var(--primary) 0%, var(--primary) var(--range-progress, 0%), #e2e8f0 var(--range-progress, 0%), #e2e8f0 100%);
+}
+.dark input[type="range"].range-fill::-moz-range-track {
+  background: linear-gradient(to right, var(--primary) 0%, var(--primary) var(--range-progress, 0%), #334155 var(--range-progress, 0%), #334155 100%);
+}
 
 /* ── ring & shadow ── */
 .ring-indigo-500                  { --tw-ring-color: var(--p500) !important; }
