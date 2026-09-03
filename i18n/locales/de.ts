@@ -549,6 +549,7 @@ export const de = {
   'ac.reviewHint': 'Richtig beantwortet = längeres Intervall, falsch = bald wieder dran.',
   'ac.savedQuizzes': 'Gespeicherte Quizze',
   'ac.savedExams': 'Gespeicherte Klausuren',
+  'ac.savedExamDownload': 'PDF',
   'ac.errNoQuestions': 'Daraus ließen sich keine Fragen erstellen. Bitte versuche es noch einmal.',
   'ac.errNoQuizFromDeck': 'Aus diesem Stapel ließ sich kein Quiz erstellen. Bitte versuche es noch einmal.',
   'ac.cardsFromGapsN': '{n} Karteikarte aus Lücken erstellt|{n} Karteikarten aus Lücken erstellt',

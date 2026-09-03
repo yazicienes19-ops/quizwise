@@ -547,6 +547,7 @@ export const tr: Translations = {
   'ac.reviewHint': 'Doğru cevap = daha uzun aralık, yanlış = yakında yeniden.',
   'ac.savedQuizzes': 'Kaydedilen testler',
   'ac.savedExams': 'Kaydedilen sınavlar',
+  'ac.savedExamDownload': 'PDF',
   'ac.errNoQuestions': 'Bundan soru oluşturulamadı. Lütfen tekrar dene.',
   'ac.errNoQuizFromDeck': 'Bu desteden test oluşturulamadı. Lütfen tekrar dene.',
   'ac.cardsFromGapsN': 'Boşluklardan {n} kart oluşturuldu',

@@ -548,6 +548,7 @@ export const en: Translations = {
   'ac.reviewHint': 'Answered correctly = longer interval, wrong = due again soon.',
   'ac.savedQuizzes': 'Saved quizzes',
   'ac.savedExams': 'Saved exams',
+  'ac.savedExamDownload': 'PDF',
   'ac.errNoQuestions': 'No questions could be created from this. Please try again.',
   'ac.errNoQuizFromDeck': 'No quiz could be created from this deck. Please try again.',
   'ac.cardsFromGapsN': '{n} flashcard created from gaps|{n} flashcards created from gaps',

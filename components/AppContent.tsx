@@ -21,6 +21,7 @@ import { saveRecallResult } from '../services/recallHistoryService';
 import { createSrsState } from '../services/spacedRepetition';
 import { saveDeckToSupabase } from '../services/flashcardService';
 import { saveExamResult } from '../services/examHistoryService';
+import { exportSavedExamToPdf } from '../services/examPdfExport';
 import { recordActivity } from '../services/streakService';
 import { shouldUsePdfReader } from '../services/libraryService';
 import { isAdmin } from '../config/admin';
@@ -434,6 +435,10 @@ export const AppContent: React.FC<AppContentProps> = (p) => {
                   <button onClick={() => handleLoadSavedExam(se)} className="flex items-center gap-1.5 px-4 py-2 text-white rounded-[14px] text-[10px] font-black uppercase tracking-widest hover:scale-105 transition-all shrink-0" style={{ background: 'var(--primary)' }}>
                     <svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round"><polygon points="5 3 19 12 5 21 5 3"/></svg>
                     Starten
+                  </button>
+                  <button onClick={() => exportSavedExamToPdf(se.name, se.savedAt, se.questions, t)} className="flex items-center gap-1.5 px-4 py-2 rounded-[14px] border-2 border-slate-200 dark:border-slate-700 text-[10px] font-black uppercase tracking-widest text-slate-600 dark:text-slate-300 hover:border-slate-400 transition-all shrink-0">
+                    <svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+                    {t('ac.savedExamDownload')}
                   </button>
                   <button onClick={() => handleDeleteSavedExam(se.id)} aria-label={t('lib.delete')} className="w-8 h-8 rounded-[12px] flex items-center justify-center text-slate-400 hover:text-rose-500 hover:bg-rose-50 dark:hover:bg-rose-950/20 transition-all shrink-0">
                     <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14H6L5 6"/><path d="M10 11v6"/><path d="M14 11v6"/><path d="M9 6V4h6v2"/></svg>
