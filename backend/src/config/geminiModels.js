@@ -5,6 +5,6 @@
 // auf 'gemini-2.5-flash-lite' fest, weil dort ein eigener Literal stand statt
 // diese Konstante zu nutzen).
 const MODEL_LITE = 'gemini-3.5-flash-lite';
-const MODEL_HEAVY = 'gemini-3.6-flash';
+const MODEL_HEAVY = 'gemini-3.8-flash';
 
 module.exports = { MODEL_LITE, MODEL_HEAVY };
