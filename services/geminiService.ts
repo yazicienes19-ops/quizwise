@@ -1806,7 +1806,13 @@ ALLGEMEINE REGELN:
           properties: {
             id:                   { type: Type.STRING },
             question:             { type: Type.STRING },
-            type:                 { type: Type.STRING },
+            // Enum bewusst auf activeTypes eingeschränkt (nicht EXAM_VALID_TYPES) —
+            // ohne das war "type" ein freies String-Feld, das die FRAGETYPEN-
+            // VERTEILUNG-Textanweisung unten nur als weichen Hinweis behandelte.
+            // Sichtbar geworden im Quantitativ-Modus bei 100% MC: das Modell
+            // erzeugte trotzdem truefalse/open, weil nichts es strukturell daran
+            // hinderte. Mit dem Enum ist "type" jetzt Teil des harten JSON-Schemas.
+            type:                 { type: Type.STRING, format: 'enum', enum: activeTypes },
             options:              { type: Type.ARRAY, items: { type: Type.STRING } },
             correctIndices:       { type: Type.ARRAY, items: { type: Type.NUMBER } },
             scenarioText:         { type: Type.STRING },
