@@ -8,7 +8,7 @@ describe('selectModel (Plan-basierte Modellwahl)', () => {
   });
 
   it('pro bekommt bei heavy das neuere Modell, bei light das Basis-Modell', () => {
-    expect(selectModel('pro', 'heavy')).toBe('gemini-3.5-flash');
+    expect(selectModel('pro', 'heavy')).toBe('gemini-3.6-flash');
     expect(selectModel('pro', 'light')).toBe('gemini-3.5-flash-lite');
   });
 

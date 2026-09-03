@@ -40,12 +40,14 @@ const resolveStorageRefs = async (parts, userId, sb) => {
 // Wählt das passende Gemini-Modell basierend auf User-Plan und Aufgaben-Komplexität.
 // free  → immer flash-lite (3.5: schlägt 2.5-Lite an Qualität bei ~350 tok/s —
 //         schnellste 3.5-Klasse, Preis bleibt Lite-Klasse)
-// pro   → light: flash-lite (3.5) / heavy: gemini-3.5-flash (Frontier-Qualität
+// pro   → light: flash-lite (3.5) / heavy: gemini-3.6-flash (Frontier-Qualität
 //         für die Premium-Aufgaben: Tutor-Chat, Feynman-Bewertung, Klausur,
 //         Karten/Wissensnetz-Generierung). Bewusst zweistufig statt Vollsprung
-//         auf 3.5 Flash überall: ~15-22x Input-/Output-Preis wäre bei den
-//         token-hungrigen Chat-Historien untragbar — Free-Standard bleibt
-//         in der Lite-Preisklasse, nur Pro+heavy zahlt Frontier.
+//         auf 3.6 Flash überall: bei den token-hungrigen Chat-Historien im
+//         Free-Plan wäre selbst der günstigere 3.6-Preis pro Nutzer:in nicht
+//         tragbar — Free-Standard bleibt in der Lite-Preisklasse, nur
+//         Pro+heavy zahlt Frontier. (Zuvor gemini-3.5-flash — 2026-09-03 auf
+//         3.6 gewechselt: aktuell ~2,7x günstiger bei ≈gleicher/besserer Qualität.)
 // HINWEIS: Modell-Strings bewusst an EINER Stelle pflegbar/exportiert für Tests.
 const selectModel = (plan, complexity) => {
   if (plan === 'pro' && complexity === 'heavy') return MODEL_HEAVY;
@@ -123,15 +125,16 @@ router.post('/generate', async (req, res, next) => {
     if (config?.thinkingConfig)   generationConfig.thinkingConfig   = config.thinkingConfig;
     if (systemInstruction)        generationConfig.systemInstruction = systemInstruction;
 
-    // gemini-3.5-flash-lite lehnt thinkingBudget:0 mit 400 INVALID_ARGUMENT ab
-    // (anders als 2.5-Modelle, wo das Thinking vollständig deaktivierte) — der
-    // Client fordert thinkingBudget:0 überall zur Geschwindigkeit an, ohne zu
-    // wissen, welches Modell serverseitig tatsächlich gewählt wird (Free-Plan
-    // landet z.B. auch bei complexity:"heavy" auf MODEL_LITE). Weglassen statt
-    // z.B. auf -1 (dynamisches Thinking) zu ändern, weil das unvorhersehbar
-    // Kosten/Latenz erhöhen würde — die Anfrage läuft dann einfach ohne
-    // expliziten Thinking-Parameter (Modell-Default).
-    if (selectedModel === MODEL_LITE && generationConfig.thinkingConfig?.thinkingBudget === 0) {
+    // gemini-3.5-flash-lite UND gemini-3.6-flash (MODEL_HEAVY seit dem 3.6-Wechsel)
+    // lehnen thinkingBudget:0 mit 400 INVALID_ARGUMENT ab (anders als 2.5-Modelle
+    // und das alte gemini-3.5-flash, wo das Thinking vollständig deaktivierte —
+    // per echtem Testcall gegen beide Modelle verifiziert). Der Client fordert
+    // thinkingBudget:0 überall zur Geschwindigkeit an, ohne zu wissen, welches
+    // Modell serverseitig tatsächlich gewählt wird. Weglassen statt z.B. auf -1
+    // (dynamisches Thinking) zu ändern, weil das unvorhersehbar Kosten/Latenz
+    // erhöhen würde — die Anfrage läuft dann einfach ohne expliziten
+    // Thinking-Parameter (Modell-Default).
+    if ((selectedModel === MODEL_LITE || selectedModel === MODEL_HEAVY) && generationConfig.thinkingConfig?.thinkingBudget === 0) {
       delete generationConfig.thinkingConfig;
     }
 
