@@ -269,7 +269,10 @@ const QuizActivity: React.FC<{
     startedRef.current = true;
     (async () => {
       try {
-        const q = await generateQuizFromDocument(buildNodeGenerationSource(node, relatedConceptEntries), QuizType.CUSTOM, { customCount: QUIZ_QUESTION_COUNT });
+        const q = await generateQuizFromDocument(
+          buildNodeGenerationSource(node, relatedConceptEntries), QuizType.CUSTOM,
+          { customCount: QUIZ_QUESTION_COUNT, relatedConcepts: relatedConceptEntries.map(e => e.otherTitle) },
+        );
         if (!q.length) throw new Error('Keine Fragen erzeugt.');
         setQuestions(q);
       } catch (e) {
@@ -330,10 +333,10 @@ const QuizActivity: React.FC<{
 
 // ── Feynman ──────────────────────────────────────────────────────────────
 const FeynmanActivity: React.FC<{
-  node: GraphNode; documents: ProcessedDocument[]; collections: Collection[]; userId?: string;
+  node: GraphNode; relatedConceptEntries: RelatedConceptEntry[]; documents: ProcessedDocument[]; collections: Collection[]; userId?: string;
   onClose: () => void; onDecksChange: (decks: FlashcardDeck[]) => void; decks: FlashcardDeck[];
   updateMetricsAfterSession: (score: number, name: string, type: 'quiz' | 'exam' | 'recall' | 'cards') => Promise<void>;
-}> = ({ node, documents, collections, userId, onClose, onDecksChange, decks, updateMetricsAfterSession }) => {
+}> = ({ node, relatedConceptEntries, documents, collections, userId, onClose, onDecksChange, decks, updateMetricsAfterSession }) => {
   const { t } = useTranslation();
   // ActiveRecall liest `initialDoc` nur einmal in seinem eigenen Mount-Effekt
   // (leeres Dependency-Array) — ein neues Objekt bei jedem Render ist deshalb
@@ -346,7 +349,7 @@ const FeynmanActivity: React.FC<{
         <ActiveRecall
           availableDocuments={documents}
           collections={collections}
-          getDocumentSource={() => buildNodeGenerationSource(node)}
+          getDocumentSource={() => buildNodeGenerationSource(node, relatedConceptEntries)}
           initialDoc={syntheticDoc}
           initialFocusTopic={node.title}
           autoStart
@@ -560,7 +563,7 @@ export const GraphLearningOverlay: React.FC<GraphLearningOverlayProps> = ({
     case 'quiz':
       return <QuizActivity key={`quiz-${node.id}`} node={node} relatedConceptEntries={relatedConceptEntries} userId={userId} onClose={onClose} onApiError={onApiError} updateMetricsAfterSession={updateMetricsAfterSession} />;
     case 'feynman':
-      return <FeynmanActivity key={`feynman-${node.id}`} node={node} documents={documents} collections={collections} userId={userId} onClose={onClose} decks={decks} onDecksChange={onDecksChange} updateMetricsAfterSession={updateMetricsAfterSession} />;
+      return <FeynmanActivity key={`feynman-${node.id}`} node={node} relatedConceptEntries={relatedConceptEntries} documents={documents} collections={collections} userId={userId} onClose={onClose} decks={decks} onDecksChange={onDecksChange} updateMetricsAfterSession={updateMetricsAfterSession} />;
     case 'explain':
       return <ExplainActivity key={`explain-${node.id}`} node={node} relatedConceptEntries={relatedConceptEntries} onClose={onClose} onApiError={onApiError} />;
   }

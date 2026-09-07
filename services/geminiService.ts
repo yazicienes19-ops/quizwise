@@ -484,6 +484,13 @@ export const generateQuizFromDocument = async (
      *  wird sourceNumber als Pflichtfeld ins Schema genommen und die Zuordnungs-
      *  Regel in den Prompt aufgenommen. */
     multiDocCount?: number;
+    /** Titel direkt verknüpfter Konzepte aus dem persönlichen Wissensnetz des
+     *  Nutzers (s. GraphLearningOverlay/graphLearningSource.ts) — dieselbe
+     *  Begründung wie bei generateFlashcardsFromDocument: reines Kontext-
+     *  Einbetten in die Quelle reichte im Live-Test nicht, das Modell blieb bei
+     *  isolierten Fragen zum Hauptbegriff. Erzwingt eine Mindestanzahl an
+     *  Beziehungs-Fragen, die diese Konzepte beim Namen nennen. */
+    relatedConcepts?: string[];
   }
 ): Promise<QuizQuestion[]> => {
   const parts: any[] = [sourceTopart(source)];
@@ -573,13 +580,21 @@ export const generateQuizFromDocument = async (
 
   const BLOOM_VERBS = ['Definiere', 'Erkläre', 'Vergleiche', 'Unterscheide', 'Wende an', 'Analysiere', 'Bewerte', 'Nenne', 'Warum', 'Wie unterscheidet sich'];
 
+  const relatedConcepts = options?.relatedConcepts ?? [];
+
   const buildRequest = (batchCount: number, seedSuffix: string, focusHint: string) => {
+    const minRelational = relatedConcepts.length > 0
+      ? Math.max(1, Math.min(relatedConcepts.length, Math.round(batchCount / 3)))
+      : 0;
+    const relationalInstruction = relatedConcepts.length > 0
+      ? `\n\nBEZIEHUNGS-FRAGEN (VERPFLICHTEND) — Das Material ist mit folgenden Konzepten im persönlichen Wissensnetz des Nutzers verknüpft: ${relatedConcepts.join(', ')}. Von den ${batchCount} Fragen müssen MINDESTENS ${minRelational} diese verbundenen Konzepte EXPLIZIT BEIM NAMEN NENNEN und eine echte Beziehung dazu abfragen (Vergleich, Abgrenzung, Zusammenhang, Einordnung oder Anwendung) — nicht nur den Hauptbegriff isoliert abfragen. Die übrigen Fragen bleiben normale Fakten-/Verständnisfragen zum Hauptbegriff. WICHTIG: Formuliere question/explanation rein fachlich — KEINE Meta-Hinweise wie "laut deinem Wissensnetz", "du hast X mit Y verbunden" oder "in deinem Graphen/Wissensnetz". Nur wenn eine Verknüpfung fachlich nicht etabliert oder erkennbar rein persönlich ist, darf das explizit ausgewiesen werden — sonst direkt fachlich einordnen.`
+      : '';
     const batchParts: any[] = [sourceTopart(source)];
     batchParts.push({ text: `Erstelle ein Quiz mit genau ${batchCount} Fragen basierend auf dem Material.
 Schwierigkeit: ${difficulty}.${focusLine}
 Seed: ${seedSuffix}
 ${focusHint}${excludeLine}${bloomHintLine}
-${typeInstruction}${multiDocRules}
+${typeInstruction}${multiDocRules}${relationalInstruction}
 
 STRENGE DIVERSITÄTS-REGELN (zwingend einhalten):
 1. Jede Frage MUSS ein komplett anderes Unterthema abdecken — kein Thema darf auch nur ähnlich zweimal vorkommen

@@ -82,10 +82,12 @@ export const buildNodeDialogSource = buildNodeGenerationSource;
  * gespeichert, nie in `documents` eingehängt, existiert nur für die Dauer
  * dieser einen Sitzung im Speicher.
  *
- * Bewusst (noch) OHNE Verknüpfungs-Kontext — anders als die drei Funktionen
- * oben war das nicht Teil der Anforderung vom 2026-09-07; ließe sich analog
- * ergänzen (relatedEntries-Parameter + buildRelationsContextBlock), falls
- * gewünscht.
+ * Liefert bewusst nur Titel/Beschreibung/Notiz (reines Anzeige-/Metadaten-
+ * Objekt für `initialDoc` — id/name/type). Der tatsächlich an die KI
+ * geschickte Inhalt läuft bei Feynman NICHT über dieses Objekt, sondern über
+ * `getDocumentSource` (s. GraphLearningOverlay.tsx FeynmanActivity) — dort
+ * wird seit 2026-09-07 buildNodeGenerationSource(node, relatedConceptEntries)
+ * verwendet, also inklusive Verknüpfungs-Kontext.
  */
 export function buildNodeSyntheticDocument(node: GraphNode): ProcessedDocument {
   return {
