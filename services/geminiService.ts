@@ -5,10 +5,8 @@ import {
   QuizQuestion,
   Flashcard,
   SearchResult,
-  PaperOutlineSection,
   PaperFramework,
   AcademicSource,
-  CitationStyle,
   StudyEntry,
   TopicMetric,
   LearningAnalysis,
@@ -21,7 +19,6 @@ import {
   RecallChallenge,
   RecallEvaluation,
   ScoringProfile,
-  ExamAnalysis,
   LearningProfile,
   CoachInsights,
   BloomLevel,
@@ -801,20 +798,6 @@ Liefere:
   return parseAiJson(text || '{}');
 };
 
-export const generatePaperOutline = async (topic: string, focus: string, sources: GenerationSource[]): Promise<PaperOutlineSection[]> => {
-  const fw = await generatePaperFramework(topic, focus, 10, sources);
-  return fw.outline || [];
-};
-
-export const formatCitation = async (source: AcademicSource, style: CitationStyle): Promise<string> => {
-  const text = await callBackend({
-    parts: [{ text: `Formatiere folgende Quelle im ${style}-Stil:
-  Titel: ${source.title}, Autoren: ${source.authors}, Jahr: ${source.year}, Journal: ${source.journal}, URL/DOI: ${source.url}
-  Gib ausschließlich den formatierten Zitations-String zurück.` }]
-  });
-  return text;
-};
-
 /**
  * Formatiert eine gespeicherte Quelle über die echte CSL-Zitier-Engine
  * (citeprocService, citeproc-rs mit den Original-Zotero-Stildateien) statt
@@ -974,63 +957,6 @@ export const analyzeLearningProgress = async (
   );
 };
 
-export const generateExplanation = async (
-  source: GenerationSource | null,
-  concept: string,
-  useExternalKnowledge: boolean,
-  includeSourceQuote: boolean = false
-): Promise<string> => {
-  if (!useExternalKnowledge && !source?.file && !source?.text && !source?.storagePath) {
-    throw new Error('Kein Dokument übergeben — externe Quellen sind deaktiviert.');
-  }
-
-  const parts: any[] = [];
-  if (source) parts.push(sourceTopart(source));
-
-  const sourceQuoteInstruction = includeSourceQuote
-    ? `\nFüge ganz am Ende, als letzte Zeile der Antwort, hinzu: **Quelle:** "wörtliches Zitat aus dem Dokument, max. 200 Zeichen, das deine Erklärung am besten belegt".`
-    : '';
-
-  const safeConcept = sanitizeUserInput(concept, 200);
-
-  // Die Eingabe ist entweder (a) ein Begriff, der erklärt werden soll, oder
-  // (b) eine Verständnisfrage/Paraphrase/Behauptung, die der Nutzer geprüft
-  // haben will. Semantische Beispiele ("Ist damit gemeint...") reichten allein
-  // nicht — kurze, holprige oder tippfehlerhafte Formulierungen wie "Das heiß
-  // X heißt nicht Y?" wurden trotzdem als BEGRIFF fehlklassifiziert. Deshalb
-  // zusätzlich eine STRUKTURELLE Regel (Länge/Satzform), die nicht auf
-  // erkannte Formulierungen angewiesen ist. Wichtig: Der äußere Prompt darf
-  // die Eingabe NICHT als "das Konzept" bezeichnen — das schiebt die KI schon
-  // vor der Weiche Richtung Begriffserklärung.
-  const intentInstruction = `\n\nENTSCHEIDE ZUERST, um welchen Fall es sich bei der Nutzereingabe handelt:
-- BEGRIFF: Die Eingabe ist NUR ein kurzer Fachbegriff oder eine kurze Nominalphrase (grob 1-4 Wörter), OHNE Satzstruktur, ohne Verb, das eine Behauptung ausdrückt, ohne Fragezeichen zu einer Aussage. Beispiel: "Falsifikationsprinzip".
-- VERSTÄNDNISFRAGE/BEHAUPTUNG: ALLES ANDERE — jede Eingabe mit Satzstruktur, jede Formulierung mit einem Verb wie "ist/heißt/bedeutet/stimmt", jede Frage die sich auf eine Aussage oder Beziehung zwischen Begriffen bezieht, auch bei Tippfehlern oder holpriger Grammatik. Im Zweifel IMMER dieser Fall, nicht BEGRIFF.
-
-Diese Einordnung ist NUR für dich intern — gib sie NICHT in der Antwort aus (keine Zeile wie "Entscheidung: ..." o.ä.). Beginne die Antwort direkt mit der Erklärung bzw. Bewertung.
-
-Verhalte dich dann so:
-- Bei BEGRIFF: Erkläre in 3 Stufen mit exakt diesen Überschriften: ${explainerHeadings()}. Jede Überschrift steht ALLEIN auf ihrer eigenen Zeile (danach sofort Zeilenumbruch, kein Text mehr in derselben Zeile) — der Fließtext beginnt erst in der nächsten Zeile. Bringe in der letzten Stufe mindestens EIN konkretes, greifbares Beispiel, das das Konzept veranschaulicht (aus dem Dokument, sonst treffend selbst gewählt) — abstrakte Definitionen allein reichen nicht.
-- Bei VERSTÄNDNISFRAGE/BEHAUPTUNG: Bewerte ZUERST explizit und direkt, ob sie korrekt ist ("Ja, genau." / "Fast — ..." / "Nein, das stimmt nicht ganz, weil..."), dann korrigiere oder ergänze in 1-3 kurzen Sätzen was fehlt oder falsch war. Danach EIN kurzes konkretes Beispiel, das den Punkt festigt (besonders wichtig bei falschem Verständnis). KEINE Überschriften, KEINE neue Grunderklärung von vorne — antworte direkt auf die Nachfrage, auch wenn die Formulierung unklar oder fehlerhaft ist.`;
-
-  if (!useExternalKnowledge) {
-    parts.push({ text: `Nutzereingabe: "${safeConcept}"
-Verarbeite sie ausschließlich basierend auf dem oben bereitgestellten Dokument.
-STRENGE REGEL: Verwende NUR Inhalte aus dem Dokument. Kein Allgemeinwissen, keine externen Quellen, keine Erfindungen. Wenn das Dokument dazu nichts enthält, sage das klar.${intentInstruction}${outputLangDirective()}${sourceQuoteInstruction}` });
-  } else if (source) {
-    parts.push({ text: `Nutzereingabe: "${safeConcept}"
-Nutze das oben bereitgestellte Dokument als primäre Quelle. Ergänze mit deinem Allgemeinwissen wo das Dokument lückenhaft ist — kennzeichne solche Ergänzungen exakt mit dem Präfix "Allgemeinwissen:".${intentInstruction}${outputLangDirective()}` });
-  } else {
-    parts.push({ text: `Nutzereingabe: "${safeConcept}"
-Verarbeite sie umfassend aus deinem Allgemeinwissen.${intentInstruction}${outputLangDirective()}` });
-  }
-
-  return callBackend({
-    complexity: 'heavy',
-    parts,
-    config: { temperature: 0.4, thinkingConfig: { thinkingBudget: 0 } },
-  });
-};
-
 export interface NodeDialogTurn {
   question: string;
   answer: string;
@@ -1141,51 +1067,9 @@ Antworte jetzt auf die aktuelle Nachricht. Regeln:
 };
 
 /**
- * Wissensnetz-Node-Dialog: Rückfrage zu EXAKT der Erklärung, die
- * generateExplanation zuvor zu einem Node geliefert hat. Bewusst KEIN
- * allgemeiner Chat — jeder Aufruf sendet den vollen Node-Kontext (Titel,
- * Beschreibung, Notizen, Beziehungen — s. buildNodeDialogSource in
- * graphLearningSource.ts) plus den bisherigen Verlauf erneut mit, weil der
- * Backend-Call selbst zustandslos ist. Die Prompt-Regel verbietet dem Modell
- * explizit, den Konzept-Rahmen zu verlassen, auch bei allgemein formulierten
- * Rückfragen ("Warum ist das wichtig?").
- */
-export const continueNodeExplanation = async (
-  source: GenerationSource,
-  concept: string,
-  history: NodeDialogTurn[],
-  followUpQuestion: string,
-): Promise<string> => {
-  const parts: any[] = [sourceTopart(source)];
-
-  const safeConcept = sanitizeUserInput(concept, 200);
-  const safeQuestion = sanitizeUserInput(followUpQuestion, 300);
-  const historyBlock = history.length
-    ? `\n\nBisheriger Gesprächsverlauf zu diesem Konzept:\n${history
-        .map((turn, i) => `Rückfrage ${i + 1}: ${turn.question}\nAntwort ${i + 1}: ${turn.answer}`)
-        .join('\n\n')}`
-    : '';
-
-  parts.push({
-    text: `Du erklärst dem Nutzer ausschließlich das Konzept "${safeConcept}" auf Basis der oben bereitgestellten Informationen (Titel, Beschreibung, eigene Notizen, Beziehungen zu anderen Konzepten im Wissensnetz).${historyBlock}
-
-Neue Rückfrage des Nutzers: "${safeQuestion}"
-
-WICHTIGE REGEL: Dies ist KEIN offener Chat, sondern ein Dialog ausschließlich über dieses eine Konzept. Beantworte die Rückfrage IMMER mit Bezug auf genau dieses Konzept, auch wenn sie allgemein formuliert ist ("Warum ist das wichtig?", "Gib mir ein Beispiel."). Verlasse unter keinen Umständen diesen Rahmen — bezieht sich die Frage eindeutig auf etwas völlig anderes, weise kurz darauf hin, dass du nur zu diesem Konzept antworten kannst, statt die fremde Frage zu beantworten. Antworte prägnant und direkt auf die Rückfrage (keine erneute komplette Grunderklärung von vorne, keine Überschriften), normaler Fließtext.${outputLangDirective()}`,
-  });
-
-  return callBackend({
-    complexity: 'heavy',
-    parts,
-    config: { temperature: 0.4, thinkingConfig: { thinkingBudget: 0 } },
-  });
-};
-
-/**
  * Wissensnetz-Coach, Baustein 2 ("Beziehungen erklären" — s. Memory
- * project_quizwise_wissensnetz_coach.md, Punkt 5). Anders als
- * generateExplanation/continueNodeExplanation für Nodes bewusst OHNE
- * Allgemeinwissen-Vermischung: source enthält ausschließlich Graph-internen
+ * project_quizwise_wissensnetz_coach.md, Punkt 5). Anders als der
+ * Node-Erklärer bewusst OHNE Allgemeinwissen-Vermischung: source enthält ausschließlich Graph-internen
  * Text (Titel/Beschreibung/Notizen beider Konzepte + die vom Nutzer selbst
  * vergebene Beziehung, s. buildEdgeExplanationSource in
  * graphEdgeExplanationSource.ts) — strikte Stoffbindung ab V1, keine
@@ -1950,43 +1834,6 @@ export const classifyBloomLevels = async (questions: ExamQuestion[]): Promise<Ex
   return mergeBloomLevels(questions, labels);
 };
 
-// Nur für type="open" — alle anderen werden clientseitig ausgewertet
-export const evaluateExamAnswers = async (questions: ExamQuestion[]): Promise<ExamQuestion[]> => {
-  const text = await callBackend({
-    complexity: 'heavy',
-    parts: [{ text: `Bewerte die folgenden Klausurantworten als fairer Hochschulprüfer.
-
-BEWERTUNGSREGELN — STRENGER HOCHSCHULMASSSTAB:
-- type "mc": Volle Punkte NUR wenn ALLE korrekten Optionen gewählt und KEINE falschen. 0 Punkte wenn falsche Optionen dabei sind. Halbe Punkte nur wenn alle richtigen gewählt aber keine falschen fehlen teilweise.
-- type "open" (Transfer/Schreiben): Bewerte inhaltlich streng — fehlende Fachbegriffe, oberflächliche Argumentation, falsche Konzepte = Punktabzug. Teilpunkte nur für Antworten die inhaltlich korrekte Kernaussagen enthalten. Allgemeinplätze ohne Substanz geben keine Punkte.
-- Punktevergabe: Volle Punkte nur bei vollständiger, präziser Antwort. 75% bei guter aber unvollständiger Antwort. 50% bei richtiger Kernaussage ohne Tiefe. 25% bei schwacher Teilantwort. 0% bei falschem oder leerem Inhalt.
-- feedback: Direkt und klar. Benenne konkret was fehlte oder falsch war. Kein unnötiges Loben bei schlechten Antworten. Max. 3 Sätze.
-- achievedPoints: nie negativ, nie größer als points.
-- Wenn userAnswer leer/fehlt: achievedPoints = 0, feedback = "Keine Antwort gegeben."
-
-Daten: ${JSON.stringify(questions)}${outputLangDirective()}` }],
-    config: {
-      thinkingConfig: { thinkingBudget: 0 },
-      responseMimeType: 'application/json',
-      responseSchema: {
-        type: Type.ARRAY,
-        items: {
-          type: Type.OBJECT,
-          properties: {
-            id: { type: Type.STRING }, question: { type: Type.STRING },
-            type: { type: Type.STRING }, options: { type: Type.ARRAY, items: { type: Type.STRING } },
-            solution: { type: Type.STRING }, points: { type: Type.NUMBER },
-            userAnswer: { type: Type.STRING }, feedback: { type: Type.STRING },
-            achievedPoints: { type: Type.NUMBER }
-          },
-          required: ['id', 'feedback', 'achievedPoints']
-        }
-      }
-    }
-  });
-  return parseAiJson<any[]>(text || '[]');
-};
-
 // ─── Rubrik-basierte Bewertung (Hauptfunktion) ────────────────────────────────
 const evaluateWithRubricOnce = async (
   questions: ExamQuestion[],
@@ -2261,61 +2108,6 @@ export const evaluateStepByStep = async (
   // Feedback aus der Wertung heraus statt den Fragebogen crashen zu lassen.
   const stillMissing = questions.filter(q => !results.some(r => r.id === q.id));
   return [...results, ...stillMissing.map(q => ({ id: q.id, achievedPoints: 0, correctApproach: false, finalResultCorrect: false, stepFeedback: [] }))];
-};
-
-// ─── Klausur-Analyse ─────────────────────────────────────────────────────────
-export const analyzeExamResults = async (questions: ExamQuestion[]): Promise<ExamAnalysis> => {
-  const summary = questions.map(q => ({
-    question: q.question,
-    type:     q.type,
-    points:   q.points,
-    achieved: q.achievedPoints ?? 0,
-    feedback: q.feedback ?? '',
-  }));
-
-  const text = await callBackend({
-    complexity: 'light',
-    parts: [{
-      text: `Analysiere diese Klausurergebnisse und erstelle eine Lernanalyse.
-
-Ergebnisse: ${JSON.stringify(summary)}
-
-Erstelle:
-- strengths: 2–3 konkrete Stärken des Studierenden (Was wurde gut beherrscht?)
-- weaknesses: 2–4 konkrete Schwächen (Was wurde schlecht beherrscht?)
-- recommendations: 2–4 konkrete Lernempfehlungen (Was sollte als nächstes gelernt werden?)
-- topicPerformance: 2–5 Themengebiete mit Prozent-Score (0–100)
-
-Sei konkret und lernorientiert. Keine allgemeinen Phrasen.${outputLangDirective()}`
-    }],
-    config: {
-      temperature: 0.3,
-      thinkingConfig: { thinkingBudget: 0 },
-      responseMimeType: 'application/json',
-      responseSchema: {
-        type: Type.OBJECT,
-        properties: {
-          strengths:        { type: Type.ARRAY, items: { type: Type.STRING } },
-          weaknesses:       { type: Type.ARRAY, items: { type: Type.STRING } },
-          recommendations:  { type: Type.ARRAY, items: { type: Type.STRING } },
-          topicPerformance: {
-            type: Type.ARRAY,
-            items: {
-              type: Type.OBJECT,
-              properties: {
-                topic: { type: Type.STRING },
-                score: { type: Type.NUMBER },
-              },
-              required: ['topic', 'score'],
-            },
-          },
-        },
-        required: ['strengths', 'weaknesses', 'recommendations', 'topicPerformance'],
-      },
-    },
-  });
-
-  return parseAiJson<ExamAnalysis>(text, { strengths: [], weaknesses: [], recommendations: [], topicPerformance: [] });
 };
 
 // ─── Feynman-Bewertung ────────────────────────────────────────────────────────
