@@ -125,8 +125,23 @@ describe('describeRelatedEntry', () => {
     state.nodesById.set('b', makeNode('b', { title: 'Reaktion' }));
     const edge = makeEdge('e1', 'a', 'b', { relationTypeId: undefined });
 
-    expect(describeRelatedEntry(state, edge, true)).toEqual({ key: 'e1', otherNodeId: 'b', otherTitle: 'Reaktion', text: '→ Reaktion' });
-    expect(describeRelatedEntry(state, edge, false)).toEqual({ key: 'e1', otherNodeId: 'a', otherTitle: 'Reiz', text: '← Reiz' });
+    expect(describeRelatedEntry(state, edge, true)).toEqual({ key: 'e1', otherNodeId: 'b', otherTitle: 'Reaktion', text: '→ Reaktion', otherDescriptionSnippet: '' });
+    expect(describeRelatedEntry(state, edge, false)).toEqual({ key: 'e1', otherNodeId: 'a', otherTitle: 'Reiz', text: '← Reiz', otherDescriptionSnippet: '' });
+  });
+
+  it('liefert einen Beschreibungs-Schnipsel des verbundenen Nodes, gekappt auf 200 Zeichen mit …', () => {
+    const state = createEmptyGraphState({ kind: 'all' });
+    state.nodesById.set('a', makeNode('a', { title: 'Humanismus' }));
+    state.nodesById.set('b', makeNode('b', { title: 'Therapieschule', description: 'Kurze  Beschreibung.\nMit Zeilenumbruch.' }));
+    const edge = makeEdge('e1', 'a', 'b', { relationTypeId: undefined });
+
+    expect(describeRelatedEntry(state, edge, true)!.otherDescriptionSnippet).toBe('Kurze Beschreibung. Mit Zeilenumbruch.');
+
+    const longDescription = 'x'.repeat(250);
+    state.nodesById.set('b', makeNode('b', { title: 'Therapieschule', description: longDescription }));
+    const snippet = describeRelatedEntry(state, edge, true)!.otherDescriptionSnippet;
+    expect(snippet.length).toBe(201);
+    expect(snippet.endsWith('…')).toBe(true);
   });
 
   it('nutzt das Label vorwärts und die inverseLabel-Lückentext-Konvention rückwärts', () => {

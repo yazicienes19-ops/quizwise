@@ -619,10 +619,38 @@ Zu jeder Frage: Erklärung (explanation), Textbezug (sourceReference), Thema (to
   return parseQuizQuestions(text);
 };
 
-export const generateFlashcardsFromDocument = async (source: GenerationSource, count: number = 15, excludeTerms: string[] = []): Promise<Partial<Flashcard>[]> => {
+/**
+ * relatedConcepts: Titel direkt verknüpfter Konzepte aus dem persönlichen
+ * Wissensnetz des Nutzers (s. GraphLearningOverlay/graphLearningSource.ts).
+ * Bewusst NICHT nur als zusätzlicher Kontext in die Quelle eingebettet — ein
+ * Live-Test am 2026-09-07 zeigte, dass das Modell die im Material stehenden
+ * Verknüpfungen dann trotzdem meist ignoriert und generische Definitions-
+ * karten baut. Stattdessen hier eine EXPLIZITE, ZAHLENMÄSSIG KONKRETE
+ * Anforderung an die Fragenstrategie selbst (Mindestanzahl relationaler
+ * Karten, die die verbundenen Konzepte beim Namen nennen) — das macht die
+ * Wirkung des Wissensnetz-Kontexts überprüfbar statt nur hoffnungsvoll.
+ */
+export const generateFlashcardsFromDocument = async (
+  source: GenerationSource,
+  count: number = 15,
+  excludeTerms: string[] = [],
+  relatedConcepts: string[] = [],
+): Promise<Partial<Flashcard>[]> => {
   const parts: any[] = [sourceTopart(source)];
   const excludeLine = excludeTerms.length > 0
     ? `\nBEREITS ERSTELLT — diese Begriffe/Konzepte NICHT nochmal verwenden: ${excludeTerms.slice(-30).join(' | ')}\n`
+    : '';
+  const minRelational = relatedConcepts.length > 0
+    ? Math.max(1, Math.min(relatedConcepts.length, Math.round(count / 3)))
+    : 0;
+  const relationalInstruction = relatedConcepts.length > 0
+    ? `\n\nBEZIEHUNGS-KARTEN (VERPFLICHTEND) — Das Material ist mit folgenden Konzepten im persönlichen Wissensnetz des Nutzers verknüpft: ${relatedConcepts.join(', ')}. Von den ${count} Karten müssen MINDESTENS ${minRelational} diese verbundenen Konzepte EXPLIZIT BEIM NAMEN NENNEN und eine echte Beziehung dazu abfragen — nicht nur den Hauptbegriff isoliert definieren. Nutze dafür gezielt diese Fragetypen:
+- Vergleich: "Worin unterscheidet sich [Hauptbegriff] von [verbundenes Konzept]?"
+- Abgrenzung: "Warum grenzt sich [Hauptbegriff] von [verbundenes Konzept] ab?"
+- Zusammenhang: "Welche Verbindung besteht zwischen [Hauptbegriff] und [verbundenes Konzept]?"
+- Einordnung: "Welche Rolle spielt [Hauptbegriff] im Vergleich zu [verbundenes Konzept]?"
+- Anwendung: wie sich der Hauptbegriff gegenüber dem verbundenen Konzept in der Praxis zeigt
+Die übrigen Karten bleiben normale Fakten-/Definitions-/Verständniskarten ausschließlich zum Hauptbegriff — erzwinge KEINEN Beziehungsbezug bei jeder einzelnen Karte, nur bei mindestens ${minRelational} davon. WICHTIG: Formuliere Front/Back rein fachlich — KEINE Meta-Hinweise wie "laut deinem Wissensnetz", "du hast X mit Y verbunden" oder "in deinem Graphen/Wissensnetz". Nur wenn eine Verknüpfung fachlich nicht etabliert oder erkennbar rein persönlich ist, darf das explizit ausgewiesen werden — sonst direkt fachlich einordnen.`
     : '';
   parts.push({ text: `Erstelle ${count} hochwertige Karteikarten basierend auf dem Material.
 ${excludeLine}
@@ -631,7 +659,7 @@ STRENGE DIVERSITÄTS-REGELN:
 2. Verteile die Karten gleichmäßig über ALLE Abschnitte/Kapitel — nicht nur die prominentesten Themen
 3. Mische Kartentypen: Definition, Unterschied (A vs B), Anwendung, Ursache/Wirkung, Aufzählung
 4. Vorderseite: präzise Frage oder Begriff — Rückseite: vollständige prägnante Antwort (2-4 Sätze)
-5. Vermeide Karten die dasselbe Thema nur anders formulieren${outputLangDirective()}` });
+5. Vermeide Karten die dasselbe Thema nur anders formulieren${relationalInstruction}${outputLangDirective()}` });
 
   const text = await callBackend({
     complexity: 'heavy',

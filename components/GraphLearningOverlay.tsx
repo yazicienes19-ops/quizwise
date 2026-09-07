@@ -153,9 +153,9 @@ const ErrorState: React.FC<{ message: string; onClose: () => void }> = ({ messag
 
 // ── Karteikarten ─────────────────────────────────────────────────────────
 const FlashcardsActivity: React.FC<{
-  node: GraphNode; userId?: string; decks: FlashcardDeck[];
+  node: GraphNode; relatedConceptEntries: RelatedConceptEntry[]; userId?: string; decks: FlashcardDeck[];
   onDecksChange: (decks: FlashcardDeck[]) => void; onClose: () => void; onApiError: (e: unknown) => void;
-}> = ({ node, userId, decks, onDecksChange, onClose, onApiError }) => {
+}> = ({ node, relatedConceptEntries, userId, decks, onDecksChange, onClose, onApiError }) => {
   const { t } = useTranslation();
   const [deck, setDeck] = useState<FlashcardDeck | null>(null);
   const [error, setError] = useState<string | null>(null);
@@ -182,7 +182,10 @@ const FlashcardsActivity: React.FC<{
     startedRef.current = true;
     (async () => {
       try {
-        const generated = await generateFlashcardsFromDocument(buildNodeGenerationSource(node), 8);
+        const generated = await generateFlashcardsFromDocument(
+          buildNodeGenerationSource(node, relatedConceptEntries), 8, [],
+          relatedConceptEntries.map(e => e.otherTitle),
+        );
         if (!generated.length) throw new Error('Keine Karteikarten erzeugt.');
         const newDeck: FlashcardDeck = {
           id: `graph-deck-${node.id}-${Date.now()}`,
@@ -252,9 +255,9 @@ const FlashcardsActivity: React.FC<{
 const QUIZ_QUESTION_COUNT = 4;
 
 const QuizActivity: React.FC<{
-  node: GraphNode; userId?: string; onClose: () => void; onApiError: (e: unknown) => void;
+  node: GraphNode; relatedConceptEntries: RelatedConceptEntry[]; userId?: string; onClose: () => void; onApiError: (e: unknown) => void;
   updateMetricsAfterSession: (score: number, name: string, type: 'quiz' | 'exam' | 'recall' | 'cards') => Promise<void>;
-}> = ({ node, userId, onClose, onApiError, updateMetricsAfterSession }) => {
+}> = ({ node, relatedConceptEntries, userId, onClose, onApiError, updateMetricsAfterSession }) => {
   const { t } = useTranslation();
   const [questions, setQuestions] = useState<QuizQuestion[] | null>(null);
   const [answers, setAnswers] = useState<UserAnswer[] | null>(null);
@@ -266,7 +269,7 @@ const QuizActivity: React.FC<{
     startedRef.current = true;
     (async () => {
       try {
-        const q = await generateQuizFromDocument(buildNodeGenerationSource(node), QuizType.CUSTOM, { customCount: QUIZ_QUESTION_COUNT });
+        const q = await generateQuizFromDocument(buildNodeGenerationSource(node, relatedConceptEntries), QuizType.CUSTOM, { customCount: QUIZ_QUESTION_COUNT });
         if (!q.length) throw new Error('Keine Fragen erzeugt.');
         setQuestions(q);
       } catch (e) {
@@ -408,8 +411,8 @@ const ExplainActivity: React.FC<{
     startedRef.current = true;
     (async () => {
       try {
-        const hasOwnContext = node.description.trim().length > 0 || node.notes.trim().length > 0;
-        const source = hasOwnContext ? buildNodeGenerationSource(node) : null;
+        const hasContext = node.description.trim().length > 0 || node.notes.trim().length > 0 || relatedConceptEntries.length > 0;
+        const source = hasContext ? buildNodeGenerationSource(node, relatedConceptEntries) : null;
         const raw = await chatWithTutor(source, [], node.title, {
           mode: 'explain', useExternalKnowledge: true, includeSourceQuote: false, conceptLock: node.title,
         });
@@ -553,9 +556,9 @@ export const GraphLearningOverlay: React.FC<GraphLearningOverlayProps> = ({
 }) => {
   switch (activity) {
     case 'flashcards':
-      return <FlashcardsActivity key={`flashcards-${node.id}`} node={node} userId={userId} decks={decks} onDecksChange={onDecksChange} onClose={onClose} onApiError={onApiError} />;
+      return <FlashcardsActivity key={`flashcards-${node.id}`} node={node} relatedConceptEntries={relatedConceptEntries} userId={userId} decks={decks} onDecksChange={onDecksChange} onClose={onClose} onApiError={onApiError} />;
     case 'quiz':
-      return <QuizActivity key={`quiz-${node.id}`} node={node} userId={userId} onClose={onClose} onApiError={onApiError} updateMetricsAfterSession={updateMetricsAfterSession} />;
+      return <QuizActivity key={`quiz-${node.id}`} node={node} relatedConceptEntries={relatedConceptEntries} userId={userId} onClose={onClose} onApiError={onApiError} updateMetricsAfterSession={updateMetricsAfterSession} />;
     case 'feynman':
       return <FeynmanActivity key={`feynman-${node.id}`} node={node} documents={documents} collections={collections} userId={userId} onClose={onClose} decks={decks} onDecksChange={onDecksChange} updateMetricsAfterSession={updateMetricsAfterSession} />;
     case 'explain':

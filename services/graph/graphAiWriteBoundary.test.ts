@@ -18,6 +18,7 @@ const AI_FILES = [
   'services/graph/graphRelationSuggestionSource.ts',
   'services/graph/graphDuplicateSuggestionSource.ts',
   'services/graph/graphMissingConceptSource.ts',
+  'services/graph/graphLearningSource.ts',
 ];
 
 const FORBIDDEN = [/graphMutationService/, /graphHistoryService/];

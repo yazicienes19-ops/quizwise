@@ -5,6 +5,11 @@ export interface RelatedConceptEntry {
   otherNodeId: string;
   otherTitle: string;
   text: string;
+  /** Kurzer, auf 200 Zeichen gekappter Schnipsel aus der EIGENEN Beschreibung
+   *  des verbundenen Nodes — leer, wenn dieser keine Beschreibung hat. Nur für
+   *  den KI-Kontext gedacht (s. graphLearningSource.ts); die UI (z. B.
+   *  GraphNodeDetailPanel "Verwandte Konzepte") zeigt weiterhin nur `text`. */
+  otherDescriptionSnippet: string;
 }
 
 /**
@@ -124,7 +129,13 @@ export function describeRelatedEntry(
   } else {
     text = `← ${relationType.label} ${otherNode.title}`;
   }
-  return { key: edge.id, otherNodeId, otherTitle: otherNode.title, text };
+
+  const rawDescription = otherNode.description.trim().replace(/\s+/g, ' ');
+  const otherDescriptionSnippet = rawDescription.length > 200
+    ? `${rawDescription.slice(0, 200)}…`
+    : rawDescription;
+
+  return { key: edge.id, otherNodeId, otherTitle: otherNode.title, text, otherDescriptionSnippet };
 }
 
 export function subgraph(
