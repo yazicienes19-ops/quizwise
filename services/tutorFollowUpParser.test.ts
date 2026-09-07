@@ -16,9 +16,28 @@ describe('extractFollowUps', () => {
     expect(extractFollowUps(md)).toEqual(['a?', 'b?', 'c?']);
   });
 
-  it('erkennt den Marker nur an der letzten nicht-leeren Zeile', () => {
-    const md = '**Weiterfragen:** mitten im Text? | soll nicht zählen?\n\nLetzte Zeile der Antwort.';
+  it('erkennt den Marker auch wenn danach noch weiterer Text/eine Quelle-Zeile folgt (Fix 2026-09-07)', () => {
+    const md = '**Weiterfragen:** a? | b? | c?\n\nLetzte Zeile der Antwort.';
+    expect(extractFollowUps(md)).toEqual(['a?', 'b?', 'c?']);
+  });
+
+  it('ignoriert "Weiterfragen:" mitten in einer Fließtext-Zeile (kein eigener Zeilen-Marker)', () => {
+    const md = 'Wenn du auf Weiterfragen: klickst, siehst du mehr.\nLetzte Zeile ohne Marker.';
     expect(extractFollowUps(md)).toBeNull();
+  });
+
+  it('nimmt bei mehreren Marker-Zeilen die UNTERSTE (echte) statt eine verwaiste Platzhalter-Zeile (realer Bug, Free-Tier-Test 2026-09-07)', () => {
+    const md = 'Antwort.\n\n**Weiterfragen:** frage1 | frage2 | frage3\n**Weiterfragen:** a? | b? | c?';
+    expect(extractFollowUps(md)).toEqual(['a?', 'b?', 'c?']);
+  });
+
+  it('erkennt Quelle vor statt nach den Weiterfragen (untypische Reihenfolge)', () => {
+    const md = 'Antwort.\n\n**Quelle:** "Das Zitat."\n**Weiterfragen:** a? | b? | c?';
+    expect(extractFollowUps(md)).toEqual(['a?', 'b?', 'c?']);
+  });
+
+  it('akzeptiert Marker ohne oder mit nur teilweiser Fett-Formatierung', () => {
+    expect(extractFollowUps('Antwort.\nWeiterfragen: a? | b? | c?')).toEqual(['a?', 'b?', 'c?']);
   });
 
   it('akzeptiert übersetzte Marker (Follow-ups, Devam)', () => {
@@ -45,6 +64,24 @@ describe('stripFollowUpLine', () => {
 
   it('lässt Text ohne Marker unangetastet', () => {
     expect(stripFollowUpLine('Antwort.')).toBe('Antwort.');
+  });
+
+  it('entfernt eine verwaiste Platzhalter-Marker-Zeile zusätzlich zur echten (realer Bug, Free-Tier-Test 2026-09-07)', () => {
+    const md = 'Antwort.\n\n**Weiterfragen:** frage1 | frage2 | frage3\n**Weiterfragen:** a? | b? | c?';
+    expect(stripFollowUpLine(md)).toBe('Antwort.');
+  });
+});
+
+describe('GraphLearningOverlay-Regression (Bug vom 2026-09-07)', () => {
+  it('parseTutorResponse entfernt eine Quelle-Zeile auch wenn der Aufrufer sie NICHT vorher selbst strippt', () => {
+    // components/GraphLearningOverlay.tsx ruft parseTutorResponse(raw) direkt auf, ohne
+    // vorher extractSourceQuote/stripSourceQuoteLine aufzurufen — obwohl includeSourceQuote
+    // dort immer false ist, hängt das Modell manchmal trotzdem eine Quelle-Zeile an.
+    const raw = 'Grundlagen\nErklärung des Konzepts.\n\n**Weiterfragen:** a? | b? | c?\nQuelle: Operante Konditionierung';
+    const { content, followUps } = parseTutorResponse(raw);
+    expect(content).toBe('Grundlagen\nErklärung des Konzepts.');
+    expect(followUps).toEqual(['a?', 'b?', 'c?']);
+    expect(content).not.toMatch(/Quelle/);
   });
 });
 

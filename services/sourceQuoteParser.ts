@@ -1,29 +1,42 @@
 /**
- * Extrahiert das "**Quelle:** "..."" Zitat, das generateExplanation(..., includeSourceQuote=true)
- * als letzte Zeile der Antwort anhängt. Nur an die letzte nicht-leere Zeile verankert,
- * damit ein "Quelle:" mitten im Fließtext nicht fälschlich als Marker erkannt wird.
+ * Extrahiert das "Quelle: "..."" Zitat, das generateExplanation(..., includeSourceQuote=true)
+ * als Schlusszeile der Antwort anhängt. Robust gegen Formatierungs-Drift des Modells:
+ * "**Quelle:**", "*Quelle:*", "Quelle:" (ganz ohne Markdown) und "**Quelle**:" werden alle
+ * akzeptiert, und die Zeile muss nicht die LETZTE der Antwort sein (das Modell hängt manchmal
+ * noch die Weiterfragen-Zeile oder einen weiteren Absatz danach an — s. Bug vom 2026-09-07,
+ * Wissensnetz-Coach-Testlauf). Nur an eine EIGENE Zeile verankert (^...$ auf der getrimmten
+ * Zeile), damit ein "Quelle:" mitten im Fließtext nicht fälschlich als Marker erkannt wird.
  */
+const QUOTE_LINE_RE = /^\*{0,2}(?:Quelle|Kaynak)\*{0,2}:\*{0,2}\s*[""]?(.+?)[""]?$/;
+
 export function extractSourceQuote(markdown: string): string | null {
   const lines = markdown.split('\n').map(l => l.trim()).filter(Boolean);
-  if (lines.length === 0) return null;
-  const lastLine = lines[lines.length - 1];
-  // Der Prompt gibt "**Quelle:**" als stabiles Token vor; "Kaynak" wird zusätzlich
-  // akzeptiert, falls das Modell den Marker doch übersetzt.
-  const match = lastLine.match(/^\*\*(?:Quelle|Kaynak):\*\*\s*[""]?(.+?)[""]?$/);
-  if (!match) return null;
-  const quote = match[1].trim();
-  return quote.length > 0 ? quote : null;
+  for (let i = lines.length - 1; i >= 0; i--) {
+    const match = lines[i].match(QUOTE_LINE_RE);
+    if (match) {
+      // Trailing "**" der schließenden Fett-Markierung kann bei leerem Zitat als 1
+      // übrig gebliebenes "*" ins Capture-Group rutschen (Regex-Backtracking) — daher
+      // führende/schließende Sternchen-Läufe am Rand vor der Leer-Prüfung entfernen.
+      const quote = match[1].replace(/^\*+|\*+$/g, '').trim();
+      return quote.length > 0 ? quote : null;
+    }
+  }
+  return null;
 }
 
 /**
- * Entfernt die "**Quelle:** …"-Schlusszeile aus der Antwort — für Ansichten,
- * die das Zitat separat darstellen (z.B. als Quellen-Karte im PDF-Reader)
- * statt es doppelt im Antworttext zu zeigen.
+ * Entfernt JEDE Zeile, die dem Quelle-Marker entspricht (nicht nur die letzte) — damit
+ * bei einer untypischen Reihenfolge oder einem zusätzlichen Absatz danach keine rohe
+ * "Quelle:"-Zeile im für den Nutzer sichtbaren Text zurückbleibt.
  */
 export function stripSourceQuoteLine(markdown: string): string {
   if (extractSourceQuote(markdown) === null) return markdown;
-  const lines = markdown.split('\n');
-  let last = lines.length - 1;
-  while (last >= 0 && !lines[last].trim()) last--;
-  return lines.slice(0, last).join('\n').trimEnd();
+  return markdown
+    .split('\n')
+    .filter(line => !QUOTE_LINE_RE.test(line.trim()))
+    .join('\n')
+    // Entfernen einer Zeile MITTEN im Text kann zwei umgebende Leerzeilen zu einer
+    // Dreifach-Leerzeile verschmelzen lassen — auf normale Absatztrennung reduzieren.
+    .replace(/\n{3,}/g, '\n\n')
+    .trim();
 }

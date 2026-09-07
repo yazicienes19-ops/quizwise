@@ -35,6 +35,26 @@ describe('extractSourceQuote', () => {
     const md = `Text davor.\n**Quelle:** `;
     expect(extractSourceQuote(md)).toBeNull();
   });
+
+  it('akzeptiert "Quelle:" ganz ohne Markdown-Formatierung', () => {
+    const md = `Text davor.\nQuelle: "Das Zitat."`;
+    expect(extractSourceQuote(md)).toBe('Das Zitat.');
+  });
+
+  it('akzeptiert "*Quelle:*" (kursiv, ein Stern)', () => {
+    const md = `Text davor.\n*Quelle:* "Das Zitat."`;
+    expect(extractSourceQuote(md)).toBe('Das Zitat.');
+  });
+
+  it('erkennt die Zeile auch wenn sie NICHT die letzte ist (z.B. Weiterfragen danach)', () => {
+    const md = `Text davor.\n**Quelle:** "Das Zitat."\n**Weiterfragen:** a? | b? | c?`;
+    expect(extractSourceQuote(md)).toBe('Das Zitat.');
+  });
+
+  it('behält Markdown-Formatierung INNERHALB des Zitats bei', () => {
+    const md = `Text davor.\n**Quelle:** "Das **wichtige** Zitat mit *Betonung*."`;
+    expect(extractSourceQuote(md)).toBe('Das **wichtige** Zitat mit *Betonung*.');
+  });
 });
 
 describe('stripSourceQuoteLine', () => {
@@ -56,5 +76,15 @@ describe('stripSourceQuoteLine', () => {
   it('lässt "Quelle:" mitten im Fließtext stehen', () => {
     const md = `Die Quelle: dieses Dokuments beschreibt die Mitose.\nLetzter Absatz ohne Marker.`;
     expect(stripSourceQuoteLine(md)).toBe(md);
+  });
+
+  it('entfernt die Quelle-Zeile auch wenn danach noch ein weiterer Absatz folgt', () => {
+    const md = `Antwort.\n\n**Quelle:** "Das Zitat."\n\nPS: Das war noch wichtig.`;
+    expect(stripSourceQuoteLine(md)).toBe('Antwort.\n\nPS: Das war noch wichtig.');
+  });
+
+  it('entfernt die Quelle-Zeile auch VOR den Weiterfragen (untypische Reihenfolge)', () => {
+    const md = `Antwort.\n\n**Quelle:** "Das Zitat."\n**Weiterfragen:** a? | b? | c?`;
+    expect(stripSourceQuoteLine(md)).toBe('Antwort.\n\n**Weiterfragen:** a? | b? | c?');
   });
 });
