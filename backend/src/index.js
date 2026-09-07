@@ -13,6 +13,7 @@ const documentRoutes = require('./routes/documents');
 const importRoutes = require('./routes/importUrl');
 const { router: pushRoutes, vapidConfigured } = require('./routes/push');
 const { startNotificationScheduler } = require('./notifications/scheduler');
+const { startProGrantExpiryJob } = require('./admin/expireProGrants');
 const { requireAuth } = require('./middleware/auth');
 const { checkUsageLimit } = require('./middleware/limits');
 const { requireAdmin } = require('./middleware/requireAdmin');
@@ -104,4 +105,5 @@ app.listen(PORT, () => {
   console.log(`QuizWise Backend laeuft auf Port ${PORT}`);
   console.log(`Gemini: ${!!process.env.GEMINI_API_KEY} | Supabase: ${!!process.env.SUPABASE_URL} | Push: ${vapidConfigured}`);
   if (vapidConfigured) startNotificationScheduler();
+  startProGrantExpiryJob();
 });
