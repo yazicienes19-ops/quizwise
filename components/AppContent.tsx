@@ -38,6 +38,7 @@ import type { GenerationSource } from '../services/geminiService';
 const TermPaperSystem = React.lazy(() => import('./TermPaperSystem').then(m => ({ default: m.TermPaperSystem })));
 const ExamSystem = React.lazy(() => import('./ExamSystem').then(m => ({ default: m.ExamSystem })));
 const ScholarSearch = React.lazy(() => import('./ScholarSearch').then(m => ({ default: m.ScholarSearch })));
+const AdminDashboard = React.lazy(() => import('./AdminDashboard').then(m => ({ default: m.AdminDashboard })));
 const LibrarySystem = React.lazy(() => import('./LibrarySystem').then(m => ({ default: m.LibrarySystem })));
 const ActiveRecall = React.lazy(() => import('./ActiveRecall').then(m => ({ default: m.ActiveRecall })));
 const SplitScreenReader = React.lazy(() => import('./SplitScreenReader').then(m => ({ default: m.SplitScreenReader })));
@@ -503,6 +504,10 @@ export const AppContent: React.FC<AppContentProps> = (p) => {
         onGoToPaper={() => setActiveTab(ActiveTab.PAPER)}
         savedResults={savedSources}
       />;
+
+    case ActiveTab.ADMIN:
+      if (!isAdmin(user?.id)) return <Dashboard onTabChange={setActiveTab} flowResult={flowResult} onAcceptFlow={saveFlowResult} documents={documents} decks={decks} metrics={metrics} collections={collections} activeModuleId={activeModuleId} onStartMistakeReview={handleStartMistakeReview} user={user} />;
+      return <AdminDashboard />;
 
     case ActiveTab.PLANNER:
       return <StudyPlanner metrics={metrics} decks={decks} examTerms={examTerms} onUpdateExams={saveExamTerms} userId={user?.id} collections={collections} onUpdateCollection={updateCollection} />;

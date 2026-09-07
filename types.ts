@@ -249,7 +249,8 @@ export enum ActiveTab {
   EXAM = 'EXAM',
   RECALL = 'RECALL',
   READER = 'READER',
-  KNOWLEDGE_GRAPH = 'KNOWLEDGE_GRAPH'
+  KNOWLEDGE_GRAPH = 'KNOWLEDGE_GRAPH',
+  ADMIN = 'ADMIN'
 }
 
 export enum QuizType {

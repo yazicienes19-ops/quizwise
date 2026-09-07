@@ -27,6 +27,22 @@ router.get('/profile', async (req, res, next) => {
   } catch (err) { next(err); }
 });
 
+// POST /api/user/activity-heartbeat
+// Leichtgewichtiges Signal fürs Admin-Dashboard (wer lernt wann wie lange).
+// seconds wird server-seitig gedeckelt, damit ein manipulierter Client nicht
+// beliebige Aktivzeit vortäuschen kann.
+router.post('/activity-heartbeat', async (req, res, next) => {
+  try {
+    const seconds = Math.min(Math.max(Number(req.body?.seconds) || 0, 0), 120);
+    const { error } = await supabaseAdmin.rpc('record_activity_heartbeat', {
+      p_user_id: req.user.id,
+      p_seconds: seconds,
+    });
+    if (error) throw error;
+    res.json({ success: true });
+  } catch (err) { next(err); }
+});
+
 // GET /api/user/export
 // Alle Nutzerdaten als JSON — DSGVO Recht auf Datenmitnahme
 router.get('/export', async (req, res, next) => {

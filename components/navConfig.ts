@@ -29,6 +29,7 @@ export const LABOR_GROUP: NavGroup = {
   items: [
     { tab: ActiveTab.PAPER, labelKey: 'nav.paper', hintKey: 'nav.paper.hint' },
     { tab: ActiveTab.SEARCH, labelKey: 'nav.search', hintKey: 'nav.search.hint' },
+    { tab: ActiveTab.ADMIN, labelKey: 'nav.admin', hintKey: 'nav.admin.hint' },
   ],
 };
 

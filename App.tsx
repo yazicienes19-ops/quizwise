@@ -30,6 +30,7 @@ import { toast } from './services/toast';
 import { ActiveTab, TopicMetric, SearchResult, FlashcardDeck, ExamTerm, LearningFlowResult, OnboardingProfile } from './types';
 import { isAdmin } from './config/admin';
 import { useAuth } from './hooks/useAuth';
+import { useActivityHeartbeat } from './hooks/useActivityHeartbeat';
 import { useDocuments } from './hooks/useDocuments';
 import { useQuizState } from './hooks/useQuizState';
 import { AppContent } from './components/AppContent';
@@ -43,6 +44,7 @@ const RESTORABLE_TABS = new Set<ActiveTab>([
   ActiveTab.DASHBOARD, ActiveTab.LIBRARY, ActiveTab.QUIZ, ActiveTab.CARDS,
   ActiveTab.PLANNER, ActiveTab.RADAR, ActiveTab.EXPLAINER, ActiveTab.EXAM,
   ActiveTab.RECALL, ActiveTab.KNOWLEDGE_GRAPH, ActiveTab.PAPER, ActiveTab.SEARCH,
+  ActiveTab.ADMIN,
 ]);
 
 // Deep-Link-Pfade pro Bereich — bewusst kurz und deutsch, passend zur Marke.
@@ -82,6 +84,7 @@ const pushTabHistory = (tab: ActiveTab) => {
 
 const App: React.FC = () => {
   const auth = useAuth();
+  useActivityHeartbeat(auth.user?.id);
   const { t } = useTranslation();
   const [activeTab, setActiveTab] = useState<ActiveTab>(getInitialTab);
   // Fach-Kontext (Variante C): gewähltes Modul gilt app-weit als Vorauswahl
@@ -237,7 +240,7 @@ const App: React.FC = () => {
   // das Dashboard, aber die Sidebar würde fälschlich den Labor-Tab markieren.
   useEffect(() => {
     if (!auth.authChecked) return;
-    if ((activeTab === ActiveTab.PAPER || activeTab === ActiveTab.SEARCH) && !isAdmin(auth.user?.id)) {
+    if ((activeTab === ActiveTab.PAPER || activeTab === ActiveTab.SEARCH || activeTab === ActiveTab.ADMIN) && !isAdmin(auth.user?.id)) {
       setActiveTab(ActiveTab.DASHBOARD);
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps

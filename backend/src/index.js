@@ -8,6 +8,7 @@ const geminiRoutes = require('./routes/gemini');
 const userRoutes = require('./routes/user');
 const stripeRoutes = require('./routes/stripe');
 const searchRoutes = require('./routes/search');
+const adminRoutes = require('./routes/admin');
 const documentRoutes = require('./routes/documents');
 const importRoutes = require('./routes/importUrl');
 const { router: pushRoutes, vapidConfigured } = require('./routes/push');
@@ -76,6 +77,8 @@ app.use('/api/gemini', geminiLimiter, requireAuth, checkUsageLimit, geminiRoutes
 
 // Geschützt: Login + Admin (Labor-Feature "Recherche", noch nicht für alle Nutzer freigegeben)
 app.use('/api/search', requireAuth, requireAdmin, searchRoutes);
+// Geschützt: Login + Admin (Nutzer-Übersicht, s. CLAUDE.md Admin-Flag-Muster)
+app.use('/api/admin', requireAuth, requireAdmin, adminRoutes);
 app.use('/api/client-error', clientErrorLimiter, require('./routes/clientError'));
 app.use('/api/documents', requireAuth, documentRoutes);
 // Quellen-Import per Link (YouTube zählt intern als Generierung)

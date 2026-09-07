@@ -46,6 +46,18 @@ export const exportUserData = async (): Promise<void> => {
   URL.revokeObjectURL(url);
 };
 
+// Leichtgewichtiges Aktivitäts-Signal fürs Admin-Dashboard. Bewusst fire-
+// and-forget an den Call-Stellen (useActivityHeartbeat) — ein verlorener
+// Heartbeat verzerrt die Lernzeit nur minimal, ist aber nie nutzerkritisch.
+export const sendActivityHeartbeat = async (seconds: number): Promise<void> => {
+  const headers = await authHeaders();
+  await fetch(`${BACKEND_URL}/api/user/activity-heartbeat`, {
+    method: 'POST',
+    headers,
+    body: JSON.stringify({ seconds }),
+  });
+};
+
 export const getInvoices = async (): Promise<any[]> => {
   const headers = await authHeaders();
   const res = await fetch(`${BACKEND_URL}/api/stripe/invoices`, { headers });
