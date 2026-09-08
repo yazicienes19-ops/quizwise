@@ -72,3 +72,35 @@ describe('parseInline — Formeln (KaTeX)', () => {
     expect(out).toContain('5$ pro Stück');
   });
 });
+
+describe('renderMarkdown — Listen über Leerzeilen hinweg', () => {
+  it('regression: nummerierte Punkte mit Leerzeile dazwischen bleiben EINE Liste (nicht je "1.")', () => {
+    // Live im Reader-Tutor gefunden (2026-09-08): drei erklärte Unterbegriffe,
+    // vom Modell durch Leerzeilen getrennt, erschienen alle als "1." statt 1./2./3.
+    const out = html('1. Subjektive Erfahrungen: Text A.\n\n1. Ganzheitlich: Text B.\n\n1. Selbst-Aktualisierung: Text C.');
+    expect((out.match(/<ol/g) || [])).toHaveLength(1);
+    expect((out.match(/<li/g) || [])).toHaveLength(3);
+    expect(out).toMatch(/>1\.<\/span><span>Subjektive Erfahrungen/);
+    expect(out).toMatch(/>2\.<\/span><span>Ganzheitlich/);
+    expect(out).toMatch(/>3\.<\/span><span>Selbst-Aktualisierung/);
+  });
+
+  it('nummerierte Liste ohne Leerzeilen funktioniert weiterhin wie bisher', () => {
+    const out = html('1. Eins\n2. Zwei\n3. Drei');
+    expect((out.match(/<ol/g) || [])).toHaveLength(1);
+    expect((out.match(/<li/g) || [])).toHaveLength(3);
+  });
+
+  it('Aufzählung mit Leerzeile dazwischen bleibt ebenfalls EINE Liste', () => {
+    const out = html('- Punkt A\n\n- Punkt B');
+    expect((out.match(/<ul/g) || [])).toHaveLength(1);
+    expect((out.match(/<li/g) || [])).toHaveLength(2);
+  });
+
+  it('echter Absatz nach einer Liste beendet sie weiterhin korrekt', () => {
+    const out = html('1. Eins\n2. Zwei\n\nEin normaler Absatz danach.');
+    expect((out.match(/<ol/g) || [])).toHaveLength(1);
+    expect((out.match(/<li/g) || [])).toHaveLength(2);
+    expect(out).toMatch(/<p[^>]*>Ein normaler Absatz danach\.<\/p>/);
+  });
+});

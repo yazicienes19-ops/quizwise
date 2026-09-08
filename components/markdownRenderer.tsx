@@ -58,6 +58,27 @@ export function parseInline(text: string, baseKey: string): React.ReactNode[] {
   return parts;
 }
 
+// Sammelt Listenzeilen (Aufzählung/Nummerierung) über Leerzeilen zwischen
+// Einträgen hinweg — das Modell trennt Listenpunkte gelegentlich durch eine
+// Leerzeile (z.B. bei mehreren erklärten Unterbegriffen). Ohne diese Toleranz
+// beendet jede Leerzeile die Liste und erzeugt pro Punkt eine eigene <ol>/<ul>,
+// die bei der Nummerierung wieder bei "1." startet (live im Reader-Tutor
+// gefunden: drei erklärte Unterbegriffe erschienen alle als "1.").
+function collectListLines(lines: string[], start: number, itemRe: RegExp): { items: string[]; next: number } {
+  const items: string[] = [];
+  let i = start;
+  while (i < lines.length) {
+    if (itemRe.test(lines[i])) { items.push(lines[i].replace(itemRe, '')); i++; continue; }
+    if (!lines[i].trim()) {
+      let j = i + 1;
+      while (j < lines.length && !lines[j].trim()) j++;
+      if (j < lines.length && itemRe.test(lines[j])) { i = j; continue; }
+    }
+    break;
+  }
+  return { items, next: i };
+}
+
 export function renderMarkdown(text: string): React.ReactNode {
   const lines = text.split('\n');
   const blocks: React.ReactNode[] = [];
@@ -108,14 +129,14 @@ export function renderMarkdown(text: string): React.ReactNode {
       continue;
     }
     if (line.match(/^[-*•]\s/)) {
-      const items: string[] = [];
-      while (i < lines.length && lines[i].match(/^[-*•]\s/)) { items.push(lines[i].replace(/^[-*•]\s/,'')); i++; }
+      const { items, next } = collectListLines(lines, i, /^[-*•]\s/);
+      i = next;
       blocks.push(<ul key={key++} className="space-y-2 pl-1">{items.map((item,idx) => <li key={idx} className="flex gap-2.5 items-start text-base lg:text-lg font-medium text-slate-700 dark:text-slate-300 leading-relaxed"><span className="mt-2 w-1.5 h-1.5 rounded-full shrink-0" style={{ background:'var(--primary)' }}/><span>{parseInline(item,`${key}-${idx}`)}</span></li>)}</ul>);
       continue;
     }
     if (line.match(/^\d+\.\s/)) {
-      const items: string[] = [];
-      while (i < lines.length && lines[i].match(/^\d+\.\s/)) { items.push(lines[i].replace(/^\d+\.\s/,'')); i++; }
+      const { items, next } = collectListLines(lines, i, /^\d+\.\s/);
+      i = next;
       blocks.push(<ol key={key++} className="space-y-2 pl-1">{items.map((item,idx) => <li key={idx} className="flex gap-3 items-start text-base lg:text-lg font-medium text-slate-700 dark:text-slate-300 leading-relaxed"><span className="font-black shrink-0 w-6 text-right" style={{ color:'var(--primary)' }}>{idx+1}.</span><span>{parseInline(item,`${key}-${idx}`)}</span></li>)}</ol>);
       continue;
     }
