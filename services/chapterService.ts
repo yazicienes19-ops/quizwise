@@ -3,6 +3,17 @@ export interface Chapter {
   title: string;
   content: string;
   charCount: number;
+  /** Nur bei PDF-Kapiteln aus der Seiten-Layout-/Gliederungs-Erkennung gesetzt
+   *  (s. pdfOutlineService.ts buildChaptersFromCandidates) — 1-BASIERTE
+   *  PDF-Seitenzahlen, auf denen das Kapitel beginnt/endet (wie überall in
+   *  pdfOutlineService.ts, ANDERS als der 0-basierte pageIndex in
+   *  chapterProgressService.ts/PdfSplitScreenReader.tsx — beim Abgleich immer
+   *  +1/-1 beachten). Bei Text/DOCX (kein Seitenkonzept) und beim
+   *  zeilenbasierten Dense-Fallback (detectDenseChapters, noch ohne
+   *  Seiten-Tracking) bleibt es undefined; Aufrufer müssen dann auf den
+   *  Kapitel-Index zurückfallen (s. ActiveRecall.tsx isChapterRead). */
+  startPage?: number;
+  endPage?: number;
 }
 
 const HEADING_PATTERNS = [

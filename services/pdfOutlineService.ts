@@ -181,7 +181,7 @@ export function buildChaptersFromCandidates(candidates: HeadingCandidate[], perP
       .join('\n\n')
       .trim();
     if (!content) continue;
-    chapters.push({ index: chapters.length, title: candidates[i].title, content, charCount: content.length });
+    chapters.push({ index: chapters.length, title: candidates[i].title, content, charCount: content.length, startPage, endPage });
   }
   return chapters;
 }

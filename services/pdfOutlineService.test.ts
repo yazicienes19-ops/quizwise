@@ -329,6 +329,12 @@ describe('buildChaptersFromCandidates', () => {
     expect(chapters[1].content).toBe('Text auf Seite 3.');
   });
 
+  it('setzt startPage/endPage je Kapitel (Grundlage für den Lesefortschritts-Abgleich in ActiveRecall.tsx)', () => {
+    const chapters = buildChaptersFromCandidates([{ page: 1, title: 'Erstes Kapitel' }, { page: 3, title: 'Zweites Kapitel' }], pages);
+    expect(chapters[0]).toMatchObject({ startPage: 1, endPage: 2 });
+    expect(chapters[1]).toMatchObject({ startPage: 3, endPage: 3 });
+  });
+
   it('ordnet Seiten VOR dem ersten Kandidaten dem ersten Kapitel zu', () => {
     const chapters = buildChaptersFromCandidates([{ page: 2, title: 'Kapitel' }], pages);
     expect(chapters).toHaveLength(1);

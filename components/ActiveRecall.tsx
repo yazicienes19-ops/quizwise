@@ -18,7 +18,8 @@ import { getAllResults } from '../services/quizHistoryService';
 import { getAllRecallResults } from '../services/recallHistoryService';
 import { rankTopicsForNextChallenge } from '../services/recallGaps';
 import { getCoverage, markTopicCovered } from '../services/recallCoverageService';
-import { detectChaptersForDoc } from '../services/chapterService';
+import { detectChaptersForDoc, type Chapter } from '../services/chapterService';
+import { getDoneChapterIndices } from '../services/chapterProgressService';
 import { getAllExamResults } from '../services/examHistoryService';
 
 interface ActiveRecallProps {
@@ -111,23 +112,81 @@ export const ActiveRecall: React.FC<ActiveRecallProps> = ({
     setActiveDoc(doc);
   };
 
-  // Kapitel-Themen des aktiven Dokuments (Text/DOCX direkt per Regex, PDF per
-  // echter Seiten-Layout-Erkennung, sonst Digest als Fallback) — Grundlage
-  // für „erst alles einmal abfragen, dann vertiefen".
-  const [chapterTitles, setChapterTitles] = useState<string[]>([]);
+  // Kapitel des aktiven Dokuments (Text/DOCX direkt per Regex, PDF per echter
+  // Seiten-Layout-/Gliederungs-Erkennung, sonst Digest als Fallback) — volles
+  // Chapter-Objekt (nicht nur Titel), damit sich unten der Lesefortschritt
+  // zuordnen lässt (startPage/endPage bei PDFs, sonst Kapitel-Index).
+  const [chapters, setChapters] = useState<Chapter[]>([]);
+  // Für welche Dokument-ID die (async) Kapitel-Erkennung zuletzt abgeschlossen
+  // wurde — bewusst NICHT als eigenständiges Boolean-State geführt: ein Boolean,
+  // das der Effekt selbst auf true/false setzt, hätte in dem Render, in dem
+  // activeDoc gerade erst von null auf das echte Dokument wechselt, kurzzeitig
+  // noch den veralteten "true"-Wert vom vorherigen (doc-losen) Render — genau in
+  // diesem einen Zwischen-Render liest der autoStart-Effekt unten (der VOR dem
+  // Kapitel-Effekt in der Update-Reihenfolge steht) den Wert noch aus der
+  // Render-Closure und würde fälschlich zu früh feuern (Reader-Handoff-Race,
+  // 2026-09-08 live gemeldet). Als reiner Ableitungswert pro Render (Vergleich
+  // mit activeDoc.id) gibt es diesen Zwischenzustand nicht.
+  const [chaptersLoadedForDocId, setChaptersLoadedForDocId] = useState<string | null>(null);
+  const chaptersReady = !activeDoc || chaptersLoadedForDocId === activeDoc.id;
   useEffect(() => {
-    if (!activeDoc) { setChapterTitles([]); return; }
+    if (!activeDoc) { setChapters([]); return; }
     let cancelled = false;
-    detectChaptersForDoc(activeDoc).then(chapters => {
+    detectChaptersForDoc(activeDoc).then(result => {
       if (cancelled) return;
-      setChapterTitles(chapters.map(c => c.title.replace(/^#{1,6}\s*/, '').trim()).filter(Boolean));
+      setChapters(
+        result
+          .map(c => ({ ...c, title: c.title.replace(/^#{1,6}\s*/, '').trim() }))
+          .filter(c => c.title)
+      );
+      setChaptersLoadedForDocId(activeDoc.id);
     });
     return () => { cancelled = true; };
   }, [activeDoc]);
 
+  // Lesefortschritt (0-basierte Seiten-/Kapitel-Indices aus dem Reader,
+  // s. chapterProgressService.ts — per Button manuell markiert, verlässliches
+  // Signal). Wird nur beim Dokumentwechsel neu gelesen: der Reader und
+  // Feynman laufen nie gleichzeitig in derselben Session, ein Live-Sync
+  // während einer offenen Feynman-Session ist daher nicht nötig.
+  const doneChapterIndices = useMemo(
+    () => (activeDoc ? getDoneChapterIndices(activeDoc.id) : []),
+    [activeDoc]
+  );
+
+  // Root-Cause-Fix (2026-09-08): Feynman darf nur Themen aus TATSÄCHLICH
+  // gelesenen Kapiteln als reguläre Coverage-Vorschläge verwenden — vorher
+  // wurde jedes Kapitel/jede Seite unabhängig vom Lesefortschritt als
+  // "uncovered"/vorschlagbar behandelt (recallCoverageService.ts kennt den
+  // Lesefortschritt strukturell nicht, s. Analysebericht). Bei PDFs mit
+  // Seiten-Zuordnung (startPage/endPage, s. pdfOutlineService.ts) wird ein
+  // Kapitel als gelesen gewertet, sobald mindestens eine seiner Seiten
+  // markiert wurde — startPage/endPage sind dort 1-basiert, doneChapterIndices
+  // 0-basiert, daher +1 beim Abgleich. Ohne Seiten-Zuordnung (Text/DOCX, oder
+  // der zeilenbasierte PDF-Dense-Fallback ohne Seiten-Tracking) wird auf den
+  // Kapitel-Index zurückgefallen — bei Text/DOCX exakt (Reader nutzt dieselbe
+  // Erkennung), beim PDF-Dense-Fallback nur eine Näherung (dokumentierte
+  // Einschränkung, s. Analysebericht — dort existiert noch kein Seiten-Tracking).
+  const isChapterRead = useCallback((chapter: Chapter): boolean => {
+    if (chapter.startPage !== undefined) {
+      const endPage = chapter.endPage ?? chapter.startPage;
+      return doneChapterIndices.some(idx => idx + 1 >= chapter.startPage! && idx + 1 <= endPage);
+    }
+    return doneChapterIndices.includes(chapter.index);
+  }, [doneChapterIndices]);
+
+  const readChapterTitles = useMemo(
+    () => chapters.filter(isChapterRead).map(c => c.title),
+    [chapters, isChapterRead]
+  );
+
+  // WICHTIG: coverage basiert jetzt NUR NOCH auf gelesenen Kapiteln —
+  // coverage.uncovered ist dadurch bereits exakt "gelesen UND noch nicht per
+  // Feynman abgefragt" (die eligibleTopics-Formel), ohne dass die Aufrufstelle
+  // unten (startNewChallenge) geändert werden musste.
   const coverage = useMemo(
-    () => (activeDoc ? getCoverage(activeDoc.id, chapterTitles) : null),
-    [activeDoc, chapterTitles, coverageBump]
+    () => (activeDoc ? getCoverage(activeDoc.id, readChapterTitles) : null),
+    [activeDoc, readChapterTitles, coverageBump]
   );
 
   const handleCancel = () => {
@@ -232,14 +291,17 @@ export const ActiveRecall: React.FC<ActiveRecallProps> = ({
   // Auto-Start (z.B. Feynman-Handoff aus dem Reader): activeSource wird erst
   // asynchron im Mount-Effekt gesetzt — dieser Effekt wartet darauf und feuert
   // dann genau einmal, statt startNewChallenge() direkt beim Mount aufzurufen
-  // (activeSource wäre dort noch null → Race).
+  // (activeSource wäre dort noch null → Race). Wartet zusätzlich auf
+  // chaptersReady, sonst würde genau der Reader-Handoff-Fall (immer mit
+  // activeDoc) die allererste Challenge ohne Lesefortschritt-Grenze (Fix 2)
+  // generieren.
   const autoStartedRef = useRef(false);
   useEffect(() => {
-    if (autoStart && activeSource && !autoStartedRef.current) {
+    if (autoStart && activeSource && chaptersReady && !autoStartedRef.current) {
       autoStartedRef.current = true;
       startNewChallenge();
     }
-  }, [activeSource]); // eslint-disable-line react-hooks/exhaustive-deps
+  }, [activeSource, chaptersReady]); // eslint-disable-line react-hooks/exhaustive-deps
 
   const handleEvaluate = async () => {
     if (!challenge || !userAnswer.trim() || !activeSource) return;
@@ -376,7 +438,7 @@ export const ActiveRecall: React.FC<ActiveRecallProps> = ({
           <div className="text-center">
             <button
               onClick={startNewChallenge}
-              disabled={isLoading || !activeSource}
+              disabled={isLoading || !activeSource || (autoStart && !chaptersReady)}
               className="w-full sm:w-auto px-8 lg:px-10 py-4 lg:py-5 rounded-[24px] font-black uppercase tracking-[0.2em] text-[10px] lg:text-[11px] shadow-3d-deep hover:scale-105 transition-all disabled:opacity-40"
               style={{ background: 'var(--primary)', color: 'var(--primary-text)' }}
             >
@@ -616,7 +678,7 @@ export const ActiveRecall: React.FC<ActiveRecallProps> = ({
                 {t('ar.retrySame')}
               </button>
               <button
-                onClick={() => { setChallenge(null); setEvaluation(null); }}
+                onClick={() => { setChallenge(null); setEvaluation(null); startNewChallenge(); }}
                 className="bg-indigo-600 px-8 py-3 rounded-xl font-black uppercase text-[10px] tracking-widest shadow-lg hover:scale-105 transition-all flex items-center justify-center gap-2"
                 style={{ color: 'var(--primary-text)' }}
               >
