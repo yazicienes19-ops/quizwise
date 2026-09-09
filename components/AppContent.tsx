@@ -180,6 +180,17 @@ export const AppContent: React.FC<AppContentProps> = (p) => {
     setActiveTab(ActiveTab.CARDS);
   };
 
+  // Phase 3B: Quant-Operationstraining — ExamView generiert die Übungsfragen selbst
+  // (per KI, grundiert auf dem erkannten Rechenfehler-Typ), hier nur Session-Start,
+  // exakt dasselbe Muster wie onGenerateQuizFromDeck (FlashcardSystem-Case unten).
+  const handleStartOperationPractice = (practice: Partial<QuizQuestion>[], meta: { docName: string; topic?: string }) => {
+    const q = practice as QuizQuestion[];
+    const quizMeta = { docId: `practice-${Date.now()}`, docName: meta.docName };
+    setQuestions(q); setQuizInitialAnswers(undefined); setActiveQuizMeta(quizMeta);
+    saveQuizProgress(q, [], quizMeta);
+    setActiveTab(ActiveTab.QUIZ);
+  };
+
   // Gemeinsamer Folge-Aktion-Handler für schwache Themen — von Lern-Coach UND Klausur-Ergebnis genutzt
   const handleWeakTopicAction = (topic: string, mode: 'cards' | 'recall' | 'quiz') => {
     if (mode === 'quiz') {
@@ -482,6 +493,7 @@ export const AppContent: React.FC<AppContentProps> = (p) => {
           }}
           onNavigate={setActiveTab}
           onAction={handleWeakTopicAction}
+          onStartOperationPractice={handleStartOperationPractice}
         />
       </div>
     );

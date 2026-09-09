@@ -3,7 +3,7 @@ import React, { useState } from 'react';
 import { ExamGenerator } from './ExamGenerator';
 import { ExamArchive } from './ExamArchive';
 import { ExamView } from './ExamView';
-import { ExamQuestion, ProcessedDocument, Collection, ActiveTab, ScoringProfile, ExamAnalysis, TopicMetric, FlashcardDeck, ExamTypePreset, QuantModeConfig, ExamTerm } from '../types';
+import { ExamQuestion, ProcessedDocument, Collection, ActiveTab, ScoringProfile, ExamAnalysis, TopicMetric, FlashcardDeck, ExamTypePreset, QuantModeConfig, ExamTerm, QuizQuestion } from '../types';
 import { generateFullExam, evaluateWithRubric, evaluateStepByStep, classifyBloomLevels, GenerationSource } from '../services/geminiService';
 import { buildExamAnalysis } from '../services/examAnalysisService';
 import { track } from '../services/analyticsService';
@@ -36,6 +36,7 @@ interface ExamSystemProps {
   }) => void;
   onNavigate?: (tab: ActiveTab) => void;
   onAction?: (topic: string, mode: 'cards' | 'recall' | 'quiz') => void;
+  onStartOperationPractice?: (questions: Partial<QuizQuestion>[], meta: { docName: string; topic?: string }) => void;
   initialDoc?: ProcessedDocument;
   initialQuestions?: ExamQuestion[];
   metrics: TopicMetric[];
@@ -45,7 +46,7 @@ interface ExamSystemProps {
 
 const DEFAULT_SCORING_PROFILE: ScoringProfile = { mode: 'standard', emphases: [] };
 
-export const ExamSystem: React.FC<ExamSystemProps> = ({ documents, collections, getDocumentSource, onSaveToLibrary, onComplete, onNavigate, onAction, initialDoc, initialQuestions, metrics, decks, examTerms }) => {
+export const ExamSystem: React.FC<ExamSystemProps> = ({ documents, collections, getDocumentSource, onSaveToLibrary, onComplete, onNavigate, onAction, onStartOperationPractice, initialDoc, initialQuestions, metrics, decks, examTerms }) => {
   const { t } = useTranslation();
   // Auch gespeicherte/ältere Klausuren durch die Normalisierung schicken —
   // unbewertbare Aufgaben dürfen nie in die Wertung zählen.
@@ -491,6 +492,7 @@ export const ExamSystem: React.FC<ExamSystemProps> = ({ documents, collections, 
         analysis={examAnalysis}
         categoryBreakdown={categoryBreakdown}
         onAction={onAction}
+        onStartOperationPractice={onStartOperationPractice}
         examTypePreset={examTypePreset}
         fatigue={fatigue}
         onSaveProgress={(name) => {

@@ -25,6 +25,7 @@ import {
   ExamTypePreset,
   ConcreteQuestionType,
   QuantModeConfig,
+  DistractorErrorType,
 } from "../types";
 
 // ─── Backend-Verbindung ──────────────────────────────────────────────────────
@@ -742,6 +743,75 @@ REGELN:
     }
   });
   return parseAiJson<any[]>(text || '[]');
+};
+
+/** Phase 3B: Quant-Operationstraining — DistractorErrorType (bisher nur Erzähltext/
+ *  Label in ExamView.tsx und mathErrorHint in errorPool.ts) wird hier erstmals
+ *  aktionierbar: aus EINER falsch gerechneten Klausurfrage + ihrem erkannten
+ *  Fehlertyp gezielte NEUE numerische Übungsaufgaben generieren, die genau diese
+ *  Fehlerart provozieren/trainieren. Ergebnis sind normale QuizQuestion[] (type
+ *  'numeric', von QuizPlayer bereits unterstützt) — kein neuer Player/keine neue
+ *  Bewertungslogik nötig. */
+const OPERATION_PRACTICE_HINT: Record<DistractorErrorType, string> = {
+  sign_error: 'Vorzeichenfehler — Aufgaben, bei denen ein falsches Vorzeichen (z.B. bei Subtraktion, negativen Werten oder Umstellen einer Gleichung) ein naheliegender Stolperstein ist.',
+  calc_error: 'Rechenfehler — Aufgaben mit mehreren Rechenschritten, bei denen eine einzelne falsche Grundrechenart-Operation zu einem plausibel aussehenden, aber falschen Ergebnis führt.',
+  formula_error: 'Falsch angewendete Formel — Aufgaben, bei denen leicht verwechselbare oder ähnliche Formeln zur Auswahl stehen und die richtige Formel korrekt ausgewählt UND angewendet werden muss.',
+  wrong_operation: 'Falsche Rechenoperation — Aufgaben, bei denen aus dem Aufgabentext die richtige Operation (z.B. Multiplikation statt Division) erkannt werden muss, nicht nur mechanisch gerechnet wird.',
+  other: 'Unspezifischer Rechenfehler — Aufgaben mit mehreren Teilschritten, die insgesamt sorgfältiges Rechnen verlangen.',
+};
+
+export const generateOperationPractice = async (
+  errorType: DistractorErrorType,
+  sourceQuestion: ExamQuestion,
+  count: number = 5,
+): Promise<Partial<QuizQuestion>[]> => {
+  const parts: any[] = [{
+    text: `Ein Nutzer hat bei folgender Klausuraufgabe einen Fehlertyp gezeigt: ${OPERATION_PRACTICE_HINT[errorType]}
+
+Ursprüngliche Aufgabe (nur als Kontext für Thema/Niveau, NICHT wiederverwenden): "${sourceQuestion.question}"${sourceQuestion.topic ? `\nThema: ${sourceQuestion.topic}` : ''}
+
+Erstelle ${count} NEUE, eigenständige Übungsaufgaben zum selben Thema/Niveau, die GEZIELT genau diesen Fehlertyp trainieren — jede Aufgabe muss numerisch mit einem einzigen Zahlenergebnis lösbar sein.
+REGELN:
+1. Unterschiedliche konkrete Zahlen/Szenarien pro Aufgabe, keine bloße Wiederholung derselben Aufgabe
+2. Jede Aufgabe ist so konstruiert, dass genau dieser Fehlertyp ein naheliegender, plausibler Fehler wäre — aber die Aufgabe selbst eindeutig und korrekt lösbar ist
+3. explanation enthält den vollständigen Rechenweg zur Musterlösung (2-4 Sätze), damit der Nutzer bei falscher Antwort daraus lernen kann
+4. numericTolerance großzügig genug für Rundungsdifferenzen (typisch 0.01-0.5 je nach Größenordnung des Ergebnisses)${outputLangDirective()}` }];
+
+  const text = await callBackend({
+    complexity: 'heavy',
+    parts,
+    config: {
+      thinkingConfig: { thinkingBudget: 0 },
+      responseMimeType: 'application/json',
+      responseSchema: {
+        type: Type.ARRAY,
+        items: {
+          type: Type.OBJECT,
+          properties: {
+            question: { type: Type.STRING },
+            numericAnswer: { type: Type.NUMBER },
+            numericTolerance: { type: Type.NUMBER },
+            explanation: { type: Type.STRING },
+          },
+          required: ['question', 'numericAnswer', 'numericTolerance', 'explanation']
+        }
+      }
+    }
+  });
+  const raw = parseAiJson<any[]>(text || '[]');
+  return raw.map(q => ({
+    question: q.question,
+    options: [],
+    correctAnswerIndices: [],
+    isMultipleChoice: false,
+    explanation: q.explanation || '',
+    distractorExplanations: [],
+    sourceReference: '',
+    topic: sourceQuestion.topic,
+    questionType: 'numeric' as const,
+    numericAnswer: q.numericAnswer,
+    numericTolerance: q.numericTolerance ?? 0,
+  }));
 };
 
 export const generateQuizFromFlashcards = async (deck: FlashcardDeck): Promise<QuizQuestion[]> => {

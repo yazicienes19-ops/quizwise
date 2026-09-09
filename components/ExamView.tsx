@@ -1,10 +1,13 @@
 
 import React, { useState, useEffect, useRef, useCallback, useMemo } from 'react';
-import { ExamQuestion, ActiveTab, ScoringProfile, ExamAnalysis, QuestionFeedbackType, ExamTypePreset } from '../types';
+import { ExamQuestion, ActiveTab, ScoringProfile, ExamAnalysis, QuestionFeedbackType, ExamTypePreset, QuizQuestion } from '../types';
 import { saveQuestionFeedback } from '../services/examFeedbackService';
 import { formatUserAnswer, formatCorrectAnswer } from '../services/examAnswerFormat';
 import { checkNumericEquivalence, checkExpressionEquivalence } from '../services/mathValidation';
+import { generateOperationPractice } from '../services/geminiService';
 import { gradeFromPercentage, passThresholdPercent, getCategoryLabel, getTypeLabel, getDistractorErrorTypeLabel } from '../services/learningProfileService';
+import { toast } from '../services/toast';
+import { resolveErrorMessage } from '../services/errorMessages';
 import { BLOOM_LEVELS, BLOOM_LEVEL_LABELS, EXAM_TYPE_BLOOM_TARGETS, computeActualBloomDistribution } from '../services/bloomPresets';
 import type { TKey } from '../i18n';
 import { EmojiImage } from './EmojiImage';
@@ -35,6 +38,11 @@ interface ExamViewProps {
   onAction?: (topic: string, mode: 'cards' | 'recall' | 'quiz') => void;
   examTypePreset?: ExamTypePreset;
   fatigue?: { earlyScore: number; lateScore: number };
+  /** Phase 3B: Quant-Operationstraining — fertig generierte Übungsfragen zu einem
+   *  erkannten Rechenfehler-Typ werden hier zur Persistierung/Session-Start
+   *  hochgereicht (Generierung selbst passiert hier in ExamView, analog zu
+   *  onCreateCardsFromErrors in GapRadar). */
+  onStartOperationPractice?: (questions: Partial<QuizQuestion>[], meta: { docName: string; topic?: string }) => void;
 }
 
 const formatTime = (s: number) =>
@@ -45,8 +53,27 @@ export const ExamView: React.FC<ExamViewProps> = ({
   examDuration, onNewExam, onNavigate, onSaveExam,
   initialAnswers, onAnswersChange, onSaveProgress, examTitle,
   scoringProfile, analysis, categoryBreakdown, onAction, examTypePreset, fatigue,
+  onStartOperationPractice,
 }) => {
   const { t } = useTranslation();
+  /** Frage-ID, für die gerade Übungsaufgaben generiert werden — null = keine. */
+  const [generatingPracticeFor, setGeneratingPracticeFor] = useState<string | null>(null);
+  const handlePracticeOperation = async (q: ExamQuestion) => {
+    if (!q.selectedDistractorErrorType || !onStartOperationPractice) return;
+    setGeneratingPracticeFor(q.id);
+    try {
+      const practice = await generateOperationPractice(q.selectedDistractorErrorType, q);
+      if (!practice.length) { toast.error(t('ev.operationPracticeEmpty')); return; }
+      onStartOperationPractice(practice, {
+        docName: `${t('ev.operationPracticeDeckPrefix')}: ${getDistractorErrorTypeLabel(q.selectedDistractorErrorType)}`,
+        topic: q.topic,
+      });
+    } catch (e) {
+      toast.error(`${t('ev.operationPracticeError')}: ${resolveErrorMessage(e)}`);
+    } finally {
+      setGeneratingPracticeFor(null);
+    }
+  };
   const [answers, setAnswers]           = useState<Record<string, any>>(initialAnswers ?? {});
   const [editingId, setEditingId]       = useState<string | null>(null);
   const [showSaveInput, setShowSaveInput] = useState(false);
@@ -1122,9 +1149,21 @@ export const ExamView: React.FC<ExamViewProps> = ({
                             selectedDistractorErrorType — bei den meisten falschen Antworten
                             ist das Feld nicht gesetzt, dann erscheint hier nichts). */}
                         {q.type === 'mc' && q.selectedDistractorErrorType && (
-                          <p className="text-[10px] font-black uppercase tracking-widest text-amber-600 dark:text-amber-400 mb-3">
-                            {t('ev.distractorErrorTypeLabel')}: {getDistractorErrorTypeLabel(q.selectedDistractorErrorType)}
-                          </p>
+                          <div className="flex flex-wrap items-center justify-between gap-2 mb-3">
+                            <p className="text-[10px] font-black uppercase tracking-widest text-amber-600 dark:text-amber-400">
+                              {t('ev.distractorErrorTypeLabel')}: {getDistractorErrorTypeLabel(q.selectedDistractorErrorType)}
+                            </p>
+                            {onStartOperationPractice && (
+                              <button
+                                onClick={() => handlePracticeOperation(q)}
+                                disabled={generatingPracticeFor === q.id}
+                                className="px-3 py-1.5 rounded-xl text-[9px] font-black uppercase tracking-widest transition-all hover:scale-105 disabled:opacity-60 disabled:hover:scale-100"
+                                style={{ background: 'var(--primary)', color: 'var(--primary-text)' }}
+                              >
+                                {generatingPracticeFor === q.id ? t('ev.operationPracticeGenerating') : t('ev.operationPracticeCta')}
+                              </button>
+                            )}
+                          </div>
                         )}
 
                         {/* Gesamtfeedback */}
