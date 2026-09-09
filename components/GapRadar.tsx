@@ -1,10 +1,11 @@
 
 import React, { useState, useMemo, useRef, useEffect, useCallback } from 'react';
-import { TopicMetric, LearningAnalysis, ActiveTab } from '../types';
+import { TopicMetric, LearningAnalysis, ActiveTab, ErrorPattern, FlashcardDeck } from '../types';
 import { EmojiImage } from './EmojiImage';
 import { AnimatedBar } from './AnimatedBar';
-import { analyzeLearningProgress } from '../services/geminiService';
+import { analyzeLearningProgress, generateFlashcardsFromErrors, type WrongAnswerContext } from '../services/geminiService';
 import { buildErrorPool } from '../services/errorPool';
+import { createSrsState } from '../services/spacedRepetition';
 import { computeTopicCalibrationGaps } from '../services/calibrationGap';
 import { buildCacheKey, buildTopicSnapshot, loadCachedAnalysis, saveCachedAnalysis, clearCachedAnalysis } from '../services/analysisCache';
 import { buildRealTopicMastery } from '../services/learningProfileService';
@@ -252,6 +253,11 @@ interface GapRadarProps {
   metrics: TopicMetric[];
   onNavigate: (tab: ActiveTab) => void;
   onAction?: (topic: string, mode: 'cards' | 'recall' | 'quiz') => void;
+  /** Phase 3B: übergibt eine fertige, per KI aus den konkreten Fehlern eines
+   *  ErrorPattern generierte FlashcardDeck zur Persistierung (localStorage/Supabase,
+   *  analog zu onCreateCardsFromGaps in ActiveRecall) — separat von onAction, weil
+   *  hier VOR der Navigation erst asynchron generiert werden muss. */
+  onCreateCardsFromErrors?: (deck: FlashcardDeck) => void;
   /** Header ausblenden, wenn GapRadar unterhalb eines eigenen Titels eingebettet wird (z.B. LearningCoach). */
   hideHeader?: boolean;
   /** Für den Cloud-Sync beim Löschen von Verlaufseinträgen. */
@@ -268,7 +274,7 @@ interface GapRadarProps {
 
 const EMPTY_DISMISSED = new Set<string>();
 
-export const GapRadar: React.FC<GapRadarProps> = ({ metrics, onNavigate, onAction, hideHeader, userId, moduleFilter = null, moduleId = null, dismissedTopics = EMPTY_DISMISSED }) => {
+export const GapRadar: React.FC<GapRadarProps> = ({ metrics, onNavigate, onAction, onCreateCardsFromErrors, hideHeader, userId, moduleFilter = null, moduleId = null, dismissedTopics = EMPTY_DISMISSED }) => {
   // „Alle Fächer": bewusst kompaktere Ansicht mit nur den wichtigsten Kennzahlen
   // statt Verlaufs-Chart, Schwachstellen-Liste, Session-Historie und Tiefenanalyse.
   const compact = !moduleId;
@@ -279,6 +285,8 @@ export const GapRadar: React.FC<GapRadarProps> = ({ metrics, onNavigate, onActio
   const [isAnalyzing, setIsAnalyzing] = useState(false);
   const [openTopic, setOpenTopic] = useState<string | null>(null);
   const weakTopicsRef = useRef<HTMLDivElement>(null);
+  /** Index des ErrorPattern, für das gerade Karteikarten generiert werden — null = keins. */
+  const [generatingCardsFor, setGeneratingCardsFor] = useState<number | null>(null);
 
   // Close dropdown on outside click
   useEffect(() => {
@@ -1035,7 +1043,39 @@ export const GapRadar: React.FC<GapRadarProps> = ({ metrics, onNavigate, onActio
             <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
               {analysis.errorPatterns.map((error, idx) => {
                 const target = ERROR_ACTION_TARGET[error.recommendedAction.type] ?? { tab: ActiveTab.QUIZ };
-                const handleLearn = () => {
+                // Phase 3B: "Erstellung von Karteikarten" generiert jetzt tatsächlich Karten
+                // aus den konkreten Fehlern (sourceErrorIds) statt nur zum Cards-Tab zu
+                // navigieren — die übrigen Aktionstypen bleiben beim bisherigen onAction-Routing.
+                const isCardsAction = error.recommendedAction.type === 'Erstellung von Karteikarten';
+                const isGeneratingCards = generatingCardsFor === idx;
+                const handleLearn = async () => {
+                  if (isCardsAction && onCreateCardsFromErrors) {
+                    const errorItems = wrongAnswersCtx.filter(w => error.sourceErrorIds.includes(w.id));
+                    if (errorItems.length === 0) { onNavigate(target.tab); return; }
+                    setGeneratingCardsFor(idx);
+                    try {
+                      const generated = await generateFlashcardsFromErrors(errorItems, error.pattern);
+                      if (!generated.length) { toast.error(t('gr.noCardsGenerated')); return; }
+                      const deck: FlashcardDeck = {
+                        id: Math.random().toString(36).slice(2, 9),
+                        title: `${t('gr.errorDeckPrefix')}: ${error.pattern}`,
+                        cards: generated.map(c => ({
+                          id: Math.random().toString(36).slice(2, 9),
+                          front: c.front || '',
+                          back: c.back || '',
+                          level: 0,
+                          nextReview: Date.now(),
+                          srs: createSrsState(),
+                        })),
+                      };
+                      onCreateCardsFromErrors(deck);
+                    } catch (e) {
+                      toast.error(`${t('gr.cardGenError')}: ${resolveErrorMessage(e)}`);
+                    } finally {
+                      setGeneratingCardsFor(null);
+                    }
+                    return;
+                  }
                   if (target.mode && onAction && error.concepts?.[0]) onAction(error.concepts[0], target.mode);
                   else onNavigate(target.tab);
                 };
@@ -1074,10 +1114,11 @@ export const GapRadar: React.FC<GapRadarProps> = ({ metrics, onNavigate, onActio
                     </div>
                     <button
                       onClick={handleLearn}
-                      className="w-full py-3 rounded-xl text-[9px] font-black uppercase tracking-widest transition-all hover:scale-[1.02]"
+                      disabled={isGeneratingCards}
+                      className="w-full py-3 rounded-xl text-[9px] font-black uppercase tracking-widest transition-all hover:scale-[1.02] disabled:opacity-60 disabled:hover:scale-100"
                       style={{ background: 'var(--primary)', color: 'var(--primary-text)' }}
                     >
-                      Jetzt lernen →
+                      {isGeneratingCards ? t('gr.generatingCards') : 'Jetzt lernen →'}
                     </button>
                   </div>
                 );

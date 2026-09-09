@@ -52,7 +52,10 @@ const BASE_MIX: Record<'leicht' | 'mittel' | 'schwer', DifficultyMix> = {
  * nächsten Prüfungstermins aus examTerms (weit weg oder kein Termin bekannt →
  * etwas diagnostischer/leichter; ≤21 Tage → die gewählte Stufe bleibt
  * unverändert maßgeblich, keine zusätzliche Verschiebung). Ergebnis summiert
- * immer auf 100. Ohne Historie (beide Signale null) exakt der Basis-Mix.
+ * immer auf 100. Exakt der Basis-Mix nur, wenn ein Klausurtermin ≤21 Tage
+ * bekannt ist und der Notenschnitt (falls vorhanden) im neutralen Bereich
+ * (50–79 %) liegt – ohne bekannten Termin gibt es auch ohne Notenhistorie
+ * die diagnostische Verschiebung Richtung "leichter".
  */
 export function computeDifficultyMix(
   baseDifficulty: 'leicht' | 'mittel' | 'schwer',

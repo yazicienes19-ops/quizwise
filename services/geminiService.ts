@@ -695,6 +695,55 @@ STRENGE DIVERSITÄTS-REGELN:
   return parseAiJson<any[]>(text || '[]');
 };
 
+/** Phase 3B: gezielte Karteikarten aus konkreten Fehlern (ErrorPattern.sourceErrorIds,
+ *  services/errorPool.ts) statt aus einem ganzen Dokument wie generateFlashcardsFromDocument —
+ *  Grounding ausschließlich auf die tatsächlich falsch beantworteten Fragen + Erklärung/
+ *  Musterlösung, damit die Karten genau die Lücke hinter diesem einen Fehlermuster
+ *  schließen statt generisch das Thema abzudecken. */
+export const generateFlashcardsFromErrors = async (
+  errors: WrongAnswerContext[],
+  patternLabel: string,
+): Promise<Partial<Flashcard>[]> => {
+  if (errors.length === 0) return [];
+  const errorsText = errors.map((e, i) =>
+    `${i + 1}. Frage: ${e.question}${e.topic ? ` (Thema: ${e.topic})` : ''}\nErklärung/Musterlösung: ${e.explanation}${e.mathErrorHint ? `\nHinweis: ${e.mathErrorHint}` : ''}`
+  ).join('\n\n');
+
+  const parts: any[] = [{
+    text: `Ein Nutzer hat wiederholt Fehler zu folgendem Muster gemacht: "${patternLabel}".
+Hier die konkreten falsch beantworteten Fragen mit Erklärung/Musterlösung:
+
+${errorsText}
+
+Erstelle GEZIELTE Karteikarten, die GENAU diese Wissenslücke schließen — keine generische Themenabdeckung, sondern Karten, die direkt die Verwechslung/den Fehler adressieren, der in den obigen Fragen sichtbar wurde.
+REGELN:
+1. Höchstens eine Karte pro unterschiedlichem Fehler/Konzept — ähnliche Fehler zu einer Karte zusammenfassen
+2. Vorderseite: präzise Frage, die genau den Punkt trifft, an dem der Fehler passierte
+3. Rückseite: vollständige, korrekte Antwort mit kurzer Begründung, warum die häufige Verwechslung falsch ist
+4. Nutze NUR die oben gegebenen Informationen, erfinde keine externen Zusatzinhalte${outputLangDirective()}` }];
+
+  const text = await callBackend({
+    complexity: 'heavy',
+    parts,
+    config: {
+      thinkingConfig: { thinkingBudget: 0 },
+      responseMimeType: 'application/json',
+      responseSchema: {
+        type: Type.ARRAY,
+        items: {
+          type: Type.OBJECT,
+          properties: {
+            front: { type: Type.STRING },
+            back: { type: Type.STRING }
+          },
+          required: ['front', 'back']
+        }
+      }
+    }
+  });
+  return parseAiJson<any[]>(text || '[]');
+};
+
 export const generateQuizFromFlashcards = async (deck: FlashcardDeck): Promise<QuizQuestion[]> => {
   // Große Decks (Anki-Import) ungefiltert einzuschicken sprengt Token-Limit
   // und Kosten — daher Cap: fällige Karten zuerst (SM-2), Rest aufgefüllt mit

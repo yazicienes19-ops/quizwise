@@ -168,6 +168,18 @@ export const AppContent: React.FC<AppContentProps> = (p) => {
     toast.success(t('ac.mistakeRemoved'));
   };
 
+  // Phase 3B: fertig generierte Fehler-Karteikarten (GapRadar generiert selbst per KI,
+  // hier nur Persistierung) — exakt dasselbe Speicher-Muster wie onCreateCardsFromGaps
+  // unten (setDecks + localStorage + Supabase-Sync), nur mit fertigem Deck statt Rohdaten.
+  const handleCreateCardsFromErrors = (deck: FlashcardDeck) => {
+    const updatedDecks = [...decks, deck];
+    setDecks(updatedDecks);
+    localStorage.setItem('flashcard_decks', JSON.stringify(updatedDecks));
+    if (user?.id) saveDeckToSupabase(deck, user.id).catch(() => {});
+    toast.success(tp('ac.cardsFromErrorsN', deck.cards.length));
+    setActiveTab(ActiveTab.CARDS);
+  };
+
   // Gemeinsamer Folge-Aktion-Handler für schwache Themen — von Lern-Coach UND Klausur-Ergebnis genutzt
   const handleWeakTopicAction = (topic: string, mode: 'cards' | 'recall' | 'quiz') => {
     if (mode === 'quiz') {
@@ -475,7 +487,7 @@ export const AppContent: React.FC<AppContentProps> = (p) => {
     );
 
     case ActiveTab.RADAR:
-      return <LearningCoach metrics={metrics} decks={decks} onNavigate={setActiveTab} onAction={handleWeakTopicAction} flowResult={flowResult} examTerms={examTerms} activeModule={collections.find(c => c.id === activeModuleId) ?? null} documents={documents} userId={user?.id} />;
+      return <LearningCoach metrics={metrics} decks={decks} onNavigate={setActiveTab} onAction={handleWeakTopicAction} onCreateCardsFromErrors={handleCreateCardsFromErrors} flowResult={flowResult} examTerms={examTerms} activeModule={collections.find(c => c.id === activeModuleId) ?? null} documents={documents} userId={user?.id} />;
 
     case ActiveTab.EXPLAINER:
       return <ExplainerSystem

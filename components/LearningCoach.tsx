@@ -59,6 +59,7 @@ interface LearningCoachProps {
   decks: FlashcardDeck[];
   onNavigate: (tab: ActiveTab) => void;
   onAction?: (topic: string, mode: 'cards' | 'recall' | 'quiz') => void;
+  onCreateCardsFromErrors?: (deck: FlashcardDeck) => void;
   flowResult?: LearningFlowResult | null;
   examTerms?: ExamTerm[];
   /** Variante C: aktives Fach — Auswertungen werden darauf gefiltert */
@@ -67,7 +68,7 @@ interface LearningCoachProps {
   userId?: string | null;
 }
 
-export const LearningCoach: React.FC<LearningCoachProps> = ({ metrics, decks, onNavigate, onAction, flowResult = null, examTerms = [], activeModule = null, documents = [], userId }) => {
+export const LearningCoach: React.FC<LearningCoachProps> = ({ metrics, decks, onNavigate, onAction, onCreateCardsFromErrors, flowResult = null, examTerms = [], activeModule = null, documents = [], userId }) => {
   const { t, tp } = useTranslation();
   const [insights, setInsights] = useState<CoachInsights | null>(null);
   const [isLoading, setIsLoading] = useState(false);
@@ -746,6 +747,7 @@ export const LearningCoach: React.FC<LearningCoachProps> = ({ metrics, decks, on
           metrics={moduleScopedMetrics}
           onNavigate={onNavigate}
           onAction={onAction}
+          onCreateCardsFromErrors={onCreateCardsFromErrors}
           hideHeader
           userId={userId}
           moduleFilter={moduleFilter}
