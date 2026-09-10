@@ -103,6 +103,9 @@ export const ExamSystem: React.FC<ExamSystemProps> = ({ documents, collections, 
         try {
           const exam = normalizeExamQuestions(await generateFullExam(content, style, options));
           if (exam.length === 0) throw new Error(translate('es.noValidQuestions'));
+          if (options?.count && exam.length < options.count) {
+            toast.info(t('es.fewerQuestions', { n: exam.length, total: options.count }));
+          }
           if (docName) {
             saveUsedTopics(sourceTopicsKey(docName), exam);
             saveUsedExamQuestions(sourceTopicsKey(docName), exam);

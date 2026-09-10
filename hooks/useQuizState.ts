@@ -260,11 +260,14 @@ export const useQuizState = (params: UseQuizStateParams) => {
         topicBloomHints,
         multiDocCount: selectedDocs.length > 1 ? selectedDocs.length : undefined,
       });
-      if (!rawQuiz.length) throw new Error('Daraus ließen sich keine Fragen erstellen. Bitte versuche es noch einmal.');
+      if (!rawQuiz.length) throw new Error(translate('qs.noQuestions'));
       const quiz = interleaveQuestionsByTopic(
         selectedDocs.length > 1 ? attachMultiDocSources(rawQuiz, selectedDocs) : rawQuiz
       );
       setQuestions(quiz);
+      if (quiz.length < config.questionCount) {
+        toast.info(translate('qs.fewerQuestions', { n: quiz.length, total: config.questionCount }));
+      }
       setQuizInitialAnswers(undefined);
       saveUsedTopics(metaDocId, quiz);
       saveQuizProgress(quiz, [], { docId: metaDocId, docName: metaName });

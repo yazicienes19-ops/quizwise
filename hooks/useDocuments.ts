@@ -67,6 +67,11 @@ export const useDocuments = ({ user, userPlan, isOffline, setIsLoading, setShowU
       (d.type === 'pdf' || d.type === 'image') && d.digestStatus !== 'ready';
     const digestInFlight = (d: ProcessedDocument) =>
       (d.type === 'pdf' || d.type === 'image') && (d.digestStatus === 'pending' || d.digestStatus === undefined);
+    // Die Analyse läuft als Hintergrund-Task im Backend-Prozess: startet das Backend
+    // währenddessen neu oder hängt ein Gemini-Call, bleibt 'pending' für immer stehen.
+    const STALE_PENDING_MS = 15 * 60 * 1000;
+    const isStalePending = (d: ProcessedDocument) =>
+      d.digestStatus === 'pending' && Date.now() - d.uploadDate > STALE_PENDING_MS;
 
     const load = async (isFirst: boolean) => {
       try {
@@ -83,7 +88,7 @@ export const useDocuments = ({ user, userPlan, isOffline, setIsLoading, setShowU
         // haben oder deren Verarbeitung fehlgeschlagen ist
         if (isFirst) {
           cloudDocs
-            .filter(d => needsDigest(d) && d.digestStatus !== 'pending' && !triggeredDigestsRef.current.has(d.id))
+            .filter(d => needsDigest(d) && (d.digestStatus !== 'pending' || isStalePending(d)) && !triggeredDigestsRef.current.has(d.id))
             .forEach(d => { triggeredDigestsRef.current.add(d.id); triggerDocumentAnalysis(d.id); });
         }
 

@@ -319,7 +319,7 @@ export const AppContent: React.FC<AppContentProps> = (p) => {
                   className="px-5 py-3 rounded-[14px] text-[10px] font-black uppercase tracking-widest text-white hover:scale-105 transition-all shrink-0"
                   style={{ background: 'var(--primary)' }}
                 >
-                  Wiederholen üben
+                  {t('ac.reviewStart')}
                 </button>
               </div>
             </div>
