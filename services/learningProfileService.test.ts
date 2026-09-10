@@ -1,5 +1,5 @@
 import { describe, it, expect, beforeEach } from 'vitest';
-import { buildLearningProfile, buildRealTopicMastery, buildDailyPlan, buildMethodCommentary, buildContextMotivation, gradeFromPercentage } from './learningProfileService';
+import { buildLearningProfile, buildRealTopicMastery, buildWeakSpotReasons, buildDailyPlan, buildMethodCommentary, buildContextMotivation, gradeFromPercentage } from './learningProfileService';
 import { setLocale } from '../i18n';
 import type { QuizResult } from './quizHistoryService';
 import type { ExamResult } from './examHistoryService';
@@ -360,6 +360,79 @@ describe('buildRealTopicMastery — echte Themen statt Dokumentnamen', () => {
     ]);
     const topics = buildRealTopicMastery([quiz], [], []);
     expect(topics[0].topic).toBe('Schwach');
+  });
+});
+
+describe('buildWeakSpotReasons — "Hier hakt es noch" (Tutor-Chat Leerzustand)', () => {
+  const mkQuestion = (topic?: string): QuizQuestion => ({
+    question: `Frage zu ${topic ?? '?'}`, options: ['A', 'B'], correctAnswerIndices: [0],
+    isMultipleChoice: false, explanation: '', distractorExplanations: [], sourceReference: '', topic,
+  });
+  const mkAnswer = (questionIndex: number, isCorrect: boolean): UserAnswer =>
+    ({ questionIndex, selectedOptionIndices: [0], isCorrect });
+  const mkQuiz = (id: string, pairs: { topic?: string; correct: boolean }[], timestamp = now): QuizResult => ({
+    id, docId: 'd1', docName: 'Doc', timestamp, score: 50,
+    correctCount: pairs.filter(p => p.correct).length, totalCount: pairs.length, weakTopics: [],
+    questions: pairs.map(p => mkQuestion(p.topic)),
+    answers: pairs.map((p, i) => mkAnswer(i, p.correct)),
+  });
+  const mkExam = (id: string, weakTopics: string[], timestamp = now): ExamResult =>
+    ({ id, docName: 'Doc', timestamp, score: 40, passed: false, totalPoints: 10, achievedPoints: 4, weakTopics } as ExamResult);
+
+  it('baut den Klartext-Grund aus korrekt/gesamt statt nur einem Themennamen', () => {
+    const quiz = mkQuiz('q1', [
+      { topic: 'Konditionierung', correct: true },
+      { topic: 'Konditionierung', correct: false },
+      { topic: 'Konditionierung', correct: false },
+      { topic: 'Konditionierung', correct: false },
+    ]);
+    const spots = buildWeakSpotReasons([quiz], []);
+    expect(spots).toEqual([
+      { topic: 'Konditionierung', reason: '3 von 4 Fragen falsch · Quiz', source: 'quiz', severity: 'strong' },
+    ]);
+  });
+
+  it('Schweregrad mild bei Trefferquote ≥ 50 %', () => {
+    const quiz = mkQuiz('q1', [
+      { topic: 'Gedächtnis', correct: true }, { topic: 'Gedächtnis', correct: true }, { topic: 'Gedächtnis', correct: false },
+    ]);
+    expect(buildWeakSpotReasons([quiz], [])[0].severity).toBe('mild');
+  });
+
+  it('vollständig richtig beantwortete Themen erscheinen nicht', () => {
+    const quiz = mkQuiz('q1', [{ topic: 'Motivation', correct: true }, { topic: 'Motivation', correct: true }]);
+    expect(buildWeakSpotReasons([quiz], [])).toEqual([]);
+  });
+
+  it('Klausur-weakTopics ohne Quiz-Beleg: Häufigkeit als Grund, ≥2 = strong', () => {
+    const exams = [mkExam('e1', ['Neurotransmitter']), mkExam('e2', ['Neurotransmitter'])];
+    const spots = buildWeakSpotReasons([], exams);
+    expect(spots).toEqual([
+      { topic: 'Neurotransmitter', reason: '2× als Schwachstelle in Klausur', source: 'exam', severity: 'strong' },
+    ]);
+  });
+
+  it('ein Thema mit Quiz-Beleg wird nicht zusätzlich aus Klausur-weakTopics dupliziert', () => {
+    const quiz = mkQuiz('q1', [{ topic: 'Neurotransmitter', correct: false }, { topic: 'Neurotransmitter', correct: true }]);
+    const exams = [mkExam('e1', ['Neurotransmitter'])];
+    const spots = buildWeakSpotReasons([quiz], exams);
+    expect(spots).toHaveLength(1);
+    expect(spots[0].source).toBe('quiz');
+  });
+
+  it('Ergebnisse älter als 14 Tage fließen nicht ein', () => {
+    const oldQuiz = mkQuiz('q1', [
+      { topic: 'Altes Thema', correct: false }, { topic: 'Altes Thema', correct: false },
+    ], now - 15 * DAY_MS);
+    expect(buildWeakSpotReasons([oldQuiz], [])).toEqual([]);
+  });
+
+  it('gekappt auf 5, sortiert strong vor mild', () => {
+    const pairs = ['A', 'B', 'C', 'D', 'E', 'F'].map(topic => ({ topic, correct: false }));
+    const quiz = mkQuiz('q1', pairs.flatMap(p => [p, { ...p, correct: false }]));
+    const spots = buildWeakSpotReasons([quiz], []);
+    expect(spots).toHaveLength(5);
+    expect(spots.every(s => s.severity === 'strong')).toBe(true);
   });
 });
 

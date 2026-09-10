@@ -1,6 +1,6 @@
 
 import React, { useState, useEffect, useMemo, useRef, useCallback } from 'react';
-import { MessageCircle, Lightbulb, ClipboardList, BookOpen, Search, ChevronRight, Mic, Send, Volume2, Square, Copy, BookmarkPlus, Plus, Trash2, ArrowLeft, GraduationCap, X } from 'lucide-react';
+import { MessageCircle, Lightbulb, ClipboardList, BookOpen, Search, ChevronRight, Mic, Send, Volume2, Square, Copy, BookmarkPlus, Trash2, ArrowLeft, GraduationCap, X } from 'lucide-react';
 import { ProcessedDocument, Collection, TopicMetric, FlashcardDeck, Flashcard } from '../types';
 import type { GenerationSource } from '../services/geminiService';
 import { chatWithTutor } from '../services/geminiService';
@@ -11,6 +11,7 @@ import {
   type TutorMode, type TutorSourceRef, type StoredTutorSession,
 } from '../services/tutorSessions';
 import { createSrsState } from '../services/spacedRepetition';
+import { saveDeckToSupabase } from '../services/flashcardService';
 import { resolveErrorMessage } from '../services/errorMessages';
 import { SourceSelector } from './SourceSelector';
 import { useTranslation } from '../i18n/I18nProvider';
@@ -20,16 +21,18 @@ import type { TKey } from '../i18n';
 import { documentDisplayName } from '../services/libraryService';
 import { buildCollectionSource } from '../services/collectionSource';
 import { toast } from '../services/toast';
-import { buildLearningProfile } from '../services/learningProfileService';
+import { buildWeakSpotReasons } from '../services/learningProfileService';
 import { useModuleScopedActivity } from '../hooks/useModuleScopedActivity';
-import { getStreak } from '../services/streakService';
 import { renderMarkdown, parseInline } from './markdownRenderer';
+import { BrandMark } from './BrandMark';
 
 // ─── Typen ────────────────────────────────────────────────────────────────────
 
 interface ChatMessage {
   id: string;
-  role: 'user' | 'tutor';
+  /** 'system' = Moduswechsel-Pille im Verlauf; `content` trägt dann den
+   *  Zielmodus-Schlüssel (z.B. 'quiz'), nicht den Fließtext. */
+  role: 'user' | 'tutor' | 'system';
   content: string;
   followUps?: string[];
   quote?: string | null;
@@ -47,6 +50,10 @@ interface ExplainerSystemProps {
   setDecks: React.Dispatch<React.SetStateAction<FlashcardDeck[]>>;
   /** Öffnet das gewählte Dokument im Splitscreen-Reader (Nav-Ebene, außerhalb dieser Komponente). */
   onOpenReader?: (doc: ProcessedDocument) => void;
+  /** Vorname für die personalisierte Begrüßung auf dem Start-Screen (Redesign 2026-09-10). */
+  userName?: string | null;
+  /** Für den Cloud-Sync gespeicherter Karteikarten; ohne Login bleiben sie lokal. */
+  userId?: string | null;
   /** Aktives Fach aus der Sidebar (Bug-Fix 2026-09-10: Material-Auswahl und
    *  Dokument-öffnen-Picker ignorierten das bisher komplett, zeigten immer
    *  alle Dokumente kontoweit statt nur die des gewählten Fachs). null/undefined
@@ -56,6 +63,9 @@ interface ExplainerSystemProps {
 
 const uid = (): string => Math.random().toString(36).slice(2, 9);
 const EMPTY_DISMISSED = new Set<string>();
+/** Tab-lokal gemerkte offene Sitzung: ein Wechsel in den Reader oder einen anderen
+ *  Tab hängt die Komponente aus, das Gespräch soll danach trotzdem weitergehen. */
+const OPEN_SESSION_KEY = 'studearc_tutor_open_session';
 
 const MODES: { id: TutorMode; icon: typeof MessageCircle; titleKey: TKey; descKey: TKey }[] = [
   { id: 'explain', icon: MessageCircle, titleKey: 'tut.mode.explain', descKey: 'tut.mode.explain.desc' },
@@ -95,7 +105,7 @@ const THINKING_KEYS: TKey[] = ['tut.thinking.1', 'tut.thinking.2', 'tut.thinking
 // ─── Hauptkomponente ──────────────────────────────────────────────────────────
 
 export const ExplainerSystem: React.FC<ExplainerSystemProps> = ({
-  availableDocuments, collections, getDocumentSource, onSaveToLibrary, initialDoc, metrics, decks, setDecks, onOpenReader, activeModuleId = null,
+  availableDocuments, collections, getDocumentSource, onSaveToLibrary, initialDoc, metrics, decks, setDecks, onOpenReader, activeModuleId = null, userName = null, userId = null,
 }) => {
   const { t } = useTranslation();
   // initialDoc (aus der Bibliothek gestartet) führt direkt ins Gespräch — die
@@ -117,6 +127,10 @@ export const ExplainerSystem: React.FC<ExplainerSystemProps> = ({
   const [thinkingIdx, setThinkingIdx] = useState(0);
   const [sessions, setSessions] = useState<StoredTutorSession[]>(loadTutorSessions);
   const [readerPickerOpen, setReaderPickerOpen] = useState(false);
+  /** Quellen-Auswahl-Modal für den vereinheitlichten Start-Composer (Redesign
+   *  2026-09-10, "Startbildschirm 1a") — wickelt den bestehenden SourceSelector
+   *  ein statt ihn dauerhaft auf der Seite zu zeigen. */
+  const [sourcePickerOpen, setSourcePickerOpen] = useState(false);
   const [readerSearch, setReaderSearch] = useState('');
   const [isListening, setIsListening] = useState(false);
   const [speakingId, setSpeakingId] = useState<string | null>(null);
@@ -137,18 +151,16 @@ export const ExplainerSystem: React.FC<ExplainerSystemProps> = ({
     () => activeModuleId ? collections.find(c => c.id === activeModuleId) ?? null : null,
     [collections, activeModuleId],
   );
-  const { quizResults: moduleQuizResults, examResults: moduleExamResults, recallResults: moduleRecallResults } =
+  const { quizResults: moduleQuizResults, examResults: moduleExamResults } =
     useModuleScopedActivity(activeModuleCollection, availableDocuments, EMPTY_DISMISSED);
-  const profile = useMemo(() => buildLearningProfile({
-    metrics, decks,
-    quizResults: moduleQuizResults,
-    recallResults: moduleRecallResults,
-    examResults: moduleExamResults,
-    streak: getStreak(),
-  }), [metrics, decks, moduleQuizResults, moduleRecallResults, moduleExamResults]);
-  const suggestions = useMemo(() =>
-    profile.topicMastery.filter(t => t.security !== 'sicher').slice(0, 5),
-  [profile.topicMastery]);
+
+  // "Hier hakt es noch" (Redesign 2026-09-10) — ersetzt den alten Leerzustand
+  // aus reinem Intro-Text + bedeutungslosen Themen-Chips. Nur Quiz+Klausur als
+  // Quelle (Karteikarten tracken aktuell keine Korrektheit pro Thema).
+  const weakSpots = useMemo(
+    () => buildWeakSpotReasons(moduleQuizResults, moduleExamResults),
+    [moduleQuizResults, moduleExamResults],
+  );
 
   useEffect(() => {
     if (initialDoc && getDocumentSource) {
@@ -159,6 +171,11 @@ export const ExplainerSystem: React.FC<ExplainerSystemProps> = ({
       } catch (_) {}
       return;
     }
+    // Offenes Gespräch fortsetzen, wenn der Nutzer nur kurz weg war (Reader, anderer Tab)
+    let openSessionId: string | null = null;
+    try { openSessionId = sessionStorage.getItem(OPEN_SESSION_KEY); } catch {}
+    const openSession = openSessionId ? loadTutorSessions().find(s => s.id === openSessionId) : undefined;
+    if (openSession) { resumeSession(openSession); return; }
     // Aktives Fach: Quelle direkt vorbelegen — kein Quellen-Klick nötig
     const moduleId = localStorage.getItem('studearc_active_module');
     const col = moduleId ? collections.find(c => c.id === moduleId) : null;
@@ -213,11 +230,15 @@ export const ExplainerSystem: React.FC<ExplainerSystemProps> = ({
 
   // ── Sitzungs-Persistenz ──
 
-  const persistSession = (msgs: ChatMessage[]) => {
+  // modeOverride: setMode() ist async (nächster Render) — ein Aufrufer, der
+  // Modus UND Nachrichten im selben Tick ändert (changeMode), würde sonst den
+  // noch alten mode-Wert aus der Closure persistieren.
+  const persistSession = (msgs: ChatMessage[], modeOverride?: TutorMode) => {
     if (!msgs.length) return;
     if (!sessionIdRef.current) { sessionIdRef.current = uid(); sessionCreatedRef.current = Date.now(); }
+    try { sessionStorage.setItem(OPEN_SESSION_KEY, sessionIdRef.current); } catch {}
     setSessions(saveTutorSession({
-      id: sessionIdRef.current, mode, sourceName: activeSourceName, sourceRef, useExternal,
+      id: sessionIdRef.current, mode: modeOverride ?? mode, sourceName: activeSourceName, sourceRef, useExternal,
       messages: msgs.map(m => ({ id: m.id, role: m.role, content: m.content, followUps: m.followUps, quote: m.quote, ts: m.ts })),
       createdAt: sessionCreatedRef.current, updatedAt: Date.now(),
     }));
@@ -253,21 +274,31 @@ export const ExplainerSystem: React.FC<ExplainerSystemProps> = ({
     setMessages(session.messages);
     sessionIdRef.current = session.id;
     sessionCreatedRef.current = session.createdAt;
+    try { sessionStorage.setItem(OPEN_SESSION_KEY, session.id); } catch {}
     setView('chat');
-    inputRef.current?.focus();
+    setTimeout(() => inputRef.current?.focus(), 50);
   };
 
   // ── Nachrichten senden ──
 
   /** baseMessages: expliziter Basis-Stand, wenn send direkt nach einem Reset
-   *  aufgerufen wird (Start-Screen) — der State wäre im selben Tick noch alt. */
-  const send = async (text: string, baseMessages: ChatMessage[] = messages) => {
+   *  aufgerufen wird (Start-Screen) — der State wäre im selben Tick noch alt.
+   *  forceExternal: "Hier hakt es noch" auf dem Start-Screen darf ohne gewählte
+   *  Quelle sofort starten (allgemeines Thema) — setUseExternal(true) wäre hier
+   *  zu spät sichtbar (State-Update erst nächster Render), deshalb als Override. */
+  const send = async (text: string, baseMessages: ChatMessage[] = messages, forceExternal = false) => {
     const trimmed = text.trim();
     if (!trimmed || isTyping) return;
-    if (!activeSource && !useExternal) { toast.error(t('ex.pleaseChooseDoc')); return; }
+    const external = useExternal || forceExternal;
+    if (!activeSource && !external) { toast.error(t('ex.pleaseChooseDoc')); return; }
+    if (forceExternal && !useExternal) setUseExternal(true);
 
     const userMsg: ChatMessage = { id: uid(), role: 'user', content: trimmed, ts: Date.now() };
-    const history = baseMessages.map(m => ({ role: m.role, content: m.content }));
+    // System-Pillen (Moduswechsel-Marker) sind reine UI-Anzeige, keine echten
+    // Gesprächsbeiträge — der Tutor bekommt sie nicht als Historie zu sehen.
+    const history = baseMessages
+      .filter((m): m is ChatMessage & { role: 'user' | 'tutor' } => m.role !== 'system')
+      .map(m => ({ role: m.role, content: m.content }));
     const withUser = [...baseMessages, userMsg];
     setMessages(withUser);
     setInput('');
@@ -276,7 +307,7 @@ export const ExplainerSystem: React.FC<ExplainerSystemProps> = ({
     setIsTyping(true);
     try {
       const raw = await chatWithTutor(activeSource, history, trimmed, {
-        mode, useExternalKnowledge: useExternal, includeSourceQuote: !!activeSource,
+        mode, useExternalKnowledge: external, includeSourceQuote: !!activeSource,
       });
       const quote = activeSource ? extractSourceQuote(raw) : null;
       const withoutQuote = activeSource ? stripSourceQuoteLine(raw) : raw;
@@ -299,13 +330,16 @@ export const ExplainerSystem: React.FC<ExplainerSystemProps> = ({
 
   /** Vom Start-Screen loslegen: altes (per "Zurück" geparktes) Gespräch bleibt
    *  über die Sitzungsliste fortsetzbar, ein neuer Start beginnt bei null. */
-  const startChat = (text?: string) => {
+  const startChat = (text?: string, forceExternal = false) => {
+    // Ohne Quelle und ohne Allgemeinwissen kann send() nichts tun; die Meldung
+    // gehört auf den Start-Screen, nicht in einen leeren Chat.
+    if (text && !activeSource && !useExternal && !forceExternal) { toast.error(t('ex.pleaseChooseDoc')); return; }
     setView('chat');
     if (text) {
       setMessages([]);
       sessionIdRef.current = null;
       sessionCreatedRef.current = Date.now();
-      send(text, []);
+      send(text, [], forceExternal);
     } else {
       setTimeout(() => inputRef.current?.focus(), 50);
     }
@@ -314,16 +348,31 @@ export const ExplainerSystem: React.FC<ExplainerSystemProps> = ({
   const backToStart = () => {
     stopSpeaking();
     try { speechRef.current?.stop(); } catch {}
+    try { sessionStorage.removeItem(OPEN_SESSION_KEY); } catch {}
     setView('start');
   };
 
   const startNewSession = () => {
     stopSpeaking();
+    try { sessionStorage.removeItem(OPEN_SESSION_KEY); } catch {}
     setMessages([]);
     sessionIdRef.current = null;
     sessionCreatedRef.current = Date.now();
     setInput('');
     setTimeout(() => inputRef.current?.focus(), 50);
+  };
+
+  /** Modus-Wechsel mitten im Gespräch (Redesign 2026-09-10): Verlauf bleibt
+   *  erhalten, nur die NÄCHSTE Antwort nutzt den neuen Modus — sichtbar über
+   *  eine System-Pille im Verlauf statt einer stillen State-Änderung. */
+  const changeMode = (next: TutorMode) => {
+    if (next === mode) return;
+    setMode(next);
+    if (messages.length > 0) {
+      const withPill = [...messages, { id: uid(), role: 'system' as const, content: next, ts: Date.now() }];
+      setMessages(withPill);
+      persistSession(withPill, next);
+    }
   };
 
   // ── Sprachein- / -ausgabe ──
@@ -397,11 +446,13 @@ export const ExplainerSystem: React.FC<ExplainerSystemProps> = ({
     const card: Flashcard = { id: uid(), front, back: msg.content.trim().slice(0, 1500), level: 0, nextReview: Date.now(), srs: createSrsState() };
     const title = `${t('nav.explainer')} · ${activeSourceName || t('tut.general')}`;
     const existing = decks.find(d => d.title === title);
-    const updatedDecks = existing
-      ? decks.map(d => d.id === existing.id ? { ...d, cards: [...d.cards, card] } : d)
-      : [...decks, { id: uid(), title, cards: [card], sourceDocumentId: sourceRef?.kind === 'doc' ? sourceRef.id : undefined }];
+    const deck: FlashcardDeck = existing
+      ? { ...existing, cards: [...existing.cards, card] }
+      : { id: uid(), title, cards: [card], sourceDocumentId: sourceRef?.kind === 'doc' ? sourceRef.id : undefined };
+    const updatedDecks = existing ? decks.map(d => d.id === deck.id ? deck : d) : [...decks, deck];
     setDecks(updatedDecks);
     localStorage.setItem('flashcard_decks', JSON.stringify(updatedDecks));
+    if (userId) saveDeckToSupabase(deck, userId).catch(() => {});
     toast.success(t('tut.msg.cardSaved'));
   };
 
@@ -431,57 +482,116 @@ export const ExplainerSystem: React.FC<ExplainerSystemProps> = ({
     return -1;
   }, [messages]);
 
+  // Kopfzeile zeigt den Sitzungstitel statt des Modus (Redesign 2026-09-10) —
+  // gleiche Kürzung wie tutorSessionTitle() für gespeicherte Sitzungen.
+  const chatTitle = useMemo(() => {
+    const firstUser = messages.find(m => m.role === 'user');
+    const title = firstUser?.content.trim() ?? '';
+    if (!title) return t('tut.general');
+    return title.length > 60 ? `${title.slice(0, 60).trimEnd()}…` : title;
+  }, [messages, t]);
+
+  const activeDocForReader = sourceRef?.kind === 'doc' ? availableDocuments.find(d => d.id === sourceRef.id) : undefined;
+
   // ── Render: Start ──
 
   if (view === 'start') {
     return (
       <div className="max-w-3xl mx-auto space-y-8 py-6 lg:py-10 px-4 animate-in fade-in duration-700">
-        <div className="space-y-1">
-          <h1 className="text-4xl lg:text-6xl font-black tracking-tighter dark:text-white">
-            {t('nav.explainer')}
-          </h1>
-          <p className="text-sm text-slate-400 font-medium">{t('tut.subtitle')}</p>
+        <div className="space-y-2 text-center">
+          <p className="text-[9.5px] font-black uppercase" style={{ color: 'color-mix(in srgb, var(--primary) 70%, black)', letterSpacing: '0.2em' }}>
+            {activeSourceName ? `${t('nav.explainer')} · ${activeSourceName}`.toUpperCase() : t('nav.explainer').toUpperCase()}
+          </p>
+          {userName ? (
+            <h1 className="text-3xl lg:text-[40px] font-normal leading-tight" style={{ color: 'var(--ink)' }}>
+              {t('tut.landing.greeting')}<br /><span className="italic">{userName}</span>?
+            </h1>
+          ) : (
+            <h1 className="text-3xl lg:text-[40px] font-normal leading-tight" style={{ color: 'var(--ink)' }}>{t('tut.landing.headline')}</h1>
+          )}
         </div>
 
-        {/* Modi */}
-        <div className="space-y-2">
-          <p className="text-[10px] font-black uppercase tracking-widest text-slate-400">{t('tut.chooseMode')}</p>
-          <div className="grid sm:grid-cols-3 gap-3">
-            {MODES.map(({ id, icon: Icon, titleKey, descKey }) => {
-              const active = mode === id;
-              return (
+        {/* Vereinheitlichter Composer (Redesign 2026-09-10, "Startbildschirm 1a") —
+            ersetzt Modus-Karten + Dokument-Karte + SourceSelector + Allgemeinwissen-
+            Schalter + separates Eingabefeld durch EIN Element. */}
+        <div className="rounded-[20px] p-4 space-y-3" style={{ background: 'var(--card)', border: '1px solid var(--border-color)', boxShadow: '0 8px 24px rgba(22,41,77,.07)' }}>
+          <div className="flex flex-wrap gap-1.5">
+            {activeSourceName && (
+              <span
+                className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[11px] font-bold"
+                style={{ background: 'color-mix(in srgb, var(--primary) 16%, transparent)', border: '1px solid color-mix(in srgb, var(--primary) 40%, transparent)', color: 'color-mix(in srgb, var(--primary) 75%, black)' }}
+              >
+                <span className="w-1.5 h-1.5 rounded-full shrink-0" style={{ background: 'var(--primary)' }} />
+                {activeSourceName}
+                <button onClick={() => { setActiveSource(null); setActiveSourceName(''); setSourceRef(null); }} aria-label={t('ex.remove')} className="ml-0.5 opacity-60 hover:opacity-100">×</button>
+              </span>
+            )}
+            <button
+              onClick={() => setSourcePickerOpen(true)}
+              className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-[11px] font-bold transition-colors hover:opacity-70"
+              style={{ background: 'color-mix(in srgb, var(--ink) 5%, transparent)', border: '1px solid var(--border-color)', color: 'var(--text-secondary)' }}
+            >
+              + {t('tut.composer.addSource')}
+            </button>
+          </div>
+
+          <input
+            type="text"
+            value={input}
+            onChange={e => setInput(e.target.value)}
+            onKeyDown={e => { if (e.key === 'Enter' && input.trim()) startChat(input); }}
+            placeholder={t('ex.conceptPlaceholder')}
+            className="w-full text-base font-medium outline-none bg-transparent"
+            style={{ color: 'var(--text-main)' }}
+          />
+
+          <div className="flex flex-wrap items-center gap-2.5 pt-2.5 border-t" style={{ borderColor: 'var(--border-color)' }}>
+            <div className="flex gap-1 p-0.5 rounded-lg" style={{ background: 'color-mix(in srgb, var(--ink) 5.5%, transparent)' }}>
+              {MODES.map(({ id, titleKey }) => (
                 <button
                   key={id}
                   onClick={() => setMode(id)}
-                  className="text-left p-5 rounded-[20px] transition-all hover:scale-[1.02] space-y-2"
+                  className="px-2.5 py-1.5 rounded-md text-[11px] font-semibold transition-all whitespace-nowrap"
                   style={{
-                    background: active ? 'color-mix(in srgb, var(--primary) 10%, var(--bg-sidebar))' : 'var(--bg-sidebar)',
-                    border: `1px solid ${active ? 'color-mix(in srgb, var(--primary) 45%, transparent)' : 'var(--border-color)'}`,
+                    background: mode === id ? 'var(--ink)' : 'transparent',
+                    color: mode === id ? 'var(--bg-sidebar)' : 'color-mix(in srgb, var(--ink) 70%, transparent)',
                   }}
                 >
-                  <div className="w-10 h-10 rounded-xl flex items-center justify-center" style={{ background: 'color-mix(in srgb, var(--primary) 12%, transparent)' }}>
-                    <Icon size={20} style={{ color: 'var(--primary)' }} strokeWidth={1.75} />
-                  </div>
-                  <div className="space-y-0.5">
-                    <p className="text-sm font-black dark:text-white">{t(titleKey)}</p>
-                    <p className="text-[11px] text-slate-400 font-medium leading-snug">{t(descKey)}</p>
-                  </div>
+                  {t(titleKey)}
                 </button>
-              );
-            })}
+              ))}
+            </div>
+            <button onClick={() => setUseExternal(v => !v)} className="flex items-center gap-1.5">
+              <span className="w-[30px] h-[17px] rounded-full relative transition-colors shrink-0" style={{ background: useExternal ? 'var(--primary)' : 'color-mix(in srgb, var(--ink) 16%, transparent)' }}>
+                <span className={`absolute top-0.5 w-[13px] h-[13px] rounded-full bg-white transition-all ${useExternal ? 'left-[15px]' : 'left-0.5'}`} />
+              </span>
+              <span className="text-[11px] font-medium whitespace-nowrap" style={{ color: 'var(--text-secondary)' }}>{t('ex.supplementGeneral')}</span>
+            </button>
+            <button
+              onClick={() => startChat(input.trim() || undefined)}
+              aria-label={t('tut.send')}
+              className="ml-auto w-9 h-9 rounded-[10px] flex items-center justify-center shrink-0 transition-all hover:scale-105"
+              style={{ background: 'var(--primary)', color: 'var(--primary-text)' }}
+            >
+              <Send size={16} strokeWidth={2} />
+            </button>
           </div>
         </div>
+        {!activeSource && !useExternal && (
+          <p className="text-center text-[10px] text-slate-400 font-medium -mt-6">{t('ex.noDocHint')}</p>
+        )}
 
-        {/* Splitscreen-Reader — direkt neben den Modi statt am Seitenende versteckt
-            (User-Feedback 2026-09-10: Einstieg war zuvor nur über die letzte Zeile
-            nach "Letzte Sitzungen" erreichbar). */}
+        {/* Splitscreen-Reader — eigenständiger Einstieg direkt unter dem Composer
+            (User-Feedback 2026-09-10: soll oben stehen, nicht am Seitenende).
+            Die "+ Quelle wählen"-Pille im Composer ist NICHT dasselbe — die
+            setzt nur die Chat-Quelle, öffnet aber nicht den Splitscreen. */}
         <button
           onClick={() => moduleDocuments.length > 0 ? setReaderPickerOpen(true) : toast.info(t('ex.landing.noDocs'))}
-          className="w-full flex items-center gap-4 p-5 rounded-[20px] text-left transition-all hover:scale-[1.01]"
+          className="w-full flex items-center gap-4 p-4 rounded-[16px] text-left transition-all hover:scale-[1.01]"
           style={{ background: 'var(--bg-sidebar)', border: '1px solid var(--border-color)' }}
         >
-          <div className="w-10 h-10 rounded-xl flex items-center justify-center shrink-0" style={{ background: 'color-mix(in srgb, var(--primary) 12%, transparent)' }}>
-            <BookOpen size={20} style={{ color: 'var(--primary)' }} strokeWidth={1.75} />
+          <div className="w-9 h-9 rounded-xl flex items-center justify-center shrink-0" style={{ background: 'color-mix(in srgb, var(--primary) 12%, transparent)' }}>
+            <BookOpen size={18} style={{ color: 'var(--primary)' }} strokeWidth={1.75} />
           </div>
           <div className="flex-1 min-w-0 space-y-0.5">
             <p className="text-sm font-black dark:text-white">{t('ex.landing.readerTitle')}</p>
@@ -490,91 +600,43 @@ export const ExplainerSystem: React.FC<ExplainerSystemProps> = ({
           <ChevronRight className="w-4 h-4 text-slate-300 shrink-0" strokeWidth={2} />
         </button>
 
-        {/* Quelle */}
-        {activeSource ? (
-          <div className="flex items-center justify-between px-5 py-4 rounded-2xl" style={{ background: 'var(--bg-sidebar)', border: '1px solid var(--border-color)' }}>
-            <div className="flex items-center gap-2.5 min-w-0">
-              <div className="w-2 h-2 rounded-full shrink-0" style={{ background: 'var(--primary)' }} />
-              <span className="text-sm font-black break-words min-w-0" style={{ color: 'var(--primary)' }}>{activeSourceName}</span>
-            </div>
-            <button onClick={() => { setActiveSource(null); setActiveSourceName(''); setSourceRef(null); }} className="text-slate-400 hover:text-rose-500 transition-colors font-black text-xs shrink-0 ml-3">{t('ex.remove')}</button>
-          </div>
-        ) : (
+        {/* "Hier hakt es noch" (Redesign 2026-09-10) — jetzt schon auf dem
+            Start-Screen sichtbar, nicht erst im leeren Chat. Klick startet
+            direkt eine Erklär-Sitzung zu diesem Thema. */}
+        {weakSpots.length > 0 && (
           <div className="space-y-2">
-            <p className="text-[10px] font-black uppercase tracking-widest text-slate-400">{t('ex.chooseMaterial')}</p>
-            <SourceSelector
-              documents={moduleDocuments} collections={collections}
-              onSelectDocument={handleSelectDocument}
-              onSelectSource={(source, name) => { setActiveSource(source); setActiveSourceName(name); setSourceRef(null); }}
-              onSaveToLibrary={onSaveToLibrary} isLoading={false}
-            />
-          </div>
-        )}
-
-        {/* Wissensquelle */}
-        <button
-          onClick={() => setUseExternal(v => !v)}
-          className="w-full flex items-center justify-between px-5 py-4 rounded-2xl transition-all hover:opacity-90"
-          style={{ background: 'var(--bg-sidebar)', border: '1px solid var(--border-color)' }}
-        >
-          <div className="text-left space-y-0.5 min-w-0 pr-3">
-            <p className="text-[10px] font-black uppercase tracking-widest dark:text-white">{t('ex.supplementGeneral')}</p>
-            <p className="text-[10px] font-medium text-slate-400">
-              {useExternal ? t('ex.supplementOn') : t('ex.supplementOff')}
+            <p className="flex items-baseline gap-2">
+              <span className="text-[9.5px] font-black uppercase" style={{ color: 'color-mix(in srgb, var(--primary) 70%, black)', letterSpacing: '0.16em' }}>
+                {t('tut.weakSpots.title')}
+              </span>
+              <span className="text-[11px]" style={{ color: 'var(--text-secondary)' }}>{t('tut.weakSpots.subtitle')}</span>
             </p>
-          </div>
-          <div
-            className="w-11 h-6 rounded-full p-0.5 shrink-0 transition-all"
-            style={{ background: useExternal ? 'var(--primary)' : 'var(--border-color)' }}
-          >
-            <div className={`w-5 h-5 rounded-full bg-white shadow transition-transform ${useExternal ? 'translate-x-5' : ''}`} />
-          </div>
-        </button>
-
-        {/* Startfrage */}
-        <div className="space-y-2">
-          <p className="text-[10px] font-black uppercase tracking-widest text-slate-400">{t('ex.whatUnderstand')}</p>
-          <div className="flex gap-2">
-            <input
-              type="text"
-              value={input}
-              onChange={e => setInput(e.target.value)}
-              onKeyDown={e => { if (e.key === 'Enter' && input.trim()) startChat(input); }}
-              placeholder={t('ex.conceptPlaceholder')}
-              className="flex-1 px-5 py-4 rounded-2xl text-base font-bold outline-none transition-all"
-              style={{ background: 'var(--bg-sidebar)', border: '1px solid var(--border-color)', color: 'var(--text-main)' }}
-            />
-            <button
-              onClick={() => startChat(input.trim() || undefined)}
-              aria-label={t('tut.send')}
-              className="px-5 rounded-2xl text-white transition-all hover:scale-[1.03] shrink-0"
-              style={{ background: 'var(--primary)' }}
-            >
-              <Send size={18} strokeWidth={2} />
-            </button>
-          </div>
-          {suggestions.length > 0 && (
-            <div className="flex flex-wrap gap-2 pt-1">
-              {suggestions.map(s => (
+            <div className="space-y-2">
+              {weakSpots.map(w => (
                 <button
-                  key={s.topic}
-                  onClick={() => setInput(s.topic)}
-                  className="px-3 py-2 rounded-xl text-[9px] font-black uppercase tracking-wider transition-all hover:opacity-80"
+                  key={w.topic}
+                  onClick={() => startChat(t('tut.weakSpot.startQuestion', { topic: w.topic }), !activeSource)}
+                  className="w-full flex items-center justify-between gap-3 px-4 py-3 rounded-xl text-left transition-all hover:opacity-80"
                   style={{
-                    background: `color-mix(in srgb, ${s.security === 'kritisch' ? '#f43f5e' : '#f59e0b'} 10%, var(--bg-sidebar))`,
-                    color: s.security === 'kritisch' ? '#f43f5e' : '#f59e0b',
-                    border: `1px solid color-mix(in srgb, ${s.security === 'kritisch' ? '#f43f5e' : '#f59e0b'} 25%, transparent)`,
+                    background: 'var(--card)',
+                    borderTop: '1px solid var(--border-color)',
+                    borderRight: '1px solid var(--border-color)',
+                    borderBottom: '1px solid var(--border-color)',
+                    borderLeft: `3px solid ${w.severity === 'strong' ? '#c2543f' : '#d9a03f'}`,
                   }}
                 >
-                  {s.topic} · {t((`sec.${s.security}`) as TKey)}
+                  <span className="min-w-0">
+                    <span className="block text-xs font-black dark:text-white truncate">{w.topic}</span>
+                    <span className="block text-[11px] mt-0.5" style={{ color: 'var(--text-secondary)' }}>{w.reason}</span>
+                  </span>
+                  <span className="text-[11px] font-black shrink-0 whitespace-nowrap" style={{ color: 'color-mix(in srgb, var(--primary) 70%, black)' }}>
+                    {t(MODE_TITLE_KEY.explain)} →
+                  </span>
                 </button>
               ))}
             </div>
-          )}
-          {!activeSource && !useExternal && (
-            <p className="text-center text-[10px] text-slate-400 font-medium pt-1">{t('ex.noDocHint')}</p>
-          )}
-        </div>
+          </div>
+        )}
 
         {/* Letzte Sitzungen */}
         {sessions.length > 0 && (
@@ -608,6 +670,31 @@ export const ExplainerSystem: React.FC<ExplainerSystemProps> = ({
                   </button>
                 </div>
               ))}
+            </div>
+          </div>
+        )}
+
+        {/* Quellen-Auswahl-Modal für die Composer-Pille "+ Quelle wählen" —
+            wickelt den bestehenden SourceSelector ein (Bibliothek/Neue Datei/
+            Text einfügen bleiben vollständig erhalten, nur nicht mehr
+            dauerhaft auf der Seite sichtbar). */}
+        {sourcePickerOpen && (
+          <div className="fixed inset-0 z-50 flex items-center justify-center p-4" style={{ background: 'rgba(0,0,0,0.45)' }} onClick={() => setSourcePickerOpen(false)}>
+            <div
+              className="w-full max-w-lg max-h-[80vh] flex flex-col rounded-[28px] p-5 space-y-3 animate-in fade-in zoom-in-95 duration-200 overflow-y-auto"
+              style={{ background: 'var(--bg-sidebar)', border: '1px solid var(--border-color)' }}
+              onClick={e => e.stopPropagation()}
+            >
+              <div className="flex items-center justify-between">
+                <p className="text-[10px] font-black uppercase tracking-widest text-slate-400">{t('ex.chooseMaterial')}</p>
+                <button onClick={() => setSourcePickerOpen(false)} className="text-slate-400 hover:text-rose-500 transition-colors"><X size={16} strokeWidth={2.5} /></button>
+              </div>
+              <SourceSelector
+                documents={moduleDocuments} collections={collections}
+                onSelectDocument={doc => { handleSelectDocument(doc); setSourcePickerOpen(false); }}
+                onSelectSource={(source, name) => { setActiveSource(source); setActiveSourceName(name); setSourceRef(null); setSourcePickerOpen(false); }}
+                onSaveToLibrary={onSaveToLibrary} isLoading={false}
+              />
             </div>
           </div>
         )}
@@ -680,134 +767,181 @@ export const ExplainerSystem: React.FC<ExplainerSystemProps> = ({
           <ArrowLeft size={16} strokeWidth={2} />
         </button>
         <div className="flex-1 min-w-0">
-          <p className="text-[9px] font-black uppercase tracking-widest truncate" style={{ color: 'var(--primary)' }}>
-            {activeSourceName ? t('ex.fromSource', { source: activeSourceName }) : t('ex.fromGeneral')}
-          </p>
-          <p className="text-sm font-black truncate dark:text-white">{t(MODE_TITLE_KEY[mode])}</p>
+          <p className="text-sm font-black truncate" style={{ color: 'var(--ink)' }}>{chatTitle}</p>
+          {activeSourceName && (
+            <p className="text-xs truncate" style={{ color: 'var(--text-secondary)' }}>
+              {t('ex.fromSource', { source: activeSourceName })}
+            </p>
+          )}
         </div>
-        {/* Modus-Wechsel mitten im Gespräch */}
-        <div className="flex gap-1 p-1 rounded-xl shrink-0" style={{ background: 'var(--bg-sidebar)', border: '1px solid var(--border-color)' }}>
-          {MODES.map(({ id, icon: Icon }) => (
-            <button
-              key={id}
-              onClick={() => setMode(id)}
-              aria-label={t(MODE_TITLE_KEY[id])}
-              title={t(MODE_TITLE_KEY[id])}
-              className="p-2 rounded-lg transition-all"
-              style={{
-                background: mode === id ? 'color-mix(in srgb, var(--primary) 16%, transparent)' : 'transparent',
-                color: mode === id ? 'var(--primary)' : 'var(--text-main)',
-                opacity: mode === id ? 1 : 0.55,
-              }}
-            >
-              <Icon size={15} strokeWidth={2} />
-            </button>
-          ))}
-        </div>
+        {activeDocForReader && onOpenReader && (
+          <button
+            onClick={() => onOpenReader(activeDocForReader)}
+            className="px-3 py-1.5 rounded-lg text-[11px] font-semibold shrink-0 whitespace-nowrap transition-colors hover:opacity-80"
+            style={{ border: '1px solid var(--border-color)', color: 'var(--text-secondary)' }}
+          >
+            {t('ex.landing.readerTitle')}
+          </button>
+        )}
         <button
           onClick={startNewSession}
-          aria-label={t('tut.newSession')}
-          title={t('tut.newSession')}
-          className="p-2.5 rounded-xl transition-colors shrink-0"
-          style={{ background: 'var(--bg-sidebar)', border: '1px solid var(--border-color)', color: 'var(--text-main)' }}
+          className="px-3 py-1.5 rounded-lg text-[11px] font-semibold shrink-0 whitespace-nowrap transition-colors hover:opacity-80"
+          style={{ border: '1px solid var(--border-color)', color: 'var(--text-secondary)' }}
         >
-          <Plus size={16} strokeWidth={2} />
+          {t('tut.newSession')}
         </button>
       </div>
 
       {/* Nachrichten */}
       <div className="flex-1 space-y-5 pb-4">
         {messages.length === 0 && !isTyping && (
-          <div className="rounded-[28px] p-8 space-y-4 text-center" style={{ background: 'var(--bg-sidebar)', border: '1px solid var(--border-color)' }}>
-            <div className="w-14 h-14 mx-auto rounded-2xl flex items-center justify-center" style={{ background: 'color-mix(in srgb, var(--primary) 12%, transparent)' }}>
-              <GraduationCap size={26} style={{ color: 'var(--primary)' }} strokeWidth={1.75} />
-            </div>
-            <p className="text-sm font-bold text-slate-600 dark:text-slate-300 max-w-md mx-auto leading-relaxed">
-              {mode === 'explain' && t('tut.intro.explain')}
-              {mode === 'socratic' && t('tut.intro.socratic')}
-              {mode === 'quiz' && t('tut.intro.quiz')}
-            </p>
-            <div className="flex flex-wrap justify-center gap-2">
-              {mode === 'socratic' && (
-                <button onClick={() => send(t('tut.start.socratic.q'))} className="px-4 py-2.5 rounded-xl text-[10px] font-black uppercase tracking-widest text-white transition-all hover:scale-[1.03]" style={{ background: 'var(--primary)' }}>
-                  {t('tut.start.socratic')}
-                </button>
+          <div className="space-y-4">
+            <div className="rounded-[28px] p-8 space-y-4 text-center" style={{ background: 'var(--bg-sidebar)', border: '1px solid var(--border-color)' }}>
+              <div className="w-14 h-14 mx-auto rounded-2xl flex items-center justify-center" style={{ background: 'color-mix(in srgb, var(--primary) 12%, transparent)' }}>
+                <GraduationCap size={26} style={{ color: 'var(--primary)' }} strokeWidth={1.75} />
+              </div>
+              <p className="text-sm font-bold text-slate-600 dark:text-slate-300 max-w-md mx-auto leading-relaxed">
+                {mode === 'explain' && t('tut.intro.explain')}
+                {mode === 'socratic' && t('tut.intro.socratic')}
+                {mode === 'quiz' && t('tut.intro.quiz')}
+              </p>
+              {(mode === 'socratic' || mode === 'quiz') && (
+                <div className="flex flex-wrap justify-center gap-2">
+                  {mode === 'socratic' && (
+                    <button onClick={() => send(t('tut.start.socratic.q'))} className="px-4 py-2.5 rounded-xl text-[10px] font-black uppercase tracking-widest text-white transition-all hover:scale-[1.03]" style={{ background: 'var(--primary)' }}>
+                      {t('tut.start.socratic')}
+                    </button>
+                  )}
+                  {mode === 'quiz' && (
+                    <button onClick={() => send(t('tut.start.quiz.q'))} className="px-4 py-2.5 rounded-xl text-[10px] font-black uppercase tracking-widest text-white transition-all hover:scale-[1.03]" style={{ background: 'var(--primary)' }}>
+                      {t('tut.start.quiz')}
+                    </button>
+                  )}
+                </div>
               )}
-              {mode === 'quiz' && (
-                <button onClick={() => send(t('tut.start.quiz.q'))} className="px-4 py-2.5 rounded-xl text-[10px] font-black uppercase tracking-widest text-white transition-all hover:scale-[1.03]" style={{ background: 'var(--primary)' }}>
-                  {t('tut.start.quiz')}
-                </button>
-              )}
-              {suggestions.map(s => (
-                <button
-                  key={s.topic}
-                  onClick={() => setInput(s.topic)}
-                  className="px-3 py-2.5 rounded-xl text-[9px] font-black uppercase tracking-wider transition-all hover:opacity-80"
-                  style={{
-                    background: `color-mix(in srgb, ${s.security === 'kritisch' ? '#f43f5e' : '#f59e0b'} 10%, var(--bg-sidebar))`,
-                    color: s.security === 'kritisch' ? '#f43f5e' : '#f59e0b',
-                    border: `1px solid color-mix(in srgb, ${s.security === 'kritisch' ? '#f43f5e' : '#f59e0b'} 25%, transparent)`,
-                  }}
-                >
-                  {s.topic}
-                </button>
-              ))}
             </div>
+
+            {/* "Hier hakt es noch" (Redesign 2026-09-10) — ersetzt die frühere
+                bedeutungslose Themen-Chip-Reihe durch Zeilen mit echtem Grund. */}
+            {weakSpots.length > 0 && (
+              <div className="rounded-[20px] p-5 space-y-3" style={{ background: 'var(--card)', border: '1px solid var(--border-color)' }}>
+                <p className="text-[9.5px] font-black uppercase" style={{ color: 'color-mix(in srgb, var(--primary) 70%, black)', letterSpacing: '0.16em' }}>
+                  {t('tut.weakSpots.title')}
+                </p>
+                <div className="space-y-2">
+                  {weakSpots.map(w => (
+                    <button
+                      key={w.topic}
+                      onClick={() => send(t('tut.weakSpot.startQuestion', { topic: w.topic }), messages, !activeSource)}
+                      className="w-full flex items-center justify-between gap-3 px-4 py-3 rounded-xl text-left transition-all hover:opacity-80"
+                      style={{
+                        background: 'var(--bg-main)',
+                        borderTop: '1px solid var(--border-color)',
+                        borderRight: '1px solid var(--border-color)',
+                        borderBottom: '1px solid var(--border-color)',
+                        borderLeft: `3px solid ${w.severity === 'strong' ? '#c2543f' : '#d9a03f'}`,
+                      }}
+                    >
+                      <span className="min-w-0">
+                        <span className="block text-xs font-black dark:text-white truncate">{w.topic}</span>
+                        <span className="block text-[11px] mt-0.5" style={{ color: 'var(--text-secondary)' }}>{w.reason}</span>
+                      </span>
+                      <ChevronRight className="w-4 h-4 shrink-0" style={{ color: 'var(--text-secondary)' }} strokeWidth={2} />
+                    </button>
+                  ))}
+                </div>
+              </div>
+            )}
           </div>
         )}
 
-        {messages.map((m, idx) => (
+        {messages.map((m, idx) => {
+          if (m.role === 'system') {
+            return (
+              <div key={m.id} className="flex justify-center">
+                <span
+                  className="text-[10px] font-black uppercase px-2.5 py-1 rounded-full"
+                  style={{ background: 'color-mix(in srgb, var(--ink) 6%, transparent)', color: 'color-mix(in srgb, var(--ink) 70%, transparent)', letterSpacing: '0.1em' }}
+                >
+                  {t('tut.modeChanged')} · {t(MODE_TITLE_KEY[m.content as TutorMode])}
+                </span>
+              </div>
+            );
+          }
+          return (
           <div key={m.id} className={`flex gap-2.5 ${m.role === 'user' ? 'justify-end' : 'justify-start'}`}>
             {m.role === 'tutor' && (
-              <div className="w-8 h-8 rounded-xl flex items-center justify-center shrink-0 mt-1" style={{ background: 'color-mix(in srgb, var(--primary) 12%, transparent)' }}>
-                <GraduationCap size={15} style={{ color: 'var(--primary)' }} strokeWidth={1.75} />
+              <div
+                className="w-7 h-7 rounded-full flex items-center justify-center shrink-0 mt-1"
+                style={{ border: '1px solid color-mix(in srgb, var(--primary) 60%, transparent)', background: 'var(--card)' }}
+              >
+                <BrandMark size={13} strokeColor="var(--ink)" peakColor="var(--primary)" />
               </div>
             )}
             <div className={`min-w-0 ${m.role === 'user' ? 'max-w-[85%]' : 'flex-1 max-w-[92%]'}`}>
               {m.role === 'user' ? (
                 <div
-                  className="px-5 py-3.5 rounded-[20px] rounded-br-md text-sm font-bold whitespace-pre-wrap break-words"
-                  style={{ background: 'var(--primary)', color: 'var(--primary-text)' }}
+                  className="px-5 py-3.5 rounded-tl-[14px] rounded-tr-[14px] rounded-bl-[14px] rounded-br-[4px] text-sm font-bold whitespace-pre-wrap break-words"
+                  style={{ background: 'var(--ink)', color: 'var(--bg-sidebar)' }}
                 >
                   {m.content}
                 </div>
               ) : (
-                <div className="rounded-[20px] rounded-bl-md overflow-hidden" style={{ background: 'var(--bg-sidebar)', border: '1px solid var(--border-color)' }}>
-                  <div className="px-5 py-4 text-sm leading-relaxed dark:text-white break-words [&_p]:mb-2 [&_p:last-child]:mb-0">
+                <div className="space-y-3">
+                  <div className="text-[15px] leading-relaxed break-words [&_p]:mb-2 [&_p:last-child]:mb-0" style={{ color: 'var(--ink)' }}>
                     {renderMarkdown(m.content)}
                   </div>
 
                   {m.quote && (
-                    <div className="mx-5 mb-4 rounded-xl p-3" style={{ background: 'color-mix(in srgb, var(--primary) 8%, transparent)', border: '1px solid color-mix(in srgb, var(--primary) 25%, transparent)' }}>
-                      <p className="text-[9px] font-black uppercase tracking-widest mb-1" style={{ color: 'var(--primary)' }}>
-                        {activeSourceName ? t('ex.quoteFrom', { source: activeSourceName }) : t('ex.quoteLabel')}
-                      </p>
-                      <p className="text-xs font-medium italic text-slate-600 dark:text-slate-300 break-words">„{parseInline(m.quote, `${m.id}-quote`)}"</p>
+                    <div
+                      className="rounded-r-[9px] p-3 pl-4 ml-[-1px]"
+                      style={{ background: 'var(--card)', borderTop: '1px solid var(--border-color)', borderRight: '1px solid var(--border-color)', borderBottom: '1px solid var(--border-color)', borderLeft: '3px solid var(--primary)' }}
+                    >
+                      <div className="flex items-center justify-between gap-3 mb-1">
+                        <p className="text-[9.5px] font-black uppercase truncate" style={{ color: 'color-mix(in srgb, var(--primary) 70%, black)', letterSpacing: '0.16em' }}>
+                          {activeSourceName ? t('ex.quoteFrom', { source: activeSourceName }) : t('ex.quoteLabel')}
+                        </p>
+                        {activeDocForReader && onOpenReader && (
+                          <button
+                            onClick={() => onOpenReader(activeDocForReader)}
+                            className="text-[10.5px] font-black shrink-0 whitespace-nowrap hover:opacity-70 transition-opacity"
+                            style={{ color: 'color-mix(in srgb, var(--primary) 70%, black)' }}
+                          >
+                            {t('tut.quote.openInDoc')}
+                          </button>
+                        )}
+                      </div>
+                      <p className="text-xs font-medium italic break-words" style={{ color: 'color-mix(in srgb, var(--ink) 82%, transparent)' }}>„{parseInline(m.quote, `${m.id}-quote`)}"</p>
                     </div>
                   )}
 
                   {/* Follow-up-Chips nur unter der jüngsten Tutor-Antwort */}
                   {m.followUps && m.followUps.length > 0 && idx === lastTutorIdx && !isTyping && (
-                    <div className="px-5 pb-4 flex flex-wrap gap-2">
-                      {m.followUps.map(q => (
-                        <button
-                          key={q}
-                          onClick={() => send(q)}
-                          className="px-3 py-2 rounded-xl text-[10px] font-black transition-all hover:scale-[1.03] text-left"
-                          style={{
-                            background: 'color-mix(in srgb, var(--primary) 10%, transparent)',
-                            color: 'var(--primary)',
-                            border: '1px solid color-mix(in srgb, var(--primary) 25%, transparent)',
-                          }}
-                        >
-                          {q}
-                        </button>
-                      ))}
+                    <div>
+                      <p className="text-[9.5px] font-black uppercase mb-2" style={{ color: 'color-mix(in srgb, var(--primary) 70%, black)', letterSpacing: '0.16em' }}>
+                        {t('tut.suggestions')}
+                      </p>
+                      <div className="flex flex-wrap gap-1.5">
+                        {m.followUps.map(q => (
+                          <button
+                            key={q}
+                            onClick={() => send(q)}
+                            className="px-3 py-1.5 rounded-lg text-[13px] text-left transition-all hover:opacity-70"
+                            style={{
+                              border: '1px solid color-mix(in srgb, var(--primary) 45%, transparent)',
+                              background: 'color-mix(in srgb, var(--primary) 8%, transparent)',
+                              color: 'color-mix(in srgb, var(--primary) 75%, black)',
+                            }}
+                          >
+                            {q}
+                          </button>
+                        ))}
+                      </div>
                     </div>
                   )}
 
                   {/* Aktionsleiste */}
-                  <div className="px-4 py-2 flex items-center gap-1 border-t" style={{ borderColor: 'var(--border-color)' }}>
+                  <div className="flex items-center gap-1 -ml-1.5">
                     <button
                       onClick={() => { navigator.clipboard.writeText(m.content); toast.success(t('ex.copied')); }}
                       aria-label={t('ex.copy')}
@@ -842,15 +976,19 @@ export const ExplainerSystem: React.FC<ExplainerSystemProps> = ({
               )}
             </div>
           </div>
-        ))}
+          );
+        })}
 
         {/* Tutor denkt nach */}
         {isTyping && (
           <div className="flex gap-2.5 justify-start">
-            <div className="w-8 h-8 rounded-xl flex items-center justify-center shrink-0 mt-1" style={{ background: 'color-mix(in srgb, var(--primary) 12%, transparent)' }}>
-              <GraduationCap size={15} style={{ color: 'var(--primary)' }} strokeWidth={1.75} />
+            <div
+              className="w-7 h-7 rounded-full flex items-center justify-center shrink-0 mt-1"
+              style={{ border: '1px solid color-mix(in srgb, var(--primary) 60%, transparent)', background: 'var(--card)' }}
+            >
+              <BrandMark size={13} strokeColor="var(--ink)" peakColor="var(--primary)" />
             </div>
-            <div className="rounded-[20px] rounded-bl-md px-5 py-4 flex items-center gap-3" style={{ background: 'var(--bg-sidebar)', border: '1px solid var(--border-color)' }}>
+            <div className="flex items-center gap-3 px-1 py-2">
               <div className="flex gap-1.5">
                 <span className="w-2 h-2 rounded-full animate-bounce" style={{ background: 'var(--primary)', animationDelay: '0ms' }} />
                 <span className="w-2 h-2 rounded-full animate-bounce" style={{ background: 'var(--primary)', animationDelay: '150ms' }} />
@@ -880,9 +1018,9 @@ export const ExplainerSystem: React.FC<ExplainerSystemProps> = ({
                 onClick={() => send(t(msgKey))}
                 className="px-3 py-1.5 rounded-full text-[9px] font-black uppercase tracking-widest whitespace-nowrap shrink-0 transition-all hover:opacity-80"
                 style={{
-                  background: 'var(--bg-sidebar)',
-                  border: '1px solid var(--border-color)',
-                  color: 'var(--text-main)',
+                  background: 'color-mix(in srgb, var(--primary) 10%, transparent)',
+                  border: '1px solid color-mix(in srgb, var(--primary) 45%, transparent)',
+                  color: 'color-mix(in srgb, var(--primary) 75%, black)',
                 }}
               >
                 {t(labelKey)}
@@ -896,7 +1034,8 @@ export const ExplainerSystem: React.FC<ExplainerSystemProps> = ({
               sollen sehen, dass es Diktat gibt, statt dass der Button fehlt. */}
           <button
             onClick={toggleListening}
-            disabled={!hasSpeechApi || isListening}
+            disabled={!hasSpeechApi}
+            aria-pressed={isListening}
             aria-label={hasSpeechApi ? t('tut.mic') : t('ar.dictationUnsupported')}
             title={hasSpeechApi ? t('tut.mic') : t('ar.dictationUnsupported')}
             className={`p-3.5 rounded-2xl transition-all shrink-0 ${!hasSpeechApi ? 'opacity-40 cursor-not-allowed' : ''}`}
@@ -918,11 +1057,58 @@ export const ExplainerSystem: React.FC<ExplainerSystemProps> = ({
             className="flex-1 resize-none px-5 py-3.5 rounded-2xl text-sm font-bold outline-none transition-all max-h-40"
             style={{ background: 'var(--bg-sidebar)', border: '1px solid var(--border-color)', color: 'var(--text-main)' }}
           />
+          {/* Modus-Segmente (Redesign 2026-09-10) — vorher 3 Karten über dem
+              Composer, nach dem Absenden der ersten Nachricht unerreichbar.
+              Jetzt jederzeit mitten im Gespräch umschaltbar. Auf schmalen
+              Bildschirmen in eine eigene Zeile darunter (sonst quetschen die drei
+              Segmente das Eingabefeld auf wenige Zeichen). */}
+          <div className="hidden sm:flex gap-1 p-1 rounded-lg shrink-0 mb-0.5" style={{ background: 'color-mix(in srgb, var(--ink) 5.5%, transparent)' }}>
+            {MODES.map(({ id, titleKey }) => (
+              <button
+                key={id}
+                onClick={() => changeMode(id)}
+                title={t(titleKey)}
+                className="px-2.5 py-1.5 rounded-md text-[11px] font-semibold transition-all whitespace-nowrap"
+                style={{
+                  background: mode === id ? 'var(--card)' : 'transparent',
+                  color: mode === id ? 'var(--ink)' : 'color-mix(in srgb, var(--ink) 70%, transparent)',
+                }}
+              >
+                {t(titleKey)}
+              </button>
+            ))}
+          </div>
           <button
             onClick={() => input.trim() && send(input)}
             disabled={!input.trim() || isTyping}
             aria-label={t('tut.send')}
-            className="p-3.5 rounded-2xl transition-all shrink-0 disabled:opacity-40 disabled:cursor-not-allowed"
+            className="hidden sm:flex p-3.5 rounded-2xl transition-all shrink-0 disabled:opacity-40 disabled:cursor-not-allowed"
+            style={{ background: 'var(--primary)', color: 'var(--primary-text)' }}
+          >
+            <Send size={16} strokeWidth={2} />
+          </button>
+        </div>
+        <div className="sm:hidden flex items-center gap-2 mt-2">
+          <div className="flex flex-1 gap-1 p-1 rounded-lg" style={{ background: 'color-mix(in srgb, var(--ink) 5.5%, transparent)' }}>
+            {MODES.map(({ id, titleKey }) => (
+              <button
+                key={id}
+                onClick={() => changeMode(id)}
+                className="flex-1 py-2 rounded-md text-[11px] font-semibold transition-all whitespace-nowrap min-h-[44px]"
+                style={{
+                  background: mode === id ? 'var(--card)' : 'transparent',
+                  color: mode === id ? 'var(--ink)' : 'color-mix(in srgb, var(--ink) 70%, transparent)',
+                }}
+              >
+                {t(titleKey)}
+              </button>
+            ))}
+          </div>
+          <button
+            onClick={() => input.trim() && send(input)}
+            disabled={!input.trim() || isTyping}
+            aria-label={t('tut.send')}
+            className="w-[46px] h-[46px] rounded-2xl flex items-center justify-center transition-all shrink-0 disabled:opacity-40 disabled:cursor-not-allowed"
             style={{ background: 'var(--primary)', color: 'var(--primary-text)' }}
           >
             <Send size={16} strokeWidth={2} />

@@ -271,6 +271,88 @@ export const buildRealTopicMastery = (
   return [...byTopic.values()].sort((a, b) => a.confidence - b.confidence || b.weakCount - a.weakCount);
 };
 
+// ─── "Hier hakt es noch" (Tutor-Chat Leerzustand) ──────────────────────────────
+
+const RECENT_DAYS = 14;
+
+export interface WeakSpotReason {
+  topic: string;
+  reason: string;
+  source: 'quiz' | 'exam';
+  severity: 'strong' | 'mild';
+}
+
+/**
+ * Wie buildRealTopicMastery, aber mit zwei Unterschieden für den Tutor-Chat-
+ * Leerzustand ("Hier hakt es noch"): (1) nur die letzten RECENT_DAYS Tage
+ * (Dauerschwächen von vor Wochen sollen hier nicht mehr auftauchen — dafür
+ * gibt es bereits den Lern-Coach), (2) behält korrekt/gesamt statt sie zu
+ * einem gemittelten confidence-Wert zu verdichten, damit ein Klartext-Grund
+ * ("3 von 4 Fragen falsch") entsteht statt nur eines Themennamens.
+ *
+ * Karteikarten sind bewusst NICHT als Quelle dabei — es gibt aktuell keine
+ * Korrektheits-Historie pro Karte/Thema (nur SRS-Intervall/Fälligkeit).
+ */
+export function buildWeakSpotReasons(
+  quizResults: QuizResult[],
+  examResults: ExamResult[],
+  now: number = Date.now(),
+): WeakSpotReason[] {
+  const since = now - RECENT_DAYS * DAY_MS;
+  const recentQuiz = quizResults.filter(r => r.timestamp >= since);
+  const recentExam = examResults.filter(r => r.timestamp >= since);
+
+  const quizAcc = new Map<string, { correct: number; total: number }>();
+  recentQuiz.forEach(r => {
+    (r.answers || []).forEach(a => {
+      const topic = r.questions?.[a.questionIndex]?.topic?.trim();
+      if (!topic) return;
+      const e = quizAcc.get(topic) ?? { correct: 0, total: 0 };
+      e.total += 1;
+      if (a.isCorrect) e.correct += 1;
+      quizAcc.set(topic, e);
+    });
+  });
+
+  const examCounts = new Map<string, number>();
+  recentExam.forEach(r => r.weakTopics.forEach(topic => {
+    const key = topic.trim();
+    if (!key) return;
+    examCounts.set(key, (examCounts.get(key) ?? 0) + 1);
+  }));
+
+  const results: WeakSpotReason[] = [];
+
+  quizAcc.forEach((e, topic) => {
+    // Mindestschwelle gegen 1-Frage-Rauschen, gleiche Grenze wie buildRealTopicMastery
+    if (e.total < 2) return;
+    const wrong = e.total - e.correct;
+    if (wrong === 0) return;
+    results.push({
+      topic,
+      reason: t('lp.weakSpot.quizReason', { wrong, total: e.total }),
+      source: 'quiz',
+      severity: e.correct / e.total < 0.5 ? 'strong' : 'mild',
+    });
+  });
+
+  examCounts.forEach((count, topic) => {
+    // Bereits über Quiz erfasste Themen nicht doppeln — das Quiz-Ergebnis
+    // mit echtem Nenner ist die aussagekräftigere Begründung.
+    if (quizAcc.has(topic)) return;
+    results.push({
+      topic,
+      reason: t('lp.weakSpot.examReason', { count }),
+      source: 'exam',
+      severity: count >= 2 ? 'strong' : 'mild',
+    });
+  });
+
+  return results
+    .sort((a, b) => (a.severity === b.severity ? 0 : a.severity === 'strong' ? -1 : 1))
+    .slice(0, 5);
+}
+
 // ─── Kategorie-Sicherheit (aus Klausur-Kategorie-Aufschlüsselung) ──────────────────
 
 const buildCategoryMastery = (examResults: ExamResult[]): CategoryMastery[] => {

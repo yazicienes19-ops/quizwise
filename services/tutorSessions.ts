@@ -10,7 +10,10 @@ export type TutorMode = 'explain' | 'socratic' | 'quiz';
 
 export interface StoredTutorMessage {
   id: string;
-  role: 'user' | 'tutor';
+  /** 'system' = Moduswechsel-Pille im Verlauf (Redesign 2026-09-10) — Text der
+   *  Pille steht in `content` (z.B. der Zielmodus). Ältere gespeicherte
+   *  Sitzungen enthalten diese Rolle nie, laden aber unverändert weiter. */
+  role: 'user' | 'tutor' | 'system';
   content: string;
   followUps?: string[];
   quote?: string | null;
