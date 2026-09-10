@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import { getSharedLibrary, SharedLibrary } from '../services/sharedLibraryService';
-import { saveCollectionToSupabase, saveDocumentToSupabase } from '../services/documentService';
+import { saveCollectionToSupabase, saveDocumentToSupabase, deleteDocumentFromSupabase, deleteCollectionFromSupabase } from '../services/documentService';
 import { supabase } from '../services/supabaseClient';
 import { ProcessedDocument } from '../types';
 import { toast } from '../services/toast';
@@ -53,21 +53,35 @@ export const SharedLibraryPage: React.FC<SharedLibraryPageProps> = ({ shareId, u
       if (!freshUser) { onLoginRequired(); return; }
 
       const newCollectionId = Math.random().toString(36).substr(2, 9);
-      await saveCollectionToSupabase({ id: newCollectionId, name: library.name, emoji: library.emoji, color: library.color });
-      for (const snap of library.documents) {
-        const newDoc: ProcessedDocument = {
-          id: Math.random().toString(36).substr(2, 9),
-          name: snap.name,
-          type: snap.type,
-          mimeType: snap.mimeType,
-          content: snap.content,
-          uploadDate: Date.now(),
-          collectionId: newCollectionId,
-          digestText: snap.digestText,
-          digestStatus: snap.digestStatus,
-        };
-        const savedId = await saveDocumentToSupabase(newDoc);
-        if (!savedId) throw new Error('saveDocumentToSupabase returned null');
+      const newCollection = { id: newCollectionId, name: library.name, emoji: library.emoji || '📁', color: library.color || 'bg-indigo-500' };
+      // Bereits geschriebene Dokumente merken, damit bei einem Fehler mittendrin kein
+      // halb importiertes Fach in der Bibliothek zurückbleibt.
+      const written: ProcessedDocument[] = [];
+      try {
+        await saveCollectionToSupabase(newCollection);
+        for (const snap of library.documents) {
+          const newDoc: ProcessedDocument = {
+            id: Math.random().toString(36).substr(2, 9),
+            name: snap.name,
+            type: snap.type,
+            mimeType: snap.mimeType,
+            content: snap.content,
+            uploadDate: Date.now(),
+            collectionId: newCollectionId,
+            digestText: snap.digestText,
+            digestStatus: snap.digestStatus,
+          };
+          // Rückgabewert ist der Storage-Pfad, bei Text/DOCX und geteilten PDFs ohne
+          // Originaldatei immer null — kein Fehlersignal. Echte Fehler werfen.
+          await saveDocumentToSupabase(newDoc);
+          written.push(newDoc);
+        }
+      } catch (e) {
+        await Promise.allSettled([
+          ...written.map(d => deleteDocumentFromSupabase(d)),
+          deleteCollectionFromSupabase(newCollectionId),
+        ]);
+        throw e;
       }
       setAccepted(true);
       toast.success(t('slp.accepted', { name: library.name }));
