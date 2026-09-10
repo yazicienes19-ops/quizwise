@@ -1,6 +1,7 @@
 
-import React from 'react';
+import React, { useState } from 'react';
 import { createPortal } from 'react-dom';
+import { ShareLinkModal } from './ShareLinkModal';
 import { FlashcardDeck } from '../types';
 import { shareDeck } from '../services/sharedDecksService';
 import { toast } from '../services/toast';
@@ -20,6 +21,7 @@ interface ExportDeckModalProps {
 export const ExportDeckModal: React.FC<ExportDeckModalProps> = ({ deck, userId, userName, onClose }) => {
   const { t, tp } = useTranslation();
   const { titleId, dialogProps } = useModalA11y(onClose);
+  const [shareUrl, setShareUrl] = useState<string | null>(null);
 
   const handleShareLink = async () => {
     if (!userId) {
@@ -32,9 +34,10 @@ export const ExportDeckModal: React.FC<ExportDeckModalProps> = ({ deck, userId, 
       // auf dem alten Stand einzufrieren.
       const id = await shareDeck(deck.id, deck.title, deck.cards, userId, userName);
       const url = `${window.location.origin}/shared/${id}`;
-      await navigator.clipboard.writeText(url);
-      toast.success(t('edm.linkCopied'));
-      onClose();
+      // Link sichtbar anzeigen (ShareLinkModal) — Safari lehnt die stille Kopie
+      // nach dem await außerhalb der Klick-Geste ab, der Link wäre sonst weg.
+      setShareUrl(url);
+      navigator.clipboard?.writeText(url).then(() => toast.success(t('edm.linkCopied'))).catch(() => {});
     } catch {
       toast.error(t('edm.shareFailed'));
     }
@@ -276,6 +279,10 @@ export const ExportDeckModal: React.FC<ExportDeckModalProps> = ({ deck, userId, 
       onClick: handleJsonExport,
     },
   ];
+
+  if (shareUrl) {
+    return <ShareLinkModal url={shareUrl} title={t('share.title', { name: deck.title })} onClose={onClose} />;
+  }
 
   return createPortal(
     <div

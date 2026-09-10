@@ -93,6 +93,12 @@ export const FlashcardSystem: React.FC<FlashcardSystemProps> = ({
             const merged = mergeDecks(localDecks, cloudDecks);
             setDecks(merged);
             localStorage.setItem('flashcard_decks', JSON.stringify(merged));
+            // Nur lokal vorhandene Decks (z.B. per Link übernommen, SharedDeckPage)
+            // sofort hochladen — sonst bleiben sie bis zur nächsten Bearbeitung
+            // auf diesem Gerät gefangen.
+            const cloudIds = new Set(cloudDecks.map(d => d.id));
+            const localOnly = merged.filter(d => !cloudIds.has(d.id));
+            if (localOnly.length > 0) uploadAllDecksToSupabase(localOnly, userId).catch(() => {});
             return;
           }
           // Keine Cloud-Decks: localStorage-Daten hochladen (Migration)

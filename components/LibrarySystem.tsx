@@ -12,6 +12,7 @@ import { UploadSourceModal } from './UploadSourceModal';
 import { EditSourceModal } from './EditSourceModal';
 import { DocumentViewerModal } from './DocumentViewerModal';
 import { EmojiImage } from './EmojiImage';
+import { ShareLinkModal } from './ShareLinkModal';
 
 interface LibrarySystemProps {
   documents: ProcessedDocument[];
@@ -185,6 +186,7 @@ export const LibrarySystem: React.FC<LibrarySystemProps> = ({
   };
 
   const [sharingColId, setSharingColId] = useState<string | null>(null);
+  const [shareLink, setShareLink] = useState<{ url: string; name: string } | null>(null);
 
   const handleShareCollection = async (col: Collection) => {
     if (!userId) { toast.error(t('slp.loginToShare')); return; }
@@ -203,8 +205,11 @@ export const LibrarySystem: React.FC<LibrarySystemProps> = ({
     try {
       const id = await shareCollection(col.id, col.name, col.emoji, col.color, shareable.map(toSharedDocSnapshot), userId, userName);
       const url = `${window.location.origin}/shared-library/${id}`;
-      await navigator.clipboard.writeText(url);
-      toast.success(skipped > 0 ? tp('slp.linkCopiedSkipped', skipped) : t('slp.linkCopied'));
+      // Link immer sichtbar anzeigen (ShareLinkModal) — die stille Kopie ist nur
+      // ein Bonus, Safari lehnt sie nach dem await außerhalb der Geste ab.
+      setShareLink({ url, name: col.name });
+      if (skipped > 0) toast.info(tp('slp.skippedDocs', skipped));
+      navigator.clipboard?.writeText(url).then(() => toast.success(t('slp.linkCopied'))).catch(() => {});
     } catch {
       toast.error(t('slp.shareFailed'));
     } finally {
@@ -221,6 +226,7 @@ export const LibrarySystem: React.FC<LibrarySystemProps> = ({
     return (
       <>
         {showUpload && <UploadSourceModal onClose={() => setShowUpload(false)} onUpload={handleUpload} />}
+        {shareLink && <ShareLinkModal url={shareLink.url} title={t('share.title', { name: shareLink.name })} onClose={() => setShareLink(null)} />}
         {editDoc && (
           <EditSourceModal
             doc={editDoc}
@@ -255,6 +261,7 @@ export const LibrarySystem: React.FC<LibrarySystemProps> = ({
     return (
       <>
         {showUpload && <UploadSourceModal onClose={() => setShowUpload(false)} onUpload={handleUpload} />}
+        {shareLink && <ShareLinkModal url={shareLink.url} title={t('share.title', { name: shareLink.name })} onClose={() => setShareLink(null)} />}
         {editDoc && (
           <EditSourceModal
             doc={editDoc}
@@ -486,6 +493,7 @@ export const LibrarySystem: React.FC<LibrarySystemProps> = ({
   return (
     <>
       {showUpload && <UploadSourceModal onClose={() => setShowUpload(false)} onUpload={handleUpload} />}
+        {shareLink && <ShareLinkModal url={shareLink.url} title={t('share.title', { name: shareLink.name })} onClose={() => setShareLink(null)} />}
       {viewerDoc && <DocumentViewerModal doc={viewerDoc} onClose={() => setViewerDocId(null)} />}
       {editDoc && (
         <EditSourceModal
