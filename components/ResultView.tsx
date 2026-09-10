@@ -111,7 +111,7 @@ export const ResultView: React.FC<ResultViewProps> = ({
 
       {/* Weak / strong topics */}
       {(weakTopics.length > 0 || strongTopics.length > 0) && (
-        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+        <div className={`grid grid-cols-1 gap-4 ${weakTopics.length > 0 && strongTopics.length > 0 ? 'sm:grid-cols-2' : ''}`}>
           {weakTopics.length > 0 && (
             <div className="bg-rose-50 dark:bg-rose-950/20 border border-rose-200 dark:border-rose-900/30 rounded-[24px] p-5">
               <p className="text-[9px] font-black uppercase tracking-widest text-rose-500 mb-3 flex items-center gap-1.5">
