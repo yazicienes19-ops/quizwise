@@ -49,6 +49,11 @@ interface ExplainerSystemProps {
   setDecks: React.Dispatch<React.SetStateAction<FlashcardDeck[]>>;
   /** Öffnet das gewählte Dokument im Splitscreen-Reader (Nav-Ebene, außerhalb dieser Komponente). */
   onOpenReader?: (doc: ProcessedDocument) => void;
+  /** Aktives Fach aus der Sidebar (Bug-Fix 2026-09-10: Material-Auswahl und
+   *  Dokument-öffnen-Picker ignorierten das bisher komplett, zeigten immer
+   *  alle Dokumente kontoweit statt nur die des gewählten Fachs). null/undefined
+   *  = "Alle Fächer", keine Einschränkung. */
+  activeModuleId?: string | null;
 }
 
 const uid = (): string => Math.random().toString(36).slice(2, 9);
@@ -91,7 +96,7 @@ const THINKING_KEYS: TKey[] = ['tut.thinking.1', 'tut.thinking.2', 'tut.thinking
 // ─── Hauptkomponente ──────────────────────────────────────────────────────────
 
 export const ExplainerSystem: React.FC<ExplainerSystemProps> = ({
-  availableDocuments, collections, getDocumentSource, onSaveToLibrary, initialDoc, metrics, decks, setDecks, onOpenReader,
+  availableDocuments, collections, getDocumentSource, onSaveToLibrary, initialDoc, metrics, decks, setDecks, onOpenReader, activeModuleId = null,
 }) => {
   const { t } = useTranslation();
   // initialDoc (aus der Bibliothek gestartet) führt direkt ins Gespräch — die
@@ -177,11 +182,19 @@ export const ExplainerSystem: React.FC<ExplainerSystemProps> = ({
     return () => clearInterval(iv);
   }, [isTyping]);
 
+  // Bug-Fix 2026-09-10: Material-Auswahl (SourceSelector) und der Dokument-
+  // öffnen-Picker respektierten das in der Sidebar gewählte Fach nicht — bei
+  // "Alle Fächer" (activeModuleId null) bleibt die volle Liste unverändert.
+  const moduleDocuments = useMemo(
+    () => activeModuleId ? availableDocuments.filter(d => d.collectionId === activeModuleId) : availableDocuments,
+    [availableDocuments, activeModuleId],
+  );
+
   const filteredReaderDocs = useMemo(() => {
     const q = readerSearch.trim().toLowerCase();
-    if (!q) return availableDocuments;
-    return availableDocuments.filter(d => documentDisplayName(d).toLowerCase().includes(q));
-  }, [availableDocuments, readerSearch]);
+    if (!q) return moduleDocuments;
+    return moduleDocuments.filter(d => documentDisplayName(d).toLowerCase().includes(q));
+  }, [moduleDocuments, readerSearch]);
 
   const handleSelectDocument = (doc: ProcessedDocument) => {
     const source = getDocumentSource ? getDocumentSource(doc) : doc.type === 'pdf' ? { file: { data: doc.content, mimeType: 'application/pdf' } } : { text: doc.content };
@@ -451,6 +464,24 @@ export const ExplainerSystem: React.FC<ExplainerSystemProps> = ({
           </div>
         </div>
 
+        {/* Splitscreen-Reader — direkt neben den Modi statt am Seitenende versteckt
+            (User-Feedback 2026-09-10: Einstieg war zuvor nur über die letzte Zeile
+            nach "Letzte Sitzungen" erreichbar). */}
+        <button
+          onClick={() => moduleDocuments.length > 0 ? setReaderPickerOpen(true) : toast.info(t('ex.landing.noDocs'))}
+          className="w-full flex items-center gap-4 p-5 rounded-[20px] text-left transition-all hover:scale-[1.01]"
+          style={{ background: 'var(--bg-sidebar)', border: '1px solid var(--border-color)' }}
+        >
+          <div className="w-10 h-10 rounded-xl flex items-center justify-center shrink-0" style={{ background: 'color-mix(in srgb, var(--primary) 12%, transparent)' }}>
+            <BookOpen size={20} style={{ color: 'var(--primary)' }} strokeWidth={1.75} />
+          </div>
+          <div className="flex-1 min-w-0 space-y-0.5">
+            <p className="text-sm font-black dark:text-white">{t('ex.landing.readerTitle')}</p>
+            <p className="text-[11px] text-slate-400 font-medium leading-snug">{t('ex.landing.readerDesc')}</p>
+          </div>
+          <ChevronRight className="w-4 h-4 text-slate-300 shrink-0" strokeWidth={2} />
+        </button>
+
         {/* Quelle */}
         {activeSource ? (
           <div className="flex items-center justify-between px-5 py-4 rounded-2xl" style={{ background: 'var(--bg-sidebar)', border: '1px solid var(--border-color)' }}>
@@ -464,7 +495,7 @@ export const ExplainerSystem: React.FC<ExplainerSystemProps> = ({
           <div className="space-y-2">
             <p className="text-[10px] font-black uppercase tracking-widest text-slate-400">{t('ex.chooseMaterial')}</p>
             <SourceSelector
-              documents={availableDocuments} collections={collections}
+              documents={moduleDocuments} collections={collections}
               onSelectDocument={handleSelectDocument}
               onSelectSource={(source, name) => { setActiveSource(source); setActiveSourceName(name); setSourceRef(null); }}
               onSaveToLibrary={onSaveToLibrary} isLoading={false}
@@ -572,16 +603,6 @@ export const ExplainerSystem: React.FC<ExplainerSystemProps> = ({
             </div>
           </div>
         )}
-
-        {/* Splitscreen-Reader */}
-        <button
-          onClick={() => availableDocuments.length > 0 ? setReaderPickerOpen(true) : toast.info(t('ex.landing.noDocs'))}
-          className="w-full flex items-center justify-between px-5 py-3.5 rounded-2xl text-left transition-all hover:opacity-90"
-          style={{ background: 'var(--bg-sidebar)', border: '1px solid var(--border-color)' }}
-        >
-          <span className="text-[10px] font-black uppercase tracking-widest dark:text-white">{t('ex.landing.readerTitle')}</span>
-          <ChevronRight className="w-4 h-4 text-slate-300" strokeWidth={2} />
-        </button>
 
         {/* Reader-Picker Overlay */}
         {readerPickerOpen && (

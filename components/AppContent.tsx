@@ -510,6 +510,7 @@ export const AppContent: React.FC<AppContentProps> = (p) => {
         initialDoc={pendingActionDoc ?? undefined}
         metrics={metrics} decks={decks} setDecks={setDecks}
         onOpenReader={doc => { setPendingActionDoc(doc); setActiveTab(ActiveTab.READER); }}
+        activeModuleId={activeModuleId}
       />;
 
     case ActiveTab.PAPER:
