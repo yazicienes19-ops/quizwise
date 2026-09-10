@@ -9,24 +9,29 @@ import { useTranslation } from '../i18n/I18nProvider';
 import { getTypeLabel } from '../services/learningProfileService';
 import type { TKey } from '../i18n';
 import { buildCollectionSource } from '../services/collectionSource';
-import { buildLearningProfile } from '../services/learningProfileService';
-import { getAllResults } from '../services/quizHistoryService';
-import { getAllRecallResults } from '../services/recallHistoryService';
-import { getAllExamResults, getRecentAverageScore } from '../services/examHistoryService';
+import { buildLearningProfile, buildRealTopicMastery } from '../services/learningProfileService';
 import { getStreak } from '../services/streakService';
 import { sourceTopicsKey, getUsedTopics, getUsedExamQuestions } from '../hooks/useQuizState';
-import { computeTopicWeights, computeDifficultyMix, TopicWeight, DifficultyMix } from '../services/examAdaptive';
+import { useModuleScopedActivity } from '../hooks/useModuleScopedActivity';
+import {
+  computeTopicWeights, computeDifficultyMix, recentAverageScore, excludeTopicsWithoutAdaptive,
+  DIFFICULTY_LEVELS, TopicWeight, DifficultyMix, AdaptiveExamTarget,
+} from '../services/examAdaptive';
 import { daysUntilDate } from '../services/calendarSessions';
 
-type ExamOptions = {
+export type ExamOptions = {
   count: number; difficulty: string;
   types?: string[];
   adaptive?: { weakCategories: string[]; weakTopics: string[]; topicWeights?: TopicWeight[]; difficultyMix?: DifficultyMix };
+  /** Vollständige Soll-Vorgabe für die Ist-vs-Soll-Anzeige (ExamView) und die Klausurhistorie. */
+  adaptiveTarget?: AdaptiveExamTarget;
   excludeTopics?: string[];
   recentQuestions?: string[];
   examTypePreset?: ExamTypePreset;
   quantMode?: QuantModeConfig;
 };
+
+const EMPTY_DISMISSED = new Set<string>();
 
 const EXAM_TYPE_PRESETS: ExamTypePreset[] = ['wissensabfrage', 'universitaetsklausur', 'transfer', 'gemischt'];
 
@@ -136,14 +141,25 @@ export const ExamGenerator: React.FC<ExamGeneratorProps> = ({
   const [quantTopics, setQuantTopics] = useState('');
   const [quantDistribution, setQuantDistribution] = useState<QuantTypeDistribution>(DEFAULT_QUANT_DISTRIBUTION);
 
+  // Adaptive Signale bei aktivem Fach auf dessen Historie beschränken (gleiches Muster
+  // wie ActiveRecall/GapRadar) — sonst landen schwache Bio-Themen als Mindestkontingent
+  // in einer Statistik-Klausur und fremde Notenschnitte verschieben den Mix.
+  const activeModuleCollection = useMemo(
+    () => activeModuleId ? collections.find(c => c.id === activeModuleId) ?? null : null,
+    [collections, activeModuleId],
+  );
+  const { quizResults, examResults, recallResults } = useModuleScopedActivity(activeModuleCollection, documents, EMPTY_DISMISSED);
   const profile = useMemo(() => buildLearningProfile({
-    metrics, decks,
-    quizResults: getAllResults(),
-    recallResults: getAllRecallResults(),
-    examResults: getAllExamResults(),
-    streak: getStreak(),
-  }), [metrics, decks]);
-  const hasAdaptiveData = profile.categoryMastery.length > 0 || profile.topicMastery.length > 0;
+    metrics, decks, quizResults, recallResults, examResults, streak: getStreak(),
+  }), [metrics, decks, quizResults, recallResults, examResults]);
+  // Echte Subthemen aus den gespeicherten Fragen — profile.topicMastery enthält
+  // Dokumentnamen (Metriken werden pro Dokument geführt) und taugt nicht als Prompt-Thema.
+  const realTopics = useMemo(
+    () => buildRealTopicMastery(quizResults, examResults, recallResults),
+    [quizResults, examResults, recallResults],
+  );
+  const recentAvgScore = useMemo(() => recentAverageScore(examResults.map(r => r.score), 5), [examResults]);
+  const hasAdaptiveData = profile.categoryMastery.length > 0 || realTopics.length > 0 || examResults.length > 0;
 
   // Nächster künftiger Klausurtermin, egal zu welchem Fach (ExamTerm ist nicht an ein Fach
   // gebunden) — dasselbe Signal wie Dashboard.tsx "examCountdown", hier als Eingabe für
@@ -154,6 +170,12 @@ export const ExamGenerator: React.FC<ExamGeneratorProps> = ({
     const days = examTerms.map(term => daysUntilDate(term.date, now)).filter(d => d >= 0);
     return days.length > 0 ? Math.min(...days) : null;
   }, [examTerms]);
+
+  const adaptiveTarget = useMemo<AdaptiveExamTarget>(() => ({
+    topicWeights: computeTopicWeights(realTopics, questionCount),
+    difficultyMix: computeDifficultyMix(difficulty, recentAvgScore, daysUntilNextExam),
+    signals: { recentAvgScore, daysUntilNextExam, examCount: examResults.length },
+  }), [realTopics, questionCount, difficulty, recentAvgScore, daysUntilNextExam, examResults.length]);
 
   const autoMinutes = useMemo(() => {
     const baseTimePerQuestion = difficulty === 'leicht' ? 4 : difficulty === 'mittel' ? 6 : 9;
@@ -212,13 +234,15 @@ export const ExamGenerator: React.FC<ExamGeneratorProps> = ({
       const scoringProfile: ScoringProfile = { mode: scoringMode, emphases };
       const adaptive = adaptiveEnabled ? {
         weakCategories: profile.categoryMastery.filter(c => c.avgScore < 60).map(c => c.category),
-        weakTopics: profile.topicMastery.filter(t => t.security !== 'sicher').slice(0, 5).map(t => t.topic),
-        topicWeights: computeTopicWeights(profile.topicMastery, questionCount),
-        difficultyMix: computeDifficultyMix(difficulty, getRecentAverageScore(5), daysUntilNextExam),
+        weakTopics: realTopics.filter(t => t.security !== 'sicher').slice(0, 5).map(t => t.topic),
+        topicWeights: adaptiveTarget.topicWeights,
+        difficultyMix: adaptiveTarget.difficultyMix,
       } : undefined;
       // Wiederholungsgefahr wie beim Quiz: kürzlich aus derselben Quelle geprüfte
-      // Themen nicht gleich nochmal abfragen (services/hooks/useQuizState.ts).
-      const excludeTopics = contentName ? getUsedTopics(sourceTopicsKey(contentName)) : [];
+      // Themen nicht gleich nochmal abfragen (services/hooks/useQuizState.ts) —
+      // außer sie sind adaptives Mindestkontingent, dann haben sie Vorrang.
+      const usedTopics = contentName ? getUsedTopics(sourceTopicsKey(contentName)) : [];
+      const excludeTopics = adaptive ? excludeTopicsWithoutAdaptive(usedTopics, adaptive.topicWeights) : usedTopics;
       // Ergänzt excludeTopics auf Fragenebene: verhindert inhaltlich äquivalente
       // Einzelfragen aus früheren Klausuren zu diesem Modul, die excludeTopics
       // allein (nur Themen-Labels) durchrutschen lässt.
@@ -241,7 +265,7 @@ export const ExamGenerator: React.FC<ExamGeneratorProps> = ({
 
       onGenerate(
         contentSource, styleSource,
-        { count: questionCount, difficulty, types: effectiveTypes, adaptive, excludeTopics, recentQuestions, examTypePreset, quantMode },
+        { count: questionCount, difficulty, types: effectiveTypes, adaptive, adaptiveTarget: adaptive ? adaptiveTarget : undefined, excludeTopics, recentQuestions, examTypePreset, quantMode },
         contentName, effectiveMinutes, scoringProfile
       );
     } catch (e) {
@@ -606,21 +630,72 @@ export const ExamGenerator: React.FC<ExamGeneratorProps> = ({
 
             {/* Adaptive Klausur — nur sichtbar mit genug Lernhistorie */}
             {hasAdaptiveData && (
-              <button
-                type="button"
-                onClick={() => setAdaptiveEnabled(v => !v)}
-                className={`w-full flex items-start gap-4 p-5 rounded-[24px] border-2 text-left transition-all ${adaptiveEnabled ? 'border-indigo-500 bg-indigo-50 dark:bg-indigo-950/20' : 'border-slate-200 dark:border-slate-700'}`}
-              >
-                <div className={`w-5 h-5 rounded-lg border-2 flex items-center justify-center shrink-0 mt-0.5 transition-all ${adaptiveEnabled ? 'bg-indigo-600 border-indigo-600' : 'border-slate-300 dark:border-slate-600'}`}>
-                  {adaptiveEnabled && (
-                    <svg width="10" height="10" viewBox="0 0 10 10" fill="none"><polyline points="1.5,5 4,7.5 8.5,2.5" stroke="white" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/></svg>
-                  )}
-                </div>
-                <div>
-                  <p className="text-[11px] font-black uppercase tracking-widest dark:text-white">{t('eg.adaptive')}</p>
-                  <p className="text-[10px] text-slate-400 font-medium mt-1">{t('eg.adaptiveHint')}</p>
-                </div>
-              </button>
+              <div className={`p-5 rounded-[24px] border-2 transition-all space-y-4 ${adaptiveEnabled ? 'border-indigo-500 bg-indigo-50 dark:bg-indigo-950/20' : 'border-slate-200 dark:border-slate-700'}`}>
+                <button
+                  type="button"
+                  onClick={() => setAdaptiveEnabled(v => !v)}
+                  className="w-full flex items-start gap-4 text-left"
+                >
+                  <div className={`w-5 h-5 rounded-lg border-2 flex items-center justify-center shrink-0 mt-0.5 transition-all ${adaptiveEnabled ? 'bg-indigo-600 border-indigo-600' : 'border-slate-300 dark:border-slate-600'}`}>
+                    {adaptiveEnabled && (
+                      <svg width="10" height="10" viewBox="0 0 10 10" fill="none"><polyline points="1.5,5 4,7.5 8.5,2.5" stroke="white" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/></svg>
+                    )}
+                  </div>
+                  <div>
+                    <p className="text-[11px] font-black uppercase tracking-widest dark:text-white">{t('eg.adaptive')}</p>
+                    <p className="text-[10px] text-slate-400 font-medium mt-1">{t('eg.adaptiveHint')}</p>
+                  </div>
+                </button>
+
+                {/* Live-Vorschau der Soll-Vorgabe: der Nutzer sieht vor dem Generieren,
+                    was der Schalter konkret verändert, und kann es nach der Klausur
+                    gegen die Ist-Verteilung (ExamView) prüfen. */}
+                {adaptiveEnabled && (
+                  <div className="space-y-4 animate-in fade-in slide-in-from-top-2 duration-300 pl-9">
+                    <div className="space-y-2">
+                      <p className="text-[9px] font-black uppercase tracking-widest text-slate-400">{t('eg.adaptivePreviewTopics')}</p>
+                      {adaptiveTarget.topicWeights.length > 0 ? (
+                        <div className="flex flex-wrap gap-2">
+                          {adaptiveTarget.topicWeights.map(w => (
+                            <span key={w.topic} className="inline-flex items-center gap-2 px-3 py-1.5 rounded-xl text-[10px] font-bold bg-white dark:bg-slate-800 border border-indigo-200 dark:border-indigo-800 text-slate-700 dark:text-slate-200">
+                              <span className="break-words">{w.topic}</span>
+                              <span className="text-[9px] font-black uppercase tracking-widest text-indigo-600 dark:text-indigo-400 shrink-0">{t('eg.adaptiveMinCount', { n: w.minCount })}</span>
+                            </span>
+                          ))}
+                        </div>
+                      ) : (
+                        <p className="text-[10px] text-slate-400 italic">{t('eg.adaptiveNoTopics')}</p>
+                      )}
+                    </div>
+
+                    <div className="space-y-2">
+                      <p className="text-[9px] font-black uppercase tracking-widest text-slate-400">{t('eg.adaptivePreviewMix')}</p>
+                      <div className="flex h-2.5 rounded-full overflow-hidden bg-slate-100 dark:bg-slate-800">
+                        <div className="bg-emerald-400" style={{ width: `${adaptiveTarget.difficultyMix.leicht}%` }} />
+                        <div className="bg-amber-400" style={{ width: `${adaptiveTarget.difficultyMix.mittel}%` }} />
+                        <div className="bg-rose-500" style={{ width: `${adaptiveTarget.difficultyMix.schwer}%` }} />
+                      </div>
+                      <div className="flex justify-between text-[9px] font-black uppercase tracking-widest">
+                        {DIFFICULTY_LEVELS.map(level => (
+                          <span key={level} className={level === 'leicht' ? 'text-emerald-600' : level === 'mittel' ? 'text-amber-600' : 'text-rose-600'}>
+                            {t((`diff.${level}`) as TKey)} {adaptiveTarget.difficultyMix[level]}%
+                          </span>
+                        ))}
+                      </div>
+                    </div>
+
+                    <p className="text-[10px] text-slate-400 font-medium">
+                      {adaptiveTarget.signals.recentAvgScore != null
+                        ? t('eg.adaptiveSignalScore', { score: Math.round(adaptiveTarget.signals.recentAvgScore), n: Math.min(adaptiveTarget.signals.examCount, 5) })
+                        : t('eg.adaptiveSignalNoScore')}
+                      {' · '}
+                      {adaptiveTarget.signals.daysUntilNextExam != null
+                        ? t('eg.adaptiveSignalExam', { days: adaptiveTarget.signals.daysUntilNextExam })
+                        : t('eg.adaptiveSignalNoExam')}
+                    </p>
+                  </div>
+                )}
+              </div>
             )}
 
             <button

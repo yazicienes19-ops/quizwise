@@ -9,6 +9,7 @@ import { gradeFromPercentage, passThresholdPercent, getCategoryLabel, getTypeLab
 import { toast } from '../services/toast';
 import { resolveErrorMessage } from '../services/errorMessages';
 import { BLOOM_LEVELS, BLOOM_LEVEL_LABELS, EXAM_TYPE_BLOOM_TARGETS, computeActualBloomDistribution } from '../services/bloomPresets';
+import { DIFFICULTY_LEVELS, computeActualDifficultyMix, computeTopicCoverage, type AdaptiveExamTarget } from '../services/examAdaptive';
 import type { TKey } from '../i18n';
 import { EmojiImage } from './EmojiImage';
 import { AnimatedBar } from './AnimatedBar';
@@ -37,6 +38,8 @@ interface ExamViewProps {
   categoryBreakdown?: { category: string; score: number }[];
   onAction?: (topic: string, mode: 'cards' | 'recall' | 'quiz') => void;
   examTypePreset?: ExamTypePreset;
+  /** Soll-Vorgabe der adaptiven Generierung — nur gesetzt, wenn der Schalter aktiv war. */
+  adaptiveTarget?: AdaptiveExamTarget;
   fatigue?: { earlyScore: number; lateScore: number };
   /** Phase 3B: Quant-Operationstraining — fertig generierte Übungsfragen zu einem
    *  erkannten Rechenfehler-Typ werden hier zur Persistierung/Session-Start
@@ -52,7 +55,7 @@ export const ExamView: React.FC<ExamViewProps> = ({
   questions, mode, onSave, onSubmit, isEvaluating,
   examDuration, onNewExam, onNavigate, onSaveExam,
   initialAnswers, onAnswersChange, onSaveProgress, examTitle,
-  scoringProfile, analysis, categoryBreakdown, onAction, examTypePreset, fatigue,
+  scoringProfile, analysis, categoryBreakdown, onAction, examTypePreset, adaptiveTarget, fatigue,
   onStartOperationPractice,
 }) => {
   const { t } = useTranslation();
@@ -188,6 +191,15 @@ export const ExamView: React.FC<ExamViewProps> = ({
   const actualBloomDistribution = useMemo(() => computeActualBloomDistribution(questions), [questions]);
   const hasBloomData = BLOOM_LEVELS.some(l => actualBloomDistribution[l] > 0);
   const targetBloomDistribution = examTypePreset ? EXAM_TYPE_BLOOM_TARGETS[examTypePreset] : null;
+
+  // Adaptive Ist-vs-Soll: bewusst nur Messung, kein Enforcement — die Vorgabe ist eine
+  // Prompt-Anweisung, das Modell darf bei fehlendem Materialbezug abweichen.
+  const actualDifficultyMix = useMemo(() => computeActualDifficultyMix(questions), [questions]);
+  const hasDifficultyData = DIFFICULTY_LEVELS.some(l => actualDifficultyMix[l] > 0);
+  const adaptiveTopicCoverage = useMemo(
+    () => adaptiveTarget ? computeTopicCoverage(questions, adaptiveTarget.topicWeights) : [],
+    [questions, adaptiveTarget],
+  );
   // Feynman passt inhaltlich besser zu Verständnis/Transfer-Schwächen als reines Faktenabfragen
   const followUpMode: 'recall' | 'quiz' =
     weakestCategory?.category === 'transfer' || weakestCategory?.category === 'verstaendnis' ? 'recall' : 'quiz';
@@ -1044,6 +1056,52 @@ export const ExamView: React.FC<ExamViewProps> = ({
                 </div>
               </div>
             ))}
+          </div>
+        </div>
+      )}
+
+      {/* Adaptive Vorgabe Ist-vs-Soll — vor dem Start als Vorschau, nach der Abgabe als
+          Kontrolle. Gleiche Nebeneinander-Optik wie die Bloom-Anzeige, keine Ampel. */}
+      {(mode === 'edit' || mode === 'result') && adaptiveTarget && (
+        <div className="rounded-[24px] sm:rounded-[32px] p-5 sm:p-8 space-y-5 animate-in fade-in duration-500" style={{ background: 'var(--bg-sidebar)', border: '1px solid var(--border-color)' }}>
+          <div>
+            <h3 className="text-lg font-black dark:text-white">{t('ev.adaptiveTitle')}</h3>
+            <p className="text-[10px] font-black uppercase tracking-widest text-slate-400">{mode === 'result' ? t('ev.adaptiveHintResult') : t('ev.adaptiveHintEdit')}</p>
+          </div>
+
+          {adaptiveTopicCoverage.length > 0 && (
+            <div className="space-y-3">
+              <p className="text-[9px] font-black uppercase tracking-widest text-slate-400">{t('ev.adaptiveTopics')}</p>
+              {adaptiveTopicCoverage.map(c => {
+                const reached = c.actual >= c.minCount;
+                return (
+                  <div key={c.topic} className="flex items-center justify-between gap-4 text-[11px] font-bold dark:text-slate-300">
+                    <span className="break-words">{c.topic}</span>
+                    <span className={`shrink-0 ${reached ? 'text-emerald-600 dark:text-emerald-400' : 'text-slate-400'}`}>
+                      {t('ev.adaptiveTopicCoverage', { target: c.minCount, actual: c.actual })}
+                    </span>
+                  </div>
+                );
+              })}
+            </div>
+          )}
+
+          <div className="space-y-3">
+            <p className="text-[9px] font-black uppercase tracking-widest text-slate-400">{t('ev.adaptiveMix')}</p>
+            {hasDifficultyData ? DIFFICULTY_LEVELS.map(level => (
+              <div key={level} className="space-y-1">
+                <div className="flex justify-between items-center text-[11px] font-bold dark:text-slate-300">
+                  <span>{t((`diff.${level}`) as TKey)}</span>
+                  <span className="text-slate-400">{t('ev.adaptiveMixTargetVsActual', { target: adaptiveTarget.difficultyMix[level], actual: actualDifficultyMix[level] })}</span>
+                </div>
+                <div className="relative h-2 bg-slate-100 dark:bg-slate-800 rounded-full overflow-hidden">
+                  <div className="absolute inset-y-0 left-0 rounded-full bg-indigo-200 dark:bg-indigo-900/40" style={{ width: `${adaptiveTarget.difficultyMix[level]}%` }} />
+                  <AnimatedBar percent={actualDifficultyMix[level]} className="absolute inset-y-0 left-0 rounded-full bg-indigo-600" duration={1000} />
+                </div>
+              </div>
+            )) : (
+              <p className="text-[10px] text-slate-400 italic">{t('ev.adaptiveNoDifficulty')}</p>
+            )}
           </div>
         </div>
       )}

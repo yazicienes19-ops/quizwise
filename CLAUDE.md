@@ -194,9 +194,15 @@ existierenden "Adaptive Klausur"-Toggle in ExamGenerator.tsx:126-133/190-193).
   recentAvgScore bekommt einen spürbar leichteren Mix als einer mit
   hohem; ein Account ohne Historie sieht exakt das bisherige Verhalten.
 
-**Bekannte Grenzen (bewusst NICHT in Paket 11 gebaut, erst nach echter Nutzung prüfen ob nötig):**
-- Kein Enforcement: adaptiveBlock/difficultyMixLine sind Prompt-Anweisungen, kein Retry/Repair falls Gemini die Mindestkontingente oder die Schwierigkeitsverteilung verfehlt (dieselbe Vertrauensbasis wie das bestehende FRAGETYPEN-VERTEILUNG-Muster). Möglicher Folgeschritt: ein Exam-Validator nach der Generierung, der Ist- gegen Soll-Verteilung prüft und bei Abweichung gezielt nachgeneriert — bei Quant-Klausuren ließe sich das direkt an den bestehenden CAS-Selbstcheck (services/mathValidation.ts) andocken.
-- computeDifficultyMix nutzt harte Schwellen (recentAvgScore ≥80/<50, Tage >21) statt einer stetigen Kurve — 79% vs. 80% erzeugen einen Sprung. Später ggf. auf eine graduelle Funktion umstellen.
+**Audit + Nachbesserung 2026-09-10 (Paket 11):**
+- Themengewichtung nutzt jetzt `buildRealTopicMastery` (echte Subthemen) statt `profile.topicMastery` (Dokumentnamen) und ist über `useModuleScopedActivity` auf das aktive Fach begrenzt — ebenso der Notenschnitt.
+- Schwache Themen werden aus `excludeTopics` ("bereits geprüft") entfernt, sonst widersprüchliche Prompt-Anweisungen (`excludeTopicsWithoutAdaptive`).
+- `computeTopicWeights` kappt hart auf ⌊n/2⌋ (vorher bei 5 Fragen/5 Themen 100 %); `computeDifficultyMix` ist stetig (65 % neutral, linear bis ±10 bei 80/50 %, Termin linear 21→42 Tage).
+- Transparenz statt Enforcement: Live-Vorschau der Soll-Vorgabe unter dem Adaptiv-Schalter (ExamGenerator) und Ist-vs-Soll-Panel in ExamView (Vorschau + Ergebnis), `AdaptiveExamTarget` wird in `ExamResult.adaptiveTarget` persistiert.
+
+**Bekannte Grenzen (bewusst NICHT gebaut, erst nach echter Nutzung prüfen ob nötig):**
+- Kein Enforcement: adaptiveBlock/difficultyMixLine sind Prompt-Anweisungen, kein Retry/Repair falls Gemini die Mindestkontingente oder die Schwierigkeitsverteilung verfehlt (dieselbe Vertrauensbasis wie das bestehende FRAGETYPEN-VERTEILUNG-Muster). Abweichungen sind jetzt aber sichtbar (Ist-vs-Soll-Panel). Möglicher Folgeschritt: gezielte Nachgenerierung bei Abweichung — bei Quant-Klausuren an den CAS-Selbstcheck (services/mathValidation.ts) andocken.
+- Klausurtermin-Signal ist fachunabhängig (ExamTerm hat keine Collection-Zuordnung).
 
 **Phase 3B/3C — ALLE 4 PUNKTE ERLEDIGT (Stand 2026-09-10):**
 - ✅ Fehler → gezielte Karteikarten: GapRadar-Empfehlung generiert per KI Karten aus den konkreten sourceErrorIds (services/geminiService.ts generateFlashcardsFromErrors), Commit 78a4123.

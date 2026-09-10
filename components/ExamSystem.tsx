@@ -1,9 +1,10 @@
 
 import React, { useState } from 'react';
-import { ExamGenerator } from './ExamGenerator';
+import { ExamGenerator, type ExamOptions } from './ExamGenerator';
+import type { AdaptiveExamTarget } from '../services/examAdaptive';
 import { ExamArchive } from './ExamArchive';
 import { ExamView } from './ExamView';
-import { ExamQuestion, ProcessedDocument, Collection, ActiveTab, ScoringProfile, ExamAnalysis, TopicMetric, FlashcardDeck, ExamTypePreset, QuantModeConfig, ExamTerm, QuizQuestion } from '../types';
+import { ExamQuestion, ProcessedDocument, Collection, ActiveTab, ScoringProfile, ExamAnalysis, TopicMetric, FlashcardDeck, ExamTypePreset, ExamTerm, QuizQuestion } from '../types';
 import { generateFullExam, evaluateWithRubric, evaluateStepByStep, classifyBloomLevels, GenerationSource } from '../services/geminiService';
 import { buildExamAnalysis } from '../services/examAnalysisService';
 import { track } from '../services/analyticsService';
@@ -33,6 +34,7 @@ interface ExamSystemProps {
     fatigue?: { earlyScore: number; lateScore: number };
     questions: ExamQuestion[];
     examTypePreset?: ExamTypePreset;
+    adaptiveTarget?: AdaptiveExamTarget;
   }) => void;
   onNavigate?: (tab: ActiveTab) => void;
   onAction?: (topic: string, mode: 'cards' | 'recall' | 'quiz') => void;
@@ -60,6 +62,7 @@ export const ExamSystem: React.FC<ExamSystemProps> = ({ documents, collections, 
   const [examDocName, setExamDocName]     = useState(translate('es.examDefaultName'));
   const [examDuration, setExamDuration]   = useState<number | undefined>(undefined);
   const [examTypePreset, setExamTypePreset] = useState<ExamTypePreset | undefined>(undefined);
+  const [adaptiveTarget, setAdaptiveTarget] = useState<AdaptiveExamTarget | undefined>(undefined);
   const [showCancelConfirm, setShowCancelConfirm] = useState(false);
   const [currentAnswers, setCurrentAnswers] = useState<Record<string, any>>(() => {
     if (!initialQuestions) return {};
@@ -72,7 +75,7 @@ export const ExamSystem: React.FC<ExamSystemProps> = ({ documents, collections, 
   const [categoryBreakdown, setCategoryBreakdown] = useState<{ category: string; score: number }[]>([]);
   const [fatigue, setFatigue] = useState<{ earlyScore: number; lateScore: number } | undefined>(undefined);
 
-  const resetExam = () => { setQuestions(null); setMode('edit'); setShowCancelConfirm(false); setExamDuration(undefined); setExamAnalysis(null); setCategoryBreakdown([]); setFatigue(undefined); };
+  const resetExam = () => { setQuestions(null); setMode('edit'); setShowCancelConfirm(false); setExamDuration(undefined); setExamAnalysis(null); setCategoryBreakdown([]); setFatigue(undefined); setAdaptiveTarget(undefined); };
 
   // Vorübergehende KI-Überlastung: clientseitig erneut versuchen. Das Backend
   // wiederholt selbst schon kurz — hier fangen wir längere Aussetzer ab und
@@ -82,13 +85,14 @@ export const ExamSystem: React.FC<ExamSystemProps> = ({ documents, collections, 
 
   const handleGenerate = async (
     content: GenerationSource, style?: GenerationSource,
-    options?: { count: number; difficulty: string; types?: string[]; adaptive?: { weakCategories: string[]; weakTopics: string[] }; excludeTopics?: string[]; recentQuestions?: string[]; examTypePreset?: ExamTypePreset; quantMode?: QuantModeConfig },
+    options?: ExamOptions,
     docName?: string, totalMinutes?: number, profile?: ScoringProfile
   ) => {
     if (docName) setExamDocName(docName.replace(/\.[^/.]+$/, ''));
     if (totalMinutes) setExamDuration(totalMinutes);
     if (profile) setScoringProfile(profile);
     setExamTypePreset(options?.examTypePreset);
+    setAdaptiveTarget(options?.adaptiveTarget);
     setIsLoading(true);
     setLoadingHint('');
 
@@ -362,7 +366,7 @@ export const ExamSystem: React.FC<ExamSystemProps> = ({ documents, collections, 
         ? { earlyScore: scoreOf(withPoints.slice(0, mid)), lateScore: scoreOf(withPoints.slice(mid)) }
         : undefined;
 
-      onComplete?.({ score, docName: examDocName, passed: score >= passThresholdPercent(), totalPoints, achievedPoints, weakTopics, categoryBreakdown, typeBreakdown, topicBreakdown, fatigue, questions: evaluated, examTypePreset });
+      onComplete?.({ score, docName: examDocName, passed: score >= passThresholdPercent(), totalPoints, achievedPoints, weakTopics, categoryBreakdown, typeBreakdown, topicBreakdown, fatigue, questions: evaluated, examTypePreset, adaptiveTarget });
       setCategoryBreakdown(categoryBreakdown);
       setFatigue(fatigue);
 
@@ -496,6 +500,7 @@ export const ExamSystem: React.FC<ExamSystemProps> = ({ documents, collections, 
         onAction={onAction}
         onStartOperationPractice={onStartOperationPractice}
         examTypePreset={examTypePreset}
+        adaptiveTarget={adaptiveTarget}
         fatigue={fatigue}
         onSaveProgress={(name) => {
           const withAnswers = questions.map(q => ({ ...q, userAnswer: currentAnswers[q.id] }));

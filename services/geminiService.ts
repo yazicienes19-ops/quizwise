@@ -1765,7 +1765,7 @@ Bisher schwache Kategorien: ${options.adaptive.weakCategories.join(', ')}.
 Gewichte die Fragenverteilung stärker auf diese Kategorien, SOFERN das Lernmaterial dazu Inhalte hergibt. Ignoriere dies, wenn das Material keinen Bezug dazu hat.`;
   }
   if (options?.adaptive?.topicWeights && options.adaptive.topicWeights.length > 0) {
-    const topicBullets = options.adaptive.topicWeights.map(w => `- Thema "${w.topic}": mindestens ${w.minCount} Fragen`).join('\n');
+    const topicBullets = options.adaptive.topicWeights.map(w => `- Thema "${sanitizeUserInput(w.topic, 80)}": mindestens ${w.minCount} Fragen`).join('\n');
     adaptiveBlock += `\n\nTHEMEN-MINDESTKONTINGENT (verbindlich, SOFERN das Material dazu Inhalte hergibt — erfinde keine Fragen zu Themen ohne Bezug im Material):\n${topicBullets}`;
   } else if (options?.adaptive?.weakTopics && options.adaptive.weakTopics.length > 0) {
     adaptiveBlock += `\n\nBisher schwache Themen: ${options.adaptive.weakTopics.join(', ')}. Bevorzuge Fragen zu diesen Themen, SOFERN das Material dazu Inhalte hergibt.`;
