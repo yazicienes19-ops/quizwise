@@ -49,7 +49,7 @@ export const FlashcardSystem: React.FC<FlashcardSystemProps> = ({
   userName,
   activeModuleId = null,
 }) => {
-  const { t } = useTranslation();
+  const { t, tp } = useTranslation();
   const moduleDocuments = useMemo(
     () => activeModuleId ? availableDocuments.filter(d => d.collectionId === activeModuleId) : availableDocuments,
     [availableDocuments, activeModuleId],
@@ -362,7 +362,7 @@ export const FlashcardSystem: React.FC<FlashcardSystemProps> = ({
         setDecks(merged);
         localStorage.setItem('flashcard_decks', JSON.stringify(merged));
         if (userId) uploadAllDecksToSupabase(imported, userId).catch(() => {});
-        toast.success(`${imported.length} Deck${imported.length !== 1 ? 's' : ''} mit ${imported.reduce((sum, d) => sum + d.cards.length, 0)} Karten importiert.`);
+        toast.success(tp('fcs.decksImported', imported.length, { cards: imported.reduce((sum, d) => sum + d.cards.length, 0) }));
       } catch {
         toast.error(t('fcs.importReadError'));
       } finally {
@@ -385,7 +385,7 @@ export const FlashcardSystem: React.FC<FlashcardSystemProps> = ({
         return updated;
       });
       const count = cards.length;
-      toast.success(`${count} Karte${count !== 1 ? 'n' : ''} zu "${decks.find(d => d.id === targetDeckId)?.title}" hinzugefügt.`);
+      toast.success(tp('fcs.cardsAddedTo', count, { deck: decks.find(d => d.id === targetDeckId)?.title ?? '' }));
     } else {
       const newDeck: FlashcardDeck = {
         id: Math.random().toString(36).substr(2, 9),
@@ -394,7 +394,7 @@ export const FlashcardSystem: React.FC<FlashcardSystemProps> = ({
       };
       updatedDecks = [...decks, newDeck];
       changedDeck = newDeck;
-      toast.success(`${cards.length} Karte${cards.length !== 1 ? 'n' : ''} in "${newDeck.title}" importiert.`);
+      toast.success(tp('fcs.cardsImportedInto', cards.length, { deck: newDeck.title }));
     }
     saveDecks(updatedDecks, changedDeck);
   };

@@ -370,7 +370,7 @@ const FeynmanActivity: React.FC<{
             onDecksChange(updatedDecks);
             localStorage.setItem('flashcard_decks', JSON.stringify(updatedDecks));
             if (userId) saveDeckToSupabase(newDeck, userId).catch(() => {});
-            toast.success(`${cards.length} Karteikarten erstellt`);
+            toast.success(t('kg.cardsCreated', { n: cards.length }));
           }}
         />
       </React.Suspense>

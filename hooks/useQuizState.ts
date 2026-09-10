@@ -12,6 +12,7 @@ import { interleaveByKey, interleaveQuestionsByTopic } from '../services/interle
 import { countDueCards, migrateLegacyCard, createSrsState } from '../services/spacedRepetition';
 import { recordActivity } from '../services/streakService';
 import { toast } from '../services/toast';
+import { t as translate, tp as translatePlural } from '../i18n';
 import { getAllResults } from '../services/quizHistoryService';
 import { getAllExamResults } from '../services/examHistoryService';
 import { getAllRecallResults } from '../services/recallHistoryService';
@@ -156,7 +157,7 @@ export const useQuizState = (params: UseQuizStateParams) => {
       if (progress.answers?.length > 0) setQuizInitialAnswers(progress.answers);
       if (progress.meta) setActiveQuizMeta(progress.meta);
       params.setActiveTab(ActiveTab.QUIZ);
-      setTimeout(() => toast.info(`Quiz fortgesetzt – Frage ${progress.answers.length + 1} von ${progress.questions.length}`), 500);
+      setTimeout(() => toast.info(translate('qs.resumed', { current: progress.answers.length + 1, total: progress.questions.length })), 500);
     }
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
@@ -164,7 +165,7 @@ export const useQuizState = (params: UseQuizStateParams) => {
   const handleSaveQuiz = (name: string) => {
     saveQuizToStorage({ name, docName: activeQuizMeta?.docName || 'Quiz', questions });
     setSavedQuizzes(getSavedQuizzes());
-    toast.success('Quiz gespeichert!');
+    toast.success(translate('qs.saved'));
   };
 
   const handleLoadSavedQuiz = (quiz: SavedQuiz) => {
@@ -273,7 +274,7 @@ export const useQuizState = (params: UseQuizStateParams) => {
   /** Startet eine Wiederholungs-Session aus fälligen Fehlerfragen (interleaved). */
   const handleStartMistakeReview = () => {
     const due = getDueMistakes();
-    if (!due.length) { toast.info('Keine fälligen Fragen zum Wiederholen.'); return; }
+    if (!due.length) { toast.info(translate('qs.noDue')); return; }
     // Interleaving: nie zwei Fragen zum selben Thema hintereinander
     const ordered = interleaveByKey(due, i => i.question.topic || i.docName);
     clearQuizProgress();
@@ -309,7 +310,7 @@ export const useQuizState = (params: UseQuizStateParams) => {
       setReviewSessionItems(null);
       const dueCardsLeft = params.decks.reduce((sum, d) =>
         sum + countDueCards(d.cards.map(c => c.srs ? c : { ...c, srs: migrateLegacyCard(c) })), 0);
-      toast.success(`Wiederholung abgeschlossen: ${correct} von ${ans.length} richtig${dueCardsLeft > 0 ? ` · Noch ${dueCardsLeft} Karte${dueCardsLeft !== 1 ? 'n' : ''} fällig` : ''}`);
+      toast.success(translate('qs.reviewDone', { correct, total: ans.length }) + (dueCardsLeft > 0 ? translatePlural('qs.reviewDueLeft', dueCardsLeft) : ''));
       recordActivity(params.userId);
       return;
     }
@@ -354,7 +355,7 @@ export const useQuizState = (params: UseQuizStateParams) => {
       saveMeta(activeQuizMeta.docId, { flashcardCount: (current.flashcardCount ?? 0) + cards.length });
     }
 
-    toast.success(`${cards.length} Karteikarten aus Fehlern erstellt`);
+    toast.success(translate('qs.cardsFromMistakes', { n: cards.length }));
     params.setPendingActionDoc(null);
     params.setActiveTab(ActiveTab.CARDS);
   };

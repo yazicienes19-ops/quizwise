@@ -65,7 +65,7 @@ export const getSharedLibrary = async (id: string): Promise<SharedLibrary | null
     .from('shared_collections')
     .select('id, owner_id, owner_name, name, emoji, color, documents, created_at')
     .eq('id', id)
-    .single();
-  if (error) return null;
+    .maybeSingle();
+  if (error || !data) return null;
   return data as SharedLibrary;
 };

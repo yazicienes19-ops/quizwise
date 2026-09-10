@@ -59,7 +59,7 @@ export const SharedDeckPage: React.FC<SharedDeckPageProps> = ({
     };
     onAccepted(newDeck);
     setAccepted(true);
-    toast.success(`"${deck.name}" wurde zu deinen Karten hinzugefügt!`);
+    toast.success(t('sdp.addedToast', { name: deck.name }));
   };
 
   if (loading) {

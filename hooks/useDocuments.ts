@@ -15,6 +15,7 @@ import {
   UploadTimeoutError,
 } from '../services/documentService';
 import { toast } from '../services/toast';
+import { t as translate } from '../i18n';
 import { track } from '../services/analyticsService';
 import { documentDisplayName } from '../services/libraryService';
 import { persistDocs, loadCachedDocs } from '../services/docLocalCache';
@@ -92,7 +93,7 @@ export const useDocuments = ({ user, userPlan, isOffline, setIsLoading, setShowU
           setTimeout(() => { if (!cancelled) load(false); }, 15_000);
         }
       } catch {
-        if (isFirst && refreshTick === 0) toast.error('Dokumente konnten nicht aus der Cloud geladen werden.');
+        if (isFirst && refreshTick === 0) toast.error(translate('up.cloudLoadFailed'));
       }
     };
 
@@ -188,23 +189,23 @@ export const useDocuments = ({ user, userPlan, isOffline, setIsLoading, setShowU
     onProgress?: (fraction: number) => void,
   ): Promise<string | null> => {
     let file = fileInput;
-    if (isOffline) { toast.error('Hochladen ist im Offline-Modus nicht möglich.'); return null; }
+    if (isOffline) { toast.error(translate('up.offline')); return null; }
 
     const FREE_DOC_LIMIT = 5;
     if (userPlan === 'free' && documents.length >= FREE_DOC_LIMIT) {
-      toast.error(`Free-Plan: Maximal ${FREE_DOC_LIMIT} Dokumente. Upgrade auf Pro für unbegrenzte Bibliothek.`);
+      toast.error(translate('up.freeLimit', { n: FREE_DOC_LIMIT }));
       setShowUpgradeModal(true);
       return null;
     }
 
     const MAX_FILE_SIZE = 50 * 1024 * 1024;
     if (file.size > MAX_FILE_SIZE) {
-      toast.error(`Datei zu groß (${(file.size / 1024 / 1024).toFixed(1)} MB). Maximum ist 50 MB.`);
+      toast.error(translate('up.tooLarge', { mb: (file.size / 1024 / 1024).toFixed(1) }));
       return null;
     }
 
     if (documents.some(d => d.name === file.name)) {
-      toast.info(`"${file.name}" ist bereits in deiner Bibliothek.`);
+      toast.info(translate('up.duplicate', { name: file.name }));
     }
 
     setIsLoading(true);
@@ -228,14 +229,14 @@ export const useDocuments = ({ user, userPlan, isOffline, setIsLoading, setShowU
           const converted = await heic2any({ blob: file, toType: 'image/jpeg', quality: 0.92 }) as Blob;
           file = new File([converted], file.name.replace(/\.(heic|heif)$/i, '.jpg'), { type: 'image/jpeg' });
         } catch {
-          toast.error('HEIC-Konvertierung fehlgeschlagen. Bitte als JPEG exportieren.');
+          toast.error(translate('up.heicFailed'));
           return null;
         }
       }
 
       if (ext === 'pdf') {
         docType = 'pdf';
-        if (!user) { toast.error('Zum Speichern von PDFs bitte zuerst anmelden.'); return null; }
+        if (!user) { toast.error(translate('up.loginForPdf')); return null; }
       } else if (ext && IMAGE_MIME[ext]) {
         // Bilder folgen derselben Regel wie PDFs: Datei gehört in den Supabase
         // Storage, NICHT als Base64 in content. Historisch wurde hier parallel
@@ -245,7 +246,7 @@ export const useDocuments = ({ user, userPlan, isOffline, setIsLoading, setShowU
         // also keine persistierbare Kopie → gleiche Anmeldung-Pflicht wie PDF.
         docType = 'image';
         imageMimeType = IMAGE_MIME[ext];
-        if (!user) { toast.error('Zum Speichern von Bildern bitte zuerst anmelden.'); return null; }
+        if (!user) { toast.error(translate('up.loginForImage')); return null; }
       } else if (ext === 'docx') {
         const { default: mammoth } = await import('mammoth');
         const arrayBuffer = await file.arrayBuffer();
@@ -257,7 +258,7 @@ export const useDocuments = ({ user, userPlan, isOffline, setIsLoading, setShowU
       }
 
       if ((docType === 'text' || docType === 'docx') && content.length > 450_000) {
-        toast.error('Dokument sehr groß — nur der erste Teil wird verarbeitet. Für beste Ergebnisse empfehlen wir PDF.');
+        toast.error(translate('up.veryLarge'));
       }
 
       const newDoc: ProcessedDocument = {
@@ -289,18 +290,18 @@ export const useDocuments = ({ user, userPlan, isOffline, setIsLoading, setShowU
               triggerDocumentAnalysis(newDoc.id);
               setRefreshTick(t => t + 1);
             })
-            .catch(() => toast.error('Cloud-Sync fehlgeschlagen. Dokument nur lokal gespeichert.'));
+            .catch(() => toast.error(translate('up.syncFailed')));
         }
       }
       track('first_upload', { type: docType }, true);
       return newDoc.id;
     } catch (e) {
       if (e instanceof UploadStalledError) {
-        toast.error(`Verbindung beim Hochladen von "${file.name}" unterbrochen. Bitte erneut versuchen (stabiles WLAN hilft bei großen Dateien).`);
+        toast.error(translate('up.stalled', { name: file.name }));
       } else if (e instanceof UploadTimeoutError) {
-        toast.error(`Hochladen von "${file.name}" dauert ungewöhnlich lange und wurde abgebrochen. Bitte erneut versuchen.`);
+        toast.error(translate('up.timeout', { name: file.name }));
       } else {
-        toast.error('Dokument konnte nicht verarbeitet werden.');
+        toast.error(translate('up.failed'));
       }
       return null;
     } finally {

@@ -40,7 +40,7 @@ export const getSharedDeck = async (id: string): Promise<SharedDeck | null> => {
     .from('shared_decks')
     .select('id, owner_id, owner_name, name, cards, created_at')
     .eq('id', id)
-    .single();
-  if (error) return null;
+    .maybeSingle();
+  if (error || !data) return null;
   return data as SharedDeck;
 };

@@ -105,7 +105,7 @@ export const GraphSystem: React.FC<GraphSystemProps> = ({
   userId, collections, activeModuleId, documents, getDocumentSource, onStartFeynman, initialDoc,
   decks, onDecksChange, updateMetricsAfterSession, onApiError, isDark,
 }) => {
-  const { t } = useTranslation();
+  const { t, tp } = useTranslation();
 
   const effectiveCollectionId = initialDoc?.collectionId ?? activeModuleId ?? undefined;
   const scope: GraphScope = effectiveCollectionId
@@ -265,13 +265,13 @@ export const GraphSystem: React.FC<GraphSystemProps> = ({
     try {
       const built = buildRelationSuggestionSource(graph.state);
       if (!built) {
-        toast.success('Zu wenig Nodes für einen Beziehungs-Check.');
+        toast.success(t('kg.tooFewForRelations'));
         return;
       }
       const raw = await suggestMissingRelationships(built.source);
       const valid = validateRelationSuggestions(graph.state, raw);
       setMissingRelationSuggestions(valid);
-      if (valid.length === 0) toast.success('Keine plausiblen fehlenden Beziehungen gefunden.');
+      if (valid.length === 0) toast.success(t('kg.noMissingRelations'));
     } catch (e) {
       onApiError(e);
       toast.error(resolveErrorMessage(e));
@@ -310,13 +310,13 @@ export const GraphSystem: React.FC<GraphSystemProps> = ({
     try {
       const built = buildDuplicateSuggestionSource(graph.state);
       if (!built) {
-        toast.success('Zu wenig Nodes für einen Duplikat-Check.');
+        toast.success(t('kg.tooFewForDuplicates'));
         return;
       }
       const raw = await suggestDuplicateConcepts(built.source);
       const valid = validateDuplicateSuggestions(graph.state, raw);
       setDuplicateSuggestions(valid);
-      if (valid.length === 0) toast.success('Keine vermutlichen Duplikate gefunden.');
+      if (valid.length === 0) toast.success(t('kg.noDuplicates'));
     } catch (e) {
       onApiError(e);
       toast.error(resolveErrorMessage(e));
@@ -362,7 +362,7 @@ export const GraphSystem: React.FC<GraphSystemProps> = ({
     if (keepNode) graph.onEntityChanged({ kind: 'node', entity: keepNode });
     if (removedNode) graph.onEntityChanged({ kind: 'node', entity: removedNode });
     graph.onSelectionChange(selectNode(graph.selection, suggestion.nodeAId));
-    toast.success(`Zusammengeführt: ${result.movedEdges} Kante${result.movedEdges === 1 ? '' : 'n'} übernommen${result.notesAppended ? ', Notizen ergänzt' : ''}. Rückgängig möglich.`);
+    toast.success(`${tp('kg.mergedEdges', result.movedEdges)}${result.notesAppended ? t('kg.mergedNotes') : ''}${t('kg.mergedUndo')}`);
     setDuplicateSuggestions(prev => (prev ?? []).filter(s => s !== suggestion));
     setMergingPairKey(null);
   };
@@ -380,17 +380,17 @@ export const GraphSystem: React.FC<GraphSystemProps> = ({
     try {
       const built = buildMissingConceptSource(graph.state, documents);
       if (built.status === 'no-linked-documents') {
-        toast.success('Keine mit Nodes verknüpften Dokumente gefunden — zuerst über "Eigene Unterlagen" welche verknüpfen.');
+        toast.success(t('kg.noLinkedDocs'));
         return;
       }
       if (built.status === 'no-readable-documents') {
-        toast.success(`${built.linkedCount} verknüpfte${built.linkedCount === 1 ? 's' : ''} Dokument${built.linkedCount === 1 ? '' : 'e'} noch nicht lesbar — Digest läuft noch oder ist fehlgeschlagen. Später erneut versuchen.`);
+        toast.success(tp('kg.docsNotReadable', built.linkedCount));
         return;
       }
       const raw = await suggestMissingConcepts(built.source);
       const valid = validateMissingConceptSuggestions(graph.state, raw);
       setMissingConceptSuggestions(valid);
-      if (valid.length === 0) toast.success('Keine fehlenden Konzepte gefunden — der Graph deckt das verknüpfte Material bereits ab.');
+      if (valid.length === 0) toast.success(t('kg.noMissingConcepts'));
     } catch (e) {
       onApiError(e);
       toast.error(resolveErrorMessage(e));
@@ -456,7 +456,7 @@ export const GraphSystem: React.FC<GraphSystemProps> = ({
     changedEntities.forEach(change => graph.onEntityChanged(change));
     setMoveTargetId('');
     setIsMoving(false);
-    toast.success(`${changedEntities.length} ${changedEntities.length === 1 ? 'Node' : 'Nodes'} zugeordnet.`);
+    toast.success(tp('kg.nodesAssigned', changedEntities.length));
   };
 
   // Welches Dokument gerade im Reader-Overlay offen ist — nur eine ID, damit

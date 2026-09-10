@@ -636,7 +636,7 @@ export const GapRadar: React.FC<GapRadarProps> = ({ metrics, onNavigate, onActio
       const key = await computeFingerprint();
       saveCachedAnalysis(key, result);
     } catch (e: any) {
-      toast.error(`Analyse fehlgeschlagen: ${resolveErrorMessage(e)}`);
+      toast.error(t('gr.analysisFailed', { msg: resolveErrorMessage(e) }));
     } finally {
       setIsAnalyzing(false);
     }
