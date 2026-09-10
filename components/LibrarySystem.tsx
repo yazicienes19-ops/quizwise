@@ -330,7 +330,7 @@ export const LibrarySystem: React.FC<LibrarySystemProps> = ({
                       <button
                         onClick={e => {
                           e.stopPropagation();
-                          if (window.confirm(`Ordner „${col.name}" löschen? Die Dokumente bleiben erhalten (werden unsortiert).`)) {
+                          if (window.confirm(t('lib.deleteFolderConfirm', { name: col.name }))) {
                             onDeleteCollection(col.id);
                           }
                         }}
@@ -580,7 +580,7 @@ export const LibrarySystem: React.FC<LibrarySystemProps> = ({
 
               <nav className="space-y-1">
                 {colBtn('all',           '🌐', 'Alle',       documents.length)}
-                {colBtn('uncategorized', '📥', 'Unsortiert', documents.filter(d => !d.collectionId).length)}
+                {colBtn('uncategorized', '📥', t('lib.uncategorized'), documents.filter(d => !d.collectionId).length)}
                 {collections.length > 0 && <div className="pt-2 space-y-1" style={{ borderTop: '1px solid var(--border-color)' }}>
                   {collections.map(col => (
                     <div key={col.id} className="group relative">
@@ -605,7 +605,7 @@ export const LibrarySystem: React.FC<LibrarySystemProps> = ({
                         </button>
                         <button
                           onClick={() => {
-                            if (window.confirm(`Ordner „${col.name}" löschen? Dokumente bleiben erhalten.`)) {
+                            if (window.confirm(t('lib.deleteFolderConfirm', { name: col.name }))) {
                               onDeleteCollection(col.id);
                             }
                           }}

@@ -355,6 +355,7 @@ const App: React.FC = () => {
       ? getAllRecallResults().filter(r => r.docName === folderName).map(r => r.topic)
       : [];
     removeCollectionRaw(id);
+    if (activeModuleId === id) setActiveModuleId(null);
     if (!folderName) return;
     const stillUsed = new Set(getAllRecallResults().map(r => r.topic));
     removeMetricsForTopics([folderName, ...topicsFromFolder.filter(t => !stillUsed.has(t))]);

@@ -391,7 +391,7 @@ export const ExamSystem: React.FC<ExamSystemProps> = ({ documents, collections, 
         </div>
         <div className="text-center space-y-2">
           <p className="text-2xl font-black text-slate-800 dark:text-white uppercase tracking-tighter">{t('es.conceiving')}</p>
-          <p className="text-slate-500 dark:text-slate-400 font-medium italic">"Gute Lehre braucht Zeit - auch bei KIs"</p>
+          <p className="text-slate-500 dark:text-slate-400 font-medium italic">{t('es.conceivingHint')}</p>
           {loadingHint && (
             <p className="text-[11px] font-black uppercase tracking-widest text-amber-600 dark:text-amber-400 pt-2 animate-pulse">
               {loadingHint}

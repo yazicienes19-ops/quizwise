@@ -127,6 +127,11 @@ export const useDocuments = ({ user, userPlan, isOffline, setIsLoading, setShowU
   const removeCollection = (id: string) => {
     const col = collections.find(c => c.id === id);
     saveCollections(collections.filter(c => c.id !== id));
+    // Die Cloud setzt collection_id per FK auf null, lokal muss das gespiegelt werden —
+    // sonst verschwinden die Dokumente bis zum nächsten Cloud-Load komplett aus der Bibliothek.
+    if (documents.some(d => d.collectionId === id)) {
+      saveDocs(documents.map(d => d.collectionId === id ? { ...d, collectionId: undefined } : d));
+    }
     if (user) deleteCollectionFromSupabase(id).catch(() => {});
     // Der Ordner selbst kann als Quelle für Klausur/Feynman über den gesamten
     // Ordner gedient haben ("Ordner: <Name>", siehe collectionSource.ts) — die

@@ -1114,7 +1114,7 @@ export const ExamView: React.FC<ExamViewProps> = ({
             <div key={q.id} className="relative group p-6 -m-6 rounded-[32px] hover:bg-slate-50 dark:hover:bg-slate-900/50 transition-colors">
 
               {mode === 'edit' && !isEditing && (
-                <button onClick={() => startEditing(q)} aria-label="Frage bearbeiten" className="absolute top-6 right-6 opacity-0 group-hover:opacity-100 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 p-2 rounded-xl text-slate-400 hover:text-indigo-600 transition-all shadow-sm z-10">
+                <button onClick={() => startEditing(q)} aria-label={t('ev.editQuestion')} className="absolute top-6 right-6 opacity-0 group-hover:opacity-100 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 p-2 rounded-xl text-slate-400 hover:text-indigo-600 transition-all shadow-sm z-10">
                   <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
                     <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 1 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/>
                   </svg>
@@ -1124,8 +1124,8 @@ export const ExamView: React.FC<ExamViewProps> = ({
               {isEditing && tempQuestion ? (
                 <div className="space-y-6 animate-in fade-in zoom-in-95 p-5 sm:p-8 bg-white dark:bg-slate-800 rounded-[24px] sm:rounded-[32px] shadow-2xl ring-4 ring-indigo-500/20">
                   <div className="flex justify-between items-center">
-                    <h3 className="text-xl font-black dark:text-white">Aufgabe {idx + 1} anpassen</h3>
-                    <input type="number" value={tempQuestion.points} onChange={e => setTempQuestion({ ...tempQuestion, points: parseInt(e.target.value) })} className="w-16 p-2 bg-slate-50 dark:bg-slate-900 rounded-xl text-center font-black dark:text-white" />
+                    <h3 className="text-xl font-black dark:text-white">{t('ev.editTaskN', { n: idx + 1 })}</h3>
+                    <input type="number" value={tempQuestion.points} onChange={e => setTempQuestion({ ...tempQuestion, points: Math.max(0, parseInt(e.target.value, 10) || 0) })} className="w-16 p-2 bg-slate-50 dark:bg-slate-900 rounded-xl text-center font-black dark:text-white" />
                   </div>
                   <textarea value={tempQuestion.question} onChange={e => setTempQuestion({ ...tempQuestion, question: e.target.value })} className="w-full p-4 bg-slate-50 dark:bg-slate-900 rounded-2xl dark:text-white border-2 border-transparent focus:border-indigo-500 outline-none" />
                   <div className="flex justify-end gap-3">
@@ -1137,13 +1137,13 @@ export const ExamView: React.FC<ExamViewProps> = ({
                 <div className="space-y-6">
                   <div className="flex justify-between items-start gap-4">
                     <div className="flex items-center gap-3">
-                      <span className="font-black text-xl dark:text-white">Aufgabe {idx + 1}:</span>
+                      <span className="font-black text-xl dark:text-white">{t('ev.taskN', { n: idx + 1 })}:</span>
                       <span className="text-[9px] font-black uppercase tracking-widest bg-slate-100 dark:bg-slate-800 text-slate-400 px-2.5 py-1 rounded-full">
                         {getTypeLabel(q.type)}
                       </span>
                     </div>
                     <span className="text-[10px] font-mono bg-slate-100 dark:bg-slate-800 px-3 py-1 rounded-lg dark:text-slate-400 uppercase tracking-widest shrink-0">
-                      [{q.points} Pkt.]
+                      [{t('ev.pointsN', { n: q.points })}]
                     </span>
                   </div>
 

@@ -115,7 +115,7 @@ export const SharedLibraryPage: React.FC<SharedLibraryPageProps> = ({ shareId, u
             className="px-6 py-3 rounded-2xl text-[10px] font-black uppercase tracking-widest transition-all hover:scale-105"
             style={{ background: 'var(--primary)', color: 'var(--primary-text)' }}
           >
-            Zur App
+            {t('rpp.backToApp')}
           </button>
         </div>
       </div>
