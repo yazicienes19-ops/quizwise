@@ -21,9 +21,7 @@ import { documentDisplayName } from '../services/libraryService';
 import { buildCollectionSource } from '../services/collectionSource';
 import { toast } from '../services/toast';
 import { buildLearningProfile } from '../services/learningProfileService';
-import { getAllResults } from '../services/quizHistoryService';
-import { getAllRecallResults } from '../services/recallHistoryService';
-import { getAllExamResults } from '../services/examHistoryService';
+import { useModuleScopedActivity } from '../hooks/useModuleScopedActivity';
 import { getStreak } from '../services/streakService';
 import { renderMarkdown, parseInline } from './markdownRenderer';
 
@@ -57,6 +55,7 @@ interface ExplainerSystemProps {
 }
 
 const uid = (): string => Math.random().toString(36).slice(2, 9);
+const EMPTY_DISMISSED = new Set<string>();
 
 const MODES: { id: TutorMode; icon: typeof MessageCircle; titleKey: TKey; descKey: TKey }[] = [
   { id: 'explain', icon: MessageCircle, titleKey: 'tut.mode.explain', descKey: 'tut.mode.explain.desc' },
@@ -131,13 +130,22 @@ export const ExplainerSystem: React.FC<ExplainerSystemProps> = ({
   const hasTts = typeof window !== 'undefined' && 'speechSynthesis' in window;
 
   // ── Lernprofil: schwache Themen als Vorschläge ──
+  // Bug-Fix 2026-09-10: bezog sich bisher auf die GESAMTE Historie — bei
+  // aktivem Fach konnten Vorschläge aus komplett anderen Fächern erscheinen
+  // (gleiches Muster wie GapRadar/Dashboard, s. hooks/useModuleScopedActivity).
+  const activeModuleCollection = useMemo(
+    () => activeModuleId ? collections.find(c => c.id === activeModuleId) ?? null : null,
+    [collections, activeModuleId],
+  );
+  const { quizResults: moduleQuizResults, examResults: moduleExamResults, recallResults: moduleRecallResults } =
+    useModuleScopedActivity(activeModuleCollection, availableDocuments, EMPTY_DISMISSED);
   const profile = useMemo(() => buildLearningProfile({
     metrics, decks,
-    quizResults: getAllResults(),
-    recallResults: getAllRecallResults(),
-    examResults: getAllExamResults(),
+    quizResults: moduleQuizResults,
+    recallResults: moduleRecallResults,
+    examResults: moduleExamResults,
     streak: getStreak(),
-  }), [metrics, decks]);
+  }), [metrics, decks, moduleQuizResults, moduleRecallResults, moduleExamResults]);
   const suggestions = useMemo(() =>
     profile.topicMastery.filter(t => t.security !== 'sicher').slice(0, 5),
   [profile.topicMastery]);

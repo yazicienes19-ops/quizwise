@@ -270,6 +270,7 @@ export const AppContent: React.FC<AppContentProps> = (p) => {
           onStart={handleStartQuizFromSetup}
           onBack={() => { setPendingActionDoc(null); setPendingTopic(null); setActiveTab(fromRadar ? ActiveTab.RADAR : ActiveTab.LIBRARY); }}
           initialFocus={pendingTopic ? 'weak' : 'all'}
+          activeModuleId={activeModuleId}
         />;
       }
       if (questions.length > 0 && answers.length === 0) return <QuizPlayer
@@ -442,6 +443,7 @@ export const AppContent: React.FC<AppContentProps> = (p) => {
         initialDoc={pendingActionDoc ?? undefined}
         initialFocusTopic={pendingTopic ?? undefined}
         autoStart={!!(pendingActionDoc && pendingTopic)}
+        activeModuleId={activeModuleId}
       />;
 
     case ActiveTab.EXAM: return (
@@ -494,6 +496,7 @@ export const AppContent: React.FC<AppContentProps> = (p) => {
           onNavigate={setActiveTab}
           onAction={handleWeakTopicAction}
           onStartOperationPractice={handleStartOperationPractice}
+          activeModuleId={activeModuleId}
         />
       </div>
     );
@@ -515,7 +518,7 @@ export const AppContent: React.FC<AppContentProps> = (p) => {
 
     case ActiveTab.PAPER:
       if (!isAdmin(user?.id)) return <Dashboard onTabChange={setActiveTab} flowResult={flowResult} onAcceptFlow={saveFlowResult} documents={documents} decks={decks} metrics={metrics} collections={collections} activeModuleId={activeModuleId} onStartMistakeReview={handleStartMistakeReview} user={user} />;
-      return <TermPaperSystem availableDocuments={documents} onUploadNew={handleFileUpload} initialSources={savedSources} getDocumentSource={getDocumentSource} />;
+      return <TermPaperSystem availableDocuments={documents} onUploadNew={handleFileUpload} initialSources={savedSources} getDocumentSource={getDocumentSource} activeModuleId={activeModuleId} />;
 
     case ActiveTab.SEARCH:
       if (!isAdmin(user?.id)) return <Dashboard onTabChange={setActiveTab} flowResult={flowResult} onAcceptFlow={saveFlowResult} documents={documents} decks={decks} metrics={metrics} collections={collections} activeModuleId={activeModuleId} onStartMistakeReview={handleStartMistakeReview} user={user} />;
@@ -556,6 +559,7 @@ export const AppContent: React.FC<AppContentProps> = (p) => {
           } catch (e) { handleApiError(e); } finally { setIsLoading(false); }
         }}
         initialDoc={pendingActionDoc ?? undefined}
+        activeModuleId={activeModuleId}
       />;
 
     case ActiveTab.KNOWLEDGE_GRAPH:

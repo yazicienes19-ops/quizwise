@@ -42,11 +42,12 @@ interface ExamSystemProps {
   metrics: TopicMetric[];
   decks: FlashcardDeck[];
   examTerms?: ExamTerm[];
+  activeModuleId?: string | null;
 }
 
 const DEFAULT_SCORING_PROFILE: ScoringProfile = { mode: 'standard', emphases: [] };
 
-export const ExamSystem: React.FC<ExamSystemProps> = ({ documents, collections, getDocumentSource, onSaveToLibrary, onComplete, onNavigate, onAction, onStartOperationPractice, initialDoc, initialQuestions, metrics, decks, examTerms }) => {
+export const ExamSystem: React.FC<ExamSystemProps> = ({ documents, collections, getDocumentSource, onSaveToLibrary, onComplete, onNavigate, onAction, onStartOperationPractice, initialDoc, initialQuestions, metrics, decks, examTerms, activeModuleId }) => {
   const { t } = useTranslation();
   // Auch gespeicherte/ältere Klausuren durch die Normalisierung schicken —
   // unbewertbare Aufgaben dürfen nie in die Wertung zählen.
@@ -410,6 +411,7 @@ export const ExamSystem: React.FC<ExamSystemProps> = ({ documents, collections, 
         metrics={metrics}
         decks={decks}
         examTerms={examTerms}
+        activeModuleId={activeModuleId}
       />
       <ExamArchive />
     </>;

@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import { AcademicSource, CitationStyle, SearchResult, ProcessedDocument, MultiStyleCitation, PaperFramework } from '../types';
 import { EmojiImage } from './EmojiImage';
 import { generatePaperFramework, formatCitationFull, GenerationSource, magicFormatCitation, lookupCitationSource } from '../services/geminiService';
@@ -11,6 +11,10 @@ interface TermPaperSystemProps {
   onUploadNew: (file: File) => void;
   initialSources?: SearchResult[];
   getDocumentSource: (doc: ProcessedDocument) => GenerationSource;
+  /** Aktives Fach aus der Sidebar (Bug-Fix 2026-09-10) — die Quellen-Liste für
+   *  Zitate zeigte bisher alle Dokumente kontoweit statt nur die des gewählten
+   *  Fachs. null/undefined = "Alle Fächer", keine Einschränkung. */
+  activeModuleId?: string | null;
 }
 
 type Tab = 'guide' | 'outline' | 'phrases' | 'sources' | 'citations' | 'magic' | 'paraphrase' | 'checklist';
@@ -317,8 +321,12 @@ const CHECKLIST_GROUPS = [
 // ─── Main Component ───────────────────────────────────────────────────────────
 
 export const TermPaperSystem: React.FC<TermPaperSystemProps> = ({
-  availableDocuments, initialSources = [], getDocumentSource,
+  availableDocuments, initialSources = [], getDocumentSource, activeModuleId = null,
 }) => {
+  const moduleDocuments = useMemo(
+    () => activeModuleId ? availableDocuments.filter(d => d.collectionId === activeModuleId) : availableDocuments,
+    [availableDocuments, activeModuleId],
+  );
   const [tab, setTab]                         = useState<Tab>('guide');
   // Outline
   const [topic, setTopic]                     = useState('');
@@ -617,11 +625,11 @@ export const TermPaperSystem: React.FC<TermPaperSystemProps> = ({
                     ))}
                   </div>
                 </div>
-                {availableDocuments.length > 0 && (
+                {moduleDocuments.length > 0 && (
                   <div>
                     <label className="text-[9px] font-black uppercase tracking-widest text-slate-400 block mb-2">Dokumente als Basis</label>
                     <div className="space-y-2 max-h-32 overflow-y-auto">
-                      {availableDocuments.map(doc => (
+                      {moduleDocuments.map(doc => (
                         <div key={doc.id}
                           role="checkbox"
                           tabIndex={0}

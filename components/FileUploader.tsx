@@ -168,10 +168,12 @@ export const FileUploader: React.FC<FileUploaderProps> = ({
         </div>
       )}
 
-      {/* Source Selection via SourceSelector */}
+      {/* Source Selection via SourceSelector — Bug-Fix 2026-09-10: zeigte bisher
+          immer alle Dokumente kontoweit, auch mit aktivem Fach + "Andere Quelle
+          wählen" (activeModule kommt oben schon aus dem Fach-Kontext). */}
       {mode === 'source' && !(folderReady && !moduleOverride) && (
         <SourceSelector
-          documents={documents}
+          documents={activeModule ? documents.filter(d => d.collectionId === activeModule.id) : documents}
           collections={collections}
           onSelectDocument={doc => onDocumentSelect(doc, selectedQuizType, getOptions())}
           onSelectSource={(source, name) => onSourceSelect(source, name, selectedQuizType, getOptions())}

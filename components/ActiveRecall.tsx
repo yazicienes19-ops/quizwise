@@ -14,13 +14,13 @@ import { toast } from '../services/toast';
 import { documentDisplayName } from '../services/libraryService';
 import { buildRealTopicMastery } from '../services/learningProfileService';
 import { buildCollectionSource } from '../services/collectionSource';
-import { getAllResults } from '../services/quizHistoryService';
-import { getAllRecallResults } from '../services/recallHistoryService';
 import { rankTopicsForNextChallenge } from '../services/recallGaps';
 import { getCoverage, markTopicCovered } from '../services/recallCoverageService';
 import { detectChaptersForDoc, type Chapter } from '../services/chapterService';
 import { getDoneChapterIndices } from '../services/chapterProgressService';
-import { getAllExamResults } from '../services/examHistoryService';
+import { useModuleScopedActivity } from '../hooks/useModuleScopedActivity';
+
+const EMPTY_DISMISSED = new Set<string>();
 
 interface ActiveRecallProps {
   availableDocuments: ProcessedDocument[];
@@ -35,6 +35,10 @@ interface ActiveRecallProps {
   initialFocusTopic?: string;
   /** Startet die Herausforderung automatisch, sobald die Quelle gesetzt ist — kein manueller Klick nötig. */
   autoStart?: boolean;
+  /** Aktives Fach aus der Sidebar (Bug-Fix 2026-09-10) — die Quellen-Auswahl
+   *  zeigte bisher alle Dokumente kontoweit statt nur die des gewählten Fachs.
+   *  null/undefined = "Alle Fächer", keine Einschränkung. */
+  activeModuleId?: string | null;
 }
 
 export const ActiveRecall: React.FC<ActiveRecallProps> = ({
@@ -47,8 +51,23 @@ export const ActiveRecall: React.FC<ActiveRecallProps> = ({
   initialDoc,
   initialFocusTopic,
   autoStart,
+  activeModuleId = null,
 }) => {
   const { t } = useTranslation();
+  const moduleDocuments = useMemo(
+    () => activeModuleId ? availableDocuments.filter(d => d.collectionId === activeModuleId) : availableDocuments,
+    [availableDocuments, activeModuleId],
+  );
+  const activeModuleCollection = useMemo(
+    () => activeModuleId ? collections.find(c => c.id === activeModuleId) ?? null : null,
+    [collections, activeModuleId],
+  );
+  // Bug-Fix 2026-09-10: Themen-Vorschläge UND die Auswahl des nächsten Drill-
+  // Themas (unten, rankTopicsForNextChallenge) bezogen sich bisher auf die
+  // GESAMTE Historie — bei aktivem Fach konnte ein Bio-Thema als Drill für
+  // "Allgemeine 1" vorgeschlagen werden. Gleiches Muster wie GapRadar/Dashboard.
+  const { quizResults: moduleQuizResults, examResults: moduleExamResults, recallResults: moduleRecallResults } =
+    useModuleScopedActivity(activeModuleCollection, availableDocuments, EMPTY_DISMISSED);
   const [activeSource, setActiveSource] = useState<GenerationSource | null>(null);
   const [activeSourceName, setActiveSourceName] = useState('');
   /** Gesetzt nur bei Einzeldokument-Quellen — Basis für die Themen-Abdeckung. */
@@ -56,12 +75,13 @@ export const ActiveRecall: React.FC<ActiveRecallProps> = ({
   const [coverageBump, setCoverageBump] = useState(0);
   const [focusTopic, setFocusTopic] = useState(initialFocusTopic ?? '');
 
-  // Schwache echte Themen als Fokus-Vorschläge (gleiche Quelle wie der Lern-Coach)
+  // Schwache echte Themen als Fokus-Vorschläge (gleiche Quelle wie der Lern-Coach),
+  // bei aktivem Fach auf dessen Historie beschränkt (moduleQuizResults/-exam/-recall).
   const topicSuggestions = useMemo(() =>
-    buildRealTopicMastery(getAllResults(), getAllExamResults(), getAllRecallResults())
+    buildRealTopicMastery(moduleQuizResults, moduleExamResults, moduleRecallResults)
       .filter(t => t.security !== 'sicher')
       .slice(0, 5),
-  []);
+  [moduleQuizResults, moduleExamResults, moduleRecallResults]);
   const [challenge, setChallenge] = useState<RecallChallenge | null>(null);
   const [userAnswer, setUserAnswer] = useState('');
   const [evaluation, setEvaluation] = useState<RecallEvaluation | null>(null);
@@ -249,7 +269,7 @@ export const ActiveRecall: React.FC<ActiveRecallProps> = ({
       const dropNames = new Set(
         [activeSourceName, ...availableDocuments.map(d => documentDisplayName(d))].map(n => n.trim().toLowerCase())
       );
-      const relevantResults = getAllRecallResults().filter(r => !dropNames.has((r.topic ?? '').trim().toLowerCase()));
+      const relevantResults = moduleRecallResults.filter(r => !dropNames.has((r.topic ?? '').trim().toLowerCase()));
       const { preferTopics, excludeTopics } = rankTopicsForNextChallenge(
         topicSuggestions.map(s => s.topic),
         relevantResults,
@@ -390,7 +410,7 @@ export const ActiveRecall: React.FC<ActiveRecallProps> = ({
             </div>
           ) : (
             <SourceSelector
-              documents={availableDocuments}
+              documents={moduleDocuments}
               collections={collections}
               onSelectDocument={handleSelectDocument}
               onSelectSource={(source, name) => { setActiveSource(source); setActiveSourceName(name); setActiveDoc(null); }}

@@ -58,6 +58,10 @@ interface ExamGeneratorProps {
   metrics: TopicMetric[];
   decks: FlashcardDeck[];
   examTerms?: ExamTerm[];
+  /** Aktives Fach aus der Sidebar (Bug-Fix 2026-09-10) — Material- UND
+   *  Altklausur-Stil-Auswahl zeigten bisher alle Dokumente kontoweit statt nur
+   *  die des gewählten Fachs. null/undefined = "Alle Fächer", keine Einschränkung. */
+  activeModuleId?: string | null;
 }
 
 const EXAM_TYPE_IDS: ExamQuestion['type'][] = ['mc', 'matching', 'truefalse', 'fillblank', 'ranking', 'numeric', 'open'];
@@ -73,8 +77,13 @@ export const ExamGenerator: React.FC<ExamGeneratorProps> = ({
   metrics,
   decks,
   examTerms,
+  activeModuleId = null,
 }) => {
   const { t } = useTranslation();
+  const moduleDocuments = useMemo(
+    () => activeModuleId ? documents.filter(d => d.collectionId === activeModuleId) : documents,
+    [documents, activeModuleId],
+  );
   const [contentSource, setContentSource] = useState<GenerationSource | null>(null);
   const [contentName, setContentName] = useState('');
 
@@ -107,8 +116,8 @@ export const ExamGenerator: React.FC<ExamGeneratorProps> = ({
 
   const altklausurDocs = useMemo(() => {
     const meta = getAllMeta();
-    return documents.filter(d => meta[d.id]?.isAltklausur);
-  }, [documents]);
+    return moduleDocuments.filter(d => meta[d.id]?.isAltklausur);
+  }, [moduleDocuments]);
   const [questionCount, setQuestionCount] = useState(10);
   const [difficulty, setDifficulty] = useState<'leicht' | 'mittel' | 'schwer'>('mittel');
   const [scoringMode, setScoringMode] = useState<ScoringMode>('standard');
@@ -287,7 +296,7 @@ export const ExamGenerator: React.FC<ExamGeneratorProps> = ({
               )}
             </div>
             <SourceSelector
-              documents={documents}
+              documents={moduleDocuments}
               collections={collections}
               onSelectDocument={handleSelectDocument}
               onSelectSource={(source, name) => { setContentSource(source); setContentName(name); }}

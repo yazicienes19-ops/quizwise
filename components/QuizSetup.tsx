@@ -13,6 +13,10 @@ interface QuizSetupProps {
   onStart: (config: QuizConfig, docIds: string[]) => void;
   onBack: () => void;
   initialFocus?: QuizConfig['focus'];
+  /** Aktives Fach aus der Sidebar (Bug-Fix 2026-09-10) — die "weitere Dokumente"-
+   *  Auswahl für Multi-Doc-Quiz zeigte bisher alle Dokumente kontoweit statt nur
+   *  die des gewählten Fachs. null/undefined = "Alle Fächer", keine Einschränkung. */
+  activeModuleId?: string | null;
 }
 
 const QUESTION_TYPES: { value: 'mixed' | ConcreteQuestionType; labelKey: TKey; descKey: TKey }[] = [
@@ -60,7 +64,7 @@ const Chip: React.FC<{ selected: boolean; onClick: () => void; label: string; de
   </button>
 );
 
-export const QuizSetup: React.FC<QuizSetupProps> = ({ doc, availableDocs, onStart, onBack, initialFocus }) => {
+export const QuizSetup: React.FC<QuizSetupProps> = ({ doc, availableDocs, onStart, onBack, initialFocus, activeModuleId = null }) => {
   const { t } = useTranslation();
   // 'mixed' als Sonderwert im Set, oder 1+ konkrete Typen — nie leer (fällt bei
   // Abwahl des letzten konkreten Typs automatisch auf 'mixed' zurück).
@@ -116,7 +120,7 @@ export const QuizSetup: React.FC<QuizSetupProps> = ({ doc, availableDocs, onStar
     });
   };
 
-  const otherDocs = availableDocs?.filter(d => d.id !== doc.id) ?? [];
+  const otherDocs = availableDocs?.filter(d => d.id !== doc.id && (!activeModuleId || d.collectionId === activeModuleId)) ?? [];
 
   const stats = useMemo(() => getDocStats(doc.id), [doc.id]);
   const docTitle = documentDisplayName(doc);

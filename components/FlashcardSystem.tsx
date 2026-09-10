@@ -30,6 +30,10 @@ interface FlashcardSystemProps {
   initialDoc?: ProcessedDocument;
   userId?: string;
   userName?: string | null;
+  /** Aktives Fach aus der Sidebar (Bug-Fix 2026-09-10) — die Dokument-Auswahl
+   *  für ein neues Deck zeigte bisher alle Dokumente kontoweit statt nur die
+   *  des gewählten Fachs. null/undefined = "Alle Fächer", keine Einschränkung. */
+  activeModuleId?: string | null;
 }
 
 export const FlashcardSystem: React.FC<FlashcardSystemProps> = ({
@@ -43,8 +47,13 @@ export const FlashcardSystem: React.FC<FlashcardSystemProps> = ({
   initialDoc,
   userId,
   userName,
+  activeModuleId = null,
 }) => {
   const { t } = useTranslation();
+  const moduleDocuments = useMemo(
+    () => activeModuleId ? availableDocuments.filter(d => d.collectionId === activeModuleId) : availableDocuments,
+    [availableDocuments, activeModuleId],
+  );
   const [decks, setDecks] = useState<FlashcardDeck[]>([]);
   const [activeDeckId, setActiveDeckId] = useState<string | null>(null);
   const [sessionCards, setSessionCards] = useState<Flashcard[]>([]);
@@ -712,7 +721,7 @@ export const FlashcardSystem: React.FC<FlashcardSystemProps> = ({
                 </div>
               ) : (
                 <SourceSelector
-                  documents={availableDocuments}
+                  documents={moduleDocuments}
                   collections={collections}
                   onSelectDocument={handleSelectDocument}
                   onSelectSource={(source, name) => handleGenerateFromSource(source, name)}
