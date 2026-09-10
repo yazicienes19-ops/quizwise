@@ -118,7 +118,12 @@ describe('useKnowledgeGraph — onChange / onSelectionChange', () => {
     vi.spyOn(sync, 'pullSince').mockResolvedValue(pulled);
 
     const { result } = renderHook(() => useKnowledgeGraph({ scope: ALL, userId: 'user-1' }));
-    await waitFor(() => expect(result.current.loading).toBe(false));
+    // Höheres Timeout (Standard 1000ms) — unter Volllast der Voll-Suite (viele
+    // parallele Worker) kann die Mikrotask-Verarbeitung des gemockten
+    // pullSince-Promise so weit verzögert werden, dass der Default reißt,
+    // obwohl kein echtes Timing-Verhalten geprüft wird (Feature-Audit 2026-08-22
+    // beobachtete Flakiness genau hier).
+    await waitFor(() => expect(result.current.loading).toBe(false), { timeout: 5000 });
 
     // Ein Commit über getState() sieht die Remote-Änderung, selbst wenn die
     // aufrufende Closure (Drag/Edit-Geste) vor dem Merge begonnen hat.
@@ -153,7 +158,8 @@ describe('useKnowledgeGraph — onEntityChanged (Autosave)', () => {
 
   it('verwendet den GERADE ERST per onChange gesetzten State, nicht einen veralteten (stateRef-Fix)', async () => {
     const { result } = renderHook(() => useKnowledgeGraph({ scope: ALL, userId: 'user-1' }));
-    await waitFor(() => expect(result.current.loading).toBe(false));
+    // s. Kommentar oben (LWW-Fix-Test) — dasselbe Volllast-Flakiness-Risiko.
+    await waitFor(() => expect(result.current.loading).toBe(false), { timeout: 5000 });
 
     // onChange und onEntityChanged werden synchron nacheinander aufgerufen,
     // wie GraphCanvas es tatsächlich tut (z.B. in handleBackgroundDoubleClick).

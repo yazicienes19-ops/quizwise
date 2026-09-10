@@ -198,14 +198,13 @@ existierenden "Adaptive Klausur"-Toggle in ExamGenerator.tsx:126-133/190-193).
 - Kein Enforcement: adaptiveBlock/difficultyMixLine sind Prompt-Anweisungen, kein Retry/Repair falls Gemini die Mindestkontingente oder die Schwierigkeitsverteilung verfehlt (dieselbe Vertrauensbasis wie das bestehende FRAGETYPEN-VERTEILUNG-Muster). Möglicher Folgeschritt: ein Exam-Validator nach der Generierung, der Ist- gegen Soll-Verteilung prüft und bei Abweichung gezielt nachgeneriert — bei Quant-Klausuren ließe sich das direkt an den bestehenden CAS-Selbstcheck (services/mathValidation.ts) andocken.
 - computeDifficultyMix nutzt harte Schwellen (recentAvgScore ≥80/<50, Tage >21) statt einer stetigen Kurve — 79% vs. 80% erzeugen einen Sprung. Später ggf. auf eine graduelle Funktion umstellen.
 
-**Danach (Phase 3B/3C, erst nach Validierung von Paket 11, noch nicht spezifiziert):**
-Fehler → gezielte Karteikarten/Mini-Quiz, SRS-Priorisierung nach Klausur-
-fehlern (spacedRepetition.ts direkt wiederverwendbar, generisch über
-{srs?: SrsState}), Quant-Operationstraining aus DistractorErrorType
-(types.ts:463, bereits vorhanden, bisher nur Erzähltext in errorPool.ts),
-danach vorsichtig formulierter Bereitschaftsscore/Notenprognose
-("entspricht ungefähr einer X, basiert auf den letzten N Simulationen" —
-nie als Vorhersage formulieren).
+**Phase 3B/3C — ALLE 4 PUNKTE ERLEDIGT (Stand 2026-09-10):**
+- ✅ Fehler → gezielte Karteikarten: GapRadar-Empfehlung generiert per KI Karten aus den konkreten sourceErrorIds (services/geminiService.ts generateFlashcardsFromErrors), Commit 78a4123.
+- ✅ SRS-Priorisierung nach Klausurfehlern: war schon vorhanden, services/mistakeReviewService.ts (addExamMistakes, SM-2 über spacedRepetition.ts).
+- ✅ Quant-Operationstraining aus DistractorErrorType: "Jetzt üben"-Button im Klausur-Ergebnis bei erkanntem Rechenfehler-Typ, generiert gezielte Übungsaufgaben (services/geminiService.ts generateOperationPractice), Commit 430af34.
+- ✅ Bereitschaftsscore/Notenprognose: war schon vorhanden, services/examForecastService.ts (buildExamForecast) — Zerfall+Trend+Mischprognose, als Bereich mit Vertrauens-Label ausgegeben, nie als harte Vorhersage.
+
+Nächste Phase noch nicht spezifiziert.
 
 ---
 
