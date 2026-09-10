@@ -121,6 +121,9 @@ interface AppContentProps {
 
 export const AppContent: React.FC<AppContentProps> = (p) => {
   const { t, tp } = useTranslation();
+  // Wohin "Zurück" aus dem Splitscreen-Reader führt: dorthin, wo er geöffnet wurde
+  // (Bibliothek oder Tutor), nicht pauschal in die Bibliothek.
+  const [readerOrigin, setReaderOrigin] = React.useState<ActiveTab>(ActiveTab.LIBRARY);
   const {
     activeTab, setActiveTab, isLoading, setIsLoading, user, userPlan,
     documents, collections, handleFileUpload, retryAnalysis, activeModuleId, deleteDoc, addCollection, removeCollection, updateCollection, moveDoc, getDocumentSource,
@@ -242,7 +245,10 @@ export const AppContent: React.FC<AppContentProps> = (p) => {
         onRetryAnalysis={retryAnalysis}
         onAction={(tab, doc) => {
           if (tab === ActiveTab.QUIZ) { setPendingActionDoc(doc); setQuestions([]); setAnswers([]); setActiveTab(ActiveTab.QUIZ); }
-          else if (tab === ActiveTab.EXPLAINER || tab === ActiveTab.CARDS || tab === ActiveTab.RECALL || tab === ActiveTab.EXAM || tab === ActiveTab.READER || tab === ActiveTab.KNOWLEDGE_GRAPH) { setPendingActionDoc(doc); setActiveTab(tab); }
+          else if (tab === ActiveTab.EXPLAINER || tab === ActiveTab.CARDS || tab === ActiveTab.RECALL || tab === ActiveTab.EXAM || tab === ActiveTab.READER || tab === ActiveTab.KNOWLEDGE_GRAPH) {
+            if (tab === ActiveTab.READER) setReaderOrigin(ActiveTab.LIBRARY);
+            setPendingActionDoc(doc); setActiveTab(tab);
+          }
           else { setPendingActionDoc(null); setActiveTab(tab); }
         }}
         onAddCollection={addCollection} onDeleteCollection={removeCollection}
@@ -396,7 +402,7 @@ export const AppContent: React.FC<AppContentProps> = (p) => {
           key={`pdf-reader-${pendingActionDoc.id}`}
           doc={pendingActionDoc}
           userId={user?.id}
-          onBack={() => { setPendingActionDoc(null); setActiveTab(ActiveTab.LIBRARY); }}
+          onBack={() => { setPendingActionDoc(null); setActiveTab(readerOrigin); }}
           onStartFeynman={(topic) => { setPendingTopic(topic); setActiveTab(ActiveTab.RECALL); }}
           getDocumentSource={getDocumentSource}
         />;
@@ -405,7 +411,7 @@ export const AppContent: React.FC<AppContentProps> = (p) => {
         key={`reader-${pendingActionDoc.id}`}
         doc={pendingActionDoc}
         userId={user?.id}
-        onBack={() => { setPendingActionDoc(null); setActiveTab(ActiveTab.LIBRARY); }}
+        onBack={() => { setPendingActionDoc(null); setActiveTab(readerOrigin); }}
         onStartFeynman={(topic) => { setPendingTopic(topic); setActiveTab(ActiveTab.RECALL); }}
         onRetryAnalysis={() => retryAnalysis(pendingActionDoc.id)}
       />;
@@ -512,8 +518,10 @@ export const AppContent: React.FC<AppContentProps> = (p) => {
         onSaveToLibrary={file => handleFileUpload(file)}
         initialDoc={pendingActionDoc ?? undefined}
         metrics={metrics} decks={decks} setDecks={setDecks}
-        onOpenReader={doc => { setPendingActionDoc(doc); setActiveTab(ActiveTab.READER); }}
+        onOpenReader={doc => { setReaderOrigin(ActiveTab.EXPLAINER); setPendingActionDoc(doc); setActiveTab(ActiveTab.READER); }}
         activeModuleId={activeModuleId}
+        userName={userName}
+        userId={user?.id}
       />;
 
     case ActiveTab.PAPER:

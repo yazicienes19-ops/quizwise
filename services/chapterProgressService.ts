@@ -17,12 +17,19 @@ const readAll = (): AllProgress => {
   try { return JSON.parse(localStorage.getItem(STORAGE_KEY) || '{}'); } catch { return {}; }
 };
 
+const syncToCloud = (all: AllProgress, userId: string): void => {
+  import('./syncService').then(({ syncSavedField }) => syncSavedField(userId, 'reading_progress', all)).catch(() => {});
+};
+
 const writeAll = (all: AllProgress, userId?: string | null): void => {
   localStorage.setItem(STORAGE_KEY, JSON.stringify(all));
-  if (userId) {
-    import('./syncService').then(({ syncSavedField }) => syncSavedField(userId, 'reading_progress', all)).catch(() => {});
-  }
+  if (userId) syncToCloud(all, userId);
 };
+
+// Blättern löst pro Seite einen Cloud-Upsert aus; mit Pfeiltasten wären das
+// Dutzende Schreibvorgänge pro Minute. Lokal sofort, Cloud gesammelt.
+const LAST_PAGE_SYNC_DELAY_MS = 1500;
+let lastPageSyncTimer: ReturnType<typeof setTimeout> | null = null;
 
 /** Speichert die zuletzt besuchte Seite/Kapitel (0-basierter Index, wie
  *  chapterIndex überall sonst in diesem Service) — Grundlage für "beim
@@ -30,7 +37,13 @@ const writeAll = (all: AllProgress, userId?: string | null): void => {
 export function saveLastPage(docId: string, pageIndex: number, userId?: string | null): void {
   const all = readAll();
   all.__lastPages = { ...(all.__lastPages ?? {}), [docId]: pageIndex };
-  writeAll(all, userId);
+  localStorage.setItem(STORAGE_KEY, JSON.stringify(all));
+  if (!userId) return;
+  if (lastPageSyncTimer) clearTimeout(lastPageSyncTimer);
+  lastPageSyncTimer = setTimeout(() => {
+    lastPageSyncTimer = null;
+    syncToCloud(readAll(), userId);
+  }, LAST_PAGE_SYNC_DELAY_MS);
 }
 
 /** undefined = noch nie geöffnet oder keine gespeicherte Position. */

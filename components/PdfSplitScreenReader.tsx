@@ -14,24 +14,13 @@ import { documentDisplayName } from '../services/libraryService';
 import { resolveErrorMessage } from '../services/errorMessages';
 import { renderMarkdown } from './markdownRenderer';
 import { toast } from '../services/toast';
-import { EmojiImage } from './EmojiImage';
-import { detectSelectionAction, type SelectionAction } from '../services/selectionAction';
 import { useTranslation } from '../i18n/I18nProvider';
-import type { TKey } from '../i18n';
+import { ReaderTutorPane } from './ReaderTutorPane';
+import { SelectionActionButton, readSelection, selectionQuestion, type ReaderSelection } from './SelectionActionButton';
 
 /** Ab dieser Verweildauer gilt eine Seite beim Weiterblättern automatisch als gelesen —
  *  schnelles Durchblättern zählt bewusst nicht, der Button bleibt als Abkürzung. */
 const AUTO_READ_MS = 10_000;
-
-/** Mindest-Freiraum über der Markierung, damit der Button dort noch passt —
- *  sonst rutscht er unter die Markierung (wie bei nativer macOS/iOS-Auswahl). */
-const SELECTION_BUTTON_CLEARANCE = 46;
-
-const SELECTION_ACTION_META: Record<SelectionAction, { emoji: string; labelKey: TKey }> = {
-  term: { emoji: '💡', labelKey: 'rd.actionExplainTerm' },
-  ask: { emoji: '🧠', labelKey: 'rd.actionAskTutor' },
-  summarize: { emoji: '📝', labelKey: 'rd.actionSummarize' },
-};
 
 interface ChatEntry {
   concept: string;
@@ -91,7 +80,7 @@ export const PdfSplitScreenReader: React.FC<PdfSplitScreenReaderProps> = ({ doc,
   /** Aktive Maus-Textauswahl auf der Seite (Position relativ zur PDF-Fläche).
    *  `placement` bestimmt, ob der schwebende Button ÜBER oder UNTER der
    *  Markierung sitzt (siehe handleTextSelection). */
-  const [selection, setSelection] = useState<{ text: string; x: number; y: number; action: SelectionAction; placement: 'above' | 'below' } | null>(null);
+  const [selection, setSelection] = useState<ReaderSelection | null>(null);
   /** Dokument-Inhaltsverzeichnis — null = wird noch im Hintergrund ermittelt. */
   const [toc, setToc] = useState<PdfTocEntry[] | null>(null);
   const [tocOpen, setTocOpen] = useState(false);
@@ -330,21 +319,7 @@ export const PdfSplitScreenReader: React.FC<PdfSplitScreenReaderProps> = ({ doc,
   // verdeckt sie damit nie), springt aber automatisch UNTER die Markierung,
   // wenn oben nicht genug Platz ist (z.B. ganz oben auf der Seite).
   const handleTextSelection = useCallback(() => {
-    const sel = window.getSelection();
-    const text = sel?.toString().replace(/\s+/g, ' ').trim() ?? '';
-    if (text.length < 8 || !sel || sel.rangeCount === 0) { setSelection(null); return; }
-    const rect = sel.getRangeAt(0).getBoundingClientRect();
-    const area = pdfAreaRef.current?.getBoundingClientRect();
-    if (!area) return;
-    const spaceAbove = rect.top - area.top;
-    const placement: 'above' | 'below' = spaceAbove >= SELECTION_BUTTON_CLEARANCE ? 'above' : 'below';
-    setSelection({
-      text: text.slice(0, 600),
-      action: detectSelectionAction(text),
-      placement,
-      x: Math.max(90, Math.min(rect.left - area.left + rect.width / 2, area.width - 90)),
-      y: placement === 'above' ? rect.top - area.top - 10 : rect.bottom - area.top + 10,
-    });
+    setSelection(readSelection(pdfAreaRef.current));
   }, []);
 
   // Touch-Geräte: Selection-API ist dieselbe wie bei der Maus, aber der native
@@ -356,12 +331,7 @@ export const PdfSplitScreenReader: React.FC<PdfSplitScreenReaderProps> = ({ doc,
 
   const handleAskSelection = useCallback(() => {
     if (!selection) return;
-    const question = selection.action === 'term'
-      ? t('rd.explainTermQuestion', { term: selection.text })
-      : selection.action === 'summarize'
-        ? t('rd.summarizeSelectionQuestion', { text: selection.text })
-        : t('rd.selectionQuestion', { text: selection.text.slice(0, 300) });
-    handleAsk(question);
+    handleAsk(selectionQuestion(selection, t));
     setSelection(null);
     window.getSelection()?.removeAllRanges();
   }, [selection, handleAsk, t]);
@@ -418,7 +388,7 @@ export const PdfSplitScreenReader: React.FC<PdfSplitScreenReaderProps> = ({ doc,
       <div className="max-w-3xl mx-auto py-20 px-4 text-center space-y-4">
         <p className="text-lg font-black dark:text-white">{t('rd.pdfLoadFailed')}</p>
         <button onClick={onBack} className="px-6 py-3 rounded-2xl text-[11px] font-black uppercase tracking-widest" style={{ background: 'var(--primary)', color: 'var(--primary-text)' }}>
-          Zurück
+          {t('rd.backToLibrary')}
         </button>
       </div>
     );
@@ -486,7 +456,7 @@ export const PdfSplitScreenReader: React.FC<PdfSplitScreenReaderProps> = ({ doc,
           Höhe liegt auf den Panes selbst — Grid-Zeilen dehnen sich sonst am Inhalt. */}
       <div className="grid grid-cols-1 lg:grid-cols-10 gap-4">
         {/* Links: PDF-Seite */}
-        <div className="relative lg:col-span-7 rounded-[24px] p-3 lg:p-4 flex flex-col gap-3 h-[80vh] lg:h-[calc(100vh-6rem)]" style={{ background: 'var(--bg-sidebar)', border: '1px solid var(--border-color)' }}>
+        <div className="relative lg:col-span-7 rounded-[24px] p-3 lg:p-4 flex flex-col gap-3 h-[calc(100vh-21rem)] min-h-[300px] lg:h-[calc(100vh-6rem)]" style={{ background: 'var(--bg-sidebar)', border: '1px solid var(--border-color)' }}>
           {/* Inhaltsverzeichnis-Overlay: reine Dokument-Navigation, keine App-Funktionen
               (Bibliothek/Einstellungen/etc.) — legt sich nur über diese Spalte, der
               Tutor rechts bleibt unberührt und unabgedunkelt. */}
@@ -645,43 +615,20 @@ export const PdfSplitScreenReader: React.FC<PdfSplitScreenReaderProps> = ({ doc,
                 nach dem Umfang der Markierung (siehe detectSelectionAction), Position
                 weicht wie bei nativer Textauswahl nach oben ODER unten aus, verdeckt
                 den markierten Text also nie. */}
-            {selection && (
-              <div
-                className="absolute z-20 animate-in fade-in duration-150"
-                style={{
-                  left: selection.x,
-                  top: selection.y,
-                  transform: `translate(-50%, ${selection.placement === 'above' ? '-100%' : '0'})`,
-                  transformOrigin: selection.placement === 'above' ? 'bottom center' : 'top center',
-                }}
-              >
-                <button
-                  onClick={handleAskSelection}
-                  className="flex items-center gap-1.5 px-3.5 py-2 rounded-full text-[10px] font-black uppercase tracking-wide shadow-lg transition-transform hover:scale-105"
-                  style={{ background: 'var(--primary)', color: 'var(--primary-text)' }}
-                >
-                  <EmojiImage emoji={SELECTION_ACTION_META[selection.action].emoji} size={13} />
-                  {t(SELECTION_ACTION_META[selection.action].labelKey)}
-                </button>
-              </div>
-            )}
+            {selection && <SelectionActionButton selection={selection} onClick={handleAskSelection} />}
           </div>
         </div>
 
-        {/* Rechts: Erklärer-Chat */}
-        <div className="lg:col-span-3 rounded-[24px] p-4 lg:p-6 gap-4 flex flex-col h-[80vh] lg:h-[calc(100vh-6rem)]" style={{ background: 'var(--bg-sidebar)', border: '1px solid var(--border-color)' }}>
-          <div>
-            <p className="text-[10px] font-black uppercase tracking-widest" style={{ color: 'var(--primary)' }}>{t('nav.explainer')}</p>
-            <p className="text-xs text-slate-400 font-medium">
-              {t('rd.askPage', { n: pageNumber })}
-              {pageText !== null && isScannedPage(pageText) && t('rd.scanDetected')}
-            </p>
-          </div>
-
-          <div className="space-y-4 flex-1 min-h-0 overflow-y-auto pr-2">
-            {activeChat.length === 0 && (
-              <p className="text-xs text-slate-400 italic">{t('rd.noQuestionsPage')}</p>
-            )}
+        {/* Rechts: Tutor-Spalte (ab lg), sonst Bottom Sheet über dem PDF */}
+        <ReaderTutorPane
+          hint={`${t('rd.askPage', { n: pageNumber })}${pageText !== null && isScannedPage(pageText) ? t('rd.scanDetected') : ''}`}
+          placeholder={t('rd.askPagePlaceholder', { n: pageNumber })}
+          emptyText={t('rd.noQuestionsPage')}
+          entryCount={activeChat.length}
+          value={concept}
+          onChange={setConcept}
+          onAsk={() => handleAsk()}
+        >
             {activeChat.map((entry, i) => (
               <div key={i} className="space-y-2">
                 <div className="flex items-center gap-2 flex-wrap">
@@ -702,13 +649,14 @@ export const PdfSplitScreenReader: React.FC<PdfSplitScreenReaderProps> = ({ doc,
                     <div className="rounded-2xl p-4" style={{ background: 'var(--bg-main)', border: '1px solid var(--border-color)' }}>
                       {renderMarkdown(entry.answer)}
                     </div>
-                    {entry.quote && !entry.expandedScope && (
+                    {entry.quote && (
                       <div className="rounded-2xl p-3.5" style={{ background: 'color-mix(in srgb, var(--primary) 8%, transparent)', border: '1px solid color-mix(in srgb, var(--primary) 25%, transparent)' }}>
                         <div className="flex items-center justify-between gap-2 mb-1">
                           <p className="text-[9px] font-black uppercase tracking-widest" style={{ color: 'var(--primary)' }}>
-                            {t('rd.quoteSourcePage', { n: pageNumber })}
+                            {entry.expandedScope ? t('rd.quoteSourceDoc') : t('rd.quoteSourcePage', { n: pageNumber })}
                           </p>
-                          <button
+                          {/* Zitate aus dem Gesamtdokument stehen nicht auf dieser Seite, dafür gibt es keine Markierung */}
+                          {!entry.expandedScope && <button
                             onClick={() => setHighlight(prev =>
                               prev && prev.page === pageNumber && prev.quote === entry.quote
                                 ? null
@@ -720,7 +668,7 @@ export const PdfSplitScreenReader: React.FC<PdfSplitScreenReaderProps> = ({ doc,
                               : { border: '1px solid color-mix(in srgb, var(--primary) 40%, transparent)', color: 'var(--primary)' }}
                           >
                             {highlight?.page === pageNumber && highlight?.quote === entry.quote ? t('rd.unmarkInPdf') : t('rd.markInPdf')}
-                          </button>
+                          </button>}
                         </div>
                         <p className="text-xs font-medium italic text-slate-600 dark:text-slate-300 break-words">„{entry.quote}"</p>
                       </div>
@@ -747,29 +695,10 @@ export const PdfSplitScreenReader: React.FC<PdfSplitScreenReaderProps> = ({ doc,
                 ) : null}
               </div>
             ))}
-          </div>
-
-          <div className="pt-1 flex gap-2">
-            <input
-              type="text"
-              value={concept}
-              onChange={e => setConcept(e.target.value)}
-              onKeyDown={e => { if (e.key === 'Enter') handleAsk(); }}
-              placeholder={t('rd.askPagePlaceholder', { n: pageNumber })}
-              className="flex-1 px-4 py-3 rounded-2xl text-sm font-bold outline-none transition-all min-w-0"
-              style={{ background: 'var(--bg-main)', border: '1px solid var(--border-color)', color: 'var(--text-main)' }}
-            />
-            <button
-              onClick={() => handleAsk()}
-              disabled={concept.trim().length <= 2}
-              className="shrink-0 px-5 py-3 rounded-2xl text-[10px] font-black uppercase tracking-widest transition-all disabled:opacity-40 disabled:cursor-not-allowed"
-              style={{ background: 'var(--primary)', color: 'var(--primary-text)' }}
-            >
-              {t('rd.ask')}
-            </button>
-          </div>
-        </div>
+        </ReaderTutorPane>
       </div>
+      {/* Platz für das eingeklappte Tutor-Sheet auf kleinen Bildschirmen */}
+      <div className="h-36 lg:hidden" />
 
       {/* Feynman-Hinweis */}
       {doneIndices.length > 0 && (

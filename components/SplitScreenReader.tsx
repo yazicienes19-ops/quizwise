@@ -16,6 +16,8 @@ import { toast } from '../services/toast';
 import { documentDisplayName } from '../services/libraryService';
 import { useTranslation } from '../i18n/I18nProvider';
 import { DigestStatusBadge } from './SourceStatusBadge';
+import { ReaderTutorPane } from './ReaderTutorPane';
+import { SelectionActionButton, readSelection, selectionQuestion, type ReaderSelection } from './SelectionActionButton';
 
 interface ChatEntry {
   concept: string;
@@ -84,6 +86,9 @@ export const SplitScreenReader: React.FC<SplitScreenReaderProps> = ({ doc, userI
   const [handoffVersion, setHandoffVersion] = useState(0);
   const [concept, setConcept] = useState('');
   const [tocOpen, setTocOpen] = useState(false);
+  /** Aktive Textauswahl im Lesebereich, wie im PDF-Reader (Position relativ zu readerAreaRef). */
+  const [selection, setSelection] = useState<ReaderSelection | null>(null);
+  const readerAreaRef = useRef<HTMLDivElement>(null);
 
   const activeChapter: Chapter | undefined = chapters[activeIndex];
   const activeChat = activeChapter ? (chatByChapter[activeChapter.index] ?? []) : [];
@@ -129,7 +134,7 @@ export const SplitScreenReader: React.FC<SplitScreenReaderProps> = ({ doc, userI
   }, [activeChat]);
   const highlightRef = useRef<HTMLSpanElement>(null);
 
-  useEffect(() => { setConcept(''); }, [activeIndex]);
+  useEffect(() => { setConcept(''); setSelection(null); }, [activeIndex]);
 
   // Zuletzt besuchtes Kapitel merken — für "beim nächsten Öffnen dort
   // weiterlesen" (s. activeIndex-Initialisierung oben).
@@ -212,6 +217,22 @@ export const SplitScreenReader: React.FC<SplitScreenReaderProps> = ({ doc, userI
     }
   }, [concept, chatByChapter, activeChapter, doc.id, userId, fullText]);
 
+  const handleTextSelection = useCallback(() => {
+    setSelection(readSelection(readerAreaRef.current));
+  }, []);
+
+  // Touch: die native Auswahl ist bei touchend oft noch nicht eingerastet
+  const handleTextSelectionTouch = useCallback(() => {
+    setTimeout(handleTextSelection, 50);
+  }, [handleTextSelection]);
+
+  const handleAskSelection = useCallback(() => {
+    if (!selection) return;
+    handleAsk(selectionQuestion(selection, t));
+    setSelection(null);
+    window.getSelection()?.removeAllRanges();
+  }, [selection, handleAsk, t]);
+
   const handleMarkDone = () => {
     if (!activeChapter) return;
     markChapterDone(doc.id, activeChapter.index, userId);
@@ -241,7 +262,7 @@ export const SplitScreenReader: React.FC<SplitScreenReaderProps> = ({ doc, userI
           <p className="text-lg font-black dark:text-white">{t('rd.stillAnalyzing')}</p>
           <p className="text-sm text-slate-400 font-medium">{t('rd.digestHint')}</p>
           <button onClick={onBack} className="px-6 py-3 rounded-2xl text-[11px] font-black uppercase tracking-widest" style={{ background: 'var(--primary)', color: 'var(--primary-text)' }}>
-            Zurück
+            {t('rd.backToLibrary')}
           </button>
         </div>
       );
@@ -255,11 +276,11 @@ export const SplitScreenReader: React.FC<SplitScreenReaderProps> = ({ doc, userI
           <div className="flex gap-3 justify-center">
             {onRetryAnalysis && (
               <button onClick={onRetryAnalysis} className="px-6 py-3 rounded-2xl text-[11px] font-black uppercase tracking-widest" style={{ background: 'var(--primary)', color: 'var(--primary-text)' }}>
-                Erneut versuchen
+                {t('rd.retryAnalysis')}
               </button>
             )}
             <button onClick={onBack} className="px-6 py-3 rounded-2xl text-[11px] font-black uppercase tracking-widest border" style={{ borderColor: 'var(--border-color)', color: 'var(--text-main)' }}>
-              Zurück
+              {t('rd.backToLibrary')}
             </button>
           </div>
         </div>
@@ -269,7 +290,7 @@ export const SplitScreenReader: React.FC<SplitScreenReaderProps> = ({ doc, userI
       <div className="max-w-3xl mx-auto py-20 px-4 text-center space-y-4">
         <p className="text-lg font-black dark:text-white">{t('rd.noReadableText')}</p>
         <button onClick={onBack} className="px-6 py-3 rounded-2xl text-[11px] font-black uppercase tracking-widest" style={{ background: 'var(--primary)', color: 'var(--primary-text)' }}>
-          Zurück
+          {t('rd.backToLibrary')}
         </button>
       </div>
     );
@@ -280,7 +301,7 @@ export const SplitScreenReader: React.FC<SplitScreenReaderProps> = ({ doc, userI
       <div className="max-w-3xl mx-auto py-20 px-4 text-center space-y-4">
         <p className="text-lg font-black dark:text-white">{t('dvm.noTextContent')}</p>
         <button onClick={onBack} className="px-6 py-3 rounded-2xl text-[11px] font-black uppercase tracking-widest" style={{ background: 'var(--primary)', color: 'var(--primary-text)' }}>
-          Zurück
+          {t('rd.backToLibrary')}
         </button>
       </div>
     );
@@ -334,7 +355,7 @@ export const SplitScreenReader: React.FC<SplitScreenReaderProps> = ({ doc, userI
         {/* Links: Lesen — "Papier"-Hintergrund mit einem "Blatt" darauf (echter,
             selbst gerenderter HTML-Text — anders als beim PDF-Reader kann hier
             eine eigene Lese-Typografie (Serif) verwendet werden). */}
-        <div className="relative lg:col-span-7 rounded-[24px] flex flex-col h-[80vh] lg:h-[calc(100vh-6rem)] overflow-hidden" style={{ background: 'var(--bg-main)', border: '1px solid var(--border-color)' }}>
+        <div className="relative lg:col-span-7 rounded-[24px] flex flex-col h-[calc(100vh-21rem)] min-h-[300px] lg:h-[calc(100vh-6rem)] overflow-hidden" style={{ background: 'var(--bg-main)', border: '1px solid var(--border-color)' }}>
           <div
             onClick={() => setTocOpen(false)}
             className="absolute inset-0 rounded-[20px] transition-opacity duration-200 z-10"
@@ -358,7 +379,10 @@ export const SplitScreenReader: React.FC<SplitScreenReaderProps> = ({ doc, userI
 
           {activeChapter && (
             <>
-              <div className="flex-1 overflow-y-auto px-4 py-6 lg:px-8 lg:py-8">
+              {/* Nicht scrollender Rahmen als Bezugssystem für den Auswahl-Button,
+                  der Text selbst scrollt darin (gleiches Muster wie pdfAreaRef im PDF-Reader). */}
+              <div ref={readerAreaRef} className="relative flex-1 min-h-0">
+              <div className="h-full overflow-y-auto px-4 py-6 lg:px-8 lg:py-8" onMouseUp={handleTextSelection} onTouchEnd={handleTextSelectionTouch}>
                 <article className="max-w-[660px] mx-auto rounded-2xl p-8 lg:p-12" style={{ background: 'var(--bg-sidebar)', border: '1px solid var(--border-color)', boxShadow: '0 10px 30px -5px rgba(0, 0, 0, 0.08), 0 4px 10px -2px rgba(0, 0, 0, 0.03), inset 0 1px 0 0 rgba(255, 255, 255, 0.5)' }}>
                   <div className="flex items-center justify-between gap-3 mb-6">
                     <h2 className="text-2xl font-semibold tracking-tight break-words" style={{ fontFamily: 'ui-serif, Georgia, "Iowan Old Style", "Times New Roman", serif', color: 'var(--text-main)' }}>
@@ -390,6 +414,8 @@ export const SplitScreenReader: React.FC<SplitScreenReaderProps> = ({ doc, userI
                   </p>
                 </article>
               </div>
+              {selection && <SelectionActionButton selection={selection} onClick={handleAskSelection} />}
+              </div>
               <div className="shrink-0 px-4 pb-4 lg:px-8 lg:pb-6">
                 <button
                   onClick={handleMarkDone}
@@ -407,17 +433,16 @@ export const SplitScreenReader: React.FC<SplitScreenReaderProps> = ({ doc, userI
           )}
         </div>
 
-        {/* Rechts: Tutor-Chat */}
-        <div className="lg:col-span-3 rounded-[24px] p-4 lg:p-6 gap-4 flex flex-col h-[80vh] lg:h-[calc(100vh-6rem)]" style={{ background: 'var(--bg-sidebar)', border: '1px solid var(--border-color)' }}>
-          <div>
-            <p className="text-[10px] font-black uppercase tracking-widest" style={{ color: 'var(--primary)' }}>{t('nav.explainer')}</p>
-            <p className="text-xs text-slate-400 font-medium mt-0.5">{t('rd.askChapter')}</p>
-          </div>
-
-          <div className="space-y-4 flex-1 min-h-0 overflow-y-auto pr-2">
-            {activeChat.length === 0 && (
-              <p className="text-xs text-slate-400 italic">{t('rd.noQuestionsChapter')}</p>
-            )}
+        {/* Rechts: Tutor-Spalte (ab lg), sonst Bottom Sheet über dem Text */}
+        <ReaderTutorPane
+          hint={t('rd.askChapter')}
+          placeholder={t('rd.askPlaceholder')}
+          emptyText={t('rd.noQuestionsChapter')}
+          entryCount={activeChat.length}
+          value={concept}
+          onChange={setConcept}
+          onAsk={() => handleAsk()}
+        >
             {activeChat.map((entry, i) => (
               <div key={i} className="space-y-2">
                 <div className="flex items-center gap-2 flex-wrap">
@@ -465,29 +490,10 @@ export const SplitScreenReader: React.FC<SplitScreenReaderProps> = ({ doc, userI
                 ) : null}
               </div>
             ))}
-          </div>
-
-          <div className="pt-1 flex gap-2">
-            <input
-              type="text"
-              value={concept}
-              onChange={e => setConcept(e.target.value)}
-              onKeyDown={e => { if (e.key === 'Enter') handleAsk(); }}
-              placeholder={t('rd.askPlaceholder')}
-              className="flex-1 px-4 py-3 rounded-2xl text-sm font-bold outline-none transition-all min-w-0"
-              style={{ background: 'var(--bg-main)', border: '1px solid var(--border-color)', color: 'var(--text-main)' }}
-            />
-            <button
-              onClick={handleAsk}
-              disabled={concept.trim().length <= 2}
-              className="shrink-0 px-5 py-3 rounded-2xl text-[10px] font-black uppercase tracking-widest transition-all disabled:opacity-40 disabled:cursor-not-allowed"
-              style={{ background: 'var(--primary)', color: 'var(--primary-text)' }}
-            >
-              {t('rd.ask')}
-            </button>
-          </div>
-        </div>
+        </ReaderTutorPane>
       </div>
+      {/* Platz für das eingeklappte Tutor-Sheet auf kleinen Bildschirmen */}
+      <div className="h-36 lg:hidden" />
 
       {/* Feynman-Hinweis */}
       {doneIndices.length > 0 && (

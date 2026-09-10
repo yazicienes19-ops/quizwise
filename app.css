@@ -308,7 +308,13 @@ input[type="range"].range-fill::-moz-range-track {
     animation-name: enter;
     animation-duration: 150ms; /* fallback if no duration-* class is present */
     animation-timing-function: var(--ease-out);
-    animation-fill-mode: both;
+    /* backwards, nicht both: mit "both" bliebe das transform aus dem to-Keyframe
+       dauerhaft stehen. Ein transform macht das Element zum Bezugsrahmen für
+       position:fixed (Bottom Sheets, schwebende Leisten klebten am Wrapper statt
+       am Viewport) und überschreibt eigene transform-Klassen und Inline-Styles
+       (hover:scale, translate) für immer, weil Animationen über Inline-Styles
+       stehen. */
+    animation-fill-mode: backwards;
 }
 
 /* Opacity */

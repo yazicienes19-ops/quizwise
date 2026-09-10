@@ -713,7 +713,12 @@ export const Layout: React.FC<LayoutProps> = ({
       {/* Reader und Wissensnetz füllen die Fläche (Split-Screen bzw. Pan/Zoom-Kanvas brauchen jeden Pixel), alle anderen Tabs behalten den zentrierten Lesebreiten-Container.
           Bei eingeklappter Sidebar zusätzlicher linker Platz (nur ≥1024px, wo der Einblenden-Button schwebt) —
           sonst überlappt er knapp bemessene Header-Zeilen wie im Reader ("← Zurück" sitzt sonst genau darunter). */}
-      <main className={`flex-grow overflow-y-auto w-full relative ${activeTab === ActiveTab.READER
+      {/* overflow-x: clip statt overflow-y-auto: main scrollt nie selbst (wächst mit
+          dem Inhalt, das Fenster scrollt), ein overflow-Wert ungleich visible/clip
+          machte es aber zum Bezugsrahmen für position:sticky. Dadurch klebten
+          Composer, Antwortleisten und Kopfzeilen in den Tabs nie am Viewport,
+          sondern lagen am Seitenende (auf dem Handy hinter der Bottom-Nav). */}
+      <main style={{ overflowX: 'clip' }} className={`flex-grow w-full relative ${activeTab === ActiveTab.READER
         ? 'pt-[calc(4rem+env(safe-area-inset-top))] pb-20 px-2 sm:px-4 md:pt-4 md:pb-4 md:px-4'
         : 'pt-[calc(4rem+env(safe-area-inset-top))] pb-24 px-4 sm:px-6 md:pt-8 md:pb-8 md:px-8 lg:pt-16 lg:pb-16 lg:px-16'} ${sidebarCollapsed ? 'lg:pl-14' : ''}`}>
         <div className={`relative z-10 ${activeTab === ActiveTab.READER || activeTab === ActiveTab.KNOWLEDGE_GRAPH ? 'w-full' : 'max-w-6xl mx-auto'}`}>{children}</div>
