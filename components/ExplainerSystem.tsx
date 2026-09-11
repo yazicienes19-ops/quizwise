@@ -306,14 +306,25 @@ export const ExplainerSystem: React.FC<ExplainerSystemProps> = ({
     persistSession(withUser);
     setIsTyping(true);
     try {
+      // Streaming: eine Platzhalter-Nachricht wächst mit. Protokollzeilen
+      // (Weiterfragen/Quelle), auch halb angekommene, bleiben verborgen, bis die
+      // fertige Antwort unten sauber geparst wird; gleiche id = kein Flackern.
+      const placeholderId = uid();
       const raw = await chatWithTutor(activeSource, history, trimmed, {
         mode, useExternalKnowledge: external, includeSourceQuote: !!activeSource,
+      }, partial => {
+        const lastBreak = partial.lastIndexOf('\n');
+        const tail = partial.slice(lastBreak + 1).trimStart();
+        const settled = tail.startsWith('*') ? partial.slice(0, Math.max(lastBreak, 0)) : partial;
+        const visible = parseTutorResponse(settled).content;
+        if (!visible) return;
+        setMessages([...withUser, { id: placeholderId, role: 'tutor', content: visible, ts: Date.now() }]);
       });
       const quote = activeSource ? extractSourceQuote(raw) : null;
       const withoutQuote = activeSource ? stripSourceQuoteLine(raw) : raw;
       const { content, followUps } = parseTutorResponse(withoutQuote);
       const tutorMsg: ChatMessage = {
-        id: uid(), role: 'tutor',
+        id: placeholderId, role: 'tutor',
         content: (content || raw).trim(),
         followUps: followUps ?? undefined,
         quote, ts: Date.now(),
@@ -322,6 +333,7 @@ export const ExplainerSystem: React.FC<ExplainerSystemProps> = ({
       setMessages(finalMessages);
       persistSession(finalMessages);
     } catch (e) {
+      setMessages(withUser);
       toast.error(resolveErrorMessage(e));
     } finally {
       setIsTyping(false);
@@ -979,8 +991,8 @@ export const ExplainerSystem: React.FC<ExplainerSystemProps> = ({
           );
         })}
 
-        {/* Tutor denkt nach */}
-        {isTyping && (
+        {/* Tutor denkt nach — ausgeblendet, sobald die Antwort bereits streamt */}
+        {isTyping && messages[messages.length - 1]?.role !== 'tutor' && (
           <div className="flex gap-2.5 justify-start">
             <div
               className="w-7 h-7 rounded-full flex items-center justify-center shrink-0 mt-1"
