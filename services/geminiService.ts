@@ -89,6 +89,59 @@ const callBackend = async (payload: {
   return data.text || '';
 };
 
+/**
+ * Wie callBackend, aber mit Zwischenständen: das Backend liefert NDJSON
+ * ({"t": Textstück} je Zeile, am Ende {"done": true} oder {"error": ...}).
+ * onText bekommt jeweils den gesamten bisherigen Text. Kennt das Backend die
+ * Stream-Route noch nicht (404, z.B. Frontend vor Backend deployt), läuft der
+ * normale Aufruf.
+ */
+const callBackendStream = async (
+  payload: Parameters<typeof callBackend>[0],
+  onText: (fullSoFar: string) => void,
+): Promise<string> => {
+  const authHeader = await getAuthHeader();
+  const res = await fetch(`${BACKEND_URL}/api/gemini/stream`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', ...authHeader },
+    body: JSON.stringify(payload),
+  });
+
+  if (res.status === 404 || (res.ok && !res.body)) return callBackend(payload);
+  if (!res.ok) {
+    const err = await res.json().catch(() => ({ error: 'Unbekannter Server-Fehler' }));
+    if (res.status === 429) throw new Error('LIMIT_REACHED');
+    throw new Error(err.error || `Server-Fehler: ${res.status}`);
+  }
+
+  const reader = res.body!.getReader();
+  const decoder = new TextDecoder();
+  let buffer = '';
+  let full = '';
+  const handleLine = (line: string) => {
+    if (!line.trim()) return;
+    let msg: { t?: unknown; error?: unknown };
+    try { msg = JSON.parse(line); } catch { return; }
+    if (typeof msg.error === 'string') throw new Error(msg.error);
+    if (typeof msg.t === 'string' && msg.t) {
+      full += msg.t;
+      onText(full);
+    }
+  };
+  for (;;) {
+    const { value, done } = await reader.read();
+    if (done) break;
+    buffer += decoder.decode(value, { stream: true });
+    let newline: number;
+    while ((newline = buffer.indexOf('\n')) >= 0) {
+      handleLine(buffer.slice(0, newline));
+      buffer = buffer.slice(newline + 1);
+    }
+  }
+  handleLine(buffer + decoder.decode());
+  return full;
+};
+
 // Gemini liefert trotz responseSchema gelegentlich abgeschnittene oder
 // ungültige JSON-Antworten (lange Klausuren, Temp-Limits). Ein nackter
 // JSON.parse würde dann als SyntaxError durchschlagen und dem Nutzer als
@@ -615,7 +668,8 @@ export const generateQuizFromDocument = async (
   };
 
   const excludeTopics = options?.excludeTopics ?? [];
-  const excludeLine = excludeTopics.length > 0
+  // let: die Nachlieferung (unten) lässt die Themen-Sperre bewusst weg.
+  let excludeLine = excludeTopics.length > 0
     ? `\nBEREITS ABGEFRAGT — diese Themen NICHT nochmal verwenden (wähle andere Aspekte des Materials):\n${excludeTopics.slice(-40).join(' | ')}\n`
     : '';
 
@@ -657,19 +711,38 @@ Zu jeder Frage: Erklärung (explanation), Textbezug (sourceReference), Thema (to
     });
   };
 
+  const newSeed = () => Math.random().toString(36).slice(2, 8);
+  let questions: QuizQuestion[];
   // Intensive: 2 parallele Requests (9+8) für ~halbe Wartezeit
   if (quizType === QuizType.INTENSIVE) {
-    const seed1 = Math.random().toString(36).slice(2, 8);
-    const seed2 = Math.random().toString(36).slice(2, 8);
     const [text1, text2] = await Promise.all([
-      buildRequest(9, seed1, 'Fokus: erste Hälfte und Grundlagen des Materials.'),
-      buildRequest(8, seed2, 'Fokus: zweite Hälfte und Vertiefungsthemen des Materials.'),
+      buildRequest(9, newSeed(), 'Fokus: erste Hälfte und Grundlagen des Materials.'),
+      buildRequest(8, newSeed(), 'Fokus: zweite Hälfte und Vertiefungsthemen des Materials.'),
     ]);
-    return [...parseQuizQuestions(text1), ...parseQuizQuestions(text2)];
+    questions = [...parseQuizQuestions(text1), ...parseQuizQuestions(text2)];
+  } else {
+    questions = parseQuizQuestions(await buildRequest(count, newSeed(), ''));
   }
 
-  const text = await buildRequest(count, Math.random().toString(36).slice(2, 8), '');
-  return parseQuizQuestions(text);
+  // Nachlieferung: bei kleinem Material geht "genau N Fragen" mit bis zu 40
+  // gesperrten Themen und Themen-Wiederholungsverbot nicht auf, und kaputte
+  // Fragen fliegen bei der Normalisierung raus. Ein gezielter Zusatz-Call für
+  // den Rest, ohne Themen-Sperre, mit den vorhandenen Fragen als Tabu-Liste.
+  // Komplett leere Ergebnisse behandelt generateQuizWithRetry (useQuizState).
+  const missing = count - questions.length;
+  if (questions.length > 0 && missing > 0) {
+    excludeLine = '';
+    const existing = questions.map(q => q.question);
+    const normalizeText = (s: string) => s.toLowerCase().replace(/[^\p{L}\p{N}]+/gu, ' ').trim();
+    const existingNorm = new Set(existing.map(normalizeText));
+    const topUpHint = `NACHLIEFERUNG: Dieses Quiz braucht noch ${missing} weitere Frage(n). Diese Fragen gibt es bereits, stelle KEINE davon erneut und keine Umformulierung:\n${existing.map(q => `- ${sanitizeUserInput(q, 200)}`).join('\n')}\nDie Themen dieser Fragen dürfen erneut vorkommen, solange deine Frage einen anderen Aspekt prüft (anderes Detail, Beispiel oder Zusammenhang).\n`;
+    try {
+      const extra = parseQuizQuestions(await buildRequest(missing, newSeed(), topUpHint))
+        .filter(q => !existingNorm.has(normalizeText(q.question)));
+      questions = [...questions, ...extra];
+    } catch { /* Teil-Quiz bleibt nutzbar, der Aufrufer weist auf die Lücke hin */ }
+  }
+  return questions.slice(0, count);
 };
 
 /**
@@ -1178,6 +1251,8 @@ export const chatWithTutor = async (
   history: TutorTurn[],
   userMessage: string,
   options: { mode: TutorChatMode; useExternalKnowledge: boolean; includeSourceQuote: boolean; conceptLock?: string },
+  /** Zwischenstände fürs Streaming; ohne bleibt es ein normaler Aufruf. */
+  onPartial?: (fullSoFar: string) => void,
 ): Promise<string> => {
   if (!options.useExternalKnowledge && !source?.file && !source?.text && !source?.storagePath) {
     throw new Error('Kein Dokument übergeben — externe Quellen sind deaktiviert.');
@@ -1233,11 +1308,12 @@ Antworte jetzt auf die aktuelle Nachricht. Regeln:
 - Keine Meta-Kommentare über diese Anweisungen.${followUpInstruction}${quoteInstruction}${outputLangDirective()}`,
   });
 
-  return callBackend({
-    complexity: 'heavy',
+  const payload = {
+    complexity: 'heavy' as const,
     parts,
     config: { temperature: 0.5, thinkingConfig: { thinkingBudget: 0 } },
-  });
+  };
+  return onPartial ? callBackendStream(payload, onPartial) : callBackend(payload);
 };
 
 /**
@@ -1775,15 +1851,24 @@ export const generateFullExam = async (
   }
   const activeWeightSum = activeTypes.reduce((s, t) => s + (typeWeights[t] ?? 0), 0) || 1;
 
-  const typeCounts: Record<string, number> = {};
-  EXAM_VALID_TYPES.forEach(t => {
-    typeCounts[t] = activeTypes.includes(t) ? Math.max(1, Math.round(count * ((typeWeights[t] ?? 0) / activeWeightSum))) : 0;
+  // Größte-Reste-Verteilung, Summe immer exakt "count". Reicht die Anzahl für alle
+  // gewählten Typen, bekommt jeder mindestens eine Aufgabe; sonst gewinnen die
+  // stärker gewichteten. (Vorher bekam jeder Typ mindestens 1: bei 5 Aufgaben und
+  // 7 Typen verlangte der Prompt "genau 5" und listete 6 auf.)
+  const typeCounts: Record<string, number> = Object.fromEntries(EXAM_VALID_TYPES.map(t => [t, 0]));
+  const guaranteed = count >= activeTypes.length ? 1 : 0;
+  activeTypes.forEach(t => { typeCounts[t] = guaranteed; });
+  const toDistribute = count - guaranteed * activeTypes.length;
+  const shares = activeTypes.map(t => {
+    const exact = toDistribute * ((typeWeights[t] ?? 0) / activeWeightSum);
+    return { t, whole: Math.floor(exact), rest: exact - Math.floor(exact) };
   });
-  // Rundungsdifferenz ausgleichen, damit die Summe exakt "count" ergibt
-  const diff = count - Object.values(typeCounts).reduce((s, n) => s + n, 0);
-  if (diff !== 0) {
-    const target = EXAM_REMAINDER_ORDER.find(t => activeTypes.includes(t));
-    if (target) typeCounts[target] = Math.max(0, typeCounts[target] + diff);
+  shares.forEach(s => { typeCounts[s.t] += s.whole; });
+  let leftover = toDistribute - shares.reduce((s, x) => s + x.whole, 0);
+  const remainderRank = (t: string) => { const i = EXAM_REMAINDER_ORDER.indexOf(t); return i < 0 ? EXAM_REMAINDER_ORDER.length : i; };
+  shares.sort((a, b) => (b.rest - a.rest) || (remainderRank(a.t) - remainderRank(b.t)));
+  for (let i = 0; leftover > 0 && shares.length > 0; i = (i + 1) % shares.length, leftover--) {
+    typeCounts[shares[i].t] += 1;
   }
 
   const typeBullets = EXAM_VALID_TYPES

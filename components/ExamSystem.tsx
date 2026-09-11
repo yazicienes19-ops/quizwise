@@ -101,10 +101,27 @@ export const ExamSystem: React.FC<ExamSystemProps> = ({ documents, collections, 
     try {
       for (let attempt = 1; attempt <= maxAttempts; attempt++) {
         try {
-          const exam = normalizeExamQuestions(await generateFullExam(content, style, options));
+          let exam = normalizeExamQuestions(await generateFullExam(content, style, options));
           if (exam.length === 0) throw new Error(translate('es.noValidQuestions'));
-          if (options?.count && exam.length < options.count) {
-            toast.info(t('es.fewerQuestions', { n: exam.length, total: options.count }));
+          // Nachlieferung: bei kleinem Material scheitert "genau N Aufgaben" oft an der
+          // Themen-Sperre, oder kaputte Aufgaben fliegen bei der Normalisierung raus.
+          // Ein gezielter Zusatz-Call für den Rest, ohne Themen-Sperre, mit den schon
+          // vorhandenen Aufgaben als "nicht wiederholen"-Liste.
+          const wanted = options?.count ?? exam.length;
+          if (exam.length < wanted) {
+            try {
+              const extra = normalizeExamQuestions(await generateFullExam(content, style, {
+                ...(options ?? { difficulty: 'mittel' }),
+                count: wanted - exam.length,
+                excludeTopics: [],
+                adaptive: undefined,
+                recentQuestions: [...(options?.recentQuestions ?? []), ...exam.map(q => q.question)],
+              }));
+              exam = [...exam, ...extra].slice(0, wanted).map((q, i) => ({ ...q, id: `q${i + 1}` }));
+            } catch { /* Teil-Klausur bleibt nutzbar, der Hinweis unten erklärt die Lücke */ }
+          }
+          if (exam.length < wanted) {
+            toast.info(t('es.fewerQuestions', { n: exam.length, total: wanted }));
           }
           if (docName) {
             saveUsedTopics(sourceTopicsKey(docName), exam);
