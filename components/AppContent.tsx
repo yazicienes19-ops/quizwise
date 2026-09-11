@@ -423,8 +423,8 @@ export const AppContent: React.FC<AppContentProps> = (p) => {
         availableDocuments={documents} collections={collections}
         getDocumentSource={getDocumentSource}
         onSaveToLibrary={file => handleFileUpload(file)}
-        onComplete={(score, topic, missingPoints) => {
-          saveRecallResult({ docName: topic, timestamp: Date.now(), score, topic, missingPoints }, user?.id);
+        onComplete={(score, topic, missingPoints, docName) => {
+          saveRecallResult({ docName, timestamp: Date.now(), score, topic, missingPoints }, user?.id);
           updateMetricsAfterSession(score, topic, 'recall');
           recordActivity(user?.id);
         }}

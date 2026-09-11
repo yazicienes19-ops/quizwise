@@ -637,12 +637,24 @@ export interface RecallChallenge {
   topic?: string;
 }
 
+/** Wem die Feynman-Erklärung gilt; steuert, wie Verständlichkeit bewertet wird. */
+export type FeynmanAudience = 'child' | 'peer' | 'exam';
+
 export interface RecallEvaluation {
-  score: number; // 0-100
+  score: number; // 0-100, nur inhaltliches Verständnis
   feedback: string;
   missingPoints: string[];
   strengths: string[];
   suggestedReview: string;
+  /** Verständlichkeit für die gewählte Zielgruppe (0-100). */
+  clarity?: number;
+  /** Fachbegriffe, die für die Zielgruppe hätten erklärt werden müssen. */
+  unexplainedJargon?: string[];
+  usedExample?: boolean;
+  /** Teilmenge von RecallChallenge.expectedKeywords, die abgedeckt wurde (auch per Synonym). */
+  coveredKeywords?: string[];
+  /** Nachfrage an der schwächsten Stelle; leer, wenn nichts offen ist. */
+  probeQuestion?: string;
 }
 
 // --- Orchestrator Types ---

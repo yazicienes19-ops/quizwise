@@ -353,8 +353,9 @@ const FeynmanActivity: React.FC<{
           initialDoc={syntheticDoc}
           initialFocusTopic={node.title}
           autoStart
-          onComplete={(score, topic, missingPoints) => {
-            saveRecallResult({ docName: topic, timestamp: Date.now(), score, topic, missingPoints }, userId);
+          persistDraft={false}
+          onComplete={(score, topic, missingPoints, docName) => {
+            saveRecallResult({ docName, timestamp: Date.now(), score, topic, missingPoints }, userId);
             updateMetricsAfterSession(score, topic, 'recall');
             recordActivity(userId);
           }}

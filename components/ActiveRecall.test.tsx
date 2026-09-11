@@ -190,6 +190,61 @@ describe('ActiveRecall — Feynman-Workflow-Bug: Fix 1 (Nächster Drill) + Fix 2
     expect(vi.mocked(generateValidatedChallenge)).toHaveBeenCalledTimes(3);
   });
 
+  it('Test G: der Verlauf bekommt den Quellnamen als docName, nicht das Thema', async () => {
+    vi.mocked(detectChaptersForDoc).mockResolvedValue([chapter(0, 'Kapitel A')]);
+    vi.mocked(getDoneChapterIndices).mockReturnValue([0]);
+    vi.mocked(generateValidatedChallenge).mockResolvedValue({ challenge: makeChallenge('Frage G', 'Kapitel A'), actualTopic: 'Kapitel A' });
+    const onComplete = vi.fn();
+
+    renderAR({ initialDoc: testDoc(), onComplete });
+    fireEvent.click(await screen.findByText('Drill starten'));
+    await screen.findByText('Frage G');
+    await answerAndSubmit(baseEvaluation);
+
+    expect(onComplete).toHaveBeenCalledWith(75, 'Kapitel A', ['Detail X'], 'Testdokument');
+  });
+
+  it('Test H: "Nochmal versuchen" zeigt die Lücken des letzten Versuchs und danach den Fortschritt', async () => {
+    vi.mocked(detectChaptersForDoc).mockResolvedValue([chapter(0, 'Kapitel A')]);
+    vi.mocked(getDoneChapterIndices).mockReturnValue([0]);
+    vi.mocked(generateValidatedChallenge).mockResolvedValue({ challenge: makeChallenge('Frage H', 'Kapitel A'), actualTopic: 'Kapitel A' });
+
+    renderAR({ initialDoc: testDoc() });
+    fireEvent.click(await screen.findByText('Drill starten'));
+    await screen.findByText('Frage H');
+    await answerAndSubmit({ ...baseEvaluation, score: 40, probeQuestion: 'Warum passiert das?', unexplainedJargon: ['Stimulus'] });
+
+    fireEvent.click(screen.getByText('Nochmal versuchen'));
+    await screen.findByText('Das fehlte beim letzten Mal (40%)');
+    expect(screen.getByText('Detail X')).toBeTruthy();
+    expect(screen.getByText('Erkläre diesmal auch: Stimulus')).toBeTruthy();
+    expect(screen.getByText('Beantworte auch die Nachfrage: „Warum passiert das?"')).toBeTruthy();
+
+    await answerAndSubmit({ ...baseEvaluation, score: 80 });
+    expect(screen.getByText('Letzter Versuch 40%, jetzt 80%')).toBeTruthy();
+    expect(screen.getByText('+40')).toBeTruthy();
+  });
+
+  it('Test I: eine angefangene Erklärung übersteht einen Tab-Wechsel', async () => {
+    const doc = testDoc();
+    vi.mocked(detectChaptersForDoc).mockResolvedValue([]);
+    vi.mocked(getDoneChapterIndices).mockReturnValue([]);
+    sessionStorage.setItem('studearc_feynman_draft_v1', JSON.stringify({
+      challenge: makeChallenge('Gespeicherte Frage', 'Kapitel A'),
+      userAnswer: 'Mein halber Gedanke',
+      sourceRef: { kind: 'doc', id: doc.id },
+      focusTopic: '',
+      lastAttempt: null,
+    }));
+
+    renderAR({ availableDocuments: [doc] });
+
+    await screen.findByText('Gespeicherte Frage');
+    expect((screen.getByPlaceholderText('Formuliere deine Erklärung hier... oder diktiere mit dem Mikrofon →') as HTMLTextAreaElement).value)
+      .toBe('Mein halber Gedanke');
+    sessionStorage.clear();
+  });
+
   it('Test F: Reader-Handoff (autoStart) wartet auf die Kapitel-Erkennung, bevor die allererste Challenge generiert wird', async () => {
     // Genau der reale Übergabe-Fall: SplitScreenReader -> Feynman-Taste bei
     // fertigem Kapitel (AppContent.tsx: autoStart={!!(pendingActionDoc && pendingTopic)}).

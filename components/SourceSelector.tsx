@@ -12,8 +12,8 @@ interface SourceSelectorProps {
   collections: Collection[];
   /** Bibliotheks-Dokument wurde ausgewählt — Parent ruft getDocumentSource auf */
   onSelectDocument: (doc: ProcessedDocument) => void;
-  /** Neue Datei oder Text wurde direkt eingegeben */
-  onSelectSource: (source: GenerationSource, name: string) => void;
+  /** Neue Datei, Text oder ganzer Ordner; bei Ordnern trägt meta die Collection-ID. */
+  onSelectSource: (source: GenerationSource, name: string, meta?: { collectionId?: string }) => void;
   /** Optional: neue hochgeladene Datei auch in die Bibliothek speichern */
   onSaveToLibrary?: (file: File) => void;
   isLoading?: boolean;
@@ -132,7 +132,7 @@ export const SourceSelector: React.FC<SourceSelectorProps> = ({
   const handleSelectFolder = (collection: Collection) => {
     const result = buildCollectionSource(collection, documents);
     if (!result || result.includedCount === 0) return;
-    onSelectSource(result.source, result.name);
+    onSelectSource(result.source, result.name, { collectionId: collection.id });
   };
 
   const tabs: { id: Tab; label: string; icon: React.ReactNode }[] = [
