@@ -26,14 +26,20 @@ const readAll = (): AllChat => {
 };
 
 const writeAll = (all: AllChat): void => {
-  localStorage.setItem(STORAGE_KEY, JSON.stringify(all));
+  try { localStorage.setItem(STORAGE_KEY, JSON.stringify(all)); } catch {}
+};
+
+const syncToCloud = (): void => {
+  import('./syncService')
+    .then(({ syncOptionalSavedField }) => syncOptionalSavedField('reader_chat', readAll))
+    .catch(() => {});
 };
 
 // Date.now() allein reicht als Sortierschlüssel nicht: mehrere Speicherungen
 // innerhalb derselben Millisekunde (schnelle Interaktionen, Tests) würden sonst
 // per stabilem Sort in Einfüge- statt Aktualitätsreihenfolge bleiben. Der
 // Millisekunden-Zähler bleibt trotzdem die Basis, damit die Reihenfolge auch
-// über Browser-Sitzungen hinweg (Zähler startet dann bei 0) korrekt bleibt.
+// über Browser-Sitzungen (und Geräte) hinweg korrekt bleibt.
 let tiebreaker = 0;
 const nextUpdatedAt = (): number => Date.now() * 1000 + (++tiebreaker % 1000);
 
@@ -63,10 +69,30 @@ export function saveReaderChat(docId: string, chat: DocChat): void {
       ...(e.followUps && e.followUps.length > 0 ? { followUps: e.followUps.slice(0, 3) } : {}),
     }));
   });
+  const previous = all[docId];
+  // Der Reader speichert bei jedem Render seinen Stand; unveränderte Chats
+  // dürfen weder den Zeitstempel verschieben noch einen Cloud-Upload auslösen.
+  if (previous && JSON.stringify(previous.chat) === JSON.stringify(trimmed)) return;
+  if (!previous && Object.keys(trimmed).length === 0) return;
   all[docId] = { updatedAt: nextUpdatedAt(), chat: trimmed };
   writeAll(prune(all));
+  syncToCloud();
 }
 
 export function getReaderChat(docId: string): DocChat {
   return readAll()[docId]?.chat ?? {};
+}
+
+/** Cloud-Pull: pro Dokument gewinnt der neuere Stand; lokal-only Dokumente gehen zurück in die Cloud. */
+export function mergeCloudReaderChat(cloud: unknown): void {
+  const cloudStore: AllChat = cloud && typeof cloud === 'object' && !Array.isArray(cloud) ? cloud as AllChat : {};
+  const merged: AllChat = { ...readAll() };
+  for (const [docId, entry] of Object.entries(cloudStore)) {
+    if (!entry || typeof entry !== 'object' || typeof entry.updatedAt !== 'number' || !entry.chat) continue;
+    const local = merged[docId];
+    if (!local || entry.updatedAt > local.updatedAt) merged[docId] = entry;
+  }
+  const pruned = prune(merged);
+  writeAll(pruned);
+  if (JSON.stringify(pruned) !== JSON.stringify(cloudStore)) syncToCloud();
 }

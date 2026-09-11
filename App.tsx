@@ -161,9 +161,16 @@ const App: React.FC = () => {
   }, []);
 
   useEffect(() => {
+    // Tutor-Sitzungen und Reader-Chats bekommen keinen userId durchgereicht (s. syncService)
+    import('./services/syncService').then(m => m.setSyncUserId(auth.user?.id ?? null)).catch(() => {});
     if (!auth.user || isOffline) return;
     loadAllCloudData(auth.user.id).then(cloud => {
       setCloudPreferences(cloud.preferences);
+      if (cloud.saved) {
+        const saved = cloud.saved;
+        import('./services/tutorSessions').then(m => m.mergeCloudTutorSessions(saved.tutor_sessions)).catch(() => {});
+        import('./services/readerChatService').then(m => m.mergeCloudReaderChat(saved.reader_chat)).catch(() => {});
+      }
       // Cloud-Pull MERGT statt zu überschreiben: Wer offline gelernt hat (oder
       // bei gestörtem Sync), hat neuere lokale Einträge — ein Blind-Overwrite
       // würde diese still vernichten. Konflikte: neuerer Zeitstempel gewinnt.

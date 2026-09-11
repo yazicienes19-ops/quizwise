@@ -3,7 +3,7 @@
  * bleiben über Neuladen erhalten und sind von der Startseite fortsetzbar.
  * Nur Metadaten + Text — die eigentliche GenerationSource (Base64-PDF!)
  * wird NICHT gespeichert, sondern beim Fortsetzen über die Quellen-Referenz
- * (docId/Ordner-Id) neu aufgelöst.
+ * (docId/Ordner-Id) neu aufgelöst. Cloud-Sync über syncOptionalSavedField.
  */
 
 export type TutorMode = 'explain' | 'socratic' | 'quiz';
@@ -41,15 +41,17 @@ const STORAGE_KEY = 'studearc_tutor_sessions_v1';
 const MAX_SESSIONS = 10;
 const MAX_MESSAGES_PER_SESSION = 40;
 
+const isValidSession = (s: any): s is StoredTutorSession =>
+  !!s && typeof s.id === 'string' && Array.isArray(s.messages) &&
+  (s.mode === 'explain' || s.mode === 'socratic' || s.mode === 'quiz');
+
 export function loadTutorSessions(): StoredTutorSession[] {
   try {
     const raw = localStorage.getItem(STORAGE_KEY);
     if (!raw) return [];
     const parsed = JSON.parse(raw);
     if (!Array.isArray(parsed)) return [];
-    return parsed.filter((s): s is StoredTutorSession =>
-      !!s && typeof s.id === 'string' && Array.isArray(s.messages) &&
-      (s.mode === 'explain' || s.mode === 'socratic' || s.mode === 'quiz'));
+    return parsed.filter(isValidSession);
   } catch {
     return [];
   }
@@ -69,6 +71,12 @@ function persist(sessions: StoredTutorSession[]): void {
   }
 }
 
+const syncToCloud = (): void => {
+  import('./syncService')
+    .then(({ syncOptionalSavedField }) => syncOptionalSavedField('tutor_sessions', loadTutorSessions))
+    .catch(() => {});
+};
+
 /**
  * Legt eine Sitzung an oder aktualisiert sie (upsert by id). Nachrichten
  * werden auf die letzten MAX_MESSAGES_PER_SESSION gekappt, das Array auf
@@ -85,13 +93,34 @@ export function saveTutorSession(session: StoredTutorSession): StoredTutorSessio
     .sort((a, b) => b.updatedAt - a.updatedAt)
     .slice(0, MAX_SESSIONS);
   persist(next);
+  syncToCloud();
   return next;
 }
 
 export function deleteTutorSession(id: string): StoredTutorSession[] {
   const next = loadTutorSessions().filter(s => s.id !== id);
   persist(next);
+  syncToCloud();
   return next;
+}
+
+/**
+ * Cloud-Pull: pro Sitzung gewinnt der neuere Stand (updatedAt). Hat das Gerät
+ * Sitzungen, die in der Cloud fehlen, wird der vereinigte Stand zurückgeschrieben.
+ * Wie beim Karteikarten-Merge ohne Tombstones: eine auf einem anderen Gerät
+ * gelöschte Sitzung kann von hier aus wieder auftauchen.
+ */
+export function mergeCloudTutorSessions(cloud: unknown): StoredTutorSession[] {
+  const cloudSessions = Array.isArray(cloud) ? cloud.filter(isValidSession) : [];
+  const byId = new Map(loadTutorSessions().map(s => [s.id, s]));
+  for (const s of cloudSessions) {
+    const local = byId.get(s.id);
+    if (!local || (s.updatedAt ?? 0) > (local.updatedAt ?? 0)) byId.set(s.id, s);
+  }
+  const merged = [...byId.values()].sort((a, b) => b.updatedAt - a.updatedAt).slice(0, MAX_SESSIONS);
+  persist(merged);
+  if (JSON.stringify(merged) !== JSON.stringify(cloudSessions)) syncToCloud();
+  return merged;
 }
 
 /** Anzeigetitel einer Sitzung: erste Nutzer-Nachricht, gekürzt. */

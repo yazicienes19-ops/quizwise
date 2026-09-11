@@ -40,6 +40,12 @@ export interface CloudSavedContent {
   calendar_sessions: any[];
 }
 
+/** Spalten aus backend/migration_tutor_sync.sql; fehlen in Datenbanken ohne diese Migration. */
+export interface CloudOptionalSavedContent {
+  tutor_sessions: unknown;
+  reader_chat: unknown;
+}
+
 export interface CloudPreferences {
   theme?: string;
   accent_color?: string;
@@ -59,7 +65,7 @@ export interface CloudPreferences {
 
 export interface AllCloudData {
   learning: CloudLearningData | null;
-  saved: CloudSavedContent | null;
+  saved: (CloudSavedContent & CloudOptionalSavedContent) | null;
   preferences: CloudPreferences;
   metrics: TopicMetric[];
 }
@@ -138,18 +144,6 @@ const EMPTY_LEARNING: CloudLearningData = {
   mistake_queue: [],
 };
 
-const EMPTY_SAVED: CloudSavedContent = {
-  saved_quizzes: [],
-  saved_exams: [],
-  lib_meta: {},
-  study_events: [],
-  study_templates: [],
-  reading_progress: {},
-  reader_log: [],
-  recurring_sessions: [],
-  calendar_sessions: [],
-};
-
 async function ensureRows(userId: string): Promise<void> {
   await Promise.all([
     supabase.from('user_learning_data').upsert({ user_id: userId }, { onConflict: 'user_id' }),
@@ -194,6 +188,8 @@ export async function loadAllCloudData(userId: string): Promise<AllCloudData> {
       reader_log: savedRes.data.reader_log ?? [],
       recurring_sessions: savedRes.data.recurring_sessions ?? [],
       calendar_sessions: savedRes.data.calendar_sessions ?? [],
+      tutor_sessions: savedRes.data.tutor_sessions,
+      reader_chat: savedRes.data.reader_chat,
     } : null,
     preferences: (profileRes.data?.preferences as CloudPreferences) ?? {},
     metrics,
@@ -212,6 +208,39 @@ export function syncSavedField(userId: string, field: keyof CloudSavedContent, v
     .from('user_saved_content')
     .upsert({ user_id: userId, [field]: value, updated_at: new Date().toISOString() }, { onConflict: 'user_id' })
     .then(({ error }) => { noteSyncOutcome(!!error); if (error) console.error('syncSavedField:', error.message); });
+}
+
+// ─── Optionale Felder (Tutor-Sitzungen, Reader-Chats) ────────────────────────
+// Diese Dienste bekommen keinen userId-Parameter durchgereicht; die App setzt den
+// eingeloggten Nutzer hier zentral. Fehlt die Spalte (Migration nicht ausgeführt),
+// bleibt alles lokal, ohne den "Sync gestört"-Hinweis auszulösen.
+
+let syncUserId: string | null = null;
+export const setSyncUserId = (id: string | null): void => { syncUserId = id; };
+
+export type OptionalSavedField = keyof CloudOptionalSavedContent;
+const missingColumns = new Set<OptionalSavedField>();
+const pendingOptional = new Map<OptionalSavedField, ReturnType<typeof setTimeout>>();
+/** Gesammelt statt pro Tastendruck/Antwort: beide Felder sind ganze Blobs. */
+const OPTIONAL_SYNC_DELAY_MS = 2000;
+
+/** getValue wird erst beim Senden gelesen, damit immer der neueste lokale Stand rausgeht. */
+export function syncOptionalSavedField(field: OptionalSavedField, getValue: () => unknown): void {
+  const userId = syncUserId;
+  if (!userId || missingColumns.has(field)) return;
+  const prev = pendingOptional.get(field);
+  if (prev) clearTimeout(prev);
+  pendingOptional.set(field, setTimeout(() => {
+    pendingOptional.delete(field);
+    supabase
+      .from('user_saved_content')
+      .upsert({ user_id: userId, [field]: getValue(), updated_at: new Date().toISOString() }, { onConflict: 'user_id' })
+      .then(({ error }) => {
+        if (error && (error.code === 'PGRST204' || error.message.includes(field))) { missingColumns.add(field); return; }
+        noteSyncOutcome(!!error);
+        if (error) console.error(`sync ${field}:`, error.message);
+      });
+  }, OPTIONAL_SYNC_DELAY_MS));
 }
 
 export function syncPreferences(userId: string, prefs: Partial<CloudPreferences>): void {
