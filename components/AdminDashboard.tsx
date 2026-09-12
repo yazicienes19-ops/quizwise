@@ -1,6 +1,6 @@
 import React, { useEffect, useState, useCallback } from 'react';
-import { RefreshCw, AlertCircle, Users as UsersIcon } from 'lucide-react';
-import { fetchAdminUsers, grantPro, revokePro, suspendUser, unsuspendUser, type AdminUserRow } from '../services/adminService';
+import { RefreshCw, AlertCircle, Users as UsersIcon, Flag } from 'lucide-react';
+import { fetchAdminUsers, fetchQuestionReports, grantPro, revokePro, suspendUser, unsuspendUser, type AdminUserRow, type QuestionReportsResponse } from '../services/adminService';
 import { useTranslation } from '../i18n/I18nProvider';
 import type { TKey } from '../i18n';
 import { formatDateTime } from '../i18n/dates';
@@ -12,6 +12,13 @@ const formatDuration = (seconds: number): string => {
   const m = Math.round((seconds % 3600) / 60);
   if (h === 0) return `${m}m`;
   return `${h}h ${m}m`;
+};
+
+/** Anzeigename eines Meldegrunds: Quiz-Gründe aus der Ergebnisseite, Klausur-Gründe aus ExamView. */
+const REPORT_REASON_KEYS: Record<string, TKey> = {
+  unclear: 'result.fb.unclear', wrong: 'result.fb.wrong', no_correct: 'result.fb.noCorrect',
+  duplicate: 'result.fb.duplicate', too_easy: 'result.fb.tooEasy', too_hard: 'result.fb.tooHard', other: 'result.fb.other',
+  too_strict: 'ev.fbTooStrict', too_lenient: 'ev.fbTooLenient', incomplete_solution: 'ev.fbMissing', unrealistic: 'ev.fbUnrealistic',
 };
 
 const GRANT_OPTIONS: { days: number; key: TKey }[] = [
@@ -28,10 +35,15 @@ export const AdminDashboard: React.FC = () => {
   const [error, setError] = useState<string | null>(null);
   const [busy, setBusy] = useState<string | null>(null);
   const [confirmSuspendId, setConfirmSuspendId] = useState<string | null>(null);
+  const [reports, setReports] = useState<QuestionReportsResponse | null>(null);
+  const [reportsError, setReportsError] = useState(false);
 
   const load = useCallback(async () => {
     setIsLoading(true);
     setError(null);
+    setReportsError(false);
+    // Meldungen unabhängig laden: ein Fehler dort darf die Nutzerliste nicht blockieren.
+    fetchQuestionReports().then(setReports).catch(() => setReportsError(true));
     try {
       setUsers(await fetchAdminUsers());
     } catch (err) {
@@ -226,6 +238,69 @@ export const AdminDashboard: React.FC = () => {
           </table>
         </div>
       )}
+
+      {/* Gemeldete Fragen (question_reports) */}
+      <section className="space-y-3 pt-4">
+        <div>
+          <h2 className="text-base font-black dark:text-white flex items-center gap-2">
+            <Flag className="w-4 h-4" strokeWidth={1.75} style={{ color: 'var(--primary)' }} />
+            {t('admin.reports.title')}
+            {reports && reports.total > 0 && (
+              <span className="text-[9px] font-black uppercase tracking-widest text-slate-400">{t('admin.reports.count', { n: reports.total })}</span>
+            )}
+          </h2>
+          <p className="text-[11px] font-medium text-slate-400 mt-1">{t('admin.reports.subtitle')}</p>
+        </div>
+        {reportsError && <p className="text-[11px] text-rose-500">{t('admin.reports.loadFailed')}</p>}
+        {reports?.setupMissing && (
+          <p className="text-[11px] font-medium p-3 rounded-2xl bg-amber-50 dark:bg-amber-900/20 text-amber-700 dark:text-amber-400">{t('admin.reports.setupMissing')}</p>
+        )}
+        {reports && !reports.setupMissing && reports.groups.length === 0 && (
+          <p className="text-[11px] text-slate-400 italic">{t('admin.reports.empty')}</p>
+        )}
+        {reports && reports.groups.length > 0 && (
+          <div className="space-y-2">
+            {reports.groups.map(g => (
+              <div key={g.key} className="p-4 rounded-2xl space-y-2" style={{ border: '1px solid var(--border-color)' }}>
+                <div className="flex items-center gap-2 flex-wrap">
+                  <span className="text-[9px] font-black uppercase px-2 py-0.5 rounded-full bg-rose-100 text-rose-600 dark:bg-rose-900/30 dark:text-rose-400">
+                    {t('admin.reports.count', { n: g.count })}
+                  </span>
+                  <span className="text-[9px] font-black uppercase px-2 py-0.5 rounded-full bg-slate-100 text-slate-500 dark:bg-slate-800 dark:text-slate-400">
+                    {g.kind === 'exam' ? t('admin.reports.kindExam') : t('admin.reports.kindQuiz')}
+                  </span>
+                  {(Object.entries(g.reasons) as [string, number][]).map(([reason, n]) => (
+                    <span key={reason} className="text-[9px] font-bold px-2 py-0.5 rounded-full bg-amber-50 text-amber-700 dark:bg-amber-900/20 dark:text-amber-400">
+                      {REPORT_REASON_KEYS[reason] ? t(REPORT_REASON_KEYS[reason]) : reason}{n > 1 ? ` ×${n}` : ''}
+                    </span>
+                  ))}
+                  <span className="text-[9px] text-slate-400 ml-auto">
+                    {t('admin.reports.reporters', { n: g.reporters })} · {t('admin.reports.last', { date: formatDateTime(g.lastReportedAt, { dateStyle: 'medium', timeStyle: 'short' }) })}
+                  </span>
+                </div>
+                <p className="text-[12px] font-bold dark:text-white break-words whitespace-pre-line">{g.questionText}</p>
+                {g.docNames.length > 0 && <p className="text-[10px] text-slate-400 break-words">{g.docNames.join(', ')}</p>}
+                {(g.details.options?.length || g.details.explanation) && (
+                  <details className="text-[11px]">
+                    <summary className="cursor-pointer text-[9px] font-black uppercase tracking-widest text-slate-400">{t('admin.reports.details')}</summary>
+                    <ul className="mt-2 space-y-1">
+                      {(g.details.options ?? []).map((opt, i) => {
+                        const correct = g.details.correctAnswerIndices?.includes(i);
+                        return (
+                          <li key={i} className={correct ? 'font-bold text-emerald-600 dark:text-emerald-400' : 'text-slate-500 dark:text-slate-400'}>
+                            {correct ? '✓ ' : '· '}{opt}
+                          </li>
+                        );
+                      })}
+                    </ul>
+                    {g.details.explanation && <p className="mt-2 text-slate-500 dark:text-slate-400 break-words">{g.details.explanation}</p>}
+                  </details>
+                )}
+              </div>
+            ))}
+          </div>
+        )}
+      </section>
     </div>
   );
 };

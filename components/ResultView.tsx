@@ -4,7 +4,7 @@ import { EmojiImage } from './EmojiImage';
 import { AnimatedBar } from './AnimatedBar';
 import { CountUp } from './CountUp';
 import { computeCalibration, calibrationPct, MIN_CALIBRATED_FOR_DISPLAY } from '../services/calibration';
-import { reportQuestion, type QuestionFeedbackReason } from '../services/questionFeedbackService';
+import { reportQuizQuestion, isVoidingReason, type QuestionReportReason } from '../services/questionReportService';
 import { useTranslation } from '../i18n/I18nProvider';
 
 interface ResultViewProps {
@@ -31,8 +31,10 @@ export const ResultView: React.FC<ResultViewProps> = ({
   // und welche Indizes wurden bereits gemeldet (Bestätigung statt Doppelmeldung).
   const [reportOpenIdx, setReportOpenIdx] = useState<number | null>(null);
   const [reportedIdx, setReportedIdx] = useState<Set<number>>(new Set());
+  // Als fehlerhaft gemeldet ("Antwort falsch", "keine richtige Option"): zählt nicht mehr.
+  const [voidedIdx, setVoidedIdx] = useState<Set<number>>(new Set());
 
-  const FEEDBACK_REASONS: { key: QuestionFeedbackReason; labelKey: 'result.fb.unclear' | 'result.fb.wrong' | 'result.fb.duplicate' | 'result.fb.tooEasy' | 'result.fb.tooHard' | 'result.fb.noCorrect' | 'result.fb.other' }[] = [
+  const FEEDBACK_REASONS: { key: QuestionReportReason; labelKey: 'result.fb.unclear' | 'result.fb.wrong' | 'result.fb.duplicate' | 'result.fb.tooEasy' | 'result.fb.tooHard' | 'result.fb.noCorrect' | 'result.fb.other' }[] = [
     { key: 'unclear', labelKey: 'result.fb.unclear' },
     { key: 'wrong', labelKey: 'result.fb.wrong' },
     { key: 'no_correct', labelKey: 'result.fb.noCorrect' },
@@ -42,10 +44,11 @@ export const ResultView: React.FC<ResultViewProps> = ({
     { key: 'other', labelKey: 'result.fb.other' },
   ];
 
-  const handleReport = (idx: number, reason: QuestionFeedbackReason) => {
+  const handleReport = (idx: number, reason: QuestionReportReason) => {
     const q = questions[idx];
     if (!q) return;
-    reportQuestion(q.question, reason, docName);
+    reportQuizQuestion(q, reason, docName).catch(() => {});
+    if (isVoidingReason(reason)) setVoidedIdx(prev => new Set(prev).add(idx));
     setReportedIdx(prev => new Set(prev).add(idx));
     setReportOpenIdx(null);
   };
@@ -55,10 +58,12 @@ export const ResultView: React.FC<ResultViewProps> = ({
   // gehört dann NICHT zwingend zu questions[i]. Zuordnung über questionIndex.
   const answerByIndex = new Map<number, UserAnswer>(answers.map(a => [a.questionIndex, a]));
 
-  const correctCount    = answers.filter(a => a.isCorrect).length;
-  const wrongCount      = answers.length - correctCount;
-  const score           = Math.round((correctCount / answers.length) * 100);
-  const wrongQuestions  = questions.filter((_, i) => !answerByIndex.get(i)?.isCorrect);
+  // Annullierte (als fehlerhaft gemeldete) Fragen zählen weder richtig noch falsch.
+  const countedAnswers  = answers.filter(a => !voidedIdx.has(a.questionIndex));
+  const correctCount    = countedAnswers.filter(a => a.isCorrect).length;
+  const wrongCount      = countedAnswers.length - correctCount;
+  const score           = countedAnswers.length > 0 ? Math.round((correctCount / countedAnswers.length) * 100) : 0;
+  const wrongQuestions  = questions.filter((_, i) => !voidedIdx.has(i) && !answerByIndex.get(i)?.isCorrect);
 
   const weakTopics  = [...new Set(wrongQuestions.map(q => q.topic).filter((t): t is string => Boolean(t)))];
   const strongTopics = [...new Set(
@@ -103,10 +108,15 @@ export const ResultView: React.FC<ResultViewProps> = ({
             <p className="text-[9px] font-black uppercase tracking-widest text-slate-400 mt-0.5">{t('result.wrong')}</p>
           </div>
           <div className="py-4 text-center">
-            <p className="text-2xl font-black text-slate-800 dark:text-white">{answers.length}</p>
+            <p className="text-2xl font-black text-slate-800 dark:text-white">{countedAnswers.length}</p>
             <p className="text-[9px] font-black uppercase tracking-widest text-slate-400 mt-0.5">{t('result.total')}</p>
           </div>
         </div>
+        {voidedIdx.size > 0 && (
+          <p className="px-6 py-3 text-center text-[10px] font-bold text-slate-400 border-t border-slate-100 dark:border-slate-800">
+            {tp('result.voidedNote', voidedIdx.size)}
+          </p>
+        )}
       </div>
 
       {/* Weak / strong topics */}
@@ -316,7 +326,7 @@ export const ResultView: React.FC<ResultViewProps> = ({
                   </div>
                   {/* Frage-Qualität melden — Grundlage für späteres Prompt-Tuning */}
                   {reportedIdx.has(i) ? (
-                    <p className="text-[10px] font-bold text-emerald-600 dark:text-emerald-400 pt-1">{t('result.fb.thanks')}</p>
+                    <p className="text-[10px] font-bold text-emerald-600 dark:text-emerald-400 pt-1">{voidedIdx.has(i) ? t('result.fb.voided') : t('result.fb.thanks')}</p>
                   ) : reportOpenIdx === i ? (
                     <div className="flex flex-wrap gap-1.5 pt-1">
                       {FEEDBACK_REASONS.map(r => (

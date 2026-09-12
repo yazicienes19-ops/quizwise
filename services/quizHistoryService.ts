@@ -13,7 +13,51 @@ export interface QuizResult {
   weakTopics: string[];
   questions: QuizQuestion[];
   answers: UserAnswer[];
+  /** Anzahl nachträglich annullierter Fragen (als fehlerhaft gemeldet). */
+  voidedCount?: number;
 }
+
+const normalizeText = (s: string) => s.trim().toLowerCase().replace(/\s+/g, ' ');
+
+/**
+ * Entfernt eine als fehlerhaft gemeldete Frage ("Antwort falsch", "keine
+ * richtige Option") aus allen gespeicherten Sessions und rechnet Wertung,
+ * Zähler und Schwachthemen neu. Weil Lernprofil, Coach, Prognose und
+ * Fehleranalyse alle aus diesem Verlauf lesen, zählt die Frage danach überall
+ * nicht mehr gegen den Nutzer. Sessions ohne verbleibende Antwort fliegen raus.
+ */
+export const voidQuestionInHistory = (questionText: string, userId?: string | null): number => {
+  const key = normalizeText(questionText);
+  if (!key) return 0;
+  let changed = 0;
+  const updated = readAll().flatMap((r): QuizResult[] => {
+    const idx = (r.questions || []).findIndex(q => normalizeText(q.question || '') === key);
+    if (idx < 0) return [r];
+    changed++;
+    const questions = r.questions.filter((_, i) => i !== idx);
+    const answers = (r.answers || [])
+      .filter(a => a.questionIndex !== idx)
+      .map(a => (a.questionIndex > idx ? { ...a, questionIndex: a.questionIndex - 1 } : a));
+    if (answers.length === 0) return [];
+    const correctCount = answers.filter(a => a.isCorrect).length;
+    const answerByIndex = new Map(answers.map(a => [a.questionIndex, a]));
+    const weakTopics = [...new Set(
+      questions.filter((_, i) => !answerByIndex.get(i)?.isCorrect).map(q => q.topic).filter((t): t is string => Boolean(t)),
+    )];
+    return [{
+      ...r, questions, answers, correctCount, weakTopics,
+      totalCount: answers.length,
+      score: Math.round((correctCount / answers.length) * 100),
+      voidedCount: (r.voidedCount ?? 0) + 1,
+    }];
+  });
+  if (changed === 0) return 0;
+  localStorage.setItem(STORAGE_KEY, JSON.stringify(updated));
+  if (userId) {
+    import('./syncService').then(({ syncLearningField }) => syncLearningField(userId, 'quiz_history', updated)).catch(() => {});
+  }
+  return changed;
+};
 
 const readAll = (): QuizResult[] => {
   try { return JSON.parse(localStorage.getItem(STORAGE_KEY) || '[]'); } catch { return []; }

@@ -1,4 +1,5 @@
 import { Type } from "@google/genai";
+import { getReportedQuestionTexts } from './questionReportService';
 import { stripFeynmanMeta, filterLeakyGapCards } from './feynmanText';
 import { countDueCards, migrateLegacyCard } from './spacedRepetition';
 import { multiDocPromptRules } from './multiDocSource';
@@ -670,6 +671,11 @@ export const generateQuizFromDocument = async (
     }
   };
 
+  // Vom Nutzer gemeldete Fragen (falsch, unklar, doppelt …) nicht erneut stellen.
+  const reportedQuestions = getReportedQuestionTexts(15);
+  const reportedLine = reportedQuestions.length > 0
+    ? `\nVOM NUTZER ALS FEHLERHAFT GEMELDETE FRAGEN: stelle KEINE davon erneut, auch nicht umformuliert, und prüfe besonders, dass die als richtig markierte Antwort eindeutig stimmt:\n${reportedQuestions.map(q => `- ${sanitizeUserInput(q, 200)}`).join('\n')}\n`
+    : '';
   const excludeTopics = options?.excludeTopics ?? [];
   // let: die Nachlieferung (unten) lässt die Themen-Sperre bewusst weg.
   let excludeLine = excludeTopics.length > 0
@@ -692,7 +698,7 @@ export const generateQuizFromDocument = async (
 Schwierigkeit: ${difficulty}.${focusLine}
 Seed: ${seedSuffix}
 ${focusHint}${excludeLine}${bloomHintLine}
-${typeInstruction}${multiDocRules}${relationalInstruction}
+${typeInstruction}${multiDocRules}${relationalInstruction}${reportedLine}
 
 STRENGE DIVERSITÄTS-REGELN (zwingend einhalten):
 1. Jede Frage MUSS ein komplett anderes Unterthema abdecken — kein Thema darf auch nur ähnlich zweimal vorkommen

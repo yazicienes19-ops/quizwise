@@ -138,4 +138,40 @@ router.post('/users/:userId/unsuspend', async (req, res, next) => {
   } catch (err) { next(err); }
 });
 
+// GET /api/admin/question-reports
+// Von Nutzern gemeldete Quizfragen und Klausurbewertungen (Tabelle
+// question_reports, s. backend/migration_question_reports.sql), gruppiert nach
+// Frage: häufigste zuerst. Fehlt die Tabelle noch, meldet die Route das
+// ausdrücklich statt eines 500ers, damit das Dashboard den Grund anzeigt.
+router.get('/question-reports', async (req, res, next) => {
+  try {
+    const { data, error } = await supabaseAdmin.from('question_reports')
+      .select('id, user_id, kind, reason, question_text, details, doc_name, created_at')
+      .order('created_at', { ascending: false })
+      .limit(1000);
+    if (error) {
+      const missing = error.code === '42P01' || error.code === 'PGRST205' || /question_reports/.test(error.message || '');
+      if (missing) return res.json({ groups: [], total: 0, setupMissing: true });
+      throw error;
+    }
+    const groups = new Map();
+    for (const r of data || []) {
+      const key = `${r.kind}|${String(r.question_text).trim().toLowerCase().replace(/\s+/g, ' ')}`;
+      let g = groups.get(key);
+      if (!g) {
+        g = { key, kind: r.kind, questionText: r.question_text, details: r.details || {}, docNames: [], reasons: {}, count: 0, reporters: new Set(), lastReportedAt: r.created_at };
+        groups.set(key, g);
+      }
+      g.count++;
+      g.reasons[r.reason] = (g.reasons[r.reason] || 0) + 1;
+      g.reporters.add(r.user_id);
+      if (r.doc_name && !g.docNames.includes(r.doc_name)) g.docNames.push(r.doc_name);
+    }
+    const out = [...groups.values()]
+      .map(g => ({ ...g, reporters: g.reporters.size }))
+      .sort((a, b) => b.count - a.count || String(b.lastReportedAt).localeCompare(String(a.lastReportedAt)));
+    res.json({ groups: out, total: (data || []).length, setupMissing: false });
+  } catch (err) { next(err); }
+});
+
 module.exports = router;

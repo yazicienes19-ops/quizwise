@@ -58,3 +58,33 @@ export const suspendUser = (userId: string): Promise<void> =>
 
 export const unsuspendUser = (userId: string): Promise<void> =>
   postAdminAction(`users/${userId}/unsuspend`);
+
+export interface QuestionReportGroup {
+  key: string;
+  kind: 'quiz' | 'exam';
+  questionText: string;
+  details: { options?: string[]; correctAnswerIndices?: number[]; explanation?: string; topic?: string };
+  docNames: string[];
+  reasons: Record<string, number>;
+  count: number;
+  reporters: number;
+  lastReportedAt: string;
+}
+
+export interface QuestionReportsResponse {
+  groups: QuestionReportGroup[];
+  total: number;
+  /** true, solange backend/migration_question_reports.sql nicht ausgeführt ist. */
+  setupMissing: boolean;
+}
+
+export const fetchQuestionReports = async (): Promise<QuestionReportsResponse> => {
+  const headers = await authHeaders();
+  const res = await fetch(`${BACKEND_URL}/api/admin/question-reports`, { headers });
+  if (!res.ok) {
+    const err = await res.json().catch(() => ({}));
+    throw new Error(err.error || 'Meldungen konnten nicht geladen werden.');
+  }
+  const data = await res.json();
+  return { groups: data.groups || [], total: data.total || 0, setupMissing: !!data.setupMissing };
+};

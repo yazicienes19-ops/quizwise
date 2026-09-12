@@ -128,6 +128,17 @@ export const rateMistake = (id: string, correct: boolean, userId?: string | null
   write(graduated ? items.filter(i => i.id !== id) : items, userId);
 };
 
+/** Entfernt eine als fehlerhaft gemeldete Frage aus der Wiederholung
+ *  (Abgleich über den normalisierten Fragetext, s. questionReportService). */
+export const removeMistakesByQuestionText = (questionText: string, userId?: string | null): number => {
+  const key = normalizeQuestion(questionText);
+  if (!key) return 0;
+  const items = readAll();
+  const next = items.filter(i => normalizeQuestion(i.question.question) !== key);
+  if (next.length !== items.length) write(next, userId);
+  return items.length - next.length;
+};
+
 export const removeMistake = (id: string, userId?: string | null): void => {
   const items = readAll();
   const next = items.filter(i => i.id !== id);

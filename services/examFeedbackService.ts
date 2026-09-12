@@ -21,6 +21,13 @@ export function saveQuestionFeedback(question: string, type: QuestionFeedbackTyp
   const all = load();
   all.push({ questionHash: hash(question), type, timestamp: Date.now() });
   localStorage.setItem(KEY, JSON.stringify(all.slice(-MAX_ENTRIES)));
+  // Kritik an der Bewertung zusätzlich ins Admin-Dashboard (question_reports);
+  // "passt" ist kein Befund und bleibt lokal.
+  if (type !== 'correct') {
+    import('./questionReportService')
+      .then(m => m.sendReportToCloud({ kind: 'exam', reason: type, questionText: question }))
+      .catch(() => {});
+  }
 }
 
 interface FeedbackSummary {
