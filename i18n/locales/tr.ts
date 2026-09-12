@@ -1924,6 +1924,8 @@ export const tr: Translations = {
   'sp2.deactivated': 'Otomatik planlama devre dışı',
   'sp2.redistributed': 'Yeniden dağıtıldı: {n} tekrar oturumu',
   'sp2.planCreated': 'Plan oluşturuldu: {days} için {entries} kayıt.',
+  'sp2.planReplaced': 'Önceki plandan {n} kayıt değiştirildi.',
+  'sp2.deleteExamConfirm': '„{title}" sınav tarihi silinsin mi? Bu işlem geri alınamaz.',
   'sp2.daysN': '{n} gün',
   'sp2.smartPlanFailed': 'Akıllı plan oluşturulamadı.',
   'sp2.timeManagement': 'Zaman yönetimi',

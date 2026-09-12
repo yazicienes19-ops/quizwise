@@ -1931,6 +1931,8 @@ export const en: Translations = {
   'sp2.deactivated': 'Automatic scheduling deactivated',
   'sp2.redistributed': 'Redistributed: {n} review sessions',
   'sp2.planCreated': 'Plan created: {entries} entries for {days}.',
+  'sp2.planReplaced': '{n} entry from the previous plan replaced.|{n} entries from the previous plan replaced.',
+  'sp2.deleteExamConfirm': 'Delete exam date "{title}"? This cannot be undone.',
   'sp2.daysN': '{n} day|{n} days',
   'sp2.smartPlanFailed': 'Smart Plan could not be generated.',
   'sp2.timeManagement': 'Time management',

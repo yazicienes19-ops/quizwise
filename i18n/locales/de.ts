@@ -1932,6 +1932,8 @@ export const de = {
   'sp2.deactivated': 'Automatische Planung deaktiviert',
   'sp2.redistributed': 'Neu verteilt: {n} Wiederholungs-Sessions',
   'sp2.planCreated': 'Plan erstellt: {entries} Einträge für {days}.',
+  'sp2.planReplaced': '{n} Eintrag des alten Plans ersetzt.|{n} Einträge des alten Plans ersetzt.',
+  'sp2.deleteExamConfirm': 'Klausurtermin „{title}" löschen? Das kann nicht rückgängig gemacht werden.',
   'sp2.daysN': '{n} Tag|{n} Tage',
   'sp2.smartPlanFailed': 'Smart Plan konnte nicht generiert werden.',
   'sp2.timeManagement': 'Zeitmanagement',

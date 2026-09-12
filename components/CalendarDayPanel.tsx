@@ -205,7 +205,7 @@ export const CalendarDayPanel: React.FC<CalendarDayPanelProps> = ({
                   <button aria-label={t('sp2.edit')} onClick={() => openEditExam(exam)} className="w-9 h-9 flex items-center justify-center rounded-lg text-slate-300 hover:text-indigo-500 hover:bg-indigo-50 dark:hover:bg-indigo-900/20 transition-colors">
                     <Pencil size={13} />
                   </button>
-                  <button aria-label={t('common.delete')} onClick={() => onDeleteExam(exam.id)} className="w-9 h-9 flex items-center justify-center rounded-lg text-slate-300 hover:text-rose-500 hover:bg-rose-50 dark:hover:bg-rose-900/20 transition-colors">
+                  <button aria-label={t('common.delete')} onClick={() => { if (window.confirm(t('sp2.deleteExamConfirm', { title: exam.title }))) onDeleteExam(exam.id); }} className="w-9 h-9 flex items-center justify-center rounded-lg text-slate-300 hover:text-rose-500 hover:bg-rose-50 dark:hover:bg-rose-900/20 transition-colors">
                     <X size={14} />
                   </button>
                 </div>

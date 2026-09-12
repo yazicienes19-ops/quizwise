@@ -276,8 +276,24 @@ export function mapSmartPlanToCalendarSessions(
       topic: entry.topic,
       startTime: entry.startTime,
       endTime: entry.endTime,
+      fromSmartPlan: true,
     });
   }
 
   return result;
+}
+
+/**
+ * Ersetzt künftige Sessions eines früheren Smart-Plans durch den neuen Plan.
+ * Vorher hängte jeder Klick auf "Smart Plan" nur an: zwei Klicks ergaben
+ * doppelte Sessions an denselben Tagen. Manuell angelegte und vergangene
+ * Sessions bleiben unberührt.
+ */
+export function replaceSmartPlanSessions(
+  existing: CalendarStudySession[],
+  planned: CalendarStudySession[],
+  todayStr: string,
+): { sessions: CalendarStudySession[]; replaced: number } {
+  const kept = existing.filter(s => !(s.fromSmartPlan && s.date >= todayStr));
+  return { sessions: [...kept, ...planned], replaced: existing.length - kept.length };
 }

@@ -448,6 +448,9 @@ export interface CalendarStudySession {
   topic: string;
   startTime: string;
   endTime: string;
+  /** Vom Smart-Plan erzeugt: ein neuer Plan ersetzt diese (künftigen) Sessions,
+   *  statt sie zu verdoppeln. Fehlt bei manuell angelegten Sessions. */
+  fromSmartPlan?: boolean;
 }
 
 /** Kognitive Bloom-Taxonomie-Stufe — wird NIE aus difficulty abgeleitet und umgekehrt,

@@ -8,7 +8,7 @@ import { countDueCards, migrateLegacyCard } from '../services/spacedRepetition';
 import { getMistakeQueue } from '../services/mistakeReviewService';
 import { getAllResults } from '../services/quizHistoryService';
 import { getSpacedSettings, saveSpacedSettings, buildSpacedPlan, applySpacedPlan, buildDueForecast } from '../services/spacedPlanningService';
-import { sessionsForDate, applySessionSave, SessionFormInput, fixedWeekdaysFromRecurring, mapSmartPlanToCalendarSessions, migrateStudyEntriesToRecurring, daysUntilDate } from '../services/calendarSessions';
+import { sessionsForDate, applySessionSave, SessionFormInput, fixedWeekdaysFromRecurring, mapSmartPlanToCalendarSessions, replaceSmartPlanSessions, migrateStudyEntriesToRecurring, daysUntilDate } from '../services/calendarSessions';
 import { toast } from '../services/toast';
 import { useTranslation } from '../i18n/I18nProvider';
 import { formatDate } from '../i18n/dates';
@@ -310,9 +310,11 @@ export const StudyPlanner: React.FC<StudyPlannerProps> = ({ metrics, decks, exam
       const plan = await generateSmartStudyPlan(metrics, decks, examTerms, buildDueForecast(decks, getMistakeQueue(), 7), fixedSchedule);
       const genId = () => Math.random().toString(36).substr(2, 9);
       const mapped = mapSmartPlanToCalendarSessions(plan, today, collections, recurringSessions, genId);
-      saveCalendarSessions([...calendarSessions, ...mapped]);
+      const { sessions, replaced } = replaceSmartPlanSessions(calendarSessions, mapped, todayStr);
+      saveCalendarSessions(sessions);
       const days = new Set(mapped.map(s => s.date)).size;
-      toast.success(t('sp2.planCreated', { entries: mapped.length, days: tp('sp2.daysN', days) }));
+      const created = t('sp2.planCreated', { entries: mapped.length, days: tp('sp2.daysN', days) });
+      toast.success(replaced > 0 ? `${created} ${tp('sp2.planReplaced', replaced)}` : created);
       setViewMode('monat');
     } catch { toast.error(t('sp2.smartPlanFailed')); }
     finally { setIsGenerating(false); }
@@ -529,16 +531,18 @@ export const StudyPlanner: React.FC<StudyPlannerProps> = ({ metrics, decks, exam
           {/* Calendar Nav */}
           <div className="flex items-center justify-between px-6 py-5" style={{ borderBottom: '1px solid var(--border-color)' }}>
             <div className="flex items-center gap-3">
-              <button aria-label={t('sp.prevMonth')} onClick={goPrev} className="w-9 h-9 flex items-center justify-center rounded-xl transition-colors" style={{ background: 'var(--bg-main)', color: 'var(--border-color)' }}>
+              {/* Textfarbe war var(--border-color): Kontrast 1,09:1, Pfeile und
+                  "Heute" praktisch unsichtbar (nachgemessen 2026-09-12). */}
+              <button aria-label={t('sp.prevMonth')} onClick={goPrev} className="w-9 h-9 flex items-center justify-center rounded-xl transition-colors hover:opacity-80" style={{ background: 'var(--bg-main)', color: 'var(--text-main)' }}>
                 <ChevronLeft size={16} />
               </button>
-              <button aria-label={t('sp.nextMonth')} onClick={goNext} className="w-9 h-9 flex items-center justify-center rounded-xl transition-colors" style={{ background: 'var(--bg-main)', color: 'var(--border-color)' }}>
+              <button aria-label={t('sp.nextMonth')} onClick={goNext} className="w-9 h-9 flex items-center justify-center rounded-xl transition-colors hover:opacity-80" style={{ background: 'var(--bg-main)', color: 'var(--text-main)' }}>
                 <ChevronRight size={16} />
               </button>
               <h2 className="text-base font-black capitalize ml-1" style={{ color: 'var(--text-main)' }}>{monthLabel}</h2>
             </div>
-            <button onClick={goToday} className="px-4 py-2 rounded-xl text-[10px] font-black uppercase tracking-widest transition-colors" style={{ background: 'var(--bg-main)', color: 'var(--border-color)' }}>
-              Heute
+            <button onClick={goToday} className="px-4 py-2 rounded-xl text-[10px] font-black uppercase tracking-widest transition-colors hover:opacity-80" style={{ background: 'var(--bg-main)', color: 'var(--text-main)' }}>
+              {t('sp2.today')}
             </button>
           </div>
 
@@ -711,7 +715,7 @@ export const StudyPlanner: React.FC<StudyPlannerProps> = ({ metrics, decks, exam
                     </p>
                   </div>
                   {item.source === 'event' && (
-                    <button onClick={() => saveEvents(events.filter(ev => ev.id !== item.id))} className="w-7 h-7 shrink-0 flex items-center justify-center rounded-lg text-slate-300 hover:text-rose-500 hover:bg-rose-50 dark:hover:bg-rose-900/20 transition-colors">
+                    <button aria-label={t('common.delete')} title={t('common.delete')} onClick={() => saveEvents(events.filter(ev => ev.id !== item.id))} className="w-7 h-7 shrink-0 flex items-center justify-center rounded-lg text-slate-300 hover:text-rose-500 hover:bg-rose-50 dark:hover:bg-rose-900/20 transition-colors">
                       <X size={12} />
                     </button>
                   )}
@@ -726,7 +730,11 @@ export const StudyPlanner: React.FC<StudyPlannerProps> = ({ metrics, decks, exam
                     </button>
                   )}
                   {item.source === 'exam' && (
-                    <button onClick={() => onUpdateExams(examTerms.filter(e => e.id !== item.id))} className="w-7 h-7 shrink-0 flex items-center justify-center rounded-lg text-slate-300 hover:text-rose-500 hover:bg-rose-50 dark:hover:bg-rose-900/20 transition-colors">
+                    <button
+                      aria-label={t('common.delete')}
+                      title={t('common.delete')}
+                      onClick={() => { if (window.confirm(t('sp2.deleteExamConfirm', { title: item.title }))) onUpdateExams(examTerms.filter(e => e.id !== item.id)); }}
+                      className="w-7 h-7 shrink-0 flex items-center justify-center rounded-lg text-slate-300 hover:text-rose-500 hover:bg-rose-50 dark:hover:bg-rose-900/20 transition-colors">
                       <X size={12} />
                     </button>
                   )}
