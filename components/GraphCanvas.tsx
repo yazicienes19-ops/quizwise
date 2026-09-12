@@ -1,4 +1,5 @@
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { useTranslation } from '../i18n/I18nProvider';
 import * as d3 from 'd3';
 import { motion, AnimatePresence, useReducedMotion } from 'framer-motion';
 import type { GraphState, GraphNodePosition, GraphEntityChange, HierarchyLevel } from '../services/graph/types';
@@ -707,6 +708,7 @@ export const GraphCanvas: React.FC<GraphCanvasProps> = ({
   const zoomBehaviorRef = useRef<d3.ZoomBehavior<SVGSVGElement, unknown> | null>(null);
   const [zoomTransform, setZoomTransform] = useState<ZoomTransform>({ x: 0, y: 0, k: 1 });
   const shouldReduceMotion = useReducedMotion();
+  const { t } = useTranslation();
 
   // Last-Write-Wins-Fix: ALLE Mutationen committen gegen diesen Stand, nie
   // direkt gegen die `state`-Closure — die kann zwischen Gesten-Beginn und
@@ -1626,16 +1628,16 @@ export const GraphCanvas: React.FC<GraphCanvasProps> = ({
       `}</style>
       {selection.selectedNodeId && state.nodesById.get(selection.selectedNodeId) && (
         <div className="absolute top-3 left-4 z-10 pointer-events-none">
-          <p className="m-0 text-[9px] font-bold uppercase tracking-[0.2em]" style={{ color: wnTheme.focusEyebrow }}>Fokus</p>
+          <p className="m-0 text-[9px] font-bold uppercase tracking-[0.2em]" style={{ color: wnTheme.focusEyebrow }}>{t('kg.canvas.focus')}</p>
           <p className="m-0 mt-0.5 text-sm font-bold" style={{ color: wnTheme.focusLabel }}>
             {state.nodesById.get(selection.selectedNodeId)!.title}
           </p>
         </div>
       )}
       <div className="absolute top-3 right-3 z-10 flex gap-1.5">
-        <button onClick={() => zoomBy(1.3)} aria-label="Vergrößern" className="w-8 h-8 flex items-center justify-center rounded-lg text-sm font-black" style={{ background: wnTheme.chipBg, border: `1px solid ${wnTheme.chipBorder}`, color: wnTheme.chipText, backdropFilter: 'blur(6px)' }}>+</button>
-        <button onClick={() => zoomBy(1 / 1.3)} aria-label="Verkleinern" className="w-8 h-8 flex items-center justify-center rounded-lg text-sm font-black" style={{ background: wnTheme.chipBg, border: `1px solid ${wnTheme.chipBorder}`, color: wnTheme.chipText, backdropFilter: 'blur(6px)' }}>−</button>
-        <button onClick={fitView} aria-label="Ansicht einpassen" className="w-8 h-8 flex items-center justify-center rounded-lg" style={{ background: wnTheme.chipBg, border: `1px solid ${wnTheme.chipBorder}`, color: wnTheme.chipText, backdropFilter: 'blur(6px)' }}>
+        <button onClick={() => zoomBy(1.3)} aria-label={t('kg.canvas.zoomIn')} title={t('kg.canvas.zoomIn')} className="w-8 h-8 flex items-center justify-center rounded-lg text-sm font-black" style={{ background: wnTheme.chipBg, border: `1px solid ${wnTheme.chipBorder}`, color: wnTheme.chipText, backdropFilter: 'blur(6px)' }}>+</button>
+        <button onClick={() => zoomBy(1 / 1.3)} aria-label={t('kg.canvas.zoomOut')} title={t('kg.canvas.zoomOut')} className="w-8 h-8 flex items-center justify-center rounded-lg text-sm font-black" style={{ background: wnTheme.chipBg, border: `1px solid ${wnTheme.chipBorder}`, color: wnTheme.chipText, backdropFilter: 'blur(6px)' }}>−</button>
+        <button onClick={fitView} aria-label={t('kg.canvas.fit')} title={t('kg.canvas.fit')} className="w-8 h-8 flex items-center justify-center rounded-lg" style={{ background: wnTheme.chipBg, border: `1px solid ${wnTheme.chipBorder}`, color: wnTheme.chipText, backdropFilter: 'blur(6px)' }}>
           <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><path d="M8 3H5a2 2 0 0 0-2 2v3m18 0V5a2 2 0 0 0-2-2h-3m0 18h3a2 2 0 0 0 2-2v-3M3 16v3a2 2 0 0 0 2 2h3"/></svg>
         </button>
       </div>
@@ -1821,7 +1823,7 @@ export const GraphCanvas: React.FC<GraphCanvasProps> = ({
             <input
               ref={edgePromptInputRef}
               value={edgePrompt.value}
-              placeholder="Beziehung eingeben (optional)…"
+              placeholder={t('kg.canvas.edgePlaceholder')}
               onChange={e => {
                 setEdgePrompt(prev => prev && { ...prev, value: e.target.value });
                 setEdgePromptError(null);
@@ -1879,16 +1881,17 @@ export const GraphCanvas: React.FC<GraphCanvasProps> = ({
             {onExplainEdge && (
               <button
                 onClick={() => onExplainEdge(edge.id)}
-                title="Beziehung erklären"
+                title={t('kg.canvas.explainEdge')}
                 className="h-6 px-2 flex items-center justify-center rounded-md bg-white dark:bg-slate-800 text-[9px] font-black uppercase tracking-wide text-slate-500 dark:text-slate-300 border shrink-0"
                 style={{ borderColor: 'var(--border-color, #e2e8f0)' }}
               >
-                Erklären
+                {t('kg.canvas.explain')}
               </button>
             )}
             <button
               onClick={deleteSelectedEdge}
-              title="Beziehung löschen"
+              title={t('kg.canvas.deleteEdge')}
+              aria-label={t('kg.canvas.deleteEdge')}
               className="w-6 h-6 flex items-center justify-center rounded-md bg-white dark:bg-slate-800 text-rose-500 border shrink-0 font-bold"
               style={{ borderColor: 'var(--border-color, #e2e8f0)' }}
             >

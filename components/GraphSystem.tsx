@@ -430,6 +430,9 @@ export const GraphSystem: React.FC<GraphSystemProps> = ({
     if (!result.error && result.entity) {
       graph.onChange({ state: result.state, history: result.history });
       graph.onEntityChanged({ kind: 'node', entity: result.entity });
+      // Neuer Node liegt versetzt neben dem Schwerpunkt, bei vielen Nodes
+      // leicht außerhalb des Ausschnitts: Kamera hinführen wie bei der Suche.
+      setCenterRequest({ id: result.entity.id, nonce: Date.now() });
     }
     setMissingConceptSuggestions(prev => (prev ?? []).filter(s => s !== suggestion));
   };
@@ -509,7 +512,9 @@ export const GraphSystem: React.FC<GraphSystemProps> = ({
           </h1>
           <p className="text-[9px] font-black uppercase tracking-widest text-slate-400">{t('nav.knowledgeGraph.hint')}</p>
         </div>
-        <div className="ml-auto flex items-center gap-1.5">
+        {/* flex-wrap: auf dem Handy (390px) ragten Rückgängig/Wiederholen sonst
+            ~100px über den Rand und waren wegen main{overflow-x:clip} unerreichbar. */}
+        <div className="ml-auto flex items-center gap-1.5 flex-wrap justify-end min-w-0 max-w-full">
           <button
             onClick={() => { setPaletteQuery(''); setPaletteIndex(0); setPaletteOpen(true); }}
             title={t('kg.search.tooltip')}
@@ -520,38 +525,38 @@ export const GraphSystem: React.FC<GraphSystemProps> = ({
           </button>
           <button
             onClick={() => setShowInsights(v => !v)}
-            title={showInsights ? 'Coach-Hinweise ausblenden' : 'Coach-Hinweise einblenden'}
+            title={showInsights ? t('kg.tb.insightsHide') : t('kg.tb.insightsShow')}
             aria-pressed={showInsights}
             className="h-8 px-3 flex items-center justify-center rounded-lg text-[9px] font-black uppercase tracking-widest text-slate-500 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-800 transition-colors"
             style={showInsights
               ? { background: 'color-mix(in srgb, var(--primary) 14%, transparent)' }
               : undefined}
           >
-            Hinweise
+            {t('kg.tb.insights')}
           </button>
           <button
             onClick={handleCheckMissingRelations}
             disabled={isCheckingRelations}
-            title="Fehlende Beziehungen prüfen"
+            title={t('kg.tb.relationsTitle')}
             className="h-8 px-3 flex items-center justify-center rounded-lg text-[9px] font-black uppercase tracking-widest text-slate-500 dark:text-slate-300 disabled:opacity-40 hover:bg-slate-50 dark:hover:bg-slate-800 transition-colors"
           >
-            {isCheckingRelations ? '…' : 'Beziehungen'}
+            {isCheckingRelations ? '…' : t('kg.tb.relations')}
           </button>
           <button
             onClick={handleCheckDuplicates}
             disabled={isCheckingDuplicates}
-            title="Doppelte Konzepte prüfen"
+            title={t('kg.tb.duplicatesTitle')}
             className="h-8 px-3 flex items-center justify-center rounded-lg text-[9px] font-black uppercase tracking-widest text-slate-500 dark:text-slate-300 disabled:opacity-40 hover:bg-slate-50 dark:hover:bg-slate-800 transition-colors"
           >
-            {isCheckingDuplicates ? '…' : 'Duplikate'}
+            {isCheckingDuplicates ? '…' : t('kg.tb.duplicates')}
           </button>
           <button
             onClick={handleCheckMissingConcepts}
             disabled={isCheckingConcepts}
-            title="Fehlende Konzepte prüfen"
+            title={t('kg.tb.conceptsTitle')}
             className="h-8 px-3 flex items-center justify-center rounded-lg text-[9px] font-black uppercase tracking-widest text-slate-500 dark:text-slate-300 disabled:opacity-40 hover:bg-slate-50 dark:hover:bg-slate-800 transition-colors"
           >
-            {isCheckingConcepts ? '…' : 'Konzepte'}
+            {isCheckingConcepts ? '…' : t('kg.tb.concepts')}
           </button>
           <button
             onClick={graph.undo}
@@ -581,7 +586,7 @@ export const GraphSystem: React.FC<GraphSystemProps> = ({
           }}
         >
           <p className="text-xs font-medium text-slate-600 dark:text-slate-300 min-w-0">
-            {unassignedNodes.length} {unassignedNodes.length === 1 ? 'Node ist' : 'Nodes sind'} noch keinem Fach zugeordnet.
+            {tp('kg.unassigned', unassignedNodes.length)}
           </p>
           <div className="flex items-center gap-2 ml-auto">
             <select
@@ -590,7 +595,7 @@ export const GraphSystem: React.FC<GraphSystemProps> = ({
               className="text-[10px] font-black uppercase tracking-widest bg-white dark:bg-slate-800 dark:text-white rounded-xl px-3 py-2 outline-none border"
               style={{ borderColor: 'var(--border-color)' }}
             >
-              <option value="">Fach wählen...</option>
+              <option value="">{t('kg.chooseSubject')}</option>
               {collections.map(c => (
                 <option key={c.id} value={c.id}>{c.emoji} {c.name}</option>
               ))}
@@ -601,7 +606,7 @@ export const GraphSystem: React.FC<GraphSystemProps> = ({
               className="text-[10px] font-black uppercase tracking-widest px-4 py-2 rounded-xl text-white disabled:opacity-40 transition-colors"
               style={{ background: 'var(--primary)' }}
             >
-              {isMoving ? '...' : 'Zuordnen'}
+              {isMoving ? '…' : t('kg.assign')}
             </button>
           </div>
         </div>
@@ -616,7 +621,7 @@ export const GraphSystem: React.FC<GraphSystemProps> = ({
           }}
         >
           <p className="text-xs font-medium text-slate-600 dark:text-slate-300 min-w-0">
-            {nodeInsightCount} {nodeInsightCount === 1 ? 'Node könnte' : 'Nodes könnten'} noch ausgebaut werden.
+            {tp('kg.insightsBanner', nodeInsightCount)}
           </p>
         </div>
       )}
@@ -631,13 +636,13 @@ export const GraphSystem: React.FC<GraphSystemProps> = ({
         >
           <div className="flex items-center justify-between gap-3">
             <p className="text-xs font-medium text-slate-600 dark:text-slate-300">
-              Vermutlich fehlende {missingRelationSuggestions.length === 1 ? 'Beziehung' : 'Beziehungen'}:
+              {tp('kg.sugg.relationsTitle', missingRelationSuggestions.length)}
             </p>
             <button
               onClick={() => setMissingRelationSuggestions([])}
               className="text-[9px] font-black uppercase tracking-widest text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 transition-colors shrink-0"
             >
-              Alle ignorieren
+              {t('kg.sugg.ignoreAll')}
             </button>
           </div>
           {missingRelationSuggestions.map((s, i) => {
@@ -655,13 +660,13 @@ export const GraphSystem: React.FC<GraphSystemProps> = ({
                     className="text-[10px] font-black uppercase tracking-widest px-3 py-2 rounded-xl text-white transition-colors"
                     style={{ background: 'var(--primary)' }}
                   >
-                    Verbinden
+                    {t('kg.sugg.connect')}
                   </button>
                   <button
                     onClick={() => handleDiscardRelationSuggestion(s)}
                     className="text-[10px] font-black uppercase tracking-widest px-3 py-2 rounded-xl text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors"
                   >
-                    Ignorieren
+                    {t('kg.sugg.ignore')}
                   </button>
                 </div>
               </div>
@@ -680,13 +685,13 @@ export const GraphSystem: React.FC<GraphSystemProps> = ({
         >
           <div className="flex items-center justify-between gap-3">
             <p className="text-xs font-medium text-slate-600 dark:text-slate-300">
-              {duplicateSuggestions.length === 1 ? 'Vermutlich doppeltes Konzept-Paar:' : 'Vermutlich doppelte Konzept-Paare:'}
+              {tp('kg.sugg.duplicatesTitle', duplicateSuggestions.length)}
             </p>
             <button
               onClick={() => setDuplicateSuggestions([])}
               className="text-[9px] font-black uppercase tracking-widest text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 transition-colors shrink-0"
             >
-              Alle ignorieren
+              {t('kg.sugg.ignoreAll')}
             </button>
           </div>
           {duplicateSuggestions.map((s, i) => {
@@ -709,36 +714,38 @@ export const GraphSystem: React.FC<GraphSystemProps> = ({
                       className="text-[10px] font-black uppercase tracking-widest px-3 py-2 rounded-xl text-white transition-colors"
                       style={{ background: 'var(--primary)' }}
                     >
-                      Zusammenführen
+                      {t('kg.sugg.merge')}
                     </button>
                     <button
                       onClick={() => handleViewDuplicateSuggestion(s)}
                       className="text-[10px] font-black uppercase tracking-widest px-3 py-2 rounded-xl text-slate-500 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors"
                     >
-                      Ansehen
+                      {t('kg.sugg.view')}
                     </button>
                     <button
                       onClick={() => handleDiscardDuplicateSuggestion(s)}
                       className="text-[10px] font-black uppercase tracking-widest px-3 py-2 rounded-xl text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors"
                     >
-                      Ignorieren
+                      {t('kg.sugg.ignore')}
                     </button>
                   </div>
                 </div>
                 {confirming && (
                   <div className="rounded-2xl px-4 py-3 space-y-2" style={{ background: 'var(--bg-sidebar)', border: '1px solid var(--border-color)' }}>
                     <p className="text-[11px] text-slate-600 dark:text-slate-300 break-words">
-                      <strong>{titleA}</strong> bleibt, <strong>{titleB}</strong> wird archiviert.{' '}
+                      {t('kg.sugg.mergeKeeps', { a: titleA, b: titleB })}{' '}
                       {previewOk && (
                         <>
-                          {previewOk.movedEdges} Kante{previewOk.movedEdges === 1 ? '' : 'n'} zieht um
-                          {previewOk.skippedEdges > 0 ? `, ${previewOk.skippedEdges} besteht schon` : ''}
-                          {previewOk.hasNotes ? ', Notizen werden ergänzt' : ''}
-                          {previewOk.hasDescription ? ', Beschreibung wird übernommen' : ''}.
-                          {previewOk.linkedDocuments > 0 && ` Achtung: ${previewOk.linkedDocuments} verknüpfte${previewOk.linkedDocuments === 1 ? 's' : ''} Dokument${previewOk.linkedDocuments === 1 ? '' : 'e'} am Duplikat werden NICHT übernommen.`}
+                          {[
+                            tp('kg.sugg.mergeEdges', previewOk.movedEdges),
+                            ...(previewOk.skippedEdges > 0 ? [t('kg.sugg.mergeSkipped', { n: previewOk.skippedEdges })] : []),
+                            ...(previewOk.hasNotes ? [t('kg.sugg.mergeNotes')] : []),
+                            ...(previewOk.hasDescription ? [t('kg.sugg.mergeDesc')] : []),
+                          ].join(', ')}.
+                          {previewOk.linkedDocuments > 0 && <>{' '}{tp('kg.sugg.mergeDocsWarn', previewOk.linkedDocuments)}</>}
                         </>
                       )}
-                      {' '}Über Rückgängig wiederherstellbar.
+                      {' '}{t('kg.sugg.mergeUndoable')}
                     </p>
                     <div className="flex gap-2">
                       <button
@@ -746,13 +753,13 @@ export const GraphSystem: React.FC<GraphSystemProps> = ({
                         className="text-[10px] font-black uppercase tracking-widest px-4 py-2 rounded-xl text-white transition-colors"
                         style={{ background: 'var(--primary)' }}
                       >
-                        Zusammenführen
+                        {t('kg.sugg.merge')}
                       </button>
                       <button
                         onClick={() => setMergingPairKey(null)}
                         className="text-[10px] font-black uppercase tracking-widest px-4 py-2 rounded-xl text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors"
                       >
-                        Abbrechen
+                        {t('quiz.cancel')}
                       </button>
                     </div>
                   </div>
@@ -773,13 +780,13 @@ export const GraphSystem: React.FC<GraphSystemProps> = ({
         >
           <div className="flex items-center justify-between gap-3">
             <p className="text-xs font-medium text-slate-600 dark:text-slate-300">
-              {missingConceptSuggestions.length === 1 ? 'Mögliches fehlendes Konzept:' : 'Mögliche fehlende Konzepte:'}
+              {tp('kg.sugg.conceptsTitle', missingConceptSuggestions.length)}
             </p>
             <button
               onClick={() => setMissingConceptSuggestions([])}
               className="text-[9px] font-black uppercase tracking-widest text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 transition-colors shrink-0"
             >
-              Alle ignorieren
+              {t('kg.sugg.ignoreAll')}
             </button>
           </div>
           {missingConceptSuggestions.map((s, i) => (
@@ -794,13 +801,13 @@ export const GraphSystem: React.FC<GraphSystemProps> = ({
                   className="text-[10px] font-black uppercase tracking-widest px-3 py-2 rounded-xl text-white transition-colors"
                   style={{ background: 'var(--primary)' }}
                 >
-                  Node erstellen
+                  {t('kg.sugg.createNode')}
                 </button>
                 <button
                   onClick={() => handleDiscardMissingConceptSuggestion(s)}
                   className="text-[10px] font-black uppercase tracking-widest px-3 py-2 rounded-xl text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors"
                 >
-                  Ignorieren
+                  {t('kg.sugg.ignore')}
                 </button>
               </div>
             </div>

@@ -5,6 +5,7 @@ import { buildEdgeExplanationSource } from '../services/graph/graphEdgeExplanati
 import { explainRelationship } from '../services/geminiService';
 import { resolveErrorMessage } from '../services/errorMessages';
 import { renderMarkdown } from './markdownRenderer';
+import { useTranslation } from '../i18n/I18nProvider';
 
 /**
  * Wissensnetz-Coach, Baustein 2 ("Beziehungen erklären", s. Memory
@@ -23,6 +24,7 @@ export interface GraphEdgeExplainOverlayProps {
 }
 
 export const GraphEdgeExplainOverlay: React.FC<GraphEdgeExplainOverlayProps> = ({ state, edgeId, onClose, onApiError }) => {
+  const { t } = useTranslation();
   const [subtitle, setSubtitle] = useState('');
   const [explanation, setExplanation] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
@@ -69,12 +71,13 @@ export const GraphEdgeExplainOverlay: React.FC<GraphEdgeExplainOverlayProps> = (
       >
         <div className="flex items-start justify-between gap-3">
           <div className="min-w-0">
-            <p className="text-[9px] font-black uppercase tracking-widest text-slate-400">Beziehung erklären</p>
+            <p className="text-[9px] font-black uppercase tracking-widest text-slate-400">{t('kg.canvas.explainEdge')}</p>
             {subtitle && <p className="text-xs font-bold text-slate-600 dark:text-slate-300 break-words mt-1">{subtitle}</p>}
           </div>
           <button
             ref={closeButtonRef}
             onClick={onClose}
+            aria-label={t('common.close')}
             className="w-7 h-7 flex items-center justify-center rounded-full text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors shrink-0"
           >
             ×
