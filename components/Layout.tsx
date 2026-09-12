@@ -61,10 +61,9 @@ const ICONS: Partial<Record<ActiveTab, LucideIcon>> = {
 /** Sidebar ist bewusst IMMER Navy — unabhängig vom Hell/Dunkel-Toggle des
  *  Hauptinhalts (User-Wunsch: derselbe Navy/Gold-Look wie LandingPage.tsx/
  *  AuthPage.tsx soll auch in der App sichtbar sein). Navy 1:1 von dort
- *  übernommen (#1B2A4A/#FBF9F4). Gold bewusst NICHT das helle-Modus-Braun
- *  (#A9772C, auf Navy wirkt das erdig/braun statt golden) — stattdessen der
- *  hellere Dark-Mode-Gold-Ton der App (#D9A94E, schon in app.css --primary
- *  dark: und in AuthPage.tsx's Logo auf der Navy-Fläche verwendet). */
+ *  übernommen (#1B2A4A/#FBF9F4). "gold" ist trotz des Namens `var(--primary)`
+ *  — folgt also der vom Nutzer gewählten Akzentfarbe (Einstellungen →
+ *  Akzentfarbe) genau wie der Rest der App, statt fest auf Gold zu bleiben. */
 const SIDEBAR = {
   bg: '#1B2A4A',
   border: 'rgba(255,255,255,0.08)',
@@ -73,7 +72,7 @@ const SIDEBAR = {
   hoverBg: 'rgba(255,255,255,0.06)',
   chipBg: 'rgba(255,255,255,0.08)',
   chipBorder: 'rgba(255,255,255,0.14)',
-  gold: '#D9A94E',
+  gold: 'var(--primary)',
 } as const;
 
 export const Layout: React.FC<LayoutProps> = ({
@@ -272,7 +271,7 @@ export const Layout: React.FC<LayoutProps> = ({
                 aria-label={t('layout.selectSubject')}
                 className="w-full px-3 py-2.5 rounded-xl text-[11px] font-black uppercase tracking-wider outline-none cursor-pointer"
                 style={{
-                  background: activeModuleId ? 'color-mix(in srgb, #D9A94E 18%, #1B2A4A)' : SIDEBAR.chipBg,
+                  background: activeModuleId ? 'color-mix(in srgb, var(--primary) 18%, #1B2A4A)' : SIDEBAR.chipBg,
                   border: `1px solid ${activeModuleId ? SIDEBAR.gold : SIDEBAR.chipBorder}`,
                   color: activeModuleId ? SIDEBAR.gold : SIDEBAR.text,
                 }}
@@ -372,7 +371,7 @@ export const Layout: React.FC<LayoutProps> = ({
                   <button
                     onClick={onUpgradeClick}
                     className="w-full flex items-center justify-center gap-2 px-4 py-2.5 rounded-2xl text-[10px] font-black uppercase tracking-widest transition-all hover:scale-[1.02]"
-                    style={{ background: 'color-mix(in srgb, #D9A94E 18%, #1B2A4A)', color: SIDEBAR.gold, border: `1px solid ${SIDEBAR.gold}` }}
+                    style={{ background: 'color-mix(in srgb, var(--primary) 18%, #1B2A4A)', color: SIDEBAR.gold, border: `1px solid ${SIDEBAR.gold}` }}
                   >
                     <Zap className="w-3.5 h-3.5" strokeWidth={2} />
                     {t('layout.upgradePro')}
