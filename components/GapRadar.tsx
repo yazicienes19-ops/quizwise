@@ -700,7 +700,10 @@ export const GapRadar: React.FC<GapRadarProps> = ({ metrics, onNavigate, onActio
           <select
             value={selectedDoc}
             onChange={e => setSelectedDoc(e.target.value)}
-            className="px-3 py-2 rounded-xl text-[10px] font-black uppercase tracking-wider border"
+            // Breite begrenzen: ein <select> wird so breit wie seine längste
+            // Option; lange Dokumentnamen schoben es auf dem Handy 155px über
+            // den Rand (main clippt, der Filter war nicht mehr bedienbar).
+            className="px-3 py-2 rounded-xl text-[10px] font-black uppercase tracking-wider border w-full sm:w-auto max-w-full sm:max-w-[320px] min-w-0 truncate"
             style={{
               background: 'var(--bg-sidebar)',
               borderColor: 'var(--border-color)',

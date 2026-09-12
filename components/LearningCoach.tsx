@@ -41,8 +41,12 @@ const INSIGHTS_CACHE_KEY = 'studearc_coach_insights_v1';
 /** Cache pro Fach (Variante C) getrennt — sonst würde nach einem Reload die
  *  Analyse eines anderen Fachs geladen, sobald zufällig dieselbe Session-Anzahl
  *  vorliegt. `undefined`/`null` = "Alle Fächer". */
-const insightsCacheKey = (moduleId: string | null | undefined): string =>
-  `${INSIGHTS_CACHE_KEY}:${moduleId ?? 'all'}`;
+const insightsCacheKey = (moduleId: string | null | undefined, userId: string | null | undefined): string =>
+  // userId im Schlüssel: die Analyse enthält persönliche Fehler/Themen; ohne
+  // Konto-Trennung sah ein zweites Konto auf demselben Gerät sie, sobald die
+  // Session-Anzahl zufällig übereinstimmte (gleiche Leck-Klasse wie der
+  // Wissensnetz-Cache vom 19.08.).
+  `${INSIGHTS_CACHE_KEY}:${userId ?? 'anon'}:${moduleId ?? 'all'}`;
 
 const getTabActionLabel = (tab: string): string => {
   const map: Record<string, TKey> = {
@@ -185,7 +189,7 @@ export const LearningCoach: React.FC<LearningCoachProps> = ({ metrics, decks, on
   useEffect(() => {
     setInsights(null);
     try {
-      const raw = localStorage.getItem(insightsCacheKey(activeModule?.id));
+      const raw = localStorage.getItem(insightsCacheKey(activeModule?.id, userId));
       if (!raw) return;
       const cached = JSON.parse(raw) as { insights: CoachInsights; totalSessions: number };
       if (cached?.insights && cached.totalSessions === profile.volume.totalSessions) {
@@ -196,7 +200,7 @@ export const LearningCoach: React.FC<LearningCoachProps> = ({ metrics, decks, on
   // NICHT zurücksetzen (nur ein Fach-Wechsel soll das), daher bewusst nicht in
   // den Deps.
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [activeModule?.id]);
+  }, [activeModule?.id, userId]);
 
   const wissensprofilItems = [
     ...profile.categoryMastery.map(c => ({ key: `cat-${c.category}`, label: getCategoryLabel(c.category), avgScore: c.avgScore })),
@@ -239,7 +243,7 @@ export const LearningCoach: React.FC<LearningCoachProps> = ({ metrics, decks, on
       const result = await generateCoachInsights(coachProfile, wrongAnswersCtx);
       setInsights(result);
       try {
-        localStorage.setItem(insightsCacheKey(activeModule?.id), JSON.stringify({
+        localStorage.setItem(insightsCacheKey(activeModule?.id, userId), JSON.stringify({
           insights: result, totalSessions: profile.volume.totalSessions, savedAt: Date.now(),
         }));
       } catch {}
