@@ -12,6 +12,7 @@ const adminRoutes = require('./routes/admin');
 const documentRoutes = require('./routes/documents');
 const importRoutes = require('./routes/importUrl');
 const { router: pushRoutes, vapidConfigured } = require('./routes/push');
+const calendarFeedRoutes = require('./routes/calendarFeed');
 const { startNotificationScheduler } = require('./notifications/scheduler');
 const { startProGrantExpiryJob } = require('./admin/expireProGrants');
 const { requireAuth } = require('./middleware/auth');
@@ -54,6 +55,9 @@ const stripeLimiter = rateLimit({
 });
 const stripeWebhookLimiter = rateLimit({ windowMs: 60 * 1000, max: 120, standardHeaders: true, legacyHeaders: false, message: { error: 'Zu viele Webhook-Anfragen.' } });
 const clientErrorLimiter = rateLimit({ windowMs: 60 * 1000, max: 10, standardHeaders: true, legacyHeaders: false, message: { error: 'Zu viele Meldungen.' } });
+// Kalender-Apps rufen den Feed periodisch selbst ab (kein Login möglich, s.
+// routes/calendarFeed.js) — eigenes, großzügiges Limit statt requireAuth.
+const calendarFeedLimiter = rateLimit({ windowMs: 60 * 1000, max: 30, standardHeaders: true, legacyHeaders: false, message: { error: 'Zu viele Anfragen.' } });
 
 app.use('/api/', globalLimiter);
 
@@ -87,6 +91,9 @@ app.use('/api/import', geminiLimiter, requireAuth, importRoutes);
 
 // Push: vapid-key öffentlich, subscribe/unsubscribe intern per requireAuth geschützt
 app.use('/api/push', pushRoutes);
+
+// Kalender-Abo-Feed: öffentlich (Token statt requireAuth, s. routes/calendarFeed.js)
+app.use('/api/calendar-feed', calendarFeedLimiter, calendarFeedRoutes);
 
 app.use((err, req, res, next) => {
   // Vollständigen Fehler serverseitig loggen (Stacktrace fürs Debugging)

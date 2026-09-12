@@ -58,6 +58,16 @@ export const sendActivityHeartbeat = async (seconds: number): Promise<void> => {
   });
 };
 
+// Persönlicher .ics-Abo-Link für den Handy-Kalender-Sync (Studienplaner).
+// Derselbe Token/Link bei jedem Aufruf (backend legt ihn beim ersten Mal an).
+export const getCalendarFeedUrl = async (): Promise<string> => {
+  const headers = await authHeaders();
+  const res = await fetch(`${BACKEND_URL}/api/user/calendar-feed-token`, { headers });
+  if (!res.ok) throw new Error('Kalender-Link konnte nicht erstellt werden.');
+  const data = await res.json();
+  return data.url;
+};
+
 export const getInvoices = async (): Promise<any[]> => {
   const headers = await authHeaders();
   const res = await fetch(`${BACKEND_URL}/api/stripe/invoices`, { headers });

@@ -10,11 +10,12 @@ import { getAllResults } from '../services/quizHistoryService';
 import { getSpacedSettings, saveSpacedSettings, buildSpacedPlan, applySpacedPlan, buildDueForecast } from '../services/spacedPlanningService';
 import { sessionsForDate, applySessionSave, SessionFormInput, fixedWeekdaysFromRecurring, mapSmartPlanToCalendarSessions, replaceSmartPlanSessions, migrateStudyEntriesToRecurring, daysUntilDate } from '../services/calendarSessions';
 import { toast } from '../services/toast';
+import { getCalendarFeedUrl } from '../services/userService';
 import { useTranslation } from '../i18n/I18nProvider';
 import { formatDate } from '../i18n/dates';
 import { localeTag } from '../i18n';
 import type { TKey } from '../i18n';
-import { ChevronLeft, ChevronRight, X, Plus, Repeat as RepeatIcon, Clock, CalendarX as CalendarXIcon, Trash2 } from 'lucide-react';
+import { ChevronLeft, ChevronRight, X, Plus, Repeat as RepeatIcon, Clock, CalendarX as CalendarXIcon, Trash2, Smartphone, Copy, Check } from 'lucide-react';
 
 type ViewMode = 'monat' | 'liste';
 
@@ -106,6 +107,11 @@ export const StudyPlanner: React.FC<StudyPlannerProps> = ({ metrics, decks, exam
   const [newExamDate, setNewExamDate] = useState('');
 
   const [showEventForm, setShowEventForm] = useState(false);
+  const [showSyncModal, setShowSyncModal] = useState(false);
+  const [syncUrl, setSyncUrl] = useState<string | null>(null);
+  const [syncLoading, setSyncLoading] = useState(false);
+  const [syncError, setSyncError] = useState<string | null>(null);
+  const [syncCopied, setSyncCopied] = useState(false);
   const [newEventTitle, setNewEventTitle] = useState('');
   const [newEventDate, setNewEventDate] = useState('');
   const [newEventType, setNewEventType] = useState<'study' | 'reminder'>('study');
@@ -320,6 +326,33 @@ export const StudyPlanner: React.FC<StudyPlannerProps> = ({ metrics, decks, exam
     finally { setIsGenerating(false); }
   };
 
+  const openSyncModal = async () => {
+    setShowSyncModal(true);
+    setShowExamForm(false);
+    setShowEventForm(false);
+    if (syncUrl) return;
+    setSyncLoading(true);
+    setSyncError(null);
+    try {
+      setSyncUrl(await getCalendarFeedUrl());
+    } catch {
+      setSyncError(t('sp2.syncFailed'));
+    } finally {
+      setSyncLoading(false);
+    }
+  };
+
+  const copySyncUrl = async () => {
+    if (!syncUrl) return;
+    try {
+      await navigator.clipboard.writeText(syncUrl);
+      setSyncCopied(true);
+      setTimeout(() => setSyncCopied(false), 2000);
+    } catch {
+      toast.error(t('sp2.syncCopyFailed'));
+    }
+  };
+
   const knowledgeGaps = metrics.filter(m => m.confidence < 70);
   const dueDecks = decks.filter(d => countDueCards(d.cards.map(c => c.srs ? c : { ...c, srs: migrateLegacyCard(c) })) > 0);
 
@@ -358,6 +391,14 @@ export const StudyPlanner: React.FC<StudyPlannerProps> = ({ metrics, decks, exam
             style={{ background: 'var(--bg-sidebar)', color: 'var(--text-main)', border: '2px solid var(--border-color)' }}
           >
             {t('sp2.addEvent')}
+          </button>
+          <button
+            onClick={openSyncModal}
+            className="px-6 py-4 rounded-3xl font-black uppercase tracking-[0.2em] text-[11px] transition-all flex items-center gap-2"
+            style={{ background: 'var(--bg-sidebar)', color: 'var(--text-main)', border: '2px solid var(--border-color)' }}
+          >
+            <Smartphone size={14} />
+            {t('sp2.syncPhone')}
           </button>
         </div>
 
@@ -504,6 +545,54 @@ export const StudyPlanner: React.FC<StudyPlannerProps> = ({ metrics, decks, exam
               saveEvents([...events, { id: Math.random().toString(36).substr(2, 9), title: newEventTitle, date: newEventDate, type: newEventType, description: newEventDesc || undefined }]);
               setNewEventTitle(''); setNewEventDate(''); setNewEventDesc(''); setShowEventForm(false);
             }} className="w-full bg-indigo-600 text-white py-4 rounded-2xl text-[11px] font-black uppercase tracking-widest hover:bg-indigo-700 transition-colors">{t('sp2.saveEvent')}</button>
+          </div>
+        </div>
+      )}
+
+      {/* Handy-Kalender-Sync */}
+      {showSyncModal && (
+        <div className="max-w-xl mx-auto p-8 bg-white dark:bg-slate-900 rounded-[32px] border border-slate-200 dark:border-slate-800 shadow-3d-raised animate-in zoom-in-95 duration-200">
+          <div className="flex items-center justify-between mb-6">
+            <h3 className="text-lg font-black dark:text-white flex items-center gap-2"><Smartphone size={18} />{t('sp2.syncTitle')}</h3>
+            <button onClick={() => setShowSyncModal(false)} className="w-8 h-8 flex items-center justify-center rounded-xl bg-slate-100 dark:bg-slate-800 text-slate-400 hover:text-rose-500 transition-colors"><X size={14} /></button>
+          </div>
+          <div className="space-y-4">
+            <p className="text-sm font-medium" style={{ color: 'var(--text-secondary)' }}>{t('sp2.syncSubtitle')}</p>
+
+            {syncLoading && (
+              <div className="p-4 rounded-2xl text-sm font-bold text-center" style={{ background: 'var(--bg-main)', color: 'var(--text-secondary)' }}>{t('sp2.syncLoading')}</div>
+            )}
+            {syncError && (
+              <div className="p-4 rounded-2xl text-sm font-bold text-center text-rose-600 dark:text-rose-400" style={{ background: 'var(--bg-main)' }}>{syncError}</div>
+            )}
+            {syncUrl && !syncLoading && (
+              <>
+                <div className="flex items-center gap-2 p-3 rounded-2xl" style={{ background: 'var(--bg-main)', border: '1px solid var(--border-color)' }}>
+                  <code className="flex-1 text-xs overflow-x-auto whitespace-nowrap" style={{ color: 'var(--text-main)' }}>{syncUrl}</code>
+                  <button onClick={copySyncUrl} aria-label={t('sp2.syncCopy')} className="w-9 h-9 shrink-0 flex items-center justify-center rounded-xl transition-colors hover:opacity-80" style={{ background: 'var(--bg-sidebar)', color: 'var(--text-main)' }}>
+                    {syncCopied ? <Check size={14} /> : <Copy size={14} />}
+                  </button>
+                </div>
+                <a
+                  href={syncUrl.replace(/^https?:\/\//, 'webcal://')}
+                  className="block w-full text-center py-4 rounded-2xl text-[11px] font-black uppercase tracking-widest transition-all"
+                  style={{ background: 'var(--primary)', color: 'var(--ink)' }}
+                >
+                  {t('sp2.syncAddButton')}
+                </a>
+
+                <div className="pt-2 space-y-3 text-sm" style={{ color: 'var(--text-secondary)' }}>
+                  <div>
+                    <p className="font-black text-xs uppercase tracking-widest mb-1" style={{ color: 'var(--text-main)' }}>{t('sp2.syncIosTitle')}</p>
+                    <p>{t('sp2.syncIosSteps')}</p>
+                  </div>
+                  <div>
+                    <p className="font-black text-xs uppercase tracking-widest mb-1" style={{ color: 'var(--text-main)' }}>{t('sp2.syncAndroidTitle')}</p>
+                    <p>{t('sp2.syncAndroidSteps')}</p>
+                  </div>
+                </div>
+              </>
+            )}
           </div>
         </div>
       )}

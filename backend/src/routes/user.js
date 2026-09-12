@@ -1,9 +1,37 @@
 const express = require('express');
+const crypto = require('crypto');
 const Stripe = require('stripe');
 const { supabaseAdmin } = require('../middleware/auth');
 const router = express.Router();
 
 const stripe = new Stripe(process.env.STRIPE_SECRET_KEY);
+
+// Für den zurückgegebenen Abo-Link (routes/calendarFeed.js hängt selbst nicht
+// von dieser Konstante ab, nur die URL, die wir dem Client zeigen).
+const PUBLIC_BACKEND_URL = process.env.PUBLIC_BACKEND_URL || 'https://quizwise-backend-production.up.railway.app';
+
+// GET /api/user/calendar-feed-token
+// Liefert den persönlichen .ics-Abo-Link für den Handy-Kalender-Sync,
+// erzeugt bei Erstaufruf einen zufälligen Token (s. migration_calendar_
+// feed_token.sql). Derselbe Token bei jedem weiteren Aufruf — ein neuer
+// Link würde alle bereits im Handy-Kalender abonnierten Feeds ungültig
+// machen.
+router.get('/calendar-feed-token', async (req, res, next) => {
+  try {
+    const { data: profile, error: readErr } = await supabaseAdmin
+      .from('profiles').select('calendar_feed_token').eq('id', req.user.id).single();
+    if (readErr) throw readErr;
+
+    let token = profile.calendar_feed_token;
+    if (!token) {
+      token = crypto.randomBytes(24).toString('hex');
+      const { error: writeErr } = await supabaseAdmin
+        .from('profiles').update({ calendar_feed_token: token }).eq('id', req.user.id);
+      if (writeErr) throw writeErr;
+    }
+    res.json({ url: `${PUBLIC_BACKEND_URL}/api/calendar-feed/${token}.ics` });
+  } catch (err) { next(err); }
+});
 
 // GET /api/user/profile
 router.get('/profile', async (req, res, next) => {
