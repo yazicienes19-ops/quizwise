@@ -20,6 +20,7 @@ import type { MistakeItem } from '../services/mistakeReviewService';
 import { saveRecallResult } from '../services/recallHistoryService';
 import { createSrsState } from '../services/spacedRepetition';
 import { saveDeckToSupabase } from '../services/flashcardService';
+import { upsertLocalDeck } from '../services/deckStore';
 import { saveExamResult } from '../services/examHistoryService';
 import { exportSavedExamToPdf } from '../services/examPdfExport';
 import { recordActivity } from '../services/streakService';
@@ -175,9 +176,7 @@ export const AppContent: React.FC<AppContentProps> = (p) => {
   // hier nur Persistierung) — exakt dasselbe Speicher-Muster wie onCreateCardsFromGaps
   // unten (setDecks + localStorage + Supabase-Sync), nur mit fertigem Deck statt Rohdaten.
   const handleCreateCardsFromErrors = (deck: FlashcardDeck) => {
-    const updatedDecks = [...decks, deck];
-    setDecks(updatedDecks);
-    localStorage.setItem('flashcard_decks', JSON.stringify(updatedDecks));
+    setDecks(upsertLocalDeck(deck));
     if (user?.id) saveDeckToSupabase(deck, user.id).catch(() => {});
     toast.success(tp('ac.cardsFromErrorsN', deck.cards.length));
     setActiveTab(ActiveTab.CARDS);
@@ -439,9 +438,7 @@ export const AppContent: React.FC<AppContentProps> = (p) => {
             srs: createSrsState(),
           }));
           const newDeck: FlashcardDeck = { id: Math.random().toString(36).slice(2, 9), title: `Lücken: ${topic}`, cards };
-          const updatedDecks = [...decks, newDeck];
-          setDecks(updatedDecks);
-          localStorage.setItem('flashcard_decks', JSON.stringify(updatedDecks));
+          setDecks(upsertLocalDeck(newDeck));
           if (user?.id) saveDeckToSupabase(newDeck, user.id).catch(() => {});
           toast.success(tp('ac.cardsFromGapsN', cards.length));
           setActiveTab(ActiveTab.CARDS);

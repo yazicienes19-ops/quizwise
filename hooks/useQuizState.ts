@@ -1,6 +1,7 @@
 import { useState, useRef, useEffect } from 'react';
 import { flushSync } from 'react-dom';
 import { ProcessedDocument, QuizQuestion, UserAnswer, FlashcardDeck, Flashcard, ActiveTab, QuizType, TopicMetric, ExamTerm, QuizConfig } from '../types';
+import { upsertLocalDeck } from '../services/deckStore';
 import type { GenerationSource } from '../services/geminiService';
 import { generateQuizFromDocument } from '../services/geminiService';
 import { getSavedQuizzes, saveQuizToStorage, deleteSavedQuiz, SavedQuiz } from '../services/savedQuizzesService';
@@ -349,9 +350,7 @@ export const useQuizState = (params: UseQuizStateParams) => {
       sourceDocumentId: activeQuizMeta?.docId,
     };
 
-    const updatedDecks = [...params.decks, newDeck];
-    params.setDecks(updatedDecks);
-    localStorage.setItem('flashcard_decks', JSON.stringify(updatedDecks));
+    params.setDecks(upsertLocalDeck(newDeck));
 
     if (activeQuizMeta?.docId) {
       const current = getMeta(activeQuizMeta.docId);

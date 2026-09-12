@@ -10,8 +10,9 @@ import { FlashcardPlayer } from './FlashcardPlayer';
 import { SourceSelector } from './SourceSelector';
 import { loadDecksFromSupabase, saveDeckToSupabase, deleteDeckFromSupabase, uploadAllDecksToSupabase } from '../services/flashcardService';
 import { mergeDecks } from '../services/deckMerge';
+import { readLocalDecks, writeLocalDecks, subscribeLocalDecks, claimLocalDecks } from '../services/deckStore';
 import { documentDisplayName } from '../services/libraryService';
-import { getDueCards, createSrsState, migrateLegacyCard, countDueCards, QUALITY_MAP, reviewCard, buildSessionBatch, SESSION_BATCH_SIZE } from '../services/spacedRepetition';
+import { createSrsState, migrateLegacyCard, countDueCards, QUALITY_MAP, reviewCard, buildSessionBatch, SESSION_BATCH_SIZE, type SrsState } from '../services/spacedRepetition';
 import { recordActivity } from '../services/streakService';
 import { AnkiImportModal } from './AnkiImportModal';
 import { buildPrintHtml } from '../services/printDeckService';
@@ -36,6 +37,17 @@ interface FlashcardSystemProps {
   activeModuleId?: string | null;
 }
 
+/** Cloud-Speichern bündeln: vorher lief pro Bewertung ein SELECT + UPSERT des
+ *  ganzen Decks, bei einer 30-Karten-Runde also 60 Requests in wenigen Minuten. */
+const CLOUD_SAVE_DELAY_MS = 1500;
+
+const newId = () => Math.random().toString(36).slice(2, 11);
+
+const isValidSrs = (s: unknown): s is SrsState => {
+  const v = s as SrsState;
+  return !!v && [v.ease, v.interval, v.repetitions, v.nextReview].every(n => typeof n === 'number' && Number.isFinite(n));
+};
+
 export const FlashcardSystem: React.FC<FlashcardSystemProps> = ({
   availableDocuments,
   collections,
@@ -54,7 +66,17 @@ export const FlashcardSystem: React.FC<FlashcardSystemProps> = ({
     () => activeModuleId ? availableDocuments.filter(d => d.collectionId === activeModuleId) : availableDocuments,
     [availableDocuments, activeModuleId],
   );
-  const [decks, setDecks] = useState<FlashcardDeck[]>([]);
+  // Sofort mit dem lokalen Stand starten (kein leerer "Keine Stapel"-Blitz,
+  // bis die Cloud antwortet); der Cloud-Merge zieht danach nach.
+  const [decks, setDecksState] = useState<FlashcardDeck[]>(() => {
+    if (userId) claimLocalDecks(userId);
+    return readLocalDecks();
+  });
+  // Handler lesen IMMER die aktuelle Liste über die Ref. Vorher schrieb z.B.
+  // die Auto-Generierung aus der Bibliothek (Effekt beim Mount, Closure mit
+  // decks = []) nach ein paar Sekunden nur das neue Deck zurück und warf alle
+  // anderen aus State und localStorage.
+  const decksRef = useRef(decks);
   const [activeDeckId, setActiveDeckId] = useState<string | null>(null);
   const [sessionCards, setSessionCards] = useState<Flashcard[]>([]);
   const [isPracticeSession, setIsPracticeSession] = useState(false);
@@ -62,7 +84,8 @@ export const FlashcardSystem: React.FC<FlashcardSystemProps> = ({
   const [editingDeckId, setEditingDeckId] = useState<string | null>(null);
   const [isGenerating, setIsGenerating] = useState<string | null>(null);
   const [selectedCount, setSelectedCount] = useState<number>(15);
-  
+  const [freshDeckId, setFreshDeckId] = useState<string | null>(null);
+
   // States for manual deck creation
   const [showManualDeckDialog, setShowManualDeckDialog] = useState(false);
   const [showAnkiImport, setShowAnkiImport] = useState(false);
@@ -80,65 +103,122 @@ export const FlashcardSystem: React.FC<FlashcardSystemProps> = ({
   const cardCounts = [5, 10, 15, 20, 30];
   const importInputRef = useRef<HTMLInputElement>(null);
 
-  useEffect(() => {
-    const loadDecks = async () => {
-      if (userId) {
-        try {
-          const cloudDecks = await loadDecksFromSupabase(userId);
-          if (cloudDecks.length > 0) {
-            // Cloud NICHT blind übernehmen — mit lokalem Stand pro Karte mergen,
-            // sonst geht Offline-Lernfortschritt dieses Geräts verloren.
-            let localDecks: FlashcardDeck[] = [];
-            try { localDecks = JSON.parse(localStorage.getItem('flashcard_decks') || '[]'); } catch {}
-            const merged = mergeDecks(localDecks, cloudDecks);
-            setDecks(merged);
-            localStorage.setItem('flashcard_decks', JSON.stringify(merged));
-            // Nur lokal vorhandene Decks (z.B. per Link übernommen, SharedDeckPage)
-            // sofort hochladen — sonst bleiben sie bis zur nächsten Bearbeitung
-            // auf diesem Gerät gefangen.
-            const cloudIds = new Set(cloudDecks.map(d => d.id));
-            const localOnly = merged.filter(d => !cloudIds.has(d.id));
-            if (localOnly.length > 0) uploadAllDecksToSupabase(localOnly, userId).catch(() => {});
-            return;
-          }
-          // Keine Cloud-Decks: localStorage-Daten hochladen (Migration)
-          const local = localStorage.getItem('flashcard_decks');
-          if (local) {
-            const localDecks: FlashcardDeck[] = JSON.parse(local);
-            if (localDecks.length > 0) {
-              await uploadAllDecksToSupabase(localDecks, userId);
-              setDecks(localDecks);
-              return;
-            }
-          }
-        } catch {
-          // Offline oder Fehler → localStorage-Fallback
-          const saved = localStorage.getItem('flashcard_decks');
-          if (saved) try { setDecks(JSON.parse(saved)); } catch {}
-        }
-      } else {
-        const saved = localStorage.getItem('flashcard_decks');
-        if (saved) try { setDecks(JSON.parse(saved)); } catch {}
-      }
-    };
-    loadDecks();
-  }, [userId]);
+  // ── Lokaler Stand (deckStore) ────────────────────────────────────────────
+  const selfWrite = useRef(false);
+  const commitDecks = useCallback((next: FlashcardDeck[]) => {
+    decksRef.current = next;
+    setDecksState(next);
+    selfWrite.current = true;
+    writeLocalDecks(next);
+    selfWrite.current = false;
+  }, []);
 
-  // Auto-generate cards when navigated from Library source detail
+  // Änderungen von außen (Tutor-Karte, Wissensnetz, anderer Tab) übernehmen.
+  useEffect(() => subscribeLocalDecks(() => {
+    if (selfWrite.current) return;
+    const next = readLocalDecks();
+    decksRef.current = next;
+    setDecksState(next);
+  }), []);
+
+  // ── Cloud (gebündelt) ────────────────────────────────────────────────────
+  const pendingCloud = useRef(new Map<string, FlashcardDeck>());
+  const cloudTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const flushCloud = useCallback(() => {
+    if (cloudTimer.current) { clearTimeout(cloudTimer.current); cloudTimer.current = null; }
+    const batch = [...pendingCloud.current.values()];
+    pendingCloud.current.clear();
+    if (!userId) return;
+    batch.forEach(d => { saveDeckToSupabase(d, userId).catch(() => {}); });
+  }, [userId]);
+  const queueCloudSave = useCallback((deck: FlashcardDeck) => {
+    if (!userId) return;
+    pendingCloud.current.set(deck.id, deck);
+    if (cloudTimer.current) clearTimeout(cloudTimer.current);
+    cloudTimer.current = setTimeout(flushCloud, CLOUD_SAVE_DELAY_MS);
+  }, [userId, flushCloud]);
   useEffect(() => {
-    if (!initialDoc || !getDocumentSource) return;
+    window.addEventListener('pagehide', flushCloud);
+    return () => { window.removeEventListener('pagehide', flushCloud); flushCloud(); };
+  }, [flushCloud]);
+
+  useEffect(() => {
+    if (!userId) return;
+    let cancelled = false;
+    (async () => {
+      try {
+        const cloudDecks = await loadDecksFromSupabase(userId);
+        if (cancelled) return;
+        // Lokalen Stand erst NACH dem await lesen: was der Nutzer in der
+        // Zwischenzeit gelernt oder angelegt hat, darf der Merge nicht verlieren.
+        claimLocalDecks(userId);
+        const localDecks = readLocalDecks();
+        if (cloudDecks.length === 0) {
+          if (localDecks.length > 0) await uploadAllDecksToSupabase(localDecks, userId);
+          return;
+        }
+        // Cloud NICHT blind übernehmen — pro Karte mergen (deckMerge), sonst
+        // geht Offline-Lernfortschritt dieses Geräts verloren.
+        const merged = mergeDecks(localDecks, cloudDecks);
+        commitDecks(merged);
+        // Hochladen, was die Cloud noch nicht kennt: rein lokale Decks (z.B.
+        // per Link übernommen) UND Decks, deren Karten hier neuer sind (offline
+        // gelernt). Vorher blieb Letzteres bis zur nächsten Bearbeitung liegen.
+        const cloudById = new Map(cloudDecks.map(d => [d.id, d]));
+        const needsUpload = merged.filter(d => {
+          const cloud = cloudById.get(d.id);
+          return !cloud || JSON.stringify(cloud.cards) !== JSON.stringify(d.cards);
+        });
+        if (needsUpload.length > 0) uploadAllDecksToSupabase(needsUpload, userId).catch(() => {});
+      } catch {
+        // Offline oder Fehler → lokaler Stand bleibt
+      }
+    })();
+    return () => { cancelled = true; };
+  }, [userId, commitDecks]);
+
+  // Auto-generate cards when navigated from Library source detail.
+  // Ref-Sperre: React StrictMode (Dev) führt Mount-Effekte doppelt aus, das
+  // erzeugte zwei identische Decks und zwei gezählte API-Calls.
+  const autoGenStarted = useRef(false);
+  useEffect(() => {
+    if (!initialDoc || !getDocumentSource || autoGenStarted.current) return;
+    autoGenStarted.current = true;
     try {
       const source = getDocumentSource(initialDoc);
       handleGenerateFromSource(source, documentDisplayName(initialDoc), initialDoc.id);
     } catch (_) {}
   }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
+  // Frisch erzeugtes Deck sichtbar machen: es landet unten in der Liste und
+  // ging bei vielen Stapeln vorher kommentarlos unter.
+  useEffect(() => {
+    if (!freshDeckId) return;
+    const el = document.getElementById(`deck-row-${freshDeckId}`);
+    el?.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+    const timer = setTimeout(() => setFreshDeckId(null), 4000);
+    return () => clearTimeout(timer);
+  }, [freshDeckId]);
+
+  // Bearbeitetes Deck existiert nicht mehr (z.B. in anderem Tab gelöscht):
+  // Editor schließen. Vorher als setState direkt im Render.
+  useEffect(() => {
+    if (editingDeckId && !decks.some(d => d.id === editingDeckId)) setEditingDeckId(null);
+  }, [editingDeckId, decks]);
+
   const saveDecks = (newDecks: FlashcardDeck[], changedDeck?: FlashcardDeck) => {
-    setDecks(newDecks);
-    localStorage.setItem('flashcard_decks', JSON.stringify(newDecks));
-    if (userId && changedDeck) {
-      saveDeckToSupabase(changedDeck, userId).catch(() => {});
-    }
+    commitDecks(newDecks);
+    if (changedDeck) queueCloudSave(changedDeck);
+  };
+
+  const updateDeck = (deckId: string, update: (deck: FlashcardDeck) => FlashcardDeck) => {
+    let changed: FlashcardDeck | undefined;
+    const next = decksRef.current.map(d => {
+      if (d.id !== deckId) return d;
+      changed = update(d);
+      return changed;
+    });
+    if (changed) saveDecks(next, changed);
   };
 
   // Ein Klick → Druckdialog: ausschneidbare A4-Bögen, Rückseiten gespiegelt
@@ -153,15 +233,12 @@ export const FlashcardSystem: React.FC<FlashcardSystemProps> = ({
 
   const handleCreateEmptyDeck = (e: React.FormEvent) => {
     e.preventDefault();
-    if (!manualDeckTitle.trim()) return;
-    
-    const newDeck: FlashcardDeck = {
-      id: Math.random().toString(36).substr(2, 9),
-      title: manualDeckTitle,
-      cards: []
-    };
-    
-    saveDecks([...decks, newDeck], newDeck);
+    const title = manualDeckTitle.trim();
+    if (!title) return;
+
+    const newDeck: FlashcardDeck = { id: newId(), title, cards: [] };
+
+    saveDecks([...decksRef.current, newDeck], newDeck);
     setManualDeckTitle('');
     setShowManualDeckDialog(false);
     setEditingDeckId(newDeck.id);
@@ -172,59 +249,55 @@ export const FlashcardSystem: React.FC<FlashcardSystemProps> = ({
 
     if (editingCard === 'new') {
       const newCard: Flashcard = {
-        id: Math.random().toString(36).substr(2, 9),
+        id: newId(),
         front, back,
         level: 0,
         nextReview: Date.now(),
         lastInterval: 0,
         srs: createSrsState(),
       };
-      const updatedDecks = decks.map(d =>
-        d.id === editingDeckId ? { ...d, cards: [newCard, ...d.cards] } : d
-      );
-      const changed = updatedDecks.find(d => d.id === editingDeckId);
-      saveDecks(updatedDecks, changed);
+      updateDeck(editingDeckId, d => ({ ...d, cards: [newCard, ...d.cards] }));
     } else if (editingCard) {
-      const updatedDecks = decks.map(d =>
-        d.id === editingDeckId
-          ? { ...d, cards: d.cards.map(c => c.id === (editingCard as Flashcard).id ? { ...c, front, back } : c) }
-          : d
-      );
-      const changed = updatedDecks.find(d => d.id === editingDeckId);
-      saveDecks(updatedDecks, changed);
+      const cardId = editingCard.id;
+      updateDeck(editingDeckId, d => ({ ...d, cards: d.cards.map(c => c.id === cardId ? { ...c, front, back } : c) }));
     }
 
     setEditingCard(null);
   };
 
   const handleDeleteCard = (deckId: string, cardId: string) => {
-    const updated = decks.map(d =>
-      d.id === deckId ? { ...d, cards: d.cards.filter(c => c.id !== cardId) } : d
-    );
-    const changed = updated.find(d => d.id === deckId);
-    saveDecks(updated, changed);
+    updateDeck(deckId, d => ({ ...d, cards: d.cards.filter(c => c.id !== cardId) }));
   };
-
 
   const handleRenameDeck = (e: React.FormEvent, deckId: string) => {
     e.preventDefault();
-    if (!renameTitle.trim()) return;
-    const updated = decks.map(d => d.id === deckId ? { ...d, title: renameTitle.trim() } : d);
-    const changed = updated.find(d => d.id === deckId);
-    saveDecks(updated, changed);
+    const title = renameTitle.trim();
+    if (!title) return;
+    updateDeck(deckId, d => ({ ...d, title }));
     setIsRenamingDeck(false);
   };
 
+  const handleDeleteDeck = (deck: FlashcardDeck) => {
+    if (!window.confirm(t('fcs.deleteDeckConfirm', { title: deck.title, n: deck.cards.length }))) return;
+    // Ausstehenden Upload verwerfen, sonst legt der gebündelte Save das
+    // gerade gelöschte Deck in der Cloud wieder an.
+    pendingCloud.current.delete(deck.id);
+    commitDecks(decksRef.current.filter(d => d.id !== deck.id));
+    if (userId) deleteDeckFromSupabase(deck.id, userId).catch(() => {});
+  };
+
   const handleGenerateFromSource = async (source: GenerationSource, name: string, docId?: string) => {
+    const requested = selectedCount;
     setIsGenerating(docId ?? name);
     try {
-      const generated = await generateFlashcardsFromDocument(source, selectedCount);
+      const generated = await generateFlashcardsFromDocument(source, requested);
+      if (generated.length === 0) { toast.error(t('fcs.noCardsGenerated')); return; }
       const newDeck: FlashcardDeck = {
-        id: Math.random().toString(36).substr(2, 9),
+        id: newId(),
         title: name.replace(/\.[^/.]+$/, ''),
         sourceDocumentId: docId,
         cards: generated.map(c => ({
-          id: Math.random().toString(36).substr(2, 9),
+          id: newId(),
           front: c.front || '',
           back: c.back || '',
           level: 0,
@@ -233,7 +306,10 @@ export const FlashcardSystem: React.FC<FlashcardSystemProps> = ({
           srs: createSrsState(),
         }))
       };
-      saveDecks([...decks, newDeck], newDeck);
+      saveDecks([...decksRef.current, newDeck], newDeck);
+      setFreshDeckId(newDeck.id);
+      if (generated.length < requested) toast.info(t('fcs.deckCreatedPartial', { n: generated.length, total: requested }));
+      else toast.success(tp('fcs.deckCreated', generated.length));
     } catch (e) {
       console.error(e);
       toast.error(t('fcs.genError'));
@@ -268,26 +344,21 @@ export const FlashcardSystem: React.FC<FlashcardSystemProps> = ({
     if (!activeDeckId) return;
     const quality = QUALITY_MAP[difficulty];
 
-    const newDecks = decks.map(deck => {
-      if (deck.id !== activeDeckId) return deck;
-      return {
-        ...deck,
-        cards: deck.cards.map(card => {
-          if (card.id !== cardId) return card;
-          const currentSrs = card.srs ?? migrateLegacyCard(card);
-          const nextSrs = reviewCard(currentSrs, quality);
-          return {
-            ...card,
-            srs: nextSrs,
-            level: nextSrs.repetitions,
-            nextReview: nextSrs.nextReview,
-            lastInterval: nextSrs.interval,
-          };
-        }),
-      };
-    });
-    const changedDeck = newDecks.find(d => d.id === activeDeckId);
-    saveDecks(newDecks, changedDeck);
+    updateDeck(activeDeckId, deck => ({
+      ...deck,
+      cards: deck.cards.map(card => {
+        if (card.id !== cardId) return card;
+        const currentSrs = card.srs ?? migrateLegacyCard(card);
+        const nextSrs = reviewCard(currentSrs, quality);
+        return {
+          ...card,
+          srs: nextSrs,
+          level: nextSrs.repetitions,
+          nextReview: nextSrs.nextReview,
+          lastInterval: nextSrs.interval,
+        };
+      }),
+    }));
     sessionReviewCount.current += 1;
     // >= statt ===: recordActivity ist pro Tag idempotent (streakService),
     // ein zweiter Anlauf am selben Tag darf den Streak also noch auslösen.
@@ -301,7 +372,7 @@ export const FlashcardSystem: React.FC<FlashcardSystemProps> = ({
     // immer einen frischen SRS-Zustand, siehe handleImport).
     const data = {
       exportedAt: new Date().toISOString(),
-      decks: decks.map(deck => ({
+      decks: decksRef.current.map(deck => ({
         title: deck.title,
         cards: deck.cards.map(c => ({ front: c.front, back: c.back, srs: c.srs }))
       }))
@@ -322,47 +393,43 @@ export const FlashcardSystem: React.FC<FlashcardSystemProps> = ({
     reader.onload = (ev) => {
       try {
         const json = JSON.parse(ev.target?.result as string);
-        let imported: FlashcardDeck[] = [];
+        let skipped = 0;
 
-        // srs übernehmen wenn im Export vorhanden (eigenes Backup) — sonst
-        // (fremde/handgeschriebene JSON ohne srs-Feld) frischer Zustand.
-        const toCard = (c: { front: string; back: string; srs?: any }): Flashcard => {
-          const srs = c.srs ?? createSrsState();
-          return {
-            id: Math.random().toString(36).substr(2, 9),
-            front: c.front,
-            back: c.back,
+        // srs übernehmen, wenn im Export vorhanden und plausibel (eigenes
+        // Backup), sonst frischer Zustand. Karten ohne Text werden übersprungen:
+        // vorher landeten sie als undefined und ließen die Kartensuche abstürzen.
+        const toCards = (raw: unknown): Flashcard[] => (Array.isArray(raw) ? raw : []).flatMap((c: any) => {
+          const front = typeof c?.front === 'string' ? c.front.trim() : '';
+          const back = typeof c?.back === 'string' ? c.back.trim() : '';
+          if (!front || !back) { skipped++; return []; }
+          const srs = isValidSrs(c.srs) ? c.srs : createSrsState();
+          return [{
+            id: newId(),
+            front,
+            back,
             level: srs.repetitions ?? 0,
             nextReview: srs.nextReview ?? Date.now(),
             lastInterval: srs.interval ?? 0,
             srs,
-          };
-        };
-
-        if (Array.isArray(json.decks)) {
-          // Alle-sichern Format
-          imported = json.decks.map((d: { title: string; cards: { front: string; back: string; srs?: any }[] }) => ({
-            id: Math.random().toString(36).substr(2, 9),
-            title: d.title,
-            cards: d.cards.map(toCard),
-          }));
-        } else if (json.title && Array.isArray(json.cards)) {
-          // Einzelnes Deck Format
-          imported = [{
-            id: Math.random().toString(36).substr(2, 9),
-            title: json.title,
-            cards: json.cards.map(toCard),
           }];
-        } else {
-          toast.error(t('fcs.importInvalidFormat'));
-          return;
-        }
+        });
+        const toDeck = (d: any): FlashcardDeck => ({
+          id: newId(),
+          title: typeof d?.title === 'string' && d.title.trim() ? d.title.trim() : t('aim.importedDeck'),
+          cards: toCards(d?.cards),
+        });
 
-        const merged = [...decks, ...imported];
-        setDecks(merged);
-        localStorage.setItem('flashcard_decks', JSON.stringify(merged));
+        let imported: FlashcardDeck[];
+        if (Array.isArray(json?.decks)) imported = json.decks.map(toDeck);        // Alle-sichern-Format
+        else if (Array.isArray(json?.cards)) imported = [toDeck(json)];           // Einzelnes Deck
+        else { toast.error(t('fcs.importInvalidFormat')); return; }
+        imported = imported.filter(d => d.cards.length > 0);
+        if (imported.length === 0) { toast.error(t('fcs.importInvalidFormat')); return; }
+
+        commitDecks([...decksRef.current, ...imported]);
         if (userId) uploadAllDecksToSupabase(imported, userId).catch(() => {});
         toast.success(tp('fcs.decksImported', imported.length, { cards: imported.reduce((sum, d) => sum + d.cards.length, 0) }));
+        if (skipped > 0) toast.info(tp('fcs.importSkipped', skipped));
       } catch {
         toast.error(t('fcs.importReadError'));
       } finally {
@@ -374,29 +441,19 @@ export const FlashcardSystem: React.FC<FlashcardSystemProps> = ({
 
 
   const handleAnkiImport = (cards: Flashcard[], targetDeckId: string | null, newDeckName?: string) => {
-    let updatedDecks: FlashcardDeck[];
-    let changedDeck: FlashcardDeck | undefined;
-
     if (targetDeckId) {
-      updatedDecks = decks.map(d => {
-        if (d.id !== targetDeckId) return d;
-        const updated = { ...d, cards: [...d.cards, ...cards] };
-        changedDeck = updated;
-        return updated;
-      });
-      const count = cards.length;
-      toast.success(tp('fcs.cardsAddedTo', count, { deck: decks.find(d => d.id === targetDeckId)?.title ?? '' }));
+      updateDeck(targetDeckId, d => ({ ...d, cards: [...d.cards, ...cards] }));
+      toast.success(tp('fcs.cardsAddedTo', cards.length, { deck: decksRef.current.find(d => d.id === targetDeckId)?.title ?? '' }));
     } else {
       const newDeck: FlashcardDeck = {
-        id: Math.random().toString(36).substr(2, 9),
-        title: newDeckName || 'Importiertes Deck',
+        id: newId(),
+        title: newDeckName || t('aim.importedDeck'),
         cards,
       };
-      updatedDecks = [...decks, newDeck];
-      changedDeck = newDeck;
+      saveDecks([...decksRef.current, newDeck], newDeck);
+      setFreshDeckId(newDeck.id);
       toast.success(tp('fcs.cardsImportedInto', cards.length, { deck: newDeck.title }));
     }
-    saveDecks(updatedDecks, changedDeck);
   };
 
   // Streak-Aktivität auch im freien Üben gutschreiben — aber OHNE die SRS-Planung
@@ -412,9 +469,17 @@ export const FlashcardSystem: React.FC<FlashcardSystemProps> = ({
   const [sessionMode, setSessionMode] = useState<'due' | 'all' | 'free'>('due');
   const [moreWaiting, setMoreWaiting] = useState(0);
 
+  const closeSession = () => {
+    setActiveDeckId(null);
+    setSessionCards([]);
+    setIsPracticeSession(false);
+    setMoreWaiting(0);
+    flushCloud(); // Runde vorbei: Fortschritt sofort sichern statt auf den Timer zu warten
+  };
+
   /** true = Session gestartet, false = nichts zu lernen (Toast ging raus). */
   const handleOpenDeck = (deckId: string, mode: 'due' | 'all' | 'free' = 'due'): boolean => {
-    const deck = decks.find(d => d.id === deckId);
+    const deck = decksRef.current.find(d => d.id === deckId);
     if (!deck) return false;
     // Explizite Annotation: die map-returnte Union (Flashcard | Spread mit
     // srs) ist zu Flashcard[] zuweisbar, und die Typ-Inferenz der
@@ -474,14 +539,9 @@ export const FlashcardSystem: React.FC<FlashcardSystemProps> = ({
           // wählt buildSessionBatch sauber die nächsten Karten. Kann leer
           // ausgehen (Rest doch noch geschafft): dann Session sauber schließen.
           const started = handleOpenDeck(activeDeckId, sessionMode);
-          if (!started) {
-            setActiveDeckId(null);
-            setSessionCards([]);
-            setIsPracticeSession(false);
-            setMoreWaiting(0);
-          }
+          if (!started) closeSession();
         } : undefined}
-        onClose={() => { setActiveDeckId(null); setSessionCards([]); setIsPracticeSession(false); setMoreWaiting(0); }}
+        onClose={closeSession}
       />
     );
   }
@@ -489,7 +549,12 @@ export const FlashcardSystem: React.FC<FlashcardSystemProps> = ({
   // Edit Mode View
   if (editingDeckId) {
     const deck = decks.find(d => d.id === editingDeckId);
-    if (!deck) { setEditingDeckId(null); return null; }
+    if (!deck) return null; // Effekt oben schließt den Editor
+
+    const query = cardSearch.trim().toLowerCase();
+    const filtered = query
+      ? deck.cards.filter(c => c.front.toLowerCase().includes(query) || c.back.toLowerCase().includes(query))
+      : deck.cards;
 
     return (
       <div className="max-w-4xl mx-auto space-y-8 animate-in slide-in-from-right-12 duration-700 py-6 lg:py-10">
@@ -510,7 +575,7 @@ export const FlashcardSystem: React.FC<FlashcardSystemProps> = ({
         )}
 
         {/* Header */}
-        <div className="flex justify-between items-start px-4 gap-4">
+        <div className="flex flex-col sm:flex-row justify-between sm:items-start px-4 gap-4">
           <div className="space-y-2 flex-1 min-w-0">
             {isRenamingDeck ? (
               <form onSubmit={e => handleRenameDeck(e, deck.id)} className="flex gap-2 items-center animate-in zoom-in-95 duration-200">
@@ -518,13 +583,14 @@ export const FlashcardSystem: React.FC<FlashcardSystemProps> = ({
                   autoFocus
                   value={renameTitle}
                   onChange={e => setRenameTitle(e.target.value)}
-                  className="flex-1 text-2xl font-black bg-transparent border-b-2 border-indigo-500 outline-none dark:text-white pb-1"
+                  aria-label={t('fcs.renameDeck')}
+                  className="flex-1 min-w-0 text-2xl font-black bg-transparent border-b-2 border-indigo-500 outline-none dark:text-white pb-1"
                   onKeyDown={e => e.key === 'Escape' && setIsRenamingDeck(false)}
                 />
                 <button type="submit" className="px-4 py-1.5 bg-indigo-600 text-white rounded-xl text-[10px] font-black uppercase tracking-widest shrink-0">
-                  Speichern
+                  {t('common.save')}
                 </button>
-                <button type="button" onClick={() => setIsRenamingDeck(false)} className="px-3 py-1.5 bg-slate-100 dark:bg-slate-800 text-slate-400 rounded-xl text-[10px] font-black uppercase shrink-0">
+                <button type="button" onClick={() => setIsRenamingDeck(false)} aria-label={t('common.close')} className="px-3 py-1.5 bg-slate-100 dark:bg-slate-800 text-slate-400 rounded-xl text-[10px] font-black uppercase shrink-0">
                   ✕
                 </button>
               </form>
@@ -535,12 +601,13 @@ export const FlashcardSystem: React.FC<FlashcardSystemProps> = ({
                   onClick={() => { setRenameTitle(deck.title); setIsRenamingDeck(true); }}
                   className="p-2 rounded-xl text-slate-300 hover:text-indigo-500 hover:bg-indigo-50 dark:hover:bg-indigo-950/30 transition-all shrink-0"
                   title={t('fcs.renameDeck')}
+                  aria-label={t('fcs.renameDeck')}
                 >
                   <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>
                 </button>
               </div>
             )}
-            <p className="text-[10px] font-black uppercase text-slate-400 tracking-widest">{deck.cards.length} Karten im Stapel</p>
+            <p className="text-[10px] font-black uppercase text-slate-400 tracking-widest">{tp('fcs.cardsInDeck', deck.cards.length)}</p>
           </div>
           <div className="flex items-center gap-3 shrink-0">
             <button
@@ -549,13 +616,13 @@ export const FlashcardSystem: React.FC<FlashcardSystemProps> = ({
               style={{ background: 'var(--primary)', color: 'var(--primary-text, #fff)' }}
             >
               <svg xmlns="http://www.w3.org/2000/svg" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
-              Neue Karte
+              {t('fcs.newCard')}
             </button>
             <button
-              onClick={() => { setEditingDeckId(null); setIsRenamingDeck(false); setEditingCard(null); }}
+              onClick={() => { setEditingDeckId(null); setIsRenamingDeck(false); setEditingCard(null); setCardSearch(''); }}
               className="px-5 py-2.5 bg-slate-100 dark:bg-slate-800 text-slate-500 rounded-xl text-[10px] font-black uppercase tracking-widest hover:text-indigo-600 transition-colors"
             >
-              Fertig
+              {t('fcs.done')}
             </button>
           </div>
         </div>
@@ -572,7 +639,7 @@ export const FlashcardSystem: React.FC<FlashcardSystemProps> = ({
                   type="text"
                   value={cardSearch}
                   onChange={e => setCardSearch(e.target.value)}
-                  placeholder={`${deck.cards.length} Karten durchsuchen…`}
+                  placeholder={t('fcs.searchCards', { n: deck.cards.length })}
                   className="w-full pl-10 pr-4 py-2.5 bg-slate-50 dark:bg-slate-800 rounded-xl text-sm outline-none border-2 border-transparent focus:border-indigo-400 dark:text-white transition-colors"
                 />
                 {cardSearch && (
@@ -584,53 +651,42 @@ export const FlashcardSystem: React.FC<FlashcardSystemProps> = ({
             </div>
           )}
 
-          {(() => {
-            const filtered = cardSearch.trim()
-              ? deck.cards.filter(c =>
-                  c.front.toLowerCase().includes(cardSearch.toLowerCase()) ||
-                  c.back.toLowerCase().includes(cardSearch.toLowerCase())
-                )
-              : deck.cards;
-
-            if (deck.cards.length === 0) return (
-              <div className="py-20 text-center space-y-4 opacity-30 px-6">
-                <p className="text-[10px] font-black uppercase tracking-widest">{t('fcs.noCards')}</p>
-                <p className="text-xs">{t('fcs.noCardsHint')}</p>
-              </div>
-            );
-
-            if (filtered.length === 0) return (
-              <div className="py-12 text-center opacity-40 text-sm">{t('fcs.noCardsForSearch', { q: cardSearch })}</div>
-            );
-
-            return (
-              <>
-                {cardSearch && (
-                  <p className="px-6 pt-3 text-[9px] font-black uppercase tracking-widest text-slate-400">
-                    {filtered.length} von {deck.cards.length} Karten
-                  </p>
-                )}
-                <div className="divide-y divide-slate-50 dark:divide-slate-800">
-                  {filtered.map((card, idx) => (
-                    <div
-                      key={card.id}
-                      className="flex items-center gap-4 px-6 py-4 hover:bg-slate-50 dark:hover:bg-slate-800/40 transition-colors group cursor-pointer"
-                      onClick={() => setEditingCard(card)}
-                    >
-                      <span className="text-[10px] font-black text-slate-300 dark:text-slate-600 w-6 shrink-0 text-right">{idx + 1}</span>
-                      <div className="grid grid-cols-1 md:grid-cols-2 gap-2 flex-1 min-w-0">
-                        <p className="text-sm font-bold dark:text-white md:border-r md:border-slate-100 md:dark:border-slate-800 md:pr-4 leading-snug break-words">{card.front}</p>
-                        <p className="text-sm text-slate-400 dark:text-slate-500 leading-snug break-words">{card.back}</p>
-                      </div>
-                      <span className="shrink-0 p-2 rounded-xl text-slate-200 dark:text-slate-700 group-hover:text-indigo-500 group-hover:bg-indigo-50 dark:group-hover:bg-indigo-950/30 transition-all">
-                        <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>
-                      </span>
+          {deck.cards.length === 0 ? (
+            <div className="py-20 text-center space-y-4 opacity-30 px-6">
+              <p className="text-[10px] font-black uppercase tracking-widest">{t('fcs.noCards')}</p>
+              <p className="text-xs">{t('fcs.noCardsHint')}</p>
+            </div>
+          ) : filtered.length === 0 ? (
+            <div className="py-12 text-center opacity-40 text-sm">{t('fcs.noCardsForSearch', { q: cardSearch })}</div>
+          ) : (
+            <>
+              {query && (
+                <p className="px-6 pt-3 text-[9px] font-black uppercase tracking-widest text-slate-400">
+                  {t('fcs.filteredOf', { n: filtered.length, total: deck.cards.length })}
+                </p>
+              )}
+              <div className="divide-y divide-slate-50 dark:divide-slate-800">
+                {filtered.map(card => (
+                  <button
+                    type="button"
+                    key={card.id}
+                    className="w-full text-left flex items-center gap-4 px-6 py-4 hover:bg-slate-50 dark:hover:bg-slate-800/40 transition-colors group"
+                    onClick={() => setEditingCard(card)}
+                  >
+                    {/* Nummer = Position im Deck, auch bei aktiver Suche (vorher Position im Suchergebnis) */}
+                    <span className="text-[10px] font-black text-slate-300 dark:text-slate-600 w-6 shrink-0 text-right">{deck.cards.indexOf(card) + 1}</span>
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-2 flex-1 min-w-0">
+                      <p className="text-sm font-bold dark:text-white md:border-r md:border-slate-100 md:dark:border-slate-800 md:pr-4 leading-snug break-words whitespace-pre-line line-clamp-4">{card.front}</p>
+                      <p className="text-sm text-slate-400 dark:text-slate-500 leading-snug break-words whitespace-pre-line line-clamp-4">{card.back}</p>
                     </div>
-                  ))}
-                </div>
-              </>
-            );
-          })()}
+                    <span className="shrink-0 p-2 rounded-xl text-slate-200 dark:text-slate-700 group-hover:text-indigo-500 group-hover:bg-indigo-50 dark:group-hover:bg-indigo-950/30 transition-all">
+                      <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>
+                    </span>
+                  </button>
+                ))}
+              </div>
+            </>
+          )}
         </div>
       </div>
     );
@@ -664,7 +720,7 @@ export const FlashcardSystem: React.FC<FlashcardSystemProps> = ({
           Anki <span className="text-indigo-600">{t('fcs.decks')}</span> <EmojiImage emoji="🎓" size={48} />
         </h1>
         <p className="text-lg lg:text-xl text-slate-500 dark:text-slate-400 font-medium opacity-80">
-          Wissenschaftlich fundiertes Lernen durch Spaced Repetition.
+          {t('fcs.subtitle')}
         </p>
       </div>
 
@@ -672,28 +728,29 @@ export const FlashcardSystem: React.FC<FlashcardSystemProps> = ({
 
         <div className="lg:col-span-5 space-y-6 lg:space-y-8 order-2 lg:order-1">
           <div className="bg-white dark:bg-slate-900 rounded-[30px] lg:rounded-[40px] border border-slate-200 dark:border-slate-800 shadow-3d-raised p-5 lg:p-7 space-y-8">
-            
+
             <div className="space-y-4">
               <h3 className="text-[10px] font-black uppercase tracking-[0.4em] text-indigo-600">{t('fcs.manualDeck')}</h3>
               {!showManualDeckDialog ? (
-                <button 
+                <button
                   onClick={() => setShowManualDeckDialog(true)}
                   className="w-full p-4 bg-indigo-50 dark:bg-indigo-900/20 text-indigo-600 rounded-2xl font-black uppercase text-[10px] tracking-widest border-2 border-dashed border-indigo-200 hover:border-indigo-500 transition-all"
                 >
-                  + Leeres Deck erstellen
+                  {t('fcs.createEmptyDeck')}
                 </button>
               ) : (
                 <form onSubmit={handleCreateEmptyDeck} className="space-y-3 animate-in zoom-in-95 duration-200">
-                  <input 
+                  <input
                     autoFocus
                     placeholder={t('fcs.newDeckPlaceholder')}
                     value={manualDeckTitle}
                     onChange={e => setManualDeckTitle(e.target.value)}
+                    onKeyDown={e => { if (e.key === 'Escape') setShowManualDeckDialog(false); }}
                     className="w-full p-4 bg-slate-50 dark:bg-slate-800 rounded-xl text-xs font-bold outline-none border-2 border-indigo-500 dark:text-white"
                   />
                   <div className="flex gap-2">
-                    <button type="submit" className="flex-1 bg-indigo-600 text-white py-3 rounded-xl text-[9px] font-black uppercase tracking-widest">{t('fcs.create')}</button>
-                    <button type="button" onClick={() => setShowManualDeckDialog(false)} className="px-4 bg-slate-100 dark:bg-slate-800 text-slate-400 py-3 rounded-xl text-[9px] font-black uppercase">X</button>
+                    <button type="submit" disabled={!manualDeckTitle.trim()} className="flex-1 bg-indigo-600 text-white py-3 rounded-xl text-[9px] font-black uppercase tracking-widest disabled:opacity-40">{t('fcs.create')}</button>
+                    <button type="button" onClick={() => setShowManualDeckDialog(false)} aria-label={t('common.close')} className="px-4 bg-slate-100 dark:bg-slate-800 text-slate-400 py-3 rounded-xl text-[9px] font-black uppercase">✕</button>
                   </div>
                 </form>
               )}
@@ -712,6 +769,7 @@ export const FlashcardSystem: React.FC<FlashcardSystemProps> = ({
                     <button
                       key={count}
                       onClick={() => setSelectedCount(count)}
+                      aria-pressed={selectedCount === count}
                       className={`flex-1 py-2 rounded-lg lg:rounded-xl text-[9px] lg:text-[10px] font-black transition-all ${selectedCount === count ? 'bg-indigo-600 text-white shadow-lg' : 'text-slate-400 hover:text-slate-600'}`}
                     >
                       {count}
@@ -741,7 +799,7 @@ export const FlashcardSystem: React.FC<FlashcardSystemProps> = ({
 
         <div className="lg:col-span-7 bg-white dark:bg-slate-900 rounded-[30px] lg:rounded-[40px] border border-slate-200 dark:border-slate-800 shadow-3d-deep overflow-hidden order-1 lg:order-2">
           <div className="p-5 sm:p-6 lg:p-10 border-b border-slate-50 dark:border-slate-800 flex flex-col sm:flex-row justify-between items-center gap-4 lg:gap-0">
-            <h3 className="text-[10px] lg:text-[11px] font-black uppercase tracking-[0.3em] lg:tracking-[0.4em] text-slate-400">Deine Stapel ({decks.length})</h3>
+            <h3 className="text-[10px] lg:text-[11px] font-black uppercase tracking-[0.3em] lg:tracking-[0.4em] text-slate-400">{t('fcs.yourDecks', { n: decks.length })}</h3>
             <div className="flex gap-3 sm:gap-4 items-center flex-wrap justify-center sm:justify-end">
               <input
                 ref={importInputRef}
@@ -756,7 +814,7 @@ export const FlashcardSystem: React.FC<FlashcardSystemProps> = ({
                 title={t('fcs.importCards')}
               >
                 <svg xmlns="http://www.w3.org/2000/svg" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
-                Importieren
+                {t('fcs.import')}
               </button>
               {decks.length > 0 && (
                 <button
@@ -765,7 +823,7 @@ export const FlashcardSystem: React.FC<FlashcardSystemProps> = ({
                   title={t('fcs.exportAll')}
                 >
                   <svg xmlns="http://www.w3.org/2000/svg" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
-                  Alle sichern
+                  {t('fcs.backupAll')}
                 </button>
               )}
                <div className="flex items-center gap-2">
@@ -793,10 +851,13 @@ export const FlashcardSystem: React.FC<FlashcardSystemProps> = ({
             ) : (
               decks.map(deck => {
                 const stats = deckStats.find(s => s.id === deck.id);
+                const isFresh = deck.id === freshDeckId;
                 return (
-                  <div 
-                    key={deck.id} 
-                    className="flex flex-col sm:flex-row items-center justify-between p-6 lg:p-8 hover:bg-slate-50 dark:hover:bg-slate-800/30 transition-all group gap-6"
+                  <div
+                    key={deck.id}
+                    id={`deck-row-${deck.id}`}
+                    className={`flex flex-col sm:flex-row items-center justify-between p-6 lg:p-8 hover:bg-slate-50 dark:hover:bg-slate-800/30 transition-all group gap-6 ${isFresh ? 'bg-indigo-50/70 dark:bg-indigo-950/30' : ''}`}
+                    style={isFresh ? { boxShadow: 'inset 4px 0 0 var(--primary)' } : undefined}
                   >
                     <div className="flex-grow min-w-0 text-center sm:text-left">
                       <div className="flex items-center gap-2 flex-wrap justify-center sm:justify-start">
@@ -810,17 +871,17 @@ export const FlashcardSystem: React.FC<FlashcardSystemProps> = ({
 
                     <div className="flex flex-col sm:flex-row items-center gap-4 lg:gap-6 w-full sm:w-auto">
                       <div className="flex gap-6 lg:gap-8 text-center justify-center">
-                        <span className="text-sm font-black text-blue-500">{stats?.newCards || 0}</span>
-                        <span className="text-sm font-black text-rose-500">{stats?.learnCards || 0}</span>
-                        <span className="text-sm font-black text-emerald-500">{stats?.reviewCards || 0}</span>
+                        <span className="text-sm font-black text-blue-500" title={t('fcs.statNew')}>{stats?.newCards || 0}</span>
+                        <span className="text-sm font-black text-rose-500" title={t('fcs.statLearn')}>{stats?.learnCards || 0}</span>
+                        <span className="text-sm font-black text-emerald-500" title={t('fcs.statDue')}>{stats?.reviewCards || 0}</span>
                       </div>
-                      
+
                       <div className="flex flex-wrap gap-2 w-full sm:w-auto items-center justify-center sm:justify-end">
                         <button
                           onClick={() => handleOpenDeck(deck.id)}
                           className="flex-1 sm:flex-none bg-indigo-600 hover:bg-indigo-700 text-white px-5 lg:px-6 py-3 rounded-xl lg:rounded-2xl text-[9px] font-black uppercase tracking-widest shadow-lg hover:scale-105 transition-all"
                         >
-                          Lernen
+                          {t('fcs.learn')}
                         </button>
                         <button
                           onClick={() => handleOpenDeck(deck.id, 'free')}
@@ -828,19 +889,20 @@ export const FlashcardSystem: React.FC<FlashcardSystemProps> = ({
                           title={t('fcs.practiceTitle')}
                         >
                           <svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round"><polyline points="23 4 23 10 17 10"/><polyline points="1 20 1 14 7 14"/><path d="M3.51 9a9 9 0 0 1 14.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0 0 20.49 15"/></svg>
-                          Üben
+                          {t('fcs.practice')}
                         </button>
                         <button
                           onClick={() => handleOpenDeck(deck.id, 'all')}
                           className="flex-none border-2 border-slate-200 dark:border-slate-700 text-slate-500 dark:text-slate-400 px-3 py-3 rounded-xl lg:rounded-2xl text-[9px] font-black uppercase tracking-widest hover:border-indigo-400 hover:text-indigo-600 transition-all"
                           title={t('fcs.learnAllTitle')}
                         >
-                          Alle
+                          {t('fcs.all')}
                         </button>
                         <button
                           onClick={() => setStatsDeck(deck)}
                           className="p-3 bg-slate-50 dark:bg-slate-800 text-slate-400 hover:text-indigo-600 rounded-xl transition-all"
                           title={t('fcs.statsTitle')}
+                          aria-label={t('fcs.statsTitle')}
                         >
                           <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round"><line x1="18" y1="20" x2="18" y2="10"/><line x1="12" y1="20" x2="12" y2="4"/><line x1="6" y1="20" x2="6" y2="14"/></svg>
                         </button>
@@ -848,6 +910,7 @@ export const FlashcardSystem: React.FC<FlashcardSystemProps> = ({
                           onClick={() => handlePrintDeck(deck)}
                           className="p-3 bg-slate-50 dark:bg-slate-800 text-slate-400 hover:text-indigo-600 rounded-xl transition-all"
                           title={t('fcs.printTitle')}
+                          aria-label={t('fcs.printTitle')}
                         >
                           <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><polyline points="6 9 6 2 18 2 18 9"/><path d="M6 18H4a2 2 0 0 1-2-2v-5a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v5a2 2 0 0 1-2 2h-2"/><rect x="6" y="14" width="12" height="8"/></svg>
                         </button>
@@ -855,6 +918,7 @@ export const FlashcardSystem: React.FC<FlashcardSystemProps> = ({
                           onClick={() => setEditingDeckId(deck.id)}
                           className="p-3 bg-slate-50 dark:bg-slate-800 text-slate-400 hover:text-indigo-600 rounded-xl transition-all"
                           title={t('fcs.editTitle')}
+                          aria-label={t('fcs.editTitle')}
                         >
                           <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"></path><path d="M18.5 2.5a2.121 2.121 0 1 1 3 3L12 15l-4 1 1-4 9.5-9.5z"></path></svg>
                         </button>
@@ -862,25 +926,22 @@ export const FlashcardSystem: React.FC<FlashcardSystemProps> = ({
                           onClick={() => setExportingDeck(deck)}
                           className="p-3 bg-slate-50 dark:bg-slate-800 text-slate-400 hover:text-indigo-600 rounded-xl transition-all"
                           title={t('fcs.exportShareTitle')}
+                          aria-label={t('fcs.exportShareTitle')}
                         >
                           <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><circle cx="18" cy="5" r="3"/><circle cx="6" cy="12" r="3"/><circle cx="18" cy="19" r="3"/><line x1="8.59" y1="13.51" x2="15.42" y2="17.49"/><line x1="15.41" y1="6.51" x2="8.59" y2="10.49"/></svg>
                         </button>
                         <button
                           onClick={() => onGenerateQuizFromDeck(deck)}
-                          disabled={isQuizLoading}
-                          className="bg-white dark:bg-slate-800 border-2 border-indigo-600 text-indigo-600 dark:text-indigo-400 px-4 py-3 rounded-xl lg:rounded-2xl text-[9px] font-black uppercase tracking-widest shadow-lg hover:scale-105 transition-all disabled:opacity-40 flex items-center gap-2"
+                          disabled={isQuizLoading || deck.cards.length === 0}
+                          className="bg-white dark:bg-slate-800 border-2 border-indigo-600 text-indigo-600 dark:text-indigo-400 px-4 py-3 rounded-xl lg:rounded-2xl text-[9px] font-black uppercase tracking-widest shadow-lg hover:scale-105 transition-all disabled:opacity-40 disabled:hover:scale-100 flex items-center gap-2"
                         >
                           {isQuizLoading ? '...' : <span>Quiz <EmojiImage emoji="🎯" size={12} /></span>}
                         </button>
                         <button
-                          onClick={() => {
-                            if (!window.confirm(t('fcs.deleteDeckConfirm', { title: deck.title, n: deck.cards.length }))) return;
-                            const filtered = decks.filter(d => d.id !== deck.id);
-                            setDecks(filtered);
-                            localStorage.setItem('flashcard_decks', JSON.stringify(filtered));
-                            if (userId) deleteDeckFromSupabase(deck.id, userId).catch(() => {});
-                          }}
-                          className="p-3 text-slate-200 hover:text-rose-500 transition-all opacity-100 lg:opacity-0 lg:group-hover:opacity-100"
+                          onClick={() => handleDeleteDeck(deck)}
+                          title={t('fcs.deleteDeck')}
+                          aria-label={t('fcs.deleteDeck')}
+                          className="p-3 text-slate-300 dark:text-slate-600 hover:text-rose-500 transition-all opacity-100 lg:opacity-0 lg:group-hover:opacity-100 focus-visible:opacity-100"
                         >
                           <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round"><polyline points="3 6 5 6 21 6"></polyline><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path></svg>
                         </button>

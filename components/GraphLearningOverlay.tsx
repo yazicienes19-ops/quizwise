@@ -9,6 +9,7 @@ import { generateFlashcardsFromDocument, generateQuizFromDocument, chatWithTutor
 import { parseTutorResponse } from '../services/tutorFollowUpParser';
 import { createSrsState, reviewCard, migrateLegacyCard, QUALITY_MAP } from '../services/spacedRepetition';
 import { saveDeckToSupabase } from '../services/flashcardService';
+import { readLocalDecks, writeLocalDecks, upsertLocalDeck } from '../services/deckStore';
 import { saveQuizResult } from '../services/quizHistoryService';
 import { saveRecallResult } from '../services/recallHistoryService';
 import { recordActivity } from '../services/streakService';
@@ -197,9 +198,7 @@ const FlashcardsActivity: React.FC<{
             srs: createSrsState(),
           })),
         };
-        const updatedDecks = [...decks, newDeck];
-        onDecksChange(updatedDecks);
-        localStorage.setItem('flashcard_decks', JSON.stringify(updatedDecks));
+        onDecksChange(upsertLocalDeck(newDeck));
         if (userId) saveDeckToSupabase(newDeck, userId).catch(() => {});
         setDeck(newDeck);
       } catch (e) {
@@ -213,7 +212,7 @@ const FlashcardsActivity: React.FC<{
   const handleReview = (cardId: string, difficulty: 'again' | 'hard' | 'good' | 'easy') => {
     if (!deck) return;
     const quality = QUALITY_MAP[difficulty];
-    const updatedDecks = decks.map(d => {
+    const updatedDecks = readLocalDecks().map(d => {
       if (d.id !== deck.id) return d;
       return {
         ...d,
@@ -229,7 +228,7 @@ const FlashcardsActivity: React.FC<{
     const changedDeck = updatedDecks.find(d => d.id === deck.id);
     if (changedDeck) {
       setDeck(changedDeck);
-      localStorage.setItem('flashcard_decks', JSON.stringify(updatedDecks));
+      writeLocalDecks(updatedDecks);
       if (userId) saveDeckToSupabase(changedDeck, userId).catch(() => {});
     }
     sessionReviewCount.current += 1;
@@ -367,9 +366,7 @@ const FeynmanActivity: React.FC<{
               back: p, level: 0, nextReview: Date.now(), srs: createSrsState(),
             }));
             const newDeck: FlashcardDeck = { id: `graph-gaps-${node.id}-${Date.now()}`, title: `Lücken: ${topic}`, cards };
-            const updatedDecks = [...decks, newDeck];
-            onDecksChange(updatedDecks);
-            localStorage.setItem('flashcard_decks', JSON.stringify(updatedDecks));
+            onDecksChange(upsertLocalDeck(newDeck));
             if (userId) saveDeckToSupabase(newDeck, userId).catch(() => {});
             toast.success(t('kg.cardsCreated', { n: cards.length }));
           }}

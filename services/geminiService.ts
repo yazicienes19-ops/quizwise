@@ -762,6 +762,38 @@ export const generateFlashcardsFromDocument = async (
   excludeTerms: string[] = [],
   relatedConcepts: string[] = [],
 ): Promise<Partial<Flashcard>[]> => {
+  // Wie beim Quiz (Nachlieferung): das Modell liefert bei knappem Material
+  // oder vielen Ausschlüssen oft weniger Karten als verlangt, dazu leere oder
+  // doppelte Einträge. Bereinigen, dann EIN gezielter Zusatz-Call für den
+  // Rest mit den vorhandenen Vorderseiten als Tabu.
+  const normalizeFront = (s: string) => s.toLowerCase().replace(/[^\p{L}\p{N}]+/gu, ' ').trim();
+  const seen = new Set<string>();
+  const clean = (raw: unknown): Partial<Flashcard>[] => (Array.isArray(raw) ? raw : []).flatMap((c: any) => {
+    const front = typeof c?.front === 'string' ? c.front.trim() : '';
+    const back = typeof c?.back === 'string' ? c.back.trim() : '';
+    const key = normalizeFront(front);
+    if (!front || !back || !key || seen.has(key)) return [];
+    seen.add(key);
+    return [{ front, back }];
+  });
+
+  let cards = clean(await requestFlashcards(source, count, excludeTerms, relatedConcepts));
+  const missing = count - cards.length;
+  if (cards.length > 0 && missing > 0) {
+    try {
+      const taken = cards.map(c => sanitizeUserInput(c.front ?? '', 200));
+      cards = [...cards, ...clean(await requestFlashcards(source, missing, [...excludeTerms, ...taken], relatedConcepts))];
+    } catch { /* Nachlieferung ist Bonus, das Deck steht auch ohne */ }
+  }
+  return cards.slice(0, count);
+};
+
+const requestFlashcards = async (
+  source: GenerationSource,
+  count: number,
+  excludeTerms: string[],
+  relatedConcepts: string[],
+): Promise<unknown> => {
   const parts: any[] = [sourceTopart(source)];
   const excludeLine = excludeTerms.length > 0
     ? `\nBEREITS ERSTELLT — diese Begriffe/Konzepte NICHT nochmal verwenden: ${excludeTerms.slice(-30).join(' | ')}\n`
@@ -806,7 +838,7 @@ STRENGE DIVERSITÄTS-REGELN:
       }
     }
   });
-  return parseAiJson<any[]>(text || '[]');
+  return parseAiJson<unknown>(text || '[]');
 };
 
 /** Phase 3B: gezielte Karteikarten aus konkreten Fehlern (ErrorPattern.sourceErrorIds,

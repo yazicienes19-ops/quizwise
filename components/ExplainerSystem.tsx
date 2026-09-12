@@ -12,6 +12,7 @@ import {
 } from '../services/tutorSessions';
 import { createSrsState } from '../services/spacedRepetition';
 import { saveDeckToSupabase } from '../services/flashcardService';
+import { readLocalDecks, upsertLocalDeck } from '../services/deckStore';
 import { resolveErrorMessage } from '../services/errorMessages';
 import { SourceSelector } from './SourceSelector';
 import { useTranslation } from '../i18n/I18nProvider';
@@ -457,13 +458,13 @@ export const ExplainerSystem: React.FC<ExplainerSystemProps> = ({
     const front = (prevUser?.content ?? msg.content.slice(0, 80)).trim().slice(0, 220);
     const card: Flashcard = { id: uid(), front, back: msg.content.trim().slice(0, 1500), level: 0, nextReview: Date.now(), srs: createSrsState() };
     const title = `${t('nav.explainer')} · ${activeSourceName || t('tut.general')}`;
-    const existing = decks.find(d => d.title === title);
+    // Aktueller Speicherstand statt der App-Kopie: sonst würde ein zweites
+    // Speichern in derselben Sitzung Karten aus den Karteikarten überschreiben.
+    const existing = readLocalDecks().find(d => d.title === title);
     const deck: FlashcardDeck = existing
       ? { ...existing, cards: [...existing.cards, card] }
       : { id: uid(), title, cards: [card], sourceDocumentId: sourceRef?.kind === 'doc' ? sourceRef.id : undefined };
-    const updatedDecks = existing ? decks.map(d => d.id === deck.id ? deck : d) : [...decks, deck];
-    setDecks(updatedDecks);
-    localStorage.setItem('flashcard_decks', JSON.stringify(updatedDecks));
+    setDecks(upsertLocalDeck(deck));
     if (userId) saveDeckToSupabase(deck, userId).catch(() => {});
     toast.success(t('tut.msg.cardSaved'));
   };

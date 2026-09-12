@@ -28,6 +28,7 @@ import { documentDisplayName } from './services/libraryService';
 import { getAllRecallResults } from './services/recallHistoryService';
 import { toast } from './services/toast';
 import { ActiveTab, TopicMetric, SearchResult, FlashcardDeck, ExamTerm, LearningFlowResult, OnboardingProfile } from './types';
+import { readLocalDecks, upsertLocalDeck, subscribeLocalDecks, claimLocalDecks } from './services/deckStore';
 import { isAdmin } from './config/admin';
 import { useAuth } from './hooks/useAuth';
 import { useActivityHeartbeat } from './hooks/useActivityHeartbeat';
@@ -113,6 +114,9 @@ const App: React.FC = () => {
     return () => window.removeEventListener('studearc-onboarding-done', close);
   }, []);
   const [decks, setDecks] = useState<FlashcardDeck[]>([]);
+  // Deck-Kopie der App immer auf dem Speicherstand halten (deckStore): sonst
+  // schreiben Tutor/Wissensnetz/Quiz später einen veralteten Stand zurück.
+  useEffect(() => subscribeLocalDecks(() => setDecks(readLocalDecks())), []);
   const [examTerms, setExamTerms] = useState<ExamTerm[]>([]);
   const [flowResult, setFlowResult] = useState<LearningFlowResult | null>(() => {
     try {
@@ -149,10 +153,7 @@ const App: React.FC = () => {
       const savedMetrics = localStorage.getItem('studearc_metrics');
       if (savedMetrics) setMetrics(JSON.parse(savedMetrics));
     } catch {}
-    try {
-      const savedDecks = localStorage.getItem('flashcard_decks');
-      if (savedDecks) setDecks(JSON.parse(savedDecks));
-    } catch {}
+    setDecks(readLocalDecks());
     try {
       const savedExamTerms = localStorage.getItem('studearc_exam_terms');
       if (savedExamTerms) setExamTerms(JSON.parse(savedExamTerms));
@@ -163,6 +164,7 @@ const App: React.FC = () => {
   useEffect(() => {
     // Tutor-Sitzungen und Reader-Chats bekommen keinen userId durchgereicht (s. syncService)
     import('./services/syncService').then(m => m.setSyncUserId(auth.user?.id ?? null)).catch(() => {});
+    if (auth.user) claimLocalDecks(auth.user.id);
     if (!auth.user || isOffline) return;
     loadAllCloudData(auth.user.id).then(cloud => {
       setCloudPreferences(cloud.preferences);
@@ -395,8 +397,7 @@ const App: React.FC = () => {
           userId={auth.user?.id}
           onLoginRequired={() => auth.setShowAuthModal(true)}
           onAccepted={(deck) => {
-            const stored: FlashcardDeck[] = (() => { try { return JSON.parse(localStorage.getItem('flashcard_decks') || '[]'); } catch { return []; } })();
-            localStorage.setItem('flashcard_decks', JSON.stringify([...stored, deck]));
+            upsertLocalDeck(deck);
             window.location.href = '/';
           }}
         />
