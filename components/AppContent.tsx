@@ -427,12 +427,12 @@ export const AppContent: React.FC<AppContentProps> = (p) => {
           updateMetricsAfterSession(score, topic, 'recall');
           recordActivity(user?.id);
         }}
-        onCreateCardsFromGaps={(topic, points) => {
-          if (!points.length) return;
-          const cards = points.map(p => ({
+        onCreateCardsFromGaps={(topic, generated) => {
+          if (!generated.length) return;
+          const cards = generated.map(c => ({
             id: Math.random().toString(36).slice(2, 9),
-            front: `${topic}: Was fehlte hier?\n„${p.slice(0, 120)}${p.length > 120 ? '…' : ''}"`,
-            back: p,
+            front: c.front,
+            back: c.back,
             level: 0,
             nextReview: Date.now(),
             srs: createSrsState(),

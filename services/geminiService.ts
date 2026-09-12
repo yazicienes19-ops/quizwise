@@ -1,4 +1,5 @@
 import { Type } from "@google/genai";
+import { stripFeynmanMeta, filterLeakyGapCards } from './feynmanText';
 import { countDueCards, migrateLegacyCard } from './spacedRepetition';
 import { multiDocPromptRules } from './multiDocSource';
 import {
@@ -255,7 +256,7 @@ STRENGE REGEL: Verwende AUSSCHLIESSLICH Inhalte aus dem oben bereitgestellten Do
 Die Frage soll tiefes Verständnis prüfen — Zusammenhänge, Ursachen und Bedeutung, nicht bloßes Faktenwissen.
 
 Liefere:
-- question: Eine Erklärungsfrage die nur mit dem Dokument beantwortet werden kann
+- question: Eine Erklärungsfrage die nur mit dem Dokument beantwortet werden kann. Direkt formuliert (z.B. "Erkläre, wie …" oder "Warum …?"), OHNE Meta-Floskeln wie "nach der Feynman-Technik", "in einfachen Worten" oder "so, dass ein Kind es versteht": die Zielgruppe zeigt die App selbst an
 - topic: Das abgefragte Thema in 2-5 Worten, als Fachbegriff wie er im Dokument steht
 - expectedKeywords: Die 6-10 zentralen Begriffe aus dem Dokument die in einer vollständigen Antwort vorkommen sollten
 - conceptContext: 4-6 Sätze was eine vollständige Antwort laut Dokument enthalten muss — Kernaussagen, Zusammenhänge, Beispiele aus dem Material${outputLangDirective()}` });
@@ -279,7 +280,9 @@ Liefere:
       }
     }
   });
-  return parseAiJson(text || '{}');
+  const challenge = parseAiJson<any>(text || '{}');
+  if (challenge && typeof challenge.question === 'string') challenge.question = stripFeynmanMeta(challenge.question);
+  return challenge;
 };
 
 // Kern der Feynman-Methode ist die einfache Erklärung — was "verständlich" heißt,
@@ -888,6 +891,52 @@ REGELN:
     }
   });
   return parseAiJson<any[]>(text || '[]');
+};
+
+/**
+ * Karteikarten aus Feynman-Lücken. Vorher baute die App die Karten ohne KI:
+ * Vorderseite "Thema: Was fehlte hier? „<Lücke>"", Rückseite dieselbe Lücke,
+ * also Antwort vorne und eine nutzlose Frage (User-Befund 12.09.2026). Jetzt
+ * eine echte Frage pro Lücke, beantwortet aus Material und Musterlösung;
+ * Karten, deren Vorderseite die Antwort verrät, fliegen raus.
+ */
+export const generateFlashcardsFromGaps = async (
+  topic: string,
+  gaps: string[],
+  context: { question?: string; conceptContext?: string; source?: GenerationSource | null },
+): Promise<{ front: string; back: string }[]> => {
+  const points = gaps.map(g => g.trim()).filter(Boolean).slice(0, 8);
+  if (points.length === 0) return [];
+  const parts: any[] = [];
+  if (context.source) parts.push(sourceTopart(context.source));
+  parts.push({ text: `Ein Lernender hat das Thema "${sanitizeUserInput(topic, 120)}" in eigenen Worten erklärt. Dabei fehlten diese Punkte:
+${points.map((p, i) => `${i + 1}. ${sanitizeUserInput(p, 400)}`).join('\n')}
+${context.question ? `\nDie Aufgabe war: ${sanitizeUserInput(context.question, 400)}` : ''}${context.conceptContext ? `\nMusterlösung laut Material: ${sanitizeUserInput(context.conceptContext, 1500)}` : ''}
+
+Erstelle für JEDEN fehlenden Punkt genau eine Karteikarte, die diese Lücke schließt.
+REGELN:
+1. Vorderseite: eine konkrete, ohne weiteren Kontext verständliche Frage, deren Antwort genau dieser Punkt ist (z.B. "Warum …?", "Wodurch …?", "Zu welcher … gehört …?"). Nenne das Thema in der Frage.
+2. Die Vorderseite darf die Antwort NICHT verraten: keine Wiederholung oder Umschreibung des Punktes, kein Zitat daraus, keine Formulierung wie "Was fehlte hier".
+3. Rückseite: die vollständige, korrekte Antwort in 1 bis 3 Sätzen, fachlich präzise, mit dem entscheidenden Begriff.
+4. Nutze nur Inhalte aus ${context.source ? 'dem Material oben, ' : ''}der Aufgabe und der Musterlösung, erfinde nichts.${outputLangDirective()}` });
+
+  const text = await callBackend({
+    complexity: 'heavy',
+    parts,
+    config: {
+      thinkingConfig: { thinkingBudget: 0 },
+      responseMimeType: 'application/json',
+      responseSchema: {
+        type: Type.ARRAY,
+        items: {
+          type: Type.OBJECT,
+          properties: { front: { type: Type.STRING }, back: { type: Type.STRING } },
+          required: ['front', 'back'],
+        },
+      },
+    },
+  });
+  return filterLeakyGapCards(parseAiJson<unknown>(text || '[]'));
 };
 
 /** Phase 3B: Quant-Operationstraining — DistractorErrorType (bisher nur Erzähltext/

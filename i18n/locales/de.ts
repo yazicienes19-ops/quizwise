@@ -1620,6 +1620,8 @@ export const de = {
   'ar.noStrengths': 'Noch keine klaren Stärken identifiziert. Versuch es ausführlicher.',
   'ar.gapsIdentified': 'Lücken identifiziert',
   'ar.saveGapsAsCards': 'Lücken als Karteikarten sichern →',
+  'ar.creatingGapCards': 'Karten werden erstellt…',
+  'ar.gapCardsFailed': 'Aus den Lücken ließen sich keine Karten erstellen. Bitte nochmal versuchen.',
   'ar.noGaps': 'Keine Lücken gefunden, vollständige Antwort!',
   'ar.learningRec': 'Lernempfehlung',
   'ar.nextDrill': 'Nächster Drill',

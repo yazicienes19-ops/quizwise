@@ -1612,6 +1612,8 @@ export const tr: Translations = {
   'ar.noStrengths': 'Henüz net güçlü yön yok. Daha ayrıntılı dene.',
   'ar.gapsIdentified': 'Belirlenen boşluklar',
   'ar.saveGapsAsCards': 'Boşlukları kart olarak kaydet →',
+  'ar.creatingGapCards': 'Kartlar oluşturuluyor…',
+  'ar.gapCardsFailed': 'Boşluklardan kart oluşturulamadı. Lütfen tekrar dene.',
   'ar.noGaps': 'Boşluk bulunamadı, eksiksiz cevap!',
   'ar.learningRec': 'Öğrenme önerisi',
   'ar.nextDrill': 'Sonraki alıştırma',

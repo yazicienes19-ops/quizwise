@@ -1619,6 +1619,8 @@ export const en: Translations = {
   'ar.noStrengths': 'No clear strengths identified yet. Try a more detailed explanation.',
   'ar.gapsIdentified': 'Gaps identified',
   'ar.saveGapsAsCards': 'Save gaps as flashcards →',
+  'ar.creatingGapCards': 'Creating cards…',
+  'ar.gapCardsFailed': 'Could not create cards from the gaps. Please try again.',
   'ar.noGaps': 'No gaps found, complete answer!',
   'ar.learningRec': 'Learning recommendation',
   'ar.nextDrill': 'Next drill',

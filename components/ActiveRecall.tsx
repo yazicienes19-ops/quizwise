@@ -3,7 +3,8 @@ import React, { useState, useEffect, useRef, useCallback, useMemo } from 'react'
 import { Mic, MicOff, Square } from 'lucide-react';
 import { ProcessedDocument, Collection, RecallChallenge, RecallEvaluation, FeynmanAudience } from '../types';
 import type { GenerationSource } from '../services/geminiService';
-import { evaluateRecallResponse, generateRecallChallenge } from '../services/geminiService';
+import { evaluateRecallResponse, generateRecallChallenge, generateFlashcardsFromGaps } from '../services/geminiService';
+import { stripFeynmanMeta } from '../services/feynmanText';
 import { generateValidatedChallenge, resolveActualTopic } from '../services/recallChallengeGuard';
 import { getRecentRecallQuestions, rememberRecallQuestion } from '../services/recallQuestionDedup';
 import { useTranslation } from '../i18n/I18nProvider';
@@ -81,8 +82,9 @@ interface ActiveRecallProps {
   /** docName = Name der Quelle (Dokument oder "Ordner: X"), NICHT das Thema — daran
    *  hängen Fach-Filter, Dokument-Filter der Fehleranalyse und das Aufräumen beim Löschen. */
   onComplete: (score: number, topic: string, missingPoints: string[], docName: string) => void;
-  /** Erstellt Karteikarten aus den identifizierten Lücken (wird in AppContent verdrahtet). */
-  onCreateCardsFromGaps?: (topic: string, points: string[]) => void;
+  /** Speichert Karteikarten, die ActiveRecall aus den Lücken erzeugt hat
+   *  (echte Frage pro Lücke, s. generateFlashcardsFromGaps). */
+  onCreateCardsFromGaps?: (topic: string, cards: { front: string; back: string }[]) => void;
   initialDoc?: ProcessedDocument;
   /** Themen-Vorbelegung, z.B. aus dem Split-Screen-Reader-Handoff. */
   initialFocusTopic?: string;
@@ -132,6 +134,26 @@ export const ActiveRecall: React.FC<ActiveRecallProps> = ({
   const [userAnswer, setUserAnswer] = useState('');
   const [evaluation, setEvaluation] = useState<RecallEvaluation | null>(null);
   const [lastAttempt, setLastAttempt] = useState<AttemptContext | null>(null);
+  const [creatingGapCards, setCreatingGapCards] = useState(false);
+
+  const handleCreateGapCards = async () => {
+    if (!onCreateCardsFromGaps || !evaluation || !challenge || creatingGapCards) return;
+    const topic = resolveActualTopic(challenge, focusTopic, activeSourceName || t('ar.recallFallback'));
+    setCreatingGapCards(true);
+    try {
+      const cards = await generateFlashcardsFromGaps(topic, evaluation.missingPoints, {
+        question: challenge.question,
+        conceptContext: challenge.conceptContext,
+        source: activeSource,
+      });
+      if (cards.length === 0) { toast.error(t('ar.gapCardsFailed')); return; }
+      onCreateCardsFromGaps(topic, cards);
+    } catch {
+      toast.error(t('ar.gapCardsFailed'));
+    } finally {
+      setCreatingGapCards(false);
+    }
+  };
   // useModuleScopedActivity liest die Historie nur beim Mount — ohne diese
   // Ergänzung sähe die Themensteuerung Versuche dieser Sitzung erst nach einem
   // Remount (ein gerade verpatztes Thema käme beim nächsten Drill nicht bevorzugt).
@@ -670,7 +692,7 @@ export const ActiveRecall: React.FC<ActiveRecallProps> = ({
 
           <div className="rounded-[28px] p-7 lg:p-10 shadow-3d-deep" style={{ background: 'var(--ink)', color: 'var(--bg-sidebar)' }}>
             <p className={`${microLabel} mb-3`} style={{ opacity: 0.65 }}>{t((`ar.explainingTo.${audience}`) as TKey)}</p>
-            <p className="text-lg lg:text-2xl font-semibold leading-snug">{challenge.question}</p>
+            <p className="text-lg lg:text-2xl font-semibold leading-snug">{stripFeynmanMeta(challenge.question)}</p>
           </div>
 
           {lastAttempt && (
@@ -904,11 +926,12 @@ export const ActiveRecall: React.FC<ActiveRecallProps> = ({
                   </ul>
                   {onCreateCardsFromGaps && (
                     <button
-                      onClick={() => onCreateCardsFromGaps(resolveActualTopic(challenge, focusTopic, activeSourceName || t('ar.recallFallback')), evaluation.missingPoints)}
-                      className="mt-4 w-full py-3 rounded-xl text-[9px] font-black uppercase tracking-widest transition-all hover:scale-[1.02]"
+                      onClick={handleCreateGapCards}
+                      disabled={creatingGapCards}
+                      className="mt-4 w-full py-3 rounded-xl text-[9px] font-black uppercase tracking-widest transition-all hover:scale-[1.02] disabled:opacity-60 disabled:hover:scale-100"
                       style={{ background: 'color-mix(in srgb, var(--primary) 12%, transparent)', color: GOLD_TEXT, border: '1px solid color-mix(in srgb, var(--primary) 30%, transparent)' }}
                     >
-                      {t('ar.saveGapsAsCards')}
+                      {creatingGapCards ? t('ar.creatingGapCards') : t('ar.saveGapsAsCards')}
                     </button>
                   )}
                 </>
