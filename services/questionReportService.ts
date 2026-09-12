@@ -11,8 +11,10 @@ import { removeMistakesByQuestionText } from './mistakeReviewService';
  * Klausur-Feedback (examFeedbackService), dessen Liste dabei auf 100 Einträge
  * gekappt wurde. Jetzt:
  * - eigener lokaler Schlüssel (Altbestand wird einmalig herausgelöst),
- * - Meldung geht an Supabase (Tabelle question_reports) und erscheint im
- *   Admin-Dashboard,
+ * - jede Meldung wird mit Sendestatus gespeichert und an Supabase
+ *   (question_reports) hochgeladen; was nicht rausging (offline, alte
+ *   Meldungen von vor dem Upload), holt uploadPendingQuizReports beim
+ *   nächsten App-Start nach,
  * - "Antwort falsch" / "keine richtige Option" annulliert die Frage: sie
  *   verschwindet aus Verlauf und Wertung und aus der Fehlerwiederholung,
  * - gemeldete Fragen stehen als Ausschlussliste im Quiz-Prompt.
@@ -29,6 +31,10 @@ export interface LocalQuestionReport {
   reason: QuestionReportReason;
   docName?: string;
   timestamp: number;
+  /** Antwortoptionen, richtige Antwort, Erklärung: fürs Admin-Dashboard. */
+  details?: Record<string, unknown>;
+  /** Zeitpunkt des erfolgreichen Uploads; fehlt = noch nicht in der Cloud. */
+  sentAt?: number;
 }
 
 const REPORTS_KEY = 'studearc_quiz_reports_v1';
@@ -75,16 +81,16 @@ const currentUserId = async (): Promise<string | null> => {
   } catch { return null; }
 };
 
-/** Schreibt eine Meldung in question_reports (RLS: nur eigene Zeilen). Fehlt die
- *  Tabelle noch (Migration nicht ausgeführt), bleibt es still bei der lokalen Meldung. */
+/** Schreibt eine einzelne Meldung in question_reports (RLS: nur eigene Zeilen).
+ *  Genutzt vom Klausur-Feedback; Quiz-Meldungen laufen über uploadPendingQuizReports. */
 export const sendReportToCloud = async (row: {
   kind: 'quiz' | 'exam';
   reason: string;
   questionText: string;
   details?: Record<string, unknown>;
   docName?: string;
-}): Promise<void> => {
-  if (!(await currentUserId())) return;
+}): Promise<boolean> => {
+  if (!(await currentUserId())) return false;
   try {
     const { error } = await supabase.from('question_reports').insert({
       kind: row.kind,
@@ -93,8 +99,42 @@ export const sendReportToCloud = async (row: {
       details: row.details ?? {},
       doc_name: row.docName ? row.docName.slice(0, 300) : null,
     });
-    if (error) console.warn('[questionReport] Cloud-Meldung nicht gespeichert:', error.message);
-  } catch { /* offline */ }
+    if (error) { console.warn('[questionReport] Cloud-Meldung nicht gespeichert:', error.message); return false; }
+    return true;
+  } catch { return false; }
+};
+
+let uploadInFlight: Promise<number> | null = null;
+
+/**
+ * Lädt alle noch nicht gesendeten Quiz-Meldungen in einem Rutsch hoch (mit
+ * ursprünglichem Meldezeitpunkt) und markiert sie als gesendet. Parallele
+ * Aufrufe (App-Start + neue Meldung) teilen sich denselben Upload.
+ * Rückgabe: Anzahl hochgeladener Meldungen.
+ */
+export const uploadPendingQuizReports = (): Promise<number> => {
+  if (uploadInFlight) return uploadInFlight;
+  uploadInFlight = (async () => {
+    try {
+      if (!(await currentUserId())) return 0;
+      const pending = getQuizReports().filter(r => !r.sentAt);
+      if (pending.length === 0) return 0;
+      const { error } = await supabase.from('question_reports').insert(pending.map(r => ({
+        kind: 'quiz',
+        reason: String(r.reason).slice(0, 40),
+        question_text: r.questionText.slice(0, 2000),
+        details: r.details ?? {},
+        doc_name: r.docName ? r.docName.slice(0, 300) : null,
+        created_at: new Date(r.timestamp || Date.now()).toISOString(),
+      })));
+      if (error) { console.warn('[questionReport] Nachholen fehlgeschlagen:', error.message); return 0; }
+      const sentIds = new Set(pending.map(r => r.id));
+      const now = Date.now();
+      write(getQuizReports().map(r => (sentIds.has(r.id) ? { ...r, sentAt: now } : r)));
+      return pending.length;
+    } catch { return 0; } finally { uploadInFlight = null; }
+  })();
+  return uploadInFlight;
 };
 
 export const reportQuizQuestion = async (
@@ -108,8 +148,17 @@ export const reportQuizQuestion = async (
   const reports = getQuizReports();
   const stored = text.slice(0, 500);
   const duplicate = reports.some(r => r.questionText === stored && r.reason === reason);
+  const id = Math.random().toString(36).slice(2, 9);
   if (!duplicate) {
-    write([...reports, { id: Math.random().toString(36).slice(2, 9), questionText: stored, reason, docName, timestamp: Date.now() }]);
+    write([...reports, {
+      id, questionText: stored, reason, docName, timestamp: Date.now(),
+      details: {
+        options: question.options,
+        correctAnswerIndices: question.correctAnswerIndices,
+        explanation: question.explanation,
+        topic: question.topic,
+      },
+    }]);
   }
 
   const voided = isVoidingReason(reason);
@@ -119,21 +168,10 @@ export const reportQuizQuestion = async (
     removeMistakesByQuestionText(text, userId);
   }
   if (!duplicate) {
-    // Abgewartet (sendReportToCloud wirft nie): der Aufrufer (ResultView)
-    // wartet ohnehin nicht, und so ist die Meldung sicher raus, bevor die
-    // Funktion zurückkehrt.
-    await sendReportToCloud({
-      kind: 'quiz',
-      reason,
-      questionText: text,
-      docName,
-      details: {
-        options: question.options,
-        correctAnswerIndices: question.correctAnswerIndices,
-        explanation: question.explanation,
-        topic: question.topic,
-      },
-    }).catch(() => {});
+    await uploadPendingQuizReports();
+    // Lief gerade schon ein Upload (z.B. vom App-Start), war die neue Meldung
+    // nicht in dessen Schnappschuss: dann einmal nachschieben.
+    if (!getQuizReports().find(r => r.id === id)?.sentAt) await uploadPendingQuizReports();
   }
   return { voided };
 };

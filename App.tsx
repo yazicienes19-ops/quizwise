@@ -165,6 +165,9 @@ const App: React.FC = () => {
     // Tutor-Sitzungen und Reader-Chats bekommen keinen userId durchgereicht (s. syncService)
     import('./services/syncService').then(m => m.setSyncUserId(auth.user?.id ?? null)).catch(() => {});
     if (auth.user) claimLocalDecks(auth.user.id);
+    // Meldungen, die nur lokal lagen (offline oder aus der Zeit vor dem
+    // Cloud-Upload), einmalig nachholen: sie erscheinen dann im Admin-Dashboard.
+    if (auth.user) import('./services/questionReportService').then(m => m.uploadPendingQuizReports()).catch(() => {});
     if (!auth.user || isOffline) return;
     loadAllCloudData(auth.user.id).then(cloud => {
       setCloudPreferences(cloud.preferences);
