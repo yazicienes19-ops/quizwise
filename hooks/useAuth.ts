@@ -4,6 +4,7 @@ import { supabase } from '../services/supabaseClient';
 import { fetchUserProfile } from '../services/geminiService';
 import { setLocale } from '../i18n';
 import { setFunctionalPref } from '../services/cookieConsent';
+import { claimLocalUserData, watchOwnerChange } from '../services/localAccountGuard';
 
 export const useAuth = () => {
   const [user, setUser] = useState<User | null>(null);
@@ -18,19 +19,36 @@ export const useAuth = () => {
 
   useEffect(() => {
     const timeout = setTimeout(() => setAuthChecked(true), 1500);
+    // Konto-Schutz (services/localAccountGuard.ts): gehört der Browser-Speicher
+    // einem anderen Konto (oder niemandem), wird er geleert und die App lädt
+    // neu, BEVOR sie mit diesem Konto rendert, zusammenführt oder hochlädt.
+    const applyUser = (next: User | null): boolean => {
+      if (next && claimLocalUserData(next.id)) {
+        clearTimeout(timeout);
+        window.location.reload();
+        return false;
+      }
+      setUser(next);
+      return true;
+    };
     supabase.auth.getSession().then(({ data: { session } }) => {
       clearTimeout(timeout);
-      setUser(session?.user ?? null);
-      setAuthChecked(true);
+      if (applyUser(session?.user ?? null)) setAuthChecked(true);
     }).catch(() => {
       clearTimeout(timeout);
       setAuthChecked(true);
     });
     const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
-      setUser(session?.user ?? null);
+      applyUser(session?.user ?? null);
     });
     return () => subscription.unsubscribe();
   }, []);
+
+  // Wechselt ein anderer Tab das Konto, nicht mit dem alten weiterschreiben.
+  useEffect(() => {
+    if (!user) return;
+    return watchOwnerChange(user.id, () => window.location.reload());
+  }, [user]);
 
   useEffect(() => {
     if (!user) { setUserPlan('free'); return; }
