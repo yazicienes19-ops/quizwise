@@ -19,7 +19,7 @@ export const LOCAL_OWNER_KEY = 'studearc_local_owner';
 /** Hochzählen erzwingt auf JEDEM Gerät einmalig ein Leeren + frisches Laden
  *  aus der Cloud (z.B. nachdem vermischte Cloud-Daten bereinigt wurden, damit
  *  alte Browser-Stände sie nicht per Merge wieder hochladen). */
-export const LOCAL_DATA_EPOCH = 1;
+export const LOCAL_DATA_EPOCH = 2; // 2: Lernverlauf-Reset Hauptkonto 13.09.2026
 
 /** Besitzer-Vermerk: Konto plus Epoche. */
 export const ownerMarker = (userId: string): string => `${userId}|${LOCAL_DATA_EPOCH}`;
