@@ -10,6 +10,7 @@ import { buildLearningScore } from '../services/learningScoreService';
 import { buildExamForecast } from '../services/examForecastService';
 import type { DailyPlanStep } from '../services/learningProfileService';
 import { useModuleScopedActivity } from '../hooks/useModuleScopedActivity';
+import { ChevronLeft } from 'lucide-react';
 import { getStreak } from '../services/streakService';
 import { getDismissedTopics, dismissTopic } from '../services/dismissedTopicsService';
 import { toast } from '../services/toast';
@@ -70,9 +71,13 @@ interface LearningCoachProps {
   activeModule?: Collection | null;
   documents?: ProcessedDocument[];
   userId?: string | null;
+  /** Alle Fächer, für die kompakte Noten-Liste bei "Alle Fächer". */
+  collections?: Collection[];
+  /** Wählt ein Fach aus (null = Alle Fächer), wie der Fach-Wähler in der Sidebar. */
+  onModuleChange?: (id: string | null) => void;
 }
 
-export const LearningCoach: React.FC<LearningCoachProps> = ({ metrics, decks, onNavigate, onAction, onCreateCardsFromErrors, flowResult = null, examTerms = [], activeModule = null, documents = [], userId }) => {
+export const LearningCoach: React.FC<LearningCoachProps> = ({ metrics, decks, onNavigate, onAction, onCreateCardsFromErrors, flowResult = null, examTerms = [], activeModule = null, documents = [], userId, collections = [], onModuleChange }) => {
   const { t, tp } = useTranslation();
   const [insights, setInsights] = useState<CoachInsights | null>(null);
   const [isLoading, setIsLoading] = useState(false);
@@ -153,7 +158,6 @@ export const LearningCoach: React.FC<LearningCoachProps> = ({ metrics, decks, on
     () => buildLearningScore({ quizResults, examResults, recallResults, metrics: moduleScopedMetrics, decks, streakCurrent: streak.current }),
     [quizResults, examResults, recallResults, moduleScopedMetrics, decks, streak],
   );
-
   // Datenbasierte Motivation (unter der Prognose) + Datenbasis für die Transparenz-Aufklappung
   const lastActivityTs = useMemo(() => {
     const ts = [...quizResults, ...examResults, ...recallResults].map(r => r.timestamp);
@@ -289,6 +293,15 @@ export const LearningCoach: React.FC<LearningCoachProps> = ({ metrics, decks, on
         <p className="text-base font-medium opacity-80" style={{ color: 'var(--mute)' }}>
           {t('lc.subtitle')}
         </p>
+        {activeModule && onModuleChange && collections.length > 0 && (
+          <button
+            onClick={() => onModuleChange(null)}
+            className="inline-flex items-center gap-1 px-4 py-1.5 rounded-full text-[10px] font-black uppercase tracking-widest mr-2 hover:underline"
+            style={{ color: 'var(--primary)', border: '1px solid color-mix(in srgb, var(--primary) 30%, transparent)' }}
+          >
+            <ChevronLeft size={12} /> {t('layout.allSubjects')}
+          </button>
+        )}
         {activeModule && (
           <p
             className="inline-block px-4 py-1.5 rounded-full text-[10px] font-black uppercase tracking-widest mr-2"

@@ -1,20 +1,20 @@
 
 import React, { useEffect, useMemo, useState } from 'react';
-import { ActiveTab, LearningFlowResult, StudyEntry, FlashcardDeck, ProcessedDocument, TopicMetric, Collection } from '../types';
-import { toast } from '../services/toast';
-import { HelpCircle, Lightbulb, BookOpen, Layers, GraduationCap, Brain, Network, Sparkles, Play, CheckCircle2, ChevronRight } from 'lucide-react';
+import { ActiveTab, LearningFlowResult, FlashcardDeck, ProcessedDocument, TopicMetric, Collection, ExamTerm } from '../types';
+import { CheckCircle2, ChevronRight } from 'lucide-react';
 import { countDueCards, migrateLegacyCard } from '../services/spacedRepetition';
-import { countDueMistakes } from '../services/mistakeReviewService';
+import { getDueMistakes } from '../services/mistakeReviewService';
 import { getStreak } from '../services/streakService';
-import { daysUntilDate } from '../services/calendarSessions';
 import { collectionDocs } from '../services/collectionSource';
-import { buildLearningScore } from '../services/learningScoreService';
 import { useModuleScopedActivity } from '../hooks/useModuleScopedActivity';
-import { buildModuleProgressList } from '../services/moduleProgressService';
-import { AnimatedBar } from './AnimatedBar';
-import { CountUp } from './CountUp';
+import {
+  buildModuleRows, sortModuleRows, buildHomeKpis, upcomingExamTerms, formatGrade, formatPercent,
+  type ModuleRow, type ModuleSort, type ModuleNextStep,
+} from '../services/homeOverviewService';
 import { useTranslation } from '../i18n/I18nProvider';
+import { getLocale } from '../i18n';
 import type { TKey } from '../i18n';
+import { formatDate } from '../i18n/dates';
 import { greetingKind } from '../services/dashboardService';
 
 interface DashboardProps {
@@ -26,6 +26,8 @@ interface DashboardProps {
   metrics?: TopicMetric[];
   collections?: Collection[];
   activeModuleId?: string | null;
+  /** Klausurtermine aus dem Kalender — Kennzahl "Nächste Klausur" und Termin-Spalte. */
+  examTerms?: ExamTerm[];
   /** Wählt ein Fach aus (null = Alle Fächer), wie der Fach-Wähler in der Sidebar. */
   onModuleChange?: (id: string | null) => void;
   /** Startet die Wiederholungs-Session fälliger Fehlerfragen (Quiz-Tab). */
@@ -33,48 +35,77 @@ interface DashboardProps {
   user?: { email?: string | null; user_metadata?: { full_name?: string } } | null;
 }
 
-interface ActionCard {
-  id: ActiveTab;
-  titleKey: TKey;
-  Icon: React.ComponentType<{ size?: number; className?: string }>;
-  /** Wechselt bewusst gold/navy ab — sonst sehen alle 7 Icons gleich (nur gold) aus. */
-  tint: 'gold' | 'navy';
-}
+const withSrs = (cards: FlashcardDeck['cards']) => cards.map(c => (c.srs ? c : { ...c, srs: migrateLegacyCard(c) }));
 
-/** Fixe Priorität statt Sortierung nach Nutzungshäufigkeit — entspricht dem
- *  freigegebenen Dashboard-Redesign (Quiz, Tutor, Karteikarten, Simulator,
- *  Feynman, Wissensnetz, Bibliothek). Bibliothek steht bewusst zuletzt: bei
- *  ungerader Kartenzahl (7) bekommt die letzte Karte die volle Zeilenbreite
- *  (siehe isLast im Grid unten), das passt gut als größte/unterste Karte. */
-const ACTION_CARDS: ActionCard[] = [
-  { id: ActiveTab.QUIZ, titleKey: 'nav.quiz', Icon: HelpCircle, tint: 'gold' },
-  { id: ActiveTab.EXPLAINER, titleKey: 'nav.explainer', Icon: Lightbulb, tint: 'navy' },
-  { id: ActiveTab.CARDS, titleKey: 'nav.cards', Icon: Layers, tint: 'gold' },
-  { id: ActiveTab.EXAM, titleKey: 'nav.exam', Icon: GraduationCap, tint: 'navy' },
-  { id: ActiveTab.RECALL, titleKey: 'nav.recall', Icon: Brain, tint: 'gold' },
-  { id: ActiveTab.KNOWLEDGE_GRAPH, titleKey: 'nav.knowledgeGraph', Icon: Network, tint: 'navy' },
-  { id: ActiveTab.LIBRARY, titleKey: 'nav.library', Icon: BookOpen, tint: 'gold' },
-];
+// Farbrollen aus dem Startseiten-Handoff (2026-09), auf die App-Tokens abgebildet,
+// damit Hell- und Dunkelmodus ohne eigene Varianten funktionieren.
+const C = {
+  ink: 'var(--text-main)',
+  mute: 'color-mix(in srgb, var(--text-main) 68%, transparent)',
+  soft: 'color-mix(in srgb, var(--text-main) 60%, transparent)',
+  faint: 'color-mix(in srgb, var(--text-main) 55%, transparent)',
+  chevron: 'color-mix(in srgb, var(--text-main) 45%, transparent)',
+  line: 'color-mix(in srgb, var(--text-main) 10%, transparent)',
+  hair: 'color-mix(in srgb, var(--text-main) 6%, transparent)',
+  card: 'var(--card)',
+  gold: 'var(--primary)',
+  /** Gold als Text auf Cream nie heller als das Handoff-#8e6716 (Kontrast 4.5:1). */
+  goldText: 'color-mix(in srgb, var(--primary) 55%, var(--text-main))',
+  red: '#c2543f',
+  green: '#4a8a5c',
+};
 
-type Priority = 'red' | 'yellow' | 'green';
-const PRIORITY_COLOR: Record<Priority, string> = { red: '#f43f5e', yellow: '#f59e0b', green: '#22c55e' };
+type Severity = 'gold' | 'green' | 'red';
+const SEVERITY_COLOR: Record<Severity, string> = { gold: C.gold, green: C.green, red: C.red };
 
-interface TodayTask {
-  priority: Priority;
-  text: string;
-  /** Datenbegründung — jede Empfehlung muss nachvollziehbar sein, keine
-   * generischen "Lerne heute X"-Sätze ohne Herkunft. */
-  reason?: string;
+interface Recommendation {
+  key: string;
+  severity: Severity;
+  title: string;
+  /** Datenbegründung — jede Empfehlung muss nachvollziehbar sein. */
+  reason: string;
+  minutes?: number;
   onClick: () => void;
 }
 
-const withSrs = (cards: FlashcardDeck['cards']) => cards.map(c => (c.srs ? c : { ...c, srs: migrateLegacyCard(c) }));
+const SORTS: { key: ModuleSort; label: TKey }[] = [
+  { key: 'urgency', label: 'home.sort.urgency' },
+  { key: 'grade', label: 'home.sort.grade' },
+  { key: 'date', label: 'home.sort.date' },
+  { key: 'alpha', label: 'home.sort.alpha' },
+];
+const SORT_STORAGE_KEY = 'studearc_home_module_sort';
+const readStoredSort = (): ModuleSort => {
+  try {
+    const v = localStorage.getItem(SORT_STORAGE_KEY);
+    return v === 'grade' || v === 'date' || v === 'alpha' ? v : 'urgency';
+  } catch { return 'urgency'; }
+};
+
+const ACTION_LABEL: Record<ModuleNextStep, TKey> = {
+  mistakes: 'home.act.mistakes',
+  review: 'home.act.review',
+  rebuild: 'home.act.rebuild',
+  placement: 'home.act.placement',
+  cleanup: 'home.act.cleanup',
+};
+
+/** Handoff: nur so viele Zeilen wie vollständig auf die Seite passen, der Rest hinter "Alle anzeigen". */
+const VISIBLE_ROWS = 6;
+const GRID_COLUMNS = 'minmax(0,1fr) 138px 58px 116px 118px';
+const SHORT_DATE: Intl.DateTimeFormatOptions = { day: 'numeric', month: 'short', year: '2-digit' };
+
+/** Grobe Zeitschätzung: Antwortzeiten werden nicht gespeichert, daher Pauschalwerte je Fehlerfrage bzw. Karte. */
+const estimateMinutes = (count: number, minutesPerItem: number) => Math.max(1, Math.round(count * minutesPerItem));
+
+const MICRO_LABEL = 'text-[9.5px] font-semibold uppercase tracking-[0.18em]';
 
 export const Dashboard: React.FC<DashboardProps> = ({
-  onTabChange, flowResult, documents = [], decks = [], metrics = [], collections = [], activeModuleId = null,
+  onTabChange, documents = [], decks = [], collections = [], activeModuleId = null, examTerms = [],
   onModuleChange, onStartMistakeReview, user = null,
 }) => {
   const { t, tp } = useTranslation();
+  const locale = getLocale();
 
   // Läuft weiter, solange das Dashboard offen ist — die Begrüßung passt sich
   // so auch ohne Tab-Wechsel/Reload an, sobald eine Tageszeit-Grenze (5/11/17/22 Uhr) überschritten wird.
@@ -96,177 +127,169 @@ export const Dashboard: React.FC<DashboardProps> = ({
     return decks.filter(d => d.sourceDocumentId && docIds.has(d.sourceDocumentId));
   }, [decks, documents, activeModule]);
 
-  const dismissedTopics = useMemo(() => new Set<string>(), []);
-  const { quizResults, examResults, recallResults } = useModuleScopedActivity(activeModule, documents, dismissedTopics);
+  // Kennzahlen und Modultabelle zeigen immer alle Fächer, unabhängig vom aktiven Fach.
+  const noDismissed = useMemo(() => new Set<string>(), []);
+  const { quizResults, examResults, recallResults } = useModuleScopedActivity(null, documents, noDismissed);
+  const activity = useMemo(() => ({ quizResults, examResults, recallResults }), [quizResults, examResults, recallResults]);
 
   const dueCardsCount = useMemo(
     () => countDueCards(scopedDecks.flatMap(d => withSrs(d.cards))),
     [scopedDecks],
   );
-
-  const dueMistakesCount = useMemo(() => countDueMistakes(), []);
+  const dueMistakes = useMemo(() => getDueMistakes(), []);
   const streak = useMemo(() => getStreak(), []);
 
-  const nextExam = useMemo(() => {
-    try {
-      const terms: Array<{ date: string; title: string }> = JSON.parse(localStorage.getItem('studearc_exam_terms') || '[]');
-      const now = new Date();
-      const future = terms
-        .map(term => ({ ...term, days: daysUntilDate(term.date, now) }))
-        .filter(term => term.days >= 0)
-        .sort((a, b) => a.days - b.days);
-      return future.length ? { title: future[0].title, days: future[0].days } : null;
-    } catch { return null; }
-  }, []);
-
-  // Themen-Metriken tragen keine Fach-Zuordnung: in der Fach-Sicht weglassen,
-  // sonst würden fremde Fächer mitzählen (gleiche Regel wie im Lern-Coach).
-  const learningScore = useMemo(
-    () => buildLearningScore({ quizResults, examResults, recallResults, metrics: activeModule ? [] : metrics, decks: scopedDecks, streakCurrent: streak.current }),
-    [quizResults, examResults, recallResults, metrics, activeModule, scopedDecks, streak.current],
+  const rows = useMemo(
+    () => buildModuleRows({ collections, documents, decks, activity, dueMistakes, examTerms, now: new Date() }),
+    [collections, documents, decks, activity, dueMistakes, examTerms],
   );
+  const kpis = useMemo(() => buildHomeKpis({ rows, examTerms, activity, now: new Date() }), [rows, examTerms, activity]);
+  const nextExam = useMemo(() => upcomingExamTerms(examTerms, new Date())[0] ?? null, [examTerms]);
 
-  // Bei "Alle Fächer" nur eine kompakte Note je Fach; Details gibt es nach Auswahl des Fachs.
-  const showModuleList = !activeModule && collections.length > 0 && !!onModuleChange;
-  const moduleProgress = useMemo(
-    () => (showModuleList ? buildModuleProgressList({ collections, documents, decks, activity: { quizResults, examResults, recallResults } }) : []),
-    [showModuleList, collections, documents, decks, quizResults, examResults, recallResults],
-  );
+  const [sort, setSort] = useState<ModuleSort>(readStoredSort);
+  const changeSort = (next: ModuleSort) => {
+    setSort(next);
+    try { localStorage.setItem(SORT_STORAGE_KEY, next); } catch { /* ignore */ }
+  };
+  const sortedRows = useMemo(() => sortModuleRows(rows, sort), [rows, sort]);
+  const [showAllRows, setShowAllRows] = useState(false);
+  const visibleRows = showAllRows ? sortedRows : sortedRows.slice(0, VISIBLE_ROWS);
+  const hiddenRows = sortedRows.slice(VISIBLE_ROWS);
 
-  // Transparenz hinter dem Prozentwert: Woraus er sich überhaupt speist.
-  // Ein "72%" aus 2 Sessions ist etwas anderes als eines aus 20 — ohne diese
-  // Zeile trägt die Zahl Scheingenauigkeit mit sich herum.
-  const learnedCardsCount = useMemo(
-    () => scopedDecks.reduce((sum, d) => sum + d.cards.filter(c => c.srs && c.srs.repetitions > 0).length, 0),
-    [scopedDecks],
-  );
-  const scoreBasisLine = learningScore.overall != null
-    ? t('dashboardV2.progress.basis', {
-        quiz: quizResults.length,
-        exam: examResults.length,
-        recall: recallResults.length,
-        cards: learnedCardsCount,
-      })
-    : null;
+  const fmtGrade = (grade: string) => formatGrade(grade, locale);
 
-  const weiterlernCard = useMemo(() => {
-    try {
-      const raw = localStorage.getItem('studearc_quiz_progress');
-      if (raw) {
-        const progress = JSON.parse(raw);
-        const total = progress?.questions?.length ?? 0;
-        if (progress?.meta && progress?.timestamp && total > 0 && Date.now() - progress.timestamp < 7 * 24 * 60 * 60 * 1000) {
-          const answered = progress.answers?.length ?? 0;
-          return {
-            subject: progress.meta.docName || t('dashboard.quizResume'),
-            meta: t('dashboard.quizResume'),
-            tab: ActiveTab.QUIZ,
-            pct: Math.round((answered / total) * 100),
-          };
-        }
-      }
-    } catch { /* ignore */ }
-    if (scopedDecks.length > 0) {
-      const deck = scopedDecks[scopedDecks.length - 1];
-      const due = countDueCards(withSrs(deck.cards));
-      const total = deck.cards.length || 1;
-      return {
-        subject: deck.title,
-        meta: tp('dashboardV2.continue.cardsWaiting', due),
-        tab: ActiveTab.CARDS,
-        pct: Math.max(0, Math.round((1 - due / total) * 100)),
-      };
+  const openModule = (id: string) => {
+    onModuleChange?.(id);
+    onTabChange(ActiveTab.RADAR);
+  };
+  const runModuleAction = (row: ModuleRow) => {
+    switch (row.nextStep) {
+      case 'mistakes':
+        if (onStartMistakeReview) onStartMistakeReview();
+        else onTabChange(ActiveTab.QUIZ);
+        return;
+      case 'cleanup':
+        onTabChange(ActiveTab.LIBRARY);
+        return;
+      case 'placement':
+        onModuleChange?.(row.id);
+        onTabChange(ActiveTab.EXAM);
+        return;
+      default:
+        onModuleChange?.(row.id);
+        onTabChange(ActiveTab.QUIZ);
     }
-    return null;
-  }, [scopedDecks, t, tp]);
+  };
 
-  const todayTasks = useMemo(() => {
-    const tasks: TodayTask[] = [];
+  // Höchstens drei Empfehlungen, nach Dringlichkeit; fällt eine weg, rückt die nächste nach.
+  const recommendations = useMemo((): Recommendation[] => {
+    const recs: Recommendation[] = [];
     if (nextExam && nextExam.days <= 7) {
-      tasks.push({
-        priority: 'red',
-        text: t('dashboardV2.today.examSoon', { title: nextExam.title }),
+      recs.push({
+        key: 'exam', severity: 'red',
+        title: t('dashboardV2.today.examSoon', { title: nextExam.title }),
         reason: tp('dashboardV2.today.examReason', nextExam.days),
         onClick: () => onTabChange(ActiveTab.EXAM),
       });
     }
-    if (dueCardsCount > 0) {
-      const decksDue = scopedDecks.filter(d => countDueCards(withSrs(d.cards)) > 0).length;
-      tasks.push({
-        priority: 'red',
-        text: tp('dashboardV2.today.cards', dueCardsCount),
-        reason: tp('dashboardV2.today.cardsReason', decksDue),
-        onClick: () => onTabChange(ActiveTab.CARDS),
-      });
-    }
-    if (dueMistakesCount > 0 && onStartMistakeReview) {
-      tasks.push({
-        priority: 'yellow',
-        text: tp('dashboardV2.today.mistakes', dueMistakesCount),
+    if (dueMistakes.length > 0) {
+      recs.push({
+        key: 'mistakes', severity: 'gold',
+        title: tp('dashboardV2.today.mistakes', dueMistakes.length),
         reason: t('dashboardV2.today.mistakesReason'),
-        onClick: onStartMistakeReview,
+        minutes: estimateMinutes(dueMistakes.length, 0.3),
+        onClick: () => (onStartMistakeReview ? onStartMistakeReview() : onTabChange(ActiveTab.QUIZ)),
       });
     }
     if (streak.current > 0 && !streak.todayDone) {
-      tasks.push({
-        priority: 'green',
-        text: t('dashboardV2.today.streak'),
+      recs.push({
+        key: 'streak', severity: 'green',
+        title: t('dashboardV2.today.streak'),
         reason: tp('dashboardV2.today.streakReason', streak.current),
+        minutes: 5,
         onClick: () => onTabChange(dueCardsCount > 0 ? ActiveTab.CARDS : ActiveTab.QUIZ),
       });
     }
-    return tasks;
-  }, [nextExam, dueCardsCount, dueMistakesCount, onStartMistakeReview, streak.current, streak.todayDone, t, tp, onTabChange, scopedDecks]);
-
-  // Klausur-Countdown: ab 3 Wochen Sichtbarkeit + ehrliche Themen-Priorisierung
-  // aus den echten Konfidenz-Metriken (niedrigste zuerst, ab <70 genannt).
-  const examCountdown = useMemo(() => {
-    if (!nextExam || nextExam.days > 21) return null;
-    const weak = [...metrics]
-      .filter(m => m.confidence < 70)
-      .sort((a, b) => a.confidence - b.confidence)
-      .slice(0, 3)
-      .map(m => ({ topic: m.topic, confidence: m.confidence, level: m.confidence < 50 ? 'red' : 'yellow' as Priority }));
-    return { exam: nextExam, weak, hasBasis: metrics.length > 0 };
-  }, [nextExam, metrics]);
-
-  const statCards = useMemo(() => {
-    const cards: { label: string; value: number; sub?: string }[] = [
-      { label: t('dashboardV2.stat.dueCards'), value: dueCardsCount },
-      // Paket-2-Kriterium: "Streak: X · Rekord: Y" + heutiger Status
-      { label: t('dashboardV2.stat.streak'), value: streak.current, sub: t(streak.todayDone ? 'dashboard.recordDone' : 'dashboard.recordOpen', { best: streak.best }) },
-    ];
-    if (nextExam) cards.push({ label: t('dashboardV2.stat.examDays'), value: nextExam.days });
-    else cards.push({ label: t('dashboardV2.stat.progress'), value: learningScore.overall ?? 0 });
-    return cards;
-  }, [t, dueCardsCount, streak.current, streak.best, streak.todayDone, nextExam, learningScore.overall]);
-
-  const handleAcceptSuggestion = (suggestion: any) => {
-    let plan: unknown[];
-    try {
-      plan = JSON.parse(localStorage.getItem('study_plan') || '[]');
-      if (!Array.isArray(plan)) plan = [];
-    } catch {
-      plan = [];
+    const weakest = rows
+      .filter(r => r.weak && !r.duplicate)
+      .sort((a, b) => (a.examPercent ?? 0) - (b.examPercent ?? 0))[0];
+    if (weakest?.grade) {
+      const grade = formatGrade(weakest.grade, locale);
+      recs.push({
+        key: 'rebuild', severity: 'red',
+        title: t('home.rec.rebuild', { name: weakest.name }),
+        reason: weakest.learningPercent != null
+          ? t('home.rec.rebuildReason', { grade, pct: weakest.learningPercent })
+          : t('home.rec.rebuildReasonNoLevel', { grade }),
+        onClick: () => { onModuleChange?.(weakest.id); onTabChange(ActiveTab.QUIZ); },
+      });
     }
-    const [h, m] = (suggestion.start_time as string).split(':').map(Number);
-    const endTotalMin = h * 60 + m + (suggestion.duration_minutes || 60);
-    const endTime = `${String(Math.floor(endTotalMin / 60) % 24).padStart(2, '0')}:${String(endTotalMin % 60).padStart(2, '0')}`;
-    const newEntry: StudyEntry = {
-      id: Math.random().toString(36).substr(2, 9),
-      day: suggestion.day,
-      startTime: suggestion.start_time,
-      endTime,
-      subject: suggestion.module,
-      topic: suggestion.focus_topics.join(', '),
-      completed: false,
-      isAutoGenerated: true,
-      color: 'indigo'
-    };
-    localStorage.setItem('study_plan', JSON.stringify([...plan, newEntry]));
-    toast.success(t('dashboard.addedToPlan'));
-    onTabChange(ActiveTab.PLANNER);
+    if (dueCardsCount > 0) {
+      const decksDue = scopedDecks.filter(d => countDueCards(withSrs(d.cards)) > 0).length;
+      recs.push({
+        key: 'cards', severity: 'gold',
+        title: tp('dashboardV2.today.cards', dueCardsCount),
+        reason: tp('dashboardV2.today.cardsReason', decksDue),
+        minutes: estimateMinutes(dueCardsCount, 0.2),
+        onClick: () => onTabChange(ActiveTab.CARDS),
+      });
+    }
+    return recs.slice(0, 3);
+  }, [nextExam, dueMistakes, streak.current, streak.todayDone, rows, dueCardsCount, scopedDecks, locale, t, tp, onTabChange, onModuleChange, onStartMistakeReview]);
+
+  const kpiItems: { key: string; label: string; value: string | number; unit?: string; onClick: () => void }[] = [];
+  if (kpis.nextExamDays != null) {
+    kpiItems.push({ key: 'exam', label: t('home.kpi.nextExam'), value: kpis.nextExamDays, unit: tp('home.unit.days', kpis.nextExamDays), onClick: () => onTabChange(ActiveTab.PLANNER) });
+  }
+  if (kpis.gradeAverage != null) {
+    kpiItems.push({ key: 'grade', label: t('home.kpi.gradeAvg'), value: fmtGrade(kpis.gradeAverage), onClick: () => onTabChange(ActiveTab.EXAM) });
+  }
+  if (kpis.examsTotal > 0) {
+    kpiItems.push({ key: 'exams', label: t('home.kpi.exams'), value: kpis.examsWritten, unit: `/ ${kpis.examsTotal}`, onClick: () => onTabChange(ActiveTab.EXAM) });
+  }
+  kpiItems.push({ key: 'streak', label: t('home.kpi.streak'), value: streak.current, unit: tp('home.unit.days', streak.current), onClick: () => onTabChange(ActiveTab.RADAR) });
+  kpiItems.push({ key: 'week', label: t('home.kpi.week'), value: kpis.weeklyQuestions, unit: tp('home.unit.questions', kpis.weeklyQuestions), onClick: () => onTabChange(ActiveTab.RADAR) });
+
+  const gradedCount = rows.filter(r => r.grade != null).length;
+  const moduleSummary = [
+    tp('home.mod.count', rows.length),
+    t('home.mod.graded', { n: gradedCount }),
+    kpis.gradeAverage ? `Ø ${fmtGrade(kpis.gradeAverage)}` : null,
+  ].filter(Boolean).join(' · ');
+  const hiddenGraded = hiddenRows.filter(r => r.grade != null).length;
+
+  const rowNote = (row: ModuleRow): string | null =>
+    row.duplicate ? t('home.row.duplicate')
+      : row.openErrors > 0 ? tp('home.row.openErrors', row.openErrors)
+      : row.weak ? t('home.row.retake')
+      : null;
+
+  const examStatus = (row: ModuleRow): { status: string; detail: string; upcoming: boolean } => {
+    if (row.nextTerm) {
+      return {
+        status: row.nextTerm.days === 0 ? t('home.row.today') : tp('home.row.inDays', row.nextTerm.days),
+        detail: formatDate(`${row.nextTerm.date}T00:00:00`, SHORT_DATE),
+        upcoming: true,
+      };
+    }
+    if (row.lastExamAt != null) {
+      return { status: t('home.row.simulated'), detail: formatDate(row.lastExamAt, SHORT_DATE), upcoming: false };
+    }
+    return { status: t('home.row.noTerm'), detail: t('home.row.notScheduled'), upcoming: false };
   };
+
+  const levelCell = (row: ModuleRow) => (row.learningPercent != null ? (
+    <div className="flex items-center gap-[9px]">
+      <div className="flex-1 h-1 rounded-full" style={{ background: C.line }}>
+        <div className="h-1 rounded-full" style={{ width: `${row.learningPercent}%`, background: row.learningPercent < 50 ? C.red : C.gold }} />
+      </div>
+      <span className="text-[11px] font-medium whitespace-nowrap tabular-nums" style={{ color: 'color-mix(in srgb, var(--text-main) 72%, transparent)' }}>
+        {formatPercent(row.learningPercent, locale)}
+      </span>
+    </div>
+  ) : (
+    <span className="text-[11px]" style={{ color: C.faint }}>{t('home.row.noData')}</span>
+  ));
 
   if (documents.length === 0) {
     return (
@@ -313,261 +336,173 @@ export const Dashboard: React.FC<DashboardProps> = ({
   }
 
   return (
-    <div className="space-y-4 animate-in fade-in duration-700">
+    <div className="flex flex-col gap-[18px] animate-in fade-in duration-700 pb-10">
 
-      {/* Begrüßungs-Hero + Tagesliste */}
-      <div className="animate-card-enter" style={{ ['--stagger-i' as string]: 0 }}>
-        <h1 className="text-2xl sm:text-3xl font-black tracking-tight mb-1" style={{ color: 'var(--text-main)' }}>{greeting}</h1>
-        {nextExam && (
-          <p className="text-[13px] font-semibold mb-3" style={{ color: nextExam.days <= 7 ? '#f43f5e' : 'var(--text-secondary)' }}>
-            {tp('dashboardV2.examCountdown', nextExam.days, { title: nextExam.title })}
-          </p>
-        )}
-        {!nextExam && <div className="mb-3" />}
-        {todayTasks.length > 0 ? (
-          <>
-            <p className="text-[10px] font-black uppercase tracking-[0.15em] mb-2" style={{ color: 'var(--text-secondary)' }}>{t('dashboardV2.today.title')}</p>
-            <div className="space-y-1.5">
-              {todayTasks.map((task, i) => (
-                <button
-                  key={i}
-                  onClick={task.onClick}
-                  className="w-full flex items-center gap-2.5 px-3.5 py-2.5 rounded-[14px] text-left transition-transform hover:scale-[1.02]"
-                  style={{ background: 'var(--bg-sidebar)', border: '1px solid var(--border-color)' }}
-                >
-                  <span className="w-2 h-2 rounded-full shrink-0" style={{ background: PRIORITY_COLOR[task.priority] }} />
-                  <span className="flex-1 min-w-0">
-                    <span className="block text-[13px] font-semibold" style={{ color: 'var(--text-main)' }}>{task.text}</span>
-                    {task.reason && (
-                      <span className="block text-[10px] mt-0.5 leading-snug" style={{ color: 'var(--text-secondary)' }}>{task.reason}</span>
-                    )}
-                  </span>
-                </button>
-              ))}
-            </div>
-          </>
-        ) : (
-          <div
-            className="flex items-center gap-2.5 px-3.5 py-3 rounded-[14px]"
-            style={{ background: 'color-mix(in srgb, #22c55e 10%, var(--bg-sidebar))', border: '1px solid color-mix(in srgb, #22c55e 30%, transparent)' }}
+      {/* Kopfzeile: Begrüßung + Kennzahlen */}
+      <header className="flex flex-wrap items-end justify-between gap-x-6 gap-y-4 animate-card-enter" style={{ ['--stagger-i' as string]: 0 }}>
+        <h1 className="min-w-0 text-[28px] sm:text-[32px] leading-[1.1] font-normal" style={{ color: C.ink }}>{greeting}</h1>
+        <div className="flex items-end gap-[22px] max-w-full overflow-x-auto scrollbar-hide">
+          {kpiItems.map((k, i) => (
+            <React.Fragment key={k.key}>
+              {i > 0 && <span aria-hidden className="w-px h-[30px] shrink-0" style={{ background: 'color-mix(in srgb, var(--text-main) 14%, transparent)' }} />}
+              <button onClick={k.onClick} className="shrink-0 text-right transition-opacity hover:opacity-75">
+                <span className="block text-[8.5px] font-semibold uppercase tracking-[0.15em] whitespace-nowrap" style={{ color: C.faint }}>{k.label}</span>
+                <span className="block mt-[5px] text-[21px] leading-none whitespace-nowrap tabular-nums" style={{ color: C.ink }}>
+                  {k.value}
+                  {k.unit && <span className="text-[12px]" style={{ color: C.faint }}> {k.unit}</span>}
+                </span>
+              </button>
+            </React.Fragment>
+          ))}
+        </div>
+      </header>
+
+      {/* Empfehlungen */}
+      <section className="flex flex-col gap-[9px] animate-card-enter" style={{ ['--stagger-i' as string]: 1 }}>
+        <div className="flex flex-wrap items-baseline gap-x-2.5 gap-y-1">
+          <span className={MICRO_LABEL} style={{ color: C.goldText }}>{t('dashboardV2.today.title')}</span>
+          <span className="text-[11.5px]" style={{ color: C.mute }}>{t('home.rec.sub')}</span>
+        </div>
+        {recommendations.length > 0 ? recommendations.map(rec => (
+          <button
+            key={rec.key}
+            onClick={rec.onClick}
+            className="w-full flex items-center gap-3.5 px-[18px] py-[13px] rounded-[11px] text-left transition-transform hover:-translate-y-px"
+            style={{ background: C.card, border: `1px solid ${C.line}` }}
           >
-            <CheckCircle2 size={18} style={{ color: '#22c55e' }} />
-            <span className="text-[13px] font-semibold" style={{ color: 'var(--text-main)' }}>{t('dashboardV2.today.allDone')}</span>
+            <span className="w-[7px] h-[7px] rounded-full shrink-0" style={{ background: SEVERITY_COLOR[rec.severity] }} />
+            <span className="flex-1 min-w-0">
+              <span className="block text-[15.5px] leading-[1.25] font-semibold" style={{ color: C.ink }}>{rec.title}</span>
+              <span className="block mt-[3px] text-[12.5px] leading-[1.4]" style={{ color: C.mute }}>{rec.reason}</span>
+            </span>
+            {rec.minutes != null && (
+              <span className="shrink-0 text-[11px] font-medium whitespace-nowrap" style={{ color: C.soft }}>{t('home.rec.minutes', { n: rec.minutes })}</span>
+            )}
+            <ChevronRight size={14} className="shrink-0" style={{ color: C.chevron }} />
+          </button>
+        )) : (
+          <div className="flex items-center gap-3.5 px-[18px] py-[13px] rounded-[11px]" style={{ background: C.card, border: `1px solid ${C.line}` }}>
+            <CheckCircle2 size={16} className="shrink-0" style={{ color: C.green }} />
+            <span className="text-[14px]" style={{ color: C.ink }}>{t('dashboardV2.today.allDone')}</span>
           </div>
         )}
-      </div>
+      </section>
 
-      {/* Klausur-Countdown — nicht nur Zahl, sondern priorisierte Themen aus
-          echten Konfidenz-Metriken (Phase 11: Prüfungsmodus light). */}
-      {examCountdown && (
-        <div className="p-4 rounded-[16px] animate-card-enter" style={{ background: 'var(--bg-sidebar)', border: `1px solid ${examCountdown.exam.days <= 7 ? 'color-mix(in srgb, #f43f5e 35%, transparent)' : 'var(--border-color)'}`, ['--stagger-i' as string]: 1 }}>
-          <div className="flex items-center justify-between gap-3 mb-2">
-            <p className="text-[10px] font-black uppercase tracking-widest" style={{ color: examCountdown.exam.days <= 7 ? '#f43f5e' : 'var(--text-secondary)' }}>
-              {tp('dashboardV2.countdown.title', examCountdown.exam.days)}
-            </p>
-            <button
-              onClick={() => onTabChange(ActiveTab.EXAM)}
-              className="px-3 py-1.5 rounded-[10px] text-[9px] font-black uppercase tracking-widest hover:scale-105 transition-all"
-              style={{ background: 'var(--primary)', color: 'var(--primary-text)' }}
-            >
-              {t('dashboardV2.countdown.cta')}
-            </button>
-          </div>
-          <p className="text-sm font-black mb-2 truncate" style={{ color: 'var(--text-main)' }}>{examCountdown.exam.title}</p>
-          {examCountdown.weak.length > 0 ? (
-            <div className="space-y-1.5">
-              {examCountdown.weak.map(w => (
+      {/* Alle Module */}
+      {rows.length > 0 && (
+        <section className="flex flex-col gap-[9px] animate-card-enter" style={{ ['--stagger-i' as string]: 2 }}>
+          <div className="flex flex-wrap items-baseline gap-x-2.5 gap-y-2">
+            <span className={MICRO_LABEL} style={{ color: C.goldText }}>{t('home.mod.title')}</span>
+            <span className="text-[11.5px]" style={{ color: C.mute }}>{moduleSummary}</span>
+            <div role="tablist" className="ml-auto flex items-center gap-[3px] p-[3px] rounded-lg" style={{ background: 'color-mix(in srgb, var(--text-main) 5%, transparent)' }}>
+              {SORTS.map(s => (
                 <button
-                  key={w.topic}
-                  onClick={() => onTabChange(ActiveTab.QUIZ)}
-                  className="w-full flex items-center gap-2.5 px-3 py-2 rounded-[12px] text-left transition-transform hover:scale-[1.01]"
-                  style={{ background: 'color-mix(in srgb, var(--border-color) 30%, var(--bg-sidebar))' }}
+                  key={s.key}
+                  role="tab"
+                  aria-selected={sort === s.key}
+                  onClick={() => changeSort(s.key)}
+                  className="px-[11px] py-[5px] rounded-md text-[10.5px] font-semibold transition-colors"
+                  style={sort === s.key ? { background: C.card, color: C.ink } : { color: C.soft }}
                 >
-                  <span className="w-2 h-2 rounded-full shrink-0" style={{ background: PRIORITY_COLOR[w.level] }} />
-                  <span className="flex-1 min-w-0 text-[12px] font-bold truncate" style={{ color: 'var(--text-main)' }}>{w.topic}</span>
-                  <span className="text-[10px] font-black shrink-0" style={{ color: PRIORITY_COLOR[w.level] }}>{w.confidence}%</span>
+                  {t(s.label)}
                 </button>
               ))}
-              <p className="text-[9px] leading-snug" style={{ color: 'var(--text-secondary)' }}>{t('dashboardV2.countdown.basis')}</p>
             </div>
-          ) : (
-            <p className="text-[11px]" style={{ color: 'var(--text-secondary)' }}>
-              {examCountdown.hasBasis ? t('dashboardV2.countdown.noWeak') : t('dashboardV2.countdown.noData')}
-            </p>
-          )}
-        </div>
-      )}
+          </div>
 
-      {/* Stat-Zeile */}
-      <div className="grid grid-cols-3 gap-2 animate-card-enter" style={{ ['--stagger-i' as string]: 1 }}>
-        {statCards.map((s, i) => (
-          <div key={i} className="text-center px-2 py-3 rounded-[14px]" style={{ background: 'var(--bg-sidebar)', border: '1px solid var(--border-color)' }}>
-            <p className="text-lg font-black" style={{ color: 'var(--text-main)' }}><CountUp value={s.value} /></p>
-            <p className="text-[9px] font-medium mt-0.5 truncate" style={{ color: 'var(--text-secondary)' }}>{s.label}</p>
-            {s.sub && (
-              <p className="text-[8px] font-semibold mt-0.5 truncate" title={s.sub} style={{ color: 'var(--text-secondary)' }}>{s.sub}</p>
-            )}
-          </div>
-        ))}
-      </div>
+          <div className="rounded-xl overflow-hidden" style={{ background: C.card, border: `1px solid ${C.line}` }}>
+            <div className="hidden lg:grid gap-3.5 px-[17px] py-[9px]" style={{ gridTemplateColumns: GRID_COLUMNS, borderBottom: `1px solid ${C.line}` }}>
+              {([
+                ['home.col.module', ''],
+                ['home.col.level', ''],
+                ['home.col.grade', 'text-right'],
+                ['home.col.exam', ''],
+              ] as [TKey, string][]).map(([key, align]) => (
+                <span
+                  key={key}
+                  title={key === 'home.col.grade' ? t('home.col.gradeHint') : undefined}
+                  className={`text-[8.5px] font-semibold uppercase tracking-[0.14em] ${align}`}
+                  style={{ color: 'color-mix(in srgb, var(--text-main) 50%, transparent)' }}
+                >
+                  {t(key)}
+                </span>
+              ))}
+              <span />
+            </div>
 
-      {/* Weiterlernen */}
-      {weiterlernCard && (
-        <button
-          onClick={() => onTabChange(weiterlernCard.tab)}
-          className="w-full text-left p-5 rounded-[20px] shadow-3d-raised hover:scale-[1.02] transition-transform animate-card-enter"
-          style={{ background: 'var(--primary)', color: 'var(--primary-text)', ['--stagger-i' as string]: 2 }}
-        >
-          <div className="flex items-center gap-1.5 mb-1.5">
-            <Play size={12} fill="currentColor" />
-            <span className="text-[10px] font-black uppercase tracking-widest">{t('dashboard.continue')}</span>
-          </div>
-          <p className="text-lg font-black mb-1">{weiterlernCard.subject}</p>
-          <p className="text-[11px] opacity-75 mb-2">{weiterlernCard.meta}</p>
-          <div className="h-[5px] rounded-full overflow-hidden mb-2" style={{ background: 'rgba(255,255,255,0.25)' }}>
-            <AnimatedBar percent={weiterlernCard.pct} className="h-full rounded-full" style={{ background: 'var(--primary-text)' }} />
-          </div>
-          <div className="flex items-center justify-between">
-            <span className="text-[10px] opacity-80">{weiterlernCard.pct}%</span>
-            <span className="text-[10px] font-black uppercase tracking-widest">{t('dashboard.resume')}</span>
-          </div>
-        </button>
-      )}
+            {visibleRows.map((row, i) => {
+              const exam = examStatus(row);
+              const note = rowNote(row);
+              const gradeEl = row.grade != null && (
+                <span title={t('home.col.gradeHint')} className="leading-none tabular-nums" style={{ color: row.weak ? C.red : C.ink }}>{fmtGrade(row.grade)}</span>
+              );
+              return (
+                <div
+                  key={row.id}
+                  role="button"
+                  tabIndex={0}
+                  onClick={() => openModule(row.id)}
+                  onKeyDown={e => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); openModule(row.id); } }}
+                  className="cursor-pointer px-[17px] py-2 transition-colors hover:bg-[color-mix(in_srgb,var(--text-main)_3%,transparent)] focus-visible:outline-none focus-visible:bg-[color-mix(in_srgb,var(--text-main)_5%,transparent)]"
+                  style={{ borderTop: i > 0 ? `1px solid ${C.hair}` : undefined }}
+                >
+                  {/* Desktop: Tabellenzeile */}
+                  <div className="hidden lg:grid items-center gap-3.5" style={{ gridTemplateColumns: GRID_COLUMNS }}>
+                    <div className="min-w-0">
+                      <p className="text-[14px] leading-[1.25] font-semibold truncate" style={{ color: C.ink }}>{row.name}</p>
+                      {note && <p className="mt-0.5 text-[10.5px] truncate" style={{ color: C.soft }}>{note}</p>}
+                    </div>
+                    <div>{levelCell(row)}</div>
+                    <div className="text-right text-[18px]">{gradeEl}</div>
+                    <div className="min-w-0">
+                      <p className="text-[11px] font-semibold whitespace-nowrap" style={{ color: exam.upcoming ? C.goldText : 'color-mix(in srgb, var(--text-main) 75%, transparent)' }}>{exam.status}</p>
+                      <p className="mt-0.5 text-[10px] whitespace-nowrap" style={{ color: C.soft }}>{exam.detail}</p>
+                    </div>
+                    <div className="text-right">
+                      <button
+                        onClick={e => { e.stopPropagation(); runModuleAction(row); }}
+                        className="text-[11px] font-semibold whitespace-nowrap hover:underline"
+                        style={{ color: row.nextStep === 'review' ? C.chevron : C.goldText }}
+                      >
+                        {t(ACTION_LABEL[row.nextStep])}
+                      </button>
+                    </div>
+                  </div>
 
-      {/* Lernfortschritt */}
-      {learningScore.overall != null && showModuleList && (
-        <div className="p-4 rounded-[16px] animate-card-enter" style={{ background: 'var(--bg-sidebar)', border: '1px solid var(--border-color)', ['--stagger-i' as string]: 3 }}>
-          <p className="text-[10px] font-black uppercase tracking-widest mb-2" style={{ color: 'var(--text-secondary)' }}>{t('dashboardV2.progress.title')}</p>
-          <div className="space-y-1.5">
-            {moduleProgress.map(m => (
-              <button
-                key={m.id}
-                onClick={() => onModuleChange?.(m.id)}
-                title={m.percent != null ? `${m.percent}%` : undefined}
-                className="w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-left hover:scale-[1.01] transition-transform"
-                style={{ border: '1px solid var(--border-color)' }}
-              >
-                <span className="flex-1 min-w-0 truncate text-[13px] font-bold" style={{ color: 'var(--text-main)' }}>{m.name}</span>
-                {m.grade != null ? (
-                  <span className="text-lg font-black tabular-nums" style={{ color: 'var(--primary)' }}>{m.grade}</span>
-                ) : (
-                  <span className="text-[10px] font-medium" style={{ color: 'var(--text-secondary)' }}>{t('dashboardV2.progress.noData')}</span>
+                  {/* Mobil: Name + Note, darunter Lernstand + Termin */}
+                  <div className="lg:hidden flex items-center gap-3">
+                    <div className="flex-1 min-w-0 space-y-1.5">
+                      <div className="flex items-baseline gap-3">
+                        <p className="flex-1 min-w-0 text-[14px] font-semibold truncate" style={{ color: C.ink }}>{row.name}</p>
+                        <span className="text-[17px]">{gradeEl}</span>
+                      </div>
+                      <div className="flex items-center gap-3">
+                        <div className="w-28 shrink-0">{levelCell(row)}</div>
+                        <p className="min-w-0 text-[11px] truncate" style={{ color: exam.upcoming ? C.goldText : C.soft }}>{exam.status} · {exam.detail}</p>
+                      </div>
+                      {note && <p className="text-[10.5px] truncate" style={{ color: C.soft }}>{note}</p>}
+                    </div>
+                    <ChevronRight size={16} className="shrink-0" style={{ color: C.chevron }} />
+                  </div>
+                </div>
+              );
+            })}
+
+            {hiddenRows.length > 0 && (
+              <div className="flex items-center gap-2.5 px-[17px] py-[9px]" style={{ borderTop: `1px solid ${C.line}` }}>
+                {!showAllRows && (
+                  <span className="text-[11.5px]" style={{ color: 'color-mix(in srgb, var(--text-main) 65%, transparent)' }}>
+                    {[tp('home.mod.more', hiddenRows.length), hiddenGraded > 0 ? t('home.mod.moreGraded', { n: hiddenGraded }) : null].filter(Boolean).join(' · ')}
+                  </span>
                 )}
-                <ChevronRight size={14} style={{ color: 'var(--text-secondary)' }} />
-              </button>
-            ))}
-          </div>
-          <p className="text-[10px] mt-2" style={{ color: 'var(--text-secondary)' }}>{t('dashboardV2.progress.pickModule')}</p>
-        </div>
-      )}
-      {learningScore.overall != null && !showModuleList && (
-        <div className="p-4 rounded-[16px] animate-card-enter" style={{ background: 'var(--bg-sidebar)', border: '1px solid var(--border-color)', ['--stagger-i' as string]: 3 }}>
-          <div className="flex items-center justify-between gap-2 mb-2">
-            <p className="text-[10px] font-black uppercase tracking-widest truncate" style={{ color: 'var(--text-secondary)' }}>
-              {activeModule ? `${t('dashboardV2.progress.title')} · ${activeModule.name}` : t('dashboardV2.progress.title')}
-            </p>
-            {activeModule && onModuleChange && (
-              <button
-                onClick={() => onModuleChange(null)}
-                className="shrink-0 text-[10px] font-black uppercase tracking-widest hover:underline"
-                style={{ color: 'var(--primary)' }}
-              >
-                {t('layout.allSubjects')}
-              </button>
+                <button onClick={() => setShowAllRows(v => !v)} className="ml-auto text-[11px] font-semibold hover:underline" style={{ color: C.goldText }}>
+                  {showAllRows ? t('home.mod.showLess') : `${t('home.mod.showAll')} →`}
+                </button>
+              </div>
             )}
           </div>
-          <div className="h-[7px] rounded-full overflow-hidden mb-2" style={{ background: 'var(--border-color)' }}>
-            <AnimatedBar percent={learningScore.overall} className="h-full rounded-full" style={{ background: 'var(--primary)' }} />
-          </div>
-          <p className="text-[11px]" style={{ color: 'var(--text-secondary)' }}>
-            {t('dashboardV2.progress.detail', { pct: learningScore.overall, left: 100 - learningScore.overall })}
-          </p>
-          {scoreBasisLine && (
-            <p className="text-[9px] mt-1.5 uppercase tracking-wider truncate" style={{ color: 'var(--text-secondary)', opacity: 0.7 }} title={scoreBasisLine}>
-              {scoreBasisLine}
-            </p>
-          )}
-        </div>
+        </section>
       )}
-
-      {/* Nächste Schritte (KI-Empfehlung) */}
-      {flowResult && (
-        <div className="space-y-3 animate-card-enter" style={{ ['--stagger-i' as string]: 4 }}>
-          <h2 className="text-[11px] font-black uppercase tracking-[0.3em] flex items-center gap-2" style={{ color: 'var(--primary)' }}>
-            {t('dashboard.nextSteps')}
-            <Sparkles size={14} />
-          </h2>
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-            {flowResult.next_actions.map((action, i) => (
-              <button
-                key={i}
-                onClick={() => {
-                  const moduleToTab: Record<string, ActiveTab> = {
-                    analyse: ActiveTab.RADAR, quiz: ActiveTab.QUIZ, cards: ActiveTab.CARDS,
-                    explain: ActiveTab.EXPLAINER, calendar: ActiveTab.PLANNER, exam: ActiveTab.EXAM,
-                  };
-                  onTabChange(moduleToTab[action.module] ?? ActiveTab.QUIZ);
-                }}
-                className="p-5 rounded-[20px] text-left hover:scale-[1.02] transition-all"
-                style={{ background: 'var(--primary)', color: 'var(--primary-text)' }}
-              >
-                <div className="flex justify-between items-center mb-2">
-                  <span className="text-[9px] font-black uppercase tracking-widest opacity-70">{t('dashboard.minFocus', { n: action.timebox_minutes })}</span>
-                  <span className="text-xs">→</span>
-                </div>
-                <h3 className="text-base font-black leading-tight mb-1">{action.title}</h3>
-                <p className="text-[11px] font-medium opacity-80 italic">"{action.why}"</p>
-              </button>
-            ))}
-            {flowResult.calendar_suggestion.should_schedule && flowResult.calendar_suggestion.suggested_blocks.map((block, i) => (
-              <div
-                key={i}
-                className="p-5 rounded-[20px] flex flex-col justify-between"
-                style={{ background: 'var(--bg-sidebar)', border: `1px dashed color-mix(in srgb, var(--primary) 40%, transparent)` }}
-              >
-                <div>
-                  <span className="text-[9px] font-black uppercase tracking-widest mb-1 block" style={{ color: 'var(--primary)' }}>{t('dashboard.planSuggestion')}</span>
-                  <h3 className="text-sm font-black" style={{ color: 'var(--text-main)' }}>{t('dashboard.blockTime', { day: block.day, time: block.start_time })}</h3>
-                  <p className="text-[11px] mt-1" style={{ color: 'var(--text-secondary)' }}>{block.focus_topics.join(', ')}</p>
-                </div>
-                <button
-                  onClick={() => handleAcceptSuggestion(block)}
-                  className="mt-4 w-full py-2.5 text-[10px] font-black uppercase tracking-widest rounded-xl hover:bg-[var(--primary)] hover:text-[var(--primary-text)] transition-all"
-                  style={{ background: 'var(--bg-main)', color: 'var(--text-secondary)', border: '1px solid var(--border-color)' }}
-                >{t('dashboard.addToCalendar')}</button>
-              </div>
-            ))}
-          </div>
-        </div>
-      )}
-
-      {/* Prioritäts-Grid — bewusst NUR ab sm: auf Mobile ist das eine Feature-
-          Liste ohne Entscheidungswert; die Navigation (Bottom-Bar + Mehr-Sheet)
-          erschließt dieselben Bereiche task-orientierter. Ein Screen, eine
-          Hauptentscheidung: die steht oben bei "Heute". */}
-      <div className="hidden sm:grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-2 animate-card-enter" style={{ ['--stagger-i' as string]: 5 }}>
-        {ACTION_CARDS.map((card, i) => {
-          const Icon = card.Icon;
-          // Ungerade Kartenzahl (7): letzte Karte bekommt die volle Zeilenbreite,
-          // statt allein und verwaist in der letzten Reihe zu stehen.
-          const isLast = i === ACTION_CARDS.length - 1;
-          const iconBg = card.tint === 'gold' ? 'var(--primary-soft)' : 'color-mix(in srgb, var(--text-main) 10%, transparent)';
-          const iconColor = card.tint === 'gold' ? 'var(--primary)' : 'var(--text-main)';
-          return (
-            <button
-              key={card.id}
-              onClick={() => onTabChange(card.id)}
-              className={`flex items-center gap-2.5 px-3.5 py-3 rounded-[14px] text-left hover:scale-[1.02] transition-transform ${isLast ? 'sm:col-span-2 lg:col-span-3 sm:justify-center' : ''}`}
-              style={{ background: 'var(--bg-sidebar)', border: '1px solid var(--border-color)' }}
-            >
-              <div className="w-9 h-9 rounded-xl flex items-center justify-center shrink-0" style={{ background: iconBg, color: iconColor }}>
-                <Icon size={16} />
-              </div>
-              <p className="text-sm font-black" style={{ color: 'var(--text-main)' }}>{t(card.titleKey)}</p>
-            </button>
-          );
-        })}
-      </div>
     </div>
   );
 };
