@@ -38,3 +38,6 @@ graphify-out/
 components/graphify-out/
 quizwise-graph-dialog/
 .claude/
+
+# Lokale Daten-Sicherungen (persönliche Nutzerdaten, nie committen)
+backups/
