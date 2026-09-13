@@ -74,6 +74,11 @@ body {
        statt weißen Text für ausreichenden Kontrast auf der Gold-Fläche —
        genau wie im Dunkelmodus, der das schon richtig gemacht hat. */
     --primary-text: #1B2A4A;
+    /* Kontrastsichere Variante der Akzentfarbe für die Sidebar (Layout.tsx),
+       die immer dunkles Navy bleibt — eine zu dunkle Akzentfarbe (z.B. der
+       "Navy"-Preset selbst) wäre dort sonst unlesbar. Wird bei jeder Auswahl
+       in components/ColorPicker.tsx neu berechnet (getSidebarSafeAccent). */
+    --sidebar-accent: #D9A94E;
     --primary-soft: color-mix(in srgb, var(--primary) 12%, white);
     --primary-soft-text: color-mix(in srgb, var(--primary) 85%, #2d0f06);
     --p50:  color-mix(in srgb, var(--primary)  8%, white);

@@ -47,15 +47,12 @@ export const useAuth = () => {
           // #A9772C aus v1 — Accounts, die den v1-Reset schon hatten, bekamen
           // sonst weiterhin die alte, in Supabase gespeicherte Farbe zurück.
           if (!localStorage.getItem('studearc_accent_reset_v2')) {
-            document.documentElement.style.setProperty('--primary', '#D9A94E');
-            document.documentElement.style.setProperty('--primary-text', '#1B2A4A');
-            setFunctionalPref('accent_color', '#D9A94E');
+            import('../components/ColorPicker').then(({ applyAccentColor }) => applyAccentColor('#D9A94E'));
             localStorage.setItem('studearc_accent_reset_v1', '1');
             localStorage.setItem('studearc_accent_reset_v2', '1');
             import('../services/syncService').then(({ syncPreferences }) => syncPreferences(user.id, { accent_color: '#D9A94E' })).catch(() => {});
           } else if (pr.accent_color) {
-            document.documentElement.style.setProperty('--primary', pr.accent_color);
-            setFunctionalPref('accent_color', pr.accent_color);
+            import('../components/ColorPicker').then(({ applyAccentColor }) => applyAccentColor(pr.accent_color));
           }
           if (pr.font_choice) setFunctionalPref('font_choice', pr.font_choice);
           if (pr.line_height) setFunctionalPref('line_height', pr.line_height);
