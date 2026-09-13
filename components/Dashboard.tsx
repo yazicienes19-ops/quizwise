@@ -2,7 +2,7 @@
 import React, { useEffect, useMemo, useState } from 'react';
 import { ActiveTab, LearningFlowResult, StudyEntry, FlashcardDeck, ProcessedDocument, TopicMetric, Collection } from '../types';
 import { toast } from '../services/toast';
-import { HelpCircle, Lightbulb, BookOpen, Layers, GraduationCap, Brain, Network, Sparkles, Play, CheckCircle2 } from 'lucide-react';
+import { HelpCircle, Lightbulb, BookOpen, Layers, GraduationCap, Brain, Network, Sparkles, Play, CheckCircle2, ChevronRight } from 'lucide-react';
 import { countDueCards, migrateLegacyCard } from '../services/spacedRepetition';
 import { countDueMistakes } from '../services/mistakeReviewService';
 import { getStreak } from '../services/streakService';
@@ -10,6 +10,7 @@ import { daysUntilDate } from '../services/calendarSessions';
 import { collectionDocs } from '../services/collectionSource';
 import { buildLearningScore } from '../services/learningScoreService';
 import { useModuleScopedActivity } from '../hooks/useModuleScopedActivity';
+import { buildModuleProgressList } from '../services/moduleProgressService';
 import { AnimatedBar } from './AnimatedBar';
 import { CountUp } from './CountUp';
 import { useTranslation } from '../i18n/I18nProvider';
@@ -25,6 +26,8 @@ interface DashboardProps {
   metrics?: TopicMetric[];
   collections?: Collection[];
   activeModuleId?: string | null;
+  /** Wählt ein Fach aus (null = Alle Fächer), wie der Fach-Wähler in der Sidebar. */
+  onModuleChange?: (id: string | null) => void;
   /** Startet die Wiederholungs-Session fälliger Fehlerfragen (Quiz-Tab). */
   onStartMistakeReview?: () => void;
   user?: { email?: string | null; user_metadata?: { full_name?: string } } | null;
@@ -69,7 +72,7 @@ const withSrs = (cards: FlashcardDeck['cards']) => cards.map(c => (c.srs ? c : {
 
 export const Dashboard: React.FC<DashboardProps> = ({
   onTabChange, flowResult, documents = [], decks = [], metrics = [], collections = [], activeModuleId = null,
-  onStartMistakeReview, user = null,
+  onModuleChange, onStartMistakeReview, user = null,
 }) => {
   const { t, tp } = useTranslation();
 
@@ -116,9 +119,18 @@ export const Dashboard: React.FC<DashboardProps> = ({
     } catch { return null; }
   }, []);
 
+  // Themen-Metriken tragen keine Fach-Zuordnung: in der Fach-Sicht weglassen,
+  // sonst würden fremde Fächer mitzählen (gleiche Regel wie im Lern-Coach).
   const learningScore = useMemo(
-    () => buildLearningScore({ quizResults, examResults, recallResults, metrics, decks: scopedDecks, streakCurrent: streak.current }),
-    [quizResults, examResults, recallResults, metrics, scopedDecks, streak.current],
+    () => buildLearningScore({ quizResults, examResults, recallResults, metrics: activeModule ? [] : metrics, decks: scopedDecks, streakCurrent: streak.current }),
+    [quizResults, examResults, recallResults, metrics, activeModule, scopedDecks, streak.current],
+  );
+
+  // Bei "Alle Fächer" nur eine kompakte Note je Fach; Details gibt es nach Auswahl des Fachs.
+  const showModuleList = !activeModule && collections.length > 0 && !!onModuleChange;
+  const moduleProgress = useMemo(
+    () => (showModuleList ? buildModuleProgressList({ collections, documents, decks, activity: { quizResults, examResults, recallResults } }) : []),
+    [showModuleList, collections, documents, decks, quizResults, examResults, recallResults],
   );
 
   // Transparenz hinter dem Prozentwert: Woraus er sich überhaupt speist.
@@ -423,9 +435,47 @@ export const Dashboard: React.FC<DashboardProps> = ({
       )}
 
       {/* Lernfortschritt */}
-      {learningScore.overall != null && (
+      {learningScore.overall != null && showModuleList && (
         <div className="p-4 rounded-[16px] animate-card-enter" style={{ background: 'var(--bg-sidebar)', border: '1px solid var(--border-color)', ['--stagger-i' as string]: 3 }}>
           <p className="text-[10px] font-black uppercase tracking-widest mb-2" style={{ color: 'var(--text-secondary)' }}>{t('dashboardV2.progress.title')}</p>
+          <div className="space-y-1.5">
+            {moduleProgress.map(m => (
+              <button
+                key={m.id}
+                onClick={() => onModuleChange?.(m.id)}
+                title={m.percent != null ? `${m.percent}%` : undefined}
+                className="w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-left hover:scale-[1.01] transition-transform"
+                style={{ border: '1px solid var(--border-color)' }}
+              >
+                <span className="flex-1 min-w-0 truncate text-[13px] font-bold" style={{ color: 'var(--text-main)' }}>{m.name}</span>
+                {m.grade != null ? (
+                  <span className="text-lg font-black tabular-nums" style={{ color: 'var(--primary)' }}>{m.grade}</span>
+                ) : (
+                  <span className="text-[10px] font-medium" style={{ color: 'var(--text-secondary)' }}>{t('dashboardV2.progress.noData')}</span>
+                )}
+                <ChevronRight size={14} style={{ color: 'var(--text-secondary)' }} />
+              </button>
+            ))}
+          </div>
+          <p className="text-[10px] mt-2" style={{ color: 'var(--text-secondary)' }}>{t('dashboardV2.progress.pickModule')}</p>
+        </div>
+      )}
+      {learningScore.overall != null && !showModuleList && (
+        <div className="p-4 rounded-[16px] animate-card-enter" style={{ background: 'var(--bg-sidebar)', border: '1px solid var(--border-color)', ['--stagger-i' as string]: 3 }}>
+          <div className="flex items-center justify-between gap-2 mb-2">
+            <p className="text-[10px] font-black uppercase tracking-widest truncate" style={{ color: 'var(--text-secondary)' }}>
+              {activeModule ? `${t('dashboardV2.progress.title')} · ${activeModule.name}` : t('dashboardV2.progress.title')}
+            </p>
+            {activeModule && onModuleChange && (
+              <button
+                onClick={() => onModuleChange(null)}
+                className="shrink-0 text-[10px] font-black uppercase tracking-widest hover:underline"
+                style={{ color: 'var(--primary)' }}
+              >
+                {t('layout.allSubjects')}
+              </button>
+            )}
+          </div>
           <div className="h-[7px] rounded-full overflow-hidden mb-2" style={{ background: 'var(--border-color)' }}>
             <AnimatedBar percent={learningScore.overall} className="h-full rounded-full" style={{ background: 'var(--primary)' }} />
           </div>

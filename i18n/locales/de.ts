@@ -698,6 +698,8 @@ export const de = {
   'dashboardV2.progress.title': 'Lernfortschritt',
   'dashboardV2.progress.detail': '{pct}% · noch {left}% bis zum Lernziel',
   'dashboardV2.progress.basis': 'Basis: {quiz} Quiz-Sessions · {exam} Klausuren · {recall} Erklär-Übungen · {cards} gelernte Karten',
+  'dashboardV2.progress.pickModule': 'Tippe auf ein Fach, um die Details zu sehen',
+  'dashboardV2.progress.noData': 'Noch zu wenig Daten',
   'dashboardV2.continue.cardsWaiting': '{n} Karte wartet|{n} Karten warten',
   'dashboardV2.examCountdown': 'Noch {n} Tag bis zur Klausur „{title}"|Noch {n} Tage bis zur Klausur „{title}"',
 

@@ -696,6 +696,8 @@ export const tr: Translations = {
   'dashboardV2.progress.title': 'Öğrenme ilerlemesi',
   'dashboardV2.progress.detail': '%{pct} · hedefe %{left} kaldı',
   'dashboardV2.progress.basis': 'Temel: {quiz} test oturumu · {exam} sınav · {recall} hatırlama alıştırması · {cards} öğrenilmiş kart',
+  'dashboardV2.progress.pickModule': 'Ayrıntıları görmek için bir derse dokun',
+  'dashboardV2.progress.noData': 'Henüz yeterli veri yok',
   'dashboardV2.continue.cardsWaiting': '{n} kart bekliyor',
   'dashboardV2.examCountdown': '"{title}" sınavına {n} gün kaldı',
 

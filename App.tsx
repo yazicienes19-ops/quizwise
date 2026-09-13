@@ -570,6 +570,7 @@ const App: React.FC = () => {
             savedSources={savedSources} setSavedSources={setSavedSources}
             isSearching={isSearching} setIsSearching={setIsSearching}
             activeModuleId={activeModuleId}
+            onModuleChange={setActiveModuleId}
             handleApiError={handleApiError}
             updateMetricsAfterSession={updateMetricsAfterSession}
             isDark={auth.isDark}

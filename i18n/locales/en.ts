@@ -697,6 +697,8 @@ export const en: Translations = {
   'dashboardV2.progress.title': 'Learning progress',
   'dashboardV2.progress.detail': '{pct}% · {left}% to go',
   'dashboardV2.progress.basis': 'Based on: {quiz} quiz sessions · {exam} exams · {recall} recall exercises · {cards} learned cards',
+  'dashboardV2.progress.pickModule': 'Tap a subject to see the details',
+  'dashboardV2.progress.noData': 'Not enough data yet',
   'dashboardV2.continue.cardsWaiting': '{n} card waiting|{n} cards waiting',
   'dashboardV2.examCountdown': '{n} day left until "{title}"|{n} days left until "{title}"',
 
