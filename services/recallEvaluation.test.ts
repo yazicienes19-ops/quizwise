@@ -45,6 +45,27 @@ describe('evaluateRecallResponse (Feynman-Bewertung)', () => {
     expect(promptOf()).toContain('ZIELGRUPPE: Prüfer in einer mündlichen Prüfung');
   });
 
+  it('Inhalt zählt in jedem Modus: vereinfachen erlaubt, weglassen kostet, Prüfung streng', async () => {
+    mockFetchOnce(basePayload);
+    await evaluateRecallResponse(challenge, 'Antwort', { text: 'Dokument' }, 'child');
+    const childPrompt = promptOf();
+    expect(childPrompt).toContain('Vereinfachen heißt aber nicht weglassen');
+    expect(childPrompt).toContain('fehlende Inhalte zählen immer als Lücke');
+    expect(childPrompt).not.toContain('INHALT (streng');
+
+    (global.fetch as any).mockReset();
+    mockFetchOnce(basePayload);
+    await evaluateRecallResponse(challenge, 'Antwort', { text: 'Dokument' }, 'peer');
+    expect(promptOf()).toContain('Fehlende Kernaussagen oder Zusammenhänge gehören in missingPoints');
+
+    (global.fetch as any).mockReset();
+    mockFetchOnce(basePayload);
+    await evaluateRecallResponse(challenge, 'Antwort', { text: 'Dokument' }, 'exam');
+    const examPrompt = promptOf();
+    expect(examPrompt).toContain('INHALT (streng wie in einer mündlichen Prüfung)');
+    expect(examPrompt).toContain('umgangssprachliche Umschreibung statt des Fachbegriffs gilt hier als Lücke');
+  });
+
   it('normalisiert die neuen Felder: Kernbegriffe nur aus der Vorgabe, Werte geklemmt, Nachfrage getrimmt', async () => {
     mockFetchOnce({
       ...basePayload,
