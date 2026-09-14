@@ -233,7 +233,7 @@ export const AppContent: React.FC<AppContentProps> = (p) => {
 
   switch (activeTab) {
     case ActiveTab.DASHBOARD:
-      return <Dashboard onTabChange={setActiveTab} flowResult={flowResult} onAcceptFlow={saveFlowResult} documents={documents} decks={decks} metrics={metrics} collections={collections} activeModuleId={activeModuleId} onModuleChange={p.onModuleChange} examTerms={examTerms} onStartMistakeReview={handleStartMistakeReview} user={user} />;
+      return <Dashboard onTabChange={setActiveTab} flowResult={flowResult} onAcceptFlow={saveFlowResult} documents={documents} decks={decks} metrics={metrics} collections={collections} activeModuleId={activeModuleId} onModuleChange={p.onModuleChange} examTerms={examTerms} onUpdateExamTerms={saveExamTerms} onStartMistakeReview={handleStartMistakeReview} user={user} />;
 
     case ActiveTab.LIBRARY:
       return <LibrarySystem
@@ -392,7 +392,7 @@ export const AppContent: React.FC<AppContentProps> = (p) => {
     }
 
     case ActiveTab.READER: {
-      if (!pendingActionDoc) return <Dashboard onTabChange={setActiveTab} flowResult={flowResult} onAcceptFlow={saveFlowResult} documents={documents} decks={decks} metrics={metrics} collections={collections} activeModuleId={activeModuleId} onModuleChange={p.onModuleChange} examTerms={examTerms} onStartMistakeReview={handleStartMistakeReview} user={user} />;
+      if (!pendingActionDoc) return <Dashboard onTabChange={setActiveTab} flowResult={flowResult} onAcceptFlow={saveFlowResult} documents={documents} decks={decks} metrics={metrics} collections={collections} activeModuleId={activeModuleId} onModuleChange={p.onModuleChange} examTerms={examTerms} onUpdateExamTerms={saveExamTerms} onStartMistakeReview={handleStartMistakeReview} user={user} />;
       // PDFs bekommen die echte Seitenansicht (pdf.js) statt des Digest-Fließtexts —
       // der Digest-Reader bleibt Fallback für Bilder und PDFs ohne Dateiinhalt.
       // Regel zentral in shouldUsePdfReader() (libraryService.ts), damit
@@ -523,11 +523,11 @@ export const AppContent: React.FC<AppContentProps> = (p) => {
       />;
 
     case ActiveTab.PAPER:
-      if (!isAdmin(user?.id)) return <Dashboard onTabChange={setActiveTab} flowResult={flowResult} onAcceptFlow={saveFlowResult} documents={documents} decks={decks} metrics={metrics} collections={collections} activeModuleId={activeModuleId} onModuleChange={p.onModuleChange} examTerms={examTerms} onStartMistakeReview={handleStartMistakeReview} user={user} />;
+      if (!isAdmin(user?.id)) return <Dashboard onTabChange={setActiveTab} flowResult={flowResult} onAcceptFlow={saveFlowResult} documents={documents} decks={decks} metrics={metrics} collections={collections} activeModuleId={activeModuleId} onModuleChange={p.onModuleChange} examTerms={examTerms} onUpdateExamTerms={saveExamTerms} onStartMistakeReview={handleStartMistakeReview} user={user} />;
       return <TermPaperSystem availableDocuments={documents} onUploadNew={handleFileUpload} initialSources={savedSources} getDocumentSource={getDocumentSource} activeModuleId={activeModuleId} />;
 
     case ActiveTab.SEARCH:
-      if (!isAdmin(user?.id)) return <Dashboard onTabChange={setActiveTab} flowResult={flowResult} onAcceptFlow={saveFlowResult} documents={documents} decks={decks} metrics={metrics} collections={collections} activeModuleId={activeModuleId} onModuleChange={p.onModuleChange} examTerms={examTerms} onStartMistakeReview={handleStartMistakeReview} user={user} />;
+      if (!isAdmin(user?.id)) return <Dashboard onTabChange={setActiveTab} flowResult={flowResult} onAcceptFlow={saveFlowResult} documents={documents} decks={decks} metrics={metrics} collections={collections} activeModuleId={activeModuleId} onModuleChange={p.onModuleChange} examTerms={examTerms} onUpdateExamTerms={saveExamTerms} onStartMistakeReview={handleStartMistakeReview} user={user} />;
       return <ScholarSearch
         results={searchResults}
         onSearch={async (q) => { setIsSearching(true); const { results } = await searchScholar(q); setSearchResults(results); setIsSearching(false); }}
@@ -540,7 +540,7 @@ export const AppContent: React.FC<AppContentProps> = (p) => {
       />;
 
     case ActiveTab.ADMIN:
-      if (!isAdmin(user?.id)) return <Dashboard onTabChange={setActiveTab} flowResult={flowResult} onAcceptFlow={saveFlowResult} documents={documents} decks={decks} metrics={metrics} collections={collections} activeModuleId={activeModuleId} onModuleChange={p.onModuleChange} examTerms={examTerms} onStartMistakeReview={handleStartMistakeReview} user={user} />;
+      if (!isAdmin(user?.id)) return <Dashboard onTabChange={setActiveTab} flowResult={flowResult} onAcceptFlow={saveFlowResult} documents={documents} decks={decks} metrics={metrics} collections={collections} activeModuleId={activeModuleId} onModuleChange={p.onModuleChange} examTerms={examTerms} onUpdateExamTerms={saveExamTerms} onStartMistakeReview={handleStartMistakeReview} user={user} />;
       return <AdminDashboard />;
 
     case ActiveTab.PLANNER:
@@ -587,6 +587,6 @@ export const AppContent: React.FC<AppContentProps> = (p) => {
       />;
 
     default:
-      return <Dashboard onTabChange={setActiveTab} flowResult={flowResult} onAcceptFlow={saveFlowResult} documents={documents} decks={decks} metrics={metrics} collections={collections} activeModuleId={activeModuleId} onModuleChange={p.onModuleChange} examTerms={examTerms} onStartMistakeReview={handleStartMistakeReview} user={user} />;
+      return <Dashboard onTabChange={setActiveTab} flowResult={flowResult} onAcceptFlow={saveFlowResult} documents={documents} decks={decks} metrics={metrics} collections={collections} activeModuleId={activeModuleId} onModuleChange={p.onModuleChange} examTerms={examTerms} onUpdateExamTerms={saveExamTerms} onStartMistakeReview={handleStartMistakeReview} user={user} />;
   }
 };

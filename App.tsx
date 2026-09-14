@@ -191,7 +191,7 @@ const App: React.FC = () => {
       };
       if (cloud.learning) {
         if (cloud.learning.exam_terms.length) {
-          const mergedExamTerms = mergeById(readArr('studearc_exam_terms'), cloud.learning.exam_terms);
+          const mergedExamTerms = mergeById(readArr('studearc_exam_terms'), cloud.learning.exam_terms, 'updatedAt');
           writeArr('studearc_exam_terms', mergedExamTerms, 'exam_terms', 'learning');
           setExamTerms(mergedExamTerms);
         }

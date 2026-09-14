@@ -1,5 +1,5 @@
 import { describe, it, expect, beforeEach } from 'vitest';
-import { buildModuleRows, sortModuleRows, buildHomeKpis, termMatchesModule, formatGrade } from './homeOverviewService';
+import { buildModuleRows, sortModuleRows, buildHomeKpis } from './homeOverviewService';
 import { setLocale } from '../i18n';
 import type { ExamResult } from './examHistoryService';
 import type { QuizResult } from './quizHistoryService';
@@ -22,7 +22,7 @@ const quiz = (docId: string, docName: string, score: number, totalCount: number,
 const mistake = (docId: string, docName: string, id: string): MistakeItem => ({
   id, question: {} as MistakeItem['question'], docId, docName, addedAt: 0, lapses: 0, srs: {} as MistakeItem['srs'],
 });
-const term = (title: string, date: string): ExamTerm => ({ id: title, title, date, topics: [] });
+const term = (title: string, date: string, extra: Partial<ExamTerm> = {}): ExamTerm => ({ id: `${title}-${date}`, title, date, topics: [], ...extra });
 
 const collections = [
   col('stat', 'Statistik I'),
@@ -35,14 +35,6 @@ const documents = [doc('d1', 'Statistik VL1.pdf', 'stat'), doc('d2', 'Bio VL1.pd
 const empty = { quizResults: [], examResults: [], recallResults: [] };
 const examTerms = [term('Klausur Statistik I', '2026-10-07'), term('Alte Klausur', '2026-01-01')];
 
-describe('termMatchesModule', () => {
-  it('ordnet nur über ganze Wörter zu', () => {
-    expect(termMatchesModule('Klausur Statistik I', 'Statistik I')).toBe(true);
-    expect(termMatchesModule('Klausur Statistik II', 'Statistik I')).toBe(false);
-    expect(termMatchesModule('Bio', 'Biologische Psychologie')).toBe(false);
-  });
-});
-
 describe('buildModuleRows', () => {
   beforeEach(() => setLocale('de'));
 
@@ -52,11 +44,11 @@ describe('buildModuleRows', () => {
     dueMistakes: [mistake('d3', 'Allg VL1', 'm1'), mistake('d3', 'Allg VL1', 'm2')],
   });
 
-  it('Note ist der Ø der Simulator-Ergebnisse je Modul', () => {
+  it('ohne eingetragene Note: Ø der Simulator-Ergebnisse je Modul', () => {
     const byId = Object.fromEntries(build().map(r => [r.id, r]));
-    expect(byId.stat).toMatchObject({ examPercent: 75, grade: '2.3', weak: false });
+    expect(byId.stat).toMatchObject({ examPercent: 75, grade: '2.3', gradeSource: 'simulator', weak: false });
     expect(byId.bio).toMatchObject({ examPercent: 50, grade: '4.0', weak: true, nextStep: 'rebuild' });
-    expect(byId.neu).toMatchObject({ examPercent: null, grade: null, learningPercent: null, nextStep: 'placement' });
+    expect(byId.neu).toMatchObject({ grade: null, gradeSource: null, learningPercent: null, nextStep: 'placement' });
   });
 
   it('zählt offene Fehlerfragen, ordnet Termine zu und markiert Duplikate', () => {
@@ -86,10 +78,40 @@ describe('buildModuleRows', () => {
   });
 });
 
+describe('eingetragene Klausurnoten', () => {
+  beforeEach(() => setLocale('de'));
+
+  const terms = [
+    term('Statistik', '2026-02-12', { collectionId: 'stat', grade: '1.7' }),
+    term('Bio', '2026-02-09', { collectionId: 'bio', grade: '4.0' }),
+    term('Allgemeine', '2026-09-01', { collectionId: 'allg' }),
+  ];
+  const activity = { ...empty, examResults: [exam('Statistik VL1', 80), exam('Statistik VL1', 70)] };
+  const rows = () => buildModuleRows({ collections, documents, decks: [], activity, dueMistakes: [mistake('d3', 'Allg VL1', 'm1')], examTerms: terms, now });
+
+  it('echte Note hat Vorrang vor dem Simulator', () => {
+    const byId = Object.fromEntries(rows().map(r => [r.id, r]));
+    expect(byId.stat).toMatchObject({ grade: '1.7', gradeSource: 'exam', examPercent: 75, weak: false });
+    expect(byId.stat.writtenTerm).toMatchObject({ date: '2026-02-12' });
+    expect(byId.bio).toMatchObject({ grade: '4.0', gradeSource: 'exam', weak: true, nextStep: 'rebuild' });
+  });
+
+  it('geschriebene Klausur ohne Note wird zum nächsten Schritt "Note eintragen"', () => {
+    const byId = Object.fromEntries(rows().map(r => [r.id, r]));
+    expect(byId.allg).toMatchObject({ nextStep: 'enterGrade', grade: null });
+    expect(sortModuleRows(rows(), 'urgency')[0].id).toBe('allg');
+  });
+
+  it('Notenschnitt aus echten Noten, sobald welche eingetragen sind', () => {
+    const kpis = buildHomeKpis({ rows: rows(), examTerms: terms, activity, now });
+    expect(kpis).toMatchObject({ gradeAverage: '2.9', gradeSource: 'exam', examsWritten: 3, examsTotal: 5 });
+  });
+});
+
 describe('buildHomeKpis', () => {
   beforeEach(() => setLocale('de'));
 
-  it('Kennzahlen aus Terminen, Simulator-Noten und Fragen der letzten 7 Tage', () => {
+  it('ohne echte Noten: Simulator-Schnitt, Termine und Fragen der letzten 7 Tage', () => {
     const activity = {
       ...empty,
       examResults: [exam('Statistik VL1', 75), exam('Bio VL1', 50)],
@@ -99,14 +121,10 @@ describe('buildHomeKpis', () => {
     expect(buildHomeKpis({ rows, examTerms, activity, now })).toEqual({
       nextExamDays: 24,
       gradeAverage: '3.3',
+      gradeSource: 'simulator',
       examsWritten: 2,
       examsTotal: 5,
       weeklyQuestions: 10,
     });
-  });
-
-  it('formatiert deutsche Noten mit Komma', () => {
-    expect(formatGrade('2.3', 'de')).toBe('2,3');
-    expect(formatGrade('2.3', 'en')).toBe('2.3');
   });
 });

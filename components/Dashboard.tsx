@@ -8,9 +8,12 @@ import { getStreak } from '../services/streakService';
 import { collectionDocs } from '../services/collectionSource';
 import { useModuleScopedActivity } from '../hooks/useModuleScopedActivity';
 import {
-  buildModuleRows, sortModuleRows, buildHomeKpis, upcomingExamTerms, formatGrade, formatPercent,
+  buildModuleRows, sortModuleRows, buildHomeKpis, formatPercent,
   type ModuleRow, type ModuleSort, type ModuleNextStep,
 } from '../services/homeOverviewService';
+import { upcomingExamTerms } from '../services/examTermService';
+import { formatGrade } from '../services/gradeScale';
+import { ExamGradeDialog } from './ExamGradeDialog';
 import { useTranslation } from '../i18n/I18nProvider';
 import { getLocale } from '../i18n';
 import type { TKey } from '../i18n';
@@ -26,8 +29,10 @@ interface DashboardProps {
   metrics?: TopicMetric[];
   collections?: Collection[];
   activeModuleId?: string | null;
-  /** Klausurtermine aus dem Kalender — Kennzahl "Nächste Klausur" und Termin-Spalte. */
+  /** Klausurtermine aus dem Kalender — Kennzahl "Nächste Klausur", Termin-Spalte, eingetragene Noten. */
   examTerms?: ExamTerm[];
+  /** Speichert Klausurtermine (hier: eingetragene Note). */
+  onUpdateExamTerms?: (terms: ExamTerm[]) => void;
   /** Wählt ein Fach aus (null = Alle Fächer), wie der Fach-Wähler in der Sidebar. */
   onModuleChange?: (id: string | null) => void;
   /** Startet die Wiederholungs-Session fälliger Fehlerfragen (Quiz-Tab). */
@@ -83,6 +88,7 @@ const readStoredSort = (): ModuleSort => {
 };
 
 const ACTION_LABEL: Record<ModuleNextStep, TKey> = {
+  enterGrade: 'home.act.enterGrade',
   mistakes: 'home.act.mistakes',
   review: 'home.act.review',
   rebuild: 'home.act.rebuild',
@@ -94,6 +100,7 @@ const ACTION_LABEL: Record<ModuleNextStep, TKey> = {
 const VISIBLE_ROWS = 6;
 const GRID_COLUMNS = 'minmax(0,1fr) 138px 58px 116px 118px';
 const SHORT_DATE: Intl.DateTimeFormatOptions = { day: 'numeric', month: 'short', year: '2-digit' };
+const termDate = (date: string) => `${date}T00:00:00`;
 
 /** Grobe Zeitschätzung: Antwortzeiten werden nicht gespeichert, daher Pauschalwerte je Fehlerfrage bzw. Karte. */
 const estimateMinutes = (count: number, minutesPerItem: number) => Math.max(1, Math.round(count * minutesPerItem));
@@ -102,7 +109,7 @@ const MICRO_LABEL = 'text-[9.5px] font-semibold uppercase tracking-[0.18em]';
 
 export const Dashboard: React.FC<DashboardProps> = ({
   onTabChange, documents = [], decks = [], collections = [], activeModuleId = null, examTerms = [],
-  onModuleChange, onStartMistakeReview, user = null,
+  onUpdateExamTerms, onModuleChange, onStartMistakeReview, user = null,
 }) => {
   const { t, tp } = useTranslation();
   const locale = getLocale();
@@ -156,6 +163,14 @@ export const Dashboard: React.FC<DashboardProps> = ({
   const visibleRows = showAllRows ? sortedRows : sortedRows.slice(0, VISIBLE_ROWS);
   const hiddenRows = sortedRows.slice(VISIBLE_ROWS);
 
+  // Echte Note eintragen (Dialog) — nur möglich, wenn der Aufrufer speichern kann.
+  const [gradeTerm, setGradeTerm] = useState<ExamTerm | null>(null);
+  const saveGrade = (grade: string | undefined) => {
+    if (!gradeTerm || !onUpdateExamTerms) return;
+    onUpdateExamTerms(examTerms.map(term => (term.id === gradeTerm.id ? { ...term, grade, updatedAt: Date.now() } : term)));
+    setGradeTerm(null);
+  };
+
   const fmtGrade = (grade: string) => formatGrade(grade, locale);
 
   const openModule = (id: string) => {
@@ -164,6 +179,10 @@ export const Dashboard: React.FC<DashboardProps> = ({
   };
   const runModuleAction = (row: ModuleRow) => {
     switch (row.nextStep) {
+      case 'enterGrade':
+        if (row.writtenTerm && onUpdateExamTerms) setGradeTerm(row.writtenTerm);
+        else onTabChange(ActiveTab.PLANNER);
+        return;
       case 'mistakes':
         if (onStartMistakeReview) onStartMistakeReview();
         else onTabChange(ActiveTab.QUIZ);
@@ -192,6 +211,16 @@ export const Dashboard: React.FC<DashboardProps> = ({
         onClick: () => onTabChange(ActiveTab.EXAM),
       });
     }
+    const awaitingGrade = onUpdateExamTerms ? rows.find(r => r.nextStep === 'enterGrade' && r.writtenTerm)?.writtenTerm : undefined;
+    if (awaitingGrade) {
+      recs.push({
+        key: 'grade', severity: 'gold',
+        title: t('home.rec.enterGrade', { title: awaitingGrade.title }),
+        reason: t('home.rec.enterGradeReason', { date: formatDate(termDate(awaitingGrade.date), { day: 'numeric', month: 'long' }) }),
+        minutes: 1,
+        onClick: () => setGradeTerm(awaitingGrade),
+      });
+    }
     if (dueMistakes.length > 0) {
       recs.push({
         key: 'mistakes', severity: 'gold',
@@ -211,16 +240,17 @@ export const Dashboard: React.FC<DashboardProps> = ({
       });
     }
     const weakest = rows
-      .filter(r => r.weak && !r.duplicate)
+      .filter(r => r.weak && !r.duplicate && r.grade)
       .sort((a, b) => (a.examPercent ?? 0) - (b.examPercent ?? 0))[0];
     if (weakest?.grade) {
       const grade = formatGrade(weakest.grade, locale);
+      const fromExam = weakest.gradeSource === 'exam';
       recs.push({
         key: 'rebuild', severity: 'red',
         title: t('home.rec.rebuild', { name: weakest.name }),
         reason: weakest.learningPercent != null
-          ? t('home.rec.rebuildReason', { grade, pct: weakest.learningPercent })
-          : t('home.rec.rebuildReasonNoLevel', { grade }),
+          ? t(fromExam ? 'home.rec.rebuildReasonExam' : 'home.rec.rebuildReason', { grade, pct: weakest.learningPercent })
+          : t(fromExam ? 'home.rec.rebuildReasonExamNoLevel' : 'home.rec.rebuildReasonNoLevel', { grade }),
         onClick: () => { onModuleChange?.(weakest.id); onTabChange(ActiveTab.QUIZ); },
       });
     }
@@ -235,17 +265,23 @@ export const Dashboard: React.FC<DashboardProps> = ({
       });
     }
     return recs.slice(0, 3);
-  }, [nextExam, dueMistakes, streak.current, streak.todayDone, rows, dueCardsCount, scopedDecks, locale, t, tp, onTabChange, onModuleChange, onStartMistakeReview]);
+  }, [nextExam, dueMistakes, streak.current, streak.todayDone, rows, dueCardsCount, scopedDecks, locale, t, tp, onTabChange, onModuleChange, onStartMistakeReview, onUpdateExamTerms]);
 
-  const kpiItems: { key: string; label: string; value: string | number; unit?: string; onClick: () => void }[] = [];
+  const kpiItems: { key: string; label: string; value: string | number; unit?: string; title?: string; onClick: () => void }[] = [];
   if (kpis.nextExamDays != null) {
     kpiItems.push({ key: 'exam', label: t('home.kpi.nextExam'), value: kpis.nextExamDays, unit: tp('home.unit.days', kpis.nextExamDays), onClick: () => onTabChange(ActiveTab.PLANNER) });
   }
   if (kpis.gradeAverage != null) {
-    kpiItems.push({ key: 'grade', label: t('home.kpi.gradeAvg'), value: fmtGrade(kpis.gradeAverage), onClick: () => onTabChange(ActiveTab.EXAM) });
+    const simulated = kpis.gradeSource === 'simulator';
+    kpiItems.push({
+      key: 'grade', label: t('home.kpi.gradeAvg'), value: fmtGrade(kpis.gradeAverage),
+      unit: simulated ? t('home.grade.simShort') : undefined,
+      title: t(simulated ? 'home.kpi.gradeAvgSim' : 'home.kpi.gradeAvgExam'),
+      onClick: () => onTabChange(simulated ? ActiveTab.EXAM : ActiveTab.PLANNER),
+    });
   }
   if (kpis.examsTotal > 0) {
-    kpiItems.push({ key: 'exams', label: t('home.kpi.exams'), value: kpis.examsWritten, unit: `/ ${kpis.examsTotal}`, onClick: () => onTabChange(ActiveTab.EXAM) });
+    kpiItems.push({ key: 'exams', label: t('home.kpi.exams'), value: kpis.examsWritten, unit: `/ ${kpis.examsTotal}`, onClick: () => onTabChange(ActiveTab.PLANNER) });
   }
   kpiItems.push({ key: 'streak', label: t('home.kpi.streak'), value: streak.current, unit: tp('home.unit.days', streak.current), onClick: () => onTabChange(ActiveTab.RADAR) });
   kpiItems.push({ key: 'week', label: t('home.kpi.week'), value: kpis.weeklyQuestions, unit: tp('home.unit.questions', kpis.weeklyQuestions), onClick: () => onTabChange(ActiveTab.RADAR) });
@@ -260,6 +296,7 @@ export const Dashboard: React.FC<DashboardProps> = ({
 
   const rowNote = (row: ModuleRow): string | null =>
     row.duplicate ? t('home.row.duplicate')
+      : row.nextStep === 'enterGrade' ? t('home.row.awaitingGrade')
       : row.openErrors > 0 ? tp('home.row.openErrors', row.openErrors)
       : row.weak ? t('home.row.retake')
       : null;
@@ -268,9 +305,12 @@ export const Dashboard: React.FC<DashboardProps> = ({
     if (row.nextTerm) {
       return {
         status: row.nextTerm.days === 0 ? t('home.row.today') : tp('home.row.inDays', row.nextTerm.days),
-        detail: formatDate(`${row.nextTerm.date}T00:00:00`, SHORT_DATE),
+        detail: formatDate(termDate(row.nextTerm.date), SHORT_DATE),
         upcoming: true,
       };
+    }
+    if (row.writtenTerm) {
+      return { status: t('home.row.written'), detail: formatDate(termDate(row.writtenTerm.date), SHORT_DATE), upcoming: false };
     }
     if (row.lastExamAt != null) {
       return { status: t('home.row.simulated'), detail: formatDate(row.lastExamAt, SHORT_DATE), upcoming: false };
@@ -290,6 +330,20 @@ export const Dashboard: React.FC<DashboardProps> = ({
   ) : (
     <span className="text-[11px]" style={{ color: C.faint }}>{t('home.row.noData')}</span>
   ));
+
+  // Simulator-Noten sichtbar als solche markieren ("Sim."), echte Noten ohne Zusatz.
+  const gradeBadge = (row: ModuleRow) => row.grade != null && (
+    <span
+      title={t(row.gradeSource === 'exam' ? 'home.grade.examTitle' : 'home.grade.simTitle')}
+      className="leading-none tabular-nums whitespace-nowrap"
+      style={{ color: row.weak ? C.red : C.ink }}
+    >
+      {fmtGrade(row.grade)}
+      {row.gradeSource === 'simulator' && (
+        <span className="ml-0.5 align-top text-[8.5px] font-semibold" style={{ color: C.faint }}>{t('home.grade.simShort')}</span>
+      )}
+    </span>
+  );
 
   if (documents.length === 0) {
     return (
@@ -345,7 +399,7 @@ export const Dashboard: React.FC<DashboardProps> = ({
           {kpiItems.map((k, i) => (
             <React.Fragment key={k.key}>
               {i > 0 && <span aria-hidden className="w-px h-[30px] shrink-0" style={{ background: 'color-mix(in srgb, var(--text-main) 14%, transparent)' }} />}
-              <button onClick={k.onClick} className="shrink-0 text-right transition-opacity hover:opacity-75">
+              <button onClick={k.onClick} title={k.title} className="shrink-0 text-right transition-opacity hover:opacity-75">
                 <span className="block text-[8.5px] font-semibold uppercase tracking-[0.15em] whitespace-nowrap" style={{ color: C.faint }}>{k.label}</span>
                 <span className="block mt-[5px] text-[21px] leading-none whitespace-nowrap tabular-nums" style={{ color: C.ink }}>
                   {k.value}
@@ -433,8 +487,15 @@ export const Dashboard: React.FC<DashboardProps> = ({
             {visibleRows.map((row, i) => {
               const exam = examStatus(row);
               const note = rowNote(row);
-              const gradeEl = row.grade != null && (
-                <span title={t('home.col.gradeHint')} className="leading-none tabular-nums" style={{ color: row.weak ? C.red : C.ink }}>{fmtGrade(row.grade)}</span>
+              const muted = row.nextStep === 'review';
+              const actionButton = (
+                <button
+                  onClick={e => { e.stopPropagation(); runModuleAction(row); }}
+                  className="text-[11px] font-semibold whitespace-nowrap hover:underline"
+                  style={{ color: muted ? C.chevron : C.goldText }}
+                >
+                  {t(ACTION_LABEL[row.nextStep])}
+                </button>
               );
               return (
                 <div
@@ -453,20 +514,12 @@ export const Dashboard: React.FC<DashboardProps> = ({
                       {note && <p className="mt-0.5 text-[10.5px] truncate" style={{ color: C.soft }}>{note}</p>}
                     </div>
                     <div>{levelCell(row)}</div>
-                    <div className="text-right text-[18px]">{gradeEl}</div>
+                    <div className="text-right text-[18px]">{gradeBadge(row)}</div>
                     <div className="min-w-0">
                       <p className="text-[11px] font-semibold whitespace-nowrap" style={{ color: exam.upcoming ? C.goldText : 'color-mix(in srgb, var(--text-main) 75%, transparent)' }}>{exam.status}</p>
                       <p className="mt-0.5 text-[10px] whitespace-nowrap" style={{ color: C.soft }}>{exam.detail}</p>
                     </div>
-                    <div className="text-right">
-                      <button
-                        onClick={e => { e.stopPropagation(); runModuleAction(row); }}
-                        className="text-[11px] font-semibold whitespace-nowrap hover:underline"
-                        style={{ color: row.nextStep === 'review' ? C.chevron : C.goldText }}
-                      >
-                        {t(ACTION_LABEL[row.nextStep])}
-                      </button>
-                    </div>
+                    <div className="text-right">{actionButton}</div>
                   </div>
 
                   {/* Mobil: Name + Note, darunter Lernstand + Termin */}
@@ -474,13 +527,18 @@ export const Dashboard: React.FC<DashboardProps> = ({
                     <div className="flex-1 min-w-0 space-y-1.5">
                       <div className="flex items-baseline gap-3">
                         <p className="flex-1 min-w-0 text-[14px] font-semibold truncate" style={{ color: C.ink }}>{row.name}</p>
-                        <span className="text-[17px]">{gradeEl}</span>
+                        <span className="text-[17px]">{gradeBadge(row)}</span>
                       </div>
                       <div className="flex items-center gap-3">
                         <div className="w-28 shrink-0">{levelCell(row)}</div>
                         <p className="min-w-0 text-[11px] truncate" style={{ color: exam.upcoming ? C.goldText : C.soft }}>{exam.status} · {exam.detail}</p>
                       </div>
-                      {note && <p className="text-[10.5px] truncate" style={{ color: C.soft }}>{note}</p>}
+                      {(note || row.nextStep === 'enterGrade') && (
+                        <div className="flex items-center gap-3">
+                          {note && <p className="flex-1 min-w-0 text-[10.5px] truncate" style={{ color: C.soft }}>{note}</p>}
+                          {row.nextStep === 'enterGrade' && actionButton}
+                        </div>
+                      )}
                     </div>
                     <ChevronRight size={16} className="shrink-0" style={{ color: C.chevron }} />
                   </div>
@@ -503,6 +561,8 @@ export const Dashboard: React.FC<DashboardProps> = ({
           </div>
         </section>
       )}
+
+      {gradeTerm && <ExamGradeDialog term={gradeTerm} onSave={saveGrade} onClose={() => setGradeTerm(null)} />}
     </div>
   );
 };

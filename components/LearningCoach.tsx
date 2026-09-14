@@ -11,6 +11,7 @@ import { buildExamForecast } from '../services/examForecastService';
 import type { DailyPlanStep } from '../services/learningProfileService';
 import { useModuleScopedActivity } from '../hooks/useModuleScopedActivity';
 import { ChevronLeft } from 'lucide-react';
+import { nextExamForModule } from '../services/examTermService';
 import { getStreak } from '../services/streakService';
 import { getDismissedTopics, dismissTopic } from '../services/dismissedTopicsService';
 import { toast } from '../services/toast';
@@ -173,17 +174,16 @@ export const LearningCoach: React.FC<LearningCoachProps> = ({ metrics, decks, on
   );
 
   // Klausurprognose: Zerfall + Trend + Mischwert (services/examForecastService)
+  // Termin des aktiven Fachs (ohne Fach: der nächste insgesamt), s. services/examTermService.ts
   const forecast = useMemo(() => {
-    const d = new Date();
-    const today = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
-    const nextExam = [...examTerms].filter(t => t.date >= today).sort((a, b) => a.date.localeCompare(b.date))[0];
+    const nextExam = nextExamForModule(examTerms, activeModule, new Date());
     return buildExamForecast({
       examResults,
       topicMastery: displayTopics,
       decks,
       nextExamDate: nextExam?.date ?? null,
     });
-  }, [examResults, displayTopics, decks, examTerms]);
+  }, [examResults, displayTopics, decks, examTerms, activeModule]);
 
   // Fach-Wechsel (Variante C) invalidiert eine ggf. angezeigte Coach-Analyse des
   // vorherigen Fachs sofort — sonst bliebe die Analyse von Fach A stehen, während

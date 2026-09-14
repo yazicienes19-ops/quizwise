@@ -4,7 +4,11 @@ import { Collection, ExamTerm, StudyEvent } from '../types';
 import { ResolvedSession, SessionFormInput, SessionEditTarget, MODULE_COLOR_SWATCHES, resolveModuleColor } from '../services/calendarSessions';
 import { useTranslation } from '../i18n/I18nProvider';
 import { formatDate } from '../i18n/dates';
+import { getLocale } from '../i18n';
 import type { TKey } from '../i18n';
+import { gradeOptions, formatGrade } from '../services/gradeScale';
+
+const localDateStr = (d: Date) => `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
 
 const WEEKDAY_KEYS = ['Sonntag', 'Montag', 'Dienstag', 'Mittwoch', 'Donnerstag', 'Freitag', 'Samstag'];
 
@@ -42,6 +46,9 @@ export const CalendarDayPanel: React.FC<CalendarDayPanelProps> = ({
   const [editingExam, setEditingExam] = useState<ExamTerm | null>(null);
   const [examEditTitle, setExamEditTitle] = useState('');
   const [examEditDate, setExamEditDate] = useState('');
+  const [examEditModuleId, setExamEditModuleId] = useState('');
+  const [examEditGrade, setExamEditGrade] = useState('');
+  const locale = getLocale();
   const [editingEvent, setEditingEvent] = useState<StudyEvent | null>(null);
   const [eventEditTitle, setEventEditTitle] = useState('');
   const [eventEditDate, setEventEditDate] = useState('');
@@ -77,13 +84,25 @@ export const CalendarDayPanel: React.FC<CalendarDayPanelProps> = ({
     setEditingExam(exam);
     setExamEditTitle(exam.title);
     setExamEditDate(exam.date);
+    setExamEditModuleId(exam.collectionId ?? '');
+    setExamEditGrade(exam.grade ?? '');
     setEditingEvent(null);
     setShowForm(false);
   };
 
+  // Eine Note gibt es erst, wenn die Klausur geschrieben ist (Datum heute oder früher).
+  const examEditIsPast = !!examEditDate && examEditDate <= localDateStr(new Date());
+
   const saveExamEdit = () => {
     if (!editingExam || !examEditTitle.trim() || !examEditDate) return;
-    onUpdateExam({ ...editingExam, title: examEditTitle.trim(), date: examEditDate });
+    onUpdateExam({
+      ...editingExam,
+      title: examEditTitle.trim(),
+      date: examEditDate,
+      collectionId: examEditModuleId || undefined,
+      grade: examEditIsPast && examEditGrade ? examEditGrade : undefined,
+      updatedAt: Date.now(),
+    });
     setEditingExam(null);
   };
 
@@ -178,6 +197,32 @@ export const CalendarDayPanel: React.FC<CalendarDayPanelProps> = ({
                   onChange={e => setExamEditDate(e.target.value)}
                   className="w-full p-2.5 bg-slate-50 dark:bg-slate-800 rounded-xl outline-none dark:text-white text-sm font-bold"
                 />
+                {collections.length > 0 && (
+                  <label className="block">
+                    <span className="text-[9px] font-black uppercase tracking-widest text-slate-400 mb-1 block">{t('sp2.examModuleLabel')}</span>
+                    <select
+                      value={examEditModuleId}
+                      onChange={e => setExamEditModuleId(e.target.value)}
+                      className="w-full p-2.5 bg-slate-50 dark:bg-slate-800 rounded-xl outline-none dark:text-white text-sm font-bold"
+                    >
+                      <option value="">{t('sp2.examNoModule')}</option>
+                      {collections.map(c => <option key={c.id} value={c.id}>{c.name}</option>)}
+                    </select>
+                  </label>
+                )}
+                {examEditIsPast && (
+                  <label className="block">
+                    <span className="text-[9px] font-black uppercase tracking-widest text-slate-400 mb-1 block">{t('sp2.examGradeLabel')}</span>
+                    <select
+                      value={examEditGrade}
+                      onChange={e => setExamEditGrade(e.target.value)}
+                      className="w-full p-2.5 bg-slate-50 dark:bg-slate-800 rounded-xl outline-none dark:text-white text-sm font-bold"
+                    >
+                      <option value="">{t('sp2.examNoGrade')}</option>
+                      {gradeOptions(locale).map(g => <option key={g} value={g}>{formatGrade(g, locale)}</option>)}
+                    </select>
+                  </label>
+                )}
                 <div className="flex gap-2">
                   <button
                     onClick={saveExamEdit}
@@ -199,7 +244,13 @@ export const CalendarDayPanel: React.FC<CalendarDayPanelProps> = ({
                 </div>
                 <div className="flex-1 min-w-0">
                   <p className="text-sm font-black break-words" style={{ color: 'var(--text-main)' }}>{exam.title}</p>
-                  <p className="text-[9px] font-black uppercase tracking-widest text-slate-400 mt-0.5">{t('sp2.examTermLabel')}</p>
+                  <p className="text-[9px] font-black uppercase tracking-widest text-slate-400 mt-0.5">
+                    {[
+                      t('sp2.examTermLabel'),
+                      collections.find(c => c.id === exam.collectionId)?.name,
+                      exam.grade ? `${t('sp2.examGradeLabel')} ${formatGrade(exam.grade, locale)}` : null,
+                    ].filter(Boolean).join(' · ')}
+                  </p>
                 </div>
                 <div className="flex items-center gap-1 shrink-0">
                   <button aria-label={t('sp2.edit')} onClick={() => openEditExam(exam)} className="w-9 h-9 flex items-center justify-center rounded-lg text-slate-300 hover:text-indigo-500 hover:bg-indigo-50 dark:hover:bg-indigo-900/20 transition-colors">

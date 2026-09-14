@@ -1,6 +1,7 @@
 
 import React, { useState, useMemo, useEffect } from 'react';
 import { ProcessedDocument, Collection, ScoringProfile, ScoringMode, ExamQuestion, TopicMetric, FlashcardDeck, ExamTypePreset, QuantModeConfig, QuantTypeDistribution, ExamTerm } from '../types';
+import { nextExamForModule } from '../services/examTermService';
 import { GenerationSource } from '../services/geminiService';
 import { GeneratedImage } from './GeneratedImage';
 import { SourceSelector } from './SourceSelector';
@@ -17,7 +18,6 @@ import {
   computeTopicWeights, computeDifficultyMix, recentAverageScore, excludeTopicsWithoutAdaptive,
   DIFFICULTY_LEVELS, TopicWeight, DifficultyMix, AdaptiveExamTarget,
 } from '../services/examAdaptive';
-import { daysUntilDate } from '../services/calendarSessions';
 
 export type ExamOptions = {
   count: number; difficulty: string;
@@ -161,15 +161,13 @@ export const ExamGenerator: React.FC<ExamGeneratorProps> = ({
   const recentAvgScore = useMemo(() => recentAverageScore(examResults.map(r => r.score), 5), [examResults]);
   const hasAdaptiveData = profile.categoryMastery.length > 0 || realTopics.length > 0 || examResults.length > 0;
 
-  // Nächster künftiger Klausurtermin, egal zu welchem Fach (ExamTerm ist nicht an ein Fach
-  // gebunden) — dasselbe Signal wie Dashboard.tsx "examCountdown", hier als Eingabe für
-  // computeDifficultyMix (Paket 11, Phase 3A).
+  // Nächster Klausurtermin des aktiven Fachs (ohne aktives Fach: der nächste insgesamt),
+  // Eingabe für computeDifficultyMix (Paket 11, Phase 3A). Termine tragen seit 2026-09
+  // eine Fach-Zuordnung, s. services/examTermService.ts.
   const daysUntilNextExam = useMemo(() => {
-    if (!examTerms || examTerms.length === 0) return null;
-    const now = new Date();
-    const days = examTerms.map(term => daysUntilDate(term.date, now)).filter(d => d >= 0);
-    return days.length > 0 ? Math.min(...days) : null;
-  }, [examTerms]);
+    const activeModule = activeModuleId ? (collections ?? []).find(c => c.id === activeModuleId) ?? null : null;
+    return nextExamForModule(examTerms ?? [], activeModule, new Date())?.days ?? null;
+  }, [examTerms, activeModuleId, collections]);
 
   const adaptiveTarget = useMemo<AdaptiveExamTarget>(() => ({
     topicWeights: computeTopicWeights(realTopics, questionCount),

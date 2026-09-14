@@ -3,29 +3,22 @@ import type { MistakeItem } from './mistakeReviewService';
 import { buildModuleFilter, decksOfModule, filterActivityByModule, type ActivityResults } from './moduleProgressService';
 import { buildLearningScore } from './learningScoreService';
 import { gradeFromPercentage, passThresholdPercent } from './learningProfileService';
-import { daysUntilDate } from './calendarSessions';
+import { termsForModule, upcomingExamTerms, pastExamTerms, type DatedExamTerm } from './examTermService';
+import { averageGrade, isWeakGrade, gradeScore } from './gradeScale';
 
 /**
  * homeOverviewService — Daten der Startseite "Heute" (Design-Handoff 2026-09):
  * Kennzahlenzeile und Modultabelle. Reine Funktionen, keine Werte erfinden:
  * wo keine Daten vorliegen, bleibt das Feld null.
  *
- * "Note" ist bewusst der Ø der Klausur-Simulator-Ergebnisse im Modul (echte
- * Uni-Noten speichert StudeArc nicht), Termine kommen aus den Klausurterminen
- * des Kalenders und werden über den Namen einem Modul zugeordnet (ExamTerm hat
- * keine Collection-Zuordnung).
+ * Note je Modul: die selbst eingetragene Klausurnote hat Vorrang; ohne sie
+ * zeigt die Tabelle den Ø der Klausur-Simulator-Ergebnisse (als solcher markiert).
  */
 
 const DAY_MS = 24 * 60 * 60 * 1000;
 
-export type ModuleNextStep = 'mistakes' | 'rebuild' | 'placement' | 'review' | 'cleanup';
-export type ModuleSort = 'urgency' | 'grade' | 'date' | 'alpha';
-
-export interface UpcomingTerm {
-  title: string;
-  date: string;
-  days: number;
-}
+export type ModuleNextStep = 'enterGrade' | 'mistakes' | 'rebuild' | 'placement' | 'review' | 'cleanup';
+export type GradeSource = 'exam' | 'simulator';
 
 export interface ModuleRow {
   id: string;
@@ -35,12 +28,16 @@ export interface ModuleRow {
   /** Ø der Klausur-Simulator-Ergebnisse in diesem Modul; null ohne Simulation. */
   examPercent: number | null;
   grade: string | null;
-  /** Simulator-Schnitt knapp an oder unter der Bestehensgrenze (DE: 4,0 oder schlechter). */
+  gradeSource: GradeSource | null;
+  /** Note an oder unter der Bestehensgrenze (DE: 4,0 oder schlechter). */
   weak: boolean;
   /** Heute fällige Fehlerfragen aus Dokumenten dieses Moduls. */
   openErrors: number;
+  /** Letzte Klausur-Simulation. */
   lastExamAt: number | null;
-  nextTerm: UpcomingTerm | null;
+  nextTerm: DatedExamTerm | null;
+  /** Jüngste bereits geschriebene Klausur dieses Moduls, mit oder ohne Note. */
+  writtenTerm: DatedExamTerm | null;
   /** Gleichnamiges Modul existiert bereits weiter oben. */
   duplicate: boolean;
   nextStep: ModuleNextStep;
@@ -49,28 +46,11 @@ export interface ModuleRow {
 export interface HomeKpis {
   nextExamDays: number | null;
   gradeAverage: string | null;
+  gradeSource: GradeSource | null;
   examsWritten: number;
   examsTotal: number;
   weeklyQuestions: number;
 }
-
-const normalize = (s: string): string => s.toLowerCase().replace(/[^\p{L}\p{N}]+/gu, ' ').trim();
-
-/** Klausurtermin ↔ Modul über den Namen, nur ganze Wörter ("Statistik I" passt nicht zu "Statistik II"). */
-export const termMatchesModule = (termTitle: string, moduleName: string): boolean => {
-  const a = normalize(termTitle);
-  const b = normalize(moduleName);
-  if (!a || !b) return false;
-  if (a === b) return true;
-  const [short, long] = a.length <= b.length ? [a, b] : [b, a];
-  return short.length >= 4 && ` ${long} `.includes(` ${short} `);
-};
-
-export const upcomingExamTerms = (examTerms: ExamTerm[], now: Date): UpcomingTerm[] =>
-  examTerms
-    .map(term => ({ title: term.title, date: term.date, days: daysUntilDate(term.date, now) }))
-    .filter(term => term.days >= 0)
-    .sort((a, b) => a.days - b.days);
 
 export const buildModuleRows = (input: {
   collections: Collection[];
@@ -81,7 +61,6 @@ export const buildModuleRows = (input: {
   examTerms: ExamTerm[];
   now: Date;
 }): ModuleRow[] => {
-  const upcoming = upcomingExamTerms(input.examTerms, input.now);
   const weakBelow = passThresholdPercent() + 5;
   const seenNames = new Set<string>();
 
@@ -93,15 +72,25 @@ export const buildModuleRows = (input: {
 
     const exams = scoped.examResults;
     const examPercent = exams.length ? Math.round(exams.reduce((s, r) => s + r.score, 0) / exams.length) : null;
-    const weak = examPercent != null && examPercent < weakBelow;
+    const simulatorGrade = examPercent != null ? gradeFromPercentage(examPercent).grade : null;
+
+    const moduleTerms = termsForModule(input.examTerms, c);
+    const pastTerms = pastExamTerms(moduleTerms, input.now);
+    const writtenTerm = pastTerms[0] ?? null;
+    const realGrade = pastTerms.find(term => term.grade)?.grade ?? null;
+
+    const grade = realGrade ?? simulatorGrade;
+    const gradeSource: GradeSource | null = realGrade ? 'exam' : simulatorGrade ? 'simulator' : null;
+    const weak = realGrade ? isWeakGrade(realGrade) : examPercent != null && examPercent < weakBelow;
     const openErrors = input.dueMistakes.filter(m => filter.ids.has(m.docId) || filter.names.has(m.docName)).length;
 
-    const key = normalize(c.name);
+    const key = c.name.trim().toLowerCase();
     const duplicate = seenNames.has(key);
     seenNames.add(key);
 
-    const hasData = learningPercent != null || examPercent != null;
+    const hasData = learningPercent != null || grade != null;
     const nextStep: ModuleNextStep = duplicate ? 'cleanup'
+      : writtenTerm && !writtenTerm.grade ? 'enterGrade'
       : openErrors > 0 ? 'mistakes'
       : weak ? 'rebuild'
       : !hasData ? 'placement'
@@ -112,22 +101,33 @@ export const buildModuleRows = (input: {
       name: c.name,
       learningPercent,
       examPercent,
-      grade: examPercent != null ? gradeFromPercentage(examPercent).grade : null,
+      grade,
+      gradeSource,
       weak,
       openErrors,
       lastExamAt: exams.length ? Math.max(...exams.map(r => r.timestamp)) : null,
-      nextTerm: upcoming.find(term => termMatchesModule(term.title, c.name)) ?? null,
+      nextTerm: upcomingExamTerms(moduleTerms, input.now)[0] ?? null,
+      writtenTerm,
       duplicate,
       nextStep,
     };
   });
 };
 
-const hasData = (r: ModuleRow) => r.learningPercent != null || r.examPercent != null;
+const hasData = (r: ModuleRow) => r.learningPercent != null || r.grade != null;
 
-/** Dringlichkeit: anstehende Klausur, dann offene Fehlerfragen, dann schwacher Simulator-Schnitt, dann Module mit Daten, zuletzt ohne. */
+/** Dringlichkeit: anstehende Klausur, fehlende Note, offene Fehlerfragen, schwache Note, Module mit Daten, zuletzt ohne. */
 const urgencyRank = (r: ModuleRow): number =>
-  r.nextTerm ? 0 : r.openErrors > 0 ? 1 : r.weak ? 2 : hasData(r) ? 3 : 4;
+  r.nextTerm ? 0
+    : r.nextStep === 'enterGrade' ? 1
+    : r.openErrors > 0 ? 2
+    : r.weak ? 3
+    : hasData(r) ? 4
+    : 5;
+
+/** Vergleichswert 0–100 (höher = besser) über echte Noten und Simulator-Prozente hinweg. */
+const gradeSortValue = (r: ModuleRow): number | null =>
+  r.gradeSource === 'exam' && r.grade ? gradeScore(r.grade) : r.examPercent;
 
 const nullsLast = (a: number | null, b: number | null, dir: 1 | -1): number => {
   if (a == null && b == null) return 0;
@@ -136,15 +136,17 @@ const nullsLast = (a: number | null, b: number | null, dir: 1 | -1): number => {
   return (a - b) * dir;
 };
 
+export type ModuleSort = 'urgency' | 'grade' | 'date' | 'alpha';
+
 const COMPARE: Record<ModuleSort, (a: ModuleRow, b: ModuleRow) => number> = {
   urgency: (a, b) => {
     const rank = urgencyRank(a) - urgencyRank(b);
     if (rank !== 0) return rank;
     if (a.nextTerm && b.nextTerm) return a.nextTerm.days - b.nextTerm.days;
-    if (urgencyRank(a) === 1) return b.openErrors - a.openErrors;
+    if (urgencyRank(a) === 2) return b.openErrors - a.openErrors;
     return 0;
   },
-  grade: (a, b) => nullsLast(a.examPercent, b.examPercent, -1),
+  grade: (a, b) => nullsLast(gradeSortValue(a), gradeSortValue(b), -1),
   date: (a, b) => nullsLast(a.nextTerm?.days ?? null, b.nextTerm?.days ?? null, 1),
   alpha: (a, b) => a.name.localeCompare(b.name, undefined, { sensitivity: 'base', numeric: true }),
 };
@@ -156,31 +158,38 @@ export const sortModuleRows = (rows: ModuleRow[], sort: ModuleSort): ModuleRow[]
     .sort((a, b) => COMPARE[sort](a.row, b.row) || a.index - b.index)
     .map(({ row }) => row);
 
+/**
+ * Notenschnitt/Klausuren: sobald eine echte Note eingetragen ist, zählen nur
+ * echte Klausuren (Simulator-Werte würden den Schnitt verfälschen); vorher der
+ * Simulator als Ersatz, in der UI als solcher gekennzeichnet.
+ */
 export const buildHomeKpis = (input: {
   rows: ModuleRow[];
   examTerms: ExamTerm[];
   activity: ActivityResults;
   now: Date;
 }): HomeKpis => {
-  const graded = input.rows.filter(r => r.examPercent != null);
-  const mean = graded.length ? graded.reduce((s, r) => s + (r.examPercent ?? 0), 0) / graded.length : null;
+  const realGrades = input.rows.filter(r => r.gradeSource === 'exam' && r.grade).map(r => r.grade as string);
+  const simulated = input.rows.filter(r => r.examPercent != null);
+  const simulatedMean = simulated.length ? simulated.reduce((s, r) => s + (r.examPercent ?? 0), 0) / simulated.length : null;
+
   const since = input.now.getTime() - 7 * DAY_MS;
   const weeklyQuestions =
     input.activity.quizResults.filter(r => r.timestamp >= since).reduce((s, r) => s + r.totalCount, 0) +
     input.activity.examResults.filter(r => r.timestamp >= since).reduce((s, r) => s + (r.questions?.length ?? 0), 0);
 
+  const useReal = realGrades.length > 0;
   return {
     nextExamDays: upcomingExamTerms(input.examTerms, input.now)[0]?.days ?? null,
-    gradeAverage: mean != null ? gradeFromPercentage(Math.round(mean)).grade : null,
-    examsWritten: graded.length,
+    gradeAverage: useReal
+      ? averageGrade(realGrades)
+      : simulatedMean != null ? gradeFromPercentage(Math.round(simulatedMean)).grade : null,
+    gradeSource: useReal ? 'exam' : simulatedMean != null ? 'simulator' : null,
+    examsWritten: useReal ? input.rows.filter(r => r.writtenTerm).length : simulated.length,
     examsTotal: input.rows.length,
     weeklyQuestions,
   };
 };
-
-/** Deutsche Noten mit Dezimalkomma ("2,3"), andere Sprachen unverändert. */
-export const formatGrade = (grade: string, locale: string): string =>
-  locale === 'de' ? grade.replace('.', ',') : grade;
 
 export const formatPercent = (n: number, locale: string): string =>
   locale === 'de' ? `${n} %` : locale === 'tr' ? `%${n}` : `${n}%`;

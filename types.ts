@@ -401,6 +401,12 @@ export interface ExamTerm {
   title: string;
   date: string;
   topics: string[];
+  /** Fach (Collection-ID). Fehlt bei Altbestand, dann Zuordnung über den Namen (services/examTermService.ts). */
+  collectionId?: string;
+  /** Echte Klausurnote, nach dem Schreiben selbst eingetragen (DE "1.0"–"5.0", TR "AA"–"FF", s. services/gradeScale.ts). */
+  grade?: string;
+  /** Zeitpunkt der letzten Änderung — Konfliktauflösung beim Cloud-Merge (neuer gewinnt, s. mergeById). */
+  updatedAt?: number;
 }
 
 /** Datierter Kalender-Eintrag (localStorage 'study_events', cloud-synchronisiert).

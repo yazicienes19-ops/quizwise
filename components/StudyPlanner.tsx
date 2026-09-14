@@ -105,6 +105,7 @@ export const StudyPlanner: React.FC<StudyPlannerProps> = ({ metrics, decks, exam
   const [showExamForm, setShowExamForm] = useState(false);
   const [newExamTitle, setNewExamTitle] = useState('');
   const [newExamDate, setNewExamDate] = useState('');
+  const [newExamModuleId, setNewExamModuleId] = useState('');
 
   const [showEventForm, setShowEventForm] = useState(false);
   const [showSyncModal, setShowSyncModal] = useState(false);
@@ -511,12 +512,30 @@ export const StudyPlanner: React.FC<StudyPlannerProps> = ({ metrics, decks, exam
             <button onClick={() => setShowExamForm(false)} className="w-8 h-8 flex items-center justify-center rounded-xl bg-slate-100 dark:bg-slate-800 text-slate-400 hover:text-rose-500 transition-colors"><X size={14} /></button>
           </div>
           <div className="space-y-3">
+            {collections.length > 0 && (
+              <select
+                value={newExamModuleId}
+                aria-label={t('sp2.examModuleLabel')}
+                onChange={e => {
+                  const id = e.target.value;
+                  setNewExamModuleId(id);
+                  if (!newExamTitle.trim()) setNewExamTitle(collections.find(c => c.id === id)?.name ?? '');
+                }}
+                className="w-full p-4 bg-slate-50 dark:bg-slate-800 rounded-2xl outline-none dark:text-white font-bold text-sm"
+              >
+                <option value="">{t('sp2.examNoModule')}</option>
+                {collections.map(c => <option key={c.id} value={c.id}>{c.name}</option>)}
+              </select>
+            )}
             <input value={newExamTitle} onChange={e => setNewExamTitle(e.target.value)} placeholder={t('sp2.examTitlePlaceholder')} className="w-full p-4 bg-slate-50 dark:bg-slate-800 rounded-2xl outline-none dark:text-white font-bold text-sm" />
             <input type="date" value={newExamDate} onChange={e => setNewExamDate(e.target.value)} className="w-full p-4 bg-slate-50 dark:bg-slate-800 rounded-2xl outline-none dark:text-white font-bold text-sm" />
             <button onClick={() => {
               if (!newExamTitle || !newExamDate) return;
-              onUpdateExams([...examTerms, { id: Math.random().toString(36).substr(2, 5), title: newExamTitle, date: newExamDate, topics: [] }]);
-              setNewExamTitle(''); setNewExamDate(''); setShowExamForm(false);
+              onUpdateExams([...examTerms, {
+                id: Math.random().toString(36).substr(2, 5), title: newExamTitle, date: newExamDate, topics: [],
+                ...(newExamModuleId ? { collectionId: newExamModuleId } : {}), updatedAt: Date.now(),
+              }]);
+              setNewExamTitle(''); setNewExamDate(''); setNewExamModuleId(''); setShowExamForm(false);
             }} className="w-full bg-rose-500 text-white py-4 rounded-2xl text-[11px] font-black uppercase tracking-widest hover:bg-rose-600 transition-colors">{t('sp2.saveExam')}</button>
           </div>
         </div>
