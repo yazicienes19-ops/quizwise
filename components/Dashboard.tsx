@@ -12,6 +12,7 @@ import {
   type ModuleRow, type ModuleSort, type ModuleNextStep,
 } from '../services/homeOverviewService';
 import { upcomingExamTerms } from '../services/examTermService';
+import { buildStudyGuide, selectGuideModuleId, GUIDE_PHASE_TAB, type GuidePhase } from '../services/studyGuideService';
 import { formatGrade } from '../services/gradeScale';
 import { ExamGradeDialog } from './ExamGradeDialog';
 import { useTranslation } from '../i18n/I18nProvider';
@@ -153,6 +154,18 @@ export const Dashboard: React.FC<DashboardProps> = ({
   const kpis = useMemo(() => buildHomeKpis({ rows, examTerms, activity, now: new Date() }), [rows, examTerms, activity]);
   const nextExam = useMemo(() => upcomingExamTerms(examTerms, new Date())[0] ?? null, [examTerms]);
 
+  // Leitfaden: der Weg durch EIN Fach (aktives Fach, sonst das dringendste).
+  const guide = useMemo(() => {
+    const id = selectGuideModuleId(rows, activeModuleId);
+    const module = collections.find(c => c.id === id);
+    return module ? buildStudyGuide({ module, documents, decks, activity, examTerms, now: new Date() }) : null;
+  }, [rows, activeModuleId, collections, documents, decks, activity, examTerms]);
+
+  const openGuidePhase = (tab: ActiveTab) => {
+    if (guide) onModuleChange?.(guide.moduleId);
+    onTabChange(tab);
+  };
+
   const [sort, setSort] = useState<ModuleSort>(readStoredSort);
   const changeSort = (next: ModuleSort) => {
     setSort(next);
@@ -172,6 +185,9 @@ export const Dashboard: React.FC<DashboardProps> = ({
   };
 
   const fmtGrade = (grade: string) => formatGrade(grade, locale);
+
+  const phaseCount = (phase: GuidePhase) =>
+    t(phase.unit === 'sources' ? 'guide.count.sources' : 'guide.count.simulations', { done: phase.done, total: phase.total });
 
   const openModule = (id: string) => {
     onModuleChange?.(id);
@@ -442,9 +458,94 @@ export const Dashboard: React.FC<DashboardProps> = ({
         )}
       </section>
 
+      {/* Dein Weg: die vier Phasen des Fachs, an dem gerade gearbeitet wird */}
+      {guide && (
+        <section className="flex flex-col gap-[9px] animate-card-enter" style={{ ['--stagger-i' as string]: 2 }}>
+          <div className="flex flex-wrap items-baseline gap-x-2.5 gap-y-1">
+            <span className={MICRO_LABEL} style={{ color: C.goldText }}>{t('guide.title')}</span>
+            <span className="text-[11.5px]" style={{ color: C.mute }}>
+              {guide.moduleName} · {guide.daysUntilExam != null ? tp('guide.sub.exam', guide.daysUntilExam) : t('guide.sub.noExam')}
+            </span>
+          </div>
+
+          <div className="rounded-xl overflow-hidden" style={{ background: C.card, border: `1px solid ${C.line}` }}>
+            <div className="grid sm:grid-cols-4">
+              {guide.phases.map((phase, i) => {
+                const current = phase.state === 'current';
+                const done = phase.state === 'done';
+                const color = done ? C.green : current ? C.gold : C.chevron;
+                return (
+                  <button
+                    key={phase.key}
+                    onClick={() => openGuidePhase(GUIDE_PHASE_TAB[phase.key])}
+                    className={`px-[17px] py-[13px] text-left transition-colors hover:bg-[color-mix(in_srgb,var(--text-main)_3%,transparent)] ${
+                      i > 0 ? 'border-t sm:border-t-0 sm:border-l' : ''
+                    }`}
+                    style={{ borderColor: C.hair }}
+                  >
+                    <span className="flex items-center gap-2">
+                      <span
+                        className="w-[18px] h-[18px] rounded-full shrink-0 flex items-center justify-center text-[10px] font-semibold tabular-nums"
+                        style={done
+                          ? { background: C.green, color: 'var(--card)' }
+                          : { border: `1.5px solid ${color}`, color }}
+                      >
+                        {done ? <CheckCircle2 size={12} strokeWidth={3} /> : i + 1}
+                      </span>
+                      <span className="text-[13.5px] font-semibold truncate" style={{ color: current || done ? C.ink : C.soft }}>
+                        {t(`guide.phase.${phase.key}` as TKey)}
+                      </span>
+                    </span>
+                    <span className="block mt-[7px] text-[11px]" style={{ color: current ? C.goldText : C.soft }}>
+                      {done ? t('guide.state.done') : current ? t('guide.state.here') : phaseCount(phase)}
+                    </span>
+                    <span className="mt-[6px] block h-[3px] rounded-full overflow-hidden" style={{ background: C.line }}>
+                      <span
+                        className="block h-full rounded-full"
+                        style={{ width: `${phase.total > 0 ? Math.round((phase.done / phase.total) * 100) : 0}%`, background: color }}
+                      />
+                    </span>
+                    {!done && (
+                      <span className="block mt-[5px] text-[10.5px] tabular-nums" style={{ color: C.faint }}>{phaseCount(phase)}</span>
+                    )}
+                  </button>
+                );
+              })}
+            </div>
+
+            <div className="flex items-center gap-3.5 px-[17px] py-[11px]" style={{ borderTop: `1px solid ${C.line}` }}>
+              {guide.next ? (
+                <>
+                  <span className="text-[11px] font-semibold uppercase tracking-[0.14em] shrink-0" style={{ color: C.faint }}>
+                    {t('guide.next.label')}
+                  </span>
+                  <button
+                    onClick={() => openGuidePhase(guide.next!.tab)}
+                    className="flex-1 min-w-0 flex items-center gap-2 text-left hover:underline"
+                    style={{ color: C.ink }}
+                  >
+                    <span className="flex-1 min-w-0 truncate text-[14px] font-semibold">
+                      {t(`guide.next.${guide.next.phase}` as TKey, { source: guide.next.sourceName ?? guide.moduleName })}
+                    </span>
+                    <ChevronRight size={14} className="shrink-0" style={{ color: C.chevron }} />
+                  </button>
+                </>
+              ) : (
+                <>
+                  <CheckCircle2 size={16} className="shrink-0" style={{ color: C.green }} />
+                  <span className="text-[13.5px]" style={{ color: C.ink }}>{t('guide.allDone')}</span>
+                </>
+              )}
+            </div>
+          </div>
+
+          <p className="text-[10.5px]" style={{ color: C.faint }}>{t('guide.basis')}</p>
+        </section>
+      )}
+
       {/* Alle Module */}
       {rows.length > 0 && (
-        <section className="flex flex-col gap-[9px] animate-card-enter" style={{ ['--stagger-i' as string]: 2 }}>
+        <section className="flex flex-col gap-[9px] animate-card-enter" style={{ ['--stagger-i' as string]: 3 }}>
           <div className="flex flex-wrap items-baseline gap-x-2.5 gap-y-2">
             <span className={MICRO_LABEL} style={{ color: C.goldText }}>{t('home.mod.title')}</span>
             <span className="text-[11.5px]" style={{ color: C.mute }}>{moduleSummary}</span>

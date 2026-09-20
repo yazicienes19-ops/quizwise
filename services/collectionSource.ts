@@ -31,6 +31,9 @@ const readableText = (d: ProcessedDocument): string | null => {
   return null;
 };
 
+/** Hat die Quelle bereits Text, aus dem sich etwas erzeugen lässt? (studyGuideService: Phase „Überblick") */
+export const isDocumentReadable = (d: ProcessedDocument): boolean => readableText(d) !== null;
+
 export const collectionDocs = (collection: Collection, documents: ProcessedDocument[]): ProcessedDocument[] =>
   documents.filter(d => d.collectionId === collection.id);
 
