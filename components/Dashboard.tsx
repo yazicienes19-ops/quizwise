@@ -15,6 +15,7 @@ import { upcomingExamTerms } from '../services/examTermService';
 import { buildStudyGuide, selectGuideModuleId, GUIDE_PHASE_TAB, type GuidePhase } from '../services/studyGuideService';
 import { formatGrade } from '../services/gradeScale';
 import { ExamGradeDialog } from './ExamGradeDialog';
+import { ExamDateDialog } from './ExamDateDialog';
 import { useTranslation } from '../i18n/I18nProvider';
 import { getLocale } from '../i18n';
 import type { TKey } from '../i18n';
@@ -182,6 +183,25 @@ export const Dashboard: React.FC<DashboardProps> = ({
     if (!gradeTerm || !onUpdateExamTerms) return;
     onUpdateExamTerms(examTerms.map(term => (term.id === gradeTerm.id ? { ...term, grade, updatedAt: Date.now() } : term)));
     setGradeTerm(null);
+  };
+
+  // Klausurtermin direkt in der Tabelle eintragen/ändern (statt Umweg über den Kalender).
+  const [dateRow, setDateRow] = useState<ModuleRow | null>(null);
+  const dateTerm = dateRow?.nextTerm ? examTerms.find(term => term.id === dateRow.nextTerm!.id) ?? null : null;
+  const saveExamDate = (date: string) => {
+    if (!dateRow || !onUpdateExamTerms) return;
+    onUpdateExamTerms(dateTerm
+      ? examTerms.map(term => (term.id === dateTerm.id ? { ...term, date, updatedAt: Date.now() } : term))
+      : [...examTerms, {
+          id: Math.random().toString(36).slice(2, 7), title: dateRow.name, date, topics: [],
+          collectionId: dateRow.id, updatedAt: Date.now(),
+        }]);
+    setDateRow(null);
+  };
+  const removeExamDate = () => {
+    if (!dateTerm || !onUpdateExamTerms) return;
+    onUpdateExamTerms(examTerms.filter(term => term.id !== dateTerm.id));
+    setDateRow(null);
   };
 
   const fmtGrade = (grade: string) => formatGrade(grade, locale);
@@ -617,8 +637,21 @@ export const Dashboard: React.FC<DashboardProps> = ({
                     <div>{levelCell(row)}</div>
                     <div className="text-right text-[18px]">{gradeBadge(row)}</div>
                     <div className="min-w-0">
-                      <p className="text-[11px] font-semibold whitespace-nowrap" style={{ color: exam.upcoming ? C.goldText : 'color-mix(in srgb, var(--text-main) 75%, transparent)' }}>{exam.status}</p>
-                      <p className="mt-0.5 text-[10px] whitespace-nowrap" style={{ color: C.soft }}>{exam.detail}</p>
+                      {onUpdateExamTerms ? (
+                        <button
+                          onClick={e => { e.stopPropagation(); setDateRow(row); }}
+                          title={t(row.nextTerm ? 'examDateDialog.titleEdit' : 'examDateDialog.titleNew')}
+                          className="group text-left -mx-1.5 -my-1 px-1.5 py-1 rounded-lg transition-colors hover:bg-[color-mix(in_srgb,var(--text-main)_5%,transparent)]"
+                        >
+                          <p className="text-[11px] font-semibold whitespace-nowrap group-hover:underline" style={{ color: exam.upcoming ? C.goldText : 'color-mix(in srgb, var(--text-main) 75%, transparent)' }}>{exam.status}</p>
+                          <p className="mt-0.5 text-[10px] whitespace-nowrap" style={{ color: C.soft }}>{row.nextTerm ? exam.detail : t('examDateDialog.cta')}</p>
+                        </button>
+                      ) : (
+                        <>
+                          <p className="text-[11px] font-semibold whitespace-nowrap" style={{ color: exam.upcoming ? C.goldText : 'color-mix(in srgb, var(--text-main) 75%, transparent)' }}>{exam.status}</p>
+                          <p className="mt-0.5 text-[10px] whitespace-nowrap" style={{ color: C.soft }}>{exam.detail}</p>
+                        </>
+                      )}
                     </div>
                     <div className="text-right">{actionButton}</div>
                   </div>
@@ -632,7 +665,17 @@ export const Dashboard: React.FC<DashboardProps> = ({
                       </div>
                       <div className="flex items-center gap-3">
                         <div className="w-28 shrink-0">{levelCell(row)}</div>
-                        <p className="min-w-0 text-[11px] truncate" style={{ color: exam.upcoming ? C.goldText : C.soft }}>{exam.status} · {exam.detail}</p>
+                        {onUpdateExamTerms ? (
+                          <button
+                            onClick={e => { e.stopPropagation(); setDateRow(row); }}
+                            className="min-w-0 text-left text-[11px] truncate underline decoration-dotted underline-offset-2"
+                            style={{ color: exam.upcoming ? C.goldText : C.soft }}
+                          >
+                            {exam.status} · {row.nextTerm ? exam.detail : t('examDateDialog.cta')}
+                          </button>
+                        ) : (
+                          <p className="min-w-0 text-[11px] truncate" style={{ color: exam.upcoming ? C.goldText : C.soft }}>{exam.status} · {exam.detail}</p>
+                        )}
                       </div>
                       {(note || row.nextStep === 'enterGrade') && (
                         <div className="flex items-center gap-3">
@@ -663,6 +706,15 @@ export const Dashboard: React.FC<DashboardProps> = ({
         </section>
       )}
 
+      {dateRow && (
+        <ExamDateDialog
+          moduleName={dateRow.name}
+          term={dateTerm}
+          onSave={saveExamDate}
+          onRemove={removeExamDate}
+          onClose={() => setDateRow(null)}
+        />
+      )}
       {gradeTerm && <ExamGradeDialog term={gradeTerm} onSave={saveGrade} onClose={() => setGradeTerm(null)} />}
     </div>
   );
