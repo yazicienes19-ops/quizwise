@@ -5,6 +5,7 @@ const { Readability } = require('@mozilla/readability');
 const { checkUsageLimit } = require('../middleware/limits');
 const { validatePublicHttpUrl } = require('../utils/urlSafety');
 const { MODEL_LITE } = require('../config/geminiModels');
+const { getBudgetStatus, recordUsage, budgetExhaustedError } = require('../budget/aiBudget');
 
 const router = express.Router();
 const ai = new GoogleGenAI({ apiKey: process.env.GEMINI_API_KEY });
@@ -58,6 +59,15 @@ router.post('/youtube', checkUsageLimit, async (req, res) => {
   }
   const canonicalUrl = `https://www.youtube.com/watch?v=${videoId}`;
 
+  // Monatsbudget: Videos sind die teuersten Einzelaufrufe (bis ~2 h Material).
+  try {
+    const budget = await getBudgetStatus(req.user.id, req.usage?.plan || 'free');
+    if (budget.level === 'hard') return res.status(403).json({ error: budgetExhaustedError(budget.scope).message });
+  } catch (err) {
+    console.error('KI-Budget-Check (YouTube) fehlgeschlagen:', err.message);
+    return res.status(500).json({ error: 'Serverfehler beim Limit-Check.' });
+  }
+
   // Titel + Kanal über oEmbed (öffentlich, kein API-Key) — scheitert das,
   // ist das Video privat/gelöscht und Gemini würde ebenfalls scheitern.
   let title = 'YouTube-Video';
@@ -99,6 +109,7 @@ router.post('/youtube', checkUsageLimit, async (req, res) => {
         mediaResolution: 'MEDIA_RESOLUTION_LOW',
       },
     });
+    recordUsage(req.user.id, MODEL_LITE, response.usageMetadata);
     const text = response.candidates?.[0]?.content?.parts?.map(p => p.text || '').join('') || '';
     if (text.trim().length < 100) {
       return res.status(422).json({ error: 'Aus diesem Video ließ sich kein Lerntext erstellen. Hat es eine Tonspur?' });

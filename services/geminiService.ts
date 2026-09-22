@@ -1,5 +1,6 @@
 import { Type } from "@google/genai";
 import { getReportedQuestionTexts } from './questionReportService';
+import { notifyBudgetSoft, isBudgetExhausted } from './budgetNotice';
 import { stripFeynmanMeta, filterLeakyGapCards } from './feynmanText';
 import { countDueCards, migrateLegacyCard } from './spacedRepetition';
 import { multiDocPromptRules } from './multiDocSource';
@@ -84,10 +85,12 @@ const callBackend = async (payload: {
     const err = await res.json().catch(() => ({ error: 'Unbekannter Server-Fehler' }));
     // Spezieller Fehler wenn Tageslimit erreicht
     if (res.status === 429) throw new Error('LIMIT_REACHED');
+    if (isBudgetExhausted(err.error)) throw new Error('BUDGET_EXHAUSTED');
     throw new Error(err.error || `Server-Fehler: ${res.status}`);
   }
 
   const data = await res.json();
+  if (data.budget === 'soft') notifyBudgetSoft();
   return data.text || '';
 };
 
@@ -113,6 +116,7 @@ const callBackendStream = async (
   if (!res.ok) {
     const err = await res.json().catch(() => ({ error: 'Unbekannter Server-Fehler' }));
     if (res.status === 429) throw new Error('LIMIT_REACHED');
+    if (isBudgetExhausted(err.error)) throw new Error('BUDGET_EXHAUSTED');
     throw new Error(err.error || `Server-Fehler: ${res.status}`);
   }
 
@@ -122,9 +126,10 @@ const callBackendStream = async (
   let full = '';
   const handleLine = (line: string) => {
     if (!line.trim()) return;
-    let msg: { t?: unknown; error?: unknown };
+    let msg: { t?: unknown; error?: unknown; budget?: unknown };
     try { msg = JSON.parse(line); } catch { return; }
     if (typeof msg.error === 'string') throw new Error(msg.error);
+    if (msg.budget === 'soft') notifyBudgetSoft();
     if (typeof msg.t === 'string' && msg.t) {
       full += msg.t;
       onText(full);

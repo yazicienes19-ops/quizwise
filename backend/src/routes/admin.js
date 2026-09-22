@@ -2,6 +2,7 @@ const express = require('express');
 const { supabaseAdmin } = require('../middleware/auth');
 const { ADMIN_IDS } = require('../middleware/requireAdmin');
 const { hasActiveStripeSubscription } = require('../admin/expireProGrants');
+const { EUR_PER_USD, currentMonth, getSettings, invalidateSettings, isSetupMissing } = require('../budget/aiBudget');
 const router = express.Router();
 
 const DAY_MS = 24 * 60 * 60 * 1000;
@@ -33,13 +34,17 @@ const isBanned = (authUser) => {
 // letzte Aktivität in der App, Lernzeit (gesamt + letzte 7 Tage), Sperrstatus.
 router.get('/users', async (req, res, next) => {
   try {
-    const [authUsers, profilesRes, activityRes] = await Promise.all([
+    const [authUsers, profilesRes, activityRes, costRes] = await Promise.all([
       listAllAuthUsers(),
       supabaseAdmin.from('profiles').select('id, full_name, plan, created_at, last_active_at, admin_pro_until'),
       supabaseAdmin.from('daily_activity').select('user_id, activity_date, active_seconds'),
+      supabaseAdmin.from('ai_usage_monthly').select('user_id, cost_usd').eq('month', currentMonth()),
     ]);
     if (profilesRes.error) throw profilesRes.error;
     if (activityRes.error) throw activityRes.error;
+    // Fehlt die Budget-Migration noch, bleibt die Spalte leer statt die ganze Liste zu blockieren.
+    if (costRes.error && !isSetupMissing(costRes.error)) throw costRes.error;
+    const costByUser = new Map((costRes.data || []).map(r => [r.user_id, Number(r.cost_usd) * EUR_PER_USD]));
 
     const profileMap = new Map((profilesRes.data || []).map(p => [p.id, p]));
 
@@ -68,6 +73,7 @@ router.get('/users', async (req, res, next) => {
         lastActiveAt: profile?.last_active_at || null,
         totalActiveSeconds: totalSecondsByUser.get(u.id) || 0,
         last7DaysActiveSeconds: last7SecondsByUser.get(u.id) || 0,
+        monthCostEur: costRes.error ? null : (costByUser.get(u.id) || 0),
       };
     });
 
@@ -171,6 +177,54 @@ router.get('/question-reports', async (req, res, next) => {
       .map(g => ({ ...g, reporters: g.reporters.size }))
       .sort((a, b) => b.count - a.count || String(b.lastReportedAt).localeCompare(String(a.lastReportedAt)));
     res.json({ groups: out, total: (data || []).length, setupMissing: false });
+  } catch (err) { next(err); }
+});
+
+// GET /api/admin/ai-budget
+// Monatsbudget für Gemini: Einstellungen + Verbrauch im laufenden Monat.
+router.get('/ai-budget', async (req, res, next) => {
+  try {
+    const month = currentMonth();
+    const { data, error } = await supabaseAdmin.from('ai_usage_monthly')
+      .select('cost_usd, input_tokens, output_tokens, calls')
+      .eq('month', month);
+    if (error) {
+      if (isSetupMissing(error)) return res.json({ setupMissing: true, month });
+      throw error;
+    }
+    const sum = (k) => (data || []).reduce((acc, r) => acc + Number(r[k] || 0), 0);
+    res.json({
+      setupMissing: false,
+      month,
+      settings: await getSettings(),
+      globalCostEur: sum('cost_usd') * EUR_PER_USD,
+      calls: sum('calls'),
+      inputTokens: sum('input_tokens'),
+      outputTokens: sum('output_tokens'),
+      activeUsers: (data || []).length,
+    });
+  } catch (err) { next(err); }
+});
+
+// PUT /api/admin/ai-budget  { globalMonthlyEur, proUserMonthlyEur, freeUserMonthlyEur, softRatio }
+router.put('/ai-budget', async (req, res, next) => {
+  try {
+    const b = req.body || {};
+    const money = (v) => { const n = Number(v); return Number.isFinite(n) && n >= 0 && n <= 100000 ? Math.round(n * 100) / 100 : null; };
+    const update = {
+      global_monthly_eur: money(b.globalMonthlyEur),
+      pro_user_monthly_eur: money(b.proUserMonthlyEur),
+      free_user_monthly_eur: money(b.freeUserMonthlyEur),
+      soft_ratio: Number(b.softRatio),
+    };
+    if (Object.values(update).some(v => v === null) || !(update.soft_ratio > 0 && update.soft_ratio <= 1)) {
+      return res.status(400).json({ error: 'Beträge müssen zwischen 0 und 100000 € liegen, die Warnschwelle zwischen 1 und 100 %.' });
+    }
+    const { error } = await supabaseAdmin.from('ai_budget_settings')
+      .upsert({ id: 1, ...update, updated_at: new Date().toISOString() });
+    if (error) throw error;
+    invalidateSettings();
+    res.json({ success: true, settings: await getSettings() });
   } catch (err) { next(err); }
 });
 

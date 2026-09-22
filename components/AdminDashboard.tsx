@@ -5,6 +5,7 @@ import { useTranslation } from '../i18n/I18nProvider';
 import type { TKey } from '../i18n';
 import { formatDateTime } from '../i18n/dates';
 import { toast } from '../services/toast';
+import { AdminBudgetPanel, formatEur } from './AdminBudgetPanel';
 
 const formatDuration = (seconds: number): string => {
   if (seconds <= 0) return '0m';
@@ -37,11 +38,13 @@ export const AdminDashboard: React.FC = () => {
   const [confirmSuspendId, setConfirmSuspendId] = useState<string | null>(null);
   const [reports, setReports] = useState<QuestionReportsResponse | null>(null);
   const [reportsError, setReportsError] = useState(false);
+  const [budgetReload, setBudgetReload] = useState(0);
 
   const load = useCallback(async () => {
     setIsLoading(true);
     setError(null);
     setReportsError(false);
+    setBudgetReload(n => n + 1);
     // Meldungen unabhängig laden: ein Fehler dort darf die Nutzerliste nicht blockieren.
     fetchQuestionReports().then(setReports).catch(() => setReportsError(true));
     try {
@@ -97,6 +100,8 @@ export const AdminDashboard: React.FC = () => {
         </div>
       </div>
 
+      <AdminBudgetPanel reloadSignal={budgetReload} />
+
       {isLoading && !users && (
         <p className="text-[11px] text-slate-400 italic">{t('admin.loading')}</p>
       )}
@@ -114,7 +119,7 @@ export const AdminDashboard: React.FC = () => {
 
       {users && users.length > 0 && (
         <div className="overflow-x-auto rounded-2xl" style={{ border: '1px solid var(--border-color)' }}>
-          <table className="w-full text-left border-collapse min-w-[1080px]">
+          <table className="w-full text-left border-collapse min-w-[1180px]">
             <thead>
               <tr className="text-[9px] font-black uppercase tracking-widest text-slate-400" style={{ background: 'color-mix(in srgb, var(--border-color) 30%, var(--bg-main))' }}>
                 <th className="px-4 py-3">{t('admin.col.user')}</th>
@@ -124,6 +129,7 @@ export const AdminDashboard: React.FC = () => {
                 <th className="px-4 py-3">{t('admin.col.lastActive')}</th>
                 <th className="px-4 py-3">{t('admin.col.last7Time')}</th>
                 <th className="px-4 py-3">{t('admin.col.totalTime')}</th>
+                <th className="px-4 py-3">{t('admin.col.monthCost')}</th>
                 <th className="px-4 py-3">{t('admin.col.actions')}</th>
               </tr>
             </thead>
@@ -164,6 +170,7 @@ export const AdminDashboard: React.FC = () => {
                   </td>
                   <td className="px-4 py-3 font-black dark:text-white whitespace-nowrap">{formatDuration(u.last7DaysActiveSeconds)}</td>
                   <td className="px-4 py-3 font-black dark:text-white whitespace-nowrap">{formatDuration(u.totalActiveSeconds)}</td>
+                  <td className="px-4 py-3 font-black dark:text-white whitespace-nowrap">{u.monthCostEur === null ? '—' : formatEur(u.monthCostEur)}</td>
                   <td className="px-4 py-3 min-w-[220px]">
                     {u.isAdmin ? (
                       <span className="text-[9px] font-black uppercase tracking-widest text-slate-400">{t('admin.status.admin')}</span>

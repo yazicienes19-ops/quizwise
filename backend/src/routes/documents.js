@@ -1,6 +1,7 @@
 const express = require('express');
 const { GoogleGenAI, createPartFromUri } = require('@google/genai');
 const { MODEL_LITE } = require('../config/geminiModels');
+const { getBudgetStatus, getPlan, recordUsage, budgetExhaustedError } = require('../budget/aiBudget');
 
 const router = express.Router();
 const ai = new GoogleGenAI({ apiKey: process.env.GEMINI_API_KEY });
@@ -69,6 +70,15 @@ router.post('/:id/analyze', async (req, res) => {
   if (docErr || !doc) return res.status(404).json({ error: 'Dokument nicht gefunden.' });
   if (doc.digest_status === 'ready') return res.json({ status: 'already_done' });
 
+  // Monatsbudget aufgebraucht: keine Analyse (läuft ohnehin immer auf MODEL_LITE).
+  try {
+    const budget = await getBudgetStatus(userId, await getPlan(userId));
+    if (budget.level === 'hard') return res.status(403).json({ error: budgetExhaustedError(budget.scope).message });
+  } catch (err) {
+    console.error('KI-Budget-Check (Digest) fehlgeschlagen:', err.message);
+    return res.status(500).json({ error: 'Serverfehler beim Limit-Check.' });
+  }
+
   res.json({ status: 'analyzing' });
 
   // Hintergrund-Analyse
@@ -114,6 +124,7 @@ router.post('/:id/analyze', async (req, res) => {
         config: { temperature: 0.2 },
       });
 
+      recordUsage(userId, MODEL_LITE, response.usageMetadata);
       const digestText = response.candidates?.[0]?.content?.parts?.[0]?.text || '';
       await sb.from('documents').update({ digest_text: digestText, digest_status: 'ready' }).eq('id', id);
 

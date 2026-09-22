@@ -1,6 +1,7 @@
 const express = require('express');
 const { GoogleGenAI } = require('@google/genai');
 const { MODEL_LITE, MODEL_HEAVY } = require('../config/geminiModels');
+const { getBudgetStatus, recordUsage, budgetExhaustedError } = require('../budget/aiBudget');
 
 const router = express.Router();
 const ai = new GoogleGenAI({ apiKey: process.env.GEMINI_API_KEY });
@@ -136,7 +137,11 @@ const buildGeminiRequest = async (req) => {
     .eq('id', userId)
     .single();
   const userPlan = profile?.plan || 'free';
-  const selectedModel = selectModel(userPlan, complexity || 'light');
+
+  // Monatsbudget (budget/aiBudget.js): ab 80 % nur noch MODEL_LITE, ab 100 % gesperrt.
+  const budget = await getBudgetStatus(userId, userPlan);
+  if (budget.level === 'hard') throw budgetExhaustedError(budget.scope);
+  const selectedModel = budget.level === 'soft' ? MODEL_LITE : selectModel(userPlan, complexity || 'light');
 
   const resolvedParts = await resolveStorageRefs(parts, userId, sb);
 
@@ -168,8 +173,11 @@ const buildGeminiRequest = async (req) => {
     config: generationConfig,
   };
   if (tools && tools.length > 0) request.tools = tools;
-  return { request };
+  const searches = (tools || []).some(t => t && (t.googleSearch || t.googleSearchRetrieval)) ? 1 : 0;
+  return { request, budget, searches };
 };
+
+const budgetNotice = (built) => (built.budget.level === 'soft' ? { budget: 'soft' } : {});
 
 // Bekannte KI-Fehlerklassen mit sicheren, schlüsselwort-tragenden Meldungen
 // durchreichen (Frontend übersetzt anhand der Keywords). KEIN 429 verwenden —
@@ -199,8 +207,9 @@ router.post('/generate', async (req, res, next) => {
 
     const response = await generateWithRetry(built.request);
     const text = response.candidates?.[0]?.content?.parts?.[0]?.text || '';
+    recordUsage(req.user.id, built.request.model, response.usageMetadata, { searches: built.searches });
 
-    res.json({ text });
+    res.json({ text, ...budgetNotice(built) });
 
   } catch (err) {
     console.error('Gemini Fehler:', err.message);
@@ -214,8 +223,10 @@ router.post('/generate', async (req, res, next) => {
 // dem ersten Byte laufen wie bei /generate über den normalen Error-Handler.
 router.post('/stream', async (req, res, next) => {
   let started = false;
+  let built = null;
+  let usage = null;
   try {
-    const built = await buildGeminiRequest(req);
+    built = await buildGeminiRequest(req);
     if (built.error) return res.status(built.status).json({ error: built.error });
 
     const { first, iterator } = await streamWithRetry(built.request);
@@ -227,18 +238,23 @@ router.post('/stream', async (req, res, next) => {
     res.flushHeaders();
     started = true;
 
+    // usageMetadata steht in den Chunks (vollständig im letzten), daher den
+    // zuletzt gesehenen Stand verbuchen (bei Abbruch mitten im Stream im catch).
     let step = first;
     while (!step.done) {
+      if (step.value?.usageMetadata) usage = step.value.usageMetadata;
       const t = chunkText(step.value);
       if (t) res.write(JSON.stringify({ t }) + '\n');
       step = await iterator.next();
     }
-    res.end(JSON.stringify({ done: true }) + '\n');
+    recordUsage(req.user.id, built.request.model, usage, { searches: built.searches });
+    res.end(JSON.stringify({ done: true, ...budgetNotice(built) }) + '\n');
 
   } catch (err) {
     console.error('Gemini-Stream Fehler:', err.message);
     const mapped = mapGeminiError(err);
     if (!started) return next(mapped);
+    recordUsage(req.user.id, built.request.model, usage, { searches: built.searches });
     res.end(JSON.stringify({ error: mapped.expose ? mapped.message : 'Serverfehler bei der KI-Antwort.' }) + '\n');
   }
 });

@@ -26,6 +26,7 @@ const ERROR_MAP: ErrorMapping[] = [
   { match: m => m.includes('Email not confirmed'), key: 'errors.authNotConfirmed' },
   { match: m => m.toLowerCase().includes('rate limit') || m.includes('Too many requests'), key: 'errors.authRateLimit' },
   { match: m => m.includes('LIMIT_REACHED'), key: 'errors.limitReached' },
+  { match: m => m.includes('BUDGET_EXHAUSTED'), key: 'errors.budgetExhausted' },
   { match: m => m.includes('einloggen') || m.includes('not authenticated') || m.includes('JWT'), key: 'errors.notAuthenticated' },
   { match: m => m.includes('nicht verfügbar') || m.includes('storage'), key: 'errors.docUnavailable' },
   { match: m => m.includes('quota') || m.includes('429') || m.includes('RESOURCE_EXHAUSTED'), key: 'errors.quota' },

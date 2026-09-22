@@ -1,5 +1,6 @@
 import { supabase } from './supabaseClient';
-import { getLocale } from '../i18n';
+import { getLocale, t } from '../i18n';
+import { isBudgetExhausted } from './budgetNotice';
 
 // ── Quellen-Import per Link (YouTube-Video oder Webartikel) ───────────────────
 // Der Abruf läuft über das Backend: YouTube wird dort zu einem Lernskript
@@ -63,6 +64,7 @@ export const importFromUrl = async (raw: string): Promise<ImportedSource> => {
 
   const body = await response.json().catch(() => ({}));
   if (!response.ok) {
+    if (isBudgetExhausted(body.error)) throw new Error(t('errors.budgetExhausted'));
     throw new Error(body.error || 'Link konnte nicht importiert werden.');
   }
   return body as ImportedSource;

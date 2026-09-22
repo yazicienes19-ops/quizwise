@@ -21,6 +21,8 @@ export interface AdminUserRow {
   lastActiveAt: string | null;
   totalActiveSeconds: number;
   last7DaysActiveSeconds: number;
+  /** null solange backend/migration_ai_budget.sql fehlt. */
+  monthCostEur: number | null;
 }
 
 export const fetchAdminUsers = async (): Promise<AdminUserRow[]> => {
@@ -87,4 +89,52 @@ export const fetchQuestionReports = async (): Promise<QuestionReportsResponse> =
   }
   const data = await res.json();
   return { groups: data.groups || [], total: data.total || 0, setupMissing: !!data.setupMissing };
+};
+
+export interface AiBudgetSettings {
+  global_monthly_eur: number;
+  pro_user_monthly_eur: number;
+  free_user_monthly_eur: number;
+  soft_ratio: number;
+}
+
+export type AiBudgetResponse =
+  | { setupMissing: true; month: string }
+  | {
+      setupMissing: false;
+      month: string;
+      settings: AiBudgetSettings;
+      globalCostEur: number;
+      calls: number;
+      inputTokens: number;
+      outputTokens: number;
+      activeUsers: number;
+    };
+
+export const fetchAiBudget = async (): Promise<AiBudgetResponse> => {
+  const headers = await authHeaders();
+  const res = await fetch(`${BACKEND_URL}/api/admin/ai-budget`, { headers });
+  if (!res.ok) {
+    const err = await res.json().catch(() => ({}));
+    throw new Error(err.error || 'Budget konnte nicht geladen werden.');
+  }
+  return res.json();
+};
+
+export const saveAiBudget = async (settings: {
+  globalMonthlyEur: number;
+  proUserMonthlyEur: number;
+  freeUserMonthlyEur: number;
+  softRatio: number;
+}): Promise<void> => {
+  const headers = await authHeaders();
+  const res = await fetch(`${BACKEND_URL}/api/admin/ai-budget`, {
+    method: 'PUT',
+    headers,
+    body: JSON.stringify(settings),
+  });
+  if (!res.ok) {
+    const err = await res.json().catch(() => ({}));
+    throw new Error(err.error || 'Budget konnte nicht gespeichert werden.');
+  }
 };
