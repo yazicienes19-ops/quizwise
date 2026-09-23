@@ -20,6 +20,7 @@ import { ExportDeckModal } from './ExportDeckModal';
 import { EditCardModal } from './EditCardModal';
 import { DeckStatsModal } from './DeckStatsModal';
 import { MoreHorizontal, ListOrdered, HelpCircle, BarChart2, Pencil, Share2, Printer, Trash2 } from 'lucide-react';
+import { PageHeader } from './PageHeader';
 
 interface FlashcardSystemProps {
   availableDocuments: ProcessedDocument[];
@@ -707,13 +708,8 @@ export const FlashcardSystem: React.FC<FlashcardSystemProps> = ({
           onClose={() => setStatsDeck(null)}
         />
       )}
-      <div className="text-center space-y-4 px-4">
-        <h1 className="text-4xl lg:text-6xl font-black text-slate-900 dark:text-white tracking-tighter">
-          Anki <span className="text-indigo-600">{t('fcs.decks')}</span> <EmojiImage emoji="🎓" size={48} />
-        </h1>
-        <p className="text-lg lg:text-xl text-slate-500 dark:text-slate-400 font-medium opacity-80">
-          {t('fcs.subtitle')}
-        </p>
+      <div className="px-4">
+        <PageHeader eyebrow={t('nav.cards')} title={t('page.cards.title')} subtitle={t('fcs.subtitle')} />
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 lg:gap-10">

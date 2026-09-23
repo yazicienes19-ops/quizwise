@@ -16,6 +16,7 @@ import { formatDate } from '../i18n/dates';
 import { localeTag } from '../i18n';
 import type { TKey } from '../i18n';
 import { ChevronLeft, ChevronRight, X, Plus, Repeat as RepeatIcon, Clock, CalendarX as CalendarXIcon, Trash2, Smartphone, Copy, Check } from 'lucide-react';
+import { PageHeader } from './PageHeader';
 
 type ViewMode = 'monat' | 'liste';
 
@@ -366,48 +367,44 @@ export const StudyPlanner: React.FC<StudyPlannerProps> = ({ metrics, decks, exam
   return (
     <div className="max-w-6xl mx-auto space-y-10 animate-in fade-in duration-1000 pb-20 px-4">
       {/* Header */}
-      <div className="text-center space-y-4">
-        <div className="inline-block px-4 py-1.5 bg-indigo-50 dark:bg-indigo-950/30 rounded-full border border-indigo-100 dark:border-indigo-900/50">
-          <span className="text-[10px] font-black uppercase tracking-[0.3em] text-indigo-600">{t('sp2.timeManagement')}</span>
-        </div>
-        <h1 className="text-4xl lg:text-6xl font-black tracking-tighter" style={{ color: 'var(--text-main)' }}>
-          {t('sp2.titlePre')} <span style={{ color: 'var(--primary)' }}>{t('sp2.titleAccent')}</span>
-        </h1>
-        <p className="text-slate-500 dark:text-slate-400 font-medium max-w-xl mx-auto">
-          {t('sp2.subtitle')}
-        </p>
-
-        <div className="flex flex-wrap justify-center gap-3 pt-2">
-          <button
-            onClick={handleSmartPlan}
-            disabled={isGenerating}
-            className="bg-indigo-600 text-white px-8 py-4 rounded-3xl font-black uppercase tracking-[0.2em] text-[11px] shadow-3d-deep hover:scale-105 transition-all flex items-center gap-2 disabled:opacity-40"
-          >
-            {isGenerating ? t('sp2.planning') : t('sp2.smartPlan')}
-          </button>
-          <button
-            onClick={() => { setShowExamForm(true); setShowEventForm(false); }}
-            className="px-6 py-4 rounded-3xl font-black uppercase tracking-[0.2em] text-[11px] transition-all"
-            style={{ background: 'var(--bg-sidebar)', color: 'var(--text-main)', border: '2px solid var(--border-color)' }}
-          >
-            {t('sp2.addExam')}
-          </button>
-          <button
-            onClick={() => { setShowEventForm(true); setShowExamForm(false); }}
-            className="px-6 py-4 rounded-3xl font-black uppercase tracking-[0.2em] text-[11px] transition-all"
-            style={{ background: 'var(--bg-sidebar)', color: 'var(--text-main)', border: '2px solid var(--border-color)' }}
-          >
-            {t('sp2.addEvent')}
-          </button>
-          <button
-            onClick={openSyncModal}
-            className="px-6 py-4 rounded-3xl font-black uppercase tracking-[0.2em] text-[11px] transition-all flex items-center gap-2"
-            style={{ background: 'var(--bg-sidebar)', color: 'var(--text-main)', border: '2px solid var(--border-color)' }}
-          >
-            <Smartphone size={14} />
-            {t('sp2.syncPhone')}
-          </button>
-        </div>
+      <div className="space-y-4">
+        <PageHeader
+          eyebrow={t('nav.planner')}
+          title={t('page.planner.title')}
+          subtitle={t('sp2.subtitle')}
+          actions={<>
+            <button
+              onClick={handleSmartPlan}
+              disabled={isGenerating}
+              className="px-5 py-2.5 rounded-2xl font-black uppercase tracking-widest text-[11px] transition-all hover:scale-[1.02] flex items-center gap-2 disabled:opacity-40"
+              style={{ background: 'var(--primary)', color: 'var(--primary-text)' }}
+            >
+              {isGenerating ? t('sp2.planning') : t('sp2.smartPlan')}
+            </button>
+            <button
+              onClick={() => { setShowExamForm(true); setShowEventForm(false); }}
+              className="px-4 py-2.5 rounded-2xl font-black uppercase tracking-widest text-[11px] transition-all"
+              style={{ background: 'var(--bg-sidebar)', color: 'var(--text-main)', border: '1px solid var(--border-color)' }}
+            >
+              {t('sp2.addExam')}
+            </button>
+            <button
+              onClick={() => { setShowEventForm(true); setShowExamForm(false); }}
+              className="px-4 py-2.5 rounded-2xl font-black uppercase tracking-widest text-[11px] transition-all"
+              style={{ background: 'var(--bg-sidebar)', color: 'var(--text-main)', border: '1px solid var(--border-color)' }}
+            >
+              {t('sp2.addEvent')}
+            </button>
+            <button
+              onClick={openSyncModal}
+              className="px-4 py-2.5 rounded-2xl font-black uppercase tracking-widest text-[11px] transition-all flex items-center gap-2"
+              style={{ background: 'var(--bg-sidebar)', color: 'var(--text-main)', border: '1px solid var(--border-color)' }}
+            >
+              <Smartphone size={14} />
+              {t('sp2.syncPhone')}
+            </button>
+          </>}
+        />
 
         {/* Spaced-Modus: Opt-in für automatische Wiederholungsplanung */}
         <div className="flex flex-wrap items-center justify-center gap-3 pt-2">

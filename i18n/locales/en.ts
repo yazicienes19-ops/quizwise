@@ -16,6 +16,14 @@ export const en: Translations = {
   'common.loading': 'Loading…',
   'common.retry': 'Try again',
   'common.someone': 'Someone',
+  'page.quiz.title': 'Test what has stuck.',
+  'page.cards.title': 'Review before you forget.',
+  'page.exam.title': 'Try the exam before it counts.',
+  'page.planner.title': 'Plan what to study and when.',
+  'page.library.title': 'Your study materials.',
+  'page.progress.title': 'Where you stand right now.',
+  'lib.foldersN': '{n} folder|{n} folders',
+  'lib.folders': 'Folders',
 
   // language
   'language.label': 'Language',
@@ -997,7 +1005,7 @@ export const en: Translations = {
   'fcs.totalCards': 'Total: {n} cards',
   'fcs.noCardsForSearch': 'No cards for "{q}"',
   'fcs.deleteDeckConfirm': 'Permanently delete "{title}" with {n} cards? All learning progress (SRS state) will be lost. This action cannot be undone.',
-  'fcs.subtitle': 'Science-backed learning with spaced repetition.',
+  'fcs.subtitle': 'Due cards come back right when you would otherwise forget them.',
   'fcs.cardsInDeck': '{n} card in this deck|{n} cards in this deck',
   'fcs.newCard': 'New card',
   'fcs.done': 'Done',
@@ -1274,8 +1282,6 @@ export const en: Translations = {
   'upl.uploadSource': 'Upload source',
 
   // file uploader (Quiz-Startseite)
-  'fu.title1': 'Your',
-  'fu.titleAccent': 'quiz',
   'fu.subtitle': 'Choose a source and configure your quiz.',
   'fu.source': 'Source',
   'fu.deck': 'Deck',
@@ -1457,12 +1463,9 @@ export const en: Translations = {
   'lp.cm.smallProgress': 'Small progress today makes a difference in your next exam.',
 
   // exam generator
-  'eg.title': 'Exam',
-  'eg.titleAccent': 'Simulator',
   'eg.subtitle': 'Create new exams based on your materials.',
   'eg.material': 'Study material',
-  'eg.required': 'Required',
-  'eg.oldExamOptional': 'Optional: adopt style',
+  'eg.oldExamOptional': 'Optional: adopt the question style and level of a real past exam.',
   'eg.fromLibrary': 'From library',
   'eg.or': 'or',
   'eg.changeFile': 'Change file',
@@ -1514,7 +1517,6 @@ export const en: Translations = {
   'eg.quantDistributionHint': 'Approximate target, not a strict ratio. Controls only the rough weighting.',
   'eg.conception': 'Designing...',
   'eg.startSim': 'Start simulation',
-  'eg.disclaimer': 'This simulation is based on academic standards. Make sure you have a quiet environment free of distractions.',
 
   // exam view
   'ev.pdf.title': 'Exam Record',
@@ -1888,8 +1890,6 @@ export const en: Translations = {
   'gr.noData': 'No data yet',
   'gr.emptyHint': 'Complete a quiz, exam, or Feynman round to start the analysis.',
   'gr.compactHint': 'Choose a module to see history, weak spots, and deep analysis for this subject.',
-  'gr.titlePre': 'Your',
-  'gr.titleAccent': 'progress',
   'gr.subtitle': 'All study methods at a glance: quizzes, flashcards, Feynman and exams.',
   'gr.resetFilter': 'Reset filter ✕',
   'gr.overallProgress': 'Overall progress',
@@ -1962,8 +1962,6 @@ export const en: Translations = {
   'lc.subtitle': 'Your personal learning coach: all methods, one overview.',
   'lc.moduleOnly': '{emoji} Only {name} (change subject on the left)',
   'lc.emptyHint': 'Complete a quiz, exam, Feynman round, or the tutor to get your coach started.',
-  'lc.titlePre': 'Your',
-  'lc.titleAccent': 'Progress',
   'lc.todayYouShould': 'Today you should',
   'lc.minShort': '{n} min.',
   'lc.startNow': 'Start now →',
@@ -2048,9 +2046,6 @@ export const en: Translations = {
   'sp2.deleteExamConfirm': 'Delete exam date "{title}"? This cannot be undone.',
   'sp2.daysN': '{n} day|{n} days',
   'sp2.smartPlanFailed': 'The study plan could not be created.',
-  'sp2.timeManagement': 'Time management',
-  'sp2.titlePre': 'Your',
-  'sp2.titleAccent': 'Calendar',
   'sp2.subtitle': 'Exam dates, study sessions, and automatically scheduled reviews.',
   'sp2.planning': 'Planning...',
   'sp2.smartPlan': '✦ Create study plan',

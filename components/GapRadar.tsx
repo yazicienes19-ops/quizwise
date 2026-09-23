@@ -19,6 +19,7 @@ import { getAllExamResults, deleteExamResult } from '../services/examHistoryServ
 import { getAllReaderLog } from '../services/readerLogService';
 import { toast } from '../services/toast';
 import { resolveErrorMessage } from '../services/errorMessages';
+import { PageHeader } from './PageHeader';
 import {
   LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip,
   ReferenceLine, ResponsiveContainer,
@@ -662,14 +663,7 @@ export const GapRadar: React.FC<GapRadarProps> = ({ metrics, onNavigate, onActio
 
       {/* ── Header ── */}
       {!hideHeader && (
-        <div className="text-center space-y-3">
-          <h1 className="text-4xl lg:text-6xl font-black text-slate-900 dark:text-white tracking-tighter">
-            {t('gr.titlePre')} <span className="text-indigo-600">{t('gr.titleAccent')}</span> <EmojiImage emoji="📡" size={36} />
-          </h1>
-          <p className="text-base text-slate-500 dark:text-slate-400 font-medium opacity-80">
-            {t('gr.subtitle')}
-          </p>
-        </div>
+        <PageHeader eyebrow={t('nav.radar')} title={t('page.progress.title')} subtitle={t('gr.subtitle')} />
       )}
 
       {/* ── Filter Bar ── */}

@@ -17,6 +17,14 @@ export const de = {
   'common.loading': 'Wird geladen…',
   'common.retry': 'Erneut versuchen',
   'common.someone': 'Jemand',
+  'page.quiz.title': 'Teste, was schon sitzt.',
+  'page.cards.title': 'Wiederholen, bevor du vergisst.',
+  'page.exam.title': 'Probier die Klausur, bevor sie zählt.',
+  'page.planner.title': 'Plane, wann du was lernst.',
+  'page.library.title': 'Deine Unterlagen.',
+  'page.progress.title': 'So stehst du gerade.',
+  'lib.foldersN': '{n} Ordner|{n} Ordner',
+  'lib.folders': 'Ordner',
 
   // language
   'language.label': 'Sprache',
@@ -998,7 +1006,7 @@ export const de = {
   'fcs.totalCards': 'Gesamt: {n} Karten',
   'fcs.noCardsForSearch': 'Keine Karten für „{q}"',
   'fcs.deleteDeckConfirm': '„{title}" mit {n} Karten endgültig löschen? Der gesamte Lernfortschritt (SRS-Zustand) geht dabei verloren. Diese Aktion kann nicht rückgängig gemacht werden.',
-  'fcs.subtitle': 'Wissenschaftlich fundiertes Lernen durch Spaced Repetition.',
+  'fcs.subtitle': 'Fällige Karten kommen genau dann zurück, wenn du sie sonst vergessen würdest.',
   'fcs.cardsInDeck': '{n} Karte im Stapel|{n} Karten im Stapel',
   'fcs.newCard': 'Neue Karte',
   'fcs.done': 'Fertig',
@@ -1275,8 +1283,6 @@ export const de = {
   'upl.uploadSource': 'Quelle hochladen',
 
   // file uploader (Quiz-Startseite)
-  'fu.title1': 'Dein',
-  'fu.titleAccent': 'Quiz',
   'fu.subtitle': 'Wähle eine Quelle und konfiguriere dein Quiz.',
   'fu.source': 'Quelle',
   'fu.deck': 'Stapel',
@@ -1458,12 +1464,9 @@ export const de = {
   'lp.cm.smallProgress': 'Kleine Fortschritte heute machen einen Unterschied in deiner nächsten Klausur.',
 
   // exam generator
-  'eg.title': 'Klausur',
-  'eg.titleAccent': 'Simulator',
   'eg.subtitle': 'Erstelle neue Prüfungen basierend auf deinen Unterlagen.',
   'eg.material': 'Lernmaterial',
-  'eg.required': 'Zwingend erforderlich',
-  'eg.oldExamOptional': 'Optional: Stil übernehmen',
+  'eg.oldExamOptional': 'Optional: Fragestil und Niveau einer echten Altklausur übernehmen.',
   'eg.fromLibrary': 'Aus Bibliothek',
   'eg.or': 'oder',
   'eg.changeFile': 'Datei ändern',
@@ -1515,7 +1518,6 @@ export const de = {
   'eg.quantDistributionHint': 'Näherungswert, kein starres Verhältnis. Steuert nur die ungefähre Gewichtung.',
   'eg.conception': 'Konzeption läuft...',
   'eg.startSim': 'Simulation Starten',
-  'eg.disclaimer': 'Diese Simulation basiert auf akademischen Standards. Sorge für eine ruhige Umgebung ohne Ablenkung.',
 
   // exam view
   'ev.pdf.title': 'Klausur-Protokoll',
@@ -1889,8 +1891,6 @@ export const de = {
   'gr.noData': 'Noch keine Daten',
   'gr.emptyHint': 'Absolviere ein Quiz, eine Klausur oder eine Feynman-Runde, um die Analyse zu starten.',
   'gr.compactHint': 'Wähle ein Modul aus, um Verlauf, Schwachstellen und Tiefenanalyse für dieses Fach zu sehen.',
-  'gr.titlePre': 'Dein',
-  'gr.titleAccent': 'Lernfortschritt',
   'gr.subtitle': 'Alle Lernmethoden auf einen Blick: Quiz, Karteikarten, Feynman und Klausur.',
   'gr.resetFilter': 'Filter zurücksetzen ✕',
   'gr.overallProgress': 'Gesamtfortschritt',
@@ -1963,8 +1963,6 @@ export const de = {
   'lc.subtitle': 'Dein persönlicher Lerncoach: alle Methoden, ein Überblick.',
   'lc.moduleOnly': '{emoji} Nur {name} (Fach links wechselbar)',
   'lc.emptyHint': 'Absolviere ein Quiz, eine Klausur, Feynman oder den Tutor, damit dein Coach loslegen kann.',
-  'lc.titlePre': 'Dein',
-  'lc.titleAccent': 'Lernfortschritt',
   'lc.todayYouShould': 'Heute solltest du',
   'lc.minShort': '{n} Min.',
   'lc.startNow': 'Jetzt starten →',
@@ -2049,9 +2047,6 @@ export const de = {
   'sp2.deleteExamConfirm': 'Klausurtermin „{title}" löschen? Das kann nicht rückgängig gemacht werden.',
   'sp2.daysN': '{n} Tag|{n} Tage',
   'sp2.smartPlanFailed': 'Der Lernplan konnte nicht erstellt werden.',
-  'sp2.timeManagement': 'Zeitmanagement',
-  'sp2.titlePre': 'Dein',
-  'sp2.titleAccent': 'Kalender',
   'sp2.subtitle': 'Klausurtermine, Lernsessions und automatisch geplante Wiederholungen.',
   'sp2.planning': 'Plant...',
   'sp2.smartPlan': '✦ Lernplan erstellen',

@@ -20,6 +20,7 @@ import { formatDate } from '../i18n/dates';
 import { t as translate } from '../i18n';
 import type { TKey } from '../i18n';
 import { resolveErrorMessage } from '../services/errorMessages';
+import { PageHeader } from './PageHeader';
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
 
@@ -264,11 +265,7 @@ export const LearningCoach: React.FC<LearningCoachProps> = ({ metrics, decks, on
   if (!hasAnyData) {
     return (
       <div className="space-y-10">
-        <div className="text-center space-y-3">
-          <h1 className="text-4xl lg:text-6xl font-black tracking-tighter" style={{ color: 'var(--ink)' }}>
-            {t('lc.titlePre')} <span style={{ color: 'var(--primary)' }}>{t('lc.titleAccent')}</span> <EmojiImage emoji="🧭" size={36} />
-          </h1>
-        </div>
+        <PageHeader eyebrow={t('nav.radar')} title={t('page.progress.title')} subtitle={t('lc.subtitle')} />
         <div className="flex flex-col items-center justify-center py-32 space-y-6 opacity-30">
           <EmojiImage emoji="📊" size={64} />
           <div className="text-center space-y-2">
@@ -287,12 +284,7 @@ export const LearningCoach: React.FC<LearningCoachProps> = ({ metrics, decks, on
 
       {/* ── Header ── */}
       <div className="text-center space-y-3">
-        <h1 className="text-4xl lg:text-6xl font-black tracking-tighter" style={{ color: 'var(--ink)' }}>
-          {t('lc.titlePre')} <span style={{ color: 'var(--primary)' }}>{t('lc.titleAccent')}</span> <EmojiImage emoji="🧭" size={36} />
-        </h1>
-        <p className="text-base font-medium opacity-80" style={{ color: 'var(--mute)' }}>
-          {t('lc.subtitle')}
-        </p>
+        <PageHeader eyebrow={t('nav.radar')} title={t('page.progress.title')} subtitle={t('lc.subtitle')} />
         {activeModule && onModuleChange && collections.length > 0 && (
           <button
             onClick={() => onModuleChange(null)}

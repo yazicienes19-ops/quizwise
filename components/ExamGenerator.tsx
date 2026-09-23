@@ -3,7 +3,6 @@ import React, { useState, useMemo, useEffect } from 'react';
 import { ProcessedDocument, Collection, ScoringProfile, ScoringMode, ExamQuestion, TopicMetric, FlashcardDeck, ExamTypePreset, QuantModeConfig, QuantTypeDistribution, ExamTerm } from '../types';
 import { nextExamForModule } from '../services/examTermService';
 import { GenerationSource } from '../services/geminiService';
-import { GeneratedImage } from './GeneratedImage';
 import { SourceSelector } from './SourceSelector';
 import { getAllMeta, documentDisplayName } from '../services/libraryService';
 import { useTranslation } from '../i18n/I18nProvider';
@@ -18,6 +17,7 @@ import {
   computeTopicWeights, computeDifficultyMix, recentAverageScore, excludeTopicsWithoutAdaptive,
   DIFFICULTY_LEVELS, TopicWeight, DifficultyMix, AdaptiveExamTarget,
 } from '../services/examAdaptive';
+import { PageHeader } from './PageHeader';
 
 export type ExamOptions = {
   count: number; difficulty: string;
@@ -284,31 +284,17 @@ export const ExamGenerator: React.FC<ExamGeneratorProps> = ({
 
   return (
     <div className="max-w-4xl mx-auto space-y-10 lg:space-y-16 animate-in fade-in slide-in-from-bottom-4 duration-700 py-8 sm:py-10 px-4">
-      <div className="text-center space-y-3 sm:space-y-4">
-        <h1 className="text-4xl lg:text-6xl font-black text-slate-900 dark:text-white tracking-tighter flex flex-wrap items-center justify-center gap-2 sm:gap-3 lg:gap-4">
-          {t('eg.title')} <span className="text-indigo-600 dark:text-indigo-400">{t('eg.titleAccent')}</span>
-          <GeneratedImage prompt="Graduation cap, academic illustration" className="w-9 h-9 sm:w-12 sm:h-12 lg:w-16 lg:h-16 rounded-2xl" />
-        </h1>
-        <p className="text-base sm:text-lg lg:text-xl text-slate-500 dark:text-slate-400 font-medium">
-          {t('eg.subtitle')}
-        </p>
-      </div>
+      <PageHeader eyebrow={t('nav.exam')} title={t('page.exam.title')} subtitle={t('eg.subtitle')} />
 
       <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 lg:gap-12">
         {/* Left: Quellauswahl + Altklausur */}
         <div className="lg:col-span-7 space-y-6">
 
           {/* Lernmaterial via SourceSelector */}
-          <div className={`rounded-[32px] border-2 transition-all overflow-hidden ${contentSource ? 'border-indigo-500 ring-4 ring-indigo-500/10' : 'border-slate-100 dark:border-slate-800'}`}
-            style={{ background: 'var(--bg-sidebar)' }}>
-            <div className="flex items-center gap-3 sm:gap-4 px-5 sm:px-8 pt-6 sm:pt-7 pb-4">
-              <div className="w-12 h-12 bg-indigo-100 dark:bg-indigo-900/30 rounded-2xl flex items-center justify-center overflow-hidden shrink-0">
-                <GeneratedImage prompt="Academic books, minimalist illustration" className="w-full h-full object-cover" />
-              </div>
-              <div>
-                <h3 className="text-base font-black dark:text-white uppercase tracking-tight">{t('eg.material')}</h3>
-                <p className="text-[10px] text-indigo-600 uppercase font-black tracking-widest">{t('eg.required')}</p>
-              </div>
+          <div className="rounded-[28px] border transition-all overflow-hidden"
+            style={{ background: 'var(--bg-sidebar)', borderColor: contentSource ? 'var(--primary)' : 'var(--border-color)' }}>
+            <div className="flex items-center gap-3 px-5 sm:px-7 pt-5 sm:pt-6 pb-1">
+              <h3 className="text-[11px] font-black uppercase tracking-[0.2em]" style={{ color: 'var(--text-secondary)' }}>{t('eg.material')}</h3>
               {contentSource && (
                 <div className="ml-auto flex items-center gap-2 bg-emerald-50 dark:bg-emerald-950/20 px-3 py-1.5 rounded-xl">
                   <div className="w-2 h-2 rounded-full bg-emerald-500 shrink-0" />
@@ -328,16 +314,11 @@ export const ExamGenerator: React.FC<ExamGeneratorProps> = ({
           </div>
 
           {/* Altklausur (optional, Stil-Referenz) */}
-          <div className={`p-5 sm:p-8 rounded-[24px] sm:rounded-[32px] border-2 transition-all flex flex-col gap-5 shadow-3d-raised ${(styleFile || styleLibDocId) ? 'border-rose-500 ring-4 ring-rose-500/10' : 'border-dashed border-slate-200 dark:border-slate-700'}`}
-            style={{ background: 'var(--bg-sidebar)' }}>
-            <div className="flex items-center gap-4">
-              <div className="w-16 h-16 bg-rose-100 dark:bg-rose-900/30 text-rose-600 dark:text-rose-400 rounded-2xl flex items-center justify-center overflow-hidden shrink-0">
-                <GeneratedImage prompt="Exam paper, academic illustration" className="w-full h-full object-cover" />
-              </div>
-              <div>
-                <h3 className="text-xl font-black dark:text-white uppercase tracking-tight">{t('card.oldExam')}</h3>
-                <p className="text-[10px] text-rose-500 uppercase font-black tracking-widest">{t('eg.oldExamOptional')}</p>
-              </div>
+          <div className={`p-5 sm:p-7 rounded-[28px] border transition-all flex flex-col gap-4 ${(styleFile || styleLibDocId) ? '' : 'border-dashed'}`}
+            style={{ background: 'var(--bg-sidebar)', borderColor: (styleFile || styleLibDocId) ? 'var(--primary)' : 'var(--border-color)' }}>
+            <div>
+              <h3 className="text-[11px] font-black uppercase tracking-[0.2em]" style={{ color: 'var(--text-secondary)' }}>{t('card.oldExam')}</h3>
+              <p className="text-[13px] mt-1" style={{ color: 'var(--text-secondary)' }}>{t('eg.oldExamOptional')}</p>
             </div>
 
             {/* Library Altklausur docs */}
@@ -699,7 +680,8 @@ export const ExamGenerator: React.FC<ExamGeneratorProps> = ({
             <button
               onClick={handleStart}
               disabled={!contentSource || isLoading}
-              className="w-full bg-slate-900 dark:bg-slate-700 text-white py-6 rounded-[24px] font-black uppercase tracking-[0.3em] text-[12px] shadow-3d-deep hover:scale-[1.02] transition-all disabled:opacity-40 disabled:cursor-not-allowed mt-4"
+              className="w-full py-5 rounded-[24px] font-black uppercase tracking-[0.2em] text-[12px] hover:scale-[1.01] transition-all disabled:opacity-40 disabled:cursor-not-allowed mt-4"
+              style={{ background: 'var(--primary)', color: 'var(--primary-text)' }}
             >
               {isLoading ? (
                 <div className="flex items-center justify-center gap-3">
@@ -709,18 +691,11 @@ export const ExamGenerator: React.FC<ExamGeneratorProps> = ({
               ) : (
                 <span className="flex items-center justify-center gap-3">
                   {t('eg.startSim')}
-                  <GeneratedImage prompt="Writing pen icon, minimalist" className="w-4 h-4 rounded-full" />
                 </span>
               )}
             </button>
           </div>
 
-          <div className="bg-rose-50 dark:bg-rose-950/20 p-6 rounded-[32px] border border-rose-100 dark:border-rose-900/30 flex items-start gap-4">
-            <GeneratedImage prompt="Balance scales icon, academic minimalist" className="w-8 h-8 rounded-full shrink-0" />
-            <p className="text-xs font-medium text-rose-800 dark:text-rose-400 leading-relaxed italic">
-              {t('eg.disclaimer')}
-            </p>
-          </div>
         </div>
       </div>
     </div>

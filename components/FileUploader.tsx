@@ -6,6 +6,7 @@ import { EmojiImage } from './EmojiImage';
 import { SourceSelector } from './SourceSelector';
 import { buildCollectionSource } from '../services/collectionSource';
 import { useTranslation } from '../i18n/I18nProvider';
+import { PageHeader } from './PageHeader';
 
 interface FileUploaderProps {
   // Die Auswahl führt jeweils in denselben Einstellungs-Bildschirm (QuizSetup)
@@ -49,14 +50,7 @@ export const FileUploader: React.FC<FileUploaderProps> = ({
 
   return (
     <div className="space-y-8 lg:space-y-12 max-w-4xl mx-auto py-6 lg:py-10 animate-in fade-in slide-in-from-bottom-12 duration-1000 px-4">
-      <div className="text-center space-y-4 lg:space-y-6">
-        <h1 className="text-4xl lg:text-6xl font-black text-slate-900 dark:text-white tracking-tighter">
-          {t('fu.title1')} <span className="text-indigo-600 drop-shadow-lg">{t('fu.titleAccent')}</span> <EmojiImage emoji="📥" size={48} />
-        </h1>
-        <p className="text-lg lg:text-xl text-slate-500 dark:text-slate-400 max-w-2xl mx-auto font-medium opacity-80">
-          {t('fu.subtitle')}
-        </p>
-      </div>
+      <PageHeader eyebrow={t('nav.quiz')} title={t('page.quiz.title')} subtitle={t('fu.subtitle')} />
 
       {/* Mode Switcher */}
       <div className="flex justify-center">

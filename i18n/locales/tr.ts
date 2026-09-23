@@ -15,6 +15,14 @@ export const tr: Translations = {
   'common.loading': 'Yükleniyor…',
   'common.retry': 'Tekrar dene',
   'common.someone': 'Biri',
+  'page.quiz.title': 'Neyin oturduğunu test et.',
+  'page.cards.title': 'Unutmadan önce tekrar et.',
+  'page.exam.title': 'Sınavı, gerçeğinden önce dene.',
+  'page.planner.title': 'Neyi ne zaman çalışacağını planla.',
+  'page.library.title': 'Çalışma notların.',
+  'page.progress.title': 'Şu an neredesin.',
+  'lib.foldersN': '{n} klasör|{n} klasör',
+  'lib.folders': 'Klasörler',
 
   // language
   'language.label': 'Dil',
@@ -996,7 +1004,7 @@ export const tr: Translations = {
   'fcs.totalCards': 'Toplam: {n} kart',
   'fcs.noCardsForSearch': '„{q}" için kart yok',
   'fcs.deleteDeckConfirm': '„{title}" ({n} kart) kalıcı olarak silinsin mi? Tüm öğrenme ilerlemesi (SRS durumu) kaybolur. Bu işlem geri alınamaz.',
-  'fcs.subtitle': 'Aralıklı tekrar ile bilimsel temelli öğrenme.',
+  'fcs.subtitle': 'Zamanı gelen kartlar, tam unutacağın anda geri gelir.',
   'fcs.cardsInDeck': 'Destede {n} kart',
   'fcs.newCard': 'Yeni kart',
   'fcs.done': 'Bitti',
@@ -1273,8 +1281,6 @@ export const tr: Translations = {
   'upl.uploadSource': 'Kaynağı yükle',
 
   // file uploader (Quiz başlangıç sayfası)
-  'fu.title1': 'Senin',
-  'fu.titleAccent': 'testin',
   'fu.subtitle': 'Bir kaynak seç ve testini yapılandır.',
   'fu.source': 'Kaynak',
   'fu.deck': 'Deste',
@@ -1450,12 +1456,9 @@ export const tr: Translations = {
   'lp.cm.smallProgress': 'Bugünkü küçük ilerlemeler bir sonraki sınavında fark yaratır.',
 
   // exam generator
-  'eg.title': 'Sınav',
-  'eg.titleAccent': 'Simülatörü',
   'eg.subtitle': 'Belgelerine dayalı yeni sınavlar oluştur.',
   'eg.material': 'Öğrenme materyali',
-  'eg.required': 'Zorunlu',
-  'eg.oldExamOptional': 'İsteğe bağlı: stili devral',
+  'eg.oldExamOptional': 'İsteğe bağlı: gerçek bir eski sınavın soru tarzını ve seviyesini kullan.',
   'eg.fromLibrary': 'Kütüphaneden',
   'eg.or': 'ya da',
   'eg.changeFile': 'Dosyayı değiştir',
@@ -1507,7 +1510,6 @@ export const tr: Translations = {
   'eg.quantDistributionHint': 'Yaklaşık hedef, katı bir oran değil. Yalnızca kabaca ağırlığı belirler.',
   'eg.conception': 'Hazırlanıyor...',
   'eg.startSim': 'Simülasyonu başlat',
-  'eg.disclaimer': 'Bu simülasyon akademik standartlara dayanır. Dikkat dağıtıcı olmayan sakin bir ortam sağla.',
 
   // exam view
   'ev.pdf.title': 'Sınav tutanağı',
@@ -1881,8 +1883,6 @@ export const tr: Translations = {
   'gr.noData': 'Henüz veri yok',
   'gr.emptyHint': 'Analizi başlatmak için bir test, sınav ya da Feynman turu tamamla.',
   'gr.compactHint': 'Bu ders için geçmişi, zayıf noktaları ve derin analizi görmek üzere bir modül seç.',
-  'gr.titlePre': 'Senin',
-  'gr.titleAccent': 'ilerlemen',
   'gr.subtitle': 'Tüm öğrenme yöntemleri tek bakışta: test, kartlar, Feynman ve sınav.',
   'gr.resetFilter': 'Filtreleri sıfırla ✕',
   'gr.overallProgress': 'Genel ilerleme',
@@ -1955,8 +1955,6 @@ export const tr: Translations = {
   'lc.subtitle': 'Kişisel öğrenme koçun: tüm yöntemler tek bakışta.',
   'lc.moduleOnly': '{emoji} Yalnızca {name} (ders soldan değişir)',
   'lc.emptyHint': 'Koçunun başlaması için bir test, sınav, Feynman ya da Tutor tamamla.',
-  'lc.titlePre': 'Senin',
-  'lc.titleAccent': 'ilerlemen',
   'lc.todayYouShould': 'Bugün şunu yapmalısın',
   'lc.minShort': '{n} dk',
   'lc.startNow': 'Şimdi başla →',
@@ -2041,9 +2039,6 @@ export const tr: Translations = {
   'sp2.deleteExamConfirm': '„{title}" sınav tarihi silinsin mi? Bu işlem geri alınamaz.',
   'sp2.daysN': '{n} gün',
   'sp2.smartPlanFailed': 'Çalışma planı oluşturulamadı.',
-  'sp2.timeManagement': 'Zaman yönetimi',
-  'sp2.titlePre': 'Senin',
-  'sp2.titleAccent': 'takvimin',
   'sp2.subtitle': 'Sınav tarihleri, çalışma seansları ve otomatik planlanan tekrarlar.',
   'sp2.planning': 'Planlanıyor...',
   'sp2.smartPlan': '✦ Çalışma planı oluştur',
