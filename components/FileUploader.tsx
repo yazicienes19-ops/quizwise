@@ -1,6 +1,6 @@
 
 import React, { useState, useMemo } from 'react';
-import { QuizType, FlashcardDeck, ProcessedDocument, Collection } from '../types';
+import { FlashcardDeck, ProcessedDocument, Collection } from '../types';
 import type { GenerationSource } from '../services/geminiService';
 import { EmojiImage } from './EmojiImage';
 import { SourceSelector } from './SourceSelector';
@@ -8,9 +8,11 @@ import { buildCollectionSource } from '../services/collectionSource';
 import { useTranslation } from '../i18n/I18nProvider';
 
 interface FileUploaderProps {
-  onDocumentSelect: (doc: ProcessedDocument, type: QuizType, options?: any) => void;
-  onSourceSelect: (source: GenerationSource, name: string, type: QuizType, options?: any) => void;
-  onDeckSelect: (deck: FlashcardDeck, type: QuizType, options?: any) => void;
+  // Die Auswahl führt jeweils in denselben Einstellungs-Bildschirm (QuizSetup)
+  // wie der Weg über die Bibliothek; hier wird nur die Quelle gewählt.
+  onDocumentSelect: (doc: ProcessedDocument) => void;
+  onSourceSelect: (source: GenerationSource, name: string) => void;
+  onDeckSelect: (deck: FlashcardDeck) => void;
   isLoading: boolean;
   availableDecks: FlashcardDeck[];
   documents: ProcessedDocument[];
@@ -32,7 +34,7 @@ export const FileUploader: React.FC<FileUploaderProps> = ({
 }) => {
   const { t, tp } = useTranslation();
   const [mode, setMode] = useState<'source' | 'deck'>('source');
-  // Aktives Fach: Quelle ist damit GESETZT — ein Klick startet das Quiz.
+  // Aktives Fach: Quelle ist damit GESETZT — ein Klick führt direkt zu den Quiz-Einstellungen.
   // 'Andere Quelle wählen' blendet den normalen Wähler ein.
   const [moduleOverride, setModuleOverride] = useState(false);
   const activeModule = useMemo(() => {
@@ -44,19 +46,6 @@ export const FileUploader: React.FC<FileUploaderProps> = ({
     [activeModule, documents],
   );
   const folderReady = !!folderResult && folderResult.includedCount > 0;
-  const [selectedQuizType, setSelectedQuizType] = useState<QuizType>(QuizType.FAST);
-
-  const [customCount, setCustomCount] = useState(10);
-  const [customDifficulty, setCustomDifficulty] = useState<'leicht' | 'mittel' | 'schwer'>('mittel');
-  const [customFocus, setCustomFocus] = useState('');
-
-  const getOptions = () => ({ customCount, customDifficulty, customFocus });
-
-  const quizTypes = [
-    { id: QuizType.FAST, label: t('fu.qtFast'), desc: t('fu.qtFastDesc'), icon: <EmojiImage emoji="⚡" size={24} /> },
-    { id: QuizType.INTENSIVE, label: t('fu.qtIntensive'), desc: t('fu.qtIntensiveDesc'), icon: <EmojiImage emoji="🧠" size={24} /> },
-    { id: QuizType.CUSTOM, label: t('fu.qtCustom'), desc: t('fu.qtCustomDesc'), icon: <EmojiImage emoji="⚙️" size={24} /> },
-  ];
 
   return (
     <div className="space-y-8 lg:space-y-12 max-w-4xl mx-auto py-6 lg:py-10 animate-in fade-in slide-in-from-bottom-12 duration-1000 px-4">
@@ -68,58 +57,6 @@ export const FileUploader: React.FC<FileUploaderProps> = ({
           {t('fu.subtitle')}
         </p>
       </div>
-
-      {/* Quiz Type Selector */}
-      <div className="grid grid-cols-3 gap-3 sm:gap-4 max-w-xl mx-auto">
-        {quizTypes.map((t) => (
-          <button
-            key={t.id}
-            onClick={() => setSelectedQuizType(t.id)}
-            className={`p-3 sm:p-4 rounded-2xl border-2 transition-all text-left flex flex-col gap-1 sm:gap-2 ${
-              selectedQuizType === t.id
-                ? 'border-indigo-600 bg-indigo-50 dark:bg-indigo-900/20 ring-4 ring-indigo-500/10'
-                : 'border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 hover:border-indigo-300'
-            }`}
-          >
-            <div className="flex justify-between items-center">
-              {t.icon}
-              <div className={`w-3 h-3 sm:w-4 sm:h-4 rounded-full border-2 ${selectedQuizType === t.id ? 'bg-indigo-600 border-indigo-600' : 'border-slate-300'}`}></div>
-            </div>
-            <div>
-              <p className="font-black text-[10px] sm:text-xs uppercase tracking-wider dark:text-white">{t.label}</p>
-              <p className="text-[9px] sm:text-[9px] text-slate-400 font-bold leading-tight break-words">{t.desc}</p>
-            </div>
-          </button>
-        ))}
-      </div>
-
-      {/* Custom Options Form */}
-      {selectedQuizType === QuizType.CUSTOM && (
-        <div className="max-w-xl mx-auto bg-white dark:bg-slate-900 p-6 rounded-3xl border border-slate-200 dark:border-slate-800 shadow-xl space-y-4 animate-in zoom-in-95">
-          <h3 className="text-[10px] font-black uppercase tracking-widest text-indigo-600">{t('fu.quizConfig')}</h3>
-          <div className="grid grid-cols-2 gap-4">
-            <div className="space-y-1">
-              <label className="text-[9px] font-bold text-slate-400 uppercase">{t('fu.questionCount', { n: customCount })}</label>
-              <input type="range" min="5" max="30" step="5" value={customCount} onChange={e => setCustomCount(parseInt(e.target.value))} className="w-full range-fill" style={{ '--range-progress': `${((customCount - 5) / (30 - 5)) * 100}%` } as React.CSSProperties} />
-            </div>
-            <div className="space-y-1">
-              <label className="text-[9px] font-bold text-slate-400 uppercase">{t('fu.difficulty')}</label>
-              <select value={customDifficulty} onChange={e => setCustomDifficulty(e.target.value as any)} className="w-full p-2 bg-slate-50 dark:bg-slate-800 rounded-xl text-xs font-bold outline-none dark:text-white">
-                <option value="leicht">{t('fu.diffEasy')}</option>
-                <option value="mittel">{t('fu.diffMedium')}</option>
-                <option value="schwer">{t('fu.diffHardExam')}</option>
-              </select>
-            </div>
-          </div>
-          <input
-            type="text"
-            placeholder={t('fu.focusPlaceholder')}
-            value={customFocus}
-            onChange={e => setCustomFocus(e.target.value)}
-            className="w-full p-3 bg-slate-50 dark:bg-slate-800 rounded-xl text-xs outline-none focus:ring-2 focus:ring-indigo-500/30 dark:text-white"
-          />
-        </div>
-      )}
 
       {/* Mode Switcher */}
       <div className="flex justify-center">
@@ -152,7 +89,7 @@ export const FileUploader: React.FC<FileUploaderProps> = ({
             {folderResult.pendingCount > 0 && <>{t('fu.pendingProcessing', { n: folderResult.pendingCount })}</>}
           </p>
           <button
-            onClick={() => onSourceSelect(folderResult.source, folderResult.name, selectedQuizType, getOptions())}
+            onClick={() => onSourceSelect(folderResult.source, folderResult.name)}
             disabled={isLoading}
             className="w-full py-4 rounded-2xl text-[11px] font-black uppercase tracking-widest transition-all hover:scale-[1.02] disabled:opacity-40"
             style={{ background: 'var(--primary)', color: 'var(--primary-text)' }}
@@ -175,8 +112,8 @@ export const FileUploader: React.FC<FileUploaderProps> = ({
         <SourceSelector
           documents={activeModule ? documents.filter(d => d.collectionId === activeModule.id) : documents}
           collections={collections}
-          onSelectDocument={doc => onDocumentSelect(doc, selectedQuizType, getOptions())}
-          onSelectSource={(source, name) => onSourceSelect(source, name, selectedQuizType, getOptions())}
+          onSelectDocument={onDocumentSelect}
+          onSelectSource={(source, name) => onSourceSelect(source, name)}
           onSaveToLibrary={onSaveToLibrary}
           isLoading={isLoading}
           userPlan={userPlan}
@@ -197,7 +134,7 @@ export const FileUploader: React.FC<FileUploaderProps> = ({
               availableDecks.map(deck => (
                 <button
                   key={deck.id}
-                  onClick={() => onDeckSelect(deck, selectedQuizType, getOptions())}
+                  onClick={() => onDeckSelect(deck)}
                   disabled={isLoading}
                   className="p-5 bg-slate-50 dark:bg-slate-800/50 rounded-2xl border-2 border-transparent hover:border-indigo-500 text-left transition-all group relative overflow-hidden"
                 >

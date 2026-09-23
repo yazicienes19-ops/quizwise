@@ -275,6 +275,41 @@ export const useQuizState = (params: UseQuizStateParams) => {
     } catch (e) { params.handleApiError(e); } finally { params.setIsLoading(false); }
   };
 
+  /** Quiz aus einer Quelle ohne einzelnes Dokument (Ordner, neue Datei,
+   *  eingefügter Text, Stapel) mit denselben Einstellungen wie QuizSetup.
+   *  topicsKey trennt die "schon abgefragt"-Themen je Quelle, sonst
+   *  wiederholt das zweite Quiz aus derselben Quelle die Fragen. */
+  const handleStartQuizFromSource = async (
+    config: QuizConfig,
+    target: { source: GenerationSource; name: string; topicsKey: string },
+  ) => {
+    flushSync(() => {
+      params.setIsLoading(true);
+      setQuestions([]);
+      setAnswers([]);
+    });
+    try {
+      const rawQuiz = await generateQuizWithRetry(target.source, QuizType.CUSTOM, {
+        customCount: config.questionCount,
+        customDifficulty: config.difficulty,
+        questionType: config.questionType,
+        excludeTopics: getUsedTopics(target.topicsKey),
+        topicBloomHints: getTopicBloomHints(),
+      });
+      if (!rawQuiz.length) throw new Error(translate('qs.noQuestions'));
+      const quiz = interleaveQuestionsByTopic(rawQuiz);
+      const meta = { docId: target.topicsKey, docName: target.name };
+      setActiveQuizMeta(meta);
+      setQuestions(quiz);
+      if (quiz.length < config.questionCount) {
+        toast.info(translate('qs.fewerQuestions', { n: quiz.length, total: config.questionCount }));
+      }
+      setQuizInitialAnswers(undefined);
+      saveUsedTopics(target.topicsKey, quiz);
+      saveQuizProgress(quiz, [], meta);
+    } catch (e) { params.handleApiError(e); } finally { params.setIsLoading(false); }
+  };
+
   /** Startet eine Wiederholungs-Session aus fälligen Fehlerfragen (interleaved). */
   const handleStartMistakeReview = () => {
     const due = getDueMistakes();
@@ -373,7 +408,7 @@ export const useQuizState = (params: UseQuizStateParams) => {
     saveQuizProgress, clearQuizProgress,
     handleSaveQuiz, handleLoadSavedQuiz, handleDeleteSavedQuiz,
     handleLoadSavedExam, handleDeleteSavedExam,
-    handleStartQuizFromDoc, handleStartQuizFromSetup,
+    handleStartQuizFromDoc, handleStartQuizFromSetup, handleStartQuizFromSource,
     onQuizComplete, handleCreateFlashcardsFromMistakes,
     reviewSessionItems, setReviewSessionItems, handleStartMistakeReview,
   };

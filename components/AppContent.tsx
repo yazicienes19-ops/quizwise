@@ -1,5 +1,4 @@
 import React from 'react';
-import { flushSync } from 'react-dom';
 import type { User } from '@supabase/supabase-js';
 import { Dashboard } from './Dashboard';
 import { QuizPlayer } from './QuizPlayer';
@@ -11,10 +10,9 @@ import type { SavedQuiz } from '../services/savedQuizzesService';
 import type { SavedExam } from '../services/savedExamsService';
 import { getSavedQuizzes } from '../services/savedQuizzesService';
 import { getSavedExams } from '../services/savedExamsService';
-import { searchScholar, searchWeb, generateQuizFromDocument, generateQuizFromFlashcards } from '../services/geminiService';
+import { searchScholar, searchWeb, buildDeckQuizSource } from '../services/geminiService';
 import { getAllResults } from '../services/quizHistoryService';
-import { sourceTopicsKey, getUsedTopics, saveUsedTopics } from '../hooks/useQuizState';
-import { interleaveQuestionsByTopic } from '../services/interleave';
+import { sourceTopicsKey } from '../hooks/useQuizState';
 import { countDueMistakes, addExamMistakes, removeMistake } from '../services/mistakeReviewService';
 import type { MistakeItem } from '../services/mistakeReviewService';
 import { saveRecallResult } from '../services/recallHistoryService';
@@ -110,6 +108,7 @@ interface AppContentProps {
   onQuizComplete: (ans: UserAnswer[]) => Promise<void>;
   handleStartQuizFromDoc: (doc: ProcessedDocument, quizType?: QuizType, options?: any) => Promise<void>;
   handleStartQuizFromSetup: (config: QuizConfig, docIds?: string[]) => Promise<void>;
+  handleStartQuizFromSource: (config: QuizConfig, target: { source: GenerationSource; name: string; topicsKey: string }) => Promise<void>;
   handleCreateFlashcardsFromMistakes: (wrongQs: QuizQuestion[]) => void;
   reviewSessionItems: MistakeItem[] | null;
   setReviewSessionItems: (items: MistakeItem[] | null) => void;
@@ -126,6 +125,12 @@ export const AppContent: React.FC<AppContentProps> = (p) => {
   // Wohin "Zurück" aus dem Splitscreen-Reader führt: dorthin, wo er geöffnet wurde
   // (Bibliothek oder Tutor), nicht pauschal in die Bibliothek.
   const [readerOrigin, setReaderOrigin] = React.useState<ActiveTab>(ActiveTab.LIBRARY);
+  // Quiz-Tab: gewählte Quelle ohne einzelnes Dokument (Ordner, Datei, Text,
+  // Stapel), für die gerade die Quiz-Einstellungen offen sind.
+  const [quizSetupSource, setQuizSetupSource] = React.useState<{ source: GenerationSource; name: string; topicsKey: string } | null>(null);
+  // Dokument wurde im Quiz-Tab gewählt (nicht in der Bibliothek): "Zurück"
+  // führt dann zur Quellenauswahl statt in die Bibliothek.
+  const [quizSetupFromQuizTab, setQuizSetupFromQuizTab] = React.useState(false);
   const {
     activeTab, setActiveTab, isLoading, setIsLoading, user, userPlan,
     documents, collections, handleFileUpload, retryAnalysis, activeModuleId, deleteDoc, addCollection, removeCollection, updateCollection, moveDoc, getDocumentSource,
@@ -138,7 +143,7 @@ export const AppContent: React.FC<AppContentProps> = (p) => {
     isSearching, setIsSearching, saveQuizProgress, clearQuizProgress,
     handleSaveQuiz, handleLoadSavedQuiz, handleDeleteSavedQuiz,
     handleLoadSavedExam, handleDeleteSavedExam, onQuizComplete,
-    handleStartQuizFromDoc, handleStartQuizFromSetup, handleCreateFlashcardsFromMistakes,
+    handleStartQuizFromDoc, handleStartQuizFromSetup, handleStartQuizFromSource, handleCreateFlashcardsFromMistakes,
     reviewSessionItems, setReviewSessionItems, handleStartMistakeReview,
     handleApiError, updateMetricsAfterSession, isDark,
   } = p;
@@ -244,7 +249,7 @@ export const AppContent: React.FC<AppContentProps> = (p) => {
         onUpload={handleFileUpload} onDelete={deleteDoc}
         onRetryAnalysis={retryAnalysis}
         onAction={(tab, doc) => {
-          if (tab === ActiveTab.QUIZ) { setPendingActionDoc(doc); setQuestions([]); setAnswers([]); setActiveTab(ActiveTab.QUIZ); }
+          if (tab === ActiveTab.QUIZ) { setQuizSetupFromQuizTab(false); setPendingActionDoc(doc); setQuestions([]); setAnswers([]); setActiveTab(ActiveTab.QUIZ); }
           else if (tab === ActiveTab.EXPLAINER || tab === ActiveTab.CARDS || tab === ActiveTab.RECALL || tab === ActiveTab.EXAM || tab === ActiveTab.READER || tab === ActiveTab.KNOWLEDGE_GRAPH) {
             if (tab === ActiveTab.READER) setReaderOrigin(ActiveTab.LIBRARY);
             setPendingActionDoc(doc); setActiveTab(tab);
@@ -274,9 +279,23 @@ export const AppContent: React.FC<AppContentProps> = (p) => {
         return <QuizSetup
           doc={pendingActionDoc} availableDocs={documents}
           onStart={handleStartQuizFromSetup}
-          onBack={() => { setPendingActionDoc(null); setPendingTopic(null); setActiveTab(fromRadar ? ActiveTab.RADAR : ActiveTab.LIBRARY); }}
+          onBack={() => {
+            setPendingActionDoc(null); setPendingTopic(null);
+            if (quizSetupFromQuizTab) { setQuizSetupFromQuizTab(false); return; }
+            setActiveTab(fromRadar ? ActiveTab.RADAR : ActiveTab.LIBRARY);
+          }}
+          backLabel={quizSetupFromQuizTab ? t('quizSetup.backToSources') : undefined}
           initialFocus={pendingTopic ? 'weak' : 'all'}
           activeModuleId={activeModuleId}
+        />;
+      }
+      if (quizSetupSource && questions.length === 0 && answers.length === 0) {
+        return <QuizSetup
+          key={quizSetupSource.topicsKey}
+          sourceName={quizSetupSource.name}
+          backLabel={t('quizSetup.backToSources')}
+          onStart={(config) => handleStartQuizFromSource(config, quizSetupSource)}
+          onBack={() => setQuizSetupSource(null)}
         />;
       }
       if (questions.length > 0 && answers.length === 0) return <QuizPlayer
@@ -290,14 +309,14 @@ export const AppContent: React.FC<AppContentProps> = (p) => {
           setSavedQuizzes(getSavedQuizzes());
           toast.success(t('ac.quizSaved'));
         }}
-        onCancel={() => { clearQuizProgress(); setQuizInitialAnswers(undefined); setQuestions([]); setAnswers([]); setPendingActionDoc(null); setReviewSessionItems(null); }}
+        onCancel={() => { clearQuizProgress(); setQuizInitialAnswers(undefined); setQuestions([]); setAnswers([]); setPendingActionDoc(null); setQuizSetupSource(null); setReviewSessionItems(null); }}
         onDeleteCurrent={reviewSessionItems ? handleDeleteMistakeAt : undefined}
       />;
       if (answers.length > 0) return <ResultView
         answers={answers} questions={questions} docName={activeQuizMeta?.docName}
         onRestart={() => { clearQuizProgress(); setQuizInitialAnswers(undefined); setQuestions([]); setAnswers([]); }}
         onRetryWrong={(wrongQs) => { clearQuizProgress(); setQuizInitialAnswers(undefined); setQuestions(wrongQs); setAnswers([]); }}
-        onGoToSource={() => { setPendingActionDoc(null); setQuestions([]); setAnswers([]); setActiveTab(ActiveTab.LIBRARY); }}
+        onGoToSource={() => { setPendingActionDoc(null); setQuizSetupSource(null); setQuestions([]); setAnswers([]); setActiveTab(ActiveTab.LIBRARY); }}
         onCreateFlashcards={pendingActionDoc ? handleCreateFlashcardsFromMistakes : undefined}
         onSaveQuiz={handleSaveQuiz}
       />;
@@ -356,34 +375,9 @@ export const AppContent: React.FC<AppContentProps> = (p) => {
           <FileUploader
             key={`quiz-src-${activeModuleId ?? 'all'}`}
             documents={documents} collections={collections}
-            onDocumentSelect={(doc, type, opts) => handleStartQuizFromDoc(doc, type, opts)}
-            onSourceSelect={async (source, name, type, opts) => {
-              flushSync(() => { setIsLoading(true); setAnswers([]); setQuestions([]); });
-              try {
-                // Auch Ordner-/Freitext-Quellen tracken ihre Themen — sonst
-                // wiederholt das zweite Quiz aus demselben Ordner die Fragen
-                const topicsKey = sourceTopicsKey(name);
-                const rawQ = await generateQuizFromDocument(source, type, { ...opts, excludeTopics: getUsedTopics(topicsKey) });
-                if (!rawQ.length) throw new Error(t('ac.errNoQuestions'));
-                const q = interleaveQuestionsByTopic(rawQ);
-                const meta = { docId: topicsKey, docName: name };
-                setQuestions(q); setQuizInitialAnswers(undefined); setActiveQuizMeta(meta);
-                saveUsedTopics(topicsKey, q);
-                saveQuizProgress(q, [], meta);
-              }
-              catch (e) { handleApiError(e); } finally { setIsLoading(false); }
-            }}
-            onDeckSelect={async (deck) => {
-              flushSync(() => setIsLoading(true));
-              try {
-                const rawQ = await generateQuizFromFlashcards(deck);
-                if (!rawQ.length) throw new Error(t('ac.errNoQuizFromDeck'));
-                const q = interleaveQuestionsByTopic(rawQ);
-                const meta = { docId: deck.id, docName: deck.title };
-                setQuestions(q); setQuizInitialAnswers(undefined); setActiveQuizMeta(meta);
-                saveQuizProgress(q, [], meta);
-              } catch (e) { handleApiError(e); } finally { setIsLoading(false); }
-            }}
+            onDocumentSelect={(doc) => { setQuizSetupFromQuizTab(true); setPendingTopic(null); setPendingActionDoc(doc); }}
+            onSourceSelect={(source, name) => setQuizSetupSource({ source, name, topicsKey: sourceTopicsKey(name) })}
+            onDeckSelect={(deck) => setQuizSetupSource({ source: buildDeckQuizSource(deck), name: deck.title, topicsKey: deck.id })}
             onSaveToLibrary={file => handleFileUpload(file)}
             availableDecks={decks} isLoading={isLoading} userPlan={userPlan}
           />
@@ -553,16 +547,10 @@ export const AppContent: React.FC<AppContentProps> = (p) => {
         onDeleteDoc={deleteDoc}
         onSaveToLibrary={file => handleFileUpload(file)}
         getDocumentSource={getDocumentSource} userId={user?.id} userName={userName}
-        onGenerateQuizFromDeck={async (deck) => {
-          setIsLoading(true);
-          try {
-            const rawQ = await generateQuizFromFlashcards(deck);
-            if (!rawQ.length) throw new Error(t('ac.errNoQuizFromDeck'));
-            const q = interleaveQuestionsByTopic(rawQ);
-            const meta = { docId: deck.id, docName: deck.title };
-            setQuestions(q); setQuizInitialAnswers(undefined); setActiveQuizMeta(meta);
-            saveQuizProgress(q, [], meta); setActiveTab(ActiveTab.QUIZ);
-          } catch (e) { handleApiError(e); } finally { setIsLoading(false); }
+        onGenerateQuizFromDeck={(deck) => {
+          setPendingActionDoc(null); setQuestions([]); setAnswers([]);
+          setQuizSetupSource({ source: buildDeckQuizSource(deck), name: deck.title, topicsKey: deck.id });
+          setActiveTab(ActiveTab.QUIZ);
         }}
         initialDoc={pendingActionDoc ?? undefined}
         activeModuleId={activeModuleId}

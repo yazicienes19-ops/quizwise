@@ -1029,14 +1029,15 @@ REGELN:
   }));
 };
 
-export const generateQuizFromFlashcards = async (deck: FlashcardDeck): Promise<QuizQuestion[]> => {
+/** Karten eines Stapels, die in ein Quiz einfließen. */
+const selectDeckCardsForQuiz = (deck: FlashcardDeck) => {
   // Große Decks (Anki-Import) ungefiltert einzuschicken sprengt Token-Limit
   // und Kosten — daher Cap: fällige Karten zuerst (SM-2), Rest aufgefüllt mit
   // einer gleichmäßigen Stichprobe über das ganze Deck, damit nicht nur der
   // Anfang abgefragt wird.
   const MAX_CARDS_FOR_QUIZ = 60;
   const sorted = [...deck.cards].sort((a, b) => (a.srs?.nextReview ?? 0) - (b.srs?.nextReview ?? 0));
-  const selected = sorted.length <= MAX_CARDS_FOR_QUIZ
+  return sorted.length <= MAX_CARDS_FOR_QUIZ
     ? sorted
     : (() => {
         const due = sorted.filter(c => !c.srs || c.srs.nextReview <= Date.now()).slice(0, MAX_CARDS_FOR_QUIZ);
@@ -1046,32 +1047,14 @@ export const generateQuizFromFlashcards = async (deck: FlashcardDeck): Promise<Q
         const spread = Array.from({ length: MAX_CARDS_FOR_QUIZ - due.length }, (_, i) => rest[Math.floor(i * step)]);
         return [...due, ...spread];
       })();
-  const cardsJson = JSON.stringify(selected.map(c => ({ q: c.front, a: c.back })));
-
-  const text = await callBackend({
-    parts: [{ text: `Erstelle ein Quiz aus diesen Karteikarten: ${cardsJson}${outputLangDirective()}` }],
-    config: {
-      thinkingConfig: { thinkingBudget: 0 },
-      responseMimeType: 'application/json',
-      responseSchema: {
-        type: Type.ARRAY,
-        items: {
-          type: Type.OBJECT,
-          properties: {
-            question: { type: Type.STRING },
-            options: { type: Type.ARRAY, items: { type: Type.STRING } },
-            correctAnswerIndices: { type: Type.ARRAY, items: { type: Type.INTEGER } },
-            isMultipleChoice: { type: Type.BOOLEAN },
-            explanation: { type: Type.STRING },
-            sourceReference: { type: Type.STRING }
-          },
-          required: ['question', 'options', 'correctAnswerIndices', 'isMultipleChoice', 'explanation', 'sourceReference']
-        }
-      }
-    }
-  });
-  return parseQuizQuestions(text);
 };
+
+/** Stapel als Textquelle, damit ein Quiz aus Karteikarten dieselben
+ *  Einstellungen (Fragetyp, Schwierigkeit, Anzahl) nutzen kann wie ein Dokument. */
+export const buildDeckQuizSource = (deck: FlashcardDeck): GenerationSource => ({
+  text: `Karteikarten-Stapel "${deck.title}":\n\n` + selectDeckCardsForQuiz(deck)
+    .map(c => `Frage: ${c.front}\nAntwort: ${c.back}`).join('\n\n'),
+});
 
 export const generatePaperFramework = async (
   topic: string,

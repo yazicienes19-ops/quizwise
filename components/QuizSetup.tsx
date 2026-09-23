@@ -8,7 +8,14 @@ import { formatDate } from '../i18n/dates';
 import type { TKey } from '../i18n';
 
 interface QuizSetupProps {
-  doc: ProcessedDocument;
+  /** Einzelnes Dokument. Fehlt es, ist die Quelle ein Ordner, eine neue Datei,
+   *  eingefügter Text oder ein Stapel; dann gibt es keine Dokumentauswahl,
+   *  keine Statistik und keinen Fokus auf schwache Themen. */
+  doc?: ProcessedDocument | null;
+  /** Anzeigename der Quelle, wenn kein Dokument übergeben wird. */
+  sourceName?: string;
+  /** Text des Zurück-Links; Standard ist "Zurück zur Bibliothek". */
+  backLabel?: string;
   availableDocs?: ProcessedDocument[];
   onStart: (config: QuizConfig, docIds: string[]) => void;
   onBack: () => void;
@@ -64,7 +71,7 @@ const Chip: React.FC<{ selected: boolean; onClick: () => void; label: string; de
   </button>
 );
 
-export const QuizSetup: React.FC<QuizSetupProps> = ({ doc, availableDocs, onStart, onBack, initialFocus, activeModuleId = null }) => {
+export const QuizSetup: React.FC<QuizSetupProps> = ({ doc = null, sourceName, backLabel, availableDocs, onStart, onBack, initialFocus, activeModuleId = null }) => {
   const { t } = useTranslation();
   // 'mixed' als Sonderwert im Set, oder 1+ konkrete Typen — nie leer (fällt bei
   // Abwahl des letzten konkreten Typs automatisch auf 'mixed' zurück).
@@ -76,11 +83,11 @@ export const QuizSetup: React.FC<QuizSetupProps> = ({ doc, availableDocs, onStar
   const [showCustom, setShowCustom]     = useState(false);
   const [examMode, setExamMode]         = useState(false);
   const [focus, setFocus]               = useState<QuizConfig['focus']>(initialFocus ?? 'all');
-  const [selectedDocIds, setSelectedDocIds] = useState<string[]>([doc.id]);
+  const [selectedDocIds, setSelectedDocIds] = useState<string[]>(doc ? [doc.id] : []);
   const [selectedChapterIndices, setSelectedChapterIndices] = useState<Set<number> | null>(null); // null = all
 
   const chapters = useMemo(() => {
-    if (selectedDocIds.length > 1) return []; // chapter selection disabled for multi-doc
+    if (!doc || selectedDocIds.length > 1) return []; // chapter selection disabled for multi-doc
     return detectChapters(getTextForChapterDetection(doc));
   }, [doc, selectedDocIds.length]);
 
@@ -120,10 +127,13 @@ export const QuizSetup: React.FC<QuizSetupProps> = ({ doc, availableDocs, onStar
     });
   };
 
-  const otherDocs = availableDocs?.filter(d => d.id !== doc.id && (!activeModuleId || d.collectionId === activeModuleId)) ?? [];
+  const otherDocs = !doc ? [] : availableDocs?.filter(d => d.id !== doc.id && (!activeModuleId || d.collectionId === activeModuleId)) ?? [];
 
-  const stats = useMemo(() => getDocStats(doc.id), [doc.id]);
-  const docTitle = documentDisplayName(doc);
+  const stats = useMemo(
+    (): ReturnType<typeof getDocStats> => doc ? getDocStats(doc.id) : { count: 0, lastAt: null, avgAccuracy: null, weakTopics: [] },
+    [doc],
+  );
+  const docTitle = doc ? documentDisplayName(doc) : (sourceName ?? '');
   const effectiveCount = showCustom ? Math.min(50, Math.max(3, parseInt(customCount) || 10)) : questionCount;
 
   return (
@@ -136,7 +146,7 @@ export const QuizSetup: React.FC<QuizSetupProps> = ({ doc, availableDocs, onStar
         <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round">
           <polyline points="15 18 9 12 15 6"/>
         </svg>
-        {t('quizSetup.backToLibrary')}
+        {backLabel ?? t('quizSetup.backToLibrary')}
       </button>
 
       {/* Source header */}
@@ -167,7 +177,7 @@ export const QuizSetup: React.FC<QuizSetupProps> = ({ doc, availableDocs, onStar
       {otherDocs.length > 0 && (
         <div className="space-y-2">
           <p className="text-[9px] font-black uppercase tracking-widest text-slate-400">{t('quizSetup.includeDocs')}</p>
-          {[doc, ...otherDocs].map(d => (
+          {doc && [doc, ...otherDocs].map(d => (
             <button
               key={d.id}
               onClick={() => toggleDoc(d.id)}
