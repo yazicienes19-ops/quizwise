@@ -61,7 +61,7 @@ export const EditCardModal: React.FC<EditCardModalProps> = ({
     >
       <div
         {...dialogProps}
-        className="bg-white dark:bg-slate-900 rounded-[32px] w-full max-w-2xl shadow-3d-deep overflow-hidden animate-in zoom-in-95 duration-300"
+        className="bg-white dark:bg-slate-900 rounded-[24px] w-full max-w-2xl shadow-3d-deep overflow-hidden animate-in zoom-in-95 duration-300"
         onClick={e => e.stopPropagation()}
       >
         {/* Header */}

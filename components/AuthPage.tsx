@@ -97,7 +97,7 @@ export const AuthPage: React.FC = () => {
         {/* Headline */}
         <div className="relative z-10 space-y-6">
           <div className="space-y-3">
-            <p className="text-[11px] font-black uppercase tracking-[0.3em] text-white/60">
+            <p className="text-[11px] font-black uppercase tracking-[0.14em] text-white/60">
               Dein Lernbegleiter fürs Studium
             </p>
             <h1 className="text-4xl font-black tracking-tight text-white leading-tight">

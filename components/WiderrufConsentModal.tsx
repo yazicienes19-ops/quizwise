@@ -27,7 +27,7 @@ export const WiderrufConsentModal: React.FC<WiderrufConsentModalProps> = ({ isLo
       <div
         {...dialogProps}
         aria-describedby={descriptionId}
-        className="w-full max-w-md rounded-[32px] shadow-3d-deep animate-in zoom-in-95 duration-300 overflow-hidden"
+        className="w-full max-w-md rounded-[24px] shadow-3d-deep animate-in zoom-in-95 duration-300 overflow-hidden"
         style={{ background: 'var(--bg-sidebar)', border: '1px solid var(--border-color)' }}
       >
         <div className="flex items-center justify-between p-8 pb-0">

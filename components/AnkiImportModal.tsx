@@ -125,7 +125,7 @@ export const AnkiImportModal: React.FC<AnkiImportModalProps> = ({ decks, onClose
     >
       <div
         {...dialogProps}
-        className="bg-white dark:bg-slate-900 rounded-[32px] w-full max-w-lg shadow-3d-deep overflow-hidden animate-in zoom-in-95 duration-300 max-h-[90vh] overflow-y-auto"
+        className="bg-white dark:bg-slate-900 rounded-[24px] w-full max-w-lg shadow-3d-deep overflow-hidden animate-in zoom-in-95 duration-300 max-h-[90vh] overflow-y-auto"
         onClick={e => e.stopPropagation()}
       >
         {/* Header */}

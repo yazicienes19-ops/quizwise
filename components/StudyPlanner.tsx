@@ -446,8 +446,8 @@ export const StudyPlanner: React.FC<StudyPlannerProps> = ({ metrics, decks, exam
 
       {/* Widgets */}
       <div className="grid grid-cols-1 md:grid-cols-3 gap-6 max-w-5xl mx-auto">
-        <div className="p-6 rounded-[32px] bg-white/50 dark:bg-slate-900/50 backdrop-blur-sm border border-slate-200/50 dark:border-slate-800/50 hover:bg-white dark:hover:bg-slate-900 transition-all">
-          <h3 className="text-[11px] font-black uppercase tracking-[0.4em] text-indigo-500 mb-4">{t('sp2.gaps', { n: knowledgeGaps.length })}</h3>
+        <div className="p-6 rounded-[24px] bg-white/50 dark:bg-slate-900/50 backdrop-blur-sm border border-slate-200/50 dark:border-slate-800/50 hover:bg-white dark:hover:bg-slate-900 transition-all">
+          <h3 className="text-[11px] font-black uppercase tracking-[0.14em] text-indigo-500 mb-4">{t('sp2.gaps', { n: knowledgeGaps.length })}</h3>
           <div className="space-y-2">
             {knowledgeGaps.slice(0, 3).map(gap => (
               <div key={gap.id} className="flex justify-between items-center">
@@ -458,8 +458,8 @@ export const StudyPlanner: React.FC<StudyPlannerProps> = ({ metrics, decks, exam
             {knowledgeGaps.length === 0 && <p className="text-[11px] text-slate-400 italic">{t('sp2.noGaps')}</p>}
           </div>
         </div>
-        <div className="p-6 rounded-[32px] bg-white/50 dark:bg-slate-900/50 backdrop-blur-sm border border-slate-200/50 dark:border-slate-800/50 hover:bg-white dark:hover:bg-slate-900 transition-all">
-          <h3 className="text-[11px] font-black uppercase tracking-[0.4em] text-indigo-600 mb-4">{t('sp2.dueCards', { n: dueCardsTotal })}</h3>
+        <div className="p-6 rounded-[24px] bg-white/50 dark:bg-slate-900/50 backdrop-blur-sm border border-slate-200/50 dark:border-slate-800/50 hover:bg-white dark:hover:bg-slate-900 transition-all">
+          <h3 className="text-[11px] font-black uppercase tracking-[0.14em] text-indigo-600 mb-4">{t('sp2.dueCards', { n: dueCardsTotal })}</h3>
           <div className="space-y-2">
             {dueDecks.slice(0, 3).map(({ deck, due }) => (
               <div key={deck.id} className="flex justify-between items-center">
@@ -470,8 +470,8 @@ export const StudyPlanner: React.FC<StudyPlannerProps> = ({ metrics, decks, exam
             {dueDecks.length === 0 && <p className="text-[11px] text-slate-400 italic">{t('sp2.allLearned')}</p>}
           </div>
         </div>
-        <div className="p-6 rounded-[32px] bg-white/50 dark:bg-slate-900/50 backdrop-blur-sm border border-slate-200/50 dark:border-slate-800/50 hover:bg-white dark:hover:bg-slate-900 transition-all">
-          <h3 className="text-[11px] font-black uppercase tracking-[0.4em] text-rose-500 mb-4">{t('sp2.exams', { n: examTerms.length })}</h3>
+        <div className="p-6 rounded-[24px] bg-white/50 dark:bg-slate-900/50 backdrop-blur-sm border border-slate-200/50 dark:border-slate-800/50 hover:bg-white dark:hover:bg-slate-900 transition-all">
+          <h3 className="text-[11px] font-black uppercase tracking-[0.14em] text-rose-500 mb-4">{t('sp2.exams', { n: examTerms.length })}</h3>
           <div className="space-y-2">
             {examTerms.slice(0, 3).map(exam => (
               <div key={exam.id} className="flex justify-between items-center">
@@ -510,7 +510,7 @@ export const StudyPlanner: React.FC<StudyPlannerProps> = ({ metrics, decks, exam
 
       {/* Klausur Form */}
       {showExamForm && (
-        <div className="max-w-xl mx-auto p-8 bg-white dark:bg-slate-900 rounded-[32px] border border-slate-200 dark:border-slate-800 shadow-3d-raised animate-in zoom-in-95 duration-200">
+        <div className="max-w-xl mx-auto p-8 bg-white dark:bg-slate-900 rounded-[24px] border border-slate-200 dark:border-slate-800 shadow-3d-raised animate-in zoom-in-95 duration-200">
           <div className="flex items-center justify-between mb-6">
             <h3 className="text-lg font-black dark:text-white">{t('sp2.enterExam')}</h3>
             <button aria-label={t('common.close')} onClick={() => setShowExamForm(false)} className="w-8 h-8 flex items-center justify-center rounded-xl bg-slate-100 dark:bg-slate-800 text-slate-400 hover:text-rose-500 transition-colors"><X size={14} /></button>
@@ -547,7 +547,7 @@ export const StudyPlanner: React.FC<StudyPlannerProps> = ({ metrics, decks, exam
 
       {/* Event Form */}
       {showEventForm && (
-        <div className="max-w-xl mx-auto p-8 bg-white dark:bg-slate-900 rounded-[32px] border border-slate-200 dark:border-slate-800 shadow-3d-raised animate-in zoom-in-95 duration-200">
+        <div className="max-w-xl mx-auto p-8 bg-white dark:bg-slate-900 rounded-[24px] border border-slate-200 dark:border-slate-800 shadow-3d-raised animate-in zoom-in-95 duration-200">
           <div className="flex items-center justify-between mb-6">
             <h3 className="text-lg font-black dark:text-white">{t('sp2.addAppointment')}</h3>
             <button aria-label={t('common.close')} onClick={() => setShowEventForm(false)} className="w-8 h-8 flex items-center justify-center rounded-xl bg-slate-100 dark:bg-slate-800 text-slate-400 hover:text-rose-500 transition-colors"><X size={14} /></button>
@@ -574,7 +574,7 @@ export const StudyPlanner: React.FC<StudyPlannerProps> = ({ metrics, decks, exam
 
       {/* Handy-Kalender-Sync */}
       {showSyncModal && (
-        <div className="max-w-xl mx-auto p-8 bg-white dark:bg-slate-900 rounded-[32px] border border-slate-200 dark:border-slate-800 shadow-3d-raised animate-in zoom-in-95 duration-200">
+        <div className="max-w-xl mx-auto p-8 bg-white dark:bg-slate-900 rounded-[24px] border border-slate-200 dark:border-slate-800 shadow-3d-raised animate-in zoom-in-95 duration-200">
           <div className="flex items-center justify-between mb-6">
             <h3 className="text-lg font-black dark:text-white flex items-center gap-2"><Smartphone size={18} />{t('sp2.syncTitle')}</h3>
             <button aria-label={t('common.close')} onClick={() => setShowSyncModal(false)} className="w-8 h-8 flex items-center justify-center rounded-xl bg-slate-100 dark:bg-slate-800 text-slate-400 hover:text-rose-500 transition-colors"><X size={14} /></button>
@@ -639,7 +639,7 @@ export const StudyPlanner: React.FC<StudyPlannerProps> = ({ metrics, decks, exam
       {/* ── MONAT VIEW ── */}
       {viewMode === 'monat' && (
         <div className={selectedDate ? 'max-w-6xl mx-auto grid grid-cols-1 lg:grid-cols-[1.6fr_1fr] gap-6 items-start' : 'max-w-5xl mx-auto'}>
-        <div className="rounded-[32px] shadow-3d-raised overflow-hidden" style={{ background: 'var(--bg-sidebar)', border: '1px solid var(--border-color)' }}>
+        <div className="rounded-[24px] shadow-3d-raised overflow-hidden" style={{ background: 'var(--bg-sidebar)', border: '1px solid var(--border-color)' }}>
           {/* Calendar Nav */}
           <div className="flex items-center justify-between px-6 py-5" style={{ borderBottom: '1px solid var(--border-color)' }}>
             <div className="flex items-center gap-3">

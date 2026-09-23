@@ -570,7 +570,7 @@ export const QuizPlayer: React.FC<QuizPlayerProps> = ({
       {/* Header */}
       <div className="px-4 pt-6 lg:pt-10 space-y-3 mb-6">
         {sourceName && (
-          <p className="text-[11px] font-black uppercase tracking-[0.3em] text-indigo-500 break-words">{sourceName}</p>
+          <p className="text-[11px] font-black uppercase tracking-[0.14em] text-indigo-500 break-words">{sourceName}</p>
         )}
         <div className="flex justify-between items-center text-[11px] font-black uppercase text-slate-400 tracking-widest">
           <span>{t('quiz.questionOf', { n: answers.length + 1, total: questions.length })}</span>
@@ -649,7 +649,7 @@ export const QuizPlayer: React.FC<QuizPlayerProps> = ({
       )}
 
       {/* Question card */}
-      <div className="mx-4 bg-white dark:bg-slate-900 rounded-[32px] border border-slate-100 dark:border-slate-800 shadow-3d-raised overflow-hidden">
+      <div className="mx-4 bg-white dark:bg-slate-900 rounded-[24px] border border-slate-100 dark:border-slate-800 shadow-3d-raised overflow-hidden">
         {badgeLabel && (
           <div className="px-6 pt-5 pb-1">
             <span className="inline-block bg-indigo-600 text-white text-[11px] font-black uppercase tracking-[0.25em] px-3 py-1 rounded-full">

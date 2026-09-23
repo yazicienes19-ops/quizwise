@@ -256,7 +256,7 @@ export const FlashcardPlayer: React.FC<FlashcardPlayerProps> = ({ cards, onRevie
           {!showAnswer ? (
             <button
               onClick={() => setShowAnswer(true)}
-              className="bg-slate-900 dark:bg-slate-700 text-white px-8 md:px-20 py-5 md:py-6 rounded-2xl font-black uppercase tracking-[0.2em] md:tracking-[0.3em] text-xs md:text-sm shadow-2xl hover:scale-105 transition-all w-full md:w-auto md:min-w-[350px]"
+              className="bg-slate-900 dark:bg-slate-700 text-white px-8 md:px-20 py-5 md:py-6 rounded-2xl font-black uppercase tracking-[0.2em] md:tracking-[0.14em] text-xs md:text-sm shadow-2xl hover:scale-105 transition-all w-full md:w-auto md:min-w-[350px]"
             >
               {t('fc.showAnswer')}
             </button>

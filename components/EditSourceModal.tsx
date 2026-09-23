@@ -79,7 +79,7 @@ export const EditSourceModal: React.FC<Props> = ({ doc, meta, onClose, onSaved }
     >
       <div
         {...dialogProps}
-        className="bg-white dark:bg-slate-900 rounded-[32px] w-full max-w-lg shadow-3d-deep overflow-hidden animate-in zoom-in-95 duration-300"
+        className="bg-white dark:bg-slate-900 rounded-[24px] w-full max-w-lg shadow-3d-deep overflow-hidden animate-in zoom-in-95 duration-300"
         onClick={e => e.stopPropagation()}
       >
         {/* Header */}

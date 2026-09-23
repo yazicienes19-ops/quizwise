@@ -160,7 +160,7 @@ export const CalendarDayPanel: React.FC<CalendarDayPanelProps> = ({
   };
 
   return (
-    <div className="rounded-[32px] shadow-3d-raised overflow-hidden" style={{ background: 'var(--bg-sidebar)', border: '1px solid var(--border-color)' }}>
+    <div className="rounded-[24px] shadow-3d-raised overflow-hidden" style={{ background: 'var(--bg-sidebar)', border: '1px solid var(--border-color)' }}>
       <div className="px-6 py-5" style={{ borderBottom: '1px solid var(--border-color)' }}>
         <p className="text-lg font-black capitalize" style={{ color: 'var(--text-main)' }}>
           {formatDate(date, { weekday: 'long', day: 'numeric', month: 'long' })}

@@ -84,13 +84,13 @@ export const ResultView: React.FC<ResultViewProps> = ({
   return (
     <div className="max-w-2xl mx-auto px-4 py-6 lg:py-10 space-y-6 animate-in zoom-in-95 duration-500 pb-20">
       {/* Score hero */}
-      <div className="bg-white dark:bg-slate-900 rounded-[32px] border border-slate-100 dark:border-slate-800 shadow-3d-raised overflow-hidden">
+      <div className="bg-white dark:bg-slate-900 rounded-[24px] border border-slate-100 dark:border-slate-800 shadow-3d-raised overflow-hidden">
         <AnimatedBar percent={score} className="h-1.5 bg-gradient-to-r from-indigo-500 to-violet-500" duration={1000} />
         <div className="p-8 text-center space-y-4">
           <EmojiImage emoji={grade.icon} size={52} className="mx-auto" />
           <div>
             <p className={`text-6xl font-black ${grade.color}`}><CountUp value={score} duration={800} finalText={`${score}%`} format={n => `${Math.round(n)}%`} /></p>
-            <p className="text-[11px] font-black uppercase tracking-[0.3em] text-slate-400 mt-1">{grade.label}</p>
+            <p className="text-[11px] font-black uppercase tracking-[0.14em] text-slate-400 mt-1">{grade.label}</p>
           </div>
           {docName && (
             <p className="text-[11px] font-black uppercase tracking-widest text-indigo-500 break-words">{docName}</p>

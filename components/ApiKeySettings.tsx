@@ -37,7 +37,7 @@ export const ApiKeySettings: React.FC<ApiKeySettingsProps> = ({ onClose }) => {
   return (
     <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-sm animate-in fade-in duration-200">
       <div
-        className="w-full max-w-md rounded-[32px] p-8 shadow-3d-deep space-y-6 animate-in zoom-in-95 slide-in-from-bottom-4 duration-300"
+        className="w-full max-w-md rounded-[24px] p-8 shadow-3d-deep space-y-6 animate-in zoom-in-95 slide-in-from-bottom-4 duration-300"
         style={{ background: 'var(--bg-sidebar)', border: '1px solid var(--border-color)' }}
       >
         {/* Header */}

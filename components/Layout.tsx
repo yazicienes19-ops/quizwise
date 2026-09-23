@@ -257,7 +257,7 @@ export const Layout: React.FC<LayoutProps> = ({
               Auch ohne Ordner sichtbar — sonst wissen Nutzer nicht, dass es das Feature gibt. */}
           {onModuleChange && collections.length === 0 && (
             <div className="mb-6 -mt-6">
-              <p className="text-[11px] font-black uppercase tracking-[0.3em] mb-1.5 px-1" style={{ color: SIDEBAR.textMuted }}>{t('layout.activeSubject')}</p>
+              <p className="text-[11px] font-black uppercase tracking-[0.14em] mb-1.5 px-1" style={{ color: SIDEBAR.textMuted }}>{t('layout.activeSubject')}</p>
               <button
                 onClick={() => onTabChange(ActiveTab.LIBRARY)}
                 className="w-full px-3 py-2.5 rounded-xl text-left transition-all hover:translate-x-0.5"
@@ -270,7 +270,7 @@ export const Layout: React.FC<LayoutProps> = ({
           )}
           {onModuleChange && collections.length > 0 && (
             <div className="mb-6 -mt-6">
-              <p className="text-[11px] font-black uppercase tracking-[0.3em] mb-1.5 px-1" style={{ color: SIDEBAR.textMuted }}>{t('layout.activeSubject')}</p>
+              <p className="text-[11px] font-black uppercase tracking-[0.14em] mb-1.5 px-1" style={{ color: SIDEBAR.textMuted }}>{t('layout.activeSubject')}</p>
               <select
                 value={activeModuleId ?? ''}
                 onChange={e => onModuleChange(e.target.value || null)}
@@ -296,7 +296,7 @@ export const Layout: React.FC<LayoutProps> = ({
             {visibleGroups.map((group, gi) => (
               <div key={gi}>
                 {group.titleKey && (
-                  <p className="sidebar-group-title px-3 pt-5 pb-1.5 text-[11px] font-black uppercase tracking-[0.3em]" style={{ color: SIDEBAR.textMuted }}>
+                  <p className="sidebar-group-title px-3 pt-5 pb-1.5 text-[11px] font-black uppercase tracking-[0.14em]" style={{ color: SIDEBAR.textMuted }}>
                     {t(group.titleKey)}
                   </p>
                 )}

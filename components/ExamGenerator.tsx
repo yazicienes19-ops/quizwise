@@ -18,6 +18,7 @@ import {
   DIFFICULTY_LEVELS, TopicWeight, DifficultyMix, AdaptiveExamTarget,
 } from '../services/examAdaptive';
 import { PageHeader } from './PageHeader';
+import { ChevronDown } from 'lucide-react';
 
 export type ExamOptions = {
   count: number; difficulty: string;
@@ -124,6 +125,7 @@ export const ExamGenerator: React.FC<ExamGeneratorProps> = ({
     return moduleDocuments.filter(d => meta[d.id]?.isAltklausur);
   }, [moduleDocuments]);
   const [questionCount, setQuestionCount] = useState(10);
+  const [showAdvanced, setShowAdvanced] = useState(false);
   const [difficulty, setDifficulty] = useState<'leicht' | 'mittel' | 'schwer'>('mittel');
   const [scoringMode, setScoringMode] = useState<ScoringMode>('standard');
   const [emphases, setEmphases] = useState<ScoringProfile['emphases']>([]);
@@ -386,8 +388,8 @@ export const ExamGenerator: React.FC<ExamGeneratorProps> = ({
 
         {/* Config Column */}
         <div className="lg:col-span-5 space-y-6">
-          <div className="bg-white dark:bg-slate-900 rounded-[24px] sm:rounded-[32px] border border-slate-200 dark:border-slate-800 shadow-3d-deep p-5 sm:p-8 space-y-8 sm:space-y-10">
-            <h3 className="text-[11px] font-black uppercase tracking-[0.4em] text-indigo-500">{t('eg.setup')}</h3>
+          <div className="bg-white dark:bg-slate-900 rounded-[24px] sm:rounded-[24px] border border-slate-200 dark:border-slate-800 shadow-3d-deep p-5 sm:p-8 space-y-8 sm:space-y-10">
+            <h3 className="text-[11px] font-black uppercase tracking-[0.14em] text-indigo-500">{t('eg.setup')}</h3>
 
             <div className="space-y-6">
               <div className="space-y-3">
@@ -443,6 +445,46 @@ export const ExamGenerator: React.FC<ExamGeneratorProps> = ({
                   })}
                 </div>
               </div>
+            </div>
+
+            <div className="space-y-3">
+              <div className="flex justify-between items-center text-[11px] font-black uppercase tracking-widest text-slate-400">
+                <span>{t('eg.editTime')}</span>
+                {customMinutes !== null && (
+                  <button onClick={() => setCustomMinutes(null)} className="text-indigo-500 hover:text-indigo-700 normal-case tracking-normal font-bold">{t('eg.reset')}</button>
+                )}
+              </div>
+              <div className="flex items-center gap-4">
+                <button
+                  onClick={() => setCustomMinutes(Math.max(10, effectiveMinutes - 5))}
+                  className="w-11 h-11 rounded-2xl bg-slate-50 dark:bg-slate-800 text-slate-500 dark:text-slate-400 font-black text-lg hover:bg-slate-100 dark:hover:bg-slate-700 transition-all shrink-0"
+                >−</button>
+                <p className="flex-1 text-center text-xl font-black dark:text-white">{effectiveMinutes} Min.</p>
+                <button
+                  onClick={() => setCustomMinutes(effectiveMinutes + 5)}
+                  className="w-11 h-11 rounded-2xl bg-slate-50 dark:bg-slate-800 text-slate-500 dark:text-slate-400 font-black text-lg hover:bg-slate-100 dark:hover:bg-slate-700 transition-all shrink-0"
+                >+</button>
+              </div>
+            </div>
+
+
+            {/* Nur das Wesentliche sichtbar, der Rest eingeklappt mit den bisherigen
+                Standardwerten (Audit 23.09.2026: Setup war eine sehr lange Spalte). */}
+            <button
+              type="button"
+              onClick={() => setShowAdvanced(v => !v)}
+              aria-expanded={showAdvanced}
+              className="w-full flex items-center justify-between gap-3 px-4 py-3.5 rounded-2xl text-left transition-colors"
+              style={{ border: '1px solid var(--border-color)' }}
+            >
+              <span className="min-w-0">
+                <span className="block text-[13px] font-bold dark:text-white">{t('eg.moreSettings')}</span>
+                <span className="block text-[12px] text-slate-500 dark:text-slate-400 mt-0.5">{t('eg.moreSettingsHint')}</span>
+              </span>
+              <ChevronDown size={18} className={`shrink-0 text-slate-400 transition-transform ${showAdvanced ? 'rotate-180' : ''}`} />
+            </button>
+            {showAdvanced && (
+              <div className="space-y-8 animate-in fade-in duration-200">
               <div className="space-y-3">
                 <div className="text-[11px] font-black uppercase tracking-widest text-slate-400">{t('eg.examTypePreset')}</div>
                 <div className="grid grid-cols-2 gap-2">
@@ -543,8 +585,6 @@ export const ExamGenerator: React.FC<ExamGeneratorProps> = ({
                   </div>
                 )}
               </div>
-            </div>
-
             {/* Bewertungsprofil */}
             <div className="space-y-4">
               <div className="text-[11px] font-black uppercase tracking-widest text-slate-400">{t('eg.scoringProfile')}</div>
@@ -585,26 +625,6 @@ export const ExamGenerator: React.FC<ExamGeneratorProps> = ({
                 {scoringMode === 'standard' ? t('eg.standardHint') : ''}
                 {scoringMode === 'lenient'  ? t('eg.lenientHint') : ''}
               </p>
-            </div>
-
-            <div className="pt-8 border-t border-slate-50 dark:border-slate-800 space-y-3">
-              <div className="flex justify-between items-center text-[11px] font-black uppercase tracking-widest text-slate-400">
-                <span>{t('eg.editTime')}</span>
-                {customMinutes !== null && (
-                  <button onClick={() => setCustomMinutes(null)} className="text-indigo-500 hover:text-indigo-700 normal-case tracking-normal font-bold">{t('eg.reset')}</button>
-                )}
-              </div>
-              <div className="flex items-center gap-4">
-                <button
-                  onClick={() => setCustomMinutes(Math.max(10, effectiveMinutes - 5))}
-                  className="w-11 h-11 rounded-2xl bg-slate-50 dark:bg-slate-800 text-slate-500 dark:text-slate-400 font-black text-lg hover:bg-slate-100 dark:hover:bg-slate-700 transition-all shrink-0"
-                >−</button>
-                <p className="flex-1 text-center text-xl font-black dark:text-white">{effectiveMinutes} Min.</p>
-                <button
-                  onClick={() => setCustomMinutes(effectiveMinutes + 5)}
-                  className="w-11 h-11 rounded-2xl bg-slate-50 dark:bg-slate-800 text-slate-500 dark:text-slate-400 font-black text-lg hover:bg-slate-100 dark:hover:bg-slate-700 transition-all shrink-0"
-                >+</button>
-              </div>
             </div>
 
             {/* Adaptive Klausur — nur sichtbar mit genug Lernhistorie */}
@@ -674,6 +694,9 @@ export const ExamGenerator: React.FC<ExamGeneratorProps> = ({
                     </p>
                   </div>
                 )}
+              </div>
+            )}
+
               </div>
             )}
 

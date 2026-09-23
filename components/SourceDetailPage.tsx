@@ -72,7 +72,7 @@ export const SourceDetailPage: React.FC<Props> = ({ doc, meta, isAdminUser = fal
       </button>
 
       {/* Source Header */}
-      <div className="bg-white dark:bg-slate-900 rounded-[32px] border border-slate-200 dark:border-slate-800 shadow-3d-raised p-8">
+      <div className="bg-white dark:bg-slate-900 rounded-[24px] border border-slate-200 dark:border-slate-800 shadow-3d-raised p-8">
         <div className="flex flex-col sm:flex-row gap-6 items-start">
           <div className="w-16 h-16 bg-indigo-50 dark:bg-indigo-900/20 rounded-2xl flex items-center justify-center shrink-0">
             <EmojiImage emoji={emoji} size={40} />
@@ -162,7 +162,7 @@ export const SourceDetailPage: React.FC<Props> = ({ doc, meta, isAdminUser = fal
       {quizStats.count > 0 && (
         <div className="bg-white dark:bg-slate-900 rounded-[28px] border border-slate-200 dark:border-slate-800 shadow-3d-raised p-6 space-y-4">
           <div className="flex items-center justify-between">
-            <p className="text-[11px] font-black uppercase tracking-[0.3em] text-slate-400">{t('sd.progress')}</p>
+            <p className="text-[11px] font-black uppercase tracking-[0.14em] text-slate-400">{t('sd.progress')}</p>
             <button
               onClick={() => onAction(ActiveTab.QUIZ, doc)}
               className="text-[11px] font-black uppercase tracking-widest text-indigo-600 hover:text-indigo-700 transition-colors"
@@ -213,7 +213,7 @@ export const SourceDetailPage: React.FC<Props> = ({ doc, meta, isAdminUser = fal
       {/* Action prompt */}
       <div className="space-y-5">
         <div className="flex items-center justify-between px-1">
-          <h2 className="text-[11px] font-black uppercase tracking-[0.4em] text-slate-400">{t('sd.whatToDo')}</h2>
+          <h2 className="text-[11px] font-black uppercase tracking-[0.14em] text-slate-400">{t('sd.whatToDo')}</h2>
           <span className="flex items-center gap-1.5 text-[11px] font-black uppercase tracking-widest text-emerald-600 dark:text-emerald-400">
             <span className="w-1.5 h-1.5 rounded-full bg-emerald-500" />
             {t('sd.startsDirectly')}

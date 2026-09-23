@@ -97,7 +97,7 @@ export const SharedDeckPage: React.FC<SharedDeckPageProps> = ({
   return (
     <div className="min-h-screen py-12 px-4" style={{ background: 'var(--bg-main)' }}>
       <div className="max-w-xl mx-auto animate-in fade-in duration-700">
-        <div className="rounded-[32px] shadow-3d-deep overflow-hidden" style={{ background: 'var(--bg-sidebar)', border: '1px solid var(--border-color)' }}>
+        <div className="rounded-[24px] shadow-3d-deep overflow-hidden" style={{ background: 'var(--bg-sidebar)', border: '1px solid var(--border-color)' }}>
           {/* Wordmark */}
           <div className="pt-9 pb-6 text-center" style={{ borderBottom: '1px solid var(--border-color)' }}>
             <p className="text-xl" style={{ fontFamily: 'Georgia, "Times New Roman", serif', color: 'var(--text-main)' }}>

@@ -170,7 +170,7 @@ export const ScholarSearch: React.FC<ScholarSearchProps> = ({
       {/* Results */}
       {!isSearching && results.length > 0 && lastSearchMode === searchMode && (
         <div className="max-w-4xl mx-auto space-y-3">
-          <p className="text-[11px] font-black uppercase text-slate-400 tracking-[0.3em] px-1">
+          <p className="text-[11px] font-black uppercase text-slate-400 tracking-[0.14em] px-1">
             {results.length} {searchMode === 'scholar' ? t('sch.verifiedSources') : t('sch.results')}
           </p>
 

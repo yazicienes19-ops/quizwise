@@ -10,7 +10,7 @@ import { buildLearningScore } from '../services/learningScoreService';
 import { buildExamForecast } from '../services/examForecastService';
 import type { DailyPlanStep } from '../services/learningProfileService';
 import { useModuleScopedActivity } from '../hooks/useModuleScopedActivity';
-import { ChevronLeft } from 'lucide-react';
+import { ChevronLeft, ChevronDown } from 'lucide-react';
 import { nextExamForModule } from '../services/examTermService';
 import { getStreak } from '../services/streakService';
 import { getDismissedTopics, dismissTopic } from '../services/dismissedTopicsService';
@@ -237,6 +237,8 @@ export const LearningCoach: React.FC<LearningCoachProps> = ({ metrics, decks, on
     },
   ].filter((x): x is { label: string; reason: string } => Boolean(x));
 
+  const [showDetails, setShowDetails] = useState(false);
+
   const handleRunCoach = async () => {
     if (!hasAnyData || !hasEnoughForCoach) return;
     setIsLoading(true);
@@ -313,7 +315,7 @@ export const LearningCoach: React.FC<LearningCoachProps> = ({ metrics, decks, on
       {/* ── Heute solltest du — priorisierte nächste Schritte ── */}
       {dailyPlan.length > 0 && (
         <div
-          className="p-6 lg:p-8 rounded-[24px] lg:rounded-[32px] border shadow-3d-raised space-y-4"
+          className="p-6 lg:p-8 rounded-[24px] lg:rounded-[24px] border shadow-3d-raised space-y-4"
           style={{ background: 'var(--card)', borderColor: 'color-mix(in srgb, var(--primary) 25%, var(--border-color))' }}
         >
           <h3 className="text-[11px] font-black uppercase tracking-widest" style={{ color: 'var(--primary)' }}>
@@ -362,7 +364,7 @@ export const LearningCoach: React.FC<LearningCoachProps> = ({ metrics, decks, on
       {/* ── Langzeit-Entwicklung: bewusst vor Prognose und Schwächen, damit
         Fortschritt zuerst sichtbar ist (Audit 23.09.2026: Seite war eine rote Wand) ── */}
       {profile.longTermTrend && (
-        <div className="p-6 lg:p-8 rounded-[24px] lg:rounded-[32px] border shadow-3d-raised space-y-4" style={{ background: 'var(--card)', borderColor: 'var(--border-color)' }}>
+        <div className="p-6 lg:p-8 rounded-[24px] lg:rounded-[24px] border shadow-3d-raised space-y-4" style={{ background: 'var(--card)', borderColor: 'var(--border-color)' }}>
           <h3 className="text-[11px] font-black uppercase tracking-widest" style={{ color: 'var(--mute)' }}>{t('lc.developmentSince')}</h3>
           <div className="flex flex-wrap gap-2">
             {[...profile.longTermTrend].sort((a, b) => b.delta - a.delta).map(t => (
@@ -384,7 +386,7 @@ export const LearningCoach: React.FC<LearningCoachProps> = ({ metrics, decks, on
       {/* ── Coach-Hero: Klausurprognose + Top-Empfehlung ── */}
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-4 lg:gap-6">
         <div
-          className="lg:col-span-1 p-6 lg:p-8 rounded-[24px] lg:rounded-[32px] border shadow-3d-raised flex flex-col items-center justify-center text-center"
+          className="lg:col-span-1 p-6 lg:p-8 rounded-[24px] lg:rounded-[24px] border shadow-3d-raised flex flex-col items-center justify-center text-center"
           style={{ background: 'var(--card)', borderColor: 'var(--border-color)' }}
         >
           <h3 className="text-[11px] font-black uppercase tracking-widest mb-4" style={{ color: 'var(--mute)' }}>
@@ -450,7 +452,7 @@ export const LearningCoach: React.FC<LearningCoachProps> = ({ metrics, decks, on
         </div>
 
         <div
-          className="lg:col-span-2 p-6 lg:p-8 rounded-[24px] lg:rounded-[32px] border shadow-3d-raised flex flex-col justify-center"
+          className="lg:col-span-2 p-6 lg:p-8 rounded-[24px] lg:rounded-[24px] border shadow-3d-raised flex flex-col justify-center"
           style={{ background: 'var(--card)', borderColor: 'color-mix(in srgb, var(--primary) 25%, var(--border-color))' }}
         >
           <h3 className="text-[11px] font-black uppercase tracking-widest mb-3" style={{ color: 'var(--mute)' }}>
@@ -495,11 +497,26 @@ export const LearningCoach: React.FC<LearningCoachProps> = ({ metrics, decks, on
       </div>
 
       {/* ── Deterministische Panels ── */}
+      {/* Detail-Auswertungen eingeklappt (Audit 23.09.2026: Seite war rund
+          3 000 px lang). Nichts entfällt, es liegt eine Ebene tiefer. */}
+      <button
+        onClick={() => setShowDetails(v => !v)}
+        aria-expanded={showDetails}
+        className="w-full flex items-center justify-between gap-4 px-5 py-4 rounded-[20px] text-left transition-colors"
+        style={{ background: 'var(--card)', border: '1px solid var(--border-color)' }}
+      >
+        <span className="min-w-0">
+          <span className="block text-[13px] font-bold" style={{ color: 'var(--ink)' }}>{showDetails ? t('lc.detailsHide') : t('lc.detailsShow')}</span>
+          <span className="block text-[12px] mt-0.5" style={{ color: 'var(--mute)' }}>{t('lc.detailsHint')}</span>
+        </span>
+        <ChevronDown size={18} className={`shrink-0 transition-transform ${showDetails ? 'rotate-180' : ''}`} style={{ color: 'var(--mute)' }} />
+      </button>
+      {showDetails && (<>
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 lg:gap-6">
 
         {/* Methodenvergleich */}
         {profile.perMethod.length > 0 && (
-          <div className="p-6 lg:p-8 rounded-[24px] lg:rounded-[32px] border shadow-3d-raised space-y-4" style={{ background: 'var(--card)', borderColor: 'var(--border-color)' }}>
+          <div className="p-6 lg:p-8 rounded-[24px] lg:rounded-[24px] border shadow-3d-raised space-y-4" style={{ background: 'var(--card)', borderColor: 'var(--border-color)' }}>
             <h3 className="text-[11px] font-black uppercase tracking-widest" style={{ color: 'var(--mute)' }}>{t('lc.methodComparison')}</h3>
             <div className="space-y-3">
               {profile.perMethod.map(m => (
@@ -536,7 +553,7 @@ export const LearningCoach: React.FC<LearningCoachProps> = ({ metrics, decks, on
 
         {/* Learning Score — 5 Lernbereiche, deterministisch berechnet */}
         {learningScore.overall !== null && (
-          <div className="p-6 lg:p-8 rounded-[24px] lg:rounded-[32px] border shadow-3d-raised space-y-4" style={{ background: 'var(--card)', borderColor: 'var(--border-color)' }}>
+          <div className="p-6 lg:p-8 rounded-[24px] lg:rounded-[24px] border shadow-3d-raised space-y-4" style={{ background: 'var(--card)', borderColor: 'var(--border-color)' }}>
             <div className="flex items-baseline justify-between">
               <h3 className="text-[11px] font-black uppercase tracking-widest" style={{ color: 'var(--mute)' }}>{t('lc.learningScore')}</h3>
               <span className="text-3xl font-black" style={{ color: 'var(--primary)' }}>{learningScore.overall}</span>
@@ -567,7 +584,7 @@ export const LearningCoach: React.FC<LearningCoachProps> = ({ metrics, decks, on
 
         {/* Themen-Sicherheit — echte Themen, Dokumentnamen nur als Fallback */}
         {displayTopics.length > 0 && (
-          <div className="p-6 lg:p-8 rounded-[24px] lg:rounded-[32px] border shadow-3d-raised space-y-4" style={{ background: 'var(--card)', borderColor: 'var(--border-color)' }}>
+          <div className="p-6 lg:p-8 rounded-[24px] lg:rounded-[24px] border shadow-3d-raised space-y-4" style={{ background: 'var(--card)', borderColor: 'var(--border-color)' }}>
             <h3 className="text-[11px] font-black uppercase tracking-widest" style={{ color: 'var(--mute)' }}>{t('lc.topicSecurity')}</h3>
             <div className="flex flex-wrap gap-2">
               {displayTopics.slice(0, 10).map(dt => (
@@ -598,7 +615,7 @@ export const LearningCoach: React.FC<LearningCoachProps> = ({ metrics, decks, on
 
         {/* Vergessensplan */}
         {profile.forgetting.length > 0 && (
-          <div className="p-6 lg:p-8 rounded-[24px] lg:rounded-[32px] border shadow-3d-raised space-y-4" style={{ background: 'var(--card)', borderColor: 'var(--border-color)' }}>
+          <div className="p-6 lg:p-8 rounded-[24px] lg:rounded-[24px] border shadow-3d-raised space-y-4" style={{ background: 'var(--card)', borderColor: 'var(--border-color)' }}>
             <h3 className="text-[11px] font-black uppercase tracking-widest" style={{ color: 'var(--mute)' }}>{t('lc.forgettingPlan')}</h3>
             <div className="space-y-2">
               {profile.forgetting.map(f => (
@@ -614,7 +631,7 @@ export const LearningCoach: React.FC<LearningCoachProps> = ({ metrics, decks, on
         )}
 
         {/* Tageszeit + Lernvolumen */}
-        <div className="p-6 lg:p-8 rounded-[24px] lg:rounded-[32px] border shadow-3d-raised space-y-4" style={{ background: 'var(--card)', borderColor: 'var(--border-color)' }}>
+        <div className="p-6 lg:p-8 rounded-[24px] lg:rounded-[24px] border shadow-3d-raised space-y-4" style={{ background: 'var(--card)', borderColor: 'var(--border-color)' }}>
           <h3 className="text-[11px] font-black uppercase tracking-widest" style={{ color: 'var(--mute)' }}>{t('lc.rhythm')}</h3>
           <div className="grid grid-cols-2 gap-4">
             <div>
@@ -643,7 +660,7 @@ export const LearningCoach: React.FC<LearningCoachProps> = ({ metrics, decks, on
 
         {/* Wissensprofil — Kategorien + Fragetypen vereint */}
         {wissensprofilItems.length > 0 && (
-          <div className="p-6 lg:p-8 rounded-[24px] lg:rounded-[32px] border shadow-3d-raised space-y-4" style={{ background: 'var(--card)', borderColor: 'var(--border-color)' }}>
+          <div className="p-6 lg:p-8 rounded-[24px] lg:rounded-[24px] border shadow-3d-raised space-y-4" style={{ background: 'var(--card)', borderColor: 'var(--border-color)' }}>
             <h3 className="text-[11px] font-black uppercase tracking-widest" style={{ color: 'var(--mute)' }}>{t('lc.knowledgeProfile')}</h3>
             <div className="flex flex-wrap gap-2">
               {wissensprofilItems.map(item => (
@@ -666,7 +683,7 @@ export const LearningCoach: React.FC<LearningCoachProps> = ({ metrics, decks, on
 
         {/* Ursachenanalyse — nur wirklich ausgelöste Ursachen */}
         {profile.causeAnalysis.length > 0 && (
-          <div className="p-6 lg:p-8 rounded-[24px] lg:rounded-[32px] border shadow-3d-raised space-y-4" style={{ background: 'var(--card)', borderColor: 'var(--border-color)' }}>
+          <div className="p-6 lg:p-8 rounded-[24px] lg:rounded-[24px] border shadow-3d-raised space-y-4" style={{ background: 'var(--card)', borderColor: 'var(--border-color)' }}>
             <h3 className="text-[11px] font-black uppercase tracking-widest" style={{ color: 'var(--mute)' }}>{t('lc.whyLosePoints')}</h3>
             <div className="space-y-3">
               {profile.causeAnalysis.map(c => (
@@ -695,11 +712,13 @@ export const LearningCoach: React.FC<LearningCoachProps> = ({ metrics, decks, on
         </div>
       )}
 
+      </>)}
+
       {/* ── Dein Coach-Ergebnis (Verbindungen, Prognose, Empfehlungen) ── */}
       {insights && (
         <div className="space-y-6">
           {insights.connections.length > 0 && (
-            <div className="p-6 lg:p-8 rounded-[24px] lg:rounded-[32px] border shadow-3d-raised space-y-3" style={{ background: 'var(--card)', borderColor: 'var(--border-color)' }}>
+            <div className="p-6 lg:p-8 rounded-[24px] lg:rounded-[24px] border shadow-3d-raised space-y-3" style={{ background: 'var(--card)', borderColor: 'var(--border-color)' }}>
               <h3 className="text-[11px] font-black uppercase tracking-widest" style={{ color: 'var(--mute)' }}>{t('lc.connectionsFound')}</h3>
               {insights.connections.map((c, i) => (
                 <p key={i} className="text-sm font-medium leading-relaxed" style={{ color: 'var(--ink2)' }}>

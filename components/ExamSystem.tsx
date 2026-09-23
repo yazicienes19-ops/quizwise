@@ -443,7 +443,7 @@ export const ExamSystem: React.FC<ExamSystemProps> = ({ documents, collections, 
 
   return (
     <div className="space-y-10 animate-in fade-in duration-700">
-      <div className="flex justify-between items-center bg-white dark:bg-slate-900 p-6 rounded-[32px] border border-slate-200 dark:border-slate-800 shadow-3d-raised">
+      <div className="flex justify-between items-center bg-white dark:bg-slate-900 p-6 rounded-[24px] border border-slate-200 dark:border-slate-800 shadow-3d-raised">
         <div>
           <h2 className="text-xl font-black dark:text-white">{t('nav.exam')}</h2>
           <p className="text-xs text-slate-400 font-bold uppercase tracking-widest">{t('es.statusLabel', { status: mode === 'edit' ? t('es.tabSolve') : mode === 'solve' ? t('es.tabSimulation') : t('es.tabResult') })}</p>

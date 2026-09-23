@@ -351,7 +351,7 @@ export const AppContent: React.FC<AppContentProps> = (p) => {
           )}
           {savedQuizzes.length > 0 && (
             <div className="max-w-3xl mx-auto px-4 pt-6 pb-2 space-y-3">
-              <p className="text-[11px] font-black uppercase tracking-[0.3em] text-slate-400">{t('ac.savedQuizzes')}</p>
+              <p className="text-[11px] font-black uppercase tracking-[0.14em] text-slate-400">{t('ac.savedQuizzes')}</p>
               <div className="space-y-2">
                 {savedQuizzes.map(sq => (
                   <div key={sq.id} className="flex items-center gap-3 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-[20px] px-5 py-4 shadow-sm">
@@ -448,7 +448,7 @@ export const AppContent: React.FC<AppContentProps> = (p) => {
       <div>
         {savedExams.length > 0 && !examInitialQuestions && !pendingActionDoc && (
           <div className="max-w-3xl mx-auto px-4 pt-6 pb-2 space-y-3">
-            <p className="text-[11px] font-black uppercase tracking-[0.3em] text-slate-400">{t('ac.savedExams')}</p>
+            <p className="text-[11px] font-black uppercase tracking-[0.14em] text-slate-400">{t('ac.savedExams')}</p>
             <div className="space-y-2">
               {savedExams.map(se => (
                 <div key={se.id} className="flex items-center gap-3 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-[20px] px-5 py-4 shadow-sm">

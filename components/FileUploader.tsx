@@ -116,7 +116,7 @@ export const FileUploader: React.FC<FileUploaderProps> = ({
 
       {/* Deck Selection */}
       {mode === 'deck' && (
-        <div className="bg-white dark:bg-slate-900 rounded-[40px] border border-slate-200 dark:border-slate-800 shadow-3d-deep p-6 space-y-4">
+        <div className="bg-white dark:bg-slate-900 rounded-[28px] border border-slate-200 dark:border-slate-800 shadow-3d-deep p-6 space-y-4">
           <h3 className="text-[11px] font-black uppercase tracking-widest text-slate-400 px-2">{t('fu.existingDecks', { n: availableDecks.length })}</h3>
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 max-h-[400px] overflow-y-auto pr-2 scrollbar-thin">
             {availableDecks.length === 0 ? (
@@ -149,7 +149,7 @@ export const FileUploader: React.FC<FileUploaderProps> = ({
         <div className="fixed inset-0 flex items-center justify-center z-[100] backdrop-blur-sm" style={{ backgroundColor: 'color-mix(in srgb, var(--bg-main) 85%, transparent)' }}>
           <div className="flex flex-col items-center gap-6">
             <div className="w-16 h-16 rounded-full animate-spin" style={{ border: '6px solid var(--primary-soft)', borderTopColor: 'var(--primary)' }}></div>
-            <p className="font-black uppercase tracking-[0.3em] text-[11px] animate-pulse" style={{ color: 'var(--primary)' }}>{t('fu.quizForming')}</p>
+            <p className="font-black uppercase tracking-[0.14em] text-[11px] animate-pulse" style={{ color: 'var(--primary)' }}>{t('fu.quizForming')}</p>
           </div>
         </div>
       )}

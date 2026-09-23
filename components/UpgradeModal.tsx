@@ -47,7 +47,7 @@ export const UpgradeModal: React.FC<UpgradeModalProps> = ({ onClose }) => {
     <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-sm animate-in fade-in duration-200">
       <div
         {...dialogProps}
-        className="w-full max-w-sm rounded-[32px] shadow-3d-deep animate-in zoom-in-95 duration-300 overflow-hidden"
+        className="w-full max-w-sm rounded-[24px] shadow-3d-deep animate-in zoom-in-95 duration-300 overflow-hidden"
         style={{ background: 'var(--bg-sidebar)', border: '1px solid var(--border-color)' }}
       >
         {/* Header */}

@@ -238,14 +238,14 @@ export const SettingsModal: React.FC<Props> = ({ user, isDark, onToggleTheme, on
     <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-sm animate-in fade-in duration-200">
       <div
         {...dialogProps}
-        className="w-full max-w-2xl rounded-[32px] shadow-3d-deep animate-in zoom-in-95 duration-300 flex flex-col overflow-hidden"
+        className="w-full max-w-2xl rounded-[24px] shadow-3d-deep animate-in zoom-in-95 duration-300 flex flex-col overflow-hidden"
         style={{ background: 'var(--bg-sidebar)', border: '1px solid var(--border-color)', maxHeight: '90vh' }}
       >
         {/* Header */}
         <div className="flex items-center justify-between p-8 pb-0 shrink-0">
           <div>
-            <h2 id={titleId} className="text-xl font-black dark:text-white uppercase tracking-tight">{t('settings.title')}</h2>
-            <p className="text-[11px] text-slate-400 font-bold uppercase tracking-widest mt-0.5">{user?.email || t('settings.notLoggedIn')}</p>
+            <h2 id={titleId} className="text-2xl font-normal leading-tight" style={{ color: 'var(--ink)' }}>{t('settings.title')}</h2>
+            <p className="text-[13px] mt-0.5" style={{ color: 'var(--text-secondary)' }}>{user?.email || t('settings.notLoggedIn')}</p>
           </div>
           <button aria-label={t('common.close')} onClick={onClose} className="w-9 h-9 flex items-center justify-center rounded-xl text-slate-400 hover:text-slate-700 dark:hover:text-white transition-all" style={{ background: 'color-mix(in srgb, var(--border-color) 60%, var(--bg-sidebar))' }}>
             <X className="w-[18px] h-[18px]" strokeWidth={2} />

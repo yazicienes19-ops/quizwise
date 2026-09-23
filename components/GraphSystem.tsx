@@ -506,11 +506,13 @@ export const GraphSystem: React.FC<GraphSystemProps> = ({
   return (
     <div className="space-y-3">
       <div className="flex items-center gap-3 flex-wrap px-1">
-        <div className="min-w-0">
-          <h1 className="text-lg font-black text-slate-900 dark:text-white tracking-tight break-words">
+        {/* Kompakte Fassung der ruhigen Kopfzeile (PageHeader-Stil), damit die
+            Arbeitsfläche Platz behält. */}
+        <div className="min-w-0 space-y-1">
+          <p className="text-[11px] font-black uppercase tracking-[0.2em]" style={{ color: 'color-mix(in srgb, var(--primary) 70%, var(--ink))' }}>{t('nav.knowledgeGraph')}</p>
+          <h1 className="text-2xl font-normal leading-tight break-words" style={{ color: 'var(--ink)' }}>
             {activeCollection ? `${activeCollection.emoji} ${activeCollection.name}` : t('kg.allSubjects')}
           </h1>
-          <p className="text-[11px] font-black uppercase tracking-widest text-slate-400">{t('nav.knowledgeGraph.hint')}</p>
         </div>
         {/* flex-wrap: auf dem Handy (390px) ragten Rückgängig/Wiederholen sonst
             ~100px über den Rand und waren wegen main{overflow-x:clip} unerreichbar. */}
@@ -518,7 +520,7 @@ export const GraphSystem: React.FC<GraphSystemProps> = ({
           <button
             onClick={() => { setPaletteQuery(''); setPaletteIndex(0); setPaletteOpen(true); }}
             title={t('kg.search.tooltip')}
-            className="h-8 px-3 flex items-center gap-2 rounded-lg text-[11px] font-black uppercase tracking-widest text-slate-500 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-800 transition-colors"
+            className="h-8 px-3 flex items-center gap-2 rounded-lg text-[12px] font-semibold text-slate-600 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-800 transition-colors"
           >
             <SearchIcon size={13} strokeWidth={2} />
             <span className="hidden sm:inline">{t('kg.search.tooltip')}</span>
@@ -527,18 +529,19 @@ export const GraphSystem: React.FC<GraphSystemProps> = ({
             onClick={() => setShowInsights(v => !v)}
             title={showInsights ? t('kg.tb.insightsHide') : t('kg.tb.insightsShow')}
             aria-pressed={showInsights}
-            className="h-8 px-3 flex items-center justify-center rounded-lg text-[11px] font-black uppercase tracking-widest text-slate-500 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-800 transition-colors"
+            className="h-8 px-3 flex items-center justify-center rounded-lg text-[12px] font-semibold text-slate-600 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-800 transition-colors"
             style={showInsights
               ? { background: 'color-mix(in srgb, var(--primary) 14%, transparent)' }
               : undefined}
           >
             {t('kg.tb.insights')}
           </button>
+          <span className="hidden md:inline text-[11px] font-black uppercase tracking-[0.14em] text-slate-400 pl-2" aria-hidden="true">{t('kg.tb.coachLabel')}</span>
           <button
             onClick={handleCheckMissingRelations}
             disabled={isCheckingRelations}
             title={t('kg.tb.relationsTitle')}
-            className="h-8 px-3 flex items-center justify-center rounded-lg text-[11px] font-black uppercase tracking-widest text-slate-500 dark:text-slate-300 disabled:opacity-40 hover:bg-slate-50 dark:hover:bg-slate-800 transition-colors"
+            className="h-8 px-3 flex items-center justify-center rounded-lg text-[12px] font-semibold text-slate-600 dark:text-slate-300 disabled:opacity-40 hover:bg-slate-50 dark:hover:bg-slate-800 transition-colors"
           >
             {isCheckingRelations ? '…' : t('kg.tb.relations')}
           </button>
@@ -546,7 +549,7 @@ export const GraphSystem: React.FC<GraphSystemProps> = ({
             onClick={handleCheckDuplicates}
             disabled={isCheckingDuplicates}
             title={t('kg.tb.duplicatesTitle')}
-            className="h-8 px-3 flex items-center justify-center rounded-lg text-[11px] font-black uppercase tracking-widest text-slate-500 dark:text-slate-300 disabled:opacity-40 hover:bg-slate-50 dark:hover:bg-slate-800 transition-colors"
+            className="h-8 px-3 flex items-center justify-center rounded-lg text-[12px] font-semibold text-slate-600 dark:text-slate-300 disabled:opacity-40 hover:bg-slate-50 dark:hover:bg-slate-800 transition-colors"
           >
             {isCheckingDuplicates ? '…' : t('kg.tb.duplicates')}
           </button>
@@ -554,13 +557,14 @@ export const GraphSystem: React.FC<GraphSystemProps> = ({
             onClick={handleCheckMissingConcepts}
             disabled={isCheckingConcepts}
             title={t('kg.tb.conceptsTitle')}
-            className="h-8 px-3 flex items-center justify-center rounded-lg text-[11px] font-black uppercase tracking-widest text-slate-500 dark:text-slate-300 disabled:opacity-40 hover:bg-slate-50 dark:hover:bg-slate-800 transition-colors"
+            className="h-8 px-3 flex items-center justify-center rounded-lg text-[12px] font-semibold text-slate-600 dark:text-slate-300 disabled:opacity-40 hover:bg-slate-50 dark:hover:bg-slate-800 transition-colors"
           >
             {isCheckingConcepts ? '…' : t('kg.tb.concepts')}
           </button>
           <button
             onClick={graph.undo}
             disabled={!canUndo(graph.history)}
+            aria-label={t('kg.undo')}
             title={t('kg.undo')}
             className="w-8 h-8 flex items-center justify-center rounded-lg text-slate-500 dark:text-slate-300 disabled:opacity-40 hover:bg-slate-50 dark:hover:bg-slate-800 transition-colors"
           >
@@ -569,6 +573,7 @@ export const GraphSystem: React.FC<GraphSystemProps> = ({
           <button
             onClick={graph.redo}
             disabled={!canRedo(graph.history)}
+            aria-label={t('kg.redo')}
             title={t('kg.redo')}
             className="w-8 h-8 flex items-center justify-center rounded-lg text-slate-500 dark:text-slate-300 disabled:opacity-40 hover:bg-slate-50 dark:hover:bg-slate-800 transition-colors"
           >

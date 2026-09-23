@@ -452,7 +452,7 @@ export const ExamView: React.FC<ExamViewProps> = ({
               onChange={e => setAnswer(q.id, e.target.value)}
               placeholder={t('ev.stepByStepPlaceholder')}
               rows={6}
-              className="w-full p-6 bg-slate-50 dark:bg-slate-800 rounded-[32px] border-2 border-transparent focus:border-indigo-500 outline-none transition-all dark:text-white font-mono text-sm resize-y"
+              className="w-full p-6 bg-slate-50 dark:bg-slate-800 rounded-[24px] border-2 border-transparent focus:border-indigo-500 outline-none transition-all dark:text-white font-mono text-sm resize-y"
             />
             <p className="text-[11px] font-black uppercase tracking-widest text-slate-400 mt-2">{t('ev.stepByStepHint')}</p>
           </div>
@@ -714,14 +714,14 @@ export const ExamView: React.FC<ExamViewProps> = ({
               value={(ans as string) || ''}
               onChange={e => setAnswer(q.id, e.target.value)}
               placeholder={t('ev.answerPlaceholder')}
-              className="w-full h-40 p-6 bg-slate-50 dark:bg-slate-800 rounded-[32px] border-2 border-transparent focus:border-indigo-500 outline-none transition-all dark:text-white font-medium resize-none"
+              className="w-full h-40 p-6 bg-slate-50 dark:bg-slate-800 rounded-[24px] border-2 border-transparent focus:border-indigo-500 outline-none transition-all dark:text-white font-medium resize-none"
             />
           </div>
         );
       }
       if (mode === 'result') {
         return (
-          <div className="pl-4 lg:pl-10 bg-slate-100 dark:bg-slate-800 p-6 rounded-[32px] dark:text-slate-300 italic border border-slate-200 dark:border-slate-700">
+          <div className="pl-4 lg:pl-10 bg-slate-100 dark:bg-slate-800 p-6 rounded-[24px] dark:text-slate-300 italic border border-slate-200 dark:border-slate-700">
             {q.userAnswer || t('ev.noAnswer')}
           </div>
         );
@@ -760,7 +760,7 @@ export const ExamView: React.FC<ExamViewProps> = ({
 
       {/* Note + Ergebnis-Aktionen */}
       {mode === 'result' && (
-        <div className={`grid grid-cols-1 md:grid-cols-3 gap-6 sm:gap-8 ${gradeInfo.bg} dark:bg-slate-900/40 p-5 sm:p-10 rounded-[28px] sm:rounded-[40px] border-2 ${gradeInfo.passed ? 'border-emerald-500' : 'border-rose-500'} animate-in zoom-in-95`}>
+        <div className={`grid grid-cols-1 md:grid-cols-3 gap-6 sm:gap-8 ${gradeInfo.bg} dark:bg-slate-900/40 p-5 sm:p-10 rounded-[28px] sm:rounded-[28px] border-2 ${gradeInfo.passed ? 'border-emerald-500' : 'border-rose-500'} animate-in zoom-in-95`}>
           <div className="flex flex-col items-center justify-center border-b md:border-b-0 md:border-r border-slate-200 dark:border-slate-800 pb-6 md:pb-0">
             <span className="text-[11px] font-black uppercase tracking-widest text-slate-400 mb-2">{t('ev.finalGrade')}</span>
             <span className={`text-6xl sm:text-7xl font-black ${gradeInfo.color}`}>
@@ -871,7 +871,7 @@ export const ExamView: React.FC<ExamViewProps> = ({
 
       {/* Kategorie-Aufschlüsselung — sofort verfügbar, kein KI-Call nötig */}
       {mode === 'result' && categoryBreakdown && categoryBreakdown.length > 0 && (
-        <div className="rounded-[24px] sm:rounded-[32px] p-5 sm:p-8 space-y-4 animate-in fade-in duration-500" style={{ background: 'var(--bg-sidebar)', border: '1px solid var(--border-color)' }}>
+        <div className="rounded-[24px] sm:rounded-[24px] p-5 sm:p-8 space-y-4 animate-in fade-in duration-500" style={{ background: 'var(--bg-sidebar)', border: '1px solid var(--border-color)' }}>
           <div>
             <h3 className="text-lg font-black dark:text-white">{t('ev.categoryBreakdown')}</h3>
             <p className="text-[11px] font-black uppercase tracking-widest text-slate-400">{t('ev.categoryBreakdownHint')}</p>
@@ -900,7 +900,7 @@ export const ExamView: React.FC<ExamViewProps> = ({
           Bewertung: die weiche Prompt-Gewichtung bei der Generierung hat nie eine
           exakte Quote versprochen, eine Gut/Schlecht-Kennzeichnung wäre irreführend. */}
       {mode === 'result' && targetBloomDistribution && hasBloomData && (
-        <div className="rounded-[24px] sm:rounded-[32px] p-5 sm:p-8 space-y-4 animate-in fade-in duration-500" style={{ background: 'var(--bg-sidebar)', border: '1px solid var(--border-color)' }}>
+        <div className="rounded-[24px] sm:rounded-[24px] p-5 sm:p-8 space-y-4 animate-in fade-in duration-500" style={{ background: 'var(--bg-sidebar)', border: '1px solid var(--border-color)' }}>
           <div>
             <h3 className="text-lg font-black dark:text-white">{t('ev.bloomBreakdownTitle')}</h3>
             <p className="text-[11px] font-black uppercase tracking-widest text-slate-400">{t('ev.bloomBreakdownHint')}</p>
@@ -925,7 +925,7 @@ export const ExamView: React.FC<ExamViewProps> = ({
       {/* Fatigue-Signal: Score erste vs. zweite Hälfte (ExamSystem.tsx). Wurde
           bisher berechnet+gespeichert, aber nirgends angezeigt (Phase 4). */}
       {mode === 'result' && fatigue && (
-        <div className="rounded-[24px] sm:rounded-[32px] p-5 sm:p-8 space-y-4 animate-in fade-in duration-500" style={{ background: 'var(--bg-sidebar)', border: '1px solid var(--border-color)' }}>
+        <div className="rounded-[24px] sm:rounded-[24px] p-5 sm:p-8 space-y-4 animate-in fade-in duration-500" style={{ background: 'var(--bg-sidebar)', border: '1px solid var(--border-color)' }}>
           <div>
             <h3 className="text-lg font-black dark:text-white">{t('ev.fatigueTitle')}</h3>
             <p className="text-[11px] font-black uppercase tracking-widest text-slate-400">{t('ev.fatigueHint')}</p>
@@ -949,7 +949,7 @@ export const ExamView: React.FC<ExamViewProps> = ({
 
       {/* Lernanalyse */}
       {mode === 'result' && analysis && (
-        <div className="rounded-[24px] sm:rounded-[32px] p-5 sm:p-8 space-y-6 animate-in fade-in duration-700" style={{ background: 'var(--bg-sidebar)', border: '1px solid var(--border-color)' }}>
+        <div className="rounded-[24px] sm:rounded-[24px] p-5 sm:p-8 space-y-6 animate-in fade-in duration-700" style={{ background: 'var(--bg-sidebar)', border: '1px solid var(--border-color)' }}>
           <div>
             <h3 className="text-lg font-black dark:text-white">{t('ev.learningAnalysis')}</h3>
             <p className="text-[11px] font-black uppercase tracking-widest text-slate-400">{t('ev.basedOnAnswers')}</p>
@@ -1030,7 +1030,7 @@ export const ExamView: React.FC<ExamViewProps> = ({
           gerade generierten Klausur (bloomLevel kommt schon von classifyBloomLevels),
           nicht nur das abstrakte Preset-Ziel. */}
       {mode === 'edit' && hasBloomData && (
-        <div className="rounded-[24px] sm:rounded-[32px] p-5 sm:p-8 space-y-4" style={{ background: 'var(--bg-sidebar)', border: '1px solid var(--border-color)' }}>
+        <div className="rounded-[24px] sm:rounded-[24px] p-5 sm:p-8 space-y-4" style={{ background: 'var(--bg-sidebar)', border: '1px solid var(--border-color)' }}>
           <div>
             <h3 className="text-lg font-black dark:text-white">{t('ev.bloomPreviewTitle')}</h3>
             {examTypePreset && (
@@ -1056,7 +1056,7 @@ export const ExamView: React.FC<ExamViewProps> = ({
       {/* Adaptive Vorgabe Ist-vs-Soll — vor dem Start als Vorschau, nach der Abgabe als
           Kontrolle. Gleiche Nebeneinander-Optik wie die Bloom-Anzeige, keine Ampel. */}
       {(mode === 'edit' || mode === 'result') && adaptiveTarget && (
-        <div className="rounded-[24px] sm:rounded-[32px] p-5 sm:p-8 space-y-5 animate-in fade-in duration-500" style={{ background: 'var(--bg-sidebar)', border: '1px solid var(--border-color)' }}>
+        <div className="rounded-[24px] sm:rounded-[24px] p-5 sm:p-8 space-y-5 animate-in fade-in duration-500" style={{ background: 'var(--bg-sidebar)', border: '1px solid var(--border-color)' }}>
           <div>
             <h3 className="text-lg font-black dark:text-white">{t('ev.adaptiveTitle')}</h3>
             <p className="text-[11px] font-black uppercase tracking-widest text-slate-400">{mode === 'result' ? t('ev.adaptiveHintResult') : t('ev.adaptiveHintEdit')}</p>
@@ -1104,7 +1104,7 @@ export const ExamView: React.FC<ExamViewProps> = ({
         {questions.map((q, idx) => {
           const isEditing = editingId === q.id;
           return (
-            <div key={q.id} className="relative group p-6 -m-6 rounded-[32px] hover:bg-slate-50 dark:hover:bg-slate-900/50 transition-colors">
+            <div key={q.id} className="relative group p-6 -m-6 rounded-[24px] hover:bg-slate-50 dark:hover:bg-slate-900/50 transition-colors">
 
               {mode === 'edit' && !isEditing && (
                 <button onClick={() => startEditing(q)} aria-label={t('ev.editQuestion')} className="absolute top-6 right-6 opacity-0 group-hover:opacity-100 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 p-2 rounded-xl text-slate-400 hover:text-indigo-600 transition-all shadow-sm z-10">
@@ -1115,7 +1115,7 @@ export const ExamView: React.FC<ExamViewProps> = ({
               )}
 
               {isEditing && tempQuestion ? (
-                <div className="space-y-6 animate-in fade-in zoom-in-95 p-5 sm:p-8 bg-white dark:bg-slate-800 rounded-[24px] sm:rounded-[32px] shadow-2xl ring-4 ring-indigo-500/20">
+                <div className="space-y-6 animate-in fade-in zoom-in-95 p-5 sm:p-8 bg-white dark:bg-slate-800 rounded-[24px] sm:rounded-[24px] shadow-2xl ring-4 ring-indigo-500/20">
                   <div className="flex justify-between items-center">
                     <h3 className="text-xl font-black dark:text-white">{t('ev.editTaskN', { n: idx + 1 })}</h3>
                     <input type="number" value={tempQuestion.points} onChange={e => setTempQuestion({ ...tempQuestion, points: Math.max(0, parseInt(e.target.value, 10) || 0) })} className="w-16 p-2 bg-slate-50 dark:bg-slate-900 rounded-xl text-center font-black dark:text-white" />
@@ -1150,7 +1150,7 @@ export const ExamView: React.FC<ExamViewProps> = ({
                   {mode === 'result' && (
                     <div className="mt-8 pl-4 lg:pl-10 animate-in slide-in-from-bottom-4 space-y-3">
                       {/* Haupt-Box */}
-                      <div className={`p-6 rounded-[32px] border-l-4 ${(q.achievedPoints ?? 0) === q.points ? 'bg-emerald-50 dark:bg-emerald-950/20 border-emerald-500' : (q.achievedPoints ?? 0) > 0 ? 'bg-amber-50 dark:bg-amber-950/20 border-amber-500' : 'bg-rose-50 dark:bg-rose-950/20 border-rose-400'}`}>
+                      <div className={`p-6 rounded-[24px] border-l-4 ${(q.achievedPoints ?? 0) === q.points ? 'bg-emerald-50 dark:bg-emerald-950/20 border-emerald-500' : (q.achievedPoints ?? 0) > 0 ? 'bg-amber-50 dark:bg-amber-950/20 border-amber-500' : 'bg-rose-50 dark:bg-rose-950/20 border-rose-400'}`}>
                         <div className="flex justify-between items-center mb-4">
                           <div className="flex items-center gap-2">
                             <h4 className="text-[11px] font-black uppercase tracking-widest text-slate-400">
@@ -1302,7 +1302,7 @@ export const ExamView: React.FC<ExamViewProps> = ({
               </button>
             )}
             <button onClick={handleSubmit} disabled={isEvaluating}
-              className="bg-indigo-600 text-white px-6 sm:px-10 py-5 sm:py-6 rounded-[24px] font-black uppercase tracking-[0.2em] sm:tracking-[0.3em] text-[11px] shadow-3d-deep hover:scale-105 transition-all flex items-center gap-3 sm:gap-4"
+              className="bg-indigo-600 text-white px-6 sm:px-10 py-5 sm:py-6 rounded-[24px] font-black uppercase tracking-[0.2em] sm:tracking-[0.14em] text-[11px] shadow-3d-deep hover:scale-105 transition-all flex items-center gap-3 sm:gap-4"
             >
               {isEvaluating ? t('ev.correcting') : <span>{t('ev.submit')} <EmojiImage emoji="📝" size={16} /></span>}
             </button>

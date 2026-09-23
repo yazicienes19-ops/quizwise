@@ -89,7 +89,7 @@ export const DocumentViewerModal: React.FC<DocumentViewerModalProps> = ({ doc, o
     >
       <div
         {...dialogProps}
-        className="bg-white dark:bg-slate-900 rounded-[32px] w-full max-w-4xl h-[88vh] shadow-3d-deep overflow-hidden flex flex-col animate-in zoom-in-95 duration-300"
+        className="bg-white dark:bg-slate-900 rounded-[24px] w-full max-w-4xl h-[88vh] shadow-3d-deep overflow-hidden flex flex-col animate-in zoom-in-95 duration-300"
         onClick={e => e.stopPropagation()}
       >
         {/* Header */}

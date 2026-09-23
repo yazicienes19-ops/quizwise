@@ -716,10 +716,10 @@ export const FlashcardSystem: React.FC<FlashcardSystemProps> = ({
       <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 lg:gap-10">
 
         <div className="lg:col-span-5 space-y-6 lg:space-y-8 order-2 lg:order-1">
-          <div className="bg-white dark:bg-slate-900 rounded-[30px] lg:rounded-[40px] border border-slate-200 dark:border-slate-800 shadow-3d-raised p-5 lg:p-7 space-y-8">
+          <div className="bg-white dark:bg-slate-900 rounded-[24px] lg:rounded-[28px] border border-slate-200 dark:border-slate-800 shadow-3d-raised p-5 lg:p-7 space-y-8">
 
             <div className="space-y-4">
-              <h3 className="text-[11px] font-black uppercase tracking-[0.4em] text-indigo-600">{t('fcs.manualDeck')}</h3>
+              <h3 className="text-[11px] font-black uppercase tracking-[0.14em] text-indigo-600">{t('fcs.manualDeck')}</h3>
               {!showManualDeckDialog ? (
                 <button
                   onClick={() => setShowManualDeckDialog(true)}
@@ -746,7 +746,7 @@ export const FlashcardSystem: React.FC<FlashcardSystemProps> = ({
             </div>
 
             <div className="space-y-6 pt-4 border-t border-slate-50 dark:border-slate-800">
-              <h3 className="text-[11px] lg:text-[11px] font-black uppercase tracking-[0.4em] text-indigo-600">{t('fcs.cardGenerator')}</h3>
+              <h3 className="text-[11px] lg:text-[11px] font-black uppercase tracking-[0.14em] text-indigo-600">{t('fcs.cardGenerator')}</h3>
 
               <div className="space-y-4">
                 <div className="flex justify-between items-center text-[11px] lg:text-[11px] font-black uppercase text-slate-400 tracking-widest px-2">
@@ -786,9 +786,9 @@ export const FlashcardSystem: React.FC<FlashcardSystemProps> = ({
           </div>
         </div>
 
-        <div className="lg:col-span-7 bg-white dark:bg-slate-900 rounded-[30px] lg:rounded-[40px] border border-slate-200 dark:border-slate-800 shadow-3d-deep order-1 lg:order-2">
+        <div className="lg:col-span-7 bg-white dark:bg-slate-900 rounded-[24px] lg:rounded-[28px] border border-slate-200 dark:border-slate-800 shadow-3d-deep order-1 lg:order-2">
           <div className="p-5 sm:p-6 lg:p-10 border-b border-slate-50 dark:border-slate-800 flex flex-col sm:flex-row justify-between items-center gap-4 lg:gap-0">
-            <h3 className="text-[11px] lg:text-[11px] font-black uppercase tracking-[0.3em] lg:tracking-[0.4em] text-slate-400">{t('fcs.yourDecks', { n: decks.length })}</h3>
+            <h3 className="text-[11px] lg:text-[11px] font-black uppercase tracking-[0.14em] lg:tracking-[0.14em] text-slate-400">{t('fcs.yourDecks', { n: decks.length })}</h3>
             <div className="flex gap-3 sm:gap-4 items-center flex-wrap justify-center sm:justify-end">
               <input
                 ref={importInputRef}

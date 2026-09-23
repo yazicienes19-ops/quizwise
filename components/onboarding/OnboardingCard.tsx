@@ -4,7 +4,7 @@ import { useTranslation } from '../../i18n/I18nProvider';
 /**
  * Gemeinsame Modal-Hülle für alle Onboarding-Screens — Fortschritts-Pillen +
  * Content-Slot + Footer (primäre CTA, Zurück, Überspringen). Übernimmt exakt
- * das visuelle Muster des bisherigen components/Onboarding.tsx (rounded-[32px]-
+ * das visuelle Muster des bisherigen components/Onboarding.tsx (rounded-[24px]-
  * Karte, animate-in-Übergang, CSS-var-Farben), keine neue visuelle Sprache.
  */
 interface OnboardingCardProps {
@@ -40,7 +40,7 @@ export const OnboardingCard: React.FC<OnboardingCardProps> = ({
   return (
     <div className="fixed inset-0 z-[90] flex items-center justify-center bg-slate-950/70 backdrop-blur-[2px] p-4">
       <div
-        className="w-full max-w-xl rounded-[32px] shadow-3d-deep overflow-y-auto animate-in fade-in zoom-in-95 duration-300 max-h-[90vh]"
+        className="w-full max-w-xl rounded-[24px] shadow-3d-deep overflow-y-auto animate-in fade-in zoom-in-95 duration-300 max-h-[90vh]"
         style={{ background: 'var(--bg-sidebar)', border: '1px solid var(--border-color)' }}
       >
         {/* Fortschritt: Pillen + Zahl kombiniert (User-Feedback "Fortschrittsanzeige

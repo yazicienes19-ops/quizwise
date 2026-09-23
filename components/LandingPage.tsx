@@ -230,7 +230,7 @@ export const LandingPage: React.FC<LandingPageProps> = ({ onAuthClick, onLegalCl
       {/* Preise */}
       <section className="max-w-5xl mx-auto px-6 sm:px-8 py-24 sm:py-32">
         <Reveal className="text-center mb-16">
-          <p className="text-[11px] font-black uppercase tracking-[0.4em] mb-3" style={{ color: '#8A8172' }}>{t('landing.pricing.eyebrow')}</p>
+          <p className="text-[11px] font-black uppercase tracking-[0.14em] mb-3" style={{ color: '#8A8172' }}>{t('landing.pricing.eyebrow')}</p>
           <h2 style={{ ...serif, fontSize: 'clamp(30px, 3.6vw, 46px)', fontWeight: 600, lineHeight: 1.12 }}>{t('landing.pricing.title')}</h2>
         </Reveal>
         <div className="grid grid-cols-1 md:grid-cols-2 gap-6 max-w-3xl mx-auto">

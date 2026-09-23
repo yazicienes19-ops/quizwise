@@ -18,7 +18,7 @@ export const SplashScreen: React.FC = () => {
             Stude<span style={{ color: 'var(--mark-peak)' }}>Arc</span>
           </p>
         </div>
-        <p className="text-[11px] font-bold uppercase tracking-[0.3em] text-slate-400 -mt-4">
+        <p className="text-[11px] font-bold uppercase tracking-[0.14em] text-slate-400 -mt-4">
           {t('splash.tagline')}
         </p>
 

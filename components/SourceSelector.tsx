@@ -153,12 +153,12 @@ export const SourceSelector: React.FC<SourceSelectorProps> = ({
   );
 
   return (
-    <div className="rounded-[32px] overflow-hidden" style={{ background: 'var(--bg-sidebar)', border: '1px solid var(--border-color)' }}>
+    <div className="rounded-[24px] overflow-hidden" style={{ background: 'var(--bg-sidebar)', border: '1px solid var(--border-color)' }}>
 
       {/* Header */}
       {label && (
         <div className="px-8 pt-7 pb-0">
-          <p className="text-[11px] font-black uppercase tracking-[0.3em] text-slate-400">{label}</p>
+          <p className="text-[11px] font-black uppercase tracking-[0.14em] text-slate-400">{label}</p>
         </div>
       )}
 

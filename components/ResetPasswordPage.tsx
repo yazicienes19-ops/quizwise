@@ -45,7 +45,7 @@ export const ResetPasswordPage: React.FC<ResetPasswordPageProps> = ({ authChecke
   const Card: React.FC<{ children: React.ReactNode }> = ({ children }) => (
     <div className="min-h-screen flex items-center justify-center p-4" style={{ background: 'var(--bg-main)' }}>
       <div
-        className="w-full max-w-md rounded-[32px] shadow-3d-deep overflow-hidden p-8"
+        className="w-full max-w-md rounded-[24px] shadow-3d-deep overflow-hidden p-8"
         style={{ background: 'var(--bg-sidebar)', border: '1px solid var(--border-color)' }}
       >
         {children}

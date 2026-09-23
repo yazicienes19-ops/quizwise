@@ -6,6 +6,7 @@ import { documentDisplayName } from '../services/libraryService';
 import { useTranslation } from '../i18n/I18nProvider';
 import { formatDate } from '../i18n/dates';
 import type { TKey } from '../i18n';
+import { PageHeader } from './PageHeader';
 
 interface QuizSetupProps {
   /** Einzelnes Dokument. Fehlt es, ist die Quelle ein Ordner, eine neue Datei,
@@ -149,29 +150,15 @@ export const QuizSetup: React.FC<QuizSetupProps> = ({ doc = null, sourceName, ba
         {backLabel ?? t('quizSetup.backToLibrary')}
       </button>
 
-      {/* Source header */}
-      <div className="rounded-[28px] p-6 shadow-3d-deep" style={{ background: 'var(--primary)', color: 'var(--primary-text)' }}>
-        <p className="text-[11px] font-black uppercase tracking-[0.3em] opacity-60 mb-1">{t('quizSetup.quizFrom')}</p>
-        <p className="text-xl font-black leading-tight">{docTitle}</p>
-        {stats.count > 0 && (
-          <div className="flex gap-4 mt-3 pt-3 border-t border-white/20">
-            <div>
-              <p className="text-[11px] font-black uppercase tracking-widest opacity-60">{t('quizSetup.quizzes')}</p>
-              <p className="text-sm font-black">{stats.count}</p>
-            </div>
-            <div>
-              <p className="text-[11px] font-black uppercase tracking-widest opacity-60">{t('quizSetup.avgAccuracy')}</p>
-              <p className="text-sm font-black">{stats.avgAccuracy}%</p>
-            </div>
-            {stats.lastAt && (
-              <div>
-                <p className="text-[11px] font-black uppercase tracking-widest opacity-60">{t('quizSetup.last')}</p>
-                <p className="text-sm font-black">{formatDate(stats.lastAt, { day: '2-digit', month: 'short' })}</p>
-              </div>
-            )}
-          </div>
-        )}
-      </div>
+      {/* Quelle: ruhige Kopfzeile statt goldenem Block (Audit 23.09.2026) */}
+      <PageHeader
+        align="left"
+        eyebrow={t('quizSetup.quizFrom')}
+        title={docTitle}
+        subtitle={stats.count > 0
+          ? `${t('quizSetup.quizzes')}: ${stats.count} · ${t('quizSetup.avgAccuracy')}: ${stats.avgAccuracy}%${stats.lastAt ? ` · ${t('quizSetup.last')}: ${formatDate(stats.lastAt, { day: '2-digit', month: 'short' })}` : ''}`
+          : undefined}
+      />
 
       {/* Multi-Dokument Auswahl */}
       {otherDocs.length > 0 && (

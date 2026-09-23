@@ -43,7 +43,7 @@ export const ExamArchive: React.FC = () => {
   return (
     <div className="max-w-3xl mx-auto px-4 pb-10 space-y-3">
       <div className="space-y-1">
-        <p className="text-[11px] font-black uppercase tracking-[0.3em] text-slate-400">{t('ea.title')}</p>
+        <p className="text-[11px] font-black uppercase tracking-[0.14em] text-slate-400">{t('ea.title')}</p>
         <p className="text-xs text-slate-400 font-medium">{t('ea.subtitle')}</p>
       </div>
       {groups.map(group => {

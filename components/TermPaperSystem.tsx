@@ -598,7 +598,7 @@ export const TermPaperSystem: React.FC<TermPaperSystemProps> = ({
         {tab === 'outline' && (
           <div className="space-y-8 animate-in fade-in duration-500">
             {/* Input form */}
-            <div className="bg-white dark:bg-slate-900 rounded-[32px] border border-slate-100 dark:border-slate-800 p-6 sm:p-8 space-y-6">
+            <div className="bg-white dark:bg-slate-900 rounded-[24px] border border-slate-100 dark:border-slate-800 p-6 sm:p-8 space-y-6">
               <h3 className="text-[11px] font-black uppercase tracking-widest text-indigo-600">Gliederung erstellen</h3>
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                 <div className="sm:col-span-2">
@@ -654,7 +654,7 @@ export const TermPaperSystem: React.FC<TermPaperSystemProps> = ({
                 </p>
               )}
               <button onClick={handleGenerateOutline} disabled={isGenerating || !topic.trim()}
-                className="w-full bg-indigo-600 text-white font-black py-4 rounded-2xl text-[11px] uppercase tracking-[0.3em] shadow-lg hover:scale-[1.02] transition-all disabled:opacity-40"
+                className="w-full bg-indigo-600 text-white font-black py-4 rounded-2xl text-[11px] uppercase tracking-[0.14em] shadow-lg hover:scale-[1.02] transition-all disabled:opacity-40"
               >
                 {isGenerating ? 'KI arbeitet...' : 'Gliederung + Fragestellung generieren'}
               </button>
@@ -686,7 +686,7 @@ export const TermPaperSystem: React.FC<TermPaperSystemProps> = ({
                 </div>
 
                 {/* Outline */}
-                <div className="bg-white dark:bg-slate-900 rounded-[32px] border border-slate-100 dark:border-slate-800 overflow-hidden">
+                <div className="bg-white dark:bg-slate-900 rounded-[24px] border border-slate-100 dark:border-slate-800 overflow-hidden">
                   <div className="flex items-center justify-between px-6 py-4 border-b border-slate-100 dark:border-slate-800">
                     <h3 className="font-black text-slate-900 dark:text-white">Gliederung</h3>
                     <CopyButton text={outlineAsText()} label="Alles kopieren" />
@@ -782,7 +782,7 @@ export const TermPaperSystem: React.FC<TermPaperSystemProps> = ({
         {tab === 'sources' && (
           <div className="space-y-8 animate-in fade-in duration-500">
             {/* Quelle per Link */}
-            <div className="bg-gradient-to-br from-indigo-50 to-violet-50 dark:from-indigo-900/20 dark:to-violet-900/20 rounded-[32px] border-2 border-indigo-100 dark:border-indigo-800 p-6 space-y-3">
+            <div className="bg-gradient-to-br from-indigo-50 to-violet-50 dark:from-indigo-900/20 dark:to-violet-900/20 rounded-[24px] border-2 border-indigo-100 dark:border-indigo-800 p-6 space-y-3">
               <h3 className="text-[11px] font-black uppercase tracking-widest text-indigo-600">Quelle per Link hinzufügen</h3>
               <p className="text-xs text-slate-500 dark:text-slate-400">
                 Website-Link einfügen. Titel, Autor und Zitation werden automatisch ermittelt.
@@ -803,7 +803,7 @@ export const TermPaperSystem: React.FC<TermPaperSystemProps> = ({
             </div>
 
             {/* Manuelles Formular (Korrektur/Sonderfälle) */}
-            <div className="bg-white dark:bg-slate-900 rounded-[32px] border border-slate-100 dark:border-slate-800 p-6 space-y-4">
+            <div className="bg-white dark:bg-slate-900 rounded-[24px] border border-slate-100 dark:border-slate-800 p-6 space-y-4">
               <h3 className="text-[11px] font-black uppercase tracking-widest text-indigo-600">Oder manuell eintragen</h3>
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                 {[

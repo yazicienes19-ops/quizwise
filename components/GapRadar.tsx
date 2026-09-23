@@ -727,7 +727,7 @@ export const GapRadar: React.FC<GapRadarProps> = ({ metrics, onNavigate, onActio
 
         {/* Kachel 1: Gesamtfortschritt */}
         <div
-          className="bg-white dark:bg-slate-900 p-6 lg:p-8 rounded-[24px] lg:rounded-[32px] border border-slate-200 dark:border-slate-800 shadow-3d-raised flex flex-col"
+          className="bg-white dark:bg-slate-900 p-6 lg:p-8 rounded-[24px] lg:rounded-[24px] border border-slate-200 dark:border-slate-800 shadow-3d-raised flex flex-col"
           style={{ background: 'var(--card)' }}
         >
           <h3 className="text-[11px] font-black uppercase tracking-widest mb-4" style={{ color: 'var(--mute)' }}>
@@ -766,7 +766,7 @@ export const GapRadar: React.FC<GapRadarProps> = ({ metrics, onNavigate, onActio
 
         {/* Kachel 2: Größte Lücke */}
         <div
-          className="p-6 lg:p-8 rounded-[24px] lg:rounded-[32px] border border-l-4 border-l-rose-500 border-slate-200 dark:border-slate-800 shadow-3d-raised"
+          className="p-6 lg:p-8 rounded-[24px] lg:rounded-[24px] border border-l-4 border-l-rose-500 border-slate-200 dark:border-slate-800 shadow-3d-raised"
           style={{ background: 'var(--card)' }}
         >
           <h3 className="text-[11px] font-black uppercase tracking-widest text-rose-500 mb-3">{t('gr.biggestGap')}</h3>
@@ -797,7 +797,7 @@ export const GapRadar: React.FC<GapRadarProps> = ({ metrics, onNavigate, onActio
 
         {/* Kachel 3: Heute lernen */}
         <div
-          className="p-6 lg:p-8 rounded-[24px] lg:rounded-[32px] border border-slate-200 dark:border-slate-800 shadow-3d-raised"
+          className="p-6 lg:p-8 rounded-[24px] lg:rounded-[24px] border border-slate-200 dark:border-slate-800 shadow-3d-raised"
           style={{ background: 'var(--card)' }}
         >
           <h3 className="text-[11px] font-black uppercase tracking-widest mb-3" style={{ color: 'var(--primary)' }}>
@@ -1027,7 +1027,7 @@ export const GapRadar: React.FC<GapRadarProps> = ({ metrics, onNavigate, onActio
         {analysis && (
           <div className="space-y-10">
             <section
-              className="p-8 lg:p-10 rounded-[32px] shadow-lg border"
+              className="p-8 lg:p-10 rounded-[24px] shadow-lg border"
               style={{ background: 'var(--card)', color: 'var(--ink)', borderColor: 'color-mix(in srgb, var(--primary) 25%, var(--border-color))' }}
             >
               <h2 className="text-[11px] font-black uppercase tracking-widest opacity-50 mb-3">
@@ -1080,7 +1080,7 @@ export const GapRadar: React.FC<GapRadarProps> = ({ metrics, onNavigate, onActio
                 return (
                   <div
                     key={idx}
-                    className="p-6 lg:p-8 rounded-[24px] lg:rounded-[32px] border shadow-3d-raised space-y-4 flex flex-col"
+                    className="p-6 lg:p-8 rounded-[24px] lg:rounded-[24px] border shadow-3d-raised space-y-4 flex flex-col"
                     style={{ background: 'var(--card)', borderColor: 'var(--border-color)' }}
                   >
                     <div>

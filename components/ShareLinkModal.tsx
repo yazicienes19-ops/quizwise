@@ -51,7 +51,7 @@ export const ShareLinkModal: React.FC<ShareLinkModalProps> = ({ url, title, onCl
     <div className="fixed inset-0 bg-black/60 z-[60] flex items-center justify-center p-4 animate-in fade-in duration-200" onClick={onClose}>
       <div
         {...dialogProps}
-        className="w-full max-w-md rounded-[32px] shadow-3d-deep overflow-hidden animate-in zoom-in-95 duration-300"
+        className="w-full max-w-md rounded-[24px] shadow-3d-deep overflow-hidden animate-in zoom-in-95 duration-300"
         style={{ background: 'var(--bg-sidebar)', border: '1px solid var(--border-color)' }}
         onClick={e => e.stopPropagation()}
       >
