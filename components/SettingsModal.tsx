@@ -245,7 +245,7 @@ export const SettingsModal: React.FC<Props> = ({ user, isDark, onToggleTheme, on
         <div className="flex items-center justify-between p-8 pb-0 shrink-0">
           <div>
             <h2 id={titleId} className="text-xl font-black dark:text-white uppercase tracking-tight">{t('settings.title')}</h2>
-            <p className="text-[10px] text-slate-400 font-bold uppercase tracking-widest mt-0.5">{user?.email || t('settings.notLoggedIn')}</p>
+            <p className="text-[11px] text-slate-400 font-bold uppercase tracking-widest mt-0.5">{user?.email || t('settings.notLoggedIn')}</p>
           </div>
           <button aria-label={t('common.close')} onClick={onClose} className="w-9 h-9 flex items-center justify-center rounded-xl text-slate-400 hover:text-slate-700 dark:hover:text-white transition-all" style={{ background: 'color-mix(in srgb, var(--border-color) 60%, var(--bg-sidebar))' }}>
             <X className="w-[18px] h-[18px]" strokeWidth={2} />
@@ -257,7 +257,7 @@ export const SettingsModal: React.FC<Props> = ({ user, isDark, onToggleTheme, on
           <div className="flex p-1 rounded-2xl gap-1 overflow-x-auto scrollbar-hide" style={{ background: 'color-mix(in srgb, var(--border-color) 40%, var(--bg-main))' }}>
             {tabs.map(t => (
               <button key={t.id} onClick={() => setTab(t.id)}
-                className={`flex-1 min-w-fit flex items-center justify-center gap-1.5 py-2.5 px-3 rounded-xl text-[10px] font-black uppercase tracking-wider transition-all whitespace-nowrap ${tab === t.id ? 'bg-indigo-600 shadow-lg' : 'text-slate-400 hover:text-slate-600 dark:hover:text-slate-200'}`}
+                className={`flex-1 min-w-fit flex items-center justify-center gap-1.5 py-2.5 px-3 rounded-xl text-[11px] font-black uppercase tracking-wider transition-all whitespace-nowrap ${tab === t.id ? 'bg-indigo-600 shadow-lg' : 'text-slate-400 hover:text-slate-600 dark:hover:text-slate-200'}`}
                 style={tab === t.id ? { color: 'var(--primary-text)' } : {}}>
                 {t.icon}<span className="hidden sm:inline">{t.label}</span>
               </button>
@@ -279,13 +279,13 @@ export const SettingsModal: React.FC<Props> = ({ user, isDark, onToggleTheme, on
                 <div>
                   <p className="font-black dark:text-white text-lg">{name || t('settings.noName')}</p>
                   <p className="text-[11px] text-slate-400">{user.email}</p>
-                  <p className="text-[10px] text-slate-400 mt-0.5">{t('settings.memberSince', { date: formatDate(user.created_at, { month: 'long', year: 'numeric' }) })}</p>
+                  <p className="text-[11px] text-slate-400 mt-0.5">{t('settings.memberSince', { date: formatDate(user.created_at, { month: 'long', year: 'numeric' }) })}</p>
                 </div>
               </div>
 
               {/* Name */}
               <div className="space-y-2">
-                <label className="text-[10px] font-black uppercase tracking-widest text-slate-400">{t('settings.displayName')}</label>
+                <label className="text-[11px] font-black uppercase tracking-widest text-slate-400">{t('settings.displayName')}</label>
                 <div className="flex flex-col sm:flex-row gap-3">
                   <input type="text" value={name} onChange={e => setName(e.target.value)} placeholder={t('settings.namePlaceholder')} onKeyDown={e => e.key === 'Enter' && handleSaveName()}
                     className="flex-1 min-w-0 px-4 py-3 rounded-2xl text-sm dark:text-white placeholder-slate-400 outline-none focus:ring-2 focus:ring-indigo-500/50 transition-all"
@@ -301,7 +301,7 @@ export const SettingsModal: React.FC<Props> = ({ user, isDark, onToggleTheme, on
 
               {/* E-Mail */}
               <div className="space-y-3 pt-2" style={{ borderTop: '1px solid var(--border-color)' }}>
-                <p className="text-[10px] font-black uppercase tracking-widest text-slate-400 flex items-center gap-2 pt-2">
+                <p className="text-[11px] font-black uppercase tracking-widest text-slate-400 flex items-center gap-2 pt-2">
                   <Mail className="w-3.5 h-3.5" strokeWidth={2} /> {t('settings.changeEmail')}
                 </p>
                 <div className="flex flex-col sm:flex-row gap-3">
@@ -315,12 +315,12 @@ export const SettingsModal: React.FC<Props> = ({ user, isDark, onToggleTheme, on
                     {t('settings.saveEmail')}
                   </button>
                 </div>
-                <p className="text-[10px] text-slate-400">{t('settings.email.hint')}</p>
+                <p className="text-[11px] text-slate-400">{t('settings.email.hint')}</p>
               </div>
 
               {/* Passwort */}
               <div className="space-y-3 pt-2" style={{ borderTop: '1px solid var(--border-color)' }}>
-                <p className="text-[10px] font-black uppercase tracking-widest text-slate-400 flex items-center gap-2 pt-2">
+                <p className="text-[11px] font-black uppercase tracking-widest text-slate-400 flex items-center gap-2 pt-2">
                   <Lock className="w-3.5 h-3.5" strokeWidth={2} /> {t('settings.changePassword')}
                 </p>
                 <input type="password" value={newPw} onChange={e => setNewPw(e.target.value)} placeholder={t('settings.newPwPlaceholder')}
@@ -368,9 +368,9 @@ export const SettingsModal: React.FC<Props> = ({ user, isDark, onToggleTheme, on
               <div className="p-6 rounded-[24px] flex items-center justify-between"
                 style={{ background: profile?.plan === 'pro' ? 'color-mix(in srgb, var(--primary) 12%, transparent)' : 'color-mix(in srgb, var(--border-color) 40%, var(--bg-main))', border: `1px solid ${profile?.plan === 'pro' ? 'color-mix(in srgb, var(--primary) 30%, transparent)' : 'var(--border-color)'}` }}>
                 <div>
-                  <p className="text-[10px] font-black uppercase tracking-widest text-slate-400">{t('settings.currentPlan')}</p>
+                  <p className="text-[11px] font-black uppercase tracking-widest text-slate-400">{t('settings.currentPlan')}</p>
                   <p className="text-2xl font-black dark:text-white mt-1 uppercase">{profile?.plan === 'pro' ? 'Pro' : 'Free'}</p>
-                  {cancelledUntil && <p className="text-[10px] text-amber-500 font-bold mt-1">{t('settings.expiresOn', { date: cancelledUntil })}</p>}
+                  {cancelledUntil && <p className="text-[11px] text-amber-500 font-bold mt-1">{t('settings.expiresOn', { date: cancelledUntil })}</p>}
                 </div>
                 {profile?.plan === 'pro'
                   ? <div className="w-10 h-10 bg-indigo-600 rounded-xl flex items-center justify-center"><Zap className="w-5 h-5 text-white" strokeWidth={2} /></div>
@@ -381,7 +381,7 @@ export const SettingsModal: React.FC<Props> = ({ user, isDark, onToggleTheme, on
               {/* Nutzung */}
               {profile?.usage && profile.plan !== 'pro' && (
                 <div className="space-y-2">
-                  <div className="flex justify-between text-[10px] font-black uppercase tracking-widest text-slate-400">
+                  <div className="flex justify-between text-[11px] font-black uppercase tracking-widest text-slate-400">
                     <span>{t('settings.generationsToday')}</span>
                     <span className="dark:text-white">{profile.usage.used} / {profile.usage.limit ?? '∞'}</span>
                   </div>
@@ -407,27 +407,27 @@ export const SettingsModal: React.FC<Props> = ({ user, isDark, onToggleTheme, on
                     style={{ background: 'var(--primary)' }}>
                     {isCheckingOut ? <><Loader2 className="w-4 h-4 animate-spin" /> {t('um.redirecting')}</> : <><Zap className="w-4 h-4" strokeWidth={2} /> {t('settings.upgradeCta')}</>}
                   </button>
-                  <p className="text-center text-[10px] text-slate-400">{t('settings.cancelAnytime')}</p>
+                  <p className="text-center text-[11px] text-slate-400">{t('settings.cancelAnytime')}</p>
                 </div>
               )}
 
               {/* Abo kündigen (Pro) */}
               {profile?.plan === 'pro' && !cancelledUntil && (
                 <div className="space-y-3 pt-2" style={{ borderTop: '1px solid var(--border-color)' }}>
-                  <p className="text-[10px] font-black uppercase tracking-widest text-slate-400 pt-2">{t('settings.manageSubscription')}</p>
+                  <p className="text-[11px] font-black uppercase tracking-widest text-slate-400 pt-2">{t('settings.manageSubscription')}</p>
                   <button onClick={() => setShowCancelConfirm(true)} disabled={isCancelling}
                     className="flex items-center gap-2 px-5 py-3 rounded-2xl text-[11px] font-black uppercase tracking-widest text-amber-500 hover:bg-amber-50 dark:hover:bg-amber-950/20 transition-all disabled:opacity-40"
                     style={{ border: '1px solid var(--border-color)' }}>
                     {isCancelling ? <Loader2 className="w-4 h-4 animate-spin" /> : null}
                     {t('settings.cancelSubscription')}
                   </button>
-                  <p className="text-[10px] text-slate-400">{t('settings.keepProUntilEnd')}</p>
+                  <p className="text-[11px] text-slate-400">{t('settings.keepProUntilEnd')}</p>
                 </div>
               )}
 
               {/* Zahlungshistorie */}
               <div className="space-y-3 pt-2" style={{ borderTop: '1px solid var(--border-color)' }}>
-                <p className="text-[10px] font-black uppercase tracking-widest text-slate-400 pt-2">{t('settings.paymentHistory')}</p>
+                <p className="text-[11px] font-black uppercase tracking-widest text-slate-400 pt-2">{t('settings.paymentHistory')}</p>
                 {isLoadingInvoices ? (
                   <div className="flex justify-center py-4"><Loader2 className="w-5 h-5 animate-spin text-indigo-400" /></div>
                 ) : invoices.length === 0 ? (
@@ -436,10 +436,10 @@ export const SettingsModal: React.FC<Props> = ({ user, isDark, onToggleTheme, on
                   <div key={inv.id} className="flex items-center justify-between p-3 rounded-2xl" style={{ background: 'color-mix(in srgb, var(--border-color) 30%, var(--bg-main))' }}>
                     <div>
                       <p className="text-[11px] font-black dark:text-white">{inv.date}</p>
-                      <p className="text-[10px] text-slate-400">{inv.amount} {inv.currency}</p>
+                      <p className="text-[11px] text-slate-400">{inv.amount} {inv.currency}</p>
                     </div>
                     <div className="flex items-center gap-3">
-                      <span className={`text-[9px] font-black uppercase px-2 py-1 rounded-full ${inv.status === 'paid' ? 'bg-emerald-100 text-emerald-600 dark:bg-emerald-900/30 dark:text-emerald-400' : 'bg-amber-100 text-amber-600'}`}>
+                      <span className={`text-[11px] font-black uppercase px-2 py-1 rounded-full ${inv.status === 'paid' ? 'bg-emerald-100 text-emerald-600 dark:bg-emerald-900/30 dark:text-emerald-400' : 'bg-amber-100 text-amber-600'}`}>
                         {inv.status === 'paid' ? t('settings.paid') : inv.status}
                       </span>
                       {inv.pdf && (
@@ -460,7 +460,7 @@ export const SettingsModal: React.FC<Props> = ({ user, isDark, onToggleTheme, on
 
               {/* Erscheinungsbild */}
               <div className="space-y-3">
-                <p className="text-[10px] font-black uppercase tracking-widest text-slate-400">{t('settings.appearance')}</p>
+                <p className="text-[11px] font-black uppercase tracking-widest text-slate-400">{t('settings.appearance')}</p>
                 <div className="flex p-1 rounded-2xl gap-1" style={{ background: 'color-mix(in srgb, var(--border-color) 40%, var(--bg-main))' }}>
                   <button onClick={() => isDark && onToggleTheme()}
                     className={`flex-1 flex items-center justify-center gap-2 py-3 rounded-xl text-[11px] font-black uppercase tracking-widest transition-all ${!isDark ? 'bg-white text-slate-900 shadow-lg' : 'text-slate-400 hover:text-slate-600'}`}>
@@ -475,7 +475,7 @@ export const SettingsModal: React.FC<Props> = ({ user, isDark, onToggleTheme, on
 
               {/* Sprache */}
               <div className="space-y-3">
-                <p className="text-[10px] font-black uppercase tracking-widest text-slate-400">{t('settings.language.title')}</p>
+                <p className="text-[11px] font-black uppercase tracking-widest text-slate-400">{t('settings.language.title')}</p>
                 <div className="flex p-1 rounded-2xl gap-1" style={{ background: 'color-mix(in srgb, var(--border-color) 40%, var(--bg-main))' }}>
                   {(['de', 'tr', 'en'] as Locale[]).map(l => (
                     <button
@@ -488,12 +488,12 @@ export const SettingsModal: React.FC<Props> = ({ user, isDark, onToggleTheme, on
                     </button>
                   ))}
                 </div>
-                <p className="text-[10px] text-slate-400">{t('settings.language.hint')}</p>
+                <p className="text-[11px] text-slate-400">{t('settings.language.hint')}</p>
               </div>
 
               {/* Schriftart */}
               <div className="space-y-4">
-                <p className="text-[10px] font-black uppercase tracking-widest text-slate-400">{t('settings.font')}</p>
+                <p className="text-[11px] font-black uppercase tracking-widest text-slate-400">{t('settings.font')}</p>
                 <div className="grid grid-cols-2 gap-2">
                   {FONTS.map(f => {
                     const isSelected = fontChoice === f.id;
@@ -511,9 +511,9 @@ export const SettingsModal: React.FC<Props> = ({ user, isDark, onToggleTheme, on
                       >
                         <p className="text-base font-semibold dark:text-white leading-tight" style={{ fontFamily: f.stack }}>{f.name}</p>
                         <p className="text-sm mt-1 text-slate-400" style={{ fontFamily: f.stack }}>Aa Bb 123</p>
-                        <p className="text-[9px] font-black uppercase tracking-widest mt-2 text-slate-400">{t(f.labelKey)}</p>
+                        <p className="text-[11px] font-black uppercase tracking-widest mt-2 text-slate-400">{t(f.labelKey)}</p>
                         {isSelected && (
-                          <span className="inline-flex items-center gap-1 mt-2 text-[9px] font-black uppercase tracking-wide" style={{ color: 'var(--primary)' }}>
+                          <span className="inline-flex items-center gap-1 mt-2 text-[11px] font-black uppercase tracking-wide" style={{ color: 'var(--primary)' }}>
                             <Check className="w-3 h-3" strokeWidth={3} /> {t('settings.active')}
                           </span>
                         )}
@@ -525,7 +525,7 @@ export const SettingsModal: React.FC<Props> = ({ user, isDark, onToggleTheme, on
 
               {/* Zeilenabstand */}
               <div className="space-y-3">
-                <p className="text-[10px] font-black uppercase tracking-widest text-slate-400">{t('settings.lineSpacing')}</p>
+                <p className="text-[11px] font-black uppercase tracking-widest text-slate-400">{t('settings.lineSpacing')}</p>
                 <div className="flex p-1 rounded-2xl gap-1" style={{ background: 'color-mix(in srgb, var(--border-color) 40%, var(--bg-main))' }}>
                   {SPACING_OPTIONS.map(s => (
                     <button
@@ -538,7 +538,7 @@ export const SettingsModal: React.FC<Props> = ({ user, isDark, onToggleTheme, on
                     </button>
                   ))}
                 </div>
-                <p className="text-[10px] text-slate-400">
+                <p className="text-[11px] text-slate-400">
                   {lineHeight === '1.4' ? t('settings.spacing.compactHint') : lineHeight === '1.6' ? t('settings.spacing.normalHint') : t('settings.spacing.wideHint')}
                 </p>
               </div>
@@ -546,12 +546,12 @@ export const SettingsModal: React.FC<Props> = ({ user, isDark, onToggleTheme, on
               {/* Akzentfarbe */}
               <div className="space-y-4">
                 <div className="flex items-center justify-between">
-                  <p className="text-[10px] font-black uppercase tracking-widest text-slate-400">{t('settings.accentColor')}</p>
+                  <p className="text-[11px] font-black uppercase tracking-widest text-slate-400">{t('settings.accentColor')}</p>
                   <div className="w-6 h-6 rounded-lg shadow-inner border border-white/20" style={{ background: accentColor }} />
                 </div>
                 <div className="grid grid-cols-4 gap-3">
                   {PRESETS.map(p => (
-                    <button key={p.value} onClick={() => handleAccentColor(p.value)} title={p.name}
+                    <button key={p.value} onClick={() => handleAccentColor(p.value)} aria-label={p.name} title={p.name}
                       className="relative aspect-square rounded-2xl transition-all hover:scale-105 flex items-center justify-center shadow-md"
                       style={{ background: p.value }}>
                       {accentColor === p.value && <Check className="w-5 h-5 text-white drop-shadow-lg" strokeWidth={3} />}
@@ -563,7 +563,7 @@ export const SettingsModal: React.FC<Props> = ({ user, isDark, onToggleTheme, on
                   <input type="color" value={accentColor} onChange={e => handleAccentColor(e.target.value)} className="w-10 h-10 rounded-xl cursor-pointer border-0 bg-transparent p-0" />
                   <div>
                     <p className="text-[11px] font-black uppercase tracking-widest dark:text-white">{t('settings.customColor')}</p>
-                    <p className="text-[10px] text-slate-400 font-mono">{accentColor}</p>
+                    <p className="text-[11px] text-slate-400 font-mono">{accentColor}</p>
                   </div>
                 </label>
               </div>
@@ -585,7 +585,7 @@ export const SettingsModal: React.FC<Props> = ({ user, isDark, onToggleTheme, on
 
               {/* Daten exportieren */}
               <div className="space-y-3">
-                <p className="text-[10px] font-black uppercase tracking-widest text-slate-400">{t('settings.exportData')}</p>
+                <p className="text-[11px] font-black uppercase tracking-widest text-slate-400">{t('settings.exportData')}</p>
                 <p className="text-[11px] text-slate-500 dark:text-slate-400">{t('settings.exportDesc')}</p>
                 <button onClick={handleExport} disabled={isExporting}
                   className="flex items-center gap-2 px-5 py-3 rounded-2xl text-[11px] font-black uppercase tracking-widest text-white hover:scale-[1.02] disabled:opacity-40 transition-all"
@@ -599,14 +599,14 @@ export const SettingsModal: React.FC<Props> = ({ user, isDark, onToggleTheme, on
               <div className="space-y-4 pt-4" style={{ borderTop: '2px solid #f43f5e' }}>
                 <div className="flex items-center gap-2">
                   <Trash2 className="w-4 h-4 text-rose-500" strokeWidth={2} />
-                  <p className="text-[10px] font-black uppercase tracking-widest text-rose-500">{t('settings.deleteAccount')}</p>
+                  <p className="text-[11px] font-black uppercase tracking-widest text-rose-500">{t('settings.deleteAccount')}</p>
                 </div>
                 <div className="p-4 bg-rose-50 dark:bg-rose-950/20 rounded-2xl border border-rose-200 dark:border-rose-900/30 space-y-2">
                   <p className="text-[11px] font-bold text-rose-700 dark:text-rose-400">{t('settings.deleteIrreversible')}</p>
                   <p className="text-[11px] text-rose-600 dark:text-rose-400">{t('settings.deleteDesc')}</p>
                 </div>
                 <div className="space-y-2">
-                  <label className="text-[10px] font-black uppercase tracking-widest text-slate-400">
+                  <label className="text-[11px] font-black uppercase tracking-widest text-slate-400">
                     {t('settings.typeConfirmPre')} <span className="text-rose-500 font-mono">LÖSCHEN</span> {t('settings.typeConfirmPost')}
                   </label>
                   <input
@@ -639,7 +639,7 @@ export const SettingsModal: React.FC<Props> = ({ user, isDark, onToggleTheme, on
                 </p>
               </div>
               <div className="space-y-2">
-                <label className="text-[10px] font-black uppercase tracking-widest text-slate-400">{t('settings.apiKeyLabel')}</label>
+                <label className="text-[11px] font-black uppercase tracking-widest text-slate-400">{t('settings.apiKeyLabel')}</label>
                 <input type="password" value={apiKey} onChange={e => setApiKey(e.target.value)} placeholder="AIza..."
                   className="w-full px-4 py-3.5 rounded-2xl text-sm font-mono dark:text-white placeholder-slate-400 outline-none focus:ring-2 focus:ring-indigo-500/50 transition-all"
                   style={{ background: 'color-mix(in srgb, var(--border-color) 30%, var(--bg-main))', border: '1px solid var(--border-color)' }}

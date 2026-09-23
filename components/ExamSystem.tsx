@@ -452,7 +452,7 @@ export const ExamSystem: React.FC<ExamSystemProps> = ({ documents, collections, 
           {mode === 'edit' && (
             <button
               onClick={handleStartExam}
-              className="bg-indigo-600 text-white px-8 py-3 rounded-2xl font-black uppercase text-[10px] tracking-[0.2em] shadow-lg hover:scale-105 transition-all flex items-center gap-2"
+              className="bg-indigo-600 text-white px-8 py-3 rounded-2xl font-black uppercase text-[11px] tracking-[0.2em] shadow-lg hover:scale-105 transition-all flex items-center gap-2"
             >
               {t('es.startSimBtn')}
               <GeneratedImage prompt="Rocket launch icon, minimalist" className="w-4 h-4 rounded-full" />
@@ -462,14 +462,14 @@ export const ExamSystem: React.FC<ExamSystemProps> = ({ documents, collections, 
           {/* Abbrechen — mit Bestätigung während der Simulation */}
           {mode === 'solve' && showCancelConfirm ? (
             <div className="flex items-center gap-3 bg-rose-50 dark:bg-rose-950/30 border border-rose-200 dark:border-rose-800 px-4 py-2 rounded-2xl animate-in fade-in duration-200">
-              <p className="text-[9px] font-black uppercase tracking-widest text-rose-600 dark:text-rose-400">{t('es.cancelExam')}</p>
-              <button onClick={resetExam} className="text-[9px] font-black uppercase tracking-widest text-rose-600 hover:text-rose-800 transition-colors">{t('ev.fbYes')}</button>
-              <button onClick={() => setShowCancelConfirm(false)} className="text-[9px] font-black uppercase tracking-widest text-slate-400 hover:text-slate-600 transition-colors">{t('es.no')}</button>
+              <p className="text-[11px] font-black uppercase tracking-widest text-rose-600 dark:text-rose-400">{t('es.cancelExam')}</p>
+              <button onClick={resetExam} className="text-[11px] font-black uppercase tracking-widest text-rose-600 hover:text-rose-800 transition-colors">{t('ev.fbYes')}</button>
+              <button onClick={() => setShowCancelConfirm(false)} className="text-[11px] font-black uppercase tracking-widest text-slate-400 hover:text-slate-600 transition-colors">{t('es.no')}</button>
             </div>
           ) : mode !== 'result' ? (
             <button
               onClick={() => mode === 'solve' ? setShowCancelConfirm(true) : resetExam()}
-              className="text-slate-400 hover:text-rose-500 font-black uppercase text-[9px] tracking-widest p-2 transition-colors"
+              className="text-slate-400 hover:text-rose-500 font-black uppercase text-[11px] tracking-widest p-2 transition-colors"
             >
               {t('es.cancelNew')}
             </button>
@@ -490,12 +490,12 @@ export const ExamSystem: React.FC<ExamSystemProps> = ({ documents, collections, 
             style={{ background: 'color-mix(in srgb, var(--primary) 8%, transparent)', border: '1px dashed color-mix(in srgb, var(--primary) 40%, transparent)' }}
           >
             <span className="min-w-0">
-              <span className="block text-[9px] font-black uppercase tracking-widest" style={{ color: 'var(--primary)' }}>{t('es.graphBridge.title')}</span>
+              <span className="block text-[11px] font-black uppercase tracking-widest" style={{ color: 'var(--primary)' }}>{t('es.graphBridge.title')}</span>
               <span className="block text-[12px] font-bold mt-0.5 truncate" style={{ color: 'var(--text-main)' }}>
                 {t('es.graphBridge.text', { topics: weak.map(w => w.topic).join(', ') })}
               </span>
             </span>
-            <span className="text-[9px] font-black uppercase tracking-widest px-3 py-2 rounded-xl shrink-0" style={{ background: 'var(--primary)', color: 'var(--primary-text)' }}>
+            <span className="text-[11px] font-black uppercase tracking-widest px-3 py-2 rounded-xl shrink-0" style={{ background: 'var(--primary)', color: 'var(--primary-text)' }}>
               {t('es.graphBridge.cta')}
             </span>
           </button>

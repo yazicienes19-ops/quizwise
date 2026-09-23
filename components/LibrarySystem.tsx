@@ -14,6 +14,7 @@ import { DocumentViewerModal } from './DocumentViewerModal';
 import { EmojiImage } from './EmojiImage';
 import { ShareLinkModal } from './ShareLinkModal';
 import { PageHeader } from './PageHeader';
+import { confirmDialog } from '../services/confirmDialog';
 
 interface LibrarySystemProps {
   documents: ProcessedDocument[];
@@ -316,7 +317,7 @@ export const LibrarySystem: React.FC<LibrarySystemProps> = ({
                         onClick={e => { e.stopPropagation(); handleShareCollection(col); }}
                         disabled={sharingColId === col.id}
                         className="w-8 h-8 rounded-xl flex items-center justify-center bg-white dark:bg-slate-800 shadow text-slate-400 hover:text-emerald-500 transition-colors disabled:opacity-50"
-                        title={t('slp.shareFolder')}
+                        aria-label={t('slp.shareFolder')} title={t('slp.shareFolder')}
                       >
                         {sharingColId === col.id
                           ? <span className="w-3 h-3 border-2 border-slate-300 border-t-emerald-500 rounded-full animate-spin" />
@@ -325,19 +326,18 @@ export const LibrarySystem: React.FC<LibrarySystemProps> = ({
                       <button
                         onClick={e => { e.stopPropagation(); setEditColId(col.id); setEditColName(col.name); setEditColEmoji(col.emoji); }}
                         className="w-8 h-8 rounded-xl flex items-center justify-center bg-white dark:bg-slate-800 shadow text-slate-400 hover:text-indigo-500 transition-colors"
-                        title={t('lib.editFolder')}
+                        aria-label={t('lib.editFolder')} title={t('lib.editFolder')}
                       >
                         <Pencil className="w-3 h-3" strokeWidth={2.5} />
                       </button>
                       <button
                         onClick={e => {
                           e.stopPropagation();
-                          if (window.confirm(t('lib.deleteFolderConfirm', { name: col.name }))) {
-                            onDeleteCollection(col.id);
-                          }
+                          void confirmDialog({ message: t('lib.deleteFolderConfirm', { name: col.name }), danger: true })
+                            .then(ok => { if (ok) onDeleteCollection(col.id); });
                         }}
                         className="w-8 h-8 rounded-xl flex items-center justify-center bg-white dark:bg-slate-800 shadow text-slate-400 hover:text-rose-500 transition-colors"
-                        title={t('lib.deleteFolder')}
+                        aria-label={t('lib.deleteFolder')} title={t('lib.deleteFolder')}
                       >
                         <Trash2 className="w-3 h-3" strokeWidth={2.5} />
                       </button>
@@ -377,13 +377,13 @@ export const LibrarySystem: React.FC<LibrarySystemProps> = ({
                       <div className="flex gap-2">
                         <button
                           type="submit"
-                          className="flex-1 py-2.5 rounded-xl text-[9px] font-black uppercase tracking-widest"
+                          className="flex-1 py-2.5 rounded-xl text-[11px] font-black uppercase tracking-widest"
                           style={{ background: 'var(--primary)', color: 'var(--primary-text)' }}
                         >{t('lib.save')}</button>
                         <button
                           type="button"
                           onClick={() => setEditColId(null)}
-                          className="px-4 py-2.5 rounded-xl text-[9px] font-black uppercase tracking-widest text-slate-400 border border-slate-200 dark:border-slate-700"
+                          className="px-4 py-2.5 rounded-xl text-[11px] font-black uppercase tracking-widest text-slate-400 border border-slate-200 dark:border-slate-700"
                         >✕</button>
                       </div>
                     </form>
@@ -400,22 +400,22 @@ export const LibrarySystem: React.FC<LibrarySystemProps> = ({
                         >
                           <EmojiImage emoji={col.emoji} size={28} />
                         </div>
-                        <span className="text-[10px] font-black uppercase tracking-widest text-slate-400 bg-slate-100 dark:bg-slate-800 px-2.5 py-1 rounded-full">
+                        <span className="text-[11px] font-black uppercase tracking-widest text-slate-400 bg-slate-100 dark:bg-slate-800 px-2.5 py-1 rounded-full">
                           {count}
                         </span>
                       </div>
                       <div>
                         <h3 className="font-black text-base leading-snug" style={{ color: 'var(--text-main)' }}>{col.name}</h3>
                         {recentDoc && (
-                          <p className="text-[10px] text-slate-400 mt-1 break-words">
+                          <p className="text-[11px] text-slate-400 mt-1 break-words">
                             Zuletzt: {documentDisplayName(recentDoc)}
                           </p>
                         )}
                         {count === 0 && (
-                          <p className="text-[10px] text-slate-300 dark:text-slate-600 mt-1">{t('lib.empty')}</p>
+                          <p className="text-[11px] text-slate-300 dark:text-slate-600 mt-1">{t('lib.empty')}</p>
                         )}
                       </div>
-                      <div className="flex items-center gap-1 text-[10px] font-black uppercase tracking-widest mt-auto" style={{ color: 'var(--primary)' }}>
+                      <div className="flex items-center gap-1 text-[11px] font-black uppercase tracking-widest mt-auto" style={{ color: 'var(--primary)' }}>
                         Öffnen
                         <svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round">
                           <line x1="5" y1="12" x2="19" y2="12"/><polyline points="12 5 19 12 12 19"/>
@@ -438,9 +438,9 @@ export const LibrarySystem: React.FC<LibrarySystemProps> = ({
               </div>
               <div>
                 <h3 className="font-black text-base" style={{ color: 'var(--text-main)' }}>{t('lib.allDocs')}</h3>
-                <p className="text-[10px] text-slate-400 mt-1">{documents.length} gesamt</p>
+                <p className="text-[11px] text-slate-400 mt-1">{documents.length} gesamt</p>
               </div>
-              <div className="flex items-center gap-1 text-[10px] font-black uppercase tracking-widest mt-auto text-slate-400">
+              <div className="flex items-center gap-1 text-[11px] font-black uppercase tracking-widest mt-auto text-slate-400">
                 Alle anzeigen
                 <svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round">
                   <line x1="5" y1="12" x2="19" y2="12"/><polyline points="12 5 19 12 12 19"/>
@@ -453,7 +453,7 @@ export const LibrarySystem: React.FC<LibrarySystemProps> = ({
           <div className="flex items-center gap-3 pt-2">
             <button
               onClick={() => setIsAddingCol(true)}
-              className="flex items-center gap-2 px-4 py-2.5 rounded-2xl text-[10px] font-black uppercase tracking-widest text-slate-400 hover:text-indigo-600 border border-slate-200 dark:border-slate-700 hover:border-indigo-400 transition-all"
+              className="flex items-center gap-2 px-4 py-2.5 rounded-2xl text-[11px] font-black uppercase tracking-widest text-slate-400 hover:text-indigo-600 border border-slate-200 dark:border-slate-700 hover:border-indigo-400 transition-all"
             >
               + Neuer Ordner
             </button>
@@ -467,8 +467,8 @@ export const LibrarySystem: React.FC<LibrarySystemProps> = ({
                   className="px-4 py-2.5 rounded-2xl text-xs font-bold outline-none border-2 border-indigo-500"
                   style={{ background: 'var(--bg-main)', color: 'var(--text-main)' }}
                 />
-                <button type="submit" className="px-4 py-2.5 bg-indigo-600 rounded-2xl text-[9px] font-black uppercase tracking-widest" style={{ color: 'var(--primary-text)' }}>{t('lib.create')}</button>
-                <button type="button" onClick={() => { setIsAddingCol(false); setNewColName(''); }} className="px-3 py-2.5 text-slate-400 text-[9px] font-black uppercase">✕</button>
+                <button type="submit" className="px-4 py-2.5 bg-indigo-600 rounded-2xl text-[11px] font-black uppercase tracking-widest" style={{ color: 'var(--primary-text)' }}>{t('lib.create')}</button>
+                <button type="button" onClick={() => { setIsAddingCol(false); setNewColName(''); }} className="px-3 py-2.5 text-slate-400 text-[11px] font-black uppercase">✕</button>
               </form>
             )}
           </div>
@@ -513,7 +513,7 @@ export const LibrarySystem: React.FC<LibrarySystemProps> = ({
             {collections.length > 0 && (
               <button
                 onClick={() => setShowFolderView(true)}
-                className="flex items-center gap-1.5 text-[10px] font-black uppercase tracking-widest text-slate-400 hover:text-indigo-500 transition-colors mb-3"
+                className="flex items-center gap-1.5 text-[11px] font-black uppercase tracking-widest text-slate-400 hover:text-indigo-500 transition-colors mb-3"
               >
                 <svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round">
                   <line x1="19" y1="12" x2="5" y2="12"/><polyline points="12 19 5 12 12 5"/>
@@ -542,7 +542,7 @@ export const LibrarySystem: React.FC<LibrarySystemProps> = ({
           <div className="lg:col-span-3 space-y-6">
             <div className="rounded-[28px] shadow-3d-raised p-6 space-y-4" style={{ background: 'var(--bg-sidebar)', border: '1px solid var(--border-color)' }}>
               <div className="flex justify-between items-center px-1">
-                <span className="text-[10px] font-black uppercase tracking-widest text-slate-400">{t('lib.collections')}</span>
+                <span className="text-[11px] font-black uppercase tracking-widest text-slate-400">{t('lib.collections')}</span>
                 {!isAddingCol && (
                   <button
                     onClick={() => setIsAddingCol(true)}
@@ -562,8 +562,8 @@ export const LibrarySystem: React.FC<LibrarySystemProps> = ({
                     style={{ background: 'var(--bg-main)', color: 'var(--text-main)' }}
                   />
                   <div className="flex gap-2">
-                    <button type="submit" className="flex-1 bg-indigo-600 py-2 rounded-xl text-[9px] font-black uppercase tracking-widest" style={{ color: 'var(--primary-text)' }}>{t('lib.create')}</button>
-                    <button type="button" onClick={() => { setIsAddingCol(false); setNewColName(''); }} className="px-3 text-slate-400 py-2 rounded-xl text-[9px] font-black uppercase" style={{ background: 'var(--bg-main)' }}>✕</button>
+                    <button type="submit" className="flex-1 bg-indigo-600 py-2 rounded-xl text-[11px] font-black uppercase tracking-widest" style={{ color: 'var(--primary-text)' }}>{t('lib.create')}</button>
+                    <button type="button" onClick={() => { setIsAddingCol(false); setNewColName(''); }} className="px-3 text-slate-400 py-2 rounded-xl text-[11px] font-black uppercase" style={{ background: 'var(--bg-main)' }}>✕</button>
                   </div>
                 </form>
               )}
@@ -580,7 +580,7 @@ export const LibrarySystem: React.FC<LibrarySystemProps> = ({
                           onClick={() => handleShareCollection(col)}
                           disabled={sharingColId === col.id}
                           className="w-6 h-6 rounded-lg flex items-center justify-center bg-white dark:bg-slate-700 shadow text-slate-400 hover:text-emerald-500 transition-colors disabled:opacity-50"
-                          title={t('slp.shareFolder')}
+                          aria-label={t('slp.shareFolder')} title={t('slp.shareFolder')}
                         >
                           {sharingColId === col.id
                             ? <span className="w-2.5 h-2.5 border-2 border-slate-300 border-t-emerald-500 rounded-full animate-spin" />
@@ -589,18 +589,17 @@ export const LibrarySystem: React.FC<LibrarySystemProps> = ({
                         <button
                           onClick={() => { setShowFolderView(true); setEditColId(col.id); setEditColName(col.name); setEditColEmoji(col.emoji); }}
                           className="w-6 h-6 rounded-lg flex items-center justify-center bg-white dark:bg-slate-700 shadow text-slate-400 hover:text-indigo-500 transition-colors"
-                          title={t('lib.edit')}
+                          aria-label={t('lib.edit')} title={t('lib.edit')}
                         >
                           <Pencil className="w-2.5 h-2.5" strokeWidth={2.5} />
                         </button>
                         <button
                           onClick={() => {
-                            if (window.confirm(t('lib.deleteFolderConfirm', { name: col.name }))) {
-                              onDeleteCollection(col.id);
-                            }
+                            void confirmDialog({ message: t('lib.deleteFolderConfirm', { name: col.name }), danger: true })
+                              .then(ok => { if (ok) onDeleteCollection(col.id); });
                           }}
                           className="w-6 h-6 rounded-lg flex items-center justify-center bg-rose-500 text-white shadow transition-all hover:scale-110"
-                          title={t('lib.delete')}
+                          aria-label={t('lib.delete')} title={t('lib.delete')}
                         >
                           <Trash2 className="w-2.5 h-2.5" strokeWidth={2.5} />
                         </button>
@@ -614,7 +613,7 @@ export const LibrarySystem: React.FC<LibrarySystemProps> = ({
             {/* Module filter */}
             {modules.length > 0 && (
               <div className="rounded-[28px] shadow-3d-raised p-6 space-y-3" style={{ background: 'var(--bg-sidebar)', border: '1px solid var(--border-color)' }}>
-                <span className="text-[10px] font-black uppercase tracking-widest text-slate-400 px-1 block">{t('lib.modules')}</span>
+                <span className="text-[11px] font-black uppercase tracking-widest text-slate-400 px-1 block">{t('lib.modules')}</span>
                 <div className="space-y-1">
                   <button
                     onClick={() => setFilterModule('')}
@@ -659,7 +658,7 @@ export const LibrarySystem: React.FC<LibrarySystemProps> = ({
                 <select
                   value={filterType}
                   onChange={e => setFilterType(e.target.value as FilterType)}
-                  className="flex-1 min-w-[100px] px-3 py-2.5 rounded-2xl text-[10px] font-black uppercase tracking-widest outline-none focus:border-indigo-500 shadow-3d-raised"
+                  className="flex-1 min-w-[100px] px-3 py-2.5 rounded-2xl text-[11px] font-black uppercase tracking-widest outline-none focus:border-indigo-500 shadow-3d-raised"
                   style={{ background: 'var(--bg-sidebar)', border: '1px solid var(--border-color)', color: 'var(--text-main)' }}
                 >
                   <option value="all">{t('lib.allTypes')}</option>
@@ -671,7 +670,7 @@ export const LibrarySystem: React.FC<LibrarySystemProps> = ({
                 <select
                   value={sortBy}
                   onChange={e => setSortBy(e.target.value as SortKey)}
-                  className="flex-1 min-w-[100px] px-3 py-2.5 rounded-2xl text-[10px] font-black uppercase tracking-widest outline-none focus:border-indigo-500 shadow-3d-raised"
+                  className="flex-1 min-w-[100px] px-3 py-2.5 rounded-2xl text-[11px] font-black uppercase tracking-widest outline-none focus:border-indigo-500 shadow-3d-raised"
                   style={{ background: 'var(--bg-sidebar)', border: '1px solid var(--border-color)', color: 'var(--text-main)' }}
                 >
                   <option value="recent">{t('lib.newest')}</option>
@@ -699,12 +698,12 @@ export const LibrarySystem: React.FC<LibrarySystemProps> = ({
             {/* Results info */}
             {(search || filterType !== 'all' || filterModule) && (
               <div className="flex items-center justify-between px-1">
-                <p className="text-[10px] font-black uppercase tracking-widest text-slate-400">
+                <p className="text-[11px] font-black uppercase tracking-widest text-slate-400">
                   {filtered.length} {filtered.length === 1 ? 'Ergebnis' : 'Ergebnisse'}
                 </p>
                 <button
                   onClick={() => { setSearch(''); setFilterType('all'); setFilterModule(''); }}
-                  className="text-[10px] font-black uppercase tracking-widest text-rose-500 hover:text-rose-600"
+                  className="text-[11px] font-black uppercase tracking-widest text-rose-500 hover:text-rose-600"
                 >
                   Filter zurücksetzen
                 </button>
@@ -784,7 +783,7 @@ const EmptyLibrary: React.FC<{ onUpload: () => void }> = ({ onUpload }) => {
     </button>
     <div className="flex gap-6 pt-4">
       {['PDF', 'DOCX', 'TXT', 'MD'].map(f => (
-        <span key={f} className="text-[9px] font-black uppercase tracking-widest text-slate-300 dark:text-slate-600">{f}</span>
+        <span key={f} className="text-[11px] font-black uppercase tracking-widest text-slate-300 dark:text-slate-600">{f}</span>
       ))}
     </div>
   </div>

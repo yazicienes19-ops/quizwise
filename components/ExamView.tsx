@@ -288,7 +288,7 @@ export const ExamView: React.FC<ExamViewProps> = ({
     if (q.type === 'mc' && q.options) {
       const scenarioBlock = q.scenarioText ? (
         <div className="pl-4 lg:pl-10 mb-4 p-5 bg-amber-50 dark:bg-amber-900/20 rounded-[20px] border border-amber-200 dark:border-amber-800">
-          <p className="text-[9px] font-black uppercase tracking-widest text-amber-600 dark:text-amber-400 mb-2">{t('quiz.badge.scenario')}</p>
+          <p className="text-[11px] font-black uppercase tracking-widest text-amber-600 dark:text-amber-400 mb-2">{t('quiz.badge.scenario')}</p>
           <p className="text-sm text-slate-700 dark:text-slate-300 leading-relaxed">{q.scenarioText}</p>
         </div>
       ) : null;
@@ -314,7 +314,7 @@ export const ExamView: React.FC<ExamViewProps> = ({
                 }}
                 className={`flex items-center gap-3 p-4 rounded-2xl border-2 transition-all text-left ${cls}`}
               >
-                <div className={`w-6 h-6 rounded-lg border-2 flex items-center justify-center shrink-0 text-[10px] font-black ${
+                <div className={`w-6 h-6 rounded-lg border-2 flex items-center justify-center shrink-0 text-[11px] font-black ${
                   mode === 'solve' && selected ? 'bg-indigo-600 border-indigo-600 text-white' : 'border-slate-300 dark:border-slate-600'
                 }`}>
                   {mode === 'solve' && selected ? '✓' : String.fromCharCode(65 + oi)}
@@ -334,7 +334,7 @@ export const ExamView: React.FC<ExamViewProps> = ({
       if (mode === 'solve') {
         return (
           <div className="pl-4 lg:pl-10 space-y-2">
-            <p className="text-[9px] font-black uppercase tracking-widest text-slate-400 mb-3">{t('quiz.rankingHint')}</p>
+            <p className="text-[11px] font-black uppercase tracking-widest text-slate-400 mb-3">{t('quiz.rankingHint')}</p>
             {userOrder.map((item, i) => (
               <div key={item} className="flex items-center gap-3">
                 <span className="w-7 h-7 rounded-lg bg-indigo-100 dark:bg-indigo-900/30 text-indigo-600 text-[11px] font-black flex items-center justify-center shrink-0">{i + 1}</span>
@@ -389,7 +389,7 @@ export const ExamView: React.FC<ExamViewProps> = ({
                 placeholder={t('ev.numericPlaceholder')}
                 className="flex-1 p-4 bg-slate-50 dark:bg-slate-800 rounded-[20px] border-2 border-transparent focus:border-indigo-500 outline-none transition-all dark:text-white font-black text-xl text-center"
               />
-              {q.numericTolerance ? <span className="text-[10px] text-slate-400 font-black">±{q.numericTolerance}</span> : null}
+              {q.numericTolerance ? <span className="text-[11px] text-slate-400 font-black">±{q.numericTolerance}</span> : null}
             </div>
           </div>
         );
@@ -454,7 +454,7 @@ export const ExamView: React.FC<ExamViewProps> = ({
               rows={6}
               className="w-full p-6 bg-slate-50 dark:bg-slate-800 rounded-[32px] border-2 border-transparent focus:border-indigo-500 outline-none transition-all dark:text-white font-mono text-sm resize-y"
             />
-            <p className="text-[9px] font-black uppercase tracking-widest text-slate-400 mt-2">{t('ev.stepByStepHint')}</p>
+            <p className="text-[11px] font-black uppercase tracking-widest text-slate-400 mt-2">{t('ev.stepByStepHint')}</p>
           </div>
         );
       }
@@ -476,12 +476,12 @@ export const ExamView: React.FC<ExamViewProps> = ({
             {(q.correctApproach !== undefined || q.finalResultCorrect !== undefined) && (
               <div className="flex flex-wrap gap-2">
                 {q.correctApproach !== undefined && (
-                  <span className={`text-[9px] font-black uppercase tracking-widest px-2.5 py-1 rounded-full ${q.correctApproach ? 'bg-emerald-100 dark:bg-emerald-900/30 text-emerald-600' : 'bg-rose-100 dark:bg-rose-900/30 text-rose-600'}`}>
+                  <span className={`text-[11px] font-black uppercase tracking-widest px-2.5 py-1 rounded-full ${q.correctApproach ? 'bg-emerald-100 dark:bg-emerald-900/30 text-emerald-600' : 'bg-rose-100 dark:bg-rose-900/30 text-rose-600'}`}>
                     {q.correctApproach ? t('ev.stepApproachOk') : t('ev.stepApproachIssue')}
                   </span>
                 )}
                 {q.finalResultCorrect !== undefined && (
-                  <span className={`text-[9px] font-black uppercase tracking-widest px-2.5 py-1 rounded-full ${q.finalResultCorrect ? 'bg-emerald-100 dark:bg-emerald-900/30 text-emerald-600' : 'bg-rose-100 dark:bg-rose-900/30 text-rose-600'}`}>
+                  <span className={`text-[11px] font-black uppercase tracking-widest px-2.5 py-1 rounded-full ${q.finalResultCorrect ? 'bg-emerald-100 dark:bg-emerald-900/30 text-emerald-600' : 'bg-rose-100 dark:bg-rose-900/30 text-rose-600'}`}>
                     {q.finalResultCorrect ? t('ev.stepFinalOk') : t('ev.stepFinalWrong')}
                   </span>
                 )}
@@ -498,10 +498,10 @@ export const ExamView: React.FC<ExamViewProps> = ({
                     <li key={i} className={`p-3 rounded-2xl border-2 font-mono text-sm ${cls}`}>
                       <div className="flex items-start justify-between gap-3">
                         <span className="min-w-0 break-words">{i + 1}. {step}</span>
-                        {fb && <span className="text-[9px] font-black uppercase tracking-widest shrink-0">{verdictLabel[fb.verdict]}</span>}
+                        {fb && <span className="text-[11px] font-black uppercase tracking-widest shrink-0">{verdictLabel[fb.verdict]}</span>}
                       </div>
                       {fb?.note && <p className="text-xs mt-1 font-sans opacity-90">{fb.note}</p>}
-                      {fb?.errorType && <p className="text-[9px] mt-1 font-sans font-black uppercase tracking-widest opacity-75">{t('ev.distractorErrorTypeLabel')}: {getDistractorErrorTypeLabel(fb.errorType)}</p>}
+                      {fb?.errorType && <p className="text-[11px] mt-1 font-sans font-black uppercase tracking-widest opacity-75">{t('ev.distractorErrorTypeLabel')}: {getDistractorErrorTypeLabel(fb.errorType)}</p>}
                     </li>
                   );
                 })}
@@ -511,7 +511,7 @@ export const ExamView: React.FC<ExamViewProps> = ({
               <ul className="space-y-2">
                 {missingSteps.map((fb, i) => (
                   <li key={`missing-${i}`} className="p-3 rounded-2xl border-2 border-dashed border-amber-400 bg-amber-50 dark:bg-amber-950/20 text-amber-700 dark:text-amber-300 text-sm">
-                    <span className="text-[9px] font-black uppercase tracking-widest">{t('ev.stepVerdictMissing')}</span>
+                    <span className="text-[11px] font-black uppercase tracking-widest">{t('ev.stepVerdictMissing')}</span>
                     {fb.note && <p className="text-xs mt-1">{fb.note}</p>}
                   </li>
                 ))}
@@ -519,7 +519,7 @@ export const ExamView: React.FC<ExamViewProps> = ({
             )}
             {q.expectedSteps && q.expectedSteps.length > 0 && (
               <div className="pt-2">
-                <p className="text-[9px] font-black uppercase tracking-widest text-slate-400 mb-2">{t('ev.stepExpectedTitle')}</p>
+                <p className="text-[11px] font-black uppercase tracking-widest text-slate-400 mb-2">{t('ev.stepExpectedTitle')}</p>
                 <ol className="space-y-1 list-decimal list-inside text-sm text-slate-500 dark:text-slate-400 font-mono">
                   {q.expectedSteps.map((s, i) => <li key={i}>{s}</li>)}
                 </ol>
@@ -559,7 +559,7 @@ export const ExamView: React.FC<ExamViewProps> = ({
           {/* Begründungsauswahl */}
           {q.tfReasonOptions && q.tfReasonOptions.length > 0 && (tfAns?.tf !== undefined || mode === 'result') && (
             <div className="space-y-2 animate-in fade-in slide-in-from-top-2 duration-300">
-              <p className="text-[9px] font-black uppercase tracking-widest text-slate-400">{t('ev.reasoning')}</p>
+              <p className="text-[11px] font-black uppercase tracking-widest text-slate-400">{t('ev.reasoning')}</p>
               {q.tfReasonOptions.map((reason, ri) => {
                 const sel = tfAns?.reason === ri;
                 const correct = mode === 'result' && ri === q.tfCorrectReasonIndex;
@@ -575,7 +575,7 @@ export const ExamView: React.FC<ExamViewProps> = ({
                     }`}
                   >
                     {reason}
-                    {correct && <span className="ml-2 text-[9px] font-black uppercase text-emerald-500">✓</span>}
+                    {correct && <span className="ml-2 text-[11px] font-black uppercase text-emerald-500">✓</span>}
                   </button>
                 );
               })}
@@ -625,7 +625,7 @@ export const ExamView: React.FC<ExamViewProps> = ({
                   }`}>
                     {selected !== undefined && selected >= 0 ? q.matchRight[selected] : '—'}
                     {isWrong && q.matchCorrect && (
-                      <span className="block text-[10px] text-emerald-600 dark:text-emerald-400 mt-0.5 font-black">
+                      <span className="block text-[11px] text-emerald-600 dark:text-emerald-400 mt-0.5 font-black">
                         ✓ {q.matchRight[q.matchCorrect[li]]}
                       </span>
                     )}
@@ -686,7 +686,7 @@ export const ExamView: React.FC<ExamViewProps> = ({
                     <span className={`mx-1 inline-flex items-center gap-1 px-2 py-0.5 rounded font-bold ${colorClass}`}>
                       {userBlank || '—'}
                       {match === 'tolerant' && (
-                        <span className="text-[9px] font-black uppercase tracking-wide opacity-80">{t('ev.blankTolerant')}</span>
+                        <span className="text-[11px] font-black uppercase tracking-wide opacity-80">{t('ev.blankTolerant')}</span>
                       )}
                       {match === 'none' && <span className="text-emerald-600 dark:text-emerald-400">→ {correctBlank}</span>}
                     </span>
@@ -747,11 +747,11 @@ export const ExamView: React.FC<ExamViewProps> = ({
         <div className="text-right dark:text-white">
           <div className="flex justify-end gap-6">
             <div className="text-right">
-              <p className="text-[9px] font-black uppercase text-slate-400">{t('ev.totalPoints')}</p>
+              <p className="text-[11px] font-black uppercase text-slate-400">{t('ev.totalPoints')}</p>
               <p className="text-lg font-black">{achievedTotal} / {totalPoints}</p>
             </div>
             <div className="text-right">
-              <p className="text-[9px] font-black uppercase text-slate-400">{t('ev.percent')}</p>
+              <p className="text-[11px] font-black uppercase text-slate-400">{t('ev.percent')}</p>
               <p className="text-lg font-black">{Math.round(percentage)}%</p>
             </div>
           </div>
@@ -762,7 +762,7 @@ export const ExamView: React.FC<ExamViewProps> = ({
       {mode === 'result' && (
         <div className={`grid grid-cols-1 md:grid-cols-3 gap-6 sm:gap-8 ${gradeInfo.bg} dark:bg-slate-900/40 p-5 sm:p-10 rounded-[28px] sm:rounded-[40px] border-2 ${gradeInfo.passed ? 'border-emerald-500' : 'border-rose-500'} animate-in zoom-in-95`}>
           <div className="flex flex-col items-center justify-center border-b md:border-b-0 md:border-r border-slate-200 dark:border-slate-800 pb-6 md:pb-0">
-            <span className="text-[10px] font-black uppercase tracking-widest text-slate-400 mb-2">{t('ev.finalGrade')}</span>
+            <span className="text-[11px] font-black uppercase tracking-widest text-slate-400 mb-2">{t('ev.finalGrade')}</span>
             <span className={`text-6xl sm:text-7xl font-black ${gradeInfo.color}`}>
               {gradeInfo.system === 'letter'
                 ? <CountUp value={percentage} from={0} decimals={0} duration={900} finalText={gradeInfo.grade} />
@@ -772,14 +772,14 @@ export const ExamView: React.FC<ExamViewProps> = ({
           </div>
           <div className="md:col-span-2 space-y-4 flex flex-col justify-center">
             <div className="space-y-2">
-              <div className="flex justify-between items-center text-[10px] font-black uppercase tracking-widest text-slate-400">
+              <div className="flex justify-between items-center text-[11px] font-black uppercase tracking-widest text-slate-400">
                 <span>{t('ev.performance')}</span>
                 <span>{gradeInfo.passed ? t('ev.passed') : t('ev.notPassed')}</span>
               </div>
               <div className="h-4 bg-slate-200 dark:bg-slate-800 rounded-full overflow-hidden shadow-inner">
                 <AnimatedBar percent={percentage} className={`h-full ${gradeInfo.passed ? 'bg-emerald-500' : 'bg-rose-500'}`} duration={1000} />
               </div>
-              <div className="flex justify-between text-[9px] font-bold text-slate-400">
+              <div className="flex justify-between text-[11px] font-bold text-slate-400">
                 <span>0%</span><span className="text-amber-500">{t('ev.passThreshold', { pct: passThresholdPercent() })}</span><span>100%</span>
               </div>
             </div>
@@ -792,7 +792,7 @@ export const ExamView: React.FC<ExamViewProps> = ({
             {onSaveExam && (
               <div className="pt-2 border-t border-slate-200 dark:border-slate-700">
                 {examSaved ? (
-                  <p className="text-emerald-600 text-[10px] font-black uppercase tracking-widest flex items-center gap-1.5">
+                  <p className="text-emerald-600 text-[11px] font-black uppercase tracking-widest flex items-center gap-1.5">
                     <svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round"><polyline points="20 6 9 17 4 12"/></svg>
                     {t('ev.savedOffline')}
                   </p>
@@ -802,13 +802,13 @@ export const ExamView: React.FC<ExamViewProps> = ({
                       className="flex-1 px-4 py-2 bg-white dark:bg-slate-800 border-2 border-slate-200 dark:border-slate-700 rounded-[14px] text-sm font-medium dark:text-white outline-none focus:border-indigo-500 transition-colors"
                       placeholder={t('ev.examNamePlaceholder')} />
                     <button onClick={() => { onSaveExam(saveName.trim() || t('ev.myExam')); setExamSaved(true); setShowSaveInput(false); }}
-                      className="px-4 py-2 bg-indigo-600 text-white rounded-[14px] text-[10px] font-black uppercase tracking-widest hover:scale-105 transition-all shrink-0">
+                      className="px-4 py-2 bg-indigo-600 text-white rounded-[14px] text-[11px] font-black uppercase tracking-widest hover:scale-105 transition-all shrink-0">
                       {t('quiz.save')}
                     </button>
                   </div>
                 ) : (
                   <button onClick={() => setShowSaveInput(true)}
-                    className="flex items-center gap-2 px-4 py-2 bg-slate-100 dark:bg-slate-800 rounded-[14px] text-[10px] font-black uppercase tracking-widest text-slate-600 dark:text-slate-300 hover:bg-slate-200 dark:hover:bg-slate-700 transition-all mb-2">
+                    className="flex items-center gap-2 px-4 py-2 bg-slate-100 dark:bg-slate-800 rounded-[14px] text-[11px] font-black uppercase tracking-widest text-slate-600 dark:text-slate-300 hover:bg-slate-200 dark:hover:bg-slate-700 transition-all mb-2">
                     <svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
                     Klausur offline speichern ({questions.length} Fragen)
                   </button>
@@ -817,13 +817,13 @@ export const ExamView: React.FC<ExamViewProps> = ({
             )}
             <div className="flex flex-wrap gap-2 pt-2 border-t border-slate-200 dark:border-slate-700">
               {onNewExam && (
-                <button onClick={onNewExam} className="text-white px-5 py-2.5 rounded-[16px] font-black uppercase text-[9px] tracking-widest hover:scale-[1.02] transition-all shadow-lg" style={{ background: 'var(--primary)' }}>
+                <button onClick={onNewExam} className="text-white px-5 py-2.5 rounded-[16px] font-black uppercase text-[11px] tracking-widest hover:scale-[1.02] transition-all shadow-lg" style={{ background: 'var(--primary)' }}>
                   Neue Klausur
                 </button>
               )}
               <button
                 onClick={handleExportPdf}
-                className="flex items-center gap-2 px-5 py-2.5 rounded-[16px] border-2 border-slate-200 dark:border-slate-700 font-black uppercase text-[9px] tracking-widest text-slate-600 dark:text-slate-300 hover:border-rose-400 hover:text-rose-600 transition-all"
+                className="flex items-center gap-2 px-5 py-2.5 rounded-[16px] border-2 border-slate-200 dark:border-slate-700 font-black uppercase text-[11px] tracking-widest text-slate-600 dark:text-slate-300 hover:border-rose-400 hover:text-rose-600 transition-all"
               >
                 <svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round">
                   <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/>
@@ -832,10 +832,10 @@ export const ExamView: React.FC<ExamViewProps> = ({
               </button>
               {onNavigate && (
                 <>
-                  <button onClick={() => onNavigate(ActiveTab.RADAR)} className="px-5 py-2.5 rounded-[16px] border-2 border-slate-200 dark:border-slate-700 font-black uppercase text-[9px] tracking-widest text-slate-600 dark:text-slate-300 hover:border-indigo-400 hover:text-indigo-600 transition-all">
+                  <button onClick={() => onNavigate(ActiveTab.RADAR)} className="px-5 py-2.5 rounded-[16px] border-2 border-slate-200 dark:border-slate-700 font-black uppercase text-[11px] tracking-widest text-slate-600 dark:text-slate-300 hover:border-indigo-400 hover:text-indigo-600 transition-all">
                     {t('ev.learnAnalysisBtn')}
                   </button>
-                  <button onClick={() => onNavigate(ActiveTab.LIBRARY)} className="px-5 py-2.5 rounded-[16px] border-2 border-slate-200 dark:border-slate-700 font-black uppercase text-[9px] tracking-widest text-slate-600 dark:text-slate-300 hover:border-indigo-400 hover:text-indigo-600 transition-all">
+                  <button onClick={() => onNavigate(ActiveTab.LIBRARY)} className="px-5 py-2.5 rounded-[16px] border-2 border-slate-200 dark:border-slate-700 font-black uppercase text-[11px] tracking-widest text-slate-600 dark:text-slate-300 hover:border-indigo-400 hover:text-indigo-600 transition-all">
                     {t('ev.toLibrary')}
                   </button>
                 </>
@@ -843,7 +843,7 @@ export const ExamView: React.FC<ExamViewProps> = ({
               {onAction && weakestTopic && weakestTopic.score < 70 && (
                 <button
                   onClick={() => onAction(weakestTopic.topic, followUpMode)}
-                  className="px-5 py-2.5 rounded-[16px] font-black uppercase text-[9px] tracking-widest text-white hover:scale-[1.02] transition-all shadow-lg"
+                  className="px-5 py-2.5 rounded-[16px] font-black uppercase text-[11px] tracking-widest text-white hover:scale-[1.02] transition-all shadow-lg"
                   style={{ background: '#f43f5e' }}
                 >
                   {t('ev.practiceTopic', { method: followUpMode === 'recall' ? t('lp.method.feynman') : t('lp.method.quiz'), topic: weakestTopic.topic })}
@@ -857,12 +857,12 @@ export const ExamView: React.FC<ExamViewProps> = ({
       {/* Scoring-Profil-Badge (result) */}
       {mode === 'result' && scoringProfile && (
         <div className="flex items-center gap-2 flex-wrap px-1">
-          <span className="text-[9px] font-black uppercase tracking-widest text-slate-400">{t('ev.scoringProfileLabel')}</span>
-          <span className={`text-[9px] font-black uppercase tracking-widest px-2.5 py-1 rounded-full ${scoringProfile.mode === 'strict' ? 'bg-rose-100 dark:bg-rose-950/20 text-rose-600' : scoringProfile.mode === 'lenient' ? 'bg-emerald-100 dark:bg-emerald-950/20 text-emerald-600' : 'bg-indigo-100 dark:bg-indigo-950/20 text-indigo-600'}`}>
+          <span className="text-[11px] font-black uppercase tracking-widest text-slate-400">{t('ev.scoringProfileLabel')}</span>
+          <span className={`text-[11px] font-black uppercase tracking-widest px-2.5 py-1 rounded-full ${scoringProfile.mode === 'strict' ? 'bg-rose-100 dark:bg-rose-950/20 text-rose-600' : scoringProfile.mode === 'lenient' ? 'bg-emerald-100 dark:bg-emerald-950/20 text-emerald-600' : 'bg-indigo-100 dark:bg-indigo-950/20 text-indigo-600'}`}>
             {scoringProfile.mode === 'strict' ? t('eg.scoreStrict') : scoringProfile.mode === 'lenient' ? t('eg.scoreLenient') : t('eg.scoreStandard')}
           </span>
           {scoringProfile.emphases.map(e => (
-            <span key={e} className="text-[9px] font-black uppercase tracking-widest px-2.5 py-1 rounded-full bg-slate-100 dark:bg-slate-800 text-slate-500">
+            <span key={e} className="text-[11px] font-black uppercase tracking-widest px-2.5 py-1 rounded-full bg-slate-100 dark:bg-slate-800 text-slate-500">
               {e === 'terms' ? t('eg.emphTerms') : e === 'understanding' ? t('eg.emphUnderstanding') : e === 'examples' ? t('eg.emphExamples') : t('eg.emphDefinitions')}
             </span>
           ))}
@@ -874,7 +874,7 @@ export const ExamView: React.FC<ExamViewProps> = ({
         <div className="rounded-[24px] sm:rounded-[32px] p-5 sm:p-8 space-y-4 animate-in fade-in duration-500" style={{ background: 'var(--bg-sidebar)', border: '1px solid var(--border-color)' }}>
           <div>
             <h3 className="text-lg font-black dark:text-white">{t('ev.categoryBreakdown')}</h3>
-            <p className="text-[10px] font-black uppercase tracking-widest text-slate-400">{t('ev.categoryBreakdownHint')}</p>
+            <p className="text-[11px] font-black uppercase tracking-widest text-slate-400">{t('ev.categoryBreakdownHint')}</p>
           </div>
           <div className="space-y-3">
             {[...categoryBreakdown].sort((a, b) => a.score - b.score).map(cb => (
@@ -903,7 +903,7 @@ export const ExamView: React.FC<ExamViewProps> = ({
         <div className="rounded-[24px] sm:rounded-[32px] p-5 sm:p-8 space-y-4 animate-in fade-in duration-500" style={{ background: 'var(--bg-sidebar)', border: '1px solid var(--border-color)' }}>
           <div>
             <h3 className="text-lg font-black dark:text-white">{t('ev.bloomBreakdownTitle')}</h3>
-            <p className="text-[10px] font-black uppercase tracking-widest text-slate-400">{t('ev.bloomBreakdownHint')}</p>
+            <p className="text-[11px] font-black uppercase tracking-widest text-slate-400">{t('ev.bloomBreakdownHint')}</p>
           </div>
           <div className="space-y-3">
             {BLOOM_LEVELS.filter(l => targetBloomDistribution[l] > 0 || actualBloomDistribution[l] > 0).map(level => (
@@ -928,15 +928,15 @@ export const ExamView: React.FC<ExamViewProps> = ({
         <div className="rounded-[24px] sm:rounded-[32px] p-5 sm:p-8 space-y-4 animate-in fade-in duration-500" style={{ background: 'var(--bg-sidebar)', border: '1px solid var(--border-color)' }}>
           <div>
             <h3 className="text-lg font-black dark:text-white">{t('ev.fatigueTitle')}</h3>
-            <p className="text-[10px] font-black uppercase tracking-widest text-slate-400">{t('ev.fatigueHint')}</p>
+            <p className="text-[11px] font-black uppercase tracking-widest text-slate-400">{t('ev.fatigueHint')}</p>
           </div>
           <div className="grid grid-cols-2 gap-4">
             <div>
-              <p className="text-[9px] font-black uppercase tracking-widest text-slate-400 mb-1">{t('ev.fatigueEarly')}</p>
+              <p className="text-[11px] font-black uppercase tracking-widest text-slate-400 mb-1">{t('ev.fatigueEarly')}</p>
               <p className="text-2xl font-black dark:text-white">{fatigue.earlyScore}%</p>
             </div>
             <div>
-              <p className="text-[9px] font-black uppercase tracking-widest text-slate-400 mb-1">{t('ev.fatigueLate')}</p>
+              <p className="text-[11px] font-black uppercase tracking-widest text-slate-400 mb-1">{t('ev.fatigueLate')}</p>
               <p className="text-2xl font-black dark:text-white">{fatigue.lateScore}%</p>
             </div>
           </div>
@@ -952,13 +952,13 @@ export const ExamView: React.FC<ExamViewProps> = ({
         <div className="rounded-[24px] sm:rounded-[32px] p-5 sm:p-8 space-y-6 animate-in fade-in duration-700" style={{ background: 'var(--bg-sidebar)', border: '1px solid var(--border-color)' }}>
           <div>
             <h3 className="text-lg font-black dark:text-white">{t('ev.learningAnalysis')}</h3>
-            <p className="text-[10px] font-black uppercase tracking-widest text-slate-400">{t('ev.basedOnAnswers')}</p>
+            <p className="text-[11px] font-black uppercase tracking-widest text-slate-400">{t('ev.basedOnAnswers')}</p>
           </div>
 
           <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
             {analysis.strengths.length > 0 && (
               <div className="space-y-3">
-                <p className="text-[10px] font-black uppercase tracking-widest text-emerald-600">{t('ev.strengths')}</p>
+                <p className="text-[11px] font-black uppercase tracking-widest text-emerald-600">{t('ev.strengths')}</p>
                 <ul className="space-y-2">
                   {analysis.strengths.map((s, i) => (
                     <li key={i} className="flex items-start gap-2 text-sm text-slate-700 dark:text-slate-300">
@@ -970,7 +970,7 @@ export const ExamView: React.FC<ExamViewProps> = ({
             )}
             {analysis.weaknesses.length > 0 && (
               <div className="space-y-3">
-                <p className="text-[10px] font-black uppercase tracking-widest text-rose-600">{t('ev.gaps')}</p>
+                <p className="text-[11px] font-black uppercase tracking-widest text-rose-600">{t('ev.gaps')}</p>
                 <ul className="space-y-2">
                   {analysis.weaknesses.map((w, i) => (
                     <li key={i} className="flex items-start gap-2 text-sm text-slate-700 dark:text-slate-300">
@@ -984,7 +984,7 @@ export const ExamView: React.FC<ExamViewProps> = ({
 
           {analysis.recommendations.length > 0 && (
             <div className="pt-4 border-t" style={{ borderColor: 'var(--border-color)' }}>
-              <p className="text-[10px] font-black uppercase tracking-widest text-indigo-600 mb-3">{t('ev.recommendations')}</p>
+              <p className="text-[11px] font-black uppercase tracking-widest text-indigo-600 mb-3">{t('ev.recommendations')}</p>
               <div className="flex flex-wrap gap-2">
                 {analysis.recommendations.map((r, i) => (
                   <span key={i} className="px-3 py-1.5 rounded-xl text-xs font-bold bg-indigo-50 dark:bg-indigo-950/20 text-indigo-700 dark:text-indigo-300 border border-indigo-200 dark:border-indigo-800">
@@ -997,7 +997,7 @@ export const ExamView: React.FC<ExamViewProps> = ({
 
           {analysis.topicPerformance.length > 0 && (
             <div className="pt-4 border-t space-y-3" style={{ borderColor: 'var(--border-color)' }}>
-              <p className="text-[10px] font-black uppercase tracking-widest text-slate-400">{t('ev.topicPerformance')}</p>
+              <p className="text-[11px] font-black uppercase tracking-widest text-slate-400">{t('ev.topicPerformance')}</p>
               {analysis.topicPerformance.map((tp, i) => (
                 <div key={i} className="space-y-1">
                   <div className="flex justify-between items-center text-[11px] font-bold dark:text-slate-300">
@@ -1022,7 +1022,7 @@ export const ExamView: React.FC<ExamViewProps> = ({
       {mode === 'result' && !analysis && (
         <div className="flex items-center gap-3 px-1 text-slate-400">
           <div className="w-4 h-4 border-2 border-slate-300 border-t-indigo-500 rounded-full animate-spin shrink-0" />
-          <span className="text-[10px] font-black uppercase tracking-widest">{t('ev.analysisCreating')}</span>
+          <span className="text-[11px] font-black uppercase tracking-widest">{t('ev.analysisCreating')}</span>
         </div>
       )}
 
@@ -1034,7 +1034,7 @@ export const ExamView: React.FC<ExamViewProps> = ({
           <div>
             <h3 className="text-lg font-black dark:text-white">{t('ev.bloomPreviewTitle')}</h3>
             {examTypePreset && (
-              <p className="text-[10px] font-black uppercase tracking-widest text-slate-400">{t('ev.bloomPreviewHint', { preset: t((`eg.examType.${examTypePreset}`) as TKey) })}</p>
+              <p className="text-[11px] font-black uppercase tracking-widest text-slate-400">{t('ev.bloomPreviewHint', { preset: t((`eg.examType.${examTypePreset}`) as TKey) })}</p>
             )}
           </div>
           <div className="space-y-3">
@@ -1059,12 +1059,12 @@ export const ExamView: React.FC<ExamViewProps> = ({
         <div className="rounded-[24px] sm:rounded-[32px] p-5 sm:p-8 space-y-5 animate-in fade-in duration-500" style={{ background: 'var(--bg-sidebar)', border: '1px solid var(--border-color)' }}>
           <div>
             <h3 className="text-lg font-black dark:text-white">{t('ev.adaptiveTitle')}</h3>
-            <p className="text-[10px] font-black uppercase tracking-widest text-slate-400">{mode === 'result' ? t('ev.adaptiveHintResult') : t('ev.adaptiveHintEdit')}</p>
+            <p className="text-[11px] font-black uppercase tracking-widest text-slate-400">{mode === 'result' ? t('ev.adaptiveHintResult') : t('ev.adaptiveHintEdit')}</p>
           </div>
 
           {adaptiveTopicCoverage.length > 0 && (
             <div className="space-y-3">
-              <p className="text-[9px] font-black uppercase tracking-widest text-slate-400">{t('ev.adaptiveTopics')}</p>
+              <p className="text-[11px] font-black uppercase tracking-widest text-slate-400">{t('ev.adaptiveTopics')}</p>
               {adaptiveTopicCoverage.map(c => {
                 const reached = c.actual >= c.minCount;
                 return (
@@ -1080,7 +1080,7 @@ export const ExamView: React.FC<ExamViewProps> = ({
           )}
 
           <div className="space-y-3">
-            <p className="text-[9px] font-black uppercase tracking-widest text-slate-400">{t('ev.adaptiveMix')}</p>
+            <p className="text-[11px] font-black uppercase tracking-widest text-slate-400">{t('ev.adaptiveMix')}</p>
             {hasDifficultyData ? DIFFICULTY_LEVELS.map(level => (
               <div key={level} className="space-y-1">
                 <div className="flex justify-between items-center text-[11px] font-bold dark:text-slate-300">
@@ -1093,7 +1093,7 @@ export const ExamView: React.FC<ExamViewProps> = ({
                 </div>
               </div>
             )) : (
-              <p className="text-[10px] text-slate-400 italic">{t('ev.adaptiveNoDifficulty')}</p>
+              <p className="text-[11px] text-slate-400 italic">{t('ev.adaptiveNoDifficulty')}</p>
             )}
           </div>
         </div>
@@ -1122,8 +1122,8 @@ export const ExamView: React.FC<ExamViewProps> = ({
                   </div>
                   <textarea value={tempQuestion.question} onChange={e => setTempQuestion({ ...tempQuestion, question: e.target.value })} className="w-full p-4 bg-slate-50 dark:bg-slate-900 rounded-2xl dark:text-white border-2 border-transparent focus:border-indigo-500 outline-none" />
                   <div className="flex justify-end gap-3">
-                    <button onClick={() => setEditingId(null)} className="text-slate-400 font-black uppercase text-[10px]">{t('quiz.cancel')}</button>
-                    <button onClick={saveEdit} className="bg-indigo-600 text-white px-6 py-2 rounded-xl font-black uppercase text-[10px]">{t('quiz.save')}</button>
+                    <button onClick={() => setEditingId(null)} className="text-slate-400 font-black uppercase text-[11px]">{t('quiz.cancel')}</button>
+                    <button onClick={saveEdit} className="bg-indigo-600 text-white px-6 py-2 rounded-xl font-black uppercase text-[11px]">{t('quiz.save')}</button>
                   </div>
                 </div>
               ) : (
@@ -1131,11 +1131,11 @@ export const ExamView: React.FC<ExamViewProps> = ({
                   <div className={`flex justify-between items-start gap-4 ${mode === 'edit' ? 'pr-12' : ''}`}>
                     <div className="flex items-center gap-3">
                       <span className="font-black text-xl dark:text-white">{t('ev.taskN', { n: idx + 1 })}:</span>
-                      <span className="text-[9px] font-black uppercase tracking-widest bg-slate-100 dark:bg-slate-800 text-slate-400 px-2.5 py-1 rounded-full">
+                      <span className="text-[11px] font-black uppercase tracking-widest bg-slate-100 dark:bg-slate-800 text-slate-400 px-2.5 py-1 rounded-full">
                         {getTypeLabel(q.type)}
                       </span>
                     </div>
-                    <span className="text-[10px] font-mono bg-slate-100 dark:bg-slate-800 px-3 py-1 rounded-lg dark:text-slate-400 uppercase tracking-widest shrink-0">
+                    <span className="text-[11px] font-mono bg-slate-100 dark:bg-slate-800 px-3 py-1 rounded-lg dark:text-slate-400 uppercase tracking-widest shrink-0">
                       [{t('ev.pointsN', { n: q.points })}]
                     </span>
                   </div>
@@ -1153,11 +1153,11 @@ export const ExamView: React.FC<ExamViewProps> = ({
                       <div className={`p-6 rounded-[32px] border-l-4 ${(q.achievedPoints ?? 0) === q.points ? 'bg-emerald-50 dark:bg-emerald-950/20 border-emerald-500' : (q.achievedPoints ?? 0) > 0 ? 'bg-amber-50 dark:bg-amber-950/20 border-amber-500' : 'bg-rose-50 dark:bg-rose-950/20 border-rose-400'}`}>
                         <div className="flex justify-between items-center mb-4">
                           <div className="flex items-center gap-2">
-                            <h4 className="text-[10px] font-black uppercase tracking-widest text-slate-400">
+                            <h4 className="text-[11px] font-black uppercase tracking-widest text-slate-400">
                               {q.type === 'open' || q.type === 'step_by_step' ? t('ev.correction') : t('ev.evaluation')}
                             </h4>
                             {q.evaluationConfidence !== undefined && (
-                              <span className={`text-[9px] font-black uppercase tracking-widest px-2 py-0.5 rounded-full ${q.evaluationConfidence >= 80 ? 'bg-emerald-100 dark:bg-emerald-900/30 text-emerald-600' : q.evaluationConfidence >= 60 ? 'bg-amber-100 dark:bg-amber-900/30 text-amber-600' : 'bg-rose-100 dark:bg-rose-900/30 text-rose-600'}`}>
+                              <span className={`text-[11px] font-black uppercase tracking-widest px-2 py-0.5 rounded-full ${q.evaluationConfidence >= 80 ? 'bg-emerald-100 dark:bg-emerald-900/30 text-emerald-600' : q.evaluationConfidence >= 60 ? 'bg-amber-100 dark:bg-amber-900/30 text-amber-600' : 'bg-rose-100 dark:bg-rose-900/30 text-rose-600'}`}>
                                 {q.evaluationConfidence >= 80 ? t('ev.confHigh') : q.evaluationConfidence >= 60 ? t('ev.confMid') : t('ev.confLow')}
                               </span>
                             )}
@@ -1168,26 +1168,26 @@ export const ExamView: React.FC<ExamViewProps> = ({
                         {/* Erwartungshorizont: Rubrik-Kriterien (nur für open) */}
                         {q.criterionScores && q.criterionScores.length > 0 && (
                           <div className="space-y-2 mb-4">
-                            <p className="text-[9px] font-black uppercase tracking-[0.2em] text-slate-400">{t('ev.rubricTitle')}</p>
+                            <p className="text-[11px] font-black uppercase tracking-[0.2em] text-slate-400">{t('ev.rubricTitle')}</p>
                             {q.criterionScores.map((cs, csIdx) => {
                               // Rubrik-Reihenfolge ist per Prompt-Regel identisch zu rubricCriteria
                               // (evaluateWithRubricOnce), daher Index-Zuordnung statt Namensabgleich.
                               const sourceReference = q.rubricCriteria?.[csIdx]?.sourceReference;
                               return (
                               <div key={cs.criterionId} className="flex items-start gap-3 text-sm">
-                                <span className={`shrink-0 mt-0.5 w-5 h-5 rounded-lg flex items-center justify-center text-[10px] font-black ${cs.status === 'full' ? 'bg-emerald-500 text-white' : cs.status === 'partial' ? 'bg-amber-400 text-white' : 'bg-slate-300 dark:bg-slate-600 text-white'}`}>
+                                <span className={`shrink-0 mt-0.5 w-5 h-5 rounded-lg flex items-center justify-center text-[11px] font-black ${cs.status === 'full' ? 'bg-emerald-500 text-white' : cs.status === 'partial' ? 'bg-amber-400 text-white' : 'bg-slate-300 dark:bg-slate-600 text-white'}`}>
                                   {cs.status === 'full' ? '✓' : cs.status === 'partial' ? '~' : '✗'}
                                 </span>
                                 <div className="flex-1 min-w-0">
                                   <div className="flex justify-between items-center gap-2">
                                     <span className="font-black text-[11px] dark:text-white">{cs.criterionName}</span>
-                                    <span className={`text-[10px] font-black shrink-0 ${cs.status === 'full' ? 'text-emerald-600' : cs.status === 'partial' ? 'text-amber-600' : 'text-slate-400'}`}>
+                                    <span className={`text-[11px] font-black shrink-0 ${cs.status === 'full' ? 'text-emerald-600' : cs.status === 'partial' ? 'text-amber-600' : 'text-slate-400'}`}>
                                       {cs.status === 'full' ? '+' : cs.status === 'none' ? '' : '+'}{cs.pointsAwarded} / {cs.maxPoints} Pkt.
                                     </span>
                                   </div>
-                                  <p className="text-[10px] text-slate-500 dark:text-slate-400 mt-0.5">{cs.explanation}</p>
+                                  <p className="text-[11px] text-slate-500 dark:text-slate-400 mt-0.5">{cs.explanation}</p>
                                   {sourceReference && (
-                                    <p className="text-[9px] text-slate-400 dark:text-slate-500 italic mt-1">{t('ev.criterionSource', { text: sourceReference })}</p>
+                                    <p className="text-[11px] text-slate-400 dark:text-slate-500 italic mt-1">{t('ev.criterionSource', { text: sourceReference })}</p>
                                   )}
                                 </div>
                               </div>
@@ -1201,14 +1201,14 @@ export const ExamView: React.FC<ExamViewProps> = ({
                             ist das Feld nicht gesetzt, dann erscheint hier nichts). */}
                         {q.type === 'mc' && q.selectedDistractorErrorType && (
                           <div className="flex flex-wrap items-center justify-between gap-2 mb-3">
-                            <p className="text-[10px] font-black uppercase tracking-widest text-amber-600 dark:text-amber-400">
+                            <p className="text-[11px] font-black uppercase tracking-widest text-amber-600 dark:text-amber-400">
                               {t('ev.distractorErrorTypeLabel')}: {getDistractorErrorTypeLabel(q.selectedDistractorErrorType)}
                             </p>
                             {onStartOperationPractice && (
                               <button
                                 onClick={() => handlePracticeOperation(q)}
                                 disabled={generatingPracticeFor === q.id}
-                                className="px-3 py-1.5 rounded-xl text-[9px] font-black uppercase tracking-widest transition-all hover:scale-105 disabled:opacity-60 disabled:hover:scale-100"
+                                className="px-3 py-1.5 rounded-xl text-[11px] font-black uppercase tracking-widest transition-all hover:scale-105 disabled:opacity-60 disabled:hover:scale-100"
                                 style={{ background: 'var(--primary)', color: 'var(--primary-text)' }}
                               >
                                 {generatingPracticeFor === q.id ? t('ev.operationPracticeGenerating') : t('ev.operationPracticeCta')}
@@ -1221,7 +1221,7 @@ export const ExamView: React.FC<ExamViewProps> = ({
                         {q.feedback && <p className="text-sm font-bold dark:text-slate-200 mb-4 pt-3 border-t border-black/10 dark:border-white/10">{q.feedback}</p>}
 
                         <div className="pt-4 border-t border-slate-200 dark:border-slate-700">
-                          <p className="text-[9px] font-black uppercase text-slate-400 mb-2">{t('ev.masterSolution')}</p>
+                          <p className="text-[11px] font-black uppercase text-slate-400 mb-2">{t('ev.masterSolution')}</p>
                           <p className="text-xs italic text-slate-500 dark:text-slate-400 leading-relaxed">{q.solution}</p>
                         </div>
                       </div>
@@ -1229,7 +1229,7 @@ export const ExamView: React.FC<ExamViewProps> = ({
                       {/* Feedback-Widget */}
                       {!questionFeedback[q.id] ? (
                         <div className="flex flex-wrap items-center gap-2 pt-1">
-                          <span className="text-[9px] font-black uppercase tracking-widest text-slate-300 dark:text-slate-600">{t('ev.ratingFair')}</span>
+                          <span className="text-[11px] font-black uppercase tracking-widest text-slate-300 dark:text-slate-600">{t('ev.ratingFair')}</span>
                           {([
                             { type: 'correct'             as QuestionFeedbackType, label: t('ev.fbYes'),           cls: 'hover:border-emerald-400 hover:text-emerald-600' },
                             { type: 'too_strict'          as QuestionFeedbackType, label: t('ev.fbTooStrict'),    cls: 'hover:border-amber-400 hover:text-amber-600' },
@@ -1243,12 +1243,12 @@ export const ExamView: React.FC<ExamViewProps> = ({
                                 saveQuestionFeedback(q.question, fb.type);
                                 setQuestionFeedback(prev => ({ ...prev, [q.id]: fb.type }));
                               }}
-                              className={`px-3 py-1.5 rounded-xl text-[9px] font-black uppercase tracking-widest border-2 border-slate-200 dark:border-slate-700 text-slate-400 transition-all ${fb.cls}`}
+                              className={`px-3 py-1.5 rounded-xl text-[11px] font-black uppercase tracking-widest border-2 border-slate-200 dark:border-slate-700 text-slate-400 transition-all ${fb.cls}`}
                             >{fb.label}</button>
                           ))}
                         </div>
                       ) : (
-                        <p className="text-[9px] font-black uppercase tracking-widest text-slate-300 dark:text-slate-600 pl-1">
+                        <p className="text-[11px] font-black uppercase tracking-widest text-slate-300 dark:text-slate-600 pl-1">
                           {t('ev.fbSaved')}
                         </p>
                       )}
@@ -1267,7 +1267,7 @@ export const ExamView: React.FC<ExamViewProps> = ({
           {/* Speichern-Panel */}
           {showProgressInput && onSaveProgress && (
             <div className="bg-white dark:bg-slate-900 rounded-[20px] border border-indigo-200 dark:border-indigo-800 shadow-xl p-4 w-80 animate-in slide-in-from-bottom-4 duration-300">
-              <p className="text-[9px] font-black uppercase tracking-widest text-slate-400 mb-3">{t('ev.saveExam')}</p>
+              <p className="text-[11px] font-black uppercase tracking-widest text-slate-400 mb-3">{t('ev.saveExam')}</p>
               <div className="flex gap-2">
                 <input
                   autoFocus
@@ -1282,7 +1282,7 @@ export const ExamView: React.FC<ExamViewProps> = ({
                 />
                 <button
                   onClick={() => { onSaveProgress(progressName.trim() || t('ev.myExam')); setShowProgressInput(false); }}
-                  className="px-3 py-2 bg-indigo-600 text-white rounded-[12px] text-[10px] font-black uppercase tracking-widest hover:scale-105 transition-all shrink-0"
+                  className="px-3 py-2 bg-indigo-600 text-white rounded-[12px] text-[11px] font-black uppercase tracking-widest hover:scale-105 transition-all shrink-0"
                 >
                   OK
                 </button>
@@ -1295,7 +1295,7 @@ export const ExamView: React.FC<ExamViewProps> = ({
             {onSaveProgress && (
               <button
                 onClick={() => { setProgressName(t('ev.myExam')); setShowProgressInput(v => !v); }}
-                className="bg-white/90 dark:bg-slate-900/90 backdrop-blur-sm border border-slate-200 dark:border-slate-700 text-slate-600 dark:text-slate-300 px-5 py-4 rounded-[24px] font-black uppercase tracking-widest text-[10px] shadow-lg hover:scale-105 transition-all flex items-center gap-2"
+                className="bg-white/90 dark:bg-slate-900/90 backdrop-blur-sm border border-slate-200 dark:border-slate-700 text-slate-600 dark:text-slate-300 px-5 py-4 rounded-[24px] font-black uppercase tracking-widest text-[11px] shadow-lg hover:scale-105 transition-all flex items-center gap-2"
               >
                 <svg xmlns="http://www.w3.org/2000/svg" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z"/><polyline points="17 21 17 13 7 13 7 21"/><polyline points="7 3 7 8 15 8"/></svg>
                 {t('quiz.save')}
@@ -1309,13 +1309,13 @@ export const ExamView: React.FC<ExamViewProps> = ({
           </div>
 
           {timeLeft !== null ? (
-            <p className={`px-6 py-2 rounded-full text-[10px] font-black uppercase tracking-widest shadow-lg backdrop-blur-sm transition-all ${
+            <p className={`px-6 py-2 rounded-full text-[11px] font-black uppercase tracking-widest shadow-lg backdrop-blur-sm transition-all ${
               isTimeLow ? 'bg-rose-500 text-white animate-pulse' : 'bg-white/80 dark:bg-slate-900/80 text-slate-500 dark:text-slate-400'
             }`}>
               {timeLeft === 0 ? t('ev.timeExpired') : t('ev.timeLeft', { time: formatTime(timeLeft) })}
             </p>
           ) : (
-            <p className="bg-white/80 dark:bg-slate-900/80 backdrop-blur-sm px-6 py-2 rounded-full text-[9px] font-black uppercase text-slate-400 tracking-widest shadow-lg">
+            <p className="bg-white/80 dark:bg-slate-900/80 backdrop-blur-sm px-6 py-2 rounded-full text-[11px] font-black uppercase text-slate-400 tracking-widest shadow-lg">
               Prüfungszeit läuft...
             </p>
           )}

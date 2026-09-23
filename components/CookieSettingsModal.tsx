@@ -48,7 +48,7 @@ export const CookieSettingsModal: React.FC<CookieSettingsModalProps> = ({ onClos
           <div className="p-4 rounded-2xl space-y-2" style={{ background: 'color-mix(in srgb, var(--border-color) 30%, var(--bg-main))', border: '1px solid var(--border-color)' }}>
             <div className="flex items-center justify-between gap-3">
               <p className="text-[11px] font-black uppercase tracking-widest dark:text-white">{t('cookie.settings.essential.title')}</p>
-              <span className="flex items-center gap-1.5 text-[9px] font-black uppercase tracking-widest text-slate-400">
+              <span className="flex items-center gap-1.5 text-[11px] font-black uppercase tracking-widest text-slate-400">
                 <Lock className="w-3 h-3" strokeWidth={2.5} /> {t('cookie.settings.essential.always')}
               </span>
             </div>

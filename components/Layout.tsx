@@ -8,7 +8,7 @@ import { usePersistentState } from '../hooks/usePersistentState';
 import {
   Home, BookOpen, HelpCircle, Calendar, Brain, GraduationCap,
   Layers, Lightbulb, BarChart2, Search, FileText, Moon, Sun,
-  X, Menu, KeyRound, LogIn, LogOut, Zap, Settings, Star,
+  X, Menu, KeyRound, LogIn, LogOut, Zap, Settings, Star, Users,
   PanelLeftClose, PanelLeftOpen, Network, type LucideIcon
 } from 'lucide-react';
 import type { User } from '@supabase/supabase-js';
@@ -53,6 +53,7 @@ const ICONS: Partial<Record<ActiveTab, LucideIcon>> = {
   [ActiveTab.CARDS]:     Layers,
   [ActiveTab.EXPLAINER]: Lightbulb,
   [ActiveTab.RADAR]:     BarChart2,
+  [ActiveTab.ADMIN]:     Users,
   [ActiveTab.SEARCH]:    Search,
   [ActiveTab.PAPER]:     FileText,
   [ActiveTab.KNOWLEDGE_GRAPH]: Network,
@@ -226,7 +227,7 @@ export const Layout: React.FC<LayoutProps> = ({
                   fill={streak.todayDone ? SIDEBAR.gold : 'none'}
                   strokeWidth={2}
                 />
-                <span className="text-[10px] font-black" style={{ color: streak.todayDone ? SIDEBAR.gold : SIDEBAR.textMuted }}>
+                <span className="text-[11px] font-black" style={{ color: streak.todayDone ? SIDEBAR.gold : SIDEBAR.textMuted }}>
                   {streak.current}
                 </span>
               </div>
@@ -247,7 +248,7 @@ export const Layout: React.FC<LayoutProps> = ({
             style={{ color: SIDEBAR.textMuted }}
           >
             {isDark ? <Sun className="w-[18px] h-[18px]" strokeWidth={1.75} /> : <Moon className="w-[18px] h-[18px]" strokeWidth={1.75} />}
-            <span className="text-[9px] font-black uppercase tracking-widest">
+            <span className="text-[11px] font-black uppercase tracking-widest">
               {isDark ? t('layout.dayMode') : t('layout.nightMode')}
             </span>
           </button>
@@ -256,20 +257,20 @@ export const Layout: React.FC<LayoutProps> = ({
               Auch ohne Ordner sichtbar — sonst wissen Nutzer nicht, dass es das Feature gibt. */}
           {onModuleChange && collections.length === 0 && (
             <div className="mb-6 -mt-6">
-              <p className="text-[9px] font-black uppercase tracking-[0.3em] mb-1.5 px-1" style={{ color: SIDEBAR.textMuted }}>{t('layout.activeSubject')}</p>
+              <p className="text-[11px] font-black uppercase tracking-[0.3em] mb-1.5 px-1" style={{ color: SIDEBAR.textMuted }}>{t('layout.activeSubject')}</p>
               <button
                 onClick={() => onTabChange(ActiveTab.LIBRARY)}
                 className="w-full px-3 py-2.5 rounded-xl text-left transition-all hover:translate-x-0.5"
                 style={{ background: SIDEBAR.chipBg, border: `1px dashed ${SIDEBAR.chipBorder}` }}
               >
                 <span className="text-[11px] font-black uppercase tracking-wider block" style={{ color: SIDEBAR.text }}>{t('layout.allSubjects')}</span>
-                <span className="block text-[9px] font-medium mt-0.5" style={{ color: SIDEBAR.textMuted }}>{t('layout.subjectHint')}</span>
+                <span className="block text-[11px] font-medium mt-0.5" style={{ color: SIDEBAR.textMuted }}>{t('layout.subjectHint')}</span>
               </button>
             </div>
           )}
           {onModuleChange && collections.length > 0 && (
             <div className="mb-6 -mt-6">
-              <p className="text-[9px] font-black uppercase tracking-[0.3em] mb-1.5 px-1" style={{ color: SIDEBAR.textMuted }}>{t('layout.activeSubject')}</p>
+              <p className="text-[11px] font-black uppercase tracking-[0.3em] mb-1.5 px-1" style={{ color: SIDEBAR.textMuted }}>{t('layout.activeSubject')}</p>
               <select
                 value={activeModuleId ?? ''}
                 onChange={e => onModuleChange(e.target.value || null)}
@@ -295,7 +296,7 @@ export const Layout: React.FC<LayoutProps> = ({
             {visibleGroups.map((group, gi) => (
               <div key={gi}>
                 {group.titleKey && (
-                  <p className="sidebar-group-title px-3 pt-5 pb-1.5 text-[9px] font-black uppercase tracking-[0.3em]" style={{ color: SIDEBAR.textMuted }}>
+                  <p className="sidebar-group-title px-3 pt-5 pb-1.5 text-[11px] font-black uppercase tracking-[0.3em]" style={{ color: SIDEBAR.textMuted }}>
                     {t(group.titleKey)}
                   </p>
                 )}
@@ -307,7 +308,7 @@ export const Layout: React.FC<LayoutProps> = ({
                       key={item.tab}
                       data-tour={`nav-${item.tab}`}
                       onClick={() => onTabChange(item.tab)}
-                      className={`w-full flex items-center gap-3 px-4 py-2.5 rounded-[14px] text-left transition-all duration-200 ${isActive ? 'shadow-[0_2px_12px_rgba(169,119,44,0.35)]' : 'hover:translate-x-0.5'}`}
+                      className={`sidebar-item w-full flex items-center gap-3 px-4 py-2.5 rounded-[14px] text-left transition-all duration-200 ${isActive ? 'shadow-[0_2px_12px_rgba(169,119,44,0.35)]' : 'hover:translate-x-0.5'}`}
                       style={isActive
                         ? { background: SIDEBAR.gold, color: SIDEBAR.bg }
                         : { color: SIDEBAR.textMuted, background: 'transparent' }}
@@ -318,22 +319,22 @@ export const Layout: React.FC<LayoutProps> = ({
                       <div className="flex-1 min-w-0">
                         {/* Einzeilig in allen Schriftarten (Garamond & Co. laufen breiter):
                             engere Laufweite statt tracking-widest, truncate als Notbremse */}
-                        <span className="text-[10px] font-black uppercase tracking-wider block truncate" style={!isActive ? { color: SIDEBAR.text } : undefined}>{t(item.labelKey)}</span>
+                        <span className="text-[11px] font-black uppercase tracking-wider block truncate" style={!isActive ? { color: SIDEBAR.text } : undefined}>{t(item.labelKey)}</span>
                         {item.hintKey && !isActive && (
-                          <span className="sidebar-hint block text-[9px] font-medium normal-case tracking-normal mt-0.5 break-words" style={{ color: SIDEBAR.text }}>
+                          <span className="sidebar-hint block text-[11px] font-medium normal-case tracking-normal mt-0.5 break-words" style={{ color: SIDEBAR.text }}>
                             {t(item.hintKey)}
                           </span>
                         )}
                       </div>
                       {item.tab === ActiveTab.CARDS && dueCardsCount > 0 && (
                         <span
-                          className="text-[9px] font-black rounded-full px-1.5 py-0.5 shrink-0"
+                          className="text-[11px] font-black rounded-full px-1.5 py-0.5 shrink-0"
                           style={isActive ? { background: SIDEBAR.bg, color: SIDEBAR.gold } : { background: SIDEBAR.gold, color: SIDEBAR.bg }}
                         >{dueCardsCount}</span>
                       )}
                       {item.tab === ActiveTab.QUIZ && dueMistakesCount > 0 && (
                         <span
-                          className="text-[9px] font-black rounded-full px-1.5 py-0.5 shrink-0"
+                          className="text-[11px] font-black rounded-full px-1.5 py-0.5 shrink-0"
                           style={isActive ? { background: SIDEBAR.bg, color: SIDEBAR.gold } : { background: SIDEBAR.gold, color: SIDEBAR.bg }}
                         >{dueMistakesCount}</span>
                       )}
@@ -352,22 +353,29 @@ export const Layout: React.FC<LayoutProps> = ({
                   style={{ background: SIDEBAR.chipBg }}
                 >
                   <div
-                    className="w-8 h-8 rounded-xl flex items-center justify-center text-[10px] font-black shrink-0"
+                    className="w-8 h-8 rounded-xl flex items-center justify-center text-[11px] font-black shrink-0"
                     style={{ color: SIDEBAR.bg, background: SIDEBAR.gold }}
                   >{userInitial}</div>
                   <div className="flex-1 min-w-0">
-                    <p className="text-[10px] font-black break-words flex items-center gap-1.5" style={{ color: SIDEBAR.text }}>
+                    <p className="text-[11px] font-black break-words flex items-center gap-1.5" style={{ color: SIDEBAR.text }}>
                       <span className="truncate">{user.user_metadata?.full_name || t('layout.user')}</span>
                       {userPlan === 'pro' && (
                         <span
-                          className="text-[7px] font-black uppercase tracking-widest rounded-full px-1.5 py-0.5 shrink-0"
+                          className="text-[11px] font-black uppercase tracking-widest rounded-full px-1.5 py-0.5 shrink-0"
                           style={{ background: SIDEBAR.gold, color: SIDEBAR.bg }}
                         >Pro</span>
                       )}
                     </p>
                     {/* Immer eine Zeile — kein Umbruch, volle Adresse per Tooltip */}
-                    <p className="text-[9px] truncate" style={{ color: SIDEBAR.textMuted }} title={user.email ?? ''}>
-                      {user.email}
+                    <p className="text-[11px] flex items-center gap-1.5 min-w-0" style={{ color: SIDEBAR.textMuted }} title={user.email ?? ''}>
+                      {userPlan !== 'pro' && (
+                        <button
+                          onClick={onUpgradeClick}
+                          className="sidebar-upgrade-chip text-[11px] font-black uppercase tracking-wider rounded-full px-1.5 py-0.5 shrink-0"
+                          style={{ border: `1px solid ${SIDEBAR.gold}`, color: SIDEBAR.gold }}
+                        >Pro</button>
+                      )}
+                      <span className="truncate">{user.email}</span>
                     </p>
                   </div>
                   <button onClick={onSettingsClick} aria-label={t('layout.settings')} title={t('layout.settings')} className="transition-colors shrink-0 hover:opacity-80" style={{ color: SIDEBAR.textMuted }}>
@@ -380,7 +388,7 @@ export const Layout: React.FC<LayoutProps> = ({
                 {userPlan !== 'pro' && (
                   <button
                     onClick={onUpgradeClick}
-                    className="w-full flex items-center justify-center gap-2 px-4 py-2.5 rounded-2xl text-[10px] font-black uppercase tracking-widest transition-all hover:scale-[1.02]"
+                    className="sidebar-upgrade w-full flex items-center justify-center gap-2 px-4 py-2.5 rounded-2xl text-[11px] font-black uppercase tracking-widest transition-all hover:scale-[1.02]"
                     style={{ background: 'color-mix(in srgb, var(--sidebar-accent) 18%, #1B2A4A)', color: SIDEBAR.gold, border: `1px solid ${SIDEBAR.gold}` }}
                   >
                     <Zap className="w-3.5 h-3.5" strokeWidth={2} />
@@ -391,7 +399,7 @@ export const Layout: React.FC<LayoutProps> = ({
             ) : (
               <button
                 onClick={onLoginClick}
-                className="w-full flex items-center justify-center gap-2 px-4 py-3 rounded-2xl text-[10px] font-black uppercase tracking-widest transition-all hover:scale-[1.02]"
+                className="w-full flex items-center justify-center gap-2 px-4 py-3 rounded-2xl text-[11px] font-black uppercase tracking-widest transition-all hover:scale-[1.02]"
                 style={{ background: SIDEBAR.gold, color: SIDEBAR.bg }}
               >
                 <LogIn className="w-[18px] h-[18px]" strokeWidth={1.75} />
@@ -404,19 +412,21 @@ export const Layout: React.FC<LayoutProps> = ({
             {!user && (
               <button
                 onClick={onSettingsClick}
-                className="w-full flex items-center gap-2 px-4 py-2.5 rounded-xl text-[10px] font-black uppercase transition-all"
+                className="w-full flex items-center gap-2 px-4 py-2.5 rounded-xl text-[11px] font-black uppercase transition-all"
                 style={{ background: SIDEBAR.chipBg, color: SIDEBAR.textMuted }}
               >
                 <Settings className="w-4 h-4" strokeWidth={1.75} />
                 {t('layout.settings')}
               </button>
             )}
-            <div className="flex justify-center gap-x-3 gap-y-1 flex-wrap">
+            {/* Normale Schreibweise statt gesperrter Versalien: passt in eine Zeile
+                und bleibt direkt erreichbar (Impressum-Pflicht). */}
+            <div className="flex justify-center gap-x-2.5 gap-y-1 flex-wrap">
               {(['impressum', 'datenschutz', 'agb'] as const).map(p => (
                 <button
                   key={p}
                   onClick={() => setLegalPage(p)}
-                  className="text-[9px] font-bold uppercase tracking-widest transition-colors"
+                  className="text-[11px] font-semibold transition-colors hover:underline"
                   style={{ color: SIDEBAR.textMuted }}
                 >
                   {p === 'impressum' ? t('legal.imprint') : p === 'datenschutz' ? t('legal.privacy') : t('legal.terms')}
@@ -424,10 +434,11 @@ export const Layout: React.FC<LayoutProps> = ({
               ))}
               <button
                 onClick={() => setShowCookieSettings(true)}
-                className="text-[9px] font-bold uppercase tracking-widest transition-colors"
+                className="text-[11px] font-semibold transition-colors hover:underline"
                 style={{ color: SIDEBAR.textMuted }}
+                title={t('cookie.settingsLink')}
               >
-                {t('cookie.settingsLink')}
+                {t('cookie.settingsShort')}
               </button>
             </div>
           </div>
@@ -464,7 +475,7 @@ export const Layout: React.FC<LayoutProps> = ({
                 key={item.tab}
                 data-tour={`nav-${item.tab}`}
                 onClick={() => onTabChange(item.tab)}
-                title={t(item.labelKey)}
+                aria-label={t(item.labelKey)} title={t(item.labelKey)}
                 className={`w-12 h-12 flex items-center justify-center rounded-xl transition-all duration-200 shrink-0 ${isActive ? 'shadow-[0_2px_12px_rgba(169,119,44,0.35)]' : ''}`}
                 style={isActive ? { background: SIDEBAR.gold, color: SIDEBAR.bg } : { color: SIDEBAR.textMuted }}
                 onMouseEnter={e => { if (!isActive) e.currentTarget.style.background = SIDEBAR.hoverBg; }}
@@ -483,7 +494,7 @@ export const Layout: React.FC<LayoutProps> = ({
         >
           <button
             onClick={onSettingsClick}
-            title={t('layout.settings')}
+            aria-label={t('layout.settings')} title={t('layout.settings')}
             className="w-12 h-12 flex items-center justify-center rounded-xl transition-all"
             style={{ color: SIDEBAR.textMuted }}
             onMouseEnter={e => { e.currentTarget.style.background = SIDEBAR.hoverBg; }}
@@ -493,7 +504,7 @@ export const Layout: React.FC<LayoutProps> = ({
           </button>
           {user ? (
             <button
-              title={t('layout.logoutTitle', { email: user.email ?? '' })}
+              aria-label={t('layout.logoutTitle', { email: user.email ?? '' })} title={t('layout.logoutTitle', { email: user.email ?? '' })}
               onClick={onLogout}
               className="w-10 h-10 rounded-xl flex items-center justify-center text-[11px] font-black transition-all hover:scale-105"
               style={{ background: SIDEBAR.gold, color: SIDEBAR.bg }}
@@ -501,7 +512,7 @@ export const Layout: React.FC<LayoutProps> = ({
           ) : (
             <button
               onClick={onLoginClick}
-              title={t('layout.login')}
+              aria-label={t('layout.login')} title={t('layout.login')}
               className="w-12 h-12 flex items-center justify-center rounded-xl transition-all"
               style={{ background: SIDEBAR.gold, color: SIDEBAR.bg }}
             >
@@ -526,7 +537,7 @@ export const Layout: React.FC<LayoutProps> = ({
           <span className="text-[11px] font-black uppercase tracking-widest" style={{ color: 'var(--text-main)' }}>Stude<span style={{ color: 'var(--primary)' }}>Arc</span></span>
         </div>
 
-        <span className="absolute left-1/2 -translate-x-1/2 text-[9px] font-black uppercase tracking-widest text-slate-400 pointer-events-none max-w-[60vw] truncate">
+        <span className="absolute left-1/2 -translate-x-1/2 text-[11px] font-black uppercase tracking-widest text-slate-400 pointer-events-none max-w-[60vw] truncate">
           {currentPageLabel}
         </span>
 
@@ -539,7 +550,7 @@ export const Layout: React.FC<LayoutProps> = ({
                 fill={streak.todayDone ? 'var(--primary)' : 'none'}
                 strokeWidth={2}
               />
-              <span className="text-[10px] font-black" style={{ color: streak.todayDone ? 'var(--primary)' : '#94a3b8' }}>
+              <span className="text-[11px] font-black" style={{ color: streak.todayDone ? 'var(--primary)' : '#94a3b8' }}>
                 {streak.current}
               </span>
             </div>
@@ -552,15 +563,15 @@ export const Layout: React.FC<LayoutProps> = ({
             <Settings className="w-[18px] h-[18px]" strokeWidth={1.75} />
           </button>
           {user ? (
-            <button
+            <button aria-label={t('layout.openMenu')}
               onClick={() => setIsMobileMenuOpen(true)}
-              className="w-9 h-9 rounded-xl flex items-center justify-center text-[10px] font-black transition-all"
+              className="w-9 h-9 rounded-xl flex items-center justify-center text-[11px] font-black transition-all"
               style={{ background: 'var(--primary)', color: 'var(--primary-text)' }}
             >{userInitial}</button>
           ) : (
             <button
               onClick={onLoginClick}
-              className="h-9 px-3 flex items-center gap-1.5 rounded-xl text-[9px] font-black uppercase tracking-widest transition-all"
+              className="h-9 px-3 flex items-center gap-1.5 rounded-xl text-[11px] font-black uppercase tracking-widest transition-all"
               style={{ background: 'var(--primary)', color: 'var(--primary-text)' }}
             >
               <LogIn className="w-[14px] h-[14px]" strokeWidth={1.75} />
@@ -589,12 +600,12 @@ export const Layout: React.FC<LayoutProps> = ({
               {Icon && <Icon className="w-6 h-6" strokeWidth={1.75} />}
               {item.tab === ActiveTab.CARDS && dueCardsCount > 0 && (
                 <span
-                  className="absolute -top-1 right-0 min-w-[18px] h-[18px] px-1 rounded-full text-[10px] font-black leading-[18px] text-center"
+                  className="absolute -top-1 right-0 min-w-[18px] h-[18px] px-1 rounded-full text-[11px] font-black leading-[18px] text-center"
                   style={{ background: 'var(--primary)', color: 'var(--primary-text)' }}
                   aria-label={tp('dashboard.cardsN', dueCardsCount)}
                 >{dueCardsCount > 99 ? '99+' : dueCardsCount}</span>
               )}
-              <span className="text-[9px] font-black uppercase tracking-widest">{t(item.shortKey)}</span>
+              <span className="text-[11px] font-black uppercase tracking-widest">{t(item.shortKey)}</span>
             </button>
           );
         })}
@@ -606,7 +617,7 @@ export const Layout: React.FC<LayoutProps> = ({
           {isMobileMenuOpen
             ? <X className="w-6 h-6" strokeWidth={1.75} />
             : <Menu className="w-6 h-6" strokeWidth={1.75} />}
-          <span className="text-[9px] font-black uppercase tracking-widest">{t('nav.more')}</span>
+          <span className="text-[11px] font-black uppercase tracking-widest">{t('nav.more')}</span>
         </button>
       </nav>
 
@@ -643,7 +654,7 @@ export const Layout: React.FC<LayoutProps> = ({
                       }
                     >
                       <item.icon className="w-[18px] h-[18px] shrink-0" strokeWidth={1.75} />
-                      <span className="text-[9px] font-black uppercase tracking-wider leading-tight">{t(item.labelKey)}</span>
+                      <span className="text-[11px] font-black uppercase tracking-wider leading-tight">{t(item.labelKey)}</span>
                     </button>
                   );
                 })}
@@ -660,7 +671,7 @@ export const Layout: React.FC<LayoutProps> = ({
                   background: 'color-mix(in srgb, var(--border-color) 40%, var(--bg-sidebar))',
                 }}
               >
-                <span className="text-[10px] font-black uppercase tracking-wider flex items-center gap-2">
+                <span className="text-[11px] font-black uppercase tracking-wider flex items-center gap-2">
                   <KeyRound className="w-4 h-4" strokeWidth={1.75} />
                   {t('layout.apiKey')}
                 </span>
@@ -673,7 +684,7 @@ export const Layout: React.FC<LayoutProps> = ({
                 className="w-full flex items-center justify-between px-5 py-4 rounded-2xl border transition-all"
                 style={{ background: 'color-mix(in srgb, var(--border-color) 40%, var(--bg-sidebar))', borderColor: 'var(--border-color)' }}
               >
-                <span className="text-[10px] font-black uppercase tracking-wider">
+                <span className="text-[11px] font-black uppercase tracking-wider">
                   {isDark ? t('layout.dayMode') : t('layout.nightMode')}
                 </span>
                 {isDark ? <Sun className="w-[18px] h-[18px]" strokeWidth={1.75} /> : <Moon className="w-[18px] h-[18px]" strokeWidth={1.75} />}
@@ -685,7 +696,7 @@ export const Layout: React.FC<LayoutProps> = ({
               {user ? (
                 <button
                   onClick={() => { onLogout?.(); setIsMobileMenuOpen(false); }}
-                  className="w-full flex items-center justify-center gap-2 px-5 py-4 rounded-2xl text-[10px] font-black uppercase tracking-widest text-rose-500 transition-all"
+                  className="w-full flex items-center justify-center gap-2 px-5 py-4 rounded-2xl text-[11px] font-black uppercase tracking-widest text-rose-500 transition-all"
                   style={{ background: 'color-mix(in srgb, #f43f5e 8%, var(--bg-sidebar))', border: '1px solid color-mix(in srgb, #f43f5e 20%, transparent)' }}
                 >
                   <LogOut className="w-4 h-4" strokeWidth={1.75} />
@@ -694,7 +705,7 @@ export const Layout: React.FC<LayoutProps> = ({
               ) : (
                 <button
                   onClick={() => { onLoginClick?.(); setIsMobileMenuOpen(false); }}
-                  className="w-full flex items-center justify-center gap-2 px-5 py-4 rounded-2xl text-[10px] font-black uppercase tracking-widest transition-all"
+                  className="w-full flex items-center justify-center gap-2 px-5 py-4 rounded-2xl text-[11px] font-black uppercase tracking-widest transition-all"
                   style={{ background: 'var(--primary)', color: 'var(--primary-text)' }}
                 >
                   <LogIn className="w-[18px] h-[18px]" strokeWidth={1.75} />
@@ -708,14 +719,14 @@ export const Layout: React.FC<LayoutProps> = ({
                   <button
                     key={p}
                     onClick={() => { setIsMobileMenuOpen(false); setLegalPage(p); }}
-                    className="text-[9px] font-bold uppercase tracking-widest text-slate-400 hover:text-slate-600 dark:hover:text-slate-300 transition-colors"
+                    className="text-[11px] font-bold uppercase tracking-widest text-slate-400 hover:text-slate-600 dark:hover:text-slate-300 transition-colors"
                   >
                     {p === 'impressum' ? t('legal.imprint') : p === 'datenschutz' ? t('legal.privacy') : t('legal.terms')}
                   </button>
                 ))}
                 <button
                   onClick={() => { setIsMobileMenuOpen(false); setShowCookieSettings(true); }}
-                  className="text-[9px] font-bold uppercase tracking-widest text-slate-400 hover:text-slate-600 dark:hover:text-slate-300 transition-colors"
+                  className="text-[11px] font-bold uppercase tracking-widest text-slate-400 hover:text-slate-600 dark:hover:text-slate-300 transition-colors"
                 >
                   {t('cookie.settingsLink')}
                 </button>

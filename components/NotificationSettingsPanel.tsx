@@ -24,7 +24,7 @@ const Toggle: React.FC<{ label: string; description?: string; checked: boolean; 
   >
     <div className="min-w-0 pr-3">
       <p className="text-[11px] font-black uppercase tracking-widest dark:text-white">{label}</p>
-      {description && <p className="text-[10px] font-medium text-slate-400 mt-0.5">{description}</p>}
+      {description && <p className="text-[11px] font-medium text-slate-400 mt-0.5">{description}</p>}
     </div>
     <div className="w-11 h-6 rounded-full p-0.5 shrink-0 transition-all" style={{ background: checked ? 'var(--primary)' : 'var(--border-color)' }}>
       <div className={`w-5 h-5 rounded-full bg-white shadow transition-transform ${checked ? 'translate-x-5' : ''}`} />
@@ -33,7 +33,7 @@ const Toggle: React.FC<{ label: string; description?: string; checked: boolean; 
 );
 
 const SectionLabel: React.FC<{ children: React.ReactNode }> = ({ children }) => (
-  <p className="text-[10px] font-black uppercase tracking-widest text-slate-400">{children}</p>
+  <p className="text-[11px] font-black uppercase tracking-widest text-slate-400">{children}</p>
 );
 
 const Chip: React.FC<{ active: boolean; onClick: () => void; children: React.ReactNode }> = ({ active, onClick, children }) => (
@@ -109,13 +109,13 @@ export const NotificationSettingsPanel: React.FC<Props> = ({ userId }) => {
               <p className="text-[11px] font-medium text-slate-400">{t('sp2e.push.denied.desc')}</p>
               <button
                 onClick={() => setShowDeniedHelp(v => !v)}
-                className="px-4 py-2.5 rounded-xl text-[10px] font-black uppercase tracking-widest transition-all"
+                className="px-4 py-2.5 rounded-xl text-[11px] font-black uppercase tracking-widest transition-all"
                 style={{ background: 'var(--primary)', color: 'var(--primary-text)' }}
               >
                 {t('sp2e.push.denied.button')}
               </button>
               {showDeniedHelp && (
-                <p className="text-[10px] font-medium text-slate-400 pt-1" style={{ borderTop: '1px solid var(--border-color)' }}>
+                <p className="text-[11px] font-medium text-slate-400 pt-1" style={{ borderTop: '1px solid var(--border-color)' }}>
                   {t('sp2e.push.denied.instructions')}
                 </p>
               )}
@@ -147,7 +147,7 @@ export const NotificationSettingsPanel: React.FC<Props> = ({ userId }) => {
         {settings.dailyReminder.enabled && (
           <div className="p-5 rounded-2xl space-y-4" style={CARD_BG}>
             <div className="flex items-center justify-between">
-              <span className="text-[10px] font-black uppercase tracking-widest dark:text-white">{t('sp2e.daily.time')}</span>
+              <span className="text-[11px] font-black uppercase tracking-widest dark:text-white">{t('sp2e.daily.time')}</span>
               <input
                 type="time"
                 value={settings.dailyReminder.time}
@@ -162,7 +162,7 @@ export const NotificationSettingsPanel: React.FC<Props> = ({ userId }) => {
               ['includeWeekends', 'sp2e.daily.includeWeekends'],
             ] as const).map(([key, labelKey]) => (
               <label key={key} className="flex items-center justify-between cursor-pointer">
-                <span className="text-[10px] font-bold text-slate-500 dark:text-slate-300">{t(labelKey)}</span>
+                <span className="text-[11px] font-bold text-slate-500 dark:text-slate-300">{t(labelKey)}</span>
                 <input
                   type="checkbox"
                   checked={settings.dailyReminder[key]}
@@ -187,7 +187,7 @@ export const NotificationSettingsPanel: React.FC<Props> = ({ userId }) => {
         {settings.blockLeadTime.enabled && (
           <div className="p-5 rounded-2xl space-y-4" style={CARD_BG}>
             <div className="space-y-2">
-              <span className="text-[10px] font-black uppercase tracking-widest dark:text-white">{t('sp2e.block.leadLabel')}</span>
+              <span className="text-[11px] font-black uppercase tracking-widest dark:text-white">{t('sp2e.block.leadLabel')}</span>
               <div className="flex gap-2 flex-wrap">
                 {([5, 10, 15, 30] as const).map(min => (
                   <Chip key={min} active={settings.blockLeadTime.leadMinutes === min} onClick={() => update('blockLeadTime', { leadMinutes: min })}>
@@ -197,7 +197,7 @@ export const NotificationSettingsPanel: React.FC<Props> = ({ userId }) => {
               </div>
             </div>
             <label className="flex items-center justify-between cursor-pointer">
-              <span className="text-[10px] font-bold text-slate-500 dark:text-slate-300">{t('sp2e.block.onlyHigh')}</span>
+              <span className="text-[11px] font-bold text-slate-500 dark:text-slate-300">{t('sp2e.block.onlyHigh')}</span>
               <input
                 type="checkbox"
                 checked={settings.blockLeadTime.onlyHighPriority}
@@ -229,7 +229,7 @@ export const NotificationSettingsPanel: React.FC<Props> = ({ userId }) => {
                 <button
                   key={mode}
                   onClick={() => update('spacedRepetition', { mode })}
-                  className={`flex-1 py-2.5 px-2 rounded-xl text-[10px] font-black uppercase tracking-wider transition-all ${settings.spacedRepetition.mode === mode ? 'shadow-lg' : 'text-slate-400 hover:text-slate-600'}`}
+                  className={`flex-1 py-2.5 px-2 rounded-xl text-[11px] font-black uppercase tracking-wider transition-all ${settings.spacedRepetition.mode === mode ? 'shadow-lg' : 'text-slate-400 hover:text-slate-600'}`}
                   style={settings.spacedRepetition.mode === mode ? { background: 'var(--primary)', color: 'var(--primary-text)' } : {}}
                 >
                   {t(labelKey)}
@@ -238,7 +238,7 @@ export const NotificationSettingsPanel: React.FC<Props> = ({ userId }) => {
             </div>
             {settings.spacedRepetition.mode === 'threshold' && (
               <div className="flex items-center justify-between">
-                <span className="text-[10px] font-black uppercase tracking-widest dark:text-white">{t('sp2e.srs.thresholdLabel')}</span>
+                <span className="text-[11px] font-black uppercase tracking-widest dark:text-white">{t('sp2e.srs.thresholdLabel')}</span>
                 <input
                   type="number"
                   min={1}

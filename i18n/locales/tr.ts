@@ -14,6 +14,7 @@ export const tr: Translations = {
   'common.confirm': 'Onayla',
   'common.loading': 'Yükleniyor…',
   'common.retry': 'Tekrar dene',
+  'common.clear': 'Temizle',
   'common.someone': 'Biri',
   'page.quiz.title': 'Neyin oturduğunu test et.',
   'page.cards.title': 'Unutmadan önce tekrar et.',
@@ -420,6 +421,7 @@ export const tr: Translations = {
   'layout.logout': 'Çıkış yap',
   'layout.streakTitle': '{n} günlük seri',
   'layout.logoutTitle': '{email} · Çıkış yap',
+  'layout.openMenu': 'Menüyü aç',
 
   // legal
   'legal.imprint': 'Künye',
@@ -527,6 +529,7 @@ export const tr: Translations = {
   'auth.legalNoticeAnd': 've',
   'auth.legalNoticePost': 'i kabul edersin.',
   'cookie.settingsLink': 'Çerez ayarları',
+  'cookie.settingsShort': 'Çerezler',
   'cookie.adjust': 'Ayarlar',
   'cookie.settings.title': 'Çerez ayarları',
   'cookie.settings.intro': 'Hangi kategorilere izin vermek istediğini seç. Seçimini istediğin zaman burada değiştirebilirsin.',

@@ -141,12 +141,12 @@ export const TourSpotlight: React.FC<TourSpotlightProps> = ({
     >
       <div className="p-6 pb-0">
         <div className="flex items-center gap-2 mb-2">
-          <p className="text-[9px] font-black uppercase tracking-[0.25em]" style={{ color: 'var(--primary)' }}>
+          <p className="text-[11px] font-black uppercase tracking-[0.25em]" style={{ color: 'var(--primary)' }}>
             {t('onboarding.tour.stepLabel', { n: stepIndex + 1, total: totalSteps })}
           </p>
           {isPrimaryRecommendation && (
             <span
-              className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[9px] font-black uppercase tracking-widest"
+              className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[11px] font-black uppercase tracking-widest"
               style={{ background: 'var(--primary)', color: 'var(--primary-text)' }}
             >
               ⭐ {t('onboarding.tour.primaryBadge')}
@@ -158,7 +158,7 @@ export const TourSpotlight: React.FC<TourSpotlightProps> = ({
         {previewPanel && (
           <div className="mt-3">
             {badgeLabel && (
-              <p className="text-[9px] font-black uppercase tracking-widest mb-2 opacity-60" style={{ color: 'var(--text-main)' }}>
+              <p className="text-[11px] font-black uppercase tracking-widest mb-2 opacity-60" style={{ color: 'var(--text-main)' }}>
                 {badgeLabel}
               </p>
             )}
@@ -185,7 +185,7 @@ export const TourSpotlight: React.FC<TourSpotlightProps> = ({
             type="button"
             onClick={onBack}
             disabled={!onBack}
-            className="py-2 text-[10px] font-black uppercase tracking-widest text-slate-400 hover:text-slate-600 dark:hover:text-slate-300 transition-colors disabled:opacity-0"
+            className="py-2 text-[11px] font-black uppercase tracking-widest text-slate-400 hover:text-slate-600 dark:hover:text-slate-300 transition-colors disabled:opacity-0"
           >
             ← {t('common.back')}
           </button>
@@ -193,7 +193,7 @@ export const TourSpotlight: React.FC<TourSpotlightProps> = ({
             <button
               type="button"
               onClick={onSkip}
-              className="py-2 text-[10px] font-black uppercase tracking-widest text-slate-400 hover:text-slate-600 dark:hover:text-slate-300 transition-colors"
+              className="py-2 text-[11px] font-black uppercase tracking-widest text-slate-400 hover:text-slate-600 dark:hover:text-slate-300 transition-colors"
             >
               {t('onboarding.skip')}
             </button>

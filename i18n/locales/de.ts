@@ -16,6 +16,7 @@ export const de = {
   'common.confirm': 'Bestätigen',
   'common.loading': 'Wird geladen…',
   'common.retry': 'Erneut versuchen',
+  'common.clear': 'Leeren',
   'common.someone': 'Jemand',
   'page.quiz.title': 'Teste, was schon sitzt.',
   'page.cards.title': 'Wiederholen, bevor du vergisst.',
@@ -422,6 +423,7 @@ export const de = {
   'layout.logout': 'Abmelden',
   'layout.streakTitle': '{n} Tage Streak',
   'layout.logoutTitle': '{email} · Abmelden',
+  'layout.openMenu': 'Menü öffnen',
 
   // legal (Nav-Kürzel)
   'legal.imprint': 'Impressum',
@@ -529,6 +531,7 @@ export const de = {
   'auth.legalNoticeAnd': 'und unsere',
   'auth.legalNoticePost': '.',
   'cookie.settingsLink': 'Cookie-Einstellungen',
+  'cookie.settingsShort': 'Cookies',
   'cookie.adjust': 'Einstellungen',
   'cookie.settings.title': 'Cookie-Einstellungen',
   'cookie.settings.intro': 'Wähle aus, welche Kategorien du erlauben möchtest. Deine Wahl kannst du hier jederzeit wieder ändern.',

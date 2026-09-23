@@ -333,15 +333,15 @@ export const AppContent: React.FC<AppContentProps> = (p) => {
                 }}
               >
                 <div className="min-w-0">
-                  <p className="text-[9px] font-black uppercase tracking-widest" style={{ color: 'var(--primary)' }}>{t('ac.review')}</p>
+                  <p className="text-[11px] font-black uppercase tracking-widest" style={{ color: 'var(--primary)' }}>{t('ac.review')}</p>
                   <p className="text-sm font-black dark:text-white mt-0.5">
                     {tp('ac.dueMistakesN', dueMistakes)}
                   </p>
-                  <p className="text-[10px] font-medium text-slate-400 mt-0.5">{t('ac.reviewHint')}</p>
+                  <p className="text-[11px] font-medium text-slate-400 mt-0.5">{t('ac.reviewHint')}</p>
                 </div>
                 <button
                   onClick={handleStartMistakeReview}
-                  className="px-5 py-3 rounded-[14px] text-[10px] font-black uppercase tracking-widest text-white hover:scale-105 transition-all shrink-0"
+                  className="px-5 py-3 rounded-[14px] text-[11px] font-black uppercase tracking-widest text-white hover:scale-105 transition-all shrink-0"
                   style={{ background: 'var(--primary)' }}
                 >
                   {t('ac.reviewStart')}
@@ -351,15 +351,15 @@ export const AppContent: React.FC<AppContentProps> = (p) => {
           )}
           {savedQuizzes.length > 0 && (
             <div className="max-w-3xl mx-auto px-4 pt-6 pb-2 space-y-3">
-              <p className="text-[9px] font-black uppercase tracking-[0.3em] text-slate-400">{t('ac.savedQuizzes')}</p>
+              <p className="text-[11px] font-black uppercase tracking-[0.3em] text-slate-400">{t('ac.savedQuizzes')}</p>
               <div className="space-y-2">
                 {savedQuizzes.map(sq => (
                   <div key={sq.id} className="flex items-center gap-3 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-[20px] px-5 py-4 shadow-sm">
                     <div className="flex-1 min-w-0">
                       <p className="text-sm font-black dark:text-white break-words">{sq.name}</p>
-                      <p className="text-[9px] text-slate-400 font-medium mt-0.5">{tp('dashboard.questionsN', sq.questions.length)} · {formatDate(sq.savedAt, { day: '2-digit', month: 'short', year: '2-digit' })}</p>
+                      <p className="text-[11px] text-slate-400 font-medium mt-0.5">{tp('dashboard.questionsN', sq.questions.length)} · {formatDate(sq.savedAt, { day: '2-digit', month: 'short', year: '2-digit' })}</p>
                     </div>
-                    <button onClick={() => handleLoadSavedQuiz(sq)} className="flex items-center gap-1.5 px-4 py-2 text-white rounded-[14px] text-[10px] font-black uppercase tracking-widest hover:scale-105 transition-all shrink-0" style={{ background: 'var(--primary)' }}>
+                    <button onClick={() => handleLoadSavedQuiz(sq)} className="flex items-center gap-1.5 px-4 py-2 text-white rounded-[14px] text-[11px] font-black uppercase tracking-widest hover:scale-105 transition-all shrink-0" style={{ background: 'var(--primary)' }}>
                       <svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round"><polygon points="5 3 19 12 5 21 5 3"/></svg>
                       Starten
                     </button>
@@ -448,19 +448,19 @@ export const AppContent: React.FC<AppContentProps> = (p) => {
       <div>
         {savedExams.length > 0 && !examInitialQuestions && !pendingActionDoc && (
           <div className="max-w-3xl mx-auto px-4 pt-6 pb-2 space-y-3">
-            <p className="text-[9px] font-black uppercase tracking-[0.3em] text-slate-400">{t('ac.savedExams')}</p>
+            <p className="text-[11px] font-black uppercase tracking-[0.3em] text-slate-400">{t('ac.savedExams')}</p>
             <div className="space-y-2">
               {savedExams.map(se => (
                 <div key={se.id} className="flex items-center gap-3 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-[20px] px-5 py-4 shadow-sm">
                   <div className="flex-1 min-w-0">
                     <p className="text-sm font-black dark:text-white break-words">{se.name}</p>
-                    <p className="text-[9px] text-slate-400 font-medium mt-0.5">{tp('dashboard.questionsN', se.questions.length)} · {formatDate(se.savedAt, { day: '2-digit', month: 'short', year: '2-digit' })}</p>
+                    <p className="text-[11px] text-slate-400 font-medium mt-0.5">{tp('dashboard.questionsN', se.questions.length)} · {formatDate(se.savedAt, { day: '2-digit', month: 'short', year: '2-digit' })}</p>
                   </div>
-                  <button onClick={() => handleLoadSavedExam(se)} className="flex items-center gap-1.5 px-4 py-2 text-white rounded-[14px] text-[10px] font-black uppercase tracking-widest hover:scale-105 transition-all shrink-0" style={{ background: 'var(--primary)' }}>
+                  <button onClick={() => handleLoadSavedExam(se)} className="flex items-center gap-1.5 px-4 py-2 text-white rounded-[14px] text-[11px] font-black uppercase tracking-widest hover:scale-105 transition-all shrink-0" style={{ background: 'var(--primary)' }}>
                     <svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round"><polygon points="5 3 19 12 5 21 5 3"/></svg>
                     Starten
                   </button>
-                  <button onClick={() => exportSavedExamToPdf(se.name, se.savedAt, se.questions, t)} className="flex items-center gap-1.5 px-4 py-2 rounded-[14px] border-2 border-slate-200 dark:border-slate-700 text-[10px] font-black uppercase tracking-widest text-slate-600 dark:text-slate-300 hover:border-slate-400 transition-all shrink-0">
+                  <button onClick={() => exportSavedExamToPdf(se.name, se.savedAt, se.questions, t)} className="flex items-center gap-1.5 px-4 py-2 rounded-[14px] border-2 border-slate-200 dark:border-slate-700 text-[11px] font-black uppercase tracking-widest text-slate-600 dark:text-slate-300 hover:border-slate-400 transition-all shrink-0">
                     <svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
                     {t('ac.savedExamDownload')}
                   </button>

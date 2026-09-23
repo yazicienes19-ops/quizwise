@@ -82,7 +82,7 @@ export const SharedDeckPage: React.FC<SharedDeckPageProps> = ({
           <p className="text-slate-400 text-sm">{t('sdp.expiredLink')}</p>
           <button
             onClick={() => window.location.href = '/'}
-            className="px-6 py-3 rounded-2xl text-[10px] font-black uppercase tracking-widest transition-all hover:scale-105"
+            className="px-6 py-3 rounded-2xl text-[11px] font-black uppercase tracking-widest transition-all hover:scale-105"
             style={{ background: 'var(--primary)', color: 'var(--primary-text)' }}
           >
             {t('rpp.backToApp')}
@@ -127,7 +127,7 @@ export const SharedDeckPage: React.FC<SharedDeckPageProps> = ({
                 ◆
               </div>
               <div className="min-w-0">
-                <p className="text-[10px] font-black uppercase tracking-widest mb-1" style={{ color: 'var(--primary)' }}>
+                <p className="text-[11px] font-black uppercase tracking-widest mb-1" style={{ color: 'var(--primary)' }}>
                   {t('sdp.cardLabel')}
                 </p>
                 <p className="text-lg mb-0.5 truncate" style={{ fontFamily: 'Georgia, "Times New Roman", serif', color: 'var(--text-main)' }}>
@@ -147,7 +147,7 @@ export const SharedDeckPage: React.FC<SharedDeckPageProps> = ({
                 <p className="font-black text-lg text-emerald-600">{t('sdp.accepted')}</p>
                 <button
                   onClick={() => window.location.href = '/'}
-                  className="px-6 py-3 rounded-2xl text-[10px] font-black uppercase tracking-widest transition-all hover:scale-105"
+                  className="px-6 py-3 rounded-2xl text-[11px] font-black uppercase tracking-widest transition-all hover:scale-105"
                   style={{ background: 'var(--primary)', color: 'var(--primary-text)' }}
                 >
                   {t('sdp.learnInApp')}

@@ -114,7 +114,7 @@ export const SharedLibraryPage: React.FC<SharedLibraryPageProps> = ({ shareId, u
           <p className="text-slate-400 text-sm">{t('sdp.expiredLink')}</p>
           <button
             onClick={() => window.location.href = '/'}
-            className="px-6 py-3 rounded-2xl text-[10px] font-black uppercase tracking-widest transition-all hover:scale-105"
+            className="px-6 py-3 rounded-2xl text-[11px] font-black uppercase tracking-widest transition-all hover:scale-105"
             style={{ background: 'var(--primary)', color: 'var(--primary-text)' }}
           >
             {t('rpp.backToApp')}
@@ -159,7 +159,7 @@ export const SharedLibraryPage: React.FC<SharedLibraryPageProps> = ({ shareId, u
                 {library.emoji || '📁'}
               </div>
               <div className="min-w-0">
-                <p className="text-[10px] font-black uppercase tracking-widest mb-1" style={{ color: 'var(--primary)' }}>
+                <p className="text-[11px] font-black uppercase tracking-widest mb-1" style={{ color: 'var(--primary)' }}>
                   {t('slp.cardLabel')}
                 </p>
                 <p className="text-lg mb-0.5 truncate" style={{ fontFamily: 'Georgia, "Times New Roman", serif', color: 'var(--text-main)' }}>
@@ -179,7 +179,7 @@ export const SharedLibraryPage: React.FC<SharedLibraryPageProps> = ({ shareId, u
                 <p className="font-black text-lg text-emerald-600">{t('slp.accepted', { name: library.name })}</p>
                 <button
                   onClick={() => window.location.href = '/'}
-                  className="px-6 py-3 rounded-2xl text-[10px] font-black uppercase tracking-widest transition-all hover:scale-105"
+                  className="px-6 py-3 rounded-2xl text-[11px] font-black uppercase tracking-widest transition-all hover:scale-105"
                   style={{ background: 'var(--primary)', color: 'var(--primary-text)' }}
                 >
                   {t('slp.learnInApp')}

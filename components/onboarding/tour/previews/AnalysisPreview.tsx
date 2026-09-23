@@ -11,7 +11,7 @@ export const AnalysisPreview: React.FC = () => (
   <div className="space-y-2.5">
     {TOPICS.map(topic => (
       <div key={topic.name}>
-        <div className="flex items-center justify-between text-[10px] font-bold mb-1" style={{ color: 'var(--text-main)' }}>
+        <div className="flex items-center justify-between text-[11px] font-bold mb-1" style={{ color: 'var(--text-main)' }}>
           <span>{topic.name}</span>
           <span style={{ color: topic.color }}>{topic.pct}%</span>
         </div>

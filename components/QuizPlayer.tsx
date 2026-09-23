@@ -5,6 +5,7 @@ import { AnimatedBar } from './AnimatedBar';
 import { useTranslation } from '../i18n/I18nProvider';
 import { matchBlank } from '../services/blankMatch';
 import { pickNextQuestionIndex } from '../services/adaptiveQuizOrder';
+import { confirmDialog } from '../services/confirmDialog';
 
 interface QuizPlayerProps {
   questions: QuizQuestion[];
@@ -256,7 +257,7 @@ export const QuizPlayer: React.FC<QuizPlayerProps> = ({
     if (!showResult || isOpen) return null;
     const correct = checkCorrectness();
     return (
-      <div className={`mx-4 mb-4 p-4 rounded-[20px] text-center font-black text-[10px] uppercase tracking-widest animate-in slide-in-from-bottom-4 duration-300 ${
+      <div className={`mx-4 mb-4 p-4 rounded-[20px] text-center font-black text-[11px] uppercase tracking-widest animate-in slide-in-from-bottom-4 duration-300 ${
         correct ? 'bg-emerald-50 dark:bg-emerald-900/20 text-emerald-600' : 'bg-rose-50 dark:bg-rose-900/20 text-rose-600'
       }`}>
         {correct ? t('quiz.correct') : t('quiz.incorrect')}
@@ -270,7 +271,7 @@ export const QuizPlayer: React.FC<QuizPlayerProps> = ({
     /* ── Scenario card ── */
     const scenarioCard = isScenario && currentQuestion.scenarioText ? (
       <div className="mx-4 mb-4 p-5 bg-amber-50 dark:bg-amber-900/20 rounded-[24px] border border-amber-200 dark:border-amber-800">
-        <p className="text-[9px] font-black uppercase tracking-widest text-amber-600 dark:text-amber-400 mb-2">{t('quiz.badge.scenario')}</p>
+        <p className="text-[11px] font-black uppercase tracking-widest text-amber-600 dark:text-amber-400 mb-2">{t('quiz.badge.scenario')}</p>
         <p className="text-sm text-slate-700 dark:text-slate-300 leading-relaxed">{currentQuestion.scenarioText}</p>
       </div>
     ) : null;
@@ -303,7 +304,7 @@ export const QuizPlayer: React.FC<QuizPlayerProps> = ({
                   </span>
                   <span className="text-sm sm:text-base leading-snug flex-1">{option}</span>
                   {!showResult && idx < 4 && (
-                    <span className="text-[9px] font-black text-slate-300 shrink-0">{idx + 1}</span>
+                    <span className="text-[11px] font-black text-slate-300 shrink-0">{idx + 1}</span>
                   )}
                   {showResult && isCorrect && <EmojiImage emoji="✨" size={16} className="ml-auto shrink-0" />}
                 </button>
@@ -322,11 +323,11 @@ export const QuizPlayer: React.FC<QuizPlayerProps> = ({
           >
             <div className="overflow-hidden">
               <div className="px-4 pb-4">
-                <p className="text-[9px] font-black uppercase tracking-widest text-slate-400 mb-2 px-1">{t('quiz.confidence')}</p>
+                <p className="text-[11px] font-black uppercase tracking-widest text-slate-400 mb-2 px-1">{t('quiz.confidence')}</p>
                 <div className="flex gap-2">
                   <button
                     onClick={() => setConfidence('unsicher')}
-                    className={`flex-1 py-3 rounded-2xl text-[10px] font-black uppercase tracking-widest border-2 transition-all flex items-center justify-center gap-2 ${
+                    className={`flex-1 py-3 rounded-2xl text-[11px] font-black uppercase tracking-widest border-2 transition-all flex items-center justify-center gap-2 ${
                       confidence === 'unsicher' ? '' : 'border-slate-100 dark:border-slate-800 text-slate-400 hover:border-slate-300'
                     }`}
                     style={confidence === 'unsicher' ? { borderColor: 'var(--primary)', background: 'color-mix(in srgb, var(--primary) 10%, transparent)', color: 'var(--primary)' } : undefined}
@@ -335,7 +336,7 @@ export const QuizPlayer: React.FC<QuizPlayerProps> = ({
                   </button>
                   <button
                     onClick={() => setConfidence('sicher')}
-                    className={`flex-1 py-3 rounded-2xl text-[10px] font-black uppercase tracking-widest border-2 transition-all flex items-center justify-center gap-2 ${
+                    className={`flex-1 py-3 rounded-2xl text-[11px] font-black uppercase tracking-widest border-2 transition-all flex items-center justify-center gap-2 ${
                       confidence === 'sicher' ? '' : 'border-slate-100 dark:border-slate-800 text-slate-400 hover:border-slate-300'
                     }`}
                     style={confidence === 'sicher' ? { borderColor: 'var(--primary)', background: 'color-mix(in srgb, var(--primary) 10%, transparent)', color: 'var(--primary)' } : undefined}
@@ -365,28 +366,28 @@ export const QuizPlayer: React.FC<QuizPlayerProps> = ({
           )}
           {!showSampleAnswer ? (
             <button onClick={() => setShowSampleAnswer(true)}
-              className="w-full py-4 rounded-[20px] bg-indigo-50 dark:bg-indigo-900/20 border-2 border-indigo-200 dark:border-indigo-800 text-indigo-600 dark:text-indigo-400 font-black text-[10px] uppercase tracking-widest hover:bg-indigo-100 transition-colors"
+              className="w-full py-4 rounded-[20px] bg-indigo-50 dark:bg-indigo-900/20 border-2 border-indigo-200 dark:border-indigo-800 text-indigo-600 dark:text-indigo-400 font-black text-[11px] uppercase tracking-widest hover:bg-indigo-100 transition-colors"
             >
               {t('quiz.showSample')}
             </button>
           ) : (
             <div className="space-y-3 animate-in slide-in-from-bottom-4 duration-500">
               <div className="p-5 bg-indigo-50 dark:bg-indigo-900/20 rounded-[20px] border border-indigo-200 dark:border-indigo-800">
-                <p className="text-[9px] font-black uppercase tracking-widest text-indigo-500 mb-2">{t('quiz.sample')}</p>
+                <p className="text-[11px] font-black uppercase tracking-widest text-indigo-500 mb-2">{t('quiz.sample')}</p>
                 <p className="text-sm text-slate-700 dark:text-slate-300 leading-relaxed">{currentQuestion.explanation}</p>
               </div>
               {selfAssessCorrect === null && (
                 <div className="grid grid-cols-2 gap-2">
-                  <button onClick={() => handleSelfAssess(true)} className="py-4 rounded-[20px] bg-emerald-600 text-white font-black text-[10px] uppercase tracking-widest hover:bg-emerald-700 transition-colors">
+                  <button onClick={() => handleSelfAssess(true)} className="py-4 rounded-[20px] bg-emerald-600 text-white font-black text-[11px] uppercase tracking-widest hover:bg-emerald-700 transition-colors">
                     {t('quiz.hadIt')}
                   </button>
-                  <button onClick={() => handleSelfAssess(false)} className="py-4 rounded-[20px] bg-rose-600 text-white font-black text-[10px] uppercase tracking-widest hover:bg-rose-700 transition-colors">
+                  <button onClick={() => handleSelfAssess(false)} className="py-4 rounded-[20px] bg-rose-600 text-white font-black text-[11px] uppercase tracking-widest hover:bg-rose-700 transition-colors">
                     {t('quiz.didntHave')}
                   </button>
                 </div>
               )}
               {selfAssessCorrect !== null && (
-                <div className={`p-4 rounded-[20px] text-center font-black text-[10px] uppercase tracking-widest ${selfAssessCorrect ? 'bg-emerald-50 dark:bg-emerald-900/20 text-emerald-600' : 'bg-rose-50 dark:bg-rose-900/20 text-rose-600'}`}>
+                <div className={`p-4 rounded-[20px] text-center font-black text-[11px] uppercase tracking-widest ${selfAssessCorrect ? 'bg-emerald-50 dark:bg-emerald-900/20 text-emerald-600' : 'bg-rose-50 dark:bg-rose-900/20 text-rose-600'}`}>
                   {selfAssessCorrect ? t('quiz.wellDone') : t('quiz.markedReview')}
                 </div>
               )}
@@ -401,7 +402,7 @@ export const QuizPlayer: React.FC<QuizPlayerProps> = ({
       const pairs = currentQuestion.matchPairs;
       return (
         <div className="px-4 pb-4 space-y-3">
-          <p className="text-[9px] font-black uppercase tracking-widest text-slate-400 px-1">{t('quiz.matchHint')}</p>
+          <p className="text-[11px] font-black uppercase tracking-widest text-slate-400 px-1">{t('quiz.matchHint')}</p>
           {pairs.map((pair, li) => {
             const selected = matchAnswer[li];
             const isCorrect = showResult && selected === pair.right;
@@ -428,7 +429,7 @@ export const QuizPlayer: React.FC<QuizPlayerProps> = ({
                 ) : (
                   <div className={`flex-1 p-3 rounded-[16px] border-2 text-sm font-medium ${isCorrect ? 'border-emerald-400 bg-emerald-50 dark:bg-emerald-950/20 text-emerald-700' : isWrong ? 'border-rose-400 bg-rose-50 dark:bg-rose-950/20 text-rose-700' : 'border-slate-200 bg-slate-50 dark:bg-slate-800 text-slate-400'}`}>
                     {selected || '—'}
-                    {isWrong && <span className="block text-[10px] text-emerald-600 dark:text-emerald-400 font-black mt-0.5">✓ {pair.right}</span>}
+                    {isWrong && <span className="block text-[11px] text-emerald-600 dark:text-emerald-400 font-black mt-0.5">✓ {pair.right}</span>}
                   </div>
                 )}
               </div>
@@ -443,7 +444,7 @@ export const QuizPlayer: React.FC<QuizPlayerProps> = ({
       const parts = currentQuestion.clozeText.split('__LÜCKE__');
       return (
         <div className="px-4 pb-4">
-          <p className="text-[9px] font-black uppercase tracking-widest text-slate-400 mb-4 px-1">{t('quiz.clozeHint')}</p>
+          <p className="text-[11px] font-black uppercase tracking-widest text-slate-400 mb-4 px-1">{t('quiz.clozeHint')}</p>
           <div className="text-base leading-loose text-slate-800 dark:text-slate-200 px-2">
             {parts.map((part, pi) => {
               const userBlank    = clozeAnswer[pi] || '';
@@ -488,7 +489,7 @@ export const QuizPlayer: React.FC<QuizPlayerProps> = ({
       const correct = currentQuestion.rankingItems;
       return (
         <div className="px-4 pb-4 space-y-2">
-          <p className="text-[9px] font-black uppercase tracking-widest text-slate-400 mb-3 px-1">{t('quiz.rankingHint')}</p>
+          <p className="text-[11px] font-black uppercase tracking-widest text-slate-400 mb-3 px-1">{t('quiz.rankingHint')}</p>
           {rankingOrder.map((item, i) => {
             const isCorrect = showResult && correct[i] === item;
             const isWrong   = showResult && !isCorrect;
@@ -500,7 +501,7 @@ export const QuizPlayer: React.FC<QuizPlayerProps> = ({
               }`}>
                 <span className="w-7 h-7 rounded-lg bg-indigo-100 dark:bg-indigo-900/30 text-indigo-600 text-[11px] font-black flex items-center justify-center shrink-0">{i + 1}</span>
                 <span className={`flex-1 text-sm font-medium ${showResult ? isCorrect ? 'text-emerald-700 dark:text-emerald-300' : 'text-rose-700 dark:text-rose-300' : 'text-slate-700 dark:text-slate-300'}`}>{item}</span>
-                {isWrong && <span className="text-[10px] font-black text-emerald-600 dark:text-emerald-400 shrink-0">→ Pos. {correct.indexOf(item) + 1}</span>}
+                {isWrong && <span className="text-[11px] font-black text-emerald-600 dark:text-emerald-400 shrink-0">→ Pos. {correct.indexOf(item) + 1}</span>}
                 {!showResult && (
                   <div className="flex flex-col gap-1 shrink-0">
                     <button disabled={i === 0} onClick={() => {
@@ -519,7 +520,7 @@ export const QuizPlayer: React.FC<QuizPlayerProps> = ({
             );
           })}
           {showResult && (
-            <div className="mt-2 text-[10px] font-black uppercase tracking-widest text-slate-400 px-1">
+            <div className="mt-2 text-[11px] font-black uppercase tracking-widest text-slate-400 px-1">
               Korrekte Reihenfolge: {correct.join(' → ')}
             </div>
           )}
@@ -536,7 +537,7 @@ export const QuizPlayer: React.FC<QuizPlayerProps> = ({
       const wrong = showResult && !ok;
       return (
         <div className="px-4 pb-4 space-y-4">
-          <p className="text-[9px] font-black uppercase tracking-widest text-slate-400 px-1">{t('quiz.numericHint')}</p>
+          <p className="text-[11px] font-black uppercase tracking-widest text-slate-400 px-1">{t('quiz.numericHint')}</p>
           <div className="flex items-center gap-3 max-w-xs">
             <input
               type="number"
@@ -550,7 +551,7 @@ export const QuizPlayer: React.FC<QuizPlayerProps> = ({
                   : 'border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 focus:border-indigo-500'
               }`}
             />
-            {tolerance > 0 && <span className="text-[10px] text-slate-400 font-black whitespace-nowrap">±{tolerance}</span>}
+            {tolerance > 0 && <span className="text-[11px] text-slate-400 font-black whitespace-nowrap">±{tolerance}</span>}
           </div>
           {wrong && (
             <p className="text-sm font-bold text-slate-500 dark:text-slate-400 px-1">
@@ -569,18 +570,18 @@ export const QuizPlayer: React.FC<QuizPlayerProps> = ({
       {/* Header */}
       <div className="px-4 pt-6 lg:pt-10 space-y-3 mb-6">
         {sourceName && (
-          <p className="text-[9px] font-black uppercase tracking-[0.3em] text-indigo-500 break-words">{sourceName}</p>
+          <p className="text-[11px] font-black uppercase tracking-[0.3em] text-indigo-500 break-words">{sourceName}</p>
         )}
-        <div className="flex justify-between items-center text-[10px] font-black uppercase text-slate-400 tracking-widest">
+        <div className="flex justify-between items-center text-[11px] font-black uppercase text-slate-400 tracking-widest">
           <span>{t('quiz.questionOf', { n: answers.length + 1, total: questions.length })}</span>
           <div className="flex items-center gap-3">
             {onDeleteCurrent && (
               <button
                 onClick={() => {
-                  if (window.confirm(t('quiz.deleteMistakeConfirm'))) onDeleteCurrent(shownIndex);
+                  void confirmDialog({ message: t('quiz.deleteMistakeConfirm'), danger: true }).then(ok => { if (ok) onDeleteCurrent(shownIndex); });
                 }}
                 className="flex items-center gap-1 text-slate-400 hover:text-rose-500 transition-colors"
-                title={t('quiz.deleteMistake')}
+                aria-label={t('quiz.deleteMistake')} title={t('quiz.deleteMistake')}
               >
                 <svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/></svg>
               </button>
@@ -609,12 +610,12 @@ export const QuizPlayer: React.FC<QuizPlayerProps> = ({
           <AnimatedBar percent={progress} className="h-full" style={{ background: 'var(--primary)' }} duration={700} />
         </div>
         {currentQuestion.topic && (
-          <p className="text-[9px] font-black uppercase tracking-widest text-slate-400 break-words">{t('quiz.topic', { topic: currentQuestion.topic })}</p>
+          <p className="text-[11px] font-black uppercase tracking-widest text-slate-400 break-words">{t('quiz.topic', { topic: currentQuestion.topic })}</p>
         )}
         {/* Multi-Doc-Quizzes: Ursprungs-Dokument der aktuellen Frage
             (services/multiDocSource.ts) — bei Single-Doc-Sessions nicht gesetzt. */}
         {currentQuestion.sourceDocName && (
-          <p className="text-[9px] font-black uppercase tracking-widest break-words" style={{ color: 'var(--primary)' }}>
+          <p className="text-[11px] font-black uppercase tracking-widest break-words" style={{ color: 'var(--primary)' }}>
             {t('quiz.fromDoc', { doc: currentQuestion.sourceDocName })}
           </p>
         )}
@@ -623,7 +624,7 @@ export const QuizPlayer: React.FC<QuizPlayerProps> = ({
       {/* Speichern-Panel */}
       {showSaveInput && onSave && (
         <div className="mx-4 mb-4 p-4 bg-white dark:bg-slate-900 rounded-[20px] border border-indigo-200 dark:border-indigo-800 shadow-lg animate-in slide-in-from-top-4 duration-300">
-          <p className="text-[9px] font-black uppercase tracking-widest text-slate-400 mb-3">{t('quiz.saveQuiz')}</p>
+          <p className="text-[11px] font-black uppercase tracking-widest text-slate-400 mb-3">{t('quiz.saveQuiz')}</p>
           <div className="flex gap-2">
             <input
               autoFocus
@@ -638,7 +639,7 @@ export const QuizPlayer: React.FC<QuizPlayerProps> = ({
             />
             <button
               onClick={() => { onSave(saveName.trim() || t('quiz.myQuiz'), answers); setShowSaveInput(false); }}
-              className="px-4 py-2 bg-indigo-600 text-white rounded-[14px] text-[10px] font-black uppercase tracking-widest hover:scale-105 transition-all shrink-0"
+              className="px-4 py-2 bg-indigo-600 text-white rounded-[14px] text-[11px] font-black uppercase tracking-widest hover:scale-105 transition-all shrink-0"
             >
               OK
             </button>
@@ -651,7 +652,7 @@ export const QuizPlayer: React.FC<QuizPlayerProps> = ({
       <div className="mx-4 bg-white dark:bg-slate-900 rounded-[32px] border border-slate-100 dark:border-slate-800 shadow-3d-raised overflow-hidden">
         {badgeLabel && (
           <div className="px-6 pt-5 pb-1">
-            <span className="inline-block bg-indigo-600 text-white text-[9px] font-black uppercase tracking-[0.25em] px-3 py-1 rounded-full">
+            <span className="inline-block bg-indigo-600 text-white text-[11px] font-black uppercase tracking-[0.25em] px-3 py-1 rounded-full">
               {badgeLabel}
             </span>
           </div>
@@ -677,12 +678,12 @@ export const QuizPlayer: React.FC<QuizPlayerProps> = ({
                 : { background: 'var(--bg-sidebar)', borderColor: 'var(--border-color)' }
               }
             >
-              <p className="text-[9px] font-black uppercase tracking-widest mb-1.5"
+              <p className="text-[11px] font-black uppercase tracking-widest mb-1.5"
                 style={{ color: !checkCorrectness() ? 'var(--primary)' : '#94a3b8' }}
               >{t('quiz.explanation')}</p>
               <p className="text-sm text-slate-700 dark:text-slate-300 leading-relaxed">{currentQuestion.explanation}</p>
               {currentQuestion.sourceReference && (
-                <p className="mt-2 text-[9px] text-slate-400 font-black uppercase tracking-widest">{currentQuestion.sourceReference}</p>
+                <p className="mt-2 text-[11px] text-slate-400 font-black uppercase tracking-widest">{currentQuestion.sourceReference}</p>
               )}
             </div>
           </div>
@@ -712,7 +713,7 @@ export const QuizPlayer: React.FC<QuizPlayerProps> = ({
         }`}>
           <div className="flex gap-3">
             {onCancel && (
-              <button onClick={onCancel} className="text-[9px] font-black uppercase tracking-widest text-slate-400 hover:text-rose-500 transition-colors px-4 py-4 shrink-0">
+              <button onClick={onCancel} className="text-[11px] font-black uppercase tracking-widest text-slate-400 hover:text-rose-500 transition-colors px-4 py-4 shrink-0">
                 {t('quiz.cancel')}
               </button>
             )}
@@ -720,12 +721,12 @@ export const QuizPlayer: React.FC<QuizPlayerProps> = ({
             {/* Confirm button — für alle Typen außer Open */}
             {!showResult && !isOpen && (
               <button onClick={handleConfirm} disabled={!canConfirm}
-                className={`flex-1 py-4 rounded-[20px] font-black uppercase tracking-widest text-[10px] transition-all min-h-[52px] ${
+                className={`flex-1 py-4 rounded-[20px] font-black uppercase tracking-widest text-[11px] transition-all min-h-[52px] ${
                   canConfirm ? 'shadow-3d-raised hover:scale-[1.02]' : 'bg-slate-100 dark:bg-slate-800 text-slate-400 cursor-not-allowed'
                 }`}
                 style={canConfirm ? { background: 'var(--primary)', color: 'var(--primary-text)' } : undefined}
               >
-                {t('quiz.checkAnswer')} <span className="opacity-50 text-[9px] ml-1">↵</span>
+                {t('quiz.checkAnswer')} <span className="opacity-50 text-[11px] ml-1">↵</span>
               </button>
             )}
 
@@ -740,7 +741,7 @@ export const QuizPlayer: React.FC<QuizPlayerProps> = ({
             {/* Next / Finish button */}
             {(showResult || (isOpen && selfAssessCorrect !== null)) && (
               <button onClick={handleNext}
-                className="flex-1 py-4 rounded-[20px] font-black uppercase tracking-widest text-[10px] shadow-3d-raised hover:scale-[1.02] transition-all flex items-center justify-center gap-2 min-h-[52px]"
+                className="flex-1 py-4 rounded-[20px] font-black uppercase tracking-widest text-[11px] shadow-3d-raised hover:scale-[1.02] transition-all flex items-center justify-center gap-2 min-h-[52px]"
                 style={{ background: 'var(--primary)', color: 'var(--primary-text)' }}
               >
                 {answers.length < questions.length - 1 ? t('quiz.nextQuestion') : t('quiz.showResults')}

@@ -108,7 +108,7 @@ const termDate = (date: string) => `${date}T00:00:00`;
 /** Grobe Zeitschätzung: Antwortzeiten werden nicht gespeichert, daher Pauschalwerte je Fehlerfrage bzw. Karte. */
 const estimateMinutes = (count: number, minutesPerItem: number) => Math.max(1, Math.round(count * minutesPerItem));
 
-const MICRO_LABEL = 'text-[9.5px] font-semibold uppercase tracking-[0.18em]';
+const MICRO_LABEL = 'text-[11px] font-semibold uppercase tracking-[0.18em]';
 
 export const Dashboard: React.FC<DashboardProps> = ({
   onTabChange, documents = [], decks = [], collections = [], activeModuleId = null, examTerms = [],
@@ -380,7 +380,7 @@ export const Dashboard: React.FC<DashboardProps> = ({
     >
       {fmtGrade(row.grade)}
       {row.gradeSource === 'simulator' && (
-        <span className="ml-0.5 align-top text-[8.5px] font-semibold" style={{ color: C.faint }}>{t('home.grade.simShort')}</span>
+        <span className="ml-0.5 align-top text-[11px] font-semibold" style={{ color: C.faint }}>{t('home.grade.simShort')}</span>
       )}
     </span>
   );
@@ -440,7 +440,7 @@ export const Dashboard: React.FC<DashboardProps> = ({
             <React.Fragment key={k.key}>
               {i > 0 && <span aria-hidden className="w-px h-[30px] shrink-0" style={{ background: 'color-mix(in srgb, var(--text-main) 14%, transparent)' }} />}
               <button onClick={k.onClick} title={k.title} className="shrink-0 text-right transition-opacity hover:opacity-75">
-                <span className="block text-[8.5px] font-semibold uppercase tracking-[0.15em] whitespace-nowrap" style={{ color: C.faint }}>{k.label}</span>
+                <span className="block text-[11px] font-semibold uppercase tracking-[0.15em] whitespace-nowrap" style={{ color: C.faint }}>{k.label}</span>
                 <span className="block mt-[5px] text-[21px] leading-none whitespace-nowrap tabular-nums" style={{ color: C.ink }}>
                   {k.value}
                   {k.unit && <span className="text-[12px]" style={{ color: C.faint }}> {k.unit}</span>}
@@ -509,7 +509,7 @@ export const Dashboard: React.FC<DashboardProps> = ({
                   >
                     <span className="flex items-center gap-2">
                       <span
-                        className="w-[18px] h-[18px] rounded-full shrink-0 flex items-center justify-center text-[10px] font-semibold tabular-nums"
+                        className="w-[18px] h-[18px] rounded-full shrink-0 flex items-center justify-center text-[11px] font-semibold tabular-nums"
                         style={done
                           ? { background: C.green, color: 'var(--card)' }
                           : { border: `1.5px solid ${color}`, color }}
@@ -530,7 +530,7 @@ export const Dashboard: React.FC<DashboardProps> = ({
                       />
                     </span>
                     {!done && (
-                      <span className="block mt-[5px] text-[10.5px] tabular-nums" style={{ color: C.faint }}>{phaseCount(phase)}</span>
+                      <span className="block mt-[5px] text-[11px] tabular-nums" style={{ color: C.faint }}>{phaseCount(phase)}</span>
                     )}
                   </button>
                 );
@@ -563,7 +563,7 @@ export const Dashboard: React.FC<DashboardProps> = ({
             </div>
           </div>
 
-          <p className="text-[10.5px]" style={{ color: C.faint }}>{t('guide.basis')}</p>
+          <p className="text-[11px]" style={{ color: C.faint }}>{t('guide.basis')}</p>
         </section>
       )}
 
@@ -580,7 +580,7 @@ export const Dashboard: React.FC<DashboardProps> = ({
                   role="tab"
                   aria-selected={sort === s.key}
                   onClick={() => changeSort(s.key)}
-                  className="px-[11px] py-[5px] rounded-md text-[10.5px] font-semibold transition-colors"
+                  className="px-[11px] py-[5px] rounded-md text-[11px] font-semibold transition-colors"
                   style={sort === s.key ? { background: C.card, color: C.ink } : { color: C.soft }}
                 >
                   {t(s.label)}
@@ -600,7 +600,7 @@ export const Dashboard: React.FC<DashboardProps> = ({
                 <span
                   key={key}
                   title={key === 'home.col.grade' ? t('home.col.gradeHint') : undefined}
-                  className={`text-[8.5px] font-semibold uppercase tracking-[0.14em] ${align}`}
+                  className={`text-[11px] font-semibold uppercase tracking-[0.14em] ${align}`}
                   style={{ color: 'color-mix(in srgb, var(--text-main) 50%, transparent)' }}
                 >
                   {t(key)}
@@ -636,7 +636,7 @@ export const Dashboard: React.FC<DashboardProps> = ({
                   <div className="hidden lg:grid items-center gap-3.5" style={{ gridTemplateColumns: GRID_COLUMNS }}>
                     <div className="min-w-0">
                       <p className="text-[14px] leading-[1.25] font-semibold truncate" style={{ color: C.ink }}>{row.name}</p>
-                      {note && <p className="mt-0.5 text-[10.5px] truncate" style={{ color: C.soft }}>{note}</p>}
+                      {note && <p className="mt-0.5 text-[11px] truncate" style={{ color: C.soft }}>{note}</p>}
                     </div>
                     <div>{levelCell(row)}</div>
                     <div className="text-right text-[18px]">{gradeBadge(row)}</div>
@@ -648,12 +648,12 @@ export const Dashboard: React.FC<DashboardProps> = ({
                           className="group text-left -mx-1.5 -my-1 px-1.5 py-1 rounded-lg transition-colors hover:bg-[color-mix(in_srgb,var(--text-main)_5%,transparent)]"
                         >
                           <p className="text-[11px] font-semibold whitespace-nowrap group-hover:underline" style={{ color: exam.upcoming ? C.goldText : 'color-mix(in srgb, var(--text-main) 75%, transparent)' }}>{exam.status}</p>
-                          <p className="mt-0.5 text-[10px] whitespace-nowrap" style={{ color: C.soft }}>{row.nextTerm ? exam.detail : t('examDateDialog.cta')}</p>
+                          <p className="mt-0.5 text-[11px] whitespace-nowrap" style={{ color: C.soft }}>{row.nextTerm ? exam.detail : t('examDateDialog.cta')}</p>
                         </button>
                       ) : (
                         <>
                           <p className="text-[11px] font-semibold whitespace-nowrap" style={{ color: exam.upcoming ? C.goldText : 'color-mix(in srgb, var(--text-main) 75%, transparent)' }}>{exam.status}</p>
-                          <p className="mt-0.5 text-[10px] whitespace-nowrap" style={{ color: C.soft }}>{exam.detail}</p>
+                          <p className="mt-0.5 text-[11px] whitespace-nowrap" style={{ color: C.soft }}>{exam.detail}</p>
                         </>
                       )}
                     </div>
@@ -683,7 +683,7 @@ export const Dashboard: React.FC<DashboardProps> = ({
                       </div>
                       {(note || row.nextStep === 'enterGrade') && (
                         <div className="flex items-center gap-3">
-                          {note && <p className="flex-1 min-w-0 text-[10.5px] truncate" style={{ color: C.soft }}>{note}</p>}
+                          {note && <p className="flex-1 min-w-0 text-[11px] truncate" style={{ color: C.soft }}>{note}</p>}
                           {row.nextStep === 'enterGrade' && actionButton}
                         </div>
                       )}

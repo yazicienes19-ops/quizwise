@@ -21,6 +21,7 @@ import { EditCardModal } from './EditCardModal';
 import { DeckStatsModal } from './DeckStatsModal';
 import { MoreHorizontal, ListOrdered, HelpCircle, BarChart2, Pencil, Share2, Printer, Trash2 } from 'lucide-react';
 import { PageHeader } from './PageHeader';
+import { confirmDialog } from '../services/confirmDialog';
 
 interface FlashcardSystemProps {
   availableDocuments: ProcessedDocument[];
@@ -270,8 +271,8 @@ export const FlashcardSystem: React.FC<FlashcardSystemProps> = ({
     setIsRenamingDeck(false);
   };
 
-  const handleDeleteDeck = (deck: FlashcardDeck) => {
-    if (!window.confirm(t('fcs.deleteDeckConfirm', { title: deck.title, n: deck.cards.length }))) return;
+  const handleDeleteDeck = async (deck: FlashcardDeck) => {
+    if (!(await confirmDialog({ message: t('fcs.deleteDeckConfirm', { title: deck.title, n: deck.cards.length }), danger: true }))) return;
     // Ausstehenden Upload verwerfen, sonst legt der gebündelte Save das
     // gerade gelöschte Deck in der Cloud wieder an.
     pendingCloud.current.delete(deck.id);
@@ -580,10 +581,10 @@ export const FlashcardSystem: React.FC<FlashcardSystemProps> = ({
                   className="flex-1 min-w-0 text-2xl font-black bg-transparent border-b-2 border-indigo-500 outline-none dark:text-white pb-1"
                   onKeyDown={e => e.key === 'Escape' && setIsRenamingDeck(false)}
                 />
-                <button type="submit" className="px-4 py-1.5 bg-indigo-600 text-white rounded-xl text-[10px] font-black uppercase tracking-widest shrink-0">
+                <button type="submit" className="px-4 py-1.5 bg-indigo-600 text-white rounded-xl text-[11px] font-black uppercase tracking-widest shrink-0">
                   {t('common.save')}
                 </button>
-                <button type="button" onClick={() => setIsRenamingDeck(false)} aria-label={t('common.close')} className="px-3 py-1.5 bg-slate-100 dark:bg-slate-800 text-slate-400 rounded-xl text-[10px] font-black uppercase shrink-0">
+                <button type="button" onClick={() => setIsRenamingDeck(false)} aria-label={t('common.close')} className="px-3 py-1.5 bg-slate-100 dark:bg-slate-800 text-slate-400 rounded-xl text-[11px] font-black uppercase shrink-0">
                   ✕
                 </button>
               </form>
@@ -600,12 +601,12 @@ export const FlashcardSystem: React.FC<FlashcardSystemProps> = ({
                 </button>
               </div>
             )}
-            <p className="text-[10px] font-black uppercase text-slate-400 tracking-widest">{tp('fcs.cardsInDeck', deck.cards.length)}</p>
+            <p className="text-[11px] font-black uppercase text-slate-400 tracking-widest">{tp('fcs.cardsInDeck', deck.cards.length)}</p>
           </div>
           <div className="flex items-center gap-3 shrink-0">
             <button
               onClick={() => setEditingCard('new')}
-              className="flex items-center gap-2 px-5 py-2.5 rounded-xl text-[10px] font-black uppercase tracking-widest shadow-sm hover:scale-[1.02] transition-all"
+              className="flex items-center gap-2 px-5 py-2.5 rounded-xl text-[11px] font-black uppercase tracking-widest shadow-sm hover:scale-[1.02] transition-all"
               style={{ background: 'var(--primary)', color: 'var(--primary-text, #fff)' }}
             >
               <svg xmlns="http://www.w3.org/2000/svg" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
@@ -613,7 +614,7 @@ export const FlashcardSystem: React.FC<FlashcardSystemProps> = ({
             </button>
             <button
               onClick={() => { setEditingDeckId(null); setIsRenamingDeck(false); setEditingCard(null); setCardSearch(''); }}
-              className="px-5 py-2.5 bg-slate-100 dark:bg-slate-800 text-slate-500 rounded-xl text-[10px] font-black uppercase tracking-widest hover:text-indigo-600 transition-colors"
+              className="px-5 py-2.5 bg-slate-100 dark:bg-slate-800 text-slate-500 rounded-xl text-[11px] font-black uppercase tracking-widest hover:text-indigo-600 transition-colors"
             >
               {t('fcs.done')}
             </button>
@@ -646,7 +647,7 @@ export const FlashcardSystem: React.FC<FlashcardSystemProps> = ({
 
           {deck.cards.length === 0 ? (
             <div className="py-20 text-center space-y-4 opacity-30 px-6">
-              <p className="text-[10px] font-black uppercase tracking-widest">{t('fcs.noCards')}</p>
+              <p className="text-[11px] font-black uppercase tracking-widest">{t('fcs.noCards')}</p>
               <p className="text-xs">{t('fcs.noCardsHint')}</p>
             </div>
           ) : filtered.length === 0 ? (
@@ -654,7 +655,7 @@ export const FlashcardSystem: React.FC<FlashcardSystemProps> = ({
           ) : (
             <>
               {query && (
-                <p className="px-6 pt-3 text-[9px] font-black uppercase tracking-widest text-slate-400">
+                <p className="px-6 pt-3 text-[11px] font-black uppercase tracking-widest text-slate-400">
                   {t('fcs.filteredOf', { n: filtered.length, total: deck.cards.length })}
                 </p>
               )}
@@ -667,7 +668,7 @@ export const FlashcardSystem: React.FC<FlashcardSystemProps> = ({
                     onClick={() => setEditingCard(card)}
                   >
                     {/* Nummer = Position im Deck, auch bei aktiver Suche (vorher Position im Suchergebnis) */}
-                    <span className="text-[10px] font-black text-slate-300 dark:text-slate-600 w-6 shrink-0 text-right">{deck.cards.indexOf(card) + 1}</span>
+                    <span className="text-[11px] font-black text-slate-300 dark:text-slate-600 w-6 shrink-0 text-right">{deck.cards.indexOf(card) + 1}</span>
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-2 flex-1 min-w-0">
                       <p className="text-sm font-bold dark:text-white md:border-r md:border-slate-100 md:dark:border-slate-800 md:pr-4 leading-snug break-words whitespace-pre-line line-clamp-4">{card.front}</p>
                       <p className="text-sm text-slate-400 dark:text-slate-500 leading-snug break-words whitespace-pre-line line-clamp-4">{card.back}</p>
@@ -718,11 +719,11 @@ export const FlashcardSystem: React.FC<FlashcardSystemProps> = ({
           <div className="bg-white dark:bg-slate-900 rounded-[30px] lg:rounded-[40px] border border-slate-200 dark:border-slate-800 shadow-3d-raised p-5 lg:p-7 space-y-8">
 
             <div className="space-y-4">
-              <h3 className="text-[10px] font-black uppercase tracking-[0.4em] text-indigo-600">{t('fcs.manualDeck')}</h3>
+              <h3 className="text-[11px] font-black uppercase tracking-[0.4em] text-indigo-600">{t('fcs.manualDeck')}</h3>
               {!showManualDeckDialog ? (
                 <button
                   onClick={() => setShowManualDeckDialog(true)}
-                  className="w-full p-4 bg-indigo-50 dark:bg-indigo-900/20 text-indigo-600 rounded-2xl font-black uppercase text-[10px] tracking-widest border-2 border-dashed border-indigo-200 hover:border-indigo-500 transition-all"
+                  className="w-full p-4 bg-indigo-50 dark:bg-indigo-900/20 text-indigo-600 rounded-2xl font-black uppercase text-[11px] tracking-widest border-2 border-dashed border-indigo-200 hover:border-indigo-500 transition-all"
                 >
                   {t('fcs.createEmptyDeck')}
                 </button>
@@ -737,18 +738,18 @@ export const FlashcardSystem: React.FC<FlashcardSystemProps> = ({
                     className="w-full p-4 bg-slate-50 dark:bg-slate-800 rounded-xl text-xs font-bold outline-none border-2 border-indigo-500 dark:text-white"
                   />
                   <div className="flex gap-2">
-                    <button type="submit" disabled={!manualDeckTitle.trim()} className="flex-1 bg-indigo-600 text-white py-3 rounded-xl text-[9px] font-black uppercase tracking-widest disabled:opacity-40">{t('fcs.create')}</button>
-                    <button type="button" onClick={() => setShowManualDeckDialog(false)} aria-label={t('common.close')} className="px-4 bg-slate-100 dark:bg-slate-800 text-slate-400 py-3 rounded-xl text-[9px] font-black uppercase">✕</button>
+                    <button type="submit" disabled={!manualDeckTitle.trim()} className="flex-1 bg-indigo-600 text-white py-3 rounded-xl text-[11px] font-black uppercase tracking-widest disabled:opacity-40">{t('fcs.create')}</button>
+                    <button type="button" onClick={() => setShowManualDeckDialog(false)} aria-label={t('common.close')} className="px-4 bg-slate-100 dark:bg-slate-800 text-slate-400 py-3 rounded-xl text-[11px] font-black uppercase">✕</button>
                   </div>
                 </form>
               )}
             </div>
 
             <div className="space-y-6 pt-4 border-t border-slate-50 dark:border-slate-800">
-              <h3 className="text-[10px] lg:text-[11px] font-black uppercase tracking-[0.4em] text-indigo-600">{t('fcs.cardGenerator')}</h3>
+              <h3 className="text-[11px] lg:text-[11px] font-black uppercase tracking-[0.4em] text-indigo-600">{t('fcs.cardGenerator')}</h3>
 
               <div className="space-y-4">
-                <div className="flex justify-between items-center text-[9px] lg:text-[10px] font-black uppercase text-slate-400 tracking-widest px-2">
+                <div className="flex justify-between items-center text-[11px] lg:text-[11px] font-black uppercase text-slate-400 tracking-widest px-2">
                   <span>{t('fcs.cardCount')}</span>
                   <span>{selectedCount}</span>
                 </div>
@@ -758,7 +759,7 @@ export const FlashcardSystem: React.FC<FlashcardSystemProps> = ({
                       key={count}
                       onClick={() => setSelectedCount(count)}
                       aria-pressed={selectedCount === count}
-                      className={`flex-1 py-2 rounded-lg lg:rounded-xl text-[9px] lg:text-[10px] font-black transition-all ${selectedCount === count ? 'bg-indigo-600 text-white shadow-lg' : 'text-slate-400 hover:text-slate-600'}`}
+                      className={`flex-1 py-2 rounded-lg lg:rounded-xl text-[11px] lg:text-[11px] font-black transition-all ${selectedCount === count ? 'bg-indigo-600 text-white shadow-lg' : 'text-slate-400 hover:text-slate-600'}`}
                     >
                       {count}
                     </button>
@@ -769,7 +770,7 @@ export const FlashcardSystem: React.FC<FlashcardSystemProps> = ({
               {isGenerating ? (
                 <div className="py-8 flex flex-col items-center gap-3 text-center">
                   <div className="w-8 h-8 border-4 border-indigo-100 border-t-indigo-600 rounded-full animate-spin" />
-                  <p className="text-[10px] font-black uppercase tracking-widest text-indigo-600 animate-pulse">{t('fcs.cardsForming')}</p>
+                  <p className="text-[11px] font-black uppercase tracking-widest text-indigo-600 animate-pulse">{t('fcs.cardsForming')}</p>
                 </div>
               ) : (
                 <SourceSelector
@@ -787,7 +788,7 @@ export const FlashcardSystem: React.FC<FlashcardSystemProps> = ({
 
         <div className="lg:col-span-7 bg-white dark:bg-slate-900 rounded-[30px] lg:rounded-[40px] border border-slate-200 dark:border-slate-800 shadow-3d-deep order-1 lg:order-2">
           <div className="p-5 sm:p-6 lg:p-10 border-b border-slate-50 dark:border-slate-800 flex flex-col sm:flex-row justify-between items-center gap-4 lg:gap-0">
-            <h3 className="text-[10px] lg:text-[11px] font-black uppercase tracking-[0.3em] lg:tracking-[0.4em] text-slate-400">{t('fcs.yourDecks', { n: decks.length })}</h3>
+            <h3 className="text-[11px] lg:text-[11px] font-black uppercase tracking-[0.3em] lg:tracking-[0.4em] text-slate-400">{t('fcs.yourDecks', { n: decks.length })}</h3>
             <div className="flex gap-3 sm:gap-4 items-center flex-wrap justify-center sm:justify-end">
               <input
                 ref={importInputRef}
@@ -798,7 +799,7 @@ export const FlashcardSystem: React.FC<FlashcardSystemProps> = ({
               />
               <button
                 onClick={() => setShowAnkiImport(true)}
-                className="flex items-center gap-2 px-4 py-2 bg-slate-100 dark:bg-slate-800 text-slate-500 hover:text-indigo-600 rounded-xl text-[9px] font-black uppercase tracking-widest transition-colors"
+                className="flex items-center gap-2 px-4 py-2 bg-slate-100 dark:bg-slate-800 text-slate-500 hover:text-indigo-600 rounded-xl text-[11px] font-black uppercase tracking-widest transition-colors"
                 title={t('fcs.importCards')}
               >
                 <svg xmlns="http://www.w3.org/2000/svg" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
@@ -807,7 +808,7 @@ export const FlashcardSystem: React.FC<FlashcardSystemProps> = ({
               {decks.length > 0 && (
                 <button
                   onClick={handleExportAll}
-                  className="flex items-center gap-2 px-4 py-2 bg-slate-100 dark:bg-slate-800 text-slate-500 hover:text-indigo-600 rounded-xl text-[9px] font-black uppercase tracking-widest transition-colors"
+                  className="flex items-center gap-2 px-4 py-2 bg-slate-100 dark:bg-slate-800 text-slate-500 hover:text-indigo-600 rounded-xl text-[11px] font-black uppercase tracking-widest transition-colors"
                   title={t('fcs.exportAll')}
                 >
                   <svg xmlns="http://www.w3.org/2000/svg" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
@@ -821,7 +822,7 @@ export const FlashcardSystem: React.FC<FlashcardSystemProps> = ({
             {decks.length === 0 ? (
               <div className="py-20 lg:py-32 text-center space-y-4 lg:space-y-6 opacity-30 px-6">
                 <EmojiImage emoji="🗃️" size={64} className="mx-auto" />
-                <p className="text-[10px] lg:text-sm font-black uppercase tracking-widest">{t('fcs.noDecks')}</p>
+                <p className="text-[11px] lg:text-sm font-black uppercase tracking-widest">{t('fcs.noDecks')}</p>
                 <p className="text-xs">{t('fcs.noDecksHint')}</p>
               </div>
             ) : (
@@ -840,7 +841,7 @@ export const FlashcardSystem: React.FC<FlashcardSystemProps> = ({
                         <h4 className="text-base lg:text-lg font-black text-slate-900 dark:text-white break-words group-hover:text-indigo-600 transition-colors cursor-pointer" style={{ textWrap: 'balance' as any }} onClick={() => handleOpenDeck(deck.id)}>
                           {deck.title}
                         </h4>
-                        {!deck.sourceDocumentId && <span className="bg-slate-100 dark:bg-slate-800 text-[9px] font-black uppercase px-2 py-0.5 rounded text-slate-400 tracking-tighter">{t('fcs.manual')}</span>}
+                        {!deck.sourceDocumentId && <span className="bg-slate-100 dark:bg-slate-800 text-[11px] font-black uppercase px-2 py-0.5 rounded text-slate-400 tracking-tighter">{t('fcs.manual')}</span>}
                       </div>
                       {/* Zahlen mit Beschriftung statt drei farbiger Ziffern ohne Legende
                           (Audit 23.09.2026). */}

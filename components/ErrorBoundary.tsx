@@ -40,13 +40,13 @@ class ErrorBoundaryImpl extends React.Component<React.PropsWithChildren<{}>, EBS
             {translate('eb.desc')}
           </p>
           {state.error && (
-            <pre className="text-[10px] text-left bg-slate-100 dark:bg-slate-800/50 p-3 rounded-xl overflow-auto max-h-32 text-slate-600 dark:text-slate-400">
+            <pre className="text-[11px] text-left bg-slate-100 dark:bg-slate-800/50 p-3 rounded-xl overflow-auto max-h-32 text-slate-600 dark:text-slate-400">
               {state.error.message}
             </pre>
           )}
           <button
             onClick={() => window.location.reload()}
-            className="px-6 py-3 rounded-xl text-[10px] font-black uppercase tracking-widest text-white"
+            className="px-6 py-3 rounded-xl text-[11px] font-black uppercase tracking-widest text-white"
             style={{ background: 'var(--primary)' }}
           >
             {translate('eb.reload')}

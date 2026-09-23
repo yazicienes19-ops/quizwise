@@ -67,7 +67,7 @@ const Chip: React.FC<{ selected: boolean; onClick: () => void; label: string; de
     `}
   >
     <p className="text-[11px] font-black">{label}</p>
-    {desc && <p className={`text-[9px] mt-0.5 ${selected && !accent ? 'text-indigo-500' : selected && accent ? 'text-white/70' : 'text-slate-400'}`}>{desc}</p>}
+    {desc && <p className={`text-[11px] mt-0.5 ${selected && !accent ? 'text-indigo-500' : selected && accent ? 'text-white/70' : 'text-slate-400'}`}>{desc}</p>}
   </button>
 );
 
@@ -141,7 +141,7 @@ export const QuizSetup: React.FC<QuizSetupProps> = ({ doc = null, sourceName, ba
       {/* Back */}
       <button
         onClick={onBack}
-        className="flex items-center gap-2 text-slate-400 hover:text-indigo-600 transition-colors text-[10px] font-black uppercase tracking-widest"
+        className="flex items-center gap-2 text-slate-400 hover:text-indigo-600 transition-colors text-[11px] font-black uppercase tracking-widest"
       >
         <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round">
           <polyline points="15 18 9 12 15 6"/>
@@ -151,21 +151,21 @@ export const QuizSetup: React.FC<QuizSetupProps> = ({ doc = null, sourceName, ba
 
       {/* Source header */}
       <div className="rounded-[28px] p-6 shadow-3d-deep" style={{ background: 'var(--primary)', color: 'var(--primary-text)' }}>
-        <p className="text-[9px] font-black uppercase tracking-[0.3em] opacity-60 mb-1">{t('quizSetup.quizFrom')}</p>
+        <p className="text-[11px] font-black uppercase tracking-[0.3em] opacity-60 mb-1">{t('quizSetup.quizFrom')}</p>
         <p className="text-xl font-black leading-tight">{docTitle}</p>
         {stats.count > 0 && (
           <div className="flex gap-4 mt-3 pt-3 border-t border-white/20">
             <div>
-              <p className="text-[9px] font-black uppercase tracking-widest opacity-60">{t('quizSetup.quizzes')}</p>
+              <p className="text-[11px] font-black uppercase tracking-widest opacity-60">{t('quizSetup.quizzes')}</p>
               <p className="text-sm font-black">{stats.count}</p>
             </div>
             <div>
-              <p className="text-[9px] font-black uppercase tracking-widest opacity-60">{t('quizSetup.avgAccuracy')}</p>
+              <p className="text-[11px] font-black uppercase tracking-widest opacity-60">{t('quizSetup.avgAccuracy')}</p>
               <p className="text-sm font-black">{stats.avgAccuracy}%</p>
             </div>
             {stats.lastAt && (
               <div>
-                <p className="text-[9px] font-black uppercase tracking-widest opacity-60">{t('quizSetup.last')}</p>
+                <p className="text-[11px] font-black uppercase tracking-widest opacity-60">{t('quizSetup.last')}</p>
                 <p className="text-sm font-black">{formatDate(stats.lastAt, { day: '2-digit', month: 'short' })}</p>
               </div>
             )}
@@ -176,7 +176,7 @@ export const QuizSetup: React.FC<QuizSetupProps> = ({ doc = null, sourceName, ba
       {/* Multi-Dokument Auswahl */}
       {otherDocs.length > 0 && (
         <div className="space-y-2">
-          <p className="text-[9px] font-black uppercase tracking-widest text-slate-400">{t('quizSetup.includeDocs')}</p>
+          <p className="text-[11px] font-black uppercase tracking-widest text-slate-400">{t('quizSetup.includeDocs')}</p>
           {doc && [doc, ...otherDocs].map(d => (
             <button
               key={d.id}
@@ -200,8 +200,8 @@ export const QuizSetup: React.FC<QuizSetupProps> = ({ doc = null, sourceName, ba
                   </svg>
                 )}
               </div>
-              <span className="text-[10px] font-black break-words dark:text-white">{documentDisplayName(d)}</span>
-              {d.id === doc.id && <span className="text-[9px] font-black text-slate-400 shrink-0">{t('quizSetup.primary')}</span>}
+              <span className="text-[11px] font-black break-words dark:text-white">{documentDisplayName(d)}</span>
+              {d.id === doc.id && <span className="text-[11px] font-black text-slate-400 shrink-0">{t('quizSetup.primary')}</span>}
             </button>
           ))}
         </div>
@@ -209,7 +209,7 @@ export const QuizSetup: React.FC<QuizSetupProps> = ({ doc = null, sourceName, ba
 
       {/* Question type */}
       <div className="space-y-3">
-        <p className="text-[9px] font-black uppercase tracking-widest text-slate-400">{t('quizSetup.questionType')}</p>
+        <p className="text-[11px] font-black uppercase tracking-widest text-slate-400">{t('quizSetup.questionType')}</p>
         <div className="grid grid-cols-2 gap-2">
           {QUESTION_TYPES.map(({ value, labelKey, descKey }) => (
             <Chip key={value} selected={selectedTypes.has(value)} onClick={() => toggleType(value)} label={t(labelKey)} desc={t(descKey)} />
@@ -219,7 +219,7 @@ export const QuizSetup: React.FC<QuizSetupProps> = ({ doc = null, sourceName, ba
 
       {/* Difficulty */}
       <div className="space-y-3">
-        <p className="text-[9px] font-black uppercase tracking-widest text-slate-400">{t('quizSetup.difficulty')}</p>
+        <p className="text-[11px] font-black uppercase tracking-widest text-slate-400">{t('quizSetup.difficulty')}</p>
         <div className="grid grid-cols-4 gap-2">
           {DIFFICULTIES.map(({ value, labelKey }) => (
             <Chip key={value} selected={difficulty === value} onClick={() => setDifficulty(value)} label={t(labelKey)} accent={value === 'klausurnah' && difficulty === 'klausurnah'} />
@@ -231,7 +231,7 @@ export const QuizSetup: React.FC<QuizSetupProps> = ({ doc = null, sourceName, ba
       <div className="space-y-3">
         <button
           onClick={() => setShowAdvancedTypes(v => !v)}
-          className="flex items-center gap-2 text-[9px] font-black uppercase tracking-widest text-slate-400 hover:text-indigo-600 transition-colors"
+          className="flex items-center gap-2 text-[11px] font-black uppercase tracking-widest text-slate-400 hover:text-indigo-600 transition-colors"
         >
           <svg xmlns="http://www.w3.org/2000/svg" width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round"
             className={`transition-transform ${showAdvancedTypes ? 'rotate-90' : ''}`}
@@ -251,7 +251,7 @@ export const QuizSetup: React.FC<QuizSetupProps> = ({ doc = null, sourceName, ba
 
       {/* Count */}
       <div className="space-y-3">
-        <p className="text-[9px] font-black uppercase tracking-widest text-slate-400">{t('quizSetup.count')}</p>
+        <p className="text-[11px] font-black uppercase tracking-widest text-slate-400">{t('quizSetup.count')}</p>
         <div className="grid grid-cols-4 gap-2">
           {COUNTS.map(n => (
             <Chip key={n} selected={!showCustom && questionCount === n} onClick={() => { setShowCustom(false); setQuestionCount(n); }} label={String(n)} />
@@ -275,7 +275,7 @@ export const QuizSetup: React.FC<QuizSetupProps> = ({ doc = null, sourceName, ba
       {/* Focus (only if weak topics exist) */}
       {stats.weakTopics.length > 0 && (
         <div className="space-y-3">
-          <p className="text-[9px] font-black uppercase tracking-widest text-slate-400">{t('quizSetup.focus')}</p>
+          <p className="text-[11px] font-black uppercase tracking-widest text-slate-400">{t('quizSetup.focus')}</p>
           <div className="grid grid-cols-2 gap-2">
             <Chip selected={focus === 'all'} onClick={() => setFocus('all')} label={t('quizSetup.focusAll')} desc={t('quizSetup.focusAllDesc')} />
             <Chip selected={focus === 'weak'} onClick={() => setFocus('weak')} label={t('quizSetup.focusWeak')} desc={stats.weakTopics.slice(0, 2).join(', ')} />
@@ -287,7 +287,7 @@ export const QuizSetup: React.FC<QuizSetupProps> = ({ doc = null, sourceName, ba
       <div className="flex items-center justify-between p-5 bg-white dark:bg-slate-900 rounded-[24px] border border-slate-200 dark:border-slate-800 shadow-3d-raised">
         <div>
           <p className="text-sm font-black dark:text-white">{t('quizSetup.examMode')}</p>
-          <p className="text-[10px] text-slate-500 dark:text-slate-400 mt-0.5">{t('quizSetup.examModeDesc')}</p>
+          <p className="text-[11px] text-slate-500 dark:text-slate-400 mt-0.5">{t('quizSetup.examModeDesc')}</p>
         </div>
         <button
           onClick={() => setExamMode(v => !v)}

@@ -97,7 +97,7 @@ export const AuthPage: React.FC = () => {
         {/* Headline */}
         <div className="relative z-10 space-y-6">
           <div className="space-y-3">
-            <p className="text-[10px] font-black uppercase tracking-[0.3em] text-white/60">
+            <p className="text-[11px] font-black uppercase tracking-[0.3em] text-white/60">
               Dein Lernbegleiter fürs Studium
             </p>
             <h1 className="text-4xl font-black tracking-tight text-white leading-tight">
@@ -128,7 +128,7 @@ export const AuthPage: React.FC = () => {
         </div>
 
         {/* Footer */}
-        <p className="relative z-10 text-[10px] text-white/40 font-black uppercase tracking-widest">
+        <p className="relative z-10 text-[11px] text-white/40 font-black uppercase tracking-widest">
           © 2026 StudeArc
         </p>
       </div>
@@ -164,7 +164,7 @@ export const AuthPage: React.FC = () => {
               <button
                 key={m}
                 onClick={() => { setMode(m); setError(''); setSuccessMsg(''); }}
-                className={`flex-1 py-2.5 rounded-xl text-[10px] font-black uppercase tracking-widest transition-all ${
+                className={`flex-1 py-2.5 rounded-xl text-[11px] font-black uppercase tracking-widest transition-all ${
                   mode === m
                     ? 'bg-white dark:bg-slate-700 text-slate-900 dark:text-white shadow'
                     : 'text-slate-400 hover:text-slate-600 dark:hover:text-slate-300'
@@ -179,7 +179,7 @@ export const AuthPage: React.FC = () => {
           <form onSubmit={handleSubmit} className="space-y-4">
             {mode === 'register' && (
               <div className="space-y-1.5">
-                <label className="text-[10px] font-black uppercase tracking-widest text-slate-400">Name</label>
+                <label className="text-[11px] font-black uppercase tracking-widest text-slate-400">Name</label>
                 <div className="relative">
                   <User className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" strokeWidth={1.75} />
                   <input
@@ -196,7 +196,7 @@ export const AuthPage: React.FC = () => {
             )}
 
             <div className="space-y-1.5">
-              <label className="text-[10px] font-black uppercase tracking-widest text-slate-400">E-Mail</label>
+              <label className="text-[11px] font-black uppercase tracking-widest text-slate-400">E-Mail</label>
               <div className="relative">
                 <Mail className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" strokeWidth={1.75} />
                 <input
@@ -211,7 +211,7 @@ export const AuthPage: React.FC = () => {
             </div>
 
             <div className="space-y-1.5">
-              <label className="text-[10px] font-black uppercase tracking-widest text-slate-400">Passwort</label>
+              <label className="text-[11px] font-black uppercase tracking-widest text-slate-400">Passwort</label>
               <div className="relative">
                 <Lock className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" strokeWidth={1.75} />
                 <input
@@ -253,7 +253,7 @@ export const AuthPage: React.FC = () => {
           {/* Demo-Login */}
           <div className="relative flex items-center gap-3">
             <div className="flex-1 h-px bg-slate-200 dark:bg-slate-700" />
-            <span className="text-[10px] font-black uppercase tracking-widest text-slate-400">oder</span>
+            <span className="text-[11px] font-black uppercase tracking-widest text-slate-400">oder</span>
             <div className="flex-1 h-px bg-slate-200 dark:bg-slate-700" />
           </div>
 
@@ -270,7 +270,7 @@ export const AuthPage: React.FC = () => {
           </button>
 
           {mode === 'register' && (
-            <p className="text-center text-[10px] text-slate-400 leading-relaxed">
+            <p className="text-center text-[11px] text-slate-400 leading-relaxed">
               Mit der Registrierung akzeptierst du unsere{' '}
               <button type="button" onClick={() => setLegalPage('agb')} className="underline font-bold hover:text-slate-600 dark:hover:text-slate-200">AGB</button>
               {' '}und unsere{' '}

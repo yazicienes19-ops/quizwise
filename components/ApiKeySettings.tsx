@@ -48,7 +48,7 @@ export const ApiKeySettings: React.FC<ApiKeySettingsProps> = ({ onClose }) => {
             </div>
             <div>
               <h2 className="text-base font-black dark:text-white uppercase tracking-tight">{t('aks.title')}</h2>
-              <p className="text-[10px] text-slate-400 font-black uppercase tracking-widest">{t('aks.geminiConfig')}</p>
+              <p className="text-[11px] text-slate-400 font-black uppercase tracking-widest">{t('aks.geminiConfig')}</p>
             </div>
           </div>
           <button aria-label={t('common.close')}
@@ -80,7 +80,7 @@ export const ApiKeySettings: React.FC<ApiKeySettingsProps> = ({ onClose }) => {
 
         {/* Input */}
         <div className="space-y-2">
-          <label className="text-[10px] font-black uppercase tracking-widest text-slate-400">{t('aks.geminiApiKey')}</label>
+          <label className="text-[11px] font-black uppercase tracking-widest text-slate-400">{t('aks.geminiApiKey')}</label>
           <input
             type="password"
             value={inputKey}

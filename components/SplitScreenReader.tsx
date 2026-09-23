@@ -326,7 +326,7 @@ export const SplitScreenReader: React.FC<SplitScreenReaderProps> = ({ doc, userI
             <path d="M6 4h9l3 3v13H6z" /><path d="M15 4v3h3" /><path d="M9 12h6M9 16h6" />
           </svg>
         </button>
-        <button onClick={onBack} className="shrink-0 text-[10px] font-black uppercase tracking-widest text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 transition-colors">
+        <button onClick={onBack} className="shrink-0 text-[11px] font-black uppercase tracking-widest text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 transition-colors">
           {t('rd.back')}
         </button>
         <div className="min-w-0 flex-1">
@@ -339,12 +339,12 @@ export const SplitScreenReader: React.FC<SplitScreenReaderProps> = ({ doc, userI
           <div className="w-16 h-1 rounded-full overflow-hidden" style={{ background: 'var(--border-color)' }}>
             <div className="h-full rounded-full" style={{ width: `${Math.round((doneIndices.length / chapters.length) * 100)}%`, background: 'var(--primary)' }} />
           </div>
-          <p className="text-[10px] font-medium text-slate-400 whitespace-nowrap">{doneIndices.length} / {chapters.length}</p>
+          <p className="text-[11px] font-medium text-slate-400 whitespace-nowrap">{doneIndices.length} / {chapters.length}</p>
         </div>
         <button
           onClick={handleStartFeynman}
           disabled={doneIndices.length === 0}
-          className="shrink-0 px-4 py-2.5 rounded-2xl text-[10px] font-black uppercase tracking-widest transition-all hover:scale-[1.02] disabled:opacity-40 disabled:cursor-not-allowed"
+          className="shrink-0 px-4 py-2.5 rounded-2xl text-[11px] font-black uppercase tracking-widest transition-all hover:scale-[1.02] disabled:opacity-40 disabled:cursor-not-allowed"
           style={{ background: 'var(--primary)', color: 'var(--primary-text)' }}
         >
           {t('rd.toFeynman')}
@@ -366,7 +366,7 @@ export const SplitScreenReader: React.FC<SplitScreenReaderProps> = ({ doc, userI
             className="absolute inset-y-0 left-0 w-[280px] max-w-[80%] rounded-l-[20px] flex flex-col z-20 shadow-2xl transition-transform duration-200"
             style={{ background: 'var(--bg-sidebar)', borderRight: '1px solid var(--border-color)', transform: tocOpen ? 'translateX(0)' : 'translateX(-100%)' }}
           >
-            <div className="shrink-0 px-5 py-4 flex items-center gap-2 text-[10px] font-black uppercase tracking-[0.12em]" style={{ color: 'var(--text-main)', opacity: 0.55, borderBottom: '1px solid var(--border-color)' }}>
+            <div className="shrink-0 px-5 py-4 flex items-center gap-2 text-[11px] font-black uppercase tracking-[0.12em]" style={{ color: 'var(--text-main)', opacity: 0.55, borderBottom: '1px solid var(--border-color)' }}>
               <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><path d="M4 6h16M4 12h16M4 18h10" /></svg>
               {t('rd.tocTitle')}
             </div>
@@ -389,7 +389,7 @@ export const SplitScreenReader: React.FC<SplitScreenReaderProps> = ({ doc, userI
                       {activeChapter.title}
                     </h2>
                     {activeDone && (
-                      <span className="shrink-0 px-3 py-1 rounded-full text-[9px] font-black uppercase tracking-widest bg-emerald-50 dark:bg-emerald-900/20 text-emerald-600 dark:text-emerald-400">
+                      <span className="shrink-0 px-3 py-1 rounded-full text-[11px] font-black uppercase tracking-widest bg-emerald-50 dark:bg-emerald-900/20 text-emerald-600 dark:text-emerald-400">
                         {t('rd.read')}
                       </span>
                     )}
@@ -429,7 +429,7 @@ export const SplitScreenReader: React.FC<SplitScreenReaderProps> = ({ doc, userI
             </>
           )}
           {usesDigest && (
-            <p className="shrink-0 px-4 pb-2 lg:px-8 text-[10px] font-medium text-slate-400 text-center">{t('rd.digestSourceHint')}</p>
+            <p className="shrink-0 px-4 pb-2 lg:px-8 text-[11px] font-medium text-slate-400 text-center">{t('rd.digestSourceHint')}</p>
           )}
         </div>
 
@@ -448,12 +448,12 @@ export const SplitScreenReader: React.FC<SplitScreenReaderProps> = ({ doc, userI
                 <div className="flex items-center gap-2 flex-wrap">
                   <p className="text-sm font-black dark:text-white break-words">{entry.concept}</p>
                   {entry.highlight && (
-                    <span className="shrink-0 px-2 py-0.5 rounded-full text-[9px] font-black uppercase tracking-widest" style={{ background: 'color-mix(in srgb, var(--primary) 15%, transparent)', color: 'var(--primary)' }}>
+                    <span className="shrink-0 px-2 py-0.5 rounded-full text-[11px] font-black uppercase tracking-widest" style={{ background: 'color-mix(in srgb, var(--primary) 15%, transparent)', color: 'var(--primary)' }}>
                       {t('rd.textMarked')}
                     </span>
                   )}
                   {entry.expandedScope && (
-                    <span className="shrink-0 px-2 py-0.5 rounded-full text-[9px] font-black uppercase tracking-widest" style={{ background: 'color-mix(in srgb, var(--primary) 15%, transparent)', color: 'var(--primary)' }}>
+                    <span className="shrink-0 px-2 py-0.5 rounded-full text-[11px] font-black uppercase tracking-widest" style={{ background: 'color-mix(in srgb, var(--primary) 15%, transparent)', color: 'var(--primary)' }}>
                       {t('rd.expandedScope')}
                     </span>
                   )}
@@ -474,7 +474,7 @@ export const SplitScreenReader: React.FC<SplitScreenReaderProps> = ({ doc, userI
                           <button
                             key={q}
                             onClick={() => handleAsk(q)}
-                            className="px-3 py-1.5 rounded-xl text-[10px] font-black transition-all hover:scale-[1.03] text-left"
+                            className="px-3 py-1.5 rounded-xl text-[11px] font-black transition-all hover:scale-[1.03] text-left"
                             style={{
                               background: 'color-mix(in srgb, var(--primary) 10%, transparent)',
                               color: 'var(--primary)',

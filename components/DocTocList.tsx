@@ -58,8 +58,8 @@ export const TocList: React.FC<TocListProps> = ({ entries, depth, expanded, acti
               <span className="shrink-0 w-[11px]" />
             )}
             <span className="truncate flex-1">{entry.title}</span>
-            {!hasChildren && isDone?.(entry.page) && <span className="shrink-0 text-[10px]">✓</span>}
-            {!hasChildren && showPageLabel && <span className="shrink-0 text-[10.5px] tabular-nums opacity-50">S. {entry.page}</span>}
+            {!hasChildren && isDone?.(entry.page) && <span className="shrink-0 text-[11px]">✓</span>}
+            {!hasChildren && showPageLabel && <span className="shrink-0 text-[11px] tabular-nums opacity-50">S. {entry.page}</span>}
           </button>
           {hasChildren && isOpen && (
             <TocList entries={entry.children} depth={depth + 1} expanded={expanded} activePage={activePage} onToggle={onToggle} onJump={onJump} tocKey={tocKey} showPageLabel={showPageLabel} isDone={isDone} />

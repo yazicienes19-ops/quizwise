@@ -16,7 +16,7 @@ export const ExamArchive: React.FC = () => {
   return (
     <div className="max-w-3xl mx-auto px-4 pb-10 space-y-3">
       <div className="space-y-1">
-        <p className="text-[9px] font-black uppercase tracking-[0.3em] text-slate-400">{t('ea.title')}</p>
+        <p className="text-[11px] font-black uppercase tracking-[0.3em] text-slate-400">{t('ea.title')}</p>
         <p className="text-xs text-slate-400 font-medium">{t('ea.subtitle')}</p>
       </div>
 
@@ -35,7 +35,7 @@ export const ExamArchive: React.FC = () => {
               </div>
               <div className="flex-1 min-w-0">
                 <p className="text-sm font-black dark:text-white break-words">{exam.docName}</p>
-                <p className="text-[9px] text-slate-400 font-black uppercase tracking-widest mt-0.5">
+                <p className="text-[11px] text-slate-400 font-black uppercase tracking-widest mt-0.5">
                   {formatDate(exam.timestamp, { day: '2-digit', month: 'short', year: '2-digit' })} · {exam.score}% · {exam.passed ? t('ea.passed') : t('ea.failed')}
                 </p>
               </div>
@@ -47,7 +47,7 @@ export const ExamArchive: React.FC = () => {
                 {exam.categoryBreakdown && exam.categoryBreakdown.length > 0 && (
                   <div className="flex flex-wrap gap-2">
                     {exam.categoryBreakdown.map(cb => (
-                      <span key={cb.category} className="text-[9px] font-black uppercase tracking-widest px-2.5 py-1 rounded-full bg-slate-100 dark:bg-slate-800 text-slate-500 dark:text-slate-400">
+                      <span key={cb.category} className="text-[11px] font-black uppercase tracking-widest px-2.5 py-1 rounded-full bg-slate-100 dark:bg-slate-800 text-slate-500 dark:text-slate-400">
                         {getCategoryLabel(cb.category)} {cb.score}%
                       </span>
                     ))}
@@ -61,10 +61,10 @@ export const ExamArchive: React.FC = () => {
                     <div key={q.id ?? i} className={`p-4 rounded-[18px] border-l-4 ${full ? 'bg-emerald-50/60 dark:bg-emerald-950/10 border-emerald-400' : pts > 0 ? 'bg-amber-50/60 dark:bg-amber-950/10 border-amber-400' : 'bg-rose-50/60 dark:bg-rose-950/10 border-rose-300'}`}>
                       <div className="flex items-start justify-between gap-3">
                         <p className="text-xs font-bold dark:text-white leading-relaxed">{i + 1}. {q.question}</p>
-                        <span className="text-[10px] font-black shrink-0 dark:text-white">{t('ea.points', { a: pts, b: q.points })}</span>
+                        <span className="text-[11px] font-black shrink-0 dark:text-white">{t('ea.points', { a: pts, b: q.points })}</span>
                       </div>
                       <p className="text-[11px] text-slate-500 dark:text-slate-400 mt-2 break-words">
-                        <span className="font-black uppercase text-[9px] tracking-widest">{t('ea.yourAnswer')}: </span>
+                        <span className="font-black uppercase text-[11px] tracking-widest">{t('ea.yourAnswer')}: </span>
                         {formatUserAnswer(q, t)}
                       </p>
                       {q.feedback && (
@@ -73,7 +73,7 @@ export const ExamArchive: React.FC = () => {
                       {q.criterionScores && q.criterionScores.length > 0 && (
                         <div className="mt-1.5 space-y-0.5">
                           {q.criterionScores.map(cs => (
-                            <p key={cs.criterionId} className="text-[10px] text-slate-500 dark:text-slate-400 break-words">
+                            <p key={cs.criterionId} className="text-[11px] text-slate-500 dark:text-slate-400 break-words">
                               {cs.status === 'full' ? '✓' : cs.status === 'partial' ? '~' : '✗'} {cs.criterionName}: {cs.pointsAwarded}/{cs.maxPoints}
                             </p>
                           ))}
@@ -81,7 +81,7 @@ export const ExamArchive: React.FC = () => {
                       )}
                       {!full && q.solution && (
                         <p className="text-[11px] text-slate-600 dark:text-slate-300 mt-1 break-words">
-                          <span className="font-black uppercase text-[9px] tracking-widest">{t('ea.solutionLabel')}: </span>
+                          <span className="font-black uppercase text-[11px] tracking-widest">{t('ea.solutionLabel')}: </span>
                           {q.solution}
                         </p>
                       )}
@@ -92,7 +92,7 @@ export const ExamArchive: React.FC = () => {
                 )}
 
                 {exam.questions && exam.questions.length > 0 && (
-                  <p className="text-[9px] text-slate-400 font-black uppercase tracking-widest text-right">
+                  <p className="text-[11px] text-slate-400 font-black uppercase tracking-widest text-right">
                     {tp('dashboard.questionsN', exam.questions.length)} · {exam.achievedPoints}/{exam.totalPoints} P.
                   </p>
                 )}

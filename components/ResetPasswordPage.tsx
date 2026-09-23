@@ -82,7 +82,7 @@ export const ResetPasswordPage: React.FC<ResetPasswordPageProps> = ({ authChecke
         <p className="text-sm mb-6" style={{ color: 'var(--text-secondary)' }}>{t('rpp.invalidText')}</p>
         <button
           onClick={() => window.location.href = '/'}
-          className="px-6 py-3 rounded-2xl text-[10px] font-black uppercase tracking-widest transition-all hover:scale-105"
+          className="px-6 py-3 rounded-2xl text-[11px] font-black uppercase tracking-widest transition-all hover:scale-105"
           style={{ background: 'var(--primary)', color: 'var(--primary-text)' }}
         >
           {t('rpp.backToApp')}
@@ -98,7 +98,7 @@ export const ResetPasswordPage: React.FC<ResetPasswordPageProps> = ({ authChecke
         <p className="font-black text-lg mb-4 text-emerald-600">{t('rpp.success')}</p>
         <button
           onClick={() => window.location.href = '/'}
-          className="px-6 py-3 rounded-2xl text-[10px] font-black uppercase tracking-widest transition-all hover:scale-105"
+          className="px-6 py-3 rounded-2xl text-[11px] font-black uppercase tracking-widest transition-all hover:scale-105"
           style={{ background: 'var(--primary)', color: 'var(--primary-text)' }}
         >
           {t('rpp.continueToApp')}
@@ -114,7 +114,7 @@ export const ResetPasswordPage: React.FC<ResetPasswordPageProps> = ({ authChecke
       <p className="text-sm mb-6" style={{ color: 'var(--text-secondary)' }}>{t('rpp.subtitle')}</p>
       <form onSubmit={handleSubmit} className="space-y-4">
         <div className="space-y-1.5">
-          <label className="text-[10px] font-black uppercase tracking-widest text-slate-400">{t('rpp.newPassword')}</label>
+          <label className="text-[11px] font-black uppercase tracking-widest text-slate-400">{t('rpp.newPassword')}</label>
           <div className="relative">
             <Lock className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" strokeWidth={1.75} />
             <input
@@ -130,7 +130,7 @@ export const ResetPasswordPage: React.FC<ResetPasswordPageProps> = ({ authChecke
           </div>
         </div>
         <div className="space-y-1.5">
-          <label className="text-[10px] font-black uppercase tracking-widest text-slate-400">{t('rpp.confirmPassword')}</label>
+          <label className="text-[11px] font-black uppercase tracking-widest text-slate-400">{t('rpp.confirmPassword')}</label>
           <div className="relative">
             <Lock className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" strokeWidth={1.75} />
             <input

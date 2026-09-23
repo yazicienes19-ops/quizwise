@@ -30,7 +30,7 @@ export const LanguageToggle: React.FC<{ className?: string }> = ({ className }) 
           key={l}
           onClick={() => changeLocale(l)}
           aria-label={l === 'de' ? 'Deutsch' : l === 'tr' ? 'Türkçe' : 'English'}
-          className="px-2.5 py-1.5 text-[10px] font-black uppercase tracking-widest transition-colors"
+          className="px-2.5 py-1.5 text-[11px] font-black uppercase tracking-widest transition-colors"
           style={locale === l
             ? { background: 'var(--primary)', color: 'var(--primary-text)' }
             : { color: 'var(--text-secondary, #94a3b8)' }}
@@ -230,7 +230,7 @@ export const LandingPage: React.FC<LandingPageProps> = ({ onAuthClick, onLegalCl
       {/* Preise */}
       <section className="max-w-5xl mx-auto px-6 sm:px-8 py-24 sm:py-32">
         <Reveal className="text-center mb-16">
-          <p className="text-[10px] font-black uppercase tracking-[0.4em] mb-3" style={{ color: '#8A8172' }}>{t('landing.pricing.eyebrow')}</p>
+          <p className="text-[11px] font-black uppercase tracking-[0.4em] mb-3" style={{ color: '#8A8172' }}>{t('landing.pricing.eyebrow')}</p>
           <h2 style={{ ...serif, fontSize: 'clamp(30px, 3.6vw, 46px)', fontWeight: 600, lineHeight: 1.12 }}>{t('landing.pricing.title')}</h2>
         </Reveal>
         <div className="grid grid-cols-1 md:grid-cols-2 gap-6 max-w-3xl mx-auto">
@@ -238,7 +238,7 @@ export const LandingPage: React.FC<LandingPageProps> = ({ onAuthClick, onLegalCl
           {/* Free */}
           <Reveal>
             <div className="p-8 rounded-[6px] border border-[rgba(27,42,74,0.15)] h-full transition-all duration-300 hover:-translate-y-1 hover:shadow-lg hover:border-[var(--primary)]">
-              <p className="text-[10px] font-black uppercase tracking-widest mb-2" style={{ color: '#8A8172' }}>{t('landing.pricing.free')}</p>
+              <p className="text-[11px] font-black uppercase tracking-widest mb-2" style={{ color: '#8A8172' }}>{t('landing.pricing.free')}</p>
               <p style={{ ...serif, fontSize: 44, fontWeight: 600 }} className="mb-1">{t('landing.pricing.freePrice')}</p>
               <p className="text-[11px] mb-8" style={{ color: '#8A8172' }}>{t('landing.pricing.freeSub')}</p>
               <ul className="space-y-3 mb-8">
@@ -262,15 +262,15 @@ export const LandingPage: React.FC<LandingPageProps> = ({ onAuthClick, onLegalCl
           {/* Pro */}
           <Reveal style={{ transitionDelay: '90ms' } as React.CSSProperties}>
             <div className="p-8 rounded-[6px] border-2 relative h-full transition-all duration-300 hover:-translate-y-1 hover:shadow-2xl" style={{ borderColor: 'var(--primary)', background: '#1B2A4A', color: '#FBF9F4' }}>
-              <div className="absolute top-6 right-6 px-2.5 py-1 rounded-full text-[9px] font-black uppercase tracking-widest" style={{ background: 'var(--primary)', color: '#1B2A4A' }}>
+              <div className="absolute top-6 right-6 px-2.5 py-1 rounded-full text-[11px] font-black uppercase tracking-widest" style={{ background: 'var(--primary)', color: '#1B2A4A' }}>
                 {t('landing.pricing.recommended')}
               </div>
-              <p className="text-[10px] font-black uppercase tracking-widest mb-2" style={{ color: 'var(--primary)' }}>Pro</p>
+              <p className="text-[11px] font-black uppercase tracking-widest mb-2" style={{ color: 'var(--primary)' }}>Pro</p>
               <div className="flex items-end gap-3 mb-1">
                 <p style={{ ...serif, fontSize: 44, fontWeight: 600 }}>9,99 €</p>
                 <p className="text-xl font-black mb-1.5 line-through" style={{ color: '#5B6B8C' }}>14,99 €</p>
               </div>
-              <p className="text-[10px] font-black uppercase tracking-widest mb-1" style={{ color: 'var(--primary)' }}>{t('landing.pricing.proSub')}</p>
+              <p className="text-[11px] font-black uppercase tracking-widest mb-1" style={{ color: 'var(--primary)' }}>{t('landing.pricing.proSub')}</p>
               <p className="text-[11px] mb-8" style={{ color: '#C9CFDD' }}>{t('landing.pricing.proPeriod')}</p>
               <ul className="space-y-3 mb-8">
                 {proItems.map(item => (

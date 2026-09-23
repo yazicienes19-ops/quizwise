@@ -158,7 +158,7 @@ export const SourceSelector: React.FC<SourceSelectorProps> = ({
       {/* Header */}
       {label && (
         <div className="px-8 pt-7 pb-0">
-          <p className="text-[10px] font-black uppercase tracking-[0.3em] text-slate-400">{label}</p>
+          <p className="text-[11px] font-black uppercase tracking-[0.3em] text-slate-400">{label}</p>
         </div>
       )}
 
@@ -175,7 +175,7 @@ export const SourceSelector: React.FC<SourceSelectorProps> = ({
               // Generator, Klausur-Simulator) zur Verfügung steht; die "Text bei
               // schmalem Bildschirm ausblenden"-Regel griff dort nicht, weil sie
               // sich am Viewport orientiert, nicht an der (schmalen) Kartenbreite.
-              className={`flex-1 min-w-0 flex flex-col items-center justify-center gap-1 py-2 px-1 rounded-xl text-[9px] font-black uppercase tracking-wider transition-all ${
+              className={`flex-1 min-w-0 flex flex-col items-center justify-center gap-1 py-2 px-1 rounded-xl text-[11px] font-black uppercase tracking-wider transition-all ${
                 tab === tb.id ? 'bg-indigo-600 text-white shadow-lg' : 'text-slate-400 hover:text-slate-600 dark:hover:text-slate-200'
               }`}
             >
@@ -198,7 +198,7 @@ export const SourceSelector: React.FC<SourceSelectorProps> = ({
                 <p className="text-[11px] font-black uppercase tracking-widest dark:text-white">{t('ssel.emptyLibrary')}</p>
                 <button
                   onClick={() => setTab('upload')}
-                  className="text-[10px] font-black uppercase tracking-widest text-indigo-600 hover:underline"
+                  className="text-[11px] font-black uppercase tracking-widest text-indigo-600 hover:underline"
                 >
                   {t('ssel.uploadFirst')}
                 </button>
@@ -219,7 +219,7 @@ export const SourceSelector: React.FC<SourceSelectorProps> = ({
                       style={{ background: 'color-mix(in srgb, var(--border-color) 30%, var(--bg-main))', border: '1px solid var(--border-color)' }}
                     />
                     {search && (
-                      <button onClick={() => setSearch('')} className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600">
+                      <button aria-label={t('common.clear')} onClick={() => setSearch('')} className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600">
                         <X className="w-3.5 h-3.5" strokeWidth={2} />
                       </button>
                     )}
@@ -259,7 +259,7 @@ export const SourceSelector: React.FC<SourceSelectorProps> = ({
                         <FolderOpen size={20} className="shrink-0" style={{ color: 'var(--primary)' }} strokeWidth={1.75} />
                         <div className="flex-1 min-w-0">
                           <p className="text-[12px] font-black dark:text-white break-words">{collection.emoji} {collection.name}</p>
-                          <p className="text-[10px] font-black uppercase tracking-widest mt-0.5" style={{ color: 'var(--primary)' }}>
+                          <p className="text-[11px] font-black uppercase tracking-widest mt-0.5" style={{ color: 'var(--primary)' }}>
                             {t('ssel.wholeFolder')} · {tp('ssel.sourcesN', count)}
                             {ready && included < count && <> · {t('ssel.usableN', { n: included })}</>}
                             {!ready && <> · {t('ssel.processing')}</>}
@@ -285,7 +285,7 @@ export const SourceSelector: React.FC<SourceSelectorProps> = ({
                           <DocIcon type={doc.type} />
                           <div className="flex-1 min-w-0">
                             <p className="text-[12px] font-black dark:text-white break-words">{docTitle(doc)}</p>
-                            <p className="text-[10px] text-slate-400 font-black uppercase tracking-widest mt-0.5 break-words">
+                            <p className="text-[11px] text-slate-400 font-black uppercase tracking-widest mt-0.5 break-words">
                               {doc.type.toUpperCase()}
                               {col && <> · {col.emoji} {col.name}</>}
                             </p>
@@ -311,7 +311,7 @@ export const SourceSelector: React.FC<SourceSelectorProps> = ({
                   <p className={`text-[11px] font-black ${documents.length >= 5 ? 'text-rose-700 dark:text-rose-400' : 'text-slate-600 dark:text-slate-300'}`}>
                     {documents.length >= 5 ? t('ssel.docLimitReached') : t('ssel.docsCount', { n: documents.length })}
                   </p>
-                  <p className="text-[10px] text-slate-400 mt-0.5">
+                  <p className="text-[11px] text-slate-400 mt-0.5">
                     {documents.length >= 5 ? t('ssel.proUnlimited') : t('ssel.freeIncluded')}
                   </p>
                 </div>
@@ -333,7 +333,7 @@ export const SourceSelector: React.FC<SourceSelectorProps> = ({
                 <p className="text-[11px] font-black uppercase tracking-widest dark:text-white group-hover:text-indigo-600 transition-colors">
                   {isProcessing ? t('ssel.processingFile') : t('ssel.chooseFile')}
                 </p>
-                <p className="text-[10px] text-slate-400">{t('ssel.fileTypes')}</p>
+                <p className="text-[11px] text-slate-400">{t('ssel.fileTypes')}</p>
               </div>
             </button>
             <input
@@ -373,7 +373,7 @@ export const SourceSelector: React.FC<SourceSelectorProps> = ({
                 </div>
                 <div>
                   <p className="text-[11px] font-black dark:text-white">{t('ssel.saveToLibrary')}</p>
-                  <p className="text-[10px] text-slate-400">{t('ssel.reusable')}</p>
+                  <p className="text-[11px] text-slate-400">{t('ssel.reusable')}</p>
                 </div>
               </label>
             )}
@@ -393,7 +393,7 @@ export const SourceSelector: React.FC<SourceSelectorProps> = ({
               style={{ background: 'color-mix(in srgb, var(--border-color) 25%, var(--bg-main))', border: '1px solid var(--border-color)' }}
             />
             <div className="flex items-center justify-between px-1">
-              <span className="text-[10px] text-slate-400">
+              <span className="text-[11px] text-slate-400">
                 {tp('ssel.wordsN', pastedText.trim().split(/\s+/).filter(Boolean).length)}
               </span>
               <button

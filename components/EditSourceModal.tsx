@@ -23,7 +23,7 @@ const Field: React.FC<{
   textarea?: boolean;
 }> = ({ label, value, onChange, placeholder, type = 'text', textarea }) => (
   <div className="space-y-1">
-    <label className="text-[9px] font-black uppercase tracking-widest text-slate-400">{label}</label>
+    <label className="text-[11px] font-black uppercase tracking-widest text-slate-400">{label}</label>
     {textarea ? (
       <textarea
         value={value}
@@ -86,7 +86,7 @@ export const EditSourceModal: React.FC<Props> = ({ doc, meta, onClose, onSaved }
         <div className="flex justify-between items-center px-8 py-6 border-b border-slate-100 dark:border-slate-800">
           <div>
             <h2 id={titleId} className="text-xl font-black dark:text-white">{t('esm.title')}</h2>
-            <p className="text-[10px] font-black uppercase tracking-widest text-slate-400 mt-0.5 break-words max-w-[280px]">
+            <p className="text-[11px] font-black uppercase tracking-widest text-slate-400 mt-0.5 break-words max-w-[280px]">
               {doc.name}
             </p>
           </div>
@@ -130,7 +130,7 @@ export const EditSourceModal: React.FC<Props> = ({ doc, meta, onClose, onSaved }
               <p className={`text-[11px] font-black ${isAltklausur ? 'text-rose-600 dark:text-rose-400' : 'dark:text-white'}`}>
                 {t('upl.isOldExam')}
               </p>
-              <p className="text-[9px] text-slate-400 mt-0.5">{t('esm.oldExamHint')}</p>
+              <p className="text-[11px] text-slate-400 mt-0.5">{t('esm.oldExamHint')}</p>
             </div>
             <div className={`w-5 h-5 rounded flex items-center justify-center shrink-0 border-2 transition-all ${
               isAltklausur ? 'bg-rose-500 border-rose-500' : 'border-slate-300 dark:border-slate-600'

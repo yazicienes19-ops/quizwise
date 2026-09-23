@@ -93,7 +93,7 @@ export const AdminBudgetPanel: React.FC<{ reloadSignal: number }> = ({ reloadSig
           <p className="text-[11px] font-medium text-slate-400 mt-1 max-w-2xl">{t('admin.budget.subtitle')}</p>
         </div>
         {ready && (
-          <span className={`text-[9px] font-black uppercase tracking-widest px-2 py-1 rounded-full ${style.chip}`}>
+          <span className={`text-[11px] font-black uppercase tracking-widest px-2 py-1 rounded-full ${style.chip}`}>
             {t(style.key)}
           </span>
         )}
@@ -110,7 +110,7 @@ export const AdminBudgetPanel: React.FC<{ reloadSignal: number }> = ({ reloadSig
             <p className="text-lg font-black dark:text-white">
               {t('admin.budget.spent', { spent: formatEur(spent), limit: formatEur(limit) })}
             </p>
-            <p className="text-[10px] text-slate-400">
+            <p className="text-[11px] text-slate-400">
               {t('admin.budget.stats', {
                 calls: ready.calls.toLocaleString(localeTag()),
                 users: ready.activeUsers,
@@ -128,7 +128,7 @@ export const AdminBudgetPanel: React.FC<{ reloadSignal: number }> = ({ reloadSig
         <div className="flex items-end gap-3 flex-wrap">
           {fields.map(f => (
             <label key={f.key} className="flex flex-col gap-1">
-              <span className="text-[9px] font-black uppercase tracking-widest text-slate-400">{t(f.label)}</span>
+              <span className="text-[11px] font-black uppercase tracking-widest text-slate-400">{t(f.label)}</span>
               <input
                 type="number"
                 inputMode="decimal"
@@ -144,7 +144,7 @@ export const AdminBudgetPanel: React.FC<{ reloadSignal: number }> = ({ reloadSig
           <button
             onClick={save}
             disabled={saving}
-            className="px-4 py-2 rounded-2xl text-[9px] font-black uppercase tracking-widest text-white transition-opacity disabled:opacity-50"
+            className="px-4 py-2 rounded-2xl text-[11px] font-black uppercase tracking-widest text-white transition-opacity disabled:opacity-50"
             style={{ background: 'var(--primary)' }}
           >
             {t('admin.budget.save')}
@@ -152,7 +152,7 @@ export const AdminBudgetPanel: React.FC<{ reloadSignal: number }> = ({ reloadSig
         </div>
       )}
 
-      {ready && <p className="text-[10px] text-slate-400">{t('admin.budget.note')}</p>}
+      {ready && <p className="text-[11px] text-slate-400">{t('admin.budget.note')}</p>}
     </section>
   );
 };

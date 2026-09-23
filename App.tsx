@@ -39,6 +39,7 @@ import { AppContent } from './components/AppContent';
 import { loadAllCloudData, syncLearningField, syncMetrics, migrateLocalToCloud, syncPreferences, SYNC_DEGRADED_EVENT, notifyCloudPulled, mergeById, mergeReadingProgress, mergeMetrics, type CloudPreferences } from './services/syncService';
 import { useTranslation } from './i18n/I18nProvider';
 import { SPACED_PLANNING_KEY, saveSpacedSettings } from './services/spacedPlanningService';
+import { ConfirmDialogHost } from './components/ConfirmDialogHost';
 
 const LAST_TAB_KEY = 'studearc_last_tab';
 // READER bewusst ausgeschlossen — hängt an einem konkreten pendingActionDoc,
@@ -409,6 +410,7 @@ const App: React.FC = () => {
     return (
       <>
         <ToastContainer />
+        <ConfirmDialogHost />
         <SharedDeckPage
           deckId={sharedDeckMatch[1]}
           userId={auth.user?.id}
@@ -428,6 +430,7 @@ const App: React.FC = () => {
     return (
       <>
         <ToastContainer />
+        <ConfirmDialogHost />
         <SharedLibraryPage
           shareId={sharedLibraryMatch[1]}
           userId={auth.user?.id}
@@ -442,6 +445,7 @@ const App: React.FC = () => {
     return (
       <>
         <ToastContainer />
+        <ConfirmDialogHost />
         <ResetPasswordPage authChecked={auth.authChecked} userId={auth.user?.id} />
       </>
     );
@@ -452,6 +456,7 @@ const App: React.FC = () => {
   if (!auth.user) return (
     <>
       <ToastContainer />
+        <ConfirmDialogHost />
       <LandingPage onAuthClick={() => auth.setShowAuthModal(true)} onLegalClick={setLegalPage} onCookieSettingsClick={() => setShowCookieSettings(true)} />
       {auth.showAuthModal && <AuthModal onClose={() => auth.setShowAuthModal(false)} />}
       {!cookieConsent && !auth.showAuthModal && <CookieBanner
@@ -475,6 +480,7 @@ const App: React.FC = () => {
   return (
     <>
       <ToastContainer />
+        <ConfirmDialogHost />
       {showOnboarding && (
         <OnboardingFlow
           handleFileUpload={docs.handleFileUpload}

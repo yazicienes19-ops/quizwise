@@ -15,6 +15,7 @@ export const en: Translations = {
   'common.confirm': 'Confirm',
   'common.loading': 'Loading…',
   'common.retry': 'Try again',
+  'common.clear': 'Clear',
   'common.someone': 'Someone',
   'page.quiz.title': 'Test what has stuck.',
   'page.cards.title': 'Review before you forget.',
@@ -421,6 +422,7 @@ export const en: Translations = {
   'layout.logout': 'Log out',
   'layout.streakTitle': '{n}-day streak',
   'layout.logoutTitle': '{email} · Log out',
+  'layout.openMenu': 'Open menu',
 
   // legal (Nav-Kürzel)
   'legal.imprint': 'Imprint',
@@ -528,6 +530,7 @@ export const en: Translations = {
   'auth.legalNoticeAnd': 'and our',
   'auth.legalNoticePost': '.',
   'cookie.settingsLink': 'Cookie settings',
+  'cookie.settingsShort': 'Cookies',
   'cookie.adjust': 'Settings',
   'cookie.settings.title': 'Cookie settings',
   'cookie.settings.intro': 'Choose which categories you want to allow. You can change your choice here at any time.',

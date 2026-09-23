@@ -68,7 +68,7 @@ export const SelectionActionButton: React.FC<{ selection: ReaderSelection; onCli
     <div className="absolute z-20 -translate-x-1/2" style={anchor}>
       <button
         onClick={onClick}
-        className="flex items-center gap-1.5 px-3.5 py-2 rounded-full text-[10px] font-black uppercase tracking-wide shadow-lg transition-transform hover:scale-105 animate-in fade-in duration-150"
+        className="flex items-center gap-1.5 px-3.5 py-2 rounded-full text-[11px] font-black uppercase tracking-wide shadow-lg transition-transform hover:scale-105 animate-in fade-in duration-150"
         style={{ background: 'var(--primary)', color: 'var(--primary-text)' }}
       >
         <EmojiImage emoji={meta.emoji} size={13} />

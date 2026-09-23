@@ -28,7 +28,7 @@ const CopyButton: React.FC<{ text: string; label?: string }> = ({ text, label = 
   };
   return (
     <button onClick={handle}
-      className={`text-[9px] font-black uppercase tracking-widest px-3 py-1.5 rounded-xl transition-all ${copied ? 'bg-emerald-100 text-emerald-600' : 'bg-slate-100 dark:bg-slate-700 text-slate-500 hover:bg-indigo-100 hover:text-indigo-600'}`}
+      className={`text-[11px] font-black uppercase tracking-widest px-3 py-1.5 rounded-xl transition-all ${copied ? 'bg-emerald-100 text-emerald-600' : 'bg-slate-100 dark:bg-slate-700 text-slate-500 hover:bg-indigo-100 hover:text-indigo-600'}`}
     >
       {copied ? '✓ Kopiert' : label}
     </button>
@@ -37,9 +37,9 @@ const CopyButton: React.FC<{ text: string; label?: string }> = ({ text, label = 
 
 const InTextRow: React.FC<{ label: string; value: string }> = ({ label, value }) => (
   <div className="flex items-center gap-2 justify-between">
-    <span className="text-[9px] font-bold text-slate-400 shrink-0">{label}:</span>
+    <span className="text-[11px] font-bold text-slate-400 shrink-0">{label}:</span>
     <div className="flex items-center gap-1.5 min-w-0">
-      <code className="text-[10px] bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 px-2 py-0.5 rounded font-mono text-slate-700 dark:text-slate-300 break-words max-w-[160px]">{value || '–'}</code>
+      <code className="text-[11px] bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 px-2 py-0.5 rounded font-mono text-slate-700 dark:text-slate-300 break-words max-w-[160px]">{value || '–'}</code>
       {value && <CopyButton text={value} />}
     </div>
   </div>
@@ -549,11 +549,11 @@ export const TermPaperSystem: React.FC<TermPaperSystemProps> = ({
         <div className="bg-slate-100 dark:bg-slate-800 p-1.5 rounded-[24px] flex flex-wrap justify-center gap-1">
           {TABS.map(t => (
             <button key={t.id} onClick={() => setTab(t.id)}
-              className={`px-5 py-2.5 rounded-[18px] text-[10px] font-black uppercase tracking-widest transition-all flex items-center gap-1.5 ${tab === t.id ? 'bg-white dark:bg-slate-700 text-indigo-600 dark:text-white shadow-md' : 'text-slate-400 hover:text-slate-600 dark:hover:text-slate-300'}`}
+              className={`px-5 py-2.5 rounded-[18px] text-[11px] font-black uppercase tracking-widest transition-all flex items-center gap-1.5 ${tab === t.id ? 'bg-white dark:bg-slate-700 text-indigo-600 dark:text-white shadow-md' : 'text-slate-400 hover:text-slate-600 dark:hover:text-slate-300'}`}
             >
               {t.label}
               {t.id === 'citations' && sources.length > 0 && (
-                <span className={`w-4 h-4 rounded-full text-[9px] font-black flex items-center justify-center shrink-0 ${tab === t.id ? 'bg-indigo-600 text-white' : 'bg-emerald-500 text-white'}`}>
+                <span className={`w-4 h-4 rounded-full text-[11px] font-black flex items-center justify-center shrink-0 ${tab === t.id ? 'bg-indigo-600 text-white' : 'bg-emerald-500 text-white'}`}>
                   {sources.length}
                 </span>
               )}
@@ -599,7 +599,7 @@ export const TermPaperSystem: React.FC<TermPaperSystemProps> = ({
           <div className="space-y-8 animate-in fade-in duration-500">
             {/* Input form */}
             <div className="bg-white dark:bg-slate-900 rounded-[32px] border border-slate-100 dark:border-slate-800 p-6 sm:p-8 space-y-6">
-              <h3 className="text-[10px] font-black uppercase tracking-widest text-indigo-600">Gliederung erstellen</h3>
+              <h3 className="text-[11px] font-black uppercase tracking-widest text-indigo-600">Gliederung erstellen</h3>
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                 <div className="sm:col-span-2">
                   <input type="text" value={topic} onChange={e => setTopic(e.target.value)}
@@ -614,11 +614,11 @@ export const TermPaperSystem: React.FC<TermPaperSystemProps> = ({
                   />
                 </div>
                 <div>
-                  <label className="text-[9px] font-black uppercase tracking-widest text-slate-400 block mb-2">Seitenumfang</label>
+                  <label className="text-[11px] font-black uppercase tracking-widest text-slate-400 block mb-2">Seitenumfang</label>
                   <div className="flex gap-2 flex-wrap">
                     {[5, 10, 15, 20, 25].map(n => (
                       <button key={n} onClick={() => setPageCount(n)}
-                        className={`px-4 py-2 rounded-xl text-[10px] font-black transition-all ${pageCount === n ? 'bg-indigo-600 text-white' : 'bg-slate-100 dark:bg-slate-800 text-slate-500 hover:bg-indigo-50'}`}
+                        className={`px-4 py-2 rounded-xl text-[11px] font-black transition-all ${pageCount === n ? 'bg-indigo-600 text-white' : 'bg-slate-100 dark:bg-slate-800 text-slate-500 hover:bg-indigo-50'}`}
                       >
                         {n} S.
                       </button>
@@ -627,7 +627,7 @@ export const TermPaperSystem: React.FC<TermPaperSystemProps> = ({
                 </div>
                 {moduleDocuments.length > 0 && (
                   <div>
-                    <label className="text-[9px] font-black uppercase tracking-widest text-slate-400 block mb-2">Dokumente als Basis</label>
+                    <label className="text-[11px] font-black uppercase tracking-widest text-slate-400 block mb-2">Dokumente als Basis</label>
                     <div className="space-y-2 max-h-32 overflow-y-auto">
                       {moduleDocuments.map(doc => (
                         <div key={doc.id}
@@ -638,7 +638,7 @@ export const TermPaperSystem: React.FC<TermPaperSystemProps> = ({
                           onKeyDown={e => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); setSelectedDocIds(prev => prev.includes(doc.id) ? prev.filter(i => i !== doc.id) : [...prev, doc.id]); } }}
                           className={`flex items-center gap-3 p-3 rounded-xl border-2 cursor-pointer transition-all text-sm font-medium focus-visible:outline focus-visible:outline-2 focus-visible:outline-[color:var(--primary)] ${selectedDocIds.includes(doc.id) ? 'border-indigo-500 bg-indigo-50 dark:bg-indigo-950/20 text-indigo-700 dark:text-indigo-300' : 'border-slate-100 dark:border-slate-800 text-slate-600 dark:text-slate-400'}`}
                         >
-                          <div className={`w-4 h-4 rounded border-2 flex items-center justify-center shrink-0 text-[9px] ${selectedDocIds.includes(doc.id) ? 'bg-indigo-600 border-indigo-600 text-white' : 'border-slate-300'}`}>
+                          <div className={`w-4 h-4 rounded border-2 flex items-center justify-center shrink-0 text-[11px] ${selectedDocIds.includes(doc.id) ? 'bg-indigo-600 border-indigo-600 text-white' : 'border-slate-300'}`}>
                             {selectedDocIds.includes(doc.id) && '✓'}
                           </div>
                           <span className="break-words">{documentDisplayName(doc)}</span>
@@ -649,7 +649,7 @@ export const TermPaperSystem: React.FC<TermPaperSystemProps> = ({
                 )}
               </div>
               {selectedDocIds.length > 0 && (
-                <p className="text-[10px] font-black uppercase tracking-widest text-indigo-500 text-center">
+                <p className="text-[11px] font-black uppercase tracking-widest text-indigo-500 text-center">
                   {selectedDocIds.length} {selectedDocIds.length === 1 ? 'Dokument' : 'Dokumente'} als Basis ausgewählt
                 </p>
               )}
@@ -667,7 +667,7 @@ export const TermPaperSystem: React.FC<TermPaperSystemProps> = ({
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                   <div className="p-6 bg-indigo-50 dark:bg-indigo-900/20 rounded-[24px] border border-indigo-200 dark:border-indigo-800 space-y-3">
                     <div className="flex items-center justify-between">
-                      <p className="text-[9px] font-black uppercase tracking-widest text-indigo-500">Vorgeschlagene Forschungsfrage</p>
+                      <p className="text-[11px] font-black uppercase tracking-widest text-indigo-500">Vorgeschlagene Forschungsfrage</p>
                       <CopyButton text={framework.fragestellung} />
                     </div>
                     <p className="text-sm font-bold text-indigo-900 dark:text-indigo-100 leading-relaxed italic">
@@ -676,7 +676,7 @@ export const TermPaperSystem: React.FC<TermPaperSystemProps> = ({
                   </div>
                   <div className="p-6 bg-violet-50 dark:bg-violet-900/20 rounded-[24px] border border-violet-200 dark:border-violet-800 space-y-3">
                     <div className="flex items-center justify-between">
-                      <p className="text-[9px] font-black uppercase tracking-widest text-violet-500">Vorläufige These</p>
+                      <p className="text-[11px] font-black uppercase tracking-widest text-violet-500">Vorläufige These</p>
                       <CopyButton text={framework.thesis} />
                     </div>
                     <p className="text-sm font-medium text-violet-900 dark:text-violet-100 leading-relaxed">
@@ -702,7 +702,7 @@ export const TermPaperSystem: React.FC<TermPaperSystemProps> = ({
                             <div className="flex items-center justify-between gap-2 flex-wrap">
                               <h4 className="font-black text-slate-900 dark:text-white">{section.title}</h4>
                               {section.wordCount && (
-                                <span className="text-[9px] font-black uppercase tracking-widest text-slate-400 bg-slate-100 dark:bg-slate-800 px-2 py-1 rounded-full shrink-0">
+                                <span className="text-[11px] font-black uppercase tracking-widest text-slate-400 bg-slate-100 dark:bg-slate-800 px-2 py-1 rounded-full shrink-0">
                                   ca. {section.wordCount} Wörter
                                 </span>
                               )}
@@ -711,7 +711,7 @@ export const TermPaperSystem: React.FC<TermPaperSystemProps> = ({
                             {section.keyPoints && section.keyPoints.length > 0 && (
                               <div className="mt-3 flex flex-wrap gap-1.5">
                                 {section.keyPoints.map((pt, j) => (
-                                  <span key={j} className="text-[9px] font-bold bg-indigo-50 dark:bg-indigo-900/20 text-indigo-600 dark:text-indigo-400 px-2.5 py-1 rounded-full">
+                                  <span key={j} className="text-[11px] font-bold bg-indigo-50 dark:bg-indigo-900/20 text-indigo-600 dark:text-indigo-400 px-2.5 py-1 rounded-full">
                                     {pt}
                                   </span>
                                 ))}
@@ -721,7 +721,7 @@ export const TermPaperSystem: React.FC<TermPaperSystemProps> = ({
                               <div className="mt-4 space-y-2 pl-4 border-l-2 border-slate-100 dark:border-slate-800">
                                 {section.subsections.map((sub, j) => (
                                   <div key={j} className="flex items-start gap-3">
-                                    <span className="text-[10px] font-black text-slate-400 shrink-0 mt-0.5">{sub.number}</span>
+                                    <span className="text-[11px] font-black text-slate-400 shrink-0 mt-0.5">{sub.number}</span>
                                     <div>
                                       <p className="text-sm font-bold text-slate-700 dark:text-slate-300">{sub.title}</p>
                                       {sub.description && <p className="text-xs text-slate-400 mt-0.5">{sub.description}</p>}
@@ -751,7 +751,7 @@ export const TermPaperSystem: React.FC<TermPaperSystemProps> = ({
             <div className="flex flex-wrap gap-2 justify-center">
               {PHRASE_CATEGORIES.map((cat, i) => (
                 <button key={i} onClick={() => setActivePhraseTab(i)}
-                  className={`px-4 py-2 rounded-xl text-[10px] font-black uppercase tracking-widest transition-all ${activePhraseTab === i ? 'bg-indigo-600 text-white' : 'bg-slate-100 dark:bg-slate-800 text-slate-500 hover:bg-indigo-50 dark:hover:bg-slate-700'}`}
+                  className={`px-4 py-2 rounded-xl text-[11px] font-black uppercase tracking-widest transition-all ${activePhraseTab === i ? 'bg-indigo-600 text-white' : 'bg-slate-100 dark:bg-slate-800 text-slate-500 hover:bg-indigo-50 dark:hover:bg-slate-700'}`}
                 >
                   {cat.label}
                 </button>
@@ -762,7 +762,7 @@ export const TermPaperSystem: React.FC<TermPaperSystemProps> = ({
               {PHRASE_CATEGORIES[activePhraseTab].phrases.map((phrase, i) => (
                 <div key={i} className={`p-5 rounded-[24px] border ${COLOR_MAP[PHRASE_CATEGORIES[activePhraseTab].color]} space-y-2`}>
                   <div className="flex items-center justify-between">
-                    <p className="text-[9px] font-black uppercase tracking-widest opacity-60">{phrase.title}</p>
+                    <p className="text-[11px] font-black uppercase tracking-widest opacity-60">{phrase.title}</p>
                     <CopyButton text={phrase.text} />
                   </div>
                   <p className="text-sm font-medium leading-relaxed italic">{phrase.text}</p>
@@ -783,7 +783,7 @@ export const TermPaperSystem: React.FC<TermPaperSystemProps> = ({
           <div className="space-y-8 animate-in fade-in duration-500">
             {/* Quelle per Link */}
             <div className="bg-gradient-to-br from-indigo-50 to-violet-50 dark:from-indigo-900/20 dark:to-violet-900/20 rounded-[32px] border-2 border-indigo-100 dark:border-indigo-800 p-6 space-y-3">
-              <h3 className="text-[10px] font-black uppercase tracking-widest text-indigo-600">Quelle per Link hinzufügen</h3>
+              <h3 className="text-[11px] font-black uppercase tracking-widest text-indigo-600">Quelle per Link hinzufügen</h3>
               <p className="text-xs text-slate-500 dark:text-slate-400">
                 Website-Link einfügen. Titel, Autor und Zitation werden automatisch ermittelt.
               </p>
@@ -795,7 +795,7 @@ export const TermPaperSystem: React.FC<TermPaperSystemProps> = ({
                   className="flex-1 p-4 bg-white dark:bg-slate-800 rounded-2xl border-2 border-transparent focus:border-indigo-500 outline-none dark:text-white transition-colors"
                 />
                 <button onClick={handleQuickAddByUrl} disabled={isQuickAdding || !quickUrl.trim()}
-                  className="px-6 rounded-2xl text-[10px] font-black uppercase tracking-widest bg-indigo-600 text-white hover:bg-indigo-700 disabled:opacity-40 whitespace-nowrap transition-colors"
+                  className="px-6 rounded-2xl text-[11px] font-black uppercase tracking-widest bg-indigo-600 text-white hover:bg-indigo-700 disabled:opacity-40 whitespace-nowrap transition-colors"
                 >
                   {isQuickAdding ? 'Wird geladen...' : 'Hinzufügen'}
                 </button>
@@ -804,7 +804,7 @@ export const TermPaperSystem: React.FC<TermPaperSystemProps> = ({
 
             {/* Manuelles Formular (Korrektur/Sonderfälle) */}
             <div className="bg-white dark:bg-slate-900 rounded-[32px] border border-slate-100 dark:border-slate-800 p-6 space-y-4">
-              <h3 className="text-[10px] font-black uppercase tracking-widest text-indigo-600">Oder manuell eintragen</h3>
+              <h3 className="text-[11px] font-black uppercase tracking-widest text-indigo-600">Oder manuell eintragen</h3>
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                 {[
                   { val: manualAuthor, set: setManualAuthor, ph: 'Autor(en), z.B. Müller, A. & Schmidt, B.' },
@@ -822,7 +822,7 @@ export const TermPaperSystem: React.FC<TermPaperSystemProps> = ({
                     className="flex-1 p-4 bg-slate-50 dark:bg-slate-800 rounded-2xl border-2 border-transparent focus:border-indigo-500 outline-none dark:text-white transition-colors"
                   />
                   <button type="button" onClick={handleLookupSource} disabled={isLookingUp || !manualUrl.trim()}
-                    className="px-5 rounded-2xl text-[10px] font-black uppercase tracking-widest bg-slate-100 dark:bg-slate-800 text-indigo-600 dark:text-indigo-400 hover:bg-slate-200 dark:hover:bg-slate-700 disabled:opacity-40 whitespace-nowrap transition-colors"
+                    className="px-5 rounded-2xl text-[11px] font-black uppercase tracking-widest bg-slate-100 dark:bg-slate-800 text-indigo-600 dark:text-indigo-400 hover:bg-slate-200 dark:hover:bg-slate-700 disabled:opacity-40 whitespace-nowrap transition-colors"
                   >
                     {isLookingUp ? '...' : 'Automatisch ausfüllen'}
                   </button>
@@ -841,7 +841,7 @@ export const TermPaperSystem: React.FC<TermPaperSystemProps> = ({
             ) : (
               <div className="space-y-3">
                 <div className="flex items-center justify-between flex-wrap gap-3">
-                  <p className="text-[10px] font-black uppercase tracking-widest text-slate-400">
+                  <p className="text-[11px] font-black uppercase tracking-widest text-slate-400">
                     {sources.length} {sources.length === 1 ? 'Quelle' : 'Quellen'}
                   </p>
                   {/* Kompakter Stil-Umschalter — derselbe Zustand wie im
@@ -850,7 +850,7 @@ export const TermPaperSystem: React.FC<TermPaperSystemProps> = ({
                   <div className="flex gap-1 bg-slate-100 dark:bg-slate-900 p-1 rounded-xl">
                     {(['APA', 'MLA', 'Harvard', 'Chicago'] as CitationStyle[]).map(s => (
                       <button key={s} onClick={() => setCitationStyle(s)}
-                        className={`px-3 py-1.5 rounded-lg text-[9px] font-black uppercase tracking-widest transition-all ${citationStyle === s ? 'bg-white dark:bg-slate-700 text-indigo-600 dark:text-white shadow-sm' : 'text-slate-400'}`}
+                        className={`px-3 py-1.5 rounded-lg text-[11px] font-black uppercase tracking-widest transition-all ${citationStyle === s ? 'bg-white dark:bg-slate-700 text-indigo-600 dark:text-white shadow-sm' : 'text-slate-400'}`}
                       >
                         {s}
                       </button>
@@ -869,10 +869,10 @@ export const TermPaperSystem: React.FC<TermPaperSystemProps> = ({
                     <div key={s.id} className="bg-white dark:bg-slate-900 rounded-[24px] border border-slate-100 dark:border-slate-800 p-5 flex items-start justify-between gap-4">
                       <div className="min-w-0 flex-1">
                         <p className="font-black text-slate-900 dark:text-white text-sm">{s.title}</p>
-                        <p className="text-[10px] text-slate-400 mt-0.5">{s.authors} · {s.year}</p>
+                        <p className="text-[11px] text-slate-400 mt-0.5">{s.authors} · {s.year}</p>
                         {s.url && (
                           <a href={s.url} target="_blank" rel="noopener noreferrer"
-                            className="inline-flex items-center gap-1 mt-1.5 text-[9px] font-black uppercase tracking-widest text-indigo-500 hover:text-indigo-700 dark:hover:text-indigo-300 transition-colors"
+                            className="inline-flex items-center gap-1 mt-1.5 text-[11px] font-black uppercase tracking-widest text-indigo-500 hover:text-indigo-700 dark:hover:text-indigo-300 transition-colors"
                           >
                             🔗 Zur Quelle
                           </a>
@@ -882,7 +882,7 @@ export const TermPaperSystem: React.FC<TermPaperSystemProps> = ({
                         {entry ? (
                           <CopyButton text={entry} label={`Zitat (${citationStyle})`} />
                         ) : (
-                          <span className="text-[9px] text-slate-400 italic px-2">Formatierung ausstehend...</span>
+                          <span className="text-[11px] text-slate-400 italic px-2">Formatierung ausstehend...</span>
                         )}
                         <button onClick={() => setSources(prev => prev.filter(x => x.id !== s.id))}
                           className="text-slate-300 hover:text-rose-500 transition-colors text-lg">×</button>
@@ -902,7 +902,7 @@ export const TermPaperSystem: React.FC<TermPaperSystemProps> = ({
             <div className="flex gap-2 bg-slate-100 dark:bg-slate-900 p-1 rounded-2xl w-fit">
               {(['APA', 'MLA', 'Harvard', 'Chicago'] as CitationStyle[]).map(s => (
                 <button key={s} onClick={() => setCitationStyle(s)}
-                  className={`px-5 py-2 rounded-xl text-[10px] font-black uppercase tracking-widest transition-all ${citationStyle === s ? 'bg-white dark:bg-slate-700 text-indigo-600 dark:text-white shadow-md' : 'text-slate-400'}`}
+                  className={`px-5 py-2 rounded-xl text-[11px] font-black uppercase tracking-widest transition-all ${citationStyle === s ? 'bg-white dark:bg-slate-700 text-indigo-600 dark:text-white shadow-md' : 'text-slate-400'}`}
                 >
                   {s}
                 </button>
@@ -917,7 +917,7 @@ export const TermPaperSystem: React.FC<TermPaperSystemProps> = ({
               <div className="text-center py-12 space-y-3">
                 <p className="text-slate-400 text-sm">Noch keine Quellen hinzugefügt.</p>
                 <button onClick={() => setTab('sources')}
-                  className="text-[10px] font-black uppercase tracking-widest text-indigo-600 hover:text-indigo-700 transition-colors"
+                  className="text-[11px] font-black uppercase tracking-widest text-indigo-600 hover:text-indigo-700 transition-colors"
                 >
                   → Zur Quellen-Seite
                 </button>
@@ -928,7 +928,7 @@ export const TermPaperSystem: React.FC<TermPaperSystemProps> = ({
                 <div className="bg-gradient-to-br from-indigo-50 to-violet-50 dark:from-indigo-900/20 dark:to-violet-900/20 rounded-[28px] border-2 border-indigo-100 dark:border-indigo-800 p-6 space-y-4">
                   <div className="flex items-center justify-between flex-wrap gap-3">
                     <div>
-                      <p className="text-[10px] font-black uppercase tracking-widest text-indigo-600">Literaturverzeichnis exportieren</p>
+                      <p className="text-[11px] font-black uppercase tracking-widest text-indigo-600">Literaturverzeichnis exportieren</p>
                       <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5">
                         {sources.length} {sources.length === 1 ? 'Quelle' : 'Quellen'} · Stil: <span className="font-bold text-indigo-600">{citationStyle}</span>
                       </p>
@@ -936,7 +936,7 @@ export const TermPaperSystem: React.FC<TermPaperSystemProps> = ({
                     <div className="flex gap-2 flex-wrap">
                       <CopyButton text={buildBibliography()} label="Kopieren" />
                       <button onClick={downloadBibliography}
-                        className="text-[9px] font-black uppercase tracking-widest px-3 py-1.5 rounded-xl bg-indigo-600 text-white hover:bg-indigo-700 transition-all"
+                        className="text-[11px] font-black uppercase tracking-widest px-3 py-1.5 rounded-xl bg-indigo-600 text-white hover:bg-indigo-700 transition-all"
                       >
                         .txt herunterladen
                       </button>
@@ -958,7 +958,7 @@ export const TermPaperSystem: React.FC<TermPaperSystemProps> = ({
                       );
                     })}
                   </div>
-                  <p className="text-[9px] text-slate-400 text-center">
+                  <p className="text-[11px] text-slate-400 text-center">
                     Kopieren → in Word einfügen → fertig. Seitenzahlen bei Direktzitaten manuell ergänzen.
                   </p>
                 </div>
@@ -970,10 +970,10 @@ export const TermPaperSystem: React.FC<TermPaperSystemProps> = ({
                       <div className="flex items-start justify-between gap-4">
                         <div className="min-w-0">
                           <p className="font-black text-slate-900 dark:text-white text-sm">{s.title}</p>
-                          <p className="text-[10px] text-slate-400 mt-0.5">{s.authors} · {s.year}</p>
+                          <p className="text-[11px] text-slate-400 mt-0.5">{s.authors} · {s.year}</p>
                           {s.url && (
                             <a href={s.url} target="_blank" rel="noopener noreferrer"
-                              className="inline-flex items-center gap-1 mt-1.5 text-[9px] font-black uppercase tracking-widest text-indigo-500 hover:text-indigo-700 dark:hover:text-indigo-300 transition-colors"
+                              className="inline-flex items-center gap-1 mt-1.5 text-[11px] font-black uppercase tracking-widest text-indigo-500 hover:text-indigo-700 dark:hover:text-indigo-300 transition-colors"
                             >
                               🔗 Zur Quelle
                             </a>
@@ -993,7 +993,7 @@ export const TermPaperSystem: React.FC<TermPaperSystemProps> = ({
                             return (
                               <div key={style} className={`p-4 rounded-2xl space-y-2 ${isActive ? 'bg-indigo-50 dark:bg-indigo-900/20 border-2 border-indigo-200 dark:border-indigo-800' : 'bg-slate-50 dark:bg-slate-800 border border-slate-100 dark:border-slate-700'}`}>
                                 <div className="flex items-center justify-between">
-                                  <span className={`text-[9px] font-black uppercase tracking-widest ${isActive ? 'text-indigo-600' : 'text-slate-400'}`}>{style}</span>
+                                  <span className={`text-[11px] font-black uppercase tracking-widest ${isActive ? 'text-indigo-600' : 'text-slate-400'}`}>{style}</span>
                                   <CopyButton text={entry || ''} label="Eintrag" />
                                 </div>
                                 {/* Bibliography / Works Cited entry */}
@@ -1063,25 +1063,25 @@ export const TermPaperSystem: React.FC<TermPaperSystemProps> = ({
               {PARAPHRASE_EXAMPLES.map((ex, i) => (
                 <div key={i} className="bg-white dark:bg-slate-900 rounded-[28px] border border-slate-100 dark:border-slate-800 overflow-hidden">
                   <div className="px-6 py-3 bg-slate-50 dark:bg-slate-800 border-b border-slate-100 dark:border-slate-700">
-                    <span className="text-[9px] font-black uppercase tracking-widest text-slate-400">{ex.label}</span>
+                    <span className="text-[11px] font-black uppercase tracking-widest text-slate-400">{ex.label}</span>
                   </div>
                   <div className="p-6 space-y-4">
                     {/* Original */}
                     <div>
-                      <p className="text-[9px] font-black uppercase tracking-widest text-slate-400 mb-1.5">Original (Direktzitat)</p>
+                      <p className="text-[11px] font-black uppercase tracking-widest text-slate-400 mb-1.5">Original (Direktzitat)</p>
                       <p className="text-sm italic text-slate-700 dark:text-slate-300 bg-slate-50 dark:bg-slate-800 p-3 rounded-xl leading-relaxed">{ex.original}</p>
                     </div>
                     {/* Wrong */}
                     <div>
-                      <p className="text-[9px] font-black uppercase tracking-widest text-rose-500 mb-1.5">❌ Falsch: Plagiat</p>
+                      <p className="text-[11px] font-black uppercase tracking-widest text-rose-500 mb-1.5">❌ Falsch: Plagiat</p>
                       <p className="text-sm italic text-slate-700 dark:text-slate-300 bg-rose-50 dark:bg-rose-900/20 border border-rose-200 dark:border-rose-800 p-3 rounded-xl leading-relaxed">{ex.wrong}</p>
-                      <p className="text-[10px] text-rose-600 dark:text-rose-400 mt-1.5 font-medium">{ex.wrongReason}</p>
+                      <p className="text-[11px] text-rose-600 dark:text-rose-400 mt-1.5 font-medium">{ex.wrongReason}</p>
                     </div>
                     {/* Right */}
                     <div>
-                      <p className="text-[9px] font-black uppercase tracking-widest text-emerald-600 mb-1.5">✓ Richtig: korrekte Paraphrase</p>
+                      <p className="text-[11px] font-black uppercase tracking-widest text-emerald-600 mb-1.5">✓ Richtig: korrekte Paraphrase</p>
                       <p className="text-sm italic text-slate-700 dark:text-slate-300 bg-emerald-50 dark:bg-emerald-900/20 border border-emerald-200 dark:border-emerald-800 p-3 rounded-xl leading-relaxed">{ex.right}</p>
-                      <p className="text-[10px] text-emerald-600 dark:text-emerald-400 mt-1.5 font-medium">{ex.rightReason}</p>
+                      <p className="text-[11px] text-emerald-600 dark:text-emerald-400 mt-1.5 font-medium">{ex.rightReason}</p>
                     </div>
                   </div>
                 </div>
@@ -1113,7 +1113,7 @@ export const TermPaperSystem: React.FC<TermPaperSystemProps> = ({
                   </div>
                   {checked.size > 0 && (
                     <button onClick={() => setChecked(new Set())}
-                      className="text-[9px] font-black uppercase tracking-widest text-slate-400 hover:text-rose-500 transition-colors">
+                      className="text-[11px] font-black uppercase tracking-widest text-slate-400 hover:text-rose-500 transition-colors">
                       Zurücksetzen
                     </button>
                   )}
@@ -1127,7 +1127,7 @@ export const TermPaperSystem: React.FC<TermPaperSystemProps> = ({
                 <div className="flex items-center gap-2 px-6 py-4 border-b border-slate-50 dark:border-slate-800">
                   <span>{group.icon}</span>
                   <h3 className="font-black text-sm text-slate-900 dark:text-white">{group.title}</h3>
-                  <span className="ml-auto text-[9px] font-black text-slate-400">
+                  <span className="ml-auto text-[11px] font-black text-slate-400">
                     {group.items.filter(it => checked.has(it.id)).length}/{group.items.length}
                   </span>
                 </div>
@@ -1181,12 +1181,12 @@ export const TermPaperSystem: React.FC<TermPaperSystemProps> = ({
                 ] as const).map(({ key, label, color, content, sub }) => (
                   <div key={key} className={`p-6 rounded-[24px] border ${COLOR_MAP[color]} space-y-3`}>
                     <div className="flex items-center justify-between">
-                      <span className="text-[9px] font-black uppercase tracking-widest opacity-60">{label}</span>
+                      <span className="text-[11px] font-black uppercase tracking-widest opacity-60">{label}</span>
                       <CopyButton text={content} />
                     </div>
                     <p className="text-sm italic leading-relaxed font-medium">{content}</p>
                     <div className="space-y-1 pt-2 border-t border-current border-opacity-10">
-                      {sub.map((s, i) => <p key={i} className="text-[10px] font-bold opacity-60">{s}</p>)}
+                      {sub.map((s, i) => <p key={i} className="text-[11px] font-bold opacity-60">{s}</p>)}
                     </div>
                   </div>
                 ))}

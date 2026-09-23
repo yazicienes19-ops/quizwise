@@ -57,7 +57,7 @@ export const ShareLinkModal: React.FC<ShareLinkModalProps> = ({ url, title, onCl
       >
         <div className="flex justify-between items-start px-8 py-6" style={{ borderBottom: '1px solid var(--border-color)' }}>
           <div className="min-w-0 flex-1 pr-4">
-            <p className="text-[10px] font-black uppercase tracking-widest text-slate-400 mb-1">{t('share.eyebrow')}</p>
+            <p className="text-[11px] font-black uppercase tracking-widest text-slate-400 mb-1">{t('share.eyebrow')}</p>
             <h2 id={titleId} className="text-xl font-black break-words" style={{ color: 'var(--text-main)' }}>{title}</h2>
           </div>
           <ModalCloseButton onClick={onClose} label={t('common.close')} />

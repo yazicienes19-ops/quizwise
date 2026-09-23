@@ -65,7 +65,7 @@ export const OnboardingCard: React.FC<OnboardingCardProps> = ({
               />
             ))}
           </div>
-          <span className="text-[10px] font-black tabular-nums shrink-0" style={{ color: 'var(--text-secondary)' }}>
+          <span className="text-[11px] font-black tabular-nums shrink-0" style={{ color: 'var(--text-secondary)' }}>
             {stepIndex + 1} / {totalSteps}
           </span>
         </div>
@@ -122,7 +122,7 @@ export const OnboardingCard: React.FC<OnboardingCardProps> = ({
               type="button"
               onClick={onBack}
               disabled={!onBack}
-              className="py-3 text-[10px] font-black uppercase tracking-widest text-slate-400 hover:text-slate-600 dark:hover:text-slate-300 transition-colors disabled:opacity-0"
+              className="py-3 text-[11px] font-black uppercase tracking-widest text-slate-400 hover:text-slate-600 dark:hover:text-slate-300 transition-colors disabled:opacity-0"
             >
               ← {t('common.back')}
             </button>
@@ -130,7 +130,7 @@ export const OnboardingCard: React.FC<OnboardingCardProps> = ({
               <button
                 type="button"
                 onClick={onSkip}
-                className="py-3 text-[10px] font-black uppercase tracking-widest text-slate-400 hover:text-slate-600 dark:hover:text-slate-300 transition-colors"
+                className="py-3 text-[11px] font-black uppercase tracking-widest text-slate-400 hover:text-slate-600 dark:hover:text-slate-300 transition-colors"
               >
                 {skipLabel ?? t('onboarding.skip')}
               </button>

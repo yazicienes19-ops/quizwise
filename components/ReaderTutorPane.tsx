@@ -51,13 +51,13 @@ export const ReaderTutorPane: React.FC<ReaderTutorPaneProps> = ({
 
       <div className="flex items-center justify-between gap-3">
         <div className="min-w-0">
-          <p className="text-[10px] font-black uppercase tracking-widest" style={{ color: 'var(--primary)' }}>{t('nav.explainer')}</p>
+          <p className="text-[11px] font-black uppercase tracking-widest" style={{ color: 'var(--primary)' }}>{t('nav.explainer')}</p>
           <p className={`text-xs text-slate-400 font-medium ${expanded ? '' : 'hidden'} lg:block`}>{hint}</p>
         </div>
         <button
           type="button"
           onClick={() => setExpanded(v => !v)}
-          className="lg:hidden shrink-0 text-[10px] font-black uppercase tracking-widest"
+          className="lg:hidden shrink-0 text-[11px] font-black uppercase tracking-widest"
           style={{ color: 'var(--text-secondary)' }}
         >
           {entryCount > 0 && !expanded ? tp('rd.questionsN', entryCount) : toggleLabel}
@@ -83,7 +83,7 @@ export const ReaderTutorPane: React.FC<ReaderTutorPaneProps> = ({
         <button
           onClick={onAsk}
           disabled={!canAsk}
-          className="shrink-0 px-5 py-3 rounded-2xl text-[10px] font-black uppercase tracking-widest transition-all disabled:opacity-40 disabled:cursor-not-allowed"
+          className="shrink-0 px-5 py-3 rounded-2xl text-[11px] font-black uppercase tracking-widest transition-all disabled:opacity-40 disabled:cursor-not-allowed"
           style={{ background: 'var(--primary)', color: 'var(--primary-text)' }}
         >
           {t('rd.ask')}

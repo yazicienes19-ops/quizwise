@@ -96,7 +96,7 @@ export const DocumentViewerModal: React.FC<DocumentViewerModalProps> = ({ doc, o
         <div className="flex justify-between items-center px-6 py-4 border-b border-slate-100 dark:border-slate-800 shrink-0">
           <div className="min-w-0 flex-1 pr-4">
             <h2 id={titleId} className="text-base font-black dark:text-white break-words">{documentDisplayName(doc)}</h2>
-            <p className="text-[9px] font-black uppercase tracking-widest text-slate-400 mt-0.5">
+            <p className="text-[11px] font-black uppercase tracking-widest text-slate-400 mt-0.5">
               {doc.type === 'docx'
                 ? t('dvm.extractedText')
                 : doc.type.toUpperCase()}
@@ -107,7 +107,7 @@ export const DocumentViewerModal: React.FC<DocumentViewerModalProps> = ({ doc, o
               <button
                 onClick={handleDownload}
                 className="p-2.5 bg-slate-100 dark:bg-slate-800 text-slate-400 hover:text-indigo-600 rounded-xl transition-all"
-                title={t('dvm.download')}
+                aria-label={t('dvm.download')} title={t('dvm.download')}
               >
                 <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
                   <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/>

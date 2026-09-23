@@ -58,7 +58,7 @@ export const UpgradeModal: React.FC<UpgradeModalProps> = ({ onClose }) => {
             </div>
             <div>
               <h2 id={titleId} className="text-base font-black dark:text-white uppercase tracking-tight">{t('um.pro')}</h2>
-              <p className="text-[10px] text-slate-400 font-black uppercase tracking-widest">{t('um.unlimitedLearn')}</p>
+              <p className="text-[11px] text-slate-400 font-black uppercase tracking-widest">{t('um.unlimitedLearn')}</p>
             </div>
           </div>
           <button aria-label={t('common.close')} onClick={onClose} className="text-slate-400 hover:text-slate-600 dark:hover:text-white transition-colors">
@@ -73,7 +73,7 @@ export const UpgradeModal: React.FC<UpgradeModalProps> = ({ onClose }) => {
               <p className="text-4xl font-black dark:text-white">9,99 €</p>
               <p className="text-lg font-black text-slate-300 dark:text-slate-600 line-through mb-1">14,99 €</p>
             </div>
-            <p className="text-[10px] font-black uppercase tracking-widest" style={{ color: 'var(--primary)' }}>{t('um.introPriceForever')}</p>
+            <p className="text-[11px] font-black uppercase tracking-widest" style={{ color: 'var(--primary)' }}>{t('um.introPriceForever')}</p>
             <p className="text-[11px] text-slate-400 font-black uppercase tracking-widest">{t('um.perMonth')}</p>
           </div>
         </div>
@@ -110,7 +110,7 @@ export const UpgradeModal: React.FC<UpgradeModalProps> = ({ onClose }) => {
               : <><Zap className="w-4 h-4" strokeWidth={2} /> {t('um.upgradeNow')}</>
             }
           </button>
-          <p className="text-center text-[10px] text-slate-400 mt-3">
+          <p className="text-center text-[11px] text-slate-400 mt-3">
             {t('um.securePayment')}
           </p>
         </div>

@@ -71,7 +71,7 @@ export const EditCardModal: React.FC<EditCardModalProps> = ({
               {isNew ? t('ecm.newCard') : t('ecm.editCard')}
             </h2>
             {!isNew && cardIndex !== undefined && totalCards !== undefined && (
-              <span className="text-[9px] font-black uppercase tracking-widest bg-slate-100 dark:bg-slate-800 text-slate-400 px-2.5 py-1 rounded-full">
+              <span className="text-[11px] font-black uppercase tracking-widest bg-slate-100 dark:bg-slate-800 text-slate-400 px-2.5 py-1 rounded-full">
                 {cardIndex + 1} / {totalCards}
               </span>
             )}
@@ -85,7 +85,7 @@ export const EditCardModal: React.FC<EditCardModalProps> = ({
 
             {/* Front */}
             <div className="space-y-2">
-              <label className="text-[9px] font-black text-slate-400 uppercase tracking-widest ml-1">
+              <label className="text-[11px] font-black text-slate-400 uppercase tracking-widest ml-1">
                 {t('ecm.front')} <span className="text-slate-300">{t('ecm.frontHint')}</span>
               </label>
               <textarea
@@ -96,12 +96,12 @@ export const EditCardModal: React.FC<EditCardModalProps> = ({
                 rows={5}
                 className="w-full p-4 bg-slate-50 dark:bg-slate-800 rounded-2xl border-2 border-transparent focus:border-indigo-500 outline-none dark:text-white font-medium resize-none text-sm leading-relaxed transition-colors"
               />
-              <p className="text-[9px] text-slate-300 dark:text-slate-600 text-right pr-1">{front.length}</p>
+              <p className="text-[11px] text-slate-300 dark:text-slate-600 text-right pr-1">{front.length}</p>
             </div>
 
             {/* Back */}
             <div className="space-y-2">
-              <label className="text-[9px] font-black text-slate-400 uppercase tracking-widest ml-1">
+              <label className="text-[11px] font-black text-slate-400 uppercase tracking-widest ml-1">
                 {t('ecm.back')} <span className="text-slate-300">{t('ecm.backHint')}</span>
               </label>
               <textarea
@@ -111,7 +111,7 @@ export const EditCardModal: React.FC<EditCardModalProps> = ({
                 rows={5}
                 className="w-full p-4 bg-slate-50 dark:bg-slate-800 rounded-2xl border-2 border-transparent focus:border-indigo-500 outline-none dark:text-white font-medium resize-none text-sm leading-relaxed transition-colors"
               />
-              <p className="text-[9px] text-slate-300 dark:text-slate-600 text-right pr-1">{back.length}</p>
+              <p className="text-[11px] text-slate-300 dark:text-slate-600 text-right pr-1">{back.length}</p>
             </div>
           </div>
 
@@ -120,7 +120,7 @@ export const EditCardModal: React.FC<EditCardModalProps> = ({
             <button
               type="button"
               onClick={handleSwap}
-              className="flex items-center gap-2 px-4 py-2 rounded-xl text-[10px] font-black uppercase tracking-widest text-slate-400 hover:text-indigo-600 hover:bg-indigo-50 dark:hover:bg-indigo-950/20 transition-all"
+              className="flex items-center gap-2 px-4 py-2 rounded-xl text-[11px] font-black uppercase tracking-widest text-slate-400 hover:text-indigo-600 hover:bg-indigo-50 dark:hover:bg-indigo-950/20 transition-all"
               title={t('ecm.swapTitle')}
             >
               <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
@@ -141,16 +141,16 @@ export const EditCardModal: React.FC<EditCardModalProps> = ({
           {!isNew && onDelete && (
             showDeleteConfirm ? (
               <div className="flex items-center gap-2 animate-in fade-in duration-150">
-                <span className="text-[10px] font-black text-rose-500 uppercase tracking-widest">{t('ecm.sure')}</span>
+                <span className="text-[11px] font-black text-rose-500 uppercase tracking-widest">{t('ecm.sure')}</span>
                 <button
                   onClick={() => { onDelete(); onClose(); }}
-                  className="px-3 py-2 bg-rose-500 text-white rounded-xl text-[10px] font-black uppercase tracking-widest hover:bg-rose-600 transition-colors"
+                  className="px-3 py-2 bg-rose-500 text-white rounded-xl text-[11px] font-black uppercase tracking-widest hover:bg-rose-600 transition-colors"
                 >
                   {t('lib.delete')}
                 </button>
                 <button
                   onClick={() => setShowDeleteConfirm(false)}
-                  className="px-3 py-2 bg-slate-100 dark:bg-slate-800 text-slate-400 rounded-xl text-[10px] font-black uppercase tracking-widest"
+                  className="px-3 py-2 bg-slate-100 dark:bg-slate-800 text-slate-400 rounded-xl text-[11px] font-black uppercase tracking-widest"
                 >
                   {t('quiz.cancel')}
                 </button>
@@ -159,7 +159,7 @@ export const EditCardModal: React.FC<EditCardModalProps> = ({
               <button
                 onClick={() => setShowDeleteConfirm(true)}
                 className="p-2.5 text-slate-300 hover:text-rose-500 hover:bg-rose-50 dark:hover:bg-rose-950/20 rounded-xl transition-all"
-                title={t('ecm.deleteCard')}
+                aria-label={t('ecm.deleteCard')} title={t('ecm.deleteCard')}
               >
                 <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
                   <polyline points="3 6 5 6 21 6"/>
@@ -173,18 +173,18 @@ export const EditCardModal: React.FC<EditCardModalProps> = ({
 
           <button
             onClick={onClose}
-            className="px-5 py-3 bg-slate-100 dark:bg-slate-800 text-slate-500 rounded-2xl text-[10px] font-black uppercase tracking-widest hover:text-slate-700 transition-colors"
+            className="px-5 py-3 bg-slate-100 dark:bg-slate-800 text-slate-500 rounded-2xl text-[11px] font-black uppercase tracking-widest hover:text-slate-700 transition-colors"
           >
             {t('quiz.cancel')}
           </button>
           <button
             onClick={handleSave}
             disabled={!canSave}
-            className="flex items-center gap-2 px-6 py-3 rounded-2xl text-[10px] font-black uppercase tracking-widest shadow-lg hover:scale-[1.02] transition-all disabled:opacity-40 disabled:scale-100"
+            className="flex items-center gap-2 px-6 py-3 rounded-2xl text-[11px] font-black uppercase tracking-widest shadow-lg hover:scale-[1.02] transition-all disabled:opacity-40 disabled:scale-100"
             style={{ background: 'var(--primary)', color: 'var(--primary-text, #fff)' }}
           >
             {isNew ? t('ecm.add') : t('common.save')}
-            <span className="opacity-50 text-[9px] normal-case font-bold tracking-normal hidden sm:inline">⌘↵</span>
+            <span className="opacity-50 text-[11px] normal-case font-bold tracking-normal hidden sm:inline">⌘↵</span>
           </button>
         </div>
       </div>

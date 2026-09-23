@@ -125,7 +125,7 @@ export function renderMarkdown(text: string): React.ReactNode {
     if (line.startsWith('Allgemeinwissen:')) {
       const content: string[] = [line.replace('Allgemeinwissen:','').trim()]; i++;
       while (i < lines.length && lines[i].trim() && !lines[i].startsWith('#') && !lines[i].match(/^[-*•]\s/) && !lines[i].match(/^\d+\.\s/)) { content.push(lines[i]); i++; }
-      blocks.push(<div key={key++} className="px-5 py-4 rounded-2xl" style={{ background:'color-mix(in srgb,var(--primary) 8%,transparent)', border:'1px solid color-mix(in srgb,var(--primary) 20%,transparent)' }}><p className="text-[9px] font-black uppercase tracking-widest mb-2" style={{ color:'var(--primary)' }}>{t('reader.externalKnowledge')}</p><p className="text-base font-medium text-slate-700 dark:text-slate-300 leading-relaxed">{parseInline(content.join(' '),String(key))}</p></div>);
+      blocks.push(<div key={key++} className="px-5 py-4 rounded-2xl" style={{ background:'color-mix(in srgb,var(--primary) 8%,transparent)', border:'1px solid color-mix(in srgb,var(--primary) 20%,transparent)' }}><p className="text-[11px] font-black uppercase tracking-widest mb-2" style={{ color:'var(--primary)' }}>{t('reader.externalKnowledge')}</p><p className="text-base font-medium text-slate-700 dark:text-slate-300 leading-relaxed">{parseInline(content.join(' '),String(key))}</p></div>);
       continue;
     }
     if (line.match(/^[-*•]\s/)) {

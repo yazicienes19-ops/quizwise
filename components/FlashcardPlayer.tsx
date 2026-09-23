@@ -147,11 +147,11 @@ export const FlashcardPlayer: React.FC<FlashcardPlayerProps> = ({ cards, onRevie
           </div>
           {presses > 0 && (
             <div className="flex justify-center gap-2 flex-wrap">
-              <span className="px-3 py-1.5 rounded-full text-[10px] font-black uppercase tracking-widest bg-emerald-50 dark:bg-emerald-900/20 text-emerald-600 dark:text-emerald-400">
+              <span className="px-3 py-1.5 rounded-full text-[11px] font-black uppercase tracking-widest bg-emerald-50 dark:bg-emerald-900/20 text-emerald-600 dark:text-emerald-400">
                 {t('fc.summaryKnown', { n: knownPct })}
               </span>
               {tally.again > 0 && (
-                <span className="px-3 py-1.5 rounded-full text-[10px] font-black uppercase tracking-widest bg-rose-50 dark:bg-rose-900/20 text-rose-600 dark:text-rose-400">
+                <span className="px-3 py-1.5 rounded-full text-[11px] font-black uppercase tracking-widest bg-rose-50 dark:bg-rose-900/20 text-rose-600 dark:text-rose-400">
                   {t('fc.summaryAgain', { n: tally.again })}
                 </span>
               )}
@@ -192,30 +192,30 @@ export const FlashcardPlayer: React.FC<FlashcardPlayerProps> = ({ cards, onRevie
       <div className="p-4 md:p-6 px-4 md:px-12 flex justify-between items-center bg-white dark:bg-slate-900 border-b border-slate-200 dark:border-slate-800 shadow-sm">
         {practiceMode ? (
           <div className="flex items-center gap-3">
-            <span className="inline-flex items-center gap-1.5 bg-emerald-50 dark:bg-emerald-900/20 text-emerald-600 dark:text-emerald-400 text-[9px] font-black uppercase tracking-widest px-3 py-1.5 rounded-full">
+            <span className="inline-flex items-center gap-1.5 bg-emerald-50 dark:bg-emerald-900/20 text-emerald-600 dark:text-emerald-400 text-[11px] font-black uppercase tracking-widest px-3 py-1.5 rounded-full">
               <svg xmlns="http://www.w3.org/2000/svg" width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round"><polyline points="23 4 23 10 17 10"/><path d="M3.51 9a9 9 0 0 1 14.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0 0 20.49 15"/></svg>
               {t('fc.practiceFree')}
             </span>
-            <span className="text-[9px] font-black text-slate-400 uppercase tracking-widest hidden sm:inline">{t('fc.notCounted', { n: stats.remaining })}</span>
+            <span className="text-[11px] font-black text-slate-400 uppercase tracking-widest hidden sm:inline">{t('fc.notCounted', { n: stats.remaining })}</span>
           </div>
         ) : (
         <div className="flex gap-4 md:gap-8">
           <div className="flex items-center gap-2">
             <span className="text-[11px] font-black text-blue-500 uppercase tracking-widest">{stats.newCount}</span>
-            <span className="text-[9px] font-black text-slate-300 uppercase tracking-widest">{t('fc.new')}</span>
+            <span className="text-[11px] font-black text-slate-300 uppercase tracking-widest">{t('fc.new')}</span>
           </div>
           <div className="flex items-center gap-2">
             <span className="text-[11px] font-black text-rose-500 uppercase tracking-widest">{stats.learnCount}</span>
-            <span className="text-[9px] font-black text-slate-300 uppercase tracking-widest">{t('fc.learning')}</span>
+            <span className="text-[11px] font-black text-slate-300 uppercase tracking-widest">{t('fc.learning')}</span>
           </div>
           <div className="flex items-center gap-2">
             <span className="text-[11px] font-black text-emerald-500 uppercase tracking-widest">{stats.reviewCount}</span>
-            <span className="text-[9px] font-black text-slate-300 uppercase tracking-widest">{t('fc.due')}</span>
+            <span className="text-[11px] font-black text-slate-300 uppercase tracking-widest">{t('fc.due')}</span>
           </div>
         </div>
         )}
         <div className="flex items-center gap-3">
-          <span className="text-[9px] font-black text-slate-300 uppercase tracking-widest hidden md:inline">{t('fc.keyEsc')}</span>
+          <span className="text-[11px] font-black text-slate-300 uppercase tracking-widest hidden md:inline">{t('fc.keyEsc')}</span>
           <button aria-label={t('fc.closeSession')}
             onClick={onClose}
             className="text-slate-400 hover:text-rose-500 transition-colors p-2"
@@ -266,19 +266,19 @@ export const FlashcardPlayer: React.FC<FlashcardPlayerProps> = ({ cards, onRevie
                 onClick={() => handleDifficulty('again')}
                 className="group flex flex-col items-center gap-2"
               >
-                <div className="w-full bg-rose-500 text-white py-4 md:py-5 rounded-xl md:rounded-2xl font-black uppercase text-[10px] md:text-xs tracking-widest shadow-lg hover:brightness-110 active:scale-95 transition-all">
+                <div className="w-full bg-rose-500 text-white py-4 md:py-5 rounded-xl md:rounded-2xl font-black uppercase text-[11px] md:text-xs tracking-widest shadow-lg hover:brightness-110 active:scale-95 transition-all">
                   {t('fc.again')}
                 </div>
-                <span className="text-[9px] md:text-[9px] font-bold text-slate-300 opacity-60">{t('fc.key1')}</span>
+                <span className="text-[11px] md:text-[11px] font-bold text-slate-300 opacity-60">{t('fc.key1')}</span>
               </button>
               <button
                 onClick={() => handleDifficulty('good')}
                 className="group flex flex-col items-center gap-2"
               >
-                <div className="w-full bg-emerald-500 text-white py-4 md:py-5 rounded-xl md:rounded-2xl font-black uppercase text-[10px] md:text-xs tracking-widest shadow-lg hover:brightness-110 active:scale-95 transition-all">
+                <div className="w-full bg-emerald-500 text-white py-4 md:py-5 rounded-xl md:rounded-2xl font-black uppercase text-[11px] md:text-xs tracking-widest shadow-lg hover:brightness-110 active:scale-95 transition-all">
                   {t('fc.known')}
                 </div>
-                <span className="text-[9px] md:text-[9px] font-bold text-slate-300 opacity-60">{t('fc.key3Space')}</span>
+                <span className="text-[11px] md:text-[11px] font-bold text-slate-300 opacity-60">{t('fc.key3Space')}</span>
               </button>
             </div>
           ) : (
@@ -294,11 +294,11 @@ export const FlashcardPlayer: React.FC<FlashcardPlayerProps> = ({ cards, onRevie
                   onClick={() => handleDifficulty(btn.id)}
                   className="group flex flex-col items-center gap-2"
                 >
-                  <span className="text-[9px] md:text-[10px] font-black text-slate-400 group-hover:text-slate-900 dark:group-hover:text-white transition-colors uppercase tracking-widest">{getIntervalLabel(btn.id, currentCard)}</span>
-                  <div className={`w-full ${btn.color} text-white py-4 md:py-5 rounded-xl md:rounded-2xl font-black uppercase text-[9px] md:text-[10px] tracking-wider md:tracking-widest shadow-lg hover:brightness-110 active:scale-95 transition-all`}>
+                  <span className="text-[11px] md:text-[11px] font-black text-slate-400 group-hover:text-slate-900 dark:group-hover:text-white transition-colors uppercase tracking-widest">{getIntervalLabel(btn.id, currentCard)}</span>
+                  <div className={`w-full ${btn.color} text-white py-4 md:py-5 rounded-xl md:rounded-2xl font-black uppercase text-[11px] md:text-[11px] tracking-wider md:tracking-widest shadow-lg hover:brightness-110 active:scale-95 transition-all`}>
                     {btn.label}
                   </div>
-                  <span className="text-[9px] md:text-[9px] font-bold text-slate-300 opacity-60 text-center leading-tight">
+                  <span className="text-[11px] md:text-[11px] font-bold text-slate-300 opacity-60 text-center leading-tight">
                     <span className="md:hidden">{btn.key}</span>
                     <span className="hidden md:inline">{btn.id === 'good' ? t('fc.key3Space') : t('fc.keyN', { n: btn.key })}</span>
                   </span>

@@ -85,14 +85,14 @@ export const AdminDashboard: React.FC = () => {
         </div>
         <div className="flex items-center gap-3">
           {users && (
-            <span className="text-[9px] font-black uppercase tracking-widest text-slate-400">
+            <span className="text-[11px] font-black uppercase tracking-widest text-slate-400">
               {t('admin.totalUsers', { count: users.length })}
             </span>
           )}
           <button
             onClick={load}
             disabled={isLoading}
-            className="flex items-center gap-1.5 px-3 py-2 rounded-2xl text-[9px] font-black uppercase tracking-widest text-slate-500 hover:bg-slate-50 dark:hover:bg-slate-800/50 transition-colors disabled:opacity-50"
+            className="flex items-center gap-1.5 px-3 py-2 rounded-2xl text-[11px] font-black uppercase tracking-widest text-slate-500 hover:bg-slate-50 dark:hover:bg-slate-800/50 transition-colors disabled:opacity-50"
           >
             <RefreshCw className={`w-3.5 h-3.5 ${isLoading ? 'animate-spin' : ''}`} strokeWidth={2} />
             {t('admin.retry')}
@@ -121,7 +121,7 @@ export const AdminDashboard: React.FC = () => {
         <div className="overflow-x-auto rounded-2xl" style={{ border: '1px solid var(--border-color)' }}>
           <table className="w-full text-left border-collapse min-w-[1180px]">
             <thead>
-              <tr className="text-[9px] font-black uppercase tracking-widest text-slate-400" style={{ background: 'color-mix(in srgb, var(--border-color) 30%, var(--bg-main))' }}>
+              <tr className="text-[11px] font-black uppercase tracking-widest text-slate-400" style={{ background: 'color-mix(in srgb, var(--border-color) 30%, var(--bg-main))' }}>
                 <th className="px-4 py-3">{t('admin.col.user')}</th>
                 <th className="px-4 py-3">{t('admin.col.plan')}</th>
                 <th className="px-4 py-3">{t('admin.col.created')}</th>
@@ -138,15 +138,15 @@ export const AdminDashboard: React.FC = () => {
                 <tr key={u.id} className="text-[11px] border-t align-top" style={{ borderColor: 'var(--border-color)' }}>
                   <td className="px-4 py-3">
                     <p className="font-black dark:text-white">{u.email || u.id}</p>
-                    <p className="text-[10px] text-slate-400">{u.name || t('admin.noName')}</p>
+                    <p className="text-[11px] text-slate-400">{u.name || t('admin.noName')}</p>
                     {u.isSuspended && (
-                      <span className="inline-block mt-1 text-[9px] font-black uppercase px-2 py-0.5 rounded-full bg-rose-100 text-rose-600 dark:bg-rose-900/30 dark:text-rose-400">
+                      <span className="inline-block mt-1 text-[11px] font-black uppercase px-2 py-0.5 rounded-full bg-rose-100 text-rose-600 dark:bg-rose-900/30 dark:text-rose-400">
                         {t('admin.status.suspended')}
                       </span>
                     )}
                   </td>
                   <td className="px-4 py-3">
-                    <span className={`text-[9px] font-black uppercase px-2 py-1 rounded-full ${
+                    <span className={`text-[11px] font-black uppercase px-2 py-1 rounded-full ${
                       u.plan === 'pro'
                         ? 'bg-emerald-100 text-emerald-600 dark:bg-emerald-900/30 dark:text-emerald-400'
                         : 'bg-slate-100 text-slate-500 dark:bg-slate-800 dark:text-slate-400'
@@ -154,7 +154,7 @@ export const AdminDashboard: React.FC = () => {
                       {u.plan}
                     </span>
                     {u.adminProUntil && (
-                      <p className="text-[9px] text-slate-400 mt-1 whitespace-nowrap">
+                      <p className="text-[11px] text-slate-400 mt-1 whitespace-nowrap">
                         {t('admin.status.adminGrant', { date: formatDateTime(u.adminProUntil, { dateStyle: 'medium' }) })}
                       </p>
                     )}
@@ -173,7 +173,7 @@ export const AdminDashboard: React.FC = () => {
                   <td className="px-4 py-3 font-black dark:text-white whitespace-nowrap">{u.monthCostEur === null ? '—' : formatEur(u.monthCostEur)}</td>
                   <td className="px-4 py-3 min-w-[220px]">
                     {u.isAdmin ? (
-                      <span className="text-[9px] font-black uppercase tracking-widest text-slate-400">{t('admin.status.admin')}</span>
+                      <span className="text-[11px] font-black uppercase tracking-widest text-slate-400">{t('admin.status.admin')}</span>
                     ) : (
                       <div className="flex flex-col gap-1.5">
                         <div className="flex items-center gap-1 flex-wrap">
@@ -185,7 +185,7 @@ export const AdminDashboard: React.FC = () => {
                                 onClick={() => runAction(u.id, `grant-${days}`, () => grantPro(u.id, days), 'admin.actionSuccess.granted')}
                                 disabled={busy === busyKey}
                                 title={t('admin.action.grantPro')}
-                                className="px-2 py-1 rounded-full text-[9px] font-black uppercase bg-slate-100 text-slate-500 hover:bg-slate-200 dark:bg-slate-800 dark:text-slate-400 dark:hover:bg-slate-700 transition-colors disabled:opacity-50"
+                                className="px-2 py-1 rounded-full text-[11px] font-black uppercase bg-slate-100 text-slate-500 hover:bg-slate-200 dark:bg-slate-800 dark:text-slate-400 dark:hover:bg-slate-700 transition-colors disabled:opacity-50"
                               >
                                 {t(key)}
                               </button>
@@ -197,7 +197,7 @@ export const AdminDashboard: React.FC = () => {
                             <button
                               onClick={() => runAction(u.id, 'revoke', () => revokePro(u.id), 'admin.actionSuccess.revoked')}
                               disabled={busy === `${u.id}:revoke`}
-                              className="text-[9px] font-black uppercase text-amber-600 hover:text-amber-700 dark:text-amber-500 disabled:opacity-50"
+                              className="text-[11px] font-black uppercase text-amber-600 hover:text-amber-700 dark:text-amber-500 disabled:opacity-50"
                             >
                               {t('admin.action.revokePro')}
                             </button>
@@ -206,23 +206,23 @@ export const AdminDashboard: React.FC = () => {
                             <button
                               onClick={() => runAction(u.id, 'unsuspend', () => unsuspendUser(u.id), 'admin.actionSuccess.unsuspended')}
                               disabled={busy === `${u.id}:unsuspend`}
-                              className="text-[9px] font-black uppercase text-emerald-600 hover:text-emerald-700 dark:text-emerald-500 disabled:opacity-50"
+                              className="text-[11px] font-black uppercase text-emerald-600 hover:text-emerald-700 dark:text-emerald-500 disabled:opacity-50"
                             >
                               {t('admin.action.unsuspend')}
                             </button>
                           ) : confirmSuspendId === u.id ? (
                             <span className="flex items-center gap-2 flex-wrap">
-                              <span className="text-[9px] text-rose-500">{t('admin.action.suspendConfirm')}</span>
+                              <span className="text-[11px] text-rose-500">{t('admin.action.suspendConfirm')}</span>
                               <button
                                 onClick={() => runAction(u.id, 'suspend', () => suspendUser(u.id), 'admin.actionSuccess.suspended')}
                                 disabled={busy === `${u.id}:suspend`}
-                                className="text-[9px] font-black uppercase text-rose-600 hover:text-rose-700 dark:text-rose-500 disabled:opacity-50"
+                                className="text-[11px] font-black uppercase text-rose-600 hover:text-rose-700 dark:text-rose-500 disabled:opacity-50"
                               >
                                 {t('admin.action.confirmYes')}
                               </button>
                               <button
                                 onClick={() => setConfirmSuspendId(null)}
-                                className="text-[9px] font-black uppercase text-slate-400 hover:text-slate-500"
+                                className="text-[11px] font-black uppercase text-slate-400 hover:text-slate-500"
                               >
                                 {t('admin.action.cancel')}
                               </button>
@@ -230,7 +230,7 @@ export const AdminDashboard: React.FC = () => {
                           ) : (
                             <button
                               onClick={() => setConfirmSuspendId(u.id)}
-                              className="text-[9px] font-black uppercase text-rose-500 hover:text-rose-600"
+                              className="text-[11px] font-black uppercase text-rose-500 hover:text-rose-600"
                             >
                               {t('admin.action.suspend')}
                             </button>
@@ -253,7 +253,7 @@ export const AdminDashboard: React.FC = () => {
             <Flag className="w-4 h-4" strokeWidth={1.75} style={{ color: 'var(--primary)' }} />
             {t('admin.reports.title')}
             {reports && reports.total > 0 && (
-              <span className="text-[9px] font-black uppercase tracking-widest text-slate-400">{t('admin.reports.count', { n: reports.total })}</span>
+              <span className="text-[11px] font-black uppercase tracking-widest text-slate-400">{t('admin.reports.count', { n: reports.total })}</span>
             )}
           </h2>
           <p className="text-[11px] font-medium text-slate-400 mt-1">{t('admin.reports.subtitle')}</p>
@@ -270,26 +270,26 @@ export const AdminDashboard: React.FC = () => {
             {reports.groups.map(g => (
               <div key={g.key} className="p-4 rounded-2xl space-y-2" style={{ border: '1px solid var(--border-color)' }}>
                 <div className="flex items-center gap-2 flex-wrap">
-                  <span className="text-[9px] font-black uppercase px-2 py-0.5 rounded-full bg-rose-100 text-rose-600 dark:bg-rose-900/30 dark:text-rose-400">
+                  <span className="text-[11px] font-black uppercase px-2 py-0.5 rounded-full bg-rose-100 text-rose-600 dark:bg-rose-900/30 dark:text-rose-400">
                     {t('admin.reports.count', { n: g.count })}
                   </span>
-                  <span className="text-[9px] font-black uppercase px-2 py-0.5 rounded-full bg-slate-100 text-slate-500 dark:bg-slate-800 dark:text-slate-400">
+                  <span className="text-[11px] font-black uppercase px-2 py-0.5 rounded-full bg-slate-100 text-slate-500 dark:bg-slate-800 dark:text-slate-400">
                     {g.kind === 'exam' ? t('admin.reports.kindExam') : t('admin.reports.kindQuiz')}
                   </span>
                   {(Object.entries(g.reasons) as [string, number][]).map(([reason, n]) => (
-                    <span key={reason} className="text-[9px] font-bold px-2 py-0.5 rounded-full bg-amber-50 text-amber-700 dark:bg-amber-900/20 dark:text-amber-400">
+                    <span key={reason} className="text-[11px] font-bold px-2 py-0.5 rounded-full bg-amber-50 text-amber-700 dark:bg-amber-900/20 dark:text-amber-400">
                       {REPORT_REASON_KEYS[reason] ? t(REPORT_REASON_KEYS[reason]) : reason}{n > 1 ? ` ×${n}` : ''}
                     </span>
                   ))}
-                  <span className="text-[9px] text-slate-400 ml-auto">
+                  <span className="text-[11px] text-slate-400 ml-auto">
                     {t('admin.reports.reporters', { n: g.reporters })} · {t('admin.reports.last', { date: formatDateTime(g.lastReportedAt, { dateStyle: 'medium', timeStyle: 'short' }) })}
                   </span>
                 </div>
                 <p className="text-[12px] font-bold dark:text-white break-words whitespace-pre-line">{g.questionText}</p>
-                {g.docNames.length > 0 && <p className="text-[10px] text-slate-400 break-words">{g.docNames.join(', ')}</p>}
+                {g.docNames.length > 0 && <p className="text-[11px] text-slate-400 break-words">{g.docNames.join(', ')}</p>}
                 {(g.details.options?.length || g.details.explanation) && (
                   <details className="text-[11px]">
-                    <summary className="cursor-pointer text-[9px] font-black uppercase tracking-widest text-slate-400">{t('admin.reports.details')}</summary>
+                    <summary className="cursor-pointer text-[11px] font-black uppercase tracking-widest text-slate-400">{t('admin.reports.details')}</summary>
                     <ul className="mt-2 space-y-1">
                       {(g.details.options ?? []).map((opt, i) => {
                         const correct = g.details.correctAnswerIndices?.includes(i);

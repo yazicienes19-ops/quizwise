@@ -35,7 +35,7 @@ export const PersonalPathStep: React.FC<PersonalPathStepProps> = ({ challenges }
       <h2 className="text-lg font-black tracking-tight mb-1.5" style={{ color: 'var(--text-main)' }}>
         {t('onboarding.rec.combined.title')}
       </h2>
-      <p className="text-[10px] font-black uppercase tracking-widest mb-5" style={{ color: 'var(--text-secondary)' }}>
+      <p className="text-[11px] font-black uppercase tracking-widest mb-5" style={{ color: 'var(--text-secondary)' }}>
         {t('onboarding.usp.pathLabel')}
       </p>
       <div className="space-y-2.5 mb-4">

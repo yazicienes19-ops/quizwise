@@ -6,6 +6,7 @@ import { EmojiImage } from './EmojiImage';
 import { useTranslation } from '../i18n/I18nProvider';
 import { formatDate } from '../i18n/dates';
 import { t as translate } from '../i18n';
+import { confirmDialog } from '../services/confirmDialog';
 
 const FILE_EMOJI: Record<string, string> = { pdf: '📕', docx: '📘', text: '📄' };
 const SOURCE_KIND_EMOJI: Record<string, string> = { youtube: '📺', web: '🌐' };
@@ -45,7 +46,7 @@ const DigestInfo: React.FC<{ doc: ProcessedDocument; onRetry?: () => void }> = (
       {status === 'error' && onRetry && (
         <button
           onClick={e => { e.stopPropagation(); onRetry(); }}
-          className="text-[9px] font-black uppercase tracking-widest px-2 py-0.5 rounded-full transition-all hover:opacity-80"
+          className="text-[11px] font-black uppercase tracking-widest px-2 py-0.5 rounded-full transition-all hover:opacity-80"
           style={{ background: 'color-mix(in srgb, var(--primary) 12%, transparent)', color: 'var(--primary)', border: '1px solid color-mix(in srgb, var(--primary) 30%, transparent)' }}
         >
           {t('card.retryAnalysis')}
@@ -58,14 +59,12 @@ const DigestInfo: React.FC<{ doc: ProcessedDocument; onRetry?: () => void }> = (
 const Stat: React.FC<{ label: string; value: number }> = ({ label, value }) => (
   <div className="text-center">
     <p className="font-black text-sm" style={{ color: 'var(--text-main)' }}>{value}</p>
-    <p className="text-[9px] font-black uppercase text-slate-400 tracking-widest">{label}</p>
+    <p className="text-[11px] font-black uppercase text-slate-400 tracking-widest">{label}</p>
   </div>
 );
 
-const confirmDelete = (onDelete: () => void, title: string) => {
-  if (window.confirm(translate('card.deleteConfirm', { title }))) {
-    onDelete();
-  }
+const confirmDelete = async (onDelete: () => void, title: string) => {
+  if (await confirmDialog({ message: translate('card.deleteConfirm', { title }), danger: true })) onDelete();
 };
 
 const IconEdit = () => (
@@ -97,31 +96,31 @@ export const SourceCard: React.FC<Props> = ({ doc, meta, view, onOpen, onView, o
             <DigestInfo doc={doc} onRetry={onRetryAnalysis} />
           </div>
           <div className="flex items-center gap-3 mt-0.5 flex-wrap">
-            {meta.module   && <span className="text-[9px] font-black uppercase text-indigo-600">{meta.module}</span>}
-            {meta.semester && <span className="text-[9px] font-black uppercase text-slate-400">{meta.semester}</span>}
-            <span className="text-[9px] text-slate-300 dark:text-slate-600">
+            {meta.module   && <span className="text-[11px] font-black uppercase text-indigo-600">{meta.module}</span>}
+            {meta.semester && <span className="text-[11px] font-black uppercase text-slate-400">{meta.semester}</span>}
+            <span className="text-[11px] text-slate-300 dark:text-slate-600">
               {lastOpened ? t('card.lastPrefix', { date: lastOpened }) : t('card.uploadedPrefix', { date: uploadedAt })}
             </span>
           </div>
         </div>
         <div className="flex items-center gap-2 shrink-0">
-          {meta.quizCount      ? <span className="text-[9px] font-bold text-slate-400 hidden sm:block">{t('card.quizCount', { n: meta.quizCount })}</span> : null}
-          {meta.flashcardCount ? <span className="text-[9px] font-bold text-slate-400 hidden sm:block">{t('card.cardsCount', { n: meta.flashcardCount })}</span> : null}
-          {meta.isAltklausur && <span className="hidden sm:block text-[9px] font-black uppercase tracking-widest px-2 py-0.5 rounded-full bg-rose-50 dark:bg-rose-950/20 text-rose-500">{t('card.oldExam')}</span>}
+          {meta.quizCount      ? <span className="text-[11px] font-bold text-slate-400 hidden sm:block">{t('card.quizCount', { n: meta.quizCount })}</span> : null}
+          {meta.flashcardCount ? <span className="text-[11px] font-bold text-slate-400 hidden sm:block">{t('card.cardsCount', { n: meta.flashcardCount })}</span> : null}
+          {meta.isAltklausur && <span className="hidden sm:block text-[11px] font-black uppercase tracking-widest px-2 py-0.5 rounded-full bg-rose-50 dark:bg-rose-950/20 text-rose-500">{t('card.oldExam')}</span>}
           <button
             onClick={onOpen}
-            className="px-4 py-2 bg-indigo-600 text-white rounded-xl text-[9px] font-black uppercase tracking-widest hover:scale-105 transition-all"
+            className="px-4 py-2 bg-indigo-600 text-white rounded-xl text-[11px] font-black uppercase tracking-widest hover:scale-105 transition-all"
             style={{ color: 'var(--primary-text)' }}
           >
             {t('card.open')}
           </button>
-          <button onClick={onView} className="p-2 text-slate-300 hover:text-indigo-500 transition-colors" title={t('sd.viewDocument')}>
+          <button onClick={onView} className="p-2 text-slate-300 hover:text-indigo-500 transition-colors" aria-label={t('sd.viewDocument')} title={t('sd.viewDocument')}>
             <IconEye />
           </button>
-          <button onClick={onEdit} className="p-2 text-slate-300 hover:text-indigo-500 transition-colors" title={t('lib.edit')}>
+          <button onClick={onEdit} className="p-2 text-slate-300 hover:text-indigo-500 transition-colors" aria-label={t('lib.edit')} title={t('lib.edit')}>
             <IconEdit />
           </button>
-          <button onClick={() => confirmDelete(onDelete, title)} className="p-2 text-slate-300 hover:text-rose-500 transition-colors">
+          <button aria-label={t('lib.delete')} onClick={() => confirmDelete(onDelete, title)} className="p-2 text-slate-300 hover:text-rose-500 transition-colors">
             <IconTrash />
           </button>
         </div>
@@ -134,22 +133,22 @@ export const SourceCard: React.FC<Props> = ({ doc, meta, view, onOpen, onView, o
       <div className="flex justify-between items-start mb-4">
         <div className="flex gap-1 flex-wrap flex-grow min-w-0 mr-2">
           {meta.isAltklausur && (
-            <span className="text-[9px] font-black uppercase tracking-widest px-2 py-0.5 rounded-full bg-rose-50 dark:bg-rose-950/20 text-rose-500">{t('card.oldExam')}</span>
+            <span className="text-[11px] font-black uppercase tracking-widest px-2 py-0.5 rounded-full bg-rose-50 dark:bg-rose-950/20 text-rose-500">{t('card.oldExam')}</span>
           )}
           {meta.tags?.slice(0, 2).map(t => (
-            <span key={t} className="bg-indigo-50 dark:bg-indigo-900/20 text-indigo-600 dark:text-indigo-400 text-[9px] font-black px-2 py-0.5 rounded-full uppercase tracking-tight">
+            <span key={t} className="bg-indigo-50 dark:bg-indigo-900/20 text-indigo-600 dark:text-indigo-400 text-[11px] font-black px-2 py-0.5 rounded-full uppercase tracking-tight">
               {t}
             </span>
           ))}
         </div>
         <div className="flex gap-1 shrink-0 opacity-40 sm:opacity-0 sm:group-hover:opacity-100">
-          <button onClick={onView} className="p-2 text-slate-300 hover:text-indigo-500 transition-colors" title={t('sd.viewDocument')}>
+          <button onClick={onView} className="p-2 text-slate-300 hover:text-indigo-500 transition-colors" aria-label={t('sd.viewDocument')} title={t('sd.viewDocument')}>
             <IconEye />
           </button>
-          <button onClick={onEdit} className="p-2 text-slate-300 hover:text-indigo-500 transition-colors" title={t('lib.edit')}>
+          <button onClick={onEdit} className="p-2 text-slate-300 hover:text-indigo-500 transition-colors" aria-label={t('lib.edit')} title={t('lib.edit')}>
             <IconEdit />
           </button>
-          <button onClick={() => confirmDelete(onDelete, title)} className="p-2 text-slate-300 hover:text-rose-500 transition-colors" title={t('lib.delete')}>
+          <button onClick={() => confirmDelete(onDelete, title)} className="p-2 text-slate-300 hover:text-rose-500 transition-colors" aria-label={t('lib.delete')} title={t('lib.delete')}>
             <IconTrash />
           </button>
         </div>
@@ -161,8 +160,8 @@ export const SourceCard: React.FC<Props> = ({ doc, meta, view, onOpen, onView, o
       <div className="flex-grow space-y-2">
         <h3 className="font-black leading-snug break-words text-base" style={{ color: 'var(--text-main)' }}>{title}</h3>
         <div className="flex flex-wrap gap-x-3 gap-y-0.5">
-          {meta.module   && <span className="text-[9px] font-black uppercase text-indigo-600">{meta.module}</span>}
-          {meta.semester && <span className="text-[9px] font-black uppercase text-slate-400">{meta.semester}</span>}
+          {meta.module   && <span className="text-[11px] font-black uppercase text-indigo-600">{meta.module}</span>}
+          {meta.semester && <span className="text-[11px] font-black uppercase text-slate-400">{meta.semester}</span>}
         </div>
         <div className="pt-1 flex items-center gap-1.5 flex-wrap">
           <SourceStatusBadge status={status} />
@@ -180,14 +179,14 @@ export const SourceCard: React.FC<Props> = ({ doc, meta, view, onOpen, onView, o
 
       <div className="mt-4 space-y-2">
         <div className="flex justify-between items-center">
-          <p className="text-[9px] text-slate-400">
+          <p className="text-[11px] text-slate-400">
             {lastOpened ? t('card.lastPrefix', { date: lastOpened }) : t('card.uploadedPrefix', { date: uploadedAt })}
           </p>
-          <span className="text-[9px] font-black uppercase text-slate-300 dark:text-slate-600">{doc.type.toUpperCase()}</span>
+          <span className="text-[11px] font-black uppercase text-slate-300 dark:text-slate-600">{doc.type.toUpperCase()}</span>
         </div>
         <button
           onClick={onOpen}
-          className="w-full bg-indigo-600 py-3 rounded-2xl text-[10px] font-black uppercase tracking-widest hover:scale-[1.02] transition-all shadow-md"
+          className="w-full bg-indigo-600 py-3 rounded-2xl text-[11px] font-black uppercase tracking-widest hover:scale-[1.02] transition-all shadow-md"
           style={{ color: 'var(--primary-text)' }}
         >
           {t('card.openArrow')}
