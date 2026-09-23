@@ -394,6 +394,7 @@ export const de = {
   'nav.group.lab': 'Labor',
   'nav.short.library': 'Bib',
   'nav.short.exam': 'Klausur',
+  'nav.short.cards': 'Karten',
   'nav.short.coach': 'Coach',
   'nav.more': 'Mehr',
 
@@ -2319,6 +2320,7 @@ export const de = {
   'slp.accepted': '✓ "{name}" übernommen',
   'slp.learnInApp': 'In der App weiterlernen',
   'slp.acceptFailed': 'Übernehmen fehlgeschlagen. Bitte versuch es erneut.',
+  'slp.freeLimit': "Mit dem Free-Plan hast du höchstens {n} Dokumente. Dieses Fach passt nicht mehr hinein. Mit Pro kannst du es übernehmen.",
   'slp.acceptButton': 'Fach übernehmen',
   'slp.accepting': 'Wird übernommen…',
   'slp.digestOnlyHint': 'Original-Dateien werden nicht übernommen, die Dokumente sind aber direkt für Quiz, Feynman & Co. nutzbar.',

@@ -393,6 +393,7 @@ export const en: Translations = {
   'nav.group.lab': 'Lab',
   'nav.short.library': 'Lib',
   'nav.short.exam': 'Exam',
+  'nav.short.cards': 'Cards',
   'nav.short.coach': 'Coach',
   'nav.more': 'More',
 
@@ -2318,6 +2319,7 @@ export const en: Translations = {
   'slp.accepted': '✓ "{name}" added',
   'slp.learnInApp': 'Continue in the app',
   'slp.acceptFailed': 'Adding failed. Please try again.',
+  'slp.freeLimit': "The Free plan allows up to {n} documents. This subject no longer fits. Upgrade to Pro to add it.",
   'slp.acceptButton': 'Add this subject',
   'slp.accepting': 'Adding…',
   'slp.digestOnlyHint': "Original files aren't copied, but the documents can be used directly for quizzes, Feynman practice, and more.",

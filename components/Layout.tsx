@@ -83,7 +83,7 @@ export const Layout: React.FC<LayoutProps> = ({
   onLoginClick, onLogout, onUpgradeClick, onSettingsClick,
   isDark, onToggleTheme
 }) => {
-  const { t } = useTranslation();
+  const { t, tp } = useTranslation();
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
   const [showApiSettings, setShowApiSettings] = useState(false);
   const [legalPage, setLegalPage] = useState<'impressum' | 'datenschutz' | 'agb' | null>(null);
@@ -128,11 +128,14 @@ export const Layout: React.FC<LayoutProps> = ({
   const currentPageLabel = currentItem ? t(currentItem.labelKey) : EXTRA_LABELS[activeTab] ? t(EXTRA_LABELS[activeTab]!) : '';
 
   // Mobile bottom bar: der TÄGLICHE Lernkreislauf als primäre Navigation —
-  // Heute (was ist fällig) → Quiz (lernen) → Klausur (prüfen) → Coach (Analysieren).
-  // Bibliothek/Kalender sind Verwaltung, keine tägliche Schleife → "Mehr".
+  // Heute (was ist fällig) → Quiz und Karten (lernen, wiederholen) → Klausur
+  // (prüfen) → Coach (Analysieren). Karten gehören dazu, weil die fälligen
+  // Wiederholungen der häufigste tägliche Anlass sind (Audit 23.09.2026: lagen
+  // vorher unter "Mehr"). Bibliothek/Kalender sind Verwaltung → "Mehr".
   const mobileBottomTabs: { tab: ActiveTab; shortKey: TKey }[] = [
     { tab: ActiveTab.DASHBOARD, shortKey: 'nav.start' },
     { tab: ActiveTab.QUIZ,      shortKey: 'nav.quiz'  },
+    { tab: ActiveTab.CARDS,     shortKey: 'nav.short.cards' },
     { tab: ActiveTab.EXAM,      shortKey: 'nav.short.exam' },
     { tab: ActiveTab.RADAR,     shortKey: 'nav.short.coach' },
   ];
@@ -142,7 +145,6 @@ export const Layout: React.FC<LayoutProps> = ({
   // (siehe navConfig.ts LABOR_GROUP) und daher nur für Admins sichtbar.
   const mobileSheetItems: { tab: ActiveTab; labelKey: TKey; icon: LucideIcon }[] = [
     { tab: ActiveTab.LIBRARY,   labelKey: 'nav.library',   icon: BookOpen },
-    { tab: ActiveTab.CARDS,     labelKey: 'nav.cards',     icon: Layers },
     { tab: ActiveTab.RECALL,    labelKey: 'nav.recall',    icon: Brain },
     { tab: ActiveTab.EXPLAINER, labelKey: 'nav.explainer', icon: Lightbulb },
     { tab: ActiveTab.KNOWLEDGE_GRAPH, labelKey: 'nav.knowledgeGraph', icon: Network },
@@ -576,10 +578,17 @@ export const Layout: React.FC<LayoutProps> = ({
               key={item.tab}
               data-tour={`nav-${item.tab}`}
               onClick={() => handleMobileTabChange(item.tab)}
-              className="flex flex-col items-center gap-1 min-w-[3rem] px-2 py-1 rounded-xl transition-all"
+              className="relative flex flex-col items-center gap-1 min-w-[3rem] px-1.5 py-1 rounded-xl transition-all"
               style={isActive ? { color: 'var(--primary)' } : { color: 'rgb(148 163 184)' }}
             >
               {Icon && <Icon className="w-6 h-6" strokeWidth={1.75} />}
+              {item.tab === ActiveTab.CARDS && dueCardsCount > 0 && (
+                <span
+                  className="absolute -top-1 right-0 min-w-[18px] h-[18px] px-1 rounded-full text-[10px] font-black leading-[18px] text-center"
+                  style={{ background: 'var(--primary)', color: 'var(--primary-text)' }}
+                  aria-label={tp('dashboard.cardsN', dueCardsCount)}
+                >{dueCardsCount > 99 ? '99+' : dueCardsCount}</span>
+              )}
               <span className="text-[9px] font-black uppercase tracking-widest">{t(item.shortKey)}</span>
             </button>
           );

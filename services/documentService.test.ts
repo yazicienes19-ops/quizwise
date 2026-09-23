@@ -1,11 +1,12 @@
 import { describe, it, expect, vi, beforeEach, afterEach, type Mock } from 'vitest';
-import { uploadFileWithProgress, UploadStalledError, UploadTimeoutError, saveDocumentToSupabase } from './documentService';
+import { uploadFileWithProgress, UploadStalledError, UploadTimeoutError, saveDocumentToSupabase, isFreeDocLimitError } from './documentService';
 import type { ProcessedDocument } from '../types';
 
 // Supabase-Client wird für die saveDocumentToSupabase-Tests unten gedoppelt;
 // die XHR-Tests darüber berühren ihn nicht.
 const upsertMock = vi.fn(async () => ({ error: null }));
 const storageUploadMock = vi.fn(async () => ({ error: null }));
+const storageRemoveMock = vi.fn(async () => ({ error: null }));
 vi.mock('./supabaseClient', () => ({
   supabase: {
     auth: {
@@ -13,7 +14,7 @@ vi.mock('./supabaseClient', () => ({
       getSession: async () => ({ data: { session: null } }),
     },
     from: () => ({ upsert: upsertMock }),
-    storage: { from: () => ({ upload: storageUploadMock }) },
+    storage: { from: () => ({ upload: storageUploadMock, remove: storageRemoveMock }) },
   },
 }));
 
@@ -165,5 +166,29 @@ describe('saveDocumentToSupabase — Binärdaten landen nie in content_text', ()
 
     const row = (upsertMock.mock.calls[0] as unknown as [Record<string, unknown>])[0];
     expect((row.content_text as string).length).toBe(500_000);
+  });
+});
+
+describe('Free-Plan-Grenze der Datenbank (FREE_DOC_LIMIT)', () => {
+  beforeEach(() => {
+    upsertMock.mockClear();
+    storageUploadMock.mockClear();
+    storageRemoveMock.mockClear();
+  });
+
+  it('erkennt den Trigger-Fehler als Objekt (Supabase) und als Error', () => {
+    expect(isFreeDocLimitError({ message: 'FREE_DOC_LIMIT: Der Free-Plan erlaubt höchstens 5 Dokumente.' })).toBe(true);
+    expect(isFreeDocLimitError(new Error('FREE_DOC_LIMIT'))).toBe(true);
+    expect(isFreeDocLimitError({ message: 'duplicate key' })).toBe(false);
+    expect(isFreeDocLimitError(null)).toBe(false);
+  });
+
+  it('entfernt die schon hochgeladene Datei wieder, wenn die Grenze greift', async () => {
+    upsertMock.mockImplementationOnce((async () => ({ error: { message: 'FREE_DOC_LIMIT: Der Free-Plan erlaubt höchstens 5 Dokumente.' } })) as never);
+    const doc: ProcessedDocument = { id: 'pdf-6', name: 'sechs.pdf', type: 'pdf', content: '', uploadDate: 1 };
+    const file = new File([new Uint8Array([37, 80, 68, 70])], 'sechs.pdf', { type: 'application/pdf' });
+
+    await expect(saveDocumentToSupabase(doc, file)).rejects.toMatchObject({ message: expect.stringContaining('FREE_DOC_LIMIT') });
+    expect(storageRemoveMock).toHaveBeenCalledWith(['user-1/pdf-6/sechs.pdf']);
   });
 });

@@ -392,6 +392,7 @@ export const tr: Translations = {
   'nav.group.lab': 'Laboratuvar',
   'nav.short.library': 'Ktp',
   'nav.short.exam': 'Sınav',
+  'nav.short.cards': 'Kartlar',
   'nav.short.coach': 'Koç',
   'nav.more': 'Daha fazla',
 
@@ -2311,6 +2312,7 @@ export const tr: Translations = {
   'slp.accepted': '✓ "{name}" eklendi',
   'slp.learnInApp': 'Uygulamada devam et',
   'slp.acceptFailed': 'Eklenemedi. Lütfen tekrar dene.',
+  'slp.freeLimit': "Ücretsiz planda en fazla {n} belge olabilir. Bu ders artık sığmıyor. Eklemek için Pro'ya geç.",
   'slp.acceptButton': 'Bu dersi ekle',
   'slp.accepting': 'Ekleniyor…',
   'slp.digestOnlyHint': 'Orijinal dosyalar kopyalanmaz, ancak belgeler test, Feynman yöntemi ve daha fazlası için doğrudan kullanılabilir.',

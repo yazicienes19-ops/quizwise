@@ -12,7 +12,7 @@ import { getSavedQuizzes } from '../services/savedQuizzesService';
 import { getSavedExams } from '../services/savedExamsService';
 import { searchScholar, searchWeb, buildDeckQuizSource } from '../services/geminiService';
 import { getAllResults } from '../services/quizHistoryService';
-import { sourceTopicsKey } from '../hooks/useQuizState';
+import { sourceTopicsKey, type QuizMeta } from '../hooks/useQuizState';
 import { countDueMistakes, addExamMistakes, removeMistake } from '../services/mistakeReviewService';
 import type { MistakeItem } from '../services/mistakeReviewService';
 import { saveRecallResult } from '../services/recallHistoryService';
@@ -71,8 +71,8 @@ interface AppContentProps {
   setQuestions: (q: QuizQuestion[]) => void;
   answers: UserAnswer[];
   setAnswers: (a: UserAnswer[]) => void;
-  activeQuizMeta: { docId: string; docName: string } | null;
-  setActiveQuizMeta: (m: { docId: string; docName: string } | null) => void;
+  activeQuizMeta: QuizMeta | null;
+  setActiveQuizMeta: (m: QuizMeta | null) => void;
   quizInitialAnswers: UserAnswer[] | undefined;
   setQuizInitialAnswers: (a: UserAnswer[] | undefined) => void;
   savedQuizzes: SavedQuiz[];
@@ -300,7 +300,7 @@ export const AppContent: React.FC<AppContentProps> = (p) => {
       }
       if (questions.length > 0 && answers.length === 0) return <QuizPlayer
         key={reviewSessionItems ? `mistake-review-${reviewSessionItems.length}` : 'quiz'}
-        questions={questions} sourceName={activeQuizMeta?.docName} examMode={false}
+        questions={questions} sourceName={activeQuizMeta?.docName} examMode={!!activeQuizMeta?.examMode}
         initialAnswers={quizInitialAnswers}
         onProgress={(ans) => saveQuizProgress(questions, ans, activeQuizMeta)}
         onComplete={onQuizComplete}

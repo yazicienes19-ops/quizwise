@@ -101,6 +101,44 @@ router.get('/export', async (req, res, next) => {
 
 // DELETE /api/user/account
 // Konto vollständig löschen — DSGVO Recht auf Vergessenwerden
+// Alle Dateien eines Nutzers im Storage löschen (Recht auf Vergessenwerden).
+// Die Tabellen räumt ON DELETE CASCADE beim Löschen des Auth-Users ab, den
+// Bucket nicht. Pfade: <userId>/<docId>/<dateiname> (services/documentService.ts).
+// Quelle 1: storage_path aus documents. Quelle 2: Ordner-Listing, damit auch
+// Dateien ohne Tabellenzeile (abgebrochene Uploads) erfasst werden.
+const STORAGE_BUCKET = 'document-files';
+
+const collectUserStoragePaths = async (userId) => {
+  const paths = new Set();
+
+  const { data: docs, error: docsErr } = await supabaseAdmin
+    .from('documents').select('storage_path').eq('user_id', userId).not('storage_path', 'is', null);
+  if (docsErr) throw docsErr;
+  (docs || []).forEach(d => paths.add(d.storage_path));
+
+  const bucket = supabaseAdmin.storage.from(STORAGE_BUCKET);
+  const { data: folders, error: listErr } = await bucket.list(userId, { limit: 1000 });
+  if (listErr) throw listErr;
+  for (const entry of folders || []) {
+    // Ordner haben keine id, Dateien direkt unter <userId>/ schon.
+    if (entry.id) { paths.add(`${userId}/${entry.name}`); continue; }
+    const { data: files, error: fileErr } = await bucket.list(`${userId}/${entry.name}`, { limit: 1000 });
+    if (fileErr) throw fileErr;
+    (files || []).forEach(f => paths.add(`${userId}/${entry.name}/${f.name}`));
+  }
+  return [...paths];
+};
+
+const deleteUserStorage = async (userId) => {
+  const paths = await collectUserStoragePaths(userId);
+  // Storage-API nimmt große Listen, aber in Blöcken bleibt ein Fehler eingrenzbar.
+  for (let i = 0; i < paths.length; i += 100) {
+    const { error } = await supabaseAdmin.storage.from(STORAGE_BUCKET).remove(paths.slice(i, i + 100));
+    if (error) throw error;
+  }
+  return paths.length;
+};
+
 router.delete('/account', async (req, res, next) => {
   try {
     const userId = req.user.id;
@@ -123,6 +161,16 @@ router.delete('/account', async (req, res, next) => {
 
     // Supabase Admin API: löscht User aus auth.users
     // Dank CASCADE werden auch profiles, metrics, decks etc. gelöscht
+    // Dateien VOR dem Konto löschen: Schlägt das fehl, bleibt das Konto
+    // bestehen und der Nutzer kann es erneut versuchen, statt dass verwaiste
+    // Dateien ohne Besitzer zurückbleiben.
+    try {
+      await deleteUserStorage(userId);
+    } catch (storageErr) {
+      console.error('Storage-Löschung bei Konto-Löschung fehlgeschlagen:', storageErr.message);
+      return res.status(502).json({ error: 'Konto konnte nicht gelöscht werden: Deine Dateien ließen sich nicht entfernen. Bitte versuche es erneut oder kontaktiere den Support.' });
+    }
+
     const { error } = await supabaseAdmin.auth.admin.deleteUser(userId);
     if (error) throw error;
 

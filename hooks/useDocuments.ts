@@ -13,6 +13,8 @@ import {
   triggerDocumentAnalysis,
   UploadStalledError,
   UploadTimeoutError,
+  isFreeDocLimitError,
+  FREE_DOC_LIMIT,
 } from '../services/documentService';
 import { toast } from '../services/toast';
 import { t as translate } from '../i18n';
@@ -201,7 +203,6 @@ export const useDocuments = ({ user, userPlan, isOffline, setIsLoading, setShowU
     let file = fileInput;
     if (isOffline) { toast.error(translate('up.offline')); return null; }
 
-    const FREE_DOC_LIMIT = 5;
     if (userPlan === 'free' && documents.length >= FREE_DOC_LIMIT) {
       toast.error(translate('up.freeLimit', { n: FREE_DOC_LIMIT }));
       setShowUpgradeModal(true);
@@ -300,7 +301,17 @@ export const useDocuments = ({ user, userPlan, isOffline, setIsLoading, setShowU
               triggerDocumentAnalysis(newDoc.id);
               setRefreshTick(t => t + 1);
             })
-            .catch(() => toast.error(translate('up.syncFailed')));
+            .catch(e => {
+              // Datenbank-Grenze (z. B. zweiter Tab, geteiltes Fach): Dokument
+              // lokal wieder entfernen, sonst läge es nur auf diesem Gerät.
+              if (isFreeDocLimitError(e)) {
+                saveDocs(documents);
+                toast.error(translate('up.freeLimit', { n: FREE_DOC_LIMIT }));
+                setShowUpgradeModal(true);
+                return;
+              }
+              toast.error(translate('up.syncFailed'));
+            });
         }
       }
       track('first_upload', { type: docType }, true);
@@ -310,6 +321,9 @@ export const useDocuments = ({ user, userPlan, isOffline, setIsLoading, setShowU
         toast.error(translate('up.stalled', { name: file.name }));
       } else if (e instanceof UploadTimeoutError) {
         toast.error(translate('up.timeout', { name: file.name }));
+      } else if (isFreeDocLimitError(e)) {
+        toast.error(translate('up.freeLimit', { n: FREE_DOC_LIMIT }));
+        setShowUpgradeModal(true);
       } else {
         toast.error(translate('up.failed'));
       }

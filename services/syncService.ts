@@ -5,6 +5,15 @@ import type { TopicMetric, OnboardingProfile } from '../types';
  *  der Cloud-Sync gerade nicht erreichbar ist (Daten bleiben lokal). */
 export const SYNC_DEGRADED_EVENT = 'studearc-sync-degraded';
 
+/** Feuert, sobald App.tsx die Cloud-Daten nach dem Login in den lokalen
+ *  Speicher gemergt hat. Alles, was Verläufe, Fehlerfragen oder Streak einmalig
+ *  aus localStorage liest, muss danach neu lesen (s. useCloudDataVersion). */
+export const CLOUD_PULLED_EVENT = 'studearc:cloud-pulled';
+
+export const notifyCloudPulled = (): void => {
+  try { window.dispatchEvent(new CustomEvent(CLOUD_PULLED_EVENT)); } catch { /* kein window */ }
+};
+
 // 3 Syncs in Folge fehlgeschlagen → einmalig Event feuern. Ein einzelner
 // Fehlschlag (kurz offline, Supabase-Hickser) soll niemanden beunruhigen.
 let consecutiveSyncFailures = 0;

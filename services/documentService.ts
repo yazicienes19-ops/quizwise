@@ -193,9 +193,22 @@ export const saveDocumentToSupabase = async (
     delete row.mime_type;
     ({ error } = await supabase.from('documents').upsert(row));
   }
-  if (error) throw error;
+  if (error) {
+    // Free-Plan-Grenze der Datenbank: die Datei liegt schon im Storage, gehört
+    // aber zu keinem Dokument. Wieder entfernen, sonst bleibt sie verwaist.
+    if (storagePath && isFreeDocLimitError(error)) {
+      await supabase.storage.from('document-files').remove([storagePath]).catch(() => {});
+    }
+    throw error;
+  }
   return storagePath;
 };
+
+/** Free-Plan-Grenze der Datenbank (migration_free_document_limit.sql) erreicht.
+ *  Supabase liefert den Fehler als Objekt mit message, nicht immer als Error. */
+export const FREE_DOC_LIMIT = 5;
+export const isFreeDocLimitError = (e: unknown): boolean =>
+  /FREE_DOC_LIMIT/.test(String((e as { message?: unknown } | null)?.message ?? e ?? ''));
 
 export const deleteDocumentFromSupabase = async (doc: ProcessedDocument): Promise<void> => {
   if (doc.storagePath) {

@@ -116,10 +116,15 @@ export const saveUsedExamQuestions = (key: string, qs: { question?: string }[]):
  *  Sortierung macht die ID unabhängig von der Auswahlreihenfolge. */
 export const multiDocId = (docIds: string[]): string => [...docIds].sort().join('+');
 
+/** Metadaten der laufenden Quiz-Session. examMode: im Quiz keine Erklärungen
+ *  (Schalter "Prüfungsmodus" in QuizSetup); steckt in den Metadaten, damit
+ *  er auch beim Fortsetzen eines unterbrochenen Quiz gilt. */
+export type QuizMeta = { docId: string; docName: string; examMode?: boolean };
+
 export const useQuizState = (params: UseQuizStateParams) => {
   const [questions, setQuestions] = useState<QuizQuestion[]>([]);
   const [answers, setAnswers] = useState<UserAnswer[]>([]);
-  const [activeQuizMeta, setActiveQuizMeta] = useState<{ docId: string; docName: string } | null>(null);
+  const [activeQuizMeta, setActiveQuizMeta] = useState<QuizMeta | null>(null);
   const [quizInitialAnswers, setQuizInitialAnswers] = useState<UserAnswer[] | undefined>(undefined);
   const [savedQuizzes, setSavedQuizzes] = useState<SavedQuiz[]>(() => getSavedQuizzes());
   const [savedExams, setSavedExams] = useState<SavedExam[]>(() => getSavedExams());
@@ -128,7 +133,7 @@ export const useQuizState = (params: UseQuizStateParams) => {
 
   const progressTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
 
-  const saveQuizProgress = (qs: QuizQuestion[], ans: UserAnswer[], meta: { docId: string; docName: string } | null) => {
+  const saveQuizProgress = (qs: QuizQuestion[], ans: UserAnswer[], meta: QuizMeta | null) => {
     // Review-Sessions sind kurz und werden über den SRS-Status verwaltet — kein Resume
     if (meta?.docId === MISTAKE_REVIEW_DOC_ID) return;
     if (progressTimer.current) clearTimeout(progressTimer.current);
@@ -147,7 +152,7 @@ export const useQuizState = (params: UseQuizStateParams) => {
       const age = Date.now() - (p.timestamp ?? 0);
       if (age > 7 * 24 * 60 * 60 * 1000) { clearQuizProgress(); return null; }
       if (!p.questions?.length || p.answers?.length >= p.questions?.length) { clearQuizProgress(); return null; }
-      return p as { questions: QuizQuestion[]; answers: UserAnswer[]; meta: { docId: string; docName: string } | null };
+      return p as { questions: QuizQuestion[]; answers: UserAnswer[]; meta: QuizMeta | null };
     } catch { return null; }
   };
 
@@ -244,7 +249,7 @@ export const useQuizState = (params: UseQuizStateParams) => {
         metaDocId = params.pendingActionDoc!.id;
       }
 
-      setActiveQuizMeta({ docId: metaDocId, docName: metaName });
+      setActiveQuizMeta({ docId: metaDocId, docName: metaName, examMode: config.examMode });
       // Fokus-Auswahl bezieht sich bewusst immer aufs Primärdokument — QuizSetup
       // zeigt/berechnet "schwache Themen" ausschließlich aus dessen Stats.
       const stats = getDocStats(params.pendingActionDoc!.id);
@@ -271,7 +276,7 @@ export const useQuizState = (params: UseQuizStateParams) => {
       }
       setQuizInitialAnswers(undefined);
       saveUsedTopics(metaDocId, quiz);
-      saveQuizProgress(quiz, [], { docId: metaDocId, docName: metaName });
+      saveQuizProgress(quiz, [], { docId: metaDocId, docName: metaName, examMode: config.examMode });
     } catch (e) { params.handleApiError(e); } finally { params.setIsLoading(false); }
   };
 
@@ -298,7 +303,7 @@ export const useQuizState = (params: UseQuizStateParams) => {
       });
       if (!rawQuiz.length) throw new Error(translate('qs.noQuestions'));
       const quiz = interleaveQuestionsByTopic(rawQuiz);
-      const meta = { docId: target.topicsKey, docName: target.name };
+      const meta = { docId: target.topicsKey, docName: target.name, examMode: config.examMode };
       setActiveQuizMeta(meta);
       setQuestions(quiz);
       if (quiz.length < config.questionCount) {

@@ -8,6 +8,7 @@ import { BrandSpinner } from './BrandSpinner';
 import { useModalA11y } from '../hooks/useModalA11y';
 import { resolveErrorMessage } from '../services/errorMessages';
 import { LegalModal } from './LegalModal';
+import { OAUTH_PROVIDERS, type OAuthProvider } from '../config/auth';
 
 interface AuthModalProps {
   onClose: () => void;
@@ -80,7 +81,7 @@ export const AuthModal: React.FC<AuthModalProps> = ({ onClose, onSuccess }) => {
     }
   };
 
-  const handleOAuth = async (provider: 'google' | 'apple') => {
+  const handleOAuth = async (provider: OAuthProvider) => {
     setError('');
     setOauthLoading(provider);
     try {
@@ -149,30 +150,25 @@ export const AuthModal: React.FC<AuthModalProps> = ({ onClose, onSuccess }) => {
           </div>
         )}
 
-        {mode !== 'forgot' && (
+        {mode !== 'forgot' && OAUTH_PROVIDERS.length > 0 && (
         <>
-        {/* OAuth */}
+        {/* OAuth: nur Anbieter, die in Supabase eingerichtet sind (config/auth.ts) */}
         <div className="px-8 pt-6 space-y-2.5">
-          <button
-            type="button"
-            onClick={() => handleOAuth('google')}
-            disabled={!!oauthLoading || isLoading}
-            className="w-full py-3.5 rounded-2xl text-[12px] font-bold flex items-center justify-center gap-3 transition-all hover:opacity-80 disabled:opacity-40 disabled:cursor-not-allowed"
-            style={{ background: 'var(--bg-main)', border: '1px solid var(--border-color)', color: 'var(--text-main)' }}
-          >
-            {oauthLoading === 'google' ? <BrandSpinner size={18} strokeColor="var(--mark-stroke)" peakColor="var(--mark-peak)" /> : <GoogleIcon />}
-            {t('auth.continueWithGoogle')}
-          </button>
-          <button
-            type="button"
-            onClick={() => handleOAuth('apple')}
-            disabled={!!oauthLoading || isLoading}
-            className="w-full py-3.5 rounded-2xl text-[12px] font-bold flex items-center justify-center gap-3 transition-all hover:opacity-80 disabled:opacity-40 disabled:cursor-not-allowed"
-            style={{ background: 'var(--bg-main)', border: '1px solid var(--border-color)', color: 'var(--text-main)' }}
-          >
-            {oauthLoading === 'apple' ? <BrandSpinner size={18} strokeColor="var(--mark-stroke)" peakColor="var(--mark-peak)" /> : <AppleIcon />}
-            {t('auth.continueWithApple')}
-          </button>
+          {OAUTH_PROVIDERS.map(provider => (
+            <button
+              key={provider}
+              type="button"
+              onClick={() => handleOAuth(provider)}
+              disabled={!!oauthLoading || isLoading}
+              className="w-full py-3.5 rounded-2xl text-[12px] font-bold flex items-center justify-center gap-3 transition-all hover:opacity-80 disabled:opacity-40 disabled:cursor-not-allowed"
+              style={{ background: 'var(--bg-main)', border: '1px solid var(--border-color)', color: 'var(--text-main)' }}
+            >
+              {oauthLoading === provider
+                ? <BrandSpinner size={18} strokeColor="var(--mark-stroke)" peakColor="var(--mark-peak)" />
+                : provider === 'google' ? <GoogleIcon /> : <AppleIcon />}
+              {t(provider === 'google' ? 'auth.continueWithGoogle' : 'auth.continueWithApple')}
+            </button>
+          ))}
         </div>
 
         <div className="px-8 pt-5 flex items-center gap-3">

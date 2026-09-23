@@ -21,6 +21,7 @@ import { getLocale } from '../i18n';
 import type { TKey } from '../i18n';
 import { formatDate } from '../i18n/dates';
 import { greetingKind } from '../services/dashboardService';
+import { useCloudDataVersion } from '../hooks/useCloudDataVersion';
 
 interface DashboardProps {
   onTabChange: (tab: ActiveTab) => void;
@@ -145,8 +146,11 @@ export const Dashboard: React.FC<DashboardProps> = ({
     () => countDueCards(scopedDecks.flatMap(d => withSrs(d.cards))),
     [scopedDecks],
   );
-  const dueMistakes = useMemo(() => getDueMistakes(), []);
-  const streak = useMemo(() => getStreak(), []);
+  // dataVersion: nach dem Cloud-Abgleich beim Login neu lesen, sonst zeigt die
+  // Startseite auf einem neuen Gerät "alles im grünen Bereich" (Audit 23.09.2026).
+  const dataVersion = useCloudDataVersion();
+  const dueMistakes = useMemo(() => getDueMistakes(), [dataVersion]);
+  const streak = useMemo(() => getStreak(), [dataVersion]);
 
   const rows = useMemo(
     () => buildModuleRows({ collections, documents, decks, activity, dueMistakes, examTerms, now: new Date() }),

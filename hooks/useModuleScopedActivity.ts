@@ -1,4 +1,5 @@
 import { useMemo } from 'react';
+import { useCloudDataVersion } from './useCloudDataVersion';
 import type { Collection, ProcessedDocument } from '../types';
 import { getAllResults, type QuizResult } from '../services/quizHistoryService';
 import { getAllExamResults, type ExamResult } from '../services/examHistoryService';
@@ -25,9 +26,12 @@ export const useModuleScopedActivity = (
   documents: ProcessedDocument[],
   dismissedTopics: Set<string>,
 ): ModuleScopedActivity => {
-  const allQuizResults = useMemo(() => getAllResults(), []);
-  const allExamResults = useMemo(() => getAllExamResults(), []);
-  const allRecallResults = useMemo(() => getAllRecallResults(), []);
+  // Neu lesen, sobald der Cloud-Abgleich nach dem Login fertig ist (sonst
+  // bleibt die Ansicht auf dem leeren Stand eines neuen Geräts stehen).
+  const dataVersion = useCloudDataVersion();
+  const allQuizResults = useMemo(() => getAllResults(), [dataVersion]);
+  const allExamResults = useMemo(() => getAllExamResults(), [dataVersion]);
+  const allRecallResults = useMemo(() => getAllRecallResults(), [dataVersion]);
 
   const moduleFilter = useMemo(
     () => (activeModule ? buildModuleFilter(activeModule, documents) : null),

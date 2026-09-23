@@ -29,13 +29,14 @@ import { getAllRecallResults } from './services/recallHistoryService';
 import { toast } from './services/toast';
 import { ActiveTab, TopicMetric, SearchResult, FlashcardDeck, ExamTerm, LearningFlowResult, OnboardingProfile } from './types';
 import { readLocalDecks, upsertLocalDeck, subscribeLocalDecks, claimLocalDecks } from './services/deckStore';
+import { syncDecksWithCloud } from './services/deckCloudSync';
 import { isAdmin } from './config/admin';
 import { useAuth } from './hooks/useAuth';
 import { useActivityHeartbeat } from './hooks/useActivityHeartbeat';
 import { useDocuments } from './hooks/useDocuments';
 import { useQuizState } from './hooks/useQuizState';
 import { AppContent } from './components/AppContent';
-import { loadAllCloudData, syncLearningField, syncMetrics, migrateLocalToCloud, syncPreferences, SYNC_DEGRADED_EVENT, mergeById, mergeReadingProgress, mergeMetrics, type CloudPreferences } from './services/syncService';
+import { loadAllCloudData, syncLearningField, syncMetrics, migrateLocalToCloud, syncPreferences, SYNC_DEGRADED_EVENT, notifyCloudPulled, mergeById, mergeReadingProgress, mergeMetrics, type CloudPreferences } from './services/syncService';
 import { useTranslation } from './i18n/I18nProvider';
 
 const LAST_TAB_KEY = 'studearc_last_tab';
@@ -244,7 +245,13 @@ const App: React.FC = () => {
         const hasLocal = localStorage.getItem('studearc_metrics') || localStorage.getItem('studearc_streak') || localStorage.getItem('studearc_quiz_history');
         if (hasLocal) migrateLocalToCloud(auth.user!.id).catch(() => {});
       }
+      // Ansichten, die Verläufe/Fehlerfragen/Streak aus localStorage lesen,
+      // jetzt neu rechnen lassen (Startseite, Lernfortschritt).
+      notifyCloudPulled();
     }).catch(() => {});
+    // Karteikarten sofort abgleichen, nicht erst beim Öffnen der Karteikarten:
+    // sonst fehlen fällige Karten auf der Startseite (deckCloudSync.ts).
+    syncDecksWithCloud(auth.user.id).catch(() => {});
   }, [auth.user, isOffline]);
 
   // Admin-only Tabs (Labor) nicht wiederherstellen, falls der eingeloggte

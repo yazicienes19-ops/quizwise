@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import { getSharedLibrary, SharedLibrary } from '../services/sharedLibraryService';
-import { saveCollectionToSupabase, saveDocumentToSupabase, deleteDocumentFromSupabase, deleteCollectionFromSupabase } from '../services/documentService';
+import { saveCollectionToSupabase, saveDocumentToSupabase, deleteDocumentFromSupabase, deleteCollectionFromSupabase, isFreeDocLimitError, FREE_DOC_LIMIT } from '../services/documentService';
 import { supabase } from '../services/supabaseClient';
 import { ProcessedDocument } from '../types';
 import { toast } from '../services/toast';
@@ -85,8 +85,10 @@ export const SharedLibraryPage: React.FC<SharedLibraryPageProps> = ({ shareId, u
       }
       setAccepted(true);
       toast.success(t('slp.accepted', { name: library.name }));
-    } catch {
-      toast.error(t('slp.acceptFailed'));
+    } catch (e) {
+      // Free-Plan: übernommene Fächer zählen mit (Entscheidung 23.09.2026).
+      // Alles oder nichts: bereits geschriebene Dokumente sind oben schon zurückgerollt.
+      toast.error(isFreeDocLimitError(e) ? t('slp.freeLimit', { n: FREE_DOC_LIMIT }) : t('slp.acceptFailed'));
     } finally {
       setAccepting(false);
     }

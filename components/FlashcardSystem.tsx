@@ -8,9 +8,9 @@ import { toast } from '../services/toast';
 import { useTranslation } from '../i18n/I18nProvider';
 import { FlashcardPlayer } from './FlashcardPlayer';
 import { SourceSelector } from './SourceSelector';
-import { loadDecksFromSupabase, saveDeckToSupabase, deleteDeckFromSupabase, uploadAllDecksToSupabase } from '../services/flashcardService';
-import { mergeDecks } from '../services/deckMerge';
+import { saveDeckToSupabase, deleteDeckFromSupabase, uploadAllDecksToSupabase } from '../services/flashcardService';
 import { readLocalDecks, writeLocalDecks, subscribeLocalDecks, claimLocalDecks } from '../services/deckStore';
+import { syncDecksWithCloud } from '../services/deckCloudSync';
 import { documentDisplayName } from '../services/libraryService';
 import { createSrsState, migrateLegacyCard, countDueCards, QUALITY_MAP, reviewCard, buildSessionBatch, SESSION_BATCH_SIZE, type SrsState } from '../services/spacedRepetition';
 import { recordActivity } from '../services/streakService';
@@ -142,40 +142,15 @@ export const FlashcardSystem: React.FC<FlashcardSystemProps> = ({
     return () => { window.removeEventListener('pagehide', flushCloud); flushCloud(); };
   }, [flushCloud]);
 
+  // Cloud-Abgleich (services/deckCloudSync.ts). Läuft schon beim Login aus
+  // App.tsx; hier ein zweiter Anstoß für den Fall, dass die Karteikarten
+  // offen sind, während der Login gerade erst abgeschlossen wird. Gleichzeitige
+  // Aufrufe teilen sich denselben Abgleich. Das Ergebnis kommt über
+  // subscribeLocalDecks oben an.
   useEffect(() => {
     if (!userId) return;
-    let cancelled = false;
-    (async () => {
-      try {
-        const cloudDecks = await loadDecksFromSupabase(userId);
-        if (cancelled) return;
-        // Lokalen Stand erst NACH dem await lesen: was der Nutzer in der
-        // Zwischenzeit gelernt oder angelegt hat, darf der Merge nicht verlieren.
-        claimLocalDecks(userId);
-        const localDecks = readLocalDecks();
-        if (cloudDecks.length === 0) {
-          if (localDecks.length > 0) await uploadAllDecksToSupabase(localDecks, userId);
-          return;
-        }
-        // Cloud NICHT blind übernehmen — pro Karte mergen (deckMerge), sonst
-        // geht Offline-Lernfortschritt dieses Geräts verloren.
-        const merged = mergeDecks(localDecks, cloudDecks);
-        commitDecks(merged);
-        // Hochladen, was die Cloud noch nicht kennt: rein lokale Decks (z.B.
-        // per Link übernommen) UND Decks, deren Karten hier neuer sind (offline
-        // gelernt). Vorher blieb Letzteres bis zur nächsten Bearbeitung liegen.
-        const cloudById = new Map(cloudDecks.map(d => [d.id, d]));
-        const needsUpload = merged.filter(d => {
-          const cloud = cloudById.get(d.id);
-          return !cloud || JSON.stringify(cloud.cards) !== JSON.stringify(d.cards);
-        });
-        if (needsUpload.length > 0) uploadAllDecksToSupabase(needsUpload, userId).catch(() => {});
-      } catch {
-        // Offline oder Fehler → lokaler Stand bleibt
-      }
-    })();
-    return () => { cancelled = true; };
-  }, [userId, commitDecks]);
+    syncDecksWithCloud(userId).catch(() => { /* Offline oder Fehler → lokaler Stand bleibt */ });
+  }, [userId]);
 
   // Auto-generate cards when navigated from Library source detail.
   // Ref-Sperre: React StrictMode (Dev) führt Mount-Effekte doppelt aus, das

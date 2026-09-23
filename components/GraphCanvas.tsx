@@ -175,6 +175,9 @@ const CULL_MIN_NODES = 50;
 // und Coach-Hinweispunkte sind bei Overview-Zoom ohnehin nur wenige Pixel,
 // kosten aber SMIL-Animationen bzw. DOM-Nodes pro Kante/Node.
 const LOD_MIN_ZOOM_K = 0.45;
+/** Mindestzoom beim automatischen Einpassen: Beschriftungen und Kantenlabels
+ *  (ab 0.55) bleiben lesbar. */
+const READABLE_ZOOM_K = 0.7;
 // Kanten-Bündelung: ab BUNDLE_MIN_NODES Nodes und unter FADE_START_K faden
 // alle Kanten weich von gerader Linie (wie immer) zu einer sanften Bézier-
 // Krümmung Richtung Netz-Schwerpunkt. Beim Hineinzoomen löst sich die
@@ -1110,24 +1113,50 @@ export const GraphCanvas: React.FC<GraphCanvasProps> = ({
   const pulseFill = `url(#wnPulseGrad${isDark ? '' : 'Day'})`;
 
   // ── Pan/Zoom (Muster aus MindmapCanvas.tsx, angepasst) ──────────────────
-  const fitView = useCallback(() => {
-    if (!svgRef.current || !zoomBehaviorRef.current || activeNodes.length === 0) return;
-    const xs = activeNodes.map(n => positionOf(n.id).x - nodeExtentsOf(n.id).rx);
-    const xsMax = activeNodes.map(n => positionOf(n.id).x + nodeExtentsOf(n.id).rx);
-    const ys = activeNodes.map(n => positionOf(n.id).y - nodeExtentsOf(n.id).ry);
-    const ysMax = activeNodes.map(n => positionOf(n.id).y + nodeExtentsOf(n.id).ry);
-    const minX = Math.min(...xs), maxX = Math.max(...xsMax);
-    const minY = Math.min(...ys), maxY = Math.max(...ysMax);
+  /** Transform, der die gegebenen Nodes mittig einpasst (max. Zoom 1.2). */
+  const fitTransformFor = useCallback((nodes: typeof activeNodes) => {
+    const svgW = svgRef.current?.clientWidth || 800;
+    const svgH = svgRef.current?.clientHeight || 500;
+    const minX = Math.min(...nodes.map(n => positionOf(n.id).x - nodeExtentsOf(n.id).rx));
+    const maxX = Math.max(...nodes.map(n => positionOf(n.id).x + nodeExtentsOf(n.id).rx));
+    const minY = Math.min(...nodes.map(n => positionOf(n.id).y - nodeExtentsOf(n.id).ry));
+    const maxY = Math.max(...nodes.map(n => positionOf(n.id).y + nodeExtentsOf(n.id).ry));
     const contentWidth = maxX - minX || 1;
     const contentHeight = maxY - minY || 1;
-    const svgW = svgRef.current.clientWidth || 800;
-    const svgH = svgRef.current.clientHeight || 500;
     const scale = Math.min(1.2, 0.9 * Math.min(svgW / contentWidth, svgH / contentHeight));
-    const tx = svgW / 2 - scale * (minX + contentWidth / 2);
-    const ty = svgH / 2 - scale * (minY + contentHeight / 2);
+    return { scale, cx: minX + contentWidth / 2, cy: minY + contentHeight / 2, svgW, svgH };
+  }, [positionOf, nodeExtentsOf]);
+
+  /**
+   * Ansicht einpassen. Standard (Knopf): das ganze Netz, auch wenn es dafür
+   * klein wird. `readable` (beim Öffnen): liegen einzelne Konzepte weit
+   * abseits, würde das ganze Netz auf unlesbare Punkte schrumpfen (Audit
+   * 23.09.2026). Dann wird der Kern des Netzes (10.–90. Perzentil der
+   * Positionen) eingepasst, mindestens so groß, dass Beschriftungen stehen.
+   */
+  const fitView = useCallback((opts?: { readable?: boolean }) => {
+    if (!svgRef.current || !zoomBehaviorRef.current || activeNodes.length === 0) return;
+    let fit = fitTransformFor(activeNodes);
+    if (opts?.readable && fit.scale < READABLE_ZOOM_K && activeNodes.length > 2) {
+      const pct = (vals: number[], p: number) => {
+        const sorted = [...vals].sort((a, b) => a - b);
+        return sorted[Math.min(sorted.length - 1, Math.max(0, Math.round(p * (sorted.length - 1))))];
+      };
+      const xs = activeNodes.map(n => positionOf(n.id).x);
+      const ys = activeNodes.map(n => positionOf(n.id).y);
+      const [x10, x90, y10, y90] = [pct(xs, 0.1), pct(xs, 0.9), pct(ys, 0.1), pct(ys, 0.9)];
+      const core = activeNodes.filter(n => {
+        const { x, y } = positionOf(n.id);
+        return x >= x10 && x <= x90 && y >= y10 && y <= y90;
+      });
+      const coreFit = fitTransformFor(core.length > 0 ? core : activeNodes);
+      fit = { ...coreFit, scale: Math.max(READABLE_ZOOM_K, coreFit.scale) };
+    }
+    const tx = fit.svgW / 2 - fit.scale * fit.cx;
+    const ty = fit.svgH / 2 - fit.scale * fit.cy;
     d3.select(svgRef.current).transition().duration(300)
-      .call(zoomBehaviorRef.current.transform, d3.zoomIdentity.translate(tx, ty).scale(scale));
-  }, [activeNodes, positionOf, nodeExtentsOf]);
+      .call(zoomBehaviorRef.current.transform, d3.zoomIdentity.translate(tx, ty).scale(fit.scale));
+  }, [activeNodes, positionOf, fitTransformFor]);
 
   // Ref statt Dependency: das Zoom-Verhalten wird bewusst nur EINMAL gebunden
   // ([]-Deps) — ein neuer Callback pro Render würde sonst ständig neu binden.
@@ -1167,14 +1196,25 @@ export const GraphCanvas: React.FC<GraphCanvasProps> = ({
     // Gespeicherter Ausschnitt dieses Graphen? Dann dort weitermachen, wo der
     // Nutzer zuletzt aufgehört hat — sonst alles einpassen (bisheriges
     // Verhalten, bleibt für Graphen ohne gespeicherten View).
-    if (initialView) {
+    // Nur übernehmen, wenn der gespeicherte Ausschnitt lesbar ist und
+    // überhaupt ein Konzept zeigt; sonst lesbar einpassen (Audit 23.09.2026:
+    // ein weit herausgezoomter gespeicherter Ausschnitt zeigte nur Punkte).
+    const svgW = svgRef.current.clientWidth || 800;
+    const svgH = svgRef.current.clientHeight || 500;
+    const viewShowsNodes = !!initialView && activeNodes.some(n => {
+      const { x, y } = positionOf(n.id);
+      const sx = initialView.x + initialView.k * x;
+      const sy = initialView.y + initialView.k * y;
+      return sx >= 0 && sx <= svgW && sy >= 0 && sy <= svgH;
+    });
+    if (initialView && initialView.k >= LOD_MIN_ZOOM_K && viewShowsNodes) {
       d3.select(svgRef.current).call(
         zoomBehaviorRef.current.transform,
         d3.zoomIdentity.translate(initialView.x, initialView.y).scale(initialView.k),
       );
       setZoomTransform({ x: initialView.x, y: initialView.y, k: initialView.k });
     } else {
-      fitView();
+      fitView({ readable: true });
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [activeNodes.length]);
@@ -1637,7 +1677,7 @@ export const GraphCanvas: React.FC<GraphCanvasProps> = ({
       <div className="absolute top-3 right-3 z-10 flex gap-1.5">
         <button onClick={() => zoomBy(1.3)} aria-label={t('kg.canvas.zoomIn')} title={t('kg.canvas.zoomIn')} className="w-8 h-8 flex items-center justify-center rounded-lg text-sm font-black" style={{ background: wnTheme.chipBg, border: `1px solid ${wnTheme.chipBorder}`, color: wnTheme.chipText, backdropFilter: 'blur(6px)' }}>+</button>
         <button onClick={() => zoomBy(1 / 1.3)} aria-label={t('kg.canvas.zoomOut')} title={t('kg.canvas.zoomOut')} className="w-8 h-8 flex items-center justify-center rounded-lg text-sm font-black" style={{ background: wnTheme.chipBg, border: `1px solid ${wnTheme.chipBorder}`, color: wnTheme.chipText, backdropFilter: 'blur(6px)' }}>−</button>
-        <button onClick={fitView} aria-label={t('kg.canvas.fit')} title={t('kg.canvas.fit')} className="w-8 h-8 flex items-center justify-center rounded-lg" style={{ background: wnTheme.chipBg, border: `1px solid ${wnTheme.chipBorder}`, color: wnTheme.chipText, backdropFilter: 'blur(6px)' }}>
+        <button onClick={() => fitView()} aria-label={t('kg.canvas.fit')} title={t('kg.canvas.fit')} className="w-8 h-8 flex items-center justify-center rounded-lg" style={{ background: wnTheme.chipBg, border: `1px solid ${wnTheme.chipBorder}`, color: wnTheme.chipText, backdropFilter: 'blur(6px)' }}>
           <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><path d="M8 3H5a2 2 0 0 0-2 2v3m18 0V5a2 2 0 0 0-2-2h-3m0 18h3a2 2 0 0 0 2-2v-3M3 16v3a2 2 0 0 0 2 2h3"/></svg>
         </button>
       </div>
