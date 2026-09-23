@@ -355,7 +355,13 @@ export const StudyPlanner: React.FC<StudyPlannerProps> = ({ metrics, decks, exam
   };
 
   const knowledgeGaps = metrics.filter(m => m.confidence < 70);
-  const dueDecks = decks.filter(d => countDueCards(d.cards.map(c => c.srs ? c : { ...c, srs: migrateLegacyCard(c) })) > 0);
+  // Fällige Karten je Stapel: die Überschrift zeigt die Summe der Karten, nicht
+  // die Zahl der Stapel (Audit 23.09.2026: "Fällige Karten (6)" bei 51 fälligen).
+  const dueDecks = decks
+    .map(d => ({ deck: d, due: countDueCards(d.cards.map(c => c.srs ? c : { ...c, srs: migrateLegacyCard(c) })) }))
+    .filter(x => x.due > 0)
+    .sort((a, b) => b.due - a.due);
+  const dueCardsTotal = dueDecks.reduce((sum, x) => sum + x.due, 0);
 
   return (
     <div className="max-w-6xl mx-auto space-y-10 animate-in fade-in duration-1000 pb-20 px-4">
@@ -455,12 +461,12 @@ export const StudyPlanner: React.FC<StudyPlannerProps> = ({ metrics, decks, exam
           </div>
         </div>
         <div className="p-6 rounded-[32px] bg-white/50 dark:bg-slate-900/50 backdrop-blur-sm border border-slate-200/50 dark:border-slate-800/50 hover:bg-white dark:hover:bg-slate-900 transition-all">
-          <h3 className="text-[9px] font-black uppercase tracking-[0.4em] text-indigo-600 mb-4">{t('sp2.dueCards', { n: dueDecks.length })}</h3>
+          <h3 className="text-[9px] font-black uppercase tracking-[0.4em] text-indigo-600 mb-4">{t('sp2.dueCards', { n: dueCardsTotal })}</h3>
           <div className="space-y-2">
-            {dueDecks.slice(0, 3).map(deck => (
+            {dueDecks.slice(0, 3).map(({ deck, due }) => (
               <div key={deck.id} className="flex justify-between items-center">
                 <span className="text-[11px] font-bold text-slate-600 dark:text-slate-300 break-words pr-2">{deck.title}</span>
-                <div className="w-1.5 h-1.5 rounded-full bg-indigo-500" />
+                <span className="text-[11px] font-black tabular-nums" style={{ color: 'var(--primary)' }}>{due}</span>
               </div>
             ))}
             {dueDecks.length === 0 && <p className="text-[10px] text-slate-400 italic">{t('sp2.allLearned')}</p>}

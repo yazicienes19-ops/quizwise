@@ -743,15 +743,9 @@ export const ExamView: React.FC<ExamViewProps> = ({
       <div className="flex justify-between items-end border-b-4 border-slate-900 dark:border-slate-100 pb-8">
         <div>
           <h2 className="text-2xl sm:text-4xl font-black uppercase tracking-tighter dark:text-white">{t('ev.examProtocol')}</h2>
-          <p className="text-[11px] font-mono opacity-60 uppercase tracking-[0.3em] dark:text-slate-400 mt-2">
-            {t('ev.institution')}
-          </p>
         </div>
         <div className="text-right dark:text-white">
-          <p className="font-black text-sm uppercase border-b-2 border-slate-300 dark:border-slate-700 min-w-[240px] pb-1">
-            {t('ev.studentLine')}
-          </p>
-          <div className="flex justify-end gap-6 mt-3">
+          <div className="flex justify-end gap-6">
             <div className="text-right">
               <p className="text-[9px] font-black uppercase text-slate-400">{t('ev.totalPoints')}</p>
               <p className="text-lg font-black">{achievedTotal} / {totalPoints}</p>

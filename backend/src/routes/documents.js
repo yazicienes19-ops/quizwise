@@ -2,6 +2,7 @@ const express = require('express');
 const { GoogleGenAI, createPartFromUri } = require('@google/genai');
 const { MODEL_LITE } = require('../config/geminiModels');
 const { getBudgetStatus, getPlan, recordUsage, budgetExhaustedError } = require('../budget/aiBudget');
+const { normalizeLanguage, languageLine } = require('../utils/outputLanguage');
 
 const router = express.Router();
 const ai = new GoogleGenAI({ apiKey: process.env.GEMINI_API_KEY });
@@ -34,9 +35,9 @@ const waitForFileActive = async (fileName) => {
   throw new Error('Gemini-Dateiverarbeitung hat zu lange gedauert.');
 };
 
-// language: 'de' (Default) | 'tr' — steuert nur die Ausgabesprache des Digests.
+// language: 'de' (Default) | 'en' | 'tr' — steuert nur die Ausgabesprache des Digests.
 const digestPrompt = (language = 'de') => {
-  const langLine = language === 'tr' ? 'auf Türkisch' : 'auf Deutsch';
+  const langLine = languageLine(language);
   return `Analysiere dieses Dokument und erstelle einen vollständigen Lerndigest ${langLine}.
 
 Erfasse ALLE Lerninhalte lückenlos:
@@ -55,7 +56,7 @@ Dieser Digest ersetzt das Originaldokument für alle zukünftigen KI-Aufrufe (Qu
 router.post('/:id/analyze', async (req, res) => {
   const { id } = req.params;
   if (!ID_RE.test(id)) return res.status(400).json({ error: 'Ungültige Dokument-ID.' });
-  const language = req.body?.language === 'tr' ? 'tr' : 'de';
+  const language = normalizeLanguage(req.body?.language);
 
   const sb = req.supabase;
   const userId = req.user.id;

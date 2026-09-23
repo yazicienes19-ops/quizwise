@@ -27,7 +27,10 @@ export const getSpacedSettings = (): SpacedPlanningSettings => {
     const raw = localStorage.getItem(SPACED_PLANNING_KEY);
     if (raw) return JSON.parse(raw);
   } catch {}
-  return { enabled: false, lastRunDay: null };
+  // Standard AN (Audit 23.09.2026): als Opt-in erlebte die Automatik kaum
+  // jemand. Wer sie einmal ausschaltet, behält "aus" (gespeicherter Wert oben).
+  // Manuelle Einträge verschiebt sie ohnehin nie.
+  return { enabled: true, lastRunDay: null };
 };
 
 export const saveSpacedSettings = (settings: SpacedPlanningSettings, userId?: string | null): void => {

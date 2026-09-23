@@ -36,9 +36,9 @@ export const UpgradeModal: React.FC<UpgradeModalProps> = ({ onClose }) => {
   };
 
   const features = [
+    t('um.unlimitedDocs'),
     t('um.unlimited'),
-    t('um.allModules'),
-    t('um.examNoLimit'),
+    t('um.strongerModel'),
     t('um.prioritySupport'),
   ];
 

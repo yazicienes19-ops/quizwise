@@ -15,9 +15,6 @@ interface Props {
 
 const ACCEPTED = '.pdf,.docx,.txt,.md,.png,.jpg,.jpeg,.webp,.heic,.heif';
 const FILE_EMOJI: Record<string, string> = { pdf: '📕', docx: '📘', txt: '📄', md: '📄', png: '🖼️', jpg: '🖼️', jpeg: '🖼️', webp: '🖼️', heic: '📷', heif: '📷' };
-/** Ab hier verarbeitet das Backend Dateien nicht mehr für den KI-Lerndigest (Gemini-Inline-Limit). */
-const ANALYZE_LIMIT_BYTES = 18 * 1024 * 1024;
-
 const Field: React.FC<{
   label: string;
   value: string;
@@ -305,9 +302,6 @@ export const UploadSourceModal: React.FC<Props> = ({ onClose, onUpload }) => {
                             aria-label={t('upl.titleOptional')}
                           />
                           <p className="text-[9px] text-slate-400 font-black uppercase tracking-widest truncate">{f.file.name} · {(f.file.size / 1024 / 1024).toFixed(2)} MB</p>
-                          {f.file.size > ANALYZE_LIMIT_BYTES && (
-                            <p className="text-[9px] font-bold text-amber-500">{t('upl.tooLargeForDigest')}</p>
-                          )}
                         </div>
                         <button type="button" onClick={() => setFiles(prev => prev.filter((_, j) => j !== i))} className="text-slate-400 hover:text-rose-500 transition-colors font-black text-lg leading-none shrink-0">×</button>
                       </div>

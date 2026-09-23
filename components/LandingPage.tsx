@@ -86,7 +86,7 @@ export const LandingPage: React.FC<LandingPageProps> = ({ onAuthClick, onLegalCl
   const { t } = useTranslation();
 
   const freeItems: TKey[] = ['landing.pricing.free1', 'landing.pricing.free2', 'landing.pricing.free3', 'landing.pricing.free4', 'landing.pricing.free5'];
-  const proItems: TKey[] = ['landing.pricing.pro1', 'landing.pricing.pro2', 'landing.pricing.pro3', 'landing.pricing.pro4', 'landing.pricing.pro5', 'landing.pricing.pro6', 'landing.pricing.pro7'];
+  const proItems: TKey[] = ['landing.pricing.pro1', 'landing.pricing.pro2', 'landing.pricing.pro3', 'landing.pricing.pro4', 'landing.pricing.pro5'];
 
   return (
     <div style={{ background: '#FBF9F4', color: '#1B2A4A' }}>

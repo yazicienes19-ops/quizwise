@@ -38,6 +38,7 @@ import { useQuizState } from './hooks/useQuizState';
 import { AppContent } from './components/AppContent';
 import { loadAllCloudData, syncLearningField, syncMetrics, migrateLocalToCloud, syncPreferences, SYNC_DEGRADED_EVENT, notifyCloudPulled, mergeById, mergeReadingProgress, mergeMetrics, type CloudPreferences } from './services/syncService';
 import { useTranslation } from './i18n/I18nProvider';
+import { SPACED_PLANNING_KEY, saveSpacedSettings } from './services/spacedPlanningService';
 
 const LAST_TAB_KEY = 'studearc_last_tab';
 // READER bewusst ausgeschlossen — hängt an einem konkreten pendingActionDoc,
@@ -172,6 +173,12 @@ const App: React.FC = () => {
     if (!auth.user || isOffline) return;
     loadAllCloudData(auth.user.id).then(cloud => {
       setCloudPreferences(cloud.preferences);
+      // Wiederholungsplanung: eine auf einem anderen Gerät getroffene Wahl
+      // übernehmen, solange hier noch keine lokal gespeichert ist (sonst
+      // gälte der Standard "an" auch für Nutzer, die sie ausgeschaltet haben).
+      if (typeof cloud.preferences.spaced_planning === 'boolean' && localStorage.getItem(SPACED_PLANNING_KEY) === null) {
+        saveSpacedSettings({ enabled: cloud.preferences.spaced_planning, lastRunDay: null });
+      }
       if (cloud.saved) {
         const saved = cloud.saved;
         import('./services/tutorSessions').then(m => m.mergeCloudTutorSessions(saved.tutor_sessions)).catch(() => {});

@@ -167,8 +167,13 @@ describe('applySpacedPlan', () => {
 describe('Settings', () => {
   beforeEach(() => localStorage.clear());
 
-  it('Default: disabled', () => {
-    expect(getSpacedSettings()).toEqual({ enabled: false, lastRunDay: null });
+  it('Default: aktiviert, solange nichts gespeichert ist', () => {
+    expect(getSpacedSettings()).toEqual({ enabled: true, lastRunDay: null });
+  });
+
+  it('Gespeichertes "aus" bleibt aus', () => {
+    saveSpacedSettings({ enabled: false, lastRunDay: null });
+    expect(getSpacedSettings().enabled).toBe(false);
   });
 
   it('Roundtrip', () => {

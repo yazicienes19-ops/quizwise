@@ -321,7 +321,7 @@ export const Dashboard: React.FC<DashboardProps> = ({
     });
   }
   if (kpis.examsTotal > 0) {
-    kpiItems.push({ key: 'exams', label: t('home.kpi.exams'), value: kpis.examsWritten, unit: `/ ${kpis.examsTotal}`, onClick: () => onTabChange(ActiveTab.PLANNER) });
+    kpiItems.push({ key: 'exams', label: t('home.kpi.exams'), value: kpis.examsWritten, unit: t('home.kpi.examsOf', { n: kpis.examsTotal }), onClick: () => onTabChange(ActiveTab.PLANNER) });
   }
   kpiItems.push({ key: 'streak', label: t('home.kpi.streak'), value: streak.current, unit: tp('home.unit.days', streak.current), onClick: () => onTabChange(ActiveTab.RADAR) });
   kpiItems.push({ key: 'week', label: t('home.kpi.week'), value: kpis.weeklyQuestions, unit: tp('home.unit.questions', kpis.weeklyQuestions), onClick: () => onTabChange(ActiveTab.RADAR) });

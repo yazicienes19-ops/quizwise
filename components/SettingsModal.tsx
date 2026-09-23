@@ -395,7 +395,7 @@ export const SettingsModal: React.FC<Props> = ({ user, isDark, onToggleTheme, on
               {/* Upgrade CTA (Free) */}
               {profile?.plan !== 'pro' && (
                 <div className="space-y-4">
-                  {[t('settings.feat.unlimited'), t('settings.feat.allModules'), t('settings.feat.prioritySupport')].map(f => (
+                  {[t('settings.feat.unlimitedDocs'), t('settings.feat.unlimited'), t('settings.feat.strongerModel'), t('settings.feat.prioritySupport')].map(f => (
                     <div key={f} className="flex items-center gap-3">
                       <Check className="w-4 h-4 text-emerald-500 shrink-0" strokeWidth={2.5} />
                       <p className="text-[12px] font-bold dark:text-white">{f}</p>

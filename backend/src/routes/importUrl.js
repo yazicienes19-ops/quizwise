@@ -6,6 +6,7 @@ const { checkUsageLimit } = require('../middleware/limits');
 const { validatePublicHttpUrl } = require('../utils/urlSafety');
 const { MODEL_LITE } = require('../config/geminiModels');
 const { getBudgetStatus, recordUsage, budgetExhaustedError } = require('../budget/aiBudget');
+const { normalizeLanguage, languageLine } = require('../utils/outputLanguage');
 
 const router = express.Router();
 const ai = new GoogleGenAI({ apiKey: process.env.GEMINI_API_KEY });
@@ -37,9 +38,9 @@ async function fetchWithTimeout(target, options = {}) {
 // Gemini kann öffentliche YouTube-Videos direkt per URL verarbeiten — kein
 // Transkript-Scraping nötig (das von Cloud-IPs aus regelmäßig blockiert wird).
 
-// language: 'de' (Default) | 'tr' — steuert nur die Ausgabesprache des Skripts.
+// language: 'de' (Default) | 'en' | 'tr' — steuert nur die Ausgabesprache des Skripts.
 const youtubePrompt = (language = 'de') => {
-  const langLine = language === 'tr' ? 'auf Türkisch' : 'auf Deutsch';
+  const langLine = languageLine(language);
   return `Du erhältst ein Lehrvideo. Erstelle daraus ein vollständiges, lernfertiges Skript ${langLine}.
 
 Regeln:
@@ -52,7 +53,7 @@ Regeln:
 
 router.post('/youtube', checkUsageLimit, async (req, res) => {
   const url = validatePublicHttpUrl(req.body?.url);
-  const language = req.body?.language === 'tr' ? 'tr' : 'de';
+  const language = normalizeLanguage(req.body?.language);
   const videoId = url && parseYouTubeId(url);
   if (!videoId) {
     return res.status(400).json({ error: 'Das ist kein gültiger YouTube-Link.' });
