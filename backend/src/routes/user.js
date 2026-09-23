@@ -2,6 +2,7 @@ const express = require('express');
 const crypto = require('crypto');
 const Stripe = require('stripe');
 const { supabaseAdmin } = require('../middleware/auth');
+const { buildUserExport } = require('../utils/userExport');
 const router = express.Router();
 
 const stripe = new Stripe(process.env.STRIPE_SECRET_KEY);
@@ -73,71 +74,15 @@ router.post('/activity-heartbeat', async (req, res, next) => {
 
 // GET /api/user/export
 // Alle Nutzerdaten als JSON — DSGVO Recht auf Datenmitnahme
+// Vollständiger Datenexport (Art. 15/20 DSGVO), s. utils/userExport.js
 router.get('/export', async (req, res, next) => {
   try {
-    const userId = req.user.id;
-
-    const sb = req.supabase;
-    const [profileRes, metricsRes, decksRes, planRes] = await Promise.all([
-      sb.from('profiles').select('*').eq('id', userId).single(),
-      sb.from('metrics').select('*').eq('user_id', userId),
-      sb.from('flashcard_decks').select('*').eq('user_id', userId),
-      sb.from('study_plan').select('*').eq('user_id', userId).single(),
-    ]);
-
-    const exportData = {
-      exportedAt: new Date().toISOString(),
-      account: { email: req.user.email, ...profileRes.data },
-      metrics: metricsRes.data || [],
-      flashcardDecks: decksRes.data || [],
-      studyPlan: planRes.data || null,
-    };
-
+    const exportData = await buildUserExport(supabaseAdmin, req.user);
     res.setHeader('Content-Disposition', 'attachment; filename="studearc-data.json"');
     res.setHeader('Content-Type', 'application/json');
     res.json(exportData);
   } catch (err) { next(err); }
 });
-
-// DELETE /api/user/account
-// Konto vollständig löschen — DSGVO Recht auf Vergessenwerden
-// Alle Dateien eines Nutzers im Storage löschen (Recht auf Vergessenwerden).
-// Die Tabellen räumt ON DELETE CASCADE beim Löschen des Auth-Users ab, den
-// Bucket nicht. Pfade: <userId>/<docId>/<dateiname> (services/documentService.ts).
-// Quelle 1: storage_path aus documents. Quelle 2: Ordner-Listing, damit auch
-// Dateien ohne Tabellenzeile (abgebrochene Uploads) erfasst werden.
-const STORAGE_BUCKET = 'document-files';
-
-const collectUserStoragePaths = async (userId) => {
-  const paths = new Set();
-
-  const { data: docs, error: docsErr } = await supabaseAdmin
-    .from('documents').select('storage_path').eq('user_id', userId).not('storage_path', 'is', null);
-  if (docsErr) throw docsErr;
-  (docs || []).forEach(d => paths.add(d.storage_path));
-
-  const bucket = supabaseAdmin.storage.from(STORAGE_BUCKET);
-  const { data: folders, error: listErr } = await bucket.list(userId, { limit: 1000 });
-  if (listErr) throw listErr;
-  for (const entry of folders || []) {
-    // Ordner haben keine id, Dateien direkt unter <userId>/ schon.
-    if (entry.id) { paths.add(`${userId}/${entry.name}`); continue; }
-    const { data: files, error: fileErr } = await bucket.list(`${userId}/${entry.name}`, { limit: 1000 });
-    if (fileErr) throw fileErr;
-    (files || []).forEach(f => paths.add(`${userId}/${entry.name}/${f.name}`));
-  }
-  return [...paths];
-};
-
-const deleteUserStorage = async (userId) => {
-  const paths = await collectUserStoragePaths(userId);
-  // Storage-API nimmt große Listen, aber in Blöcken bleibt ein Fehler eingrenzbar.
-  for (let i = 0; i < paths.length; i += 100) {
-    const { error } = await supabaseAdmin.storage.from(STORAGE_BUCKET).remove(paths.slice(i, i + 100));
-    if (error) throw error;
-  }
-  return paths.length;
-};
 
 router.delete('/account', async (req, res, next) => {
   try {

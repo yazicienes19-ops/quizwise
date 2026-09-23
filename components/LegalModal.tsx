@@ -16,14 +16,11 @@ const CONTENT: Record<LegalPage, { title: string; body: React.ReactNode }> = {
     title: 'Impressum',
     body: (
       <div className="space-y-4 text-sm text-slate-600 dark:text-slate-300 leading-relaxed">
-        <p className="text-xs text-amber-600 dark:text-amber-400 font-bold bg-amber-50 dark:bg-amber-950/30 p-3 rounded-xl">
-          ⚠️ Adresse noch ausstehend, vor dem Launch in LegalModal.tsx eintragen.
-        </p>
         <div>
           <p className="font-bold text-slate-900 dark:text-white">Angaben gemäß § 5 DDG</p>
           <p>Enes Yazici</p>
-          <p>[Straße Hausnummer]</p>
-          <p>[PLZ Ort]</p>
+          <p>Colonia-Allee 3</p>
+          <p>51067 Köln</p>
           <p>Deutschland</p>
         </div>
         <div>
@@ -32,7 +29,7 @@ const CONTENT: Record<LegalPage, { title: string; body: React.ReactNode }> = {
         </div>
         <div>
           <p className="font-bold text-slate-900 dark:text-white">Verantwortlich für den Inhalt nach § 18 Abs. 2 MStV</p>
-          <p>Enes Yazici, [Adresse]</p>
+          <p>Enes Yazici, Colonia-Allee 3, 51067 Köln</p>
         </div>
         <div>
           <p className="font-bold text-slate-900 dark:text-white">Haftungsausschluss</p>
@@ -52,17 +49,21 @@ const CONTENT: Record<LegalPage, { title: string; body: React.ReactNode }> = {
       <div className="space-y-4 text-sm text-slate-600 dark:text-slate-300 leading-relaxed">
         <div>
           <p className="font-bold text-slate-900 dark:text-white">1. Verantwortlicher</p>
-          <p>Enes Yazici, [Straße Hausnummer, PLZ Ort], Deutschland</p>
+          <p>Enes Yazici, Colonia-Allee 3, 51067 Köln, Deutschland</p>
           <p>E-Mail: support@studearc.com</p>
         </div>
         <div>
           <p className="font-bold text-slate-900 dark:text-white">2. Erhobene Daten</p>
           <p>
             Bei der Registrierung und Nutzung von StudeArc werden folgende personenbezogene Daten
-            erhoben: E-Mail-Adresse (für Authentifizierung und Kommunikation), Nutzungsdaten
-            (Anzahl der KI-Anfragen zur Umsetzung des Freemium-Modells) sowie Zahlungsdaten, die
-            ausschließlich über den Zahlungsdienstleister Stripe verarbeitet und nicht direkt bei
-            uns gespeichert werden.
+            verarbeitet: E-Mail-Adresse und Anzeigename (Authentifizierung und Kommunikation);
+            von dir hochgeladene Dokumente, Fotos, Notizen und Links samt daraus erstellter
+            Zusammenfassungen; deine Lerndaten (Karteikarten, Quiz-, Klausur- und Feynman-Ergebnisse,
+            Tutor-Gespräche, Wissensnetz, Kalender und Lernzeit); Nutzungsdaten (Anzahl und Kosten
+            der KI-Anfragen zur Umsetzung des Freemium-Modells und der Kostenbremse); Einstellungen
+            und, falls aktiviert, Push-Abonnements für Erinnerungen. Zahlungsdaten werden
+            ausschließlich über den Zahlungsdienstleister Stripe verarbeitet und nicht bei uns
+            gespeichert.
           </p>
         </div>
         <div>
@@ -77,8 +78,10 @@ const CONTENT: Record<LegalPage, { title: string; body: React.ReactNode }> = {
           <p className="font-bold text-slate-900 dark:text-white">4. Speicherdauer</p>
           <p>
             Personenbezogene Daten werden gelöscht, sobald der Zweck der Verarbeitung entfällt
-            und keine gesetzlichen Aufbewahrungspflichten bestehen. Kontodaten werden nach
-            Kündigung des Accounts innerhalb von 30 Tagen gelöscht.
+            und keine gesetzlichen Aufbewahrungspflichten bestehen. Wenn du dein Konto in den
+            Einstellungen löschst, werden Kontodaten, Lerndaten und hochgeladene Dateien sofort
+            gelöscht; ein aktives Abonnement wird dabei gekündigt. Rechnungsdaten bewahrt Stripe
+            nach den gesetzlichen Aufbewahrungsfristen auf.
           </p>
         </div>
         <div>
@@ -89,11 +92,11 @@ const CONTENT: Record<LegalPage, { title: string; body: React.ReactNode }> = {
             DSGVO oder eines Angemessenheitsbeschlusses der EU-Kommission gemäß Art. 45 DSGVO.
           </p>
           <ul className="list-disc pl-4 space-y-1">
-            <li><strong>Supabase Inc.</strong> (Authentifizierung & Datenbank): Daten werden gemäß EU-Standardvertragsklauseln verarbeitet.</li>
+            <li><strong>Supabase Inc.</strong> (Authentifizierung, Datenbank, Dateispeicher): Serverstandort Frankfurt am Main, Deutschland (AWS-Region eu-central-1). Zugriffe des US-Anbieters erfolgen auf Grundlage von EU-Standardvertragsklauseln.</li>
             <li><strong>Google LLC / Gemini API</strong>: Hochgeladene Dokumente und Eingaben werden zur KI-Verarbeitung übermittelt. Rechtsgrundlage: Art. 6 Abs. 1 lit. b DSGVO, Drittlandtransfer gemäß EU-Standardvertragsklauseln.</li>
             <li><strong>Stripe Inc.</strong>: Zahlungsabwicklung nach PCI-DSS-Standard, Drittlandtransfer gemäß EU-Standardvertragsklauseln. Stripe hat eigene DSGVO-konforme Datenschutzbestimmungen.</li>
             <li><strong>Cloudflare, Inc.</strong>: Hosting und Auslieferung des Frontends. Drittlandtransfer gemäß EU-Standardvertragsklauseln.</li>
-            <li><strong>Railway Technologies Inc.</strong>: Hosting des Backends. Drittlandtransfer gemäß EU-Standardvertragsklauseln.</li>
+            <li><strong>Railway Technologies Inc.</strong>: Hosting des Backends, Serverstandort Amsterdam, Niederlande. Zugriffe des US-Anbieters erfolgen auf Grundlage von EU-Standardvertragsklauseln.</li>
             <li><strong>Resend, Inc.</strong>: Versand transaktionaler E-Mails (z.B. Kündigungsbestätigung nach § 312k Abs. 4 BGB). Verarbeitet werden dabei E-Mail-Adresse und Vorname. Drittlandtransfer gemäß EU-Standardvertragsklauseln.</li>
           </ul>
         </div>
@@ -102,7 +105,9 @@ const CONTENT: Record<LegalPage, { title: string; body: React.ReactNode }> = {
           <p>
             Du hast das Recht auf Auskunft, Berichtigung, Löschung, Einschränkung der Verarbeitung,
             Datenübertragbarkeit sowie Widerspruch gegen die Verarbeitung deiner personenbezogenen
-            Daten. Zur Ausübung dieser Rechte wende dich an: support@studearc.com
+            Daten. Eine vollständige Kopie deiner Daten kannst du jederzeit selbst in den Einstellungen
+            unter „Datenschutz" als Datei herunterladen, dein Konto dort auch selbst löschen. Für alle
+            weiteren Anliegen wende dich an: support@studearc.com
           </p>
           <p className="mt-2">
             Du hast zudem das Recht, dich bei der zuständigen Datenschutzaufsichtsbehörde zu beschweren.
@@ -146,7 +151,7 @@ const CONTENT: Record<LegalPage, { title: string; body: React.ReactNode }> = {
           <p className="font-bold text-slate-900 dark:text-white">§ 1 Geltungsbereich</p>
           <p>
             Diese Allgemeinen Geschäftsbedingungen gelten für die Nutzung der Web-App StudeArc,
-            betrieben von Enes Yazici, [Straße Hausnummer, PLZ Ort], Deutschland
+            betrieben von Enes Yazici, Colonia-Allee 3, 51067 Köln, Deutschland
             (nachfolgend „Anbieter"). Mit der Registrierung akzeptierst du diese AGB.
           </p>
         </div>
@@ -157,9 +162,14 @@ const CONTENT: Record<LegalPage, { title: string; body: React.ReactNode }> = {
             bietet zwei Tarife an:
           </p>
           <ul className="list-disc pl-4 mt-1 space-y-1">
-            <li><strong>Free-Tarif:</strong> 20 KI-Anfragen pro Tag, kostenlos.</li>
-            <li><strong>Pro-Tarif:</strong> Unlimitierte KI-Anfragen, 9,99 €/Monat, monatlich kündbar.</li>
+            <li><strong>Free-Tarif:</strong> bis zu 5 Dokumente und 20 KI-Anfragen pro Tag, kostenlos.</li>
+            <li><strong>Pro-Tarif:</strong> unbegrenzt viele Dokumente und KI-Anfragen, 9,99 €/Monat, monatlich kündbar.</li>
           </ul>
+          <p className="mt-1">
+            Zum Schutz vor Missbrauch gilt in beiden Tarifen ein monatliches Kostenkontingent für
+            KI-Anfragen. Ist es aufgebraucht, sind KI-Funktionen bis zum Monatsende eingeschränkt;
+            bereits erstellte Inhalte bleiben nutzbar.
+          </p>
           <p className="mt-1">
             Der Anbieter behält sich vor, den Funktionsumfang des Free-Tarifs jederzeit anzupassen.
           </p>
@@ -182,8 +192,8 @@ const CONTENT: Record<LegalPage, { title: string; body: React.ReactNode }> = {
             Vertragsschlusses.
           </p>
           <p className="mt-2">
-            Um dein Widerrufsrecht auszuüben, musst du uns (Enes Yazici, [Straße Hausnummer],
-            [PLZ Ort], Deutschland, E-Mail: support@studearc.com) mittels einer eindeutigen Erklärung
+            Um dein Widerrufsrecht auszuüben, musst du uns (Enes Yazici, Colonia-Allee 3,
+            51067 Köln, Deutschland, E-Mail: support@studearc.com) mittels einer eindeutigen Erklärung
             (z. B. ein mit der Post versandter Brief oder eine E-Mail) über deinen Entschluss, diesen
             Vertrag zu widerrufen, informieren. Du kannst dafür das unten stehende
             Muster-Widerrufsformular verwenden, das jedoch nicht vorgeschrieben ist. Zur Wahrung der
@@ -225,7 +235,7 @@ const CONTENT: Record<LegalPage, { title: string; body: React.ReactNode }> = {
             an support@studearc.com zurück.)
           </p>
           <p className="mt-2">
-            An Enes Yazici, [Straße Hausnummer], [PLZ Ort], Deutschland, E-Mail: support@studearc.com:
+            An Enes Yazici, Colonia-Allee 3, 51067 Köln, Deutschland, E-Mail: support@studearc.com:
           </p>
           <p className="mt-2">
             Hiermit widerrufe ich den von mir abgeschlossenen Vertrag über die Erbringung der
