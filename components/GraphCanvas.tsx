@@ -1593,7 +1593,7 @@ export const GraphCanvas: React.FC<GraphCanvasProps> = ({
     // dorthin geschaltet werden zu müssen. Nur beim allerersten Node
     // (activeNodes leer), jeder weitere bleibt ohne Vorbelegung wie bisher.
     const hierarchyLevel = activeNodes.length === 0 ? 'hauptthema' : undefined;
-    const result = recordCreateNode(history, commitState, { title: 'Neuer Node', position, collectionId, hierarchyLevel });
+    const result = recordCreateNode(history, commitState, { title: t('kg.newConceptTitle'), position, collectionId, hierarchyLevel });
     if (!result.error && result.entity) {
       onChange({ state: result.state, history: result.history });
       onSelectionChange(selectNode(selection, result.entity.id));

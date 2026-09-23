@@ -94,11 +94,11 @@ describe('ActiveRecall — Feynman-Workflow-Bug: Fix 1 (Nächster Drill) + Fix 2
 
     renderAR({ initialDoc: testDoc(), initialFocusTopic: 'Kapitel A' });
 
-    fireEvent.click(await screen.findByText('Drill starten'));
+    fireEvent.click(await screen.findByText('Runde starten'));
     await screen.findByText('Frage 1: Was ist Kapitel A?');
     await answerAndSubmit(baseEvaluation);
 
-    fireEvent.click(screen.getByText('Nächster Drill'));
+    fireEvent.click(screen.getByText('Nächste Runde'));
 
     // Neue Challenge kommt automatisch — KEIN Rücksprung zur Quellenauswahl (SourceSelector)
     await screen.findByText('Frage 2: Was ist Kapitel B?');
@@ -120,7 +120,7 @@ describe('ActiveRecall — Feynman-Workflow-Bug: Fix 1 (Nächster Drill) + Fix 2
     // Sichtbarer Beleg: Abdeckungs-Pool umfasst nur die 2 gelesenen Kapitel, nicht alle 5
     await screen.findByText('0 von 2 Themen erklärt');
 
-    fireEvent.click(screen.getByText('Drill starten'));
+    fireEvent.click(screen.getByText('Runde starten'));
     await waitFor(() => expect(vi.mocked(generateValidatedChallenge)).toHaveBeenCalled());
     const coverTopics = vi.mocked(generateValidatedChallenge).mock.calls[0][0].steering?.coverTopics;
     expect(coverTopics).toEqual(['Kapitel 0', 'Kapitel 1']);
@@ -136,7 +136,7 @@ describe('ActiveRecall — Feynman-Workflow-Bug: Fix 1 (Nächster Drill) + Fix 2
 
     await screen.findByText('0 von 3 Themen erklärt');
 
-    fireEvent.click(screen.getByText('Drill starten'));
+    fireEvent.click(screen.getByText('Runde starten'));
     await waitFor(() => expect(vi.mocked(generateValidatedChallenge)).toHaveBeenCalled());
     const coverTopics = vi.mocked(generateValidatedChallenge).mock.calls[0][0].steering?.coverTopics;
     expect(coverTopics).toEqual(['Kapitel 0', 'Kapitel 2', 'Kapitel 4']);
@@ -156,7 +156,7 @@ describe('ActiveRecall — Feynman-Workflow-Bug: Fix 1 (Nächster Drill) + Fix 2
     renderAR({ initialDoc: testDoc(), initialFocusTopic: 'Kapitel C' });
 
     await screen.findByText('0 von 2 Themen erklärt');
-    fireEvent.click(screen.getByText('Drill starten'));
+    fireEvent.click(screen.getByText('Runde starten'));
 
     await waitFor(() => expect(vi.mocked(generateValidatedChallenge)).toHaveBeenCalled());
     const call = vi.mocked(generateValidatedChallenge).mock.calls[0][0];
@@ -175,15 +175,15 @@ describe('ActiveRecall — Feynman-Workflow-Bug: Fix 1 (Nächster Drill) + Fix 2
 
     renderAR({ initialDoc: testDoc() });
 
-    fireEvent.click(await screen.findByText('Drill starten'));
+    fireEvent.click(await screen.findByText('Runde starten'));
     await screen.findByText('Runde 1');
     await answerAndSubmit(baseEvaluation);
-    fireEvent.click(screen.getByText('Nächster Drill'));
+    fireEvent.click(screen.getByText('Nächste Runde'));
 
     await screen.findByText('Runde 2');
     expect(screen.queryByText('Fokus wählen')).toBeNull();
     await answerAndSubmit(baseEvaluation);
-    fireEvent.click(screen.getByText('Nächster Drill'));
+    fireEvent.click(screen.getByText('Nächste Runde'));
 
     await screen.findByText('Runde 3');
     expect(screen.queryByText('Fokus wählen')).toBeNull();
@@ -197,7 +197,7 @@ describe('ActiveRecall — Feynman-Workflow-Bug: Fix 1 (Nächster Drill) + Fix 2
     const onComplete = vi.fn();
 
     renderAR({ initialDoc: testDoc(), onComplete });
-    fireEvent.click(await screen.findByText('Drill starten'));
+    fireEvent.click(await screen.findByText('Runde starten'));
     await screen.findByText('Frage G');
     await answerAndSubmit(baseEvaluation);
 
@@ -210,7 +210,7 @@ describe('ActiveRecall — Feynman-Workflow-Bug: Fix 1 (Nächster Drill) + Fix 2
     vi.mocked(generateValidatedChallenge).mockResolvedValue({ challenge: makeChallenge('Frage H', 'Kapitel A'), actualTopic: 'Kapitel A' });
 
     renderAR({ initialDoc: testDoc() });
-    fireEvent.click(await screen.findByText('Drill starten'));
+    fireEvent.click(await screen.findByText('Runde starten'));
     await screen.findByText('Frage H');
     await answerAndSubmit({ ...baseEvaluation, score: 40, probeQuestion: 'Warum passiert das?', unexplainedJargon: ['Stimulus'] });
 

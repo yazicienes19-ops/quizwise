@@ -507,7 +507,7 @@ describe('buildMethodCommentary — deterministischer Methodenkommentar', () => 
   it('benennt die stärkste Methode und bleibt bei max. 2 Sätzen', () => {
     const c = buildMethodCommentary([mk('feynman', 85), mk('anki', 60)])!;
     expect(c).toContain('Feynman');
-    expect(c).toContain('Anki'); // Abstand >= 15 → Übe-Empfehlung
+    expect(c).toContain('Karteikarten'); // Abstand >= 15 → Übe-Empfehlung
     expect(c.split('. ').length).toBeLessThanOrEqual(2 + 1);
   });
 
