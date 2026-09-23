@@ -359,6 +359,28 @@ export const LearningCoach: React.FC<LearningCoachProps> = ({ metrics, decks, on
         </div>
       )}
 
+      {/* ── Langzeit-Entwicklung: bewusst vor Prognose und Schwächen, damit
+        Fortschritt zuerst sichtbar ist (Audit 23.09.2026: Seite war eine rote Wand) ── */}
+      {profile.longTermTrend && (
+        <div className="p-6 lg:p-8 rounded-[24px] lg:rounded-[32px] border shadow-3d-raised space-y-4" style={{ background: 'var(--card)', borderColor: 'var(--border-color)' }}>
+          <h3 className="text-[11px] font-black uppercase tracking-widest" style={{ color: 'var(--mute)' }}>{t('lc.developmentSince')}</h3>
+          <div className="flex flex-wrap gap-2">
+            {[...profile.longTermTrend].sort((a, b) => b.delta - a.delta).map(t => (
+              <span
+                key={t.label}
+                className="px-3 py-2 rounded-xl text-[11px] font-black"
+                style={{
+                  background: `color-mix(in srgb, ${t.delta >= 0 ? '#22c55e' : '#f43f5e'} 12%, var(--bg-sidebar))`,
+                  color: t.delta >= 0 ? '#22c55e' : '#f43f5e',
+                }}
+              >
+                {t.label} {t.delta >= 0 ? '+' : ''}{t.delta}%
+              </span>
+            ))}
+          </div>
+        </div>
+      )}
+
       {/* ── Coach-Hero: Klausurprognose + Top-Empfehlung ── */}
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-4 lg:gap-6">
         <div
@@ -385,7 +407,7 @@ export const LearningCoach: React.FC<LearningCoachProps> = ({ metrics, decks, on
                   : t('lc.expectedApprox', { n: forecast.expected })}
               </p>
               <p className="text-[11px] font-bold uppercase mt-1" style={{ color: 'var(--mute)' }}>
-                {t('lc.rangeConfidence', { low: forecast.range.low, high: forecast.range.high, conf: forecast.confidence })}
+                {t('lc.rangeConfidence', { low: forecast.range.low, high: forecast.range.high, conf: t(`lc.conf.${forecast.confidence}` as TKey) })}
               </p>
               <p className="text-[11px] font-bold uppercase mt-0.5" style={{ color: 'var(--mute)' }}>
                 {t('lc.passProb', { n: forecast.passProbability })}
@@ -657,26 +679,6 @@ export const LearningCoach: React.FC<LearningCoachProps> = ({ metrics, decks, on
           </div>
         )}
 
-        {/* Langzeit-Entwicklung */}
-        {profile.longTermTrend && (
-          <div className="p-6 lg:p-8 rounded-[24px] lg:rounded-[32px] border shadow-3d-raised space-y-4" style={{ background: 'var(--card)', borderColor: 'var(--border-color)' }}>
-            <h3 className="text-[11px] font-black uppercase tracking-widest" style={{ color: 'var(--mute)' }}>{t('lc.developmentSince')}</h3>
-            <div className="flex flex-wrap gap-2">
-              {profile.longTermTrend.map(t => (
-                <span
-                  key={t.label}
-                  className="px-3 py-2 rounded-xl text-[11px] font-black"
-                  style={{
-                    background: `color-mix(in srgb, ${t.delta >= 0 ? '#22c55e' : '#f43f5e'} 12%, var(--bg-sidebar))`,
-                    color: t.delta >= 0 ? '#22c55e' : '#f43f5e',
-                  }}
-                >
-                  {t.label} {t.delta >= 0 ? '+' : ''}{t.delta}%
-                </span>
-              ))}
-            </div>
-          </div>
-        )}
       </div>
 
       {/* ── Bald verfügbar — erklärt fehlende Panels statt sie kommentarlos zu verstecken ── */}

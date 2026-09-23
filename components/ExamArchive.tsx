@@ -5,13 +5,40 @@ import { formatUserAnswer } from '../services/examAnswerFormat';
 import { gradeFromPercentage, getCategoryLabel } from '../services/learningProfileService';
 import { useTranslation } from '../i18n/I18nProvider';
 import { formatDate } from '../i18n/dates';
+import { useCloudDataVersion } from '../hooks/useCloudDataVersion';
 
+interface ExamGroup {
+  name: string;
+  /** Neueste zuerst. */
+  attempts: ExamResult[];
+  best: ExamResult;
+}
+
+/**
+ * Klausur-Archiv, gruppiert nach Thema (Audit 23.09.2026: vorher zehn Zeilen
+ * "5,0 · nicht bestanden" untereinander, ohne Verlauf). Je Thema: beste Note,
+ * Zahl der Versuche und Veränderung seit dem ersten Versuch; aufgeklappt die
+ * einzelnen Versuche mit allen Details.
+ */
 export const ExamArchive: React.FC = () => {
   const { t, tp } = useTranslation();
-  const exams = useMemo(() => getAllExamResults().slice(0, 10), []);
+  // Neu lesen, sobald der Cloud-Abgleich nach dem Login fertig ist.
+  const dataVersion = useCloudDataVersion();
+  const groups = useMemo((): ExamGroup[] => {
+    const byName = new Map<string, ExamResult[]>();
+    for (const e of [...getAllExamResults()].sort((a, b) => b.timestamp - a.timestamp)) {
+      const key = e.docName || '–';
+      byName.set(key, [...(byName.get(key) ?? []), e]);
+    }
+    return [...byName.entries()]
+      .map(([name, attempts]) => ({ name, attempts, best: attempts.reduce((b, e) => (e.score > b.score ? e : b)) }))
+      .sort((a, b) => b.attempts[0].timestamp - a.attempts[0].timestamp)
+      .slice(0, 8);
+  }, [dataVersion]);
+  const [openGroup, setOpenGroup] = useState<string | null>(null);
   const [openId, setOpenId] = useState<string | null>(null);
 
-  if (exams.length === 0) return null;
+  if (groups.length === 0) return null;
 
   return (
     <div className="max-w-3xl mx-auto px-4 pb-10 space-y-3">
@@ -19,12 +46,41 @@ export const ExamArchive: React.FC = () => {
         <p className="text-[11px] font-black uppercase tracking-[0.3em] text-slate-400">{t('ea.title')}</p>
         <p className="text-xs text-slate-400 font-medium">{t('ea.subtitle')}</p>
       </div>
-
-      {exams.map(exam => {
+      {groups.map(group => {
+        const { grade: bestGrade } = gradeFromPercentage(group.best.score);
+        const groupOpen = openGroup === group.name;
+        const first = group.attempts[group.attempts.length - 1];
+        const delta = group.attempts[0].score - first.score;
+        return (
+          <div key={group.name} className="rounded-[24px] overflow-hidden" style={{ background: 'var(--bg-sidebar)', border: '1px solid var(--border-color)' }}>
+            <button
+              onClick={() => { setOpenGroup(groupOpen ? null : group.name); setOpenId(null); }}
+              className="w-full flex items-center gap-4 px-5 py-4 text-left"
+              aria-expanded={groupOpen}
+            >
+              <div className={`w-11 h-11 rounded-2xl flex items-center justify-center font-black text-sm shrink-0 ${group.best.passed ? 'bg-emerald-100 dark:bg-emerald-950/30 text-emerald-600' : 'bg-rose-100 dark:bg-rose-950/30 text-rose-500'}`}>
+                {bestGrade}
+              </div>
+              <div className="flex-1 min-w-0">
+                <p className="text-sm font-black dark:text-white break-words">{group.name}</p>
+                <p className="text-[12px] text-slate-500 dark:text-slate-400 mt-0.5">
+                  {tp('ea.attemptsN', group.attempts.length)} · {t('ea.best', { pct: group.best.score })} · {t('ea.last', { date: formatDate(group.attempts[0].timestamp, { day: '2-digit', month: 'short' }) })}
+                </p>
+                {group.attempts.length > 1 && delta !== 0 && (
+                  <p className={`text-[12px] font-bold mt-0.5 ${delta > 0 ? 'text-emerald-600 dark:text-emerald-400' : 'text-rose-500'}`}>
+                    {delta > 0 ? tp('ea.deltaUp', delta) : tp('ea.deltaDown', -delta)}
+                  </p>
+                )}
+              </div>
+              <span className="text-slate-400 font-black shrink-0" aria-hidden="true">{groupOpen ? '−' : '+'}</span>
+            </button>
+            {groupOpen && (
+              <div className="px-3 pb-3 space-y-2">
+      {group.attempts.map(exam => {
         const { grade } = gradeFromPercentage(exam.score);
         const isOpen = openId === exam.id;
         return (
-          <div key={exam.id} className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-[24px] shadow-sm overflow-hidden">
+          <div key={exam.id} className="rounded-[18px] overflow-hidden" style={{ background: 'var(--bg-main)' }}>
             <button
               onClick={() => setOpenId(isOpen ? null : exam.id)}
               className="w-full flex items-center gap-4 px-5 py-4 text-left"
@@ -34,10 +90,10 @@ export const ExamArchive: React.FC = () => {
                 {grade}
               </div>
               <div className="flex-1 min-w-0">
-                <p className="text-sm font-black dark:text-white break-words">{exam.docName}</p>
-                <p className="text-[11px] text-slate-400 font-black uppercase tracking-widest mt-0.5">
-                  {formatDate(exam.timestamp, { day: '2-digit', month: 'short', year: '2-digit' })} · {exam.score}% · {exam.passed ? t('ea.passed') : t('ea.failed')}
+                <p className="text-sm font-bold dark:text-white">
+                  {formatDate(exam.timestamp, { day: '2-digit', month: 'short', year: '2-digit' })} · {exam.score}%
                 </p>
+                <p className="text-[12px] text-slate-500 dark:text-slate-400 mt-0.5">{exam.passed ? t('ea.passed') : t('ea.failed')}</p>
               </div>
               <span className="text-slate-300 font-black shrink-0">{isOpen ? '−' : '+'}</span>
             </button>
@@ -96,6 +152,11 @@ export const ExamArchive: React.FC = () => {
                     {tp('dashboard.questionsN', exam.questions.length)} · {exam.achievedPoints}/{exam.totalPoints} P.
                   </p>
                 )}
+              </div>
+            )}
+          </div>
+        );
+      })}
               </div>
             )}
           </div>
