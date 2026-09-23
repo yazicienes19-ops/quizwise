@@ -22,6 +22,7 @@ import { DeckStatsModal } from './DeckStatsModal';
 import { MoreHorizontal, ListOrdered, HelpCircle, BarChart2, Pencil, Share2, Printer, Trash2 } from 'lucide-react';
 import { PageHeader } from './PageHeader';
 import { confirmDialog } from '../services/confirmDialog';
+import { runUndoable } from '../services/undoable';
 
 interface FlashcardSystemProps {
   availableDocuments: ProcessedDocument[];
@@ -271,13 +272,23 @@ export const FlashcardSystem: React.FC<FlashcardSystemProps> = ({
     setIsRenamingDeck(false);
   };
 
-  const handleDeleteDeck = async (deck: FlashcardDeck) => {
-    if (!(await confirmDialog({ message: t('fcs.deleteDeckConfirm', { title: deck.title, n: deck.cards.length }), danger: true }))) return;
+  // Löschen mit "Rückgängig" statt Bestätigungsfrage (services/undoable.ts).
+  const handleDeleteDeck = (deck: FlashcardDeck) => {
+    const index = decksRef.current.findIndex(d => d.id === deck.id);
     // Ausstehenden Upload verwerfen, sonst legt der gebündelte Save das
     // gerade gelöschte Deck in der Cloud wieder an.
     pendingCloud.current.delete(deck.id);
     commitDecks(decksRef.current.filter(d => d.id !== deck.id));
-    if (userId) deleteDeckFromSupabase(deck.id, userId).catch(() => {});
+    runUndoable({
+      message: t('undo.deckDeleted', { title: deck.title }),
+      undo: () => {
+        if (decksRef.current.some(d => d.id === deck.id)) return;
+        const next = [...decksRef.current];
+        next.splice(Math.min(Math.max(index, 0), next.length), 0, deck);
+        commitDecks(next);
+      },
+      commit: () => { if (userId) deleteDeckFromSupabase(deck.id, userId).catch(() => {}); },
+    });
   };
 
   const handleGenerateFromSource = async (source: GenerationSource, name: string, docId?: string) => {

@@ -26,6 +26,7 @@ import { deleteResultsForDocName as deleteExamResultsForDocName } from '../servi
 import { deleteResultsForDocName as deleteRecallResultsForDocName } from '../services/recallHistoryService';
 import { deleteLogForDoc } from '../services/readerLogService';
 import { removeMistakesByDocId } from '../services/mistakeReviewService';
+import { runUndoable } from '../services/undoable';
 
 interface UseDocumentsParams {
   user: User | null;
@@ -156,21 +157,35 @@ export const useDocuments = ({ user, userPlan, isOffline, setIsLoading, setShowU
     if (user) saveCollectionToSupabase(updated).catch(() => {});
   };
 
+  // Löschen mit "Rückgängig" (services/undoable.ts): sofort ausblenden, die
+  // endgültige Löschung (Cloud, Datei, Lernverläufe) erst nach 8 Sekunden.
   const deleteDoc = (id: string) => {
-    const doc = documents.find(d => d.id === id);
+    const index = documents.findIndex(d => d.id === id);
+    const doc = documents[index];
+    if (!doc) return;
     saveDocs(documents.filter(d => d.id !== id));
-    if (user && doc) deleteDocumentFromSupabase(doc).catch(() => {});
-    // Ein gelöschtes Dokument braucht niemand mehr in der Lernanalyse — sonst
-    // bleiben Quiz-/Klausur-/Feynman-/Tutor-Sessions zu einer nicht mehr
-    // existierenden Quelle als Karteileichen sichtbar (Themen, Verlauf, Scores).
-    if (doc) {
-      const docName = documentDisplayName(doc);
-      deleteQuizResultsForDoc(id, user?.id);
-      deleteExamResultsForDocName(docName, user?.id);
-      deleteRecallResultsForDocName(docName, user?.id);
-      deleteLogForDoc(id, user?.id);
-      removeMistakesByDocId(id, user?.id);
-    }
+    runUndoable({
+      message: translate('undo.docDeleted', { title: documentDisplayName(doc) }),
+      undo: () => {
+        const current = docsRef.current;
+        if (current.some(d => d.id === id)) return;
+        const next = [...current];
+        next.splice(Math.min(index, next.length), 0, doc);
+        saveDocs(next);
+      },
+      commit: () => {
+        if (user) deleteDocumentFromSupabase(doc).catch(() => {});
+        // Ein gelöschtes Dokument braucht niemand mehr in der Lernanalyse — sonst
+        // bleiben Quiz-/Klausur-/Feynman-/Tutor-Sessions zu einer nicht mehr
+        // existierenden Quelle als Karteileichen sichtbar (Themen, Verlauf, Scores).
+        const docName = documentDisplayName(doc);
+        deleteQuizResultsForDoc(id, user?.id);
+        deleteExamResultsForDocName(docName, user?.id);
+        deleteRecallResultsForDocName(docName, user?.id);
+        deleteLogForDoc(id, user?.id);
+        removeMistakesByDocId(id, user?.id);
+      },
+    });
   };
 
   const moveDoc = (docId: string, collectionId: string | undefined) => {

@@ -4,7 +4,7 @@
  * manchen App-Hüllen gar nicht erscheint).
  *
  * Verwendung:
- *   if (!(await confirmDialog({ message: t('fcs.deleteDeckConfirm', …), danger: true }))) return;
+ *   if (!(await confirmDialog({ message: t('lib.deleteFolderConfirm', …), danger: true }))) return;
  *
  * Angezeigt wird der Dialog von <ConfirmDialogHost />, der an denselben Stellen
  * wie <ToastContainer /> eingehängt ist. Ohne Host (z. B. in Tests) fällt die

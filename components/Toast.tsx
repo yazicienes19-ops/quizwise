@@ -1,13 +1,14 @@
 
 import React, { useState, useEffect, useCallback } from 'react';
 import { CheckCircle, XCircle, Info, X } from 'lucide-react';
-import { toast, type ToastType } from '../services/toast';
+import { toast, type ToastType, type ToastAction } from '../services/toast';
 import { t as translate } from '../i18n';
 
 interface ToastItem {
   id: number;
   message: string;
   type: ToastType;
+  action?: ToastAction;
 }
 
 const icons: Record<ToastType, React.ReactNode> = {
@@ -25,10 +26,10 @@ const styles: Record<ToastType, string> = {
 export const ToastContainer: React.FC = () => {
   const [toasts, setToasts] = useState<ToastItem[]>([]);
 
-  const add = useCallback((message: string, type: ToastType) => {
-    const id = Date.now();
-    setToasts(prev => [...prev, { id, message, type }]);
-    setTimeout(() => setToasts(prev => prev.filter(t => t.id !== id)), 4000);
+  const add = useCallback((message: string, type: ToastType, opts?: { action?: ToastAction; durationMs?: number }) => {
+    const id = Date.now() + Math.random();
+    setToasts(prev => [...prev, { id, message, type, action: opts?.action }]);
+    setTimeout(() => setToasts(prev => prev.filter(t => t.id !== id)), opts?.durationMs ?? 4000);
   }, []);
 
   useEffect(() => { toast._register(add); }, [add]);
@@ -45,6 +46,14 @@ export const ToastContainer: React.FC = () => {
         >
           {icons[t.type]}
           <span className="flex-1">{t.message}</span>
+          {t.action && (
+            <button
+              onClick={() => { t.action!.onClick(); remove(t.id); }}
+              className="px-3 py-1.5 rounded-lg text-[13px] font-bold bg-white/15 hover:bg-white/25 transition-colors shrink-0"
+            >
+              {t.action.label}
+            </button>
+          )}
           <button onClick={() => remove(t.id)} aria-label={translate('common.close')} className="opacity-60 hover:opacity-100 transition-opacity ml-1">
             <X className="w-4 h-4" strokeWidth={2} />
           </button>

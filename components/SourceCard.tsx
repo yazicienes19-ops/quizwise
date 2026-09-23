@@ -5,8 +5,6 @@ import { SourceStatusBadge, DigestStatusBadge } from './SourceStatusBadge';
 import { EmojiImage } from './EmojiImage';
 import { useTranslation } from '../i18n/I18nProvider';
 import { formatDate } from '../i18n/dates';
-import { t as translate } from '../i18n';
-import { confirmDialog } from '../services/confirmDialog';
 
 const FILE_EMOJI: Record<string, string> = { pdf: '📕', docx: '📘', text: '📄' };
 const SOURCE_KIND_EMOJI: Record<string, string> = { youtube: '📺', web: '🌐' };
@@ -63,9 +61,9 @@ const Stat: React.FC<{ label: string; value: number }> = ({ label, value }) => (
   </div>
 );
 
-const confirmDelete = async (onDelete: () => void, title: string) => {
-  if (await confirmDialog({ message: translate('card.deleteConfirm', { title }), danger: true })) onDelete();
-};
+// Keine Rückfrage mehr: das Löschen lässt sich 8 Sekunden lang rückgängig
+// machen (useDocuments.deleteDoc, services/undoable.ts).
+const confirmDelete = (onDelete: () => void, _title: string) => onDelete();
 
 const IconEdit = () => (
   <svg xmlns="http://www.w3.org/2000/svg" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round">
