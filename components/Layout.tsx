@@ -289,11 +289,13 @@ export const Layout: React.FC<LayoutProps> = ({
             </div>
           )}
 
-          <nav className="space-y-0.5 overflow-y-auto pr-1 scrollbar-hide flex-1">
+          {/* Sichtbare, dünne Scrollleiste: mit versteckter Leiste merkte niemand,
+              dass unten noch Menüpunkte liegen (Audit 23.09.2026, 900 px Höhe). */}
+          <nav className="sidebar-nav space-y-0.5 overflow-y-auto pr-1 flex-1 min-h-0">
             {visibleGroups.map((group, gi) => (
               <div key={gi}>
                 {group.titleKey && (
-                  <p className="px-3 pt-5 pb-1.5 text-[9px] font-black uppercase tracking-[0.3em]" style={{ color: SIDEBAR.textMuted }}>
+                  <p className="sidebar-group-title px-3 pt-5 pb-1.5 text-[9px] font-black uppercase tracking-[0.3em]" style={{ color: SIDEBAR.textMuted }}>
                     {t(group.titleKey)}
                   </p>
                 )}
@@ -318,7 +320,7 @@ export const Layout: React.FC<LayoutProps> = ({
                             engere Laufweite statt tracking-widest, truncate als Notbremse */}
                         <span className="text-[10px] font-black uppercase tracking-wider block truncate" style={!isActive ? { color: SIDEBAR.text } : undefined}>{t(item.labelKey)}</span>
                         {item.hintKey && !isActive && (
-                          <span className="block text-[9px] font-medium normal-case tracking-normal mt-0.5 break-words" style={{ color: SIDEBAR.text }}>
+                          <span className="sidebar-hint block text-[9px] font-medium normal-case tracking-normal mt-0.5 break-words" style={{ color: SIDEBAR.text }}>
                             {t(item.hintKey)}
                           </span>
                         )}
@@ -368,7 +370,10 @@ export const Layout: React.FC<LayoutProps> = ({
                       {user.email}
                     </p>
                   </div>
-                  <button onClick={onLogout} aria-label={t('layout.logoutTitle', { email: user.email ?? '' })} className="transition-colors shrink-0" style={{ color: SIDEBAR.textMuted }}>
+                  <button onClick={onSettingsClick} aria-label={t('layout.settings')} title={t('layout.settings')} className="transition-colors shrink-0 hover:opacity-80" style={{ color: SIDEBAR.textMuted }}>
+                    <Settings className="w-[18px] h-[18px]" strokeWidth={1.75} />
+                  </button>
+                  <button onClick={onLogout} aria-label={t('layout.logoutTitle', { email: user.email ?? '' })} title={t('layout.logout')} className="transition-colors shrink-0 hover:opacity-80" style={{ color: SIDEBAR.textMuted }}>
                     <LogOut className="w-[18px] h-[18px]" strokeWidth={1.75} />
                   </button>
                 </div>
@@ -395,18 +400,18 @@ export const Layout: React.FC<LayoutProps> = ({
             )}
           </div>
 
-          <div className="mt-4 pt-6 space-y-2" style={{ borderTop: `1px solid ${SIDEBAR.border}` }}>
-            <button
-              onClick={onSettingsClick}
-              className="w-full flex items-center px-4 py-3 rounded-xl text-[10px] font-black uppercase transition-all group"
-              style={{ background: SIDEBAR.chipBg, color: SIDEBAR.textMuted }}
-            >
-              <span className="group-hover:translate-x-1 transition-transform flex items-center gap-2">
+          <div className="mt-3 pt-3 space-y-2" style={{ borderTop: `1px solid ${SIDEBAR.border}` }}>
+            {!user && (
+              <button
+                onClick={onSettingsClick}
+                className="w-full flex items-center gap-2 px-4 py-2.5 rounded-xl text-[10px] font-black uppercase transition-all"
+                style={{ background: SIDEBAR.chipBg, color: SIDEBAR.textMuted }}
+              >
                 <Settings className="w-4 h-4" strokeWidth={1.75} />
                 {t('layout.settings')}
-              </span>
-            </button>
-            <div className="flex justify-center gap-3 pt-2 flex-wrap">
+              </button>
+            )}
+            <div className="flex justify-center gap-x-3 gap-y-1 flex-wrap">
               {(['impressum', 'datenschutz', 'agb'] as const).map(p => (
                 <button
                   key={p}

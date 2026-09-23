@@ -1016,6 +1016,12 @@ export const de = {
   'fcs.deckCreatedPartial': '{n} von {total} Karten erstellt, mehr gab das Material nicht her.',
   'fcs.noCardsGenerated': 'Aus diesem Material ließen sich keine Karten erstellen.',
   'fcs.importSkipped': '{n} unvollständige Karte übersprungen.|{n} unvollständige Karten übersprungen.',
+  'fcs.countNew': '{n} neu',
+  'fcs.countLearn': '{n} lernen',
+  'fcs.countDue': '{n} fällig',
+  'fcs.moreActions': 'Weitere Aktionen',
+  'fcs.menuLearnAll': 'Alle Karten der Reihe nach',
+  'fcs.menuQuiz': 'Quiz aus diesem Stapel',
 
   // Wissensnetz (Knowledge Graph)
   'kg.allSubjects': 'Alle Fächer',

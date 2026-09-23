@@ -19,6 +19,7 @@ import { buildPrintHtml } from '../services/printDeckService';
 import { ExportDeckModal } from './ExportDeckModal';
 import { EditCardModal } from './EditCardModal';
 import { DeckStatsModal } from './DeckStatsModal';
+import { MoreHorizontal, ListOrdered, HelpCircle, BarChart2, Pencil, Share2, Printer, Trash2 } from 'lucide-react';
 
 interface FlashcardSystemProps {
   availableDocuments: ProcessedDocument[];
@@ -105,6 +106,22 @@ export const FlashcardSystem: React.FC<FlashcardSystemProps> = ({
 
   // ── Lokaler Stand (deckStore) ────────────────────────────────────────────
   const selfWrite = useRef(false);
+  // Geöffnetes "⋯"-Menü einer Stapel-Zeile; schließt bei Klick daneben und Esc.
+  const [menuDeckId, setMenuDeckId] = useState<string | null>(null);
+  // Nach oben öffnen, wenn unter dem Knopf zu wenig Platz ist (unterster Stapel).
+  const [menuOpensUp, setMenuOpensUp] = useState(false);
+  useEffect(() => {
+    if (!menuDeckId) return;
+    const close = (e: Event) => {
+      if (e instanceof KeyboardEvent && e.key !== 'Escape') return;
+      if (e instanceof MouseEvent && (e.target as Element | null)?.closest('[role="menu"], [aria-haspopup="menu"]')) return;
+      setMenuDeckId(null);
+    };
+    document.addEventListener('mousedown', close);
+    document.addEventListener('keydown', close);
+    return () => { document.removeEventListener('mousedown', close); document.removeEventListener('keydown', close); };
+  }, [menuDeckId]);
+
   const commitDecks = useCallback((next: FlashcardDeck[]) => {
     decksRef.current = next;
     setDecksState(next);
@@ -772,7 +789,7 @@ export const FlashcardSystem: React.FC<FlashcardSystemProps> = ({
           </div>
         </div>
 
-        <div className="lg:col-span-7 bg-white dark:bg-slate-900 rounded-[30px] lg:rounded-[40px] border border-slate-200 dark:border-slate-800 shadow-3d-deep overflow-hidden order-1 lg:order-2">
+        <div className="lg:col-span-7 bg-white dark:bg-slate-900 rounded-[30px] lg:rounded-[40px] border border-slate-200 dark:border-slate-800 shadow-3d-deep order-1 lg:order-2">
           <div className="p-5 sm:p-6 lg:p-10 border-b border-slate-50 dark:border-slate-800 flex flex-col sm:flex-row justify-between items-center gap-4 lg:gap-0">
             <h3 className="text-[10px] lg:text-[11px] font-black uppercase tracking-[0.3em] lg:tracking-[0.4em] text-slate-400">{t('fcs.yourDecks', { n: decks.length })}</h3>
             <div className="flex gap-3 sm:gap-4 items-center flex-wrap justify-center sm:justify-end">
@@ -801,18 +818,6 @@ export const FlashcardSystem: React.FC<FlashcardSystemProps> = ({
                   {t('fcs.backupAll')}
                 </button>
               )}
-               <div className="flex items-center gap-2">
-                 <div className="w-2 h-2 rounded-full bg-blue-500"></div>
-                 <span className="text-[9px] font-black text-slate-400 uppercase">{t('fcs.statNew')}</span>
-               </div>
-               <div className="flex items-center gap-2">
-                 <div className="w-2 h-2 rounded-full bg-rose-500"></div>
-                 <span className="text-[9px] font-black text-slate-400 uppercase">{t('fcs.statLearn')}</span>
-               </div>
-               <div className="flex items-center gap-2">
-                 <div className="w-2 h-2 rounded-full bg-emerald-500"></div>
-                 <span className="text-[9px] font-black text-slate-400 uppercase">{t('fcs.statDue')}</span>
-               </div>
             </div>
           </div>
 
@@ -831,7 +836,7 @@ export const FlashcardSystem: React.FC<FlashcardSystemProps> = ({
                   <div
                     key={deck.id}
                     id={`deck-row-${deck.id}`}
-                    className={`flex flex-col sm:flex-row items-center justify-between p-6 lg:p-8 hover:bg-slate-50 dark:hover:bg-slate-800/30 transition-all group gap-6 ${isFresh ? 'bg-indigo-50/70 dark:bg-indigo-950/30' : ''}`}
+                    className={`flex flex-col sm:flex-row items-center justify-between p-6 lg:p-8 hover:bg-slate-50 dark:hover:bg-slate-800/30 transition-all group gap-6 last:rounded-b-[30px] lg:last:rounded-b-[40px] ${isFresh ? 'bg-indigo-50/70 dark:bg-indigo-950/30' : ''}`}
                     style={isFresh ? { boxShadow: 'inset 4px 0 0 var(--primary)' } : undefined}
                   >
                     <div className="flex-grow min-w-0 text-center sm:text-left">
@@ -841,85 +846,76 @@ export const FlashcardSystem: React.FC<FlashcardSystemProps> = ({
                         </h4>
                         {!deck.sourceDocumentId && <span className="bg-slate-100 dark:bg-slate-800 text-[9px] font-black uppercase px-2 py-0.5 rounded text-slate-400 tracking-tighter">{t('fcs.manual')}</span>}
                       </div>
-                      <p className="text-[9px] font-bold text-slate-400 uppercase mt-1">{t('fcs.totalCards', { n: deck.cards.length })}</p>
+                      {/* Zahlen mit Beschriftung statt drei farbiger Ziffern ohne Legende
+                          (Audit 23.09.2026). */}
+                      <p className="flex flex-wrap items-center gap-x-3 gap-y-1 mt-1.5 text-[11px] font-bold text-slate-500 dark:text-slate-400 justify-center sm:justify-start">
+                        <span>{t('fcs.totalCards', { n: deck.cards.length })}</span>
+                        <span className="inline-flex items-center gap-1.5"><span className="w-2 h-2 rounded-full bg-blue-500" aria-hidden="true" />{t('fcs.countNew', { n: stats?.newCards || 0 })}</span>
+                        <span className="inline-flex items-center gap-1.5"><span className="w-2 h-2 rounded-full bg-rose-500" aria-hidden="true" />{t('fcs.countLearn', { n: stats?.learnCards || 0 })}</span>
+                        <span className="inline-flex items-center gap-1.5"><span className="w-2 h-2 rounded-full bg-emerald-500" aria-hidden="true" />{t('fcs.countDue', { n: stats?.reviewCards || 0 })}</span>
+                      </p>
                     </div>
 
-                    <div className="flex flex-col sm:flex-row items-center gap-4 lg:gap-6 w-full sm:w-auto">
-                      <div className="flex gap-6 lg:gap-8 text-center justify-center">
-                        <span className="text-sm font-black text-blue-500" title={t('fcs.statNew')}>{stats?.newCards || 0}</span>
-                        <span className="text-sm font-black text-rose-500" title={t('fcs.statLearn')}>{stats?.learnCards || 0}</span>
-                        <span className="text-sm font-black text-emerald-500" title={t('fcs.statDue')}>{stats?.reviewCards || 0}</span>
-                      </div>
-
-                      <div className="flex flex-wrap gap-2 w-full sm:w-auto items-center justify-center sm:justify-end">
+                    {/* Zwei Hauptaktionen sichtbar, alles Weitere im Menü: vorher neun
+                        Knöpfe je Stapel, auf dem Handy zwei volle Zeilen. */}
+                    <div className="flex items-center gap-2 w-full sm:w-auto justify-center sm:justify-end">
+                      <button
+                        onClick={() => handleOpenDeck(deck.id)}
+                        className="flex-1 sm:flex-none px-6 py-3 rounded-2xl text-[11px] font-black uppercase tracking-widest transition-all hover:scale-[1.02]"
+                        style={{ background: 'var(--primary)', color: 'var(--primary-text)' }}
+                      >
+                        {t('fcs.learn')}
+                      </button>
+                      <button
+                        onClick={() => handleOpenDeck(deck.id, 'free')}
+                        className="flex-1 sm:flex-none px-5 py-3 rounded-2xl text-[11px] font-black uppercase tracking-widest border-2 border-slate-200 dark:border-slate-700 text-slate-600 dark:text-slate-300 transition-all hover:border-[color:var(--primary)]"
+                        title={t('fcs.practiceTitle')}
+                      >
+                        {t('fcs.practice')}
+                      </button>
+                      <div className="relative">
                         <button
-                          onClick={() => handleOpenDeck(deck.id)}
-                          className="flex-1 sm:flex-none bg-indigo-600 hover:bg-indigo-700 text-white px-5 lg:px-6 py-3 rounded-xl lg:rounded-2xl text-[9px] font-black uppercase tracking-widest shadow-lg hover:scale-105 transition-all"
+                          onClick={e => {
+                            const below = window.innerHeight - e.currentTarget.getBoundingClientRect().bottom;
+                            setMenuOpensUp(below < 360);
+                            setMenuDeckId(id => (id === deck.id ? null : deck.id));
+                          }}
+                          aria-label={t('fcs.moreActions')}
+                          aria-haspopup="menu"
+                          aria-expanded={menuDeckId === deck.id}
+                          title={t('fcs.moreActions')}
+                          className="w-11 h-11 flex items-center justify-center rounded-2xl border-2 border-slate-200 dark:border-slate-700 text-slate-500 dark:text-slate-400 transition-all hover:border-[color:var(--primary)]"
                         >
-                          {t('fcs.learn')}
+                          <MoreHorizontal className="w-5 h-5" strokeWidth={2} />
                         </button>
-                        <button
-                          onClick={() => handleOpenDeck(deck.id, 'free')}
-                          className="flex-none flex items-center gap-1.5 border-2 border-slate-200 dark:border-slate-700 text-slate-500 dark:text-slate-400 px-3 py-3 rounded-xl lg:rounded-2xl text-[9px] font-black uppercase tracking-widest hover:border-emerald-400 hover:text-emerald-600 transition-all"
-                          title={t('fcs.practiceTitle')}
-                        >
-                          <svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round"><polyline points="23 4 23 10 17 10"/><polyline points="1 20 1 14 7 14"/><path d="M3.51 9a9 9 0 0 1 14.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0 0 20.49 15"/></svg>
-                          {t('fcs.practice')}
-                        </button>
-                        <button
-                          onClick={() => handleOpenDeck(deck.id, 'all')}
-                          className="flex-none border-2 border-slate-200 dark:border-slate-700 text-slate-500 dark:text-slate-400 px-3 py-3 rounded-xl lg:rounded-2xl text-[9px] font-black uppercase tracking-widest hover:border-indigo-400 hover:text-indigo-600 transition-all"
-                          title={t('fcs.learnAllTitle')}
-                        >
-                          {t('fcs.all')}
-                        </button>
-                        <button
-                          onClick={() => setStatsDeck(deck)}
-                          className="p-3 bg-slate-50 dark:bg-slate-800 text-slate-400 hover:text-indigo-600 rounded-xl transition-all"
-                          title={t('fcs.statsTitle')}
-                          aria-label={t('fcs.statsTitle')}
-                        >
-                          <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round"><line x1="18" y1="20" x2="18" y2="10"/><line x1="12" y1="20" x2="12" y2="4"/><line x1="6" y1="20" x2="6" y2="14"/></svg>
-                        </button>
-                        <button
-                          onClick={() => handlePrintDeck(deck)}
-                          className="p-3 bg-slate-50 dark:bg-slate-800 text-slate-400 hover:text-indigo-600 rounded-xl transition-all"
-                          title={t('fcs.printTitle')}
-                          aria-label={t('fcs.printTitle')}
-                        >
-                          <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><polyline points="6 9 6 2 18 2 18 9"/><path d="M6 18H4a2 2 0 0 1-2-2v-5a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v5a2 2 0 0 1-2 2h-2"/><rect x="6" y="14" width="12" height="8"/></svg>
-                        </button>
-                        <button
-                          onClick={() => setEditingDeckId(deck.id)}
-                          className="p-3 bg-slate-50 dark:bg-slate-800 text-slate-400 hover:text-indigo-600 rounded-xl transition-all"
-                          title={t('fcs.editTitle')}
-                          aria-label={t('fcs.editTitle')}
-                        >
-                          <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"></path><path d="M18.5 2.5a2.121 2.121 0 1 1 3 3L12 15l-4 1 1-4 9.5-9.5z"></path></svg>
-                        </button>
-                        <button
-                          onClick={() => setExportingDeck(deck)}
-                          className="p-3 bg-slate-50 dark:bg-slate-800 text-slate-400 hover:text-indigo-600 rounded-xl transition-all"
-                          title={t('fcs.exportShareTitle')}
-                          aria-label={t('fcs.exportShareTitle')}
-                        >
-                          <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><circle cx="18" cy="5" r="3"/><circle cx="6" cy="12" r="3"/><circle cx="18" cy="19" r="3"/><line x1="8.59" y1="13.51" x2="15.42" y2="17.49"/><line x1="15.41" y1="6.51" x2="8.59" y2="10.49"/></svg>
-                        </button>
-                        <button
-                          onClick={() => onGenerateQuizFromDeck(deck)}
-                          disabled={isQuizLoading || deck.cards.length === 0}
-                          className="bg-white dark:bg-slate-800 border-2 border-indigo-600 text-indigo-600 dark:text-indigo-400 px-4 py-3 rounded-xl lg:rounded-2xl text-[9px] font-black uppercase tracking-widest shadow-lg hover:scale-105 transition-all disabled:opacity-40 disabled:hover:scale-100 flex items-center gap-2"
-                        >
-                          {isQuizLoading ? '...' : <span>Quiz <EmojiImage emoji="🎯" size={12} /></span>}
-                        </button>
-                        <button
-                          onClick={() => handleDeleteDeck(deck)}
-                          title={t('fcs.deleteDeck')}
-                          aria-label={t('fcs.deleteDeck')}
-                          className="p-3 text-slate-300 dark:text-slate-600 hover:text-rose-500 transition-all opacity-100 lg:opacity-0 lg:group-hover:opacity-100 focus-visible:opacity-100"
-                        >
-                          <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round"><polyline points="3 6 5 6 21 6"></polyline><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path></svg>
-                        </button>
+                        {menuDeckId === deck.id && (
+                          <div
+                            role="menu"
+                            className={`absolute right-0 z-30 w-60 rounded-2xl p-1.5 shadow-2xl animate-in fade-in zoom-in-95 duration-150 ${menuOpensUp ? 'bottom-full mb-2' : 'top-full mt-2'}`}
+                            style={{ background: 'var(--bg-sidebar)', border: '1px solid var(--border-color)' }}
+                          >
+                            {([
+                              { key: 'all', label: t('fcs.menuLearnAll'), icon: ListOrdered, onClick: () => handleOpenDeck(deck.id, 'all') },
+                              { key: 'quiz', label: t('fcs.menuQuiz'), icon: HelpCircle, onClick: () => onGenerateQuizFromDeck(deck), disabled: isQuizLoading || deck.cards.length === 0 },
+                              { key: 'stats', label: t('fcs.statsTitle'), icon: BarChart2, onClick: () => setStatsDeck(deck) },
+                              { key: 'edit', label: t('fcs.editTitle'), icon: Pencil, onClick: () => setEditingDeckId(deck.id) },
+                              { key: 'share', label: t('fcs.exportShareTitle'), icon: Share2, onClick: () => setExportingDeck(deck) },
+                              { key: 'print', label: t('fcs.printTitle'), icon: Printer, onClick: () => handlePrintDeck(deck) },
+                              { key: 'delete', label: t('fcs.deleteDeck'), icon: Trash2, onClick: () => handleDeleteDeck(deck), danger: true },
+                            ] as const).map(item => (
+                              <button
+                                key={item.key}
+                                role="menuitem"
+                                disabled={'disabled' in item ? item.disabled : false}
+                                onClick={() => { setMenuDeckId(null); item.onClick(); }}
+                                className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-[13px] font-semibold text-left transition-colors disabled:opacity-40 ${'danger' in item ? 'text-rose-600 dark:text-rose-400 hover:bg-rose-50 dark:hover:bg-rose-950/30' : 'text-slate-700 dark:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-800'}`}
+                              >
+                                <item.icon className="w-4 h-4 shrink-0" strokeWidth={2} />
+                                {item.label}
+                              </button>
+                            ))}
+                          </div>
+                        )}
                       </div>
                     </div>
                   </div>

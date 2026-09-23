@@ -1014,6 +1014,12 @@ export const tr: Translations = {
   'fcs.deckCreatedPartial': '{total} karttan {n} tanesi oluşturuldu, materyal daha fazlasına yetmedi.',
   'fcs.noCardsGenerated': 'Bu materyalden kart oluşturulamadı.',
   'fcs.importSkipped': '{n} eksik kart atlandı.',
+  'fcs.countNew': '{n} yeni',
+  'fcs.countLearn': '{n} öğreniliyor',
+  'fcs.countDue': '{n} zamanı geldi',
+  'fcs.moreActions': 'Diğer işlemler',
+  'fcs.menuLearnAll': 'Tüm kartlar sırayla',
+  'fcs.menuQuiz': 'Bu desteden test',
 
   // Bilgi Ağı
   'kg.allSubjects': 'Tüm dersler',

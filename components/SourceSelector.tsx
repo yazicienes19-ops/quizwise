@@ -205,9 +205,11 @@ export const SourceSelector: React.FC<SourceSelectorProps> = ({
               </div>
             ) : (
               <>
-                {/* Suche + Sammlungsfilter */}
-                <div className="flex gap-3">
-                  <div className="relative flex-1">
+                {/* Suche + Sammlungsfilter. Mindestbreiten + Umbruch: vorher wurde das
+                    Suchfeld in schmalen Spalten neben einem langen Ordnernamen auf
+                    wenige Pixel zusammengedrückt (Audit 23.09.2026). */}
+                <div className="flex flex-wrap gap-3">
+                  <div className="relative flex-[2] min-w-[180px]">
                     <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" strokeWidth={1.75} />
                     <input
                       value={search}
@@ -226,7 +228,7 @@ export const SourceSelector: React.FC<SourceSelectorProps> = ({
                     <select
                       value={filterCol}
                       onChange={e => setFilterCol(e.target.value)}
-                      className="px-3 py-2.5 rounded-2xl text-[11px] font-bold dark:text-white outline-none"
+                      className="flex-1 min-w-[140px] max-w-full truncate px-3 py-2.5 rounded-2xl text-[11px] font-bold dark:text-white outline-none"
                       style={{ background: 'color-mix(in srgb, var(--border-color) 30%, var(--bg-main))', border: '1px solid var(--border-color)' }}
                     >
                       <option value="all">{t('ssel.all')}</option>

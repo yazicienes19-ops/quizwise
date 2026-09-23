@@ -419,3 +419,15 @@ button:not(:disabled):active {
 .dark .dark\:to-violet-900\/20 {
     --tw-gradient-to: color-mix(in srgb, #4c1d95 20%, transparent);
 }
+
+/* ── Seitenleiste auf niedrigen Bildschirmen (Audit 23.09.2026) ─────────────
+   Bei 900 px Fensterhöhe verschwanden Bibliothek, Lernfortschritt und Kalender
+   unter der Nutzerkarte. Erklärzeilen unter den Menüpunkten fallen bei wenig
+   Höhe weg, die Navigation zeigt eine dünne Scrollleiste. */
+@media (max-height: 960px) {
+  .sidebar-hint { display: none; }
+  .sidebar-group-title { padding-top: 0.75rem; }
+}
+.sidebar-nav { scrollbar-width: thin; scrollbar-color: rgba(255,255,255,0.18) transparent; }
+.sidebar-nav::-webkit-scrollbar { width: 6px; }
+.sidebar-nav::-webkit-scrollbar-thumb { background: rgba(255,255,255,0.18); border-radius: 999px; }

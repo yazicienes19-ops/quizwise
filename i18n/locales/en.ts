@@ -1015,6 +1015,12 @@ export const en: Translations = {
   'fcs.deckCreatedPartial': '{n} of {total} cards created, the material did not support more.',
   'fcs.noCardsGenerated': 'No cards could be created from this material.',
   'fcs.importSkipped': '{n} incomplete card skipped.|{n} incomplete cards skipped.',
+  'fcs.countNew': '{n} new',
+  'fcs.countLearn': '{n} learning',
+  'fcs.countDue': '{n} due',
+  'fcs.moreActions': 'More actions',
+  'fcs.menuLearnAll': 'All cards in order',
+  'fcs.menuQuiz': 'Quiz from this deck',
 
   // Knowledge Web
   'kg.allSubjects': 'All subjects',
