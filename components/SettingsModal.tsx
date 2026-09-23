@@ -342,7 +342,7 @@ export const SettingsModal: React.FC<Props> = ({ user, isDark, onToggleTheme, on
                 <div className="pt-2" style={{ borderTop: '1px solid var(--border-color)' }}>
                   <button onClick={() => { onLaunchTour(); onClose(); }}
                     className="flex items-center gap-2 px-5 py-3 rounded-2xl text-[11px] font-black uppercase tracking-widest transition-all hover:scale-[1.02]"
-                    style={{ background: 'color-mix(in srgb, var(--primary) 12%, var(--bg-main))', color: 'var(--primary)', border: '1px solid var(--primary)' }}>
+                    style={{ background: 'color-mix(in srgb, var(--primary) 12%, var(--bg-main))', color: 'var(--primary-ink)', border: '1px solid var(--primary)' }}>
                     <Compass className="w-4 h-4" strokeWidth={1.75} /> {t('settings.relaunchTour')}
                   </button>
                 </div>
@@ -482,7 +482,7 @@ export const SettingsModal: React.FC<Props> = ({ user, isDark, onToggleTheme, on
                       key={l}
                       onClick={() => changeLocale(l, user?.id)}
                       className={`flex-1 py-2.5 rounded-xl text-[11px] font-black uppercase tracking-widest transition-all ${locale === l ? '' : 'text-slate-400 hover:text-slate-600 dark:hover:text-slate-200'}`}
-                      style={locale === l ? { background: 'var(--bg-sidebar)', color: 'var(--primary)', boxShadow: '0 1px 4px rgba(0,0,0,0.08)' } : {}}
+                      style={locale === l ? { background: 'var(--bg-sidebar)', color: 'var(--primary-ink)', boxShadow: '0 1px 4px rgba(0,0,0,0.08)' } : {}}
                     >
                       {l === 'de' ? '🇩🇪 ' + t('language.german') : l === 'tr' ? '🇹🇷 ' + t('language.turkish') : '🇬🇧 ' + t('language.english')}
                     </button>
@@ -513,7 +513,7 @@ export const SettingsModal: React.FC<Props> = ({ user, isDark, onToggleTheme, on
                         <p className="text-sm mt-1 text-slate-400" style={{ fontFamily: f.stack }}>Aa Bb 123</p>
                         <p className="text-[11px] font-black uppercase tracking-widest mt-2 text-slate-400">{t(f.labelKey)}</p>
                         {isSelected && (
-                          <span className="inline-flex items-center gap-1 mt-2 text-[11px] font-black uppercase tracking-wide" style={{ color: 'var(--primary)' }}>
+                          <span className="inline-flex items-center gap-1 mt-2 text-[11px] font-black uppercase tracking-wide" style={{ color: 'var(--primary-ink)' }}>
                             <Check className="w-3 h-3" strokeWidth={3} /> {t('settings.active')}
                           </span>
                         )}
@@ -532,7 +532,7 @@ export const SettingsModal: React.FC<Props> = ({ user, isDark, onToggleTheme, on
                       key={s.id}
                       onClick={() => { setLineHeight(s.id); applyLineHeight(s.id, user?.id); }}
                       className={`flex-1 py-2.5 rounded-xl text-[11px] font-black uppercase tracking-wide transition-all ${lineHeight === s.id ? '' : 'text-slate-400 hover:text-slate-600 dark:hover:text-slate-200'}`}
-                      style={lineHeight === s.id ? { background: 'var(--bg-sidebar)', color: 'var(--primary)', boxShadow: '0 1px 4px rgba(0,0,0,0.08)' } : {}}
+                      style={lineHeight === s.id ? { background: 'var(--bg-sidebar)', color: 'var(--primary-ink)', boxShadow: '0 1px 4px rgba(0,0,0,0.08)' } : {}}
                     >
                       {t(s.labelKey)}
                     </button>

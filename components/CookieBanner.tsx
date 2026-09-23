@@ -17,12 +17,12 @@ export const CookieBanner: React.FC<CookieBannerProps> = ({ onAccept, onDecline,
       style={{ background: 'var(--bg-sidebar)', borderColor: 'var(--border-color)' }}
     >
       <div className="flex-1 min-w-0">
-        <p className="text-[11px] font-black uppercase tracking-widest mb-1" style={{ color: 'var(--primary)' }}>
+        <p className="text-[11px] font-black uppercase tracking-widest mb-1" style={{ color: 'var(--primary-ink)' }}>
           {t('cookie.title')}
         </p>
         <p className="text-xs text-slate-600 dark:text-slate-400 leading-relaxed">
           {t('cookie.text')}{' '}
-          <button onClick={onShowPrivacy} className="underline hover:no-underline font-semibold" style={{ color: 'var(--primary)' }}>
+          <button onClick={onShowPrivacy} className="underline hover:no-underline font-semibold" style={{ color: 'var(--primary-ink)' }}>
             {t('cookie.privacyLink')}
           </button>
         </p>

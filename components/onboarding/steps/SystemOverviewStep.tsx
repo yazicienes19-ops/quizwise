@@ -38,7 +38,7 @@ export const SystemOverviewStep: React.FC = () => {
             </div>
             {i < FLOW.length - 1 && (
               <div className="flex justify-center py-1">
-                <span style={{ color: 'var(--primary)' }}>↓</span>
+                <span style={{ color: 'var(--primary-ink)' }}>↓</span>
               </div>
             )}
           </Fragment>

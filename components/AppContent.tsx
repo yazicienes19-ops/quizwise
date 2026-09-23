@@ -333,7 +333,7 @@ export const AppContent: React.FC<AppContentProps> = (p) => {
                 }}
               >
                 <div className="min-w-0">
-                  <p className="text-[11px] font-black uppercase tracking-widest" style={{ color: 'var(--primary)' }}>{t('ac.review')}</p>
+                  <p className="text-[11px] font-black uppercase tracking-widest" style={{ color: 'var(--primary-ink)' }}>{t('ac.review')}</p>
                   <p className="text-sm font-black dark:text-white mt-0.5">
                     {tp('ac.dueMistakesN', dueMistakes)}
                   </p>

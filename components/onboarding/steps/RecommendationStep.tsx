@@ -51,7 +51,7 @@ export const RecommendationStep: React.FC<RecommendationStepProps> = ({ challeng
       </div>
 
       <div className="mb-5 animate-card-enter" style={{ ['--stagger-i' as string]: 1 }}>
-        <p className="text-[11px] font-black uppercase tracking-widest mb-2" style={{ color: 'var(--primary)' }}>
+        <p className="text-[11px] font-black uppercase tracking-widest mb-2" style={{ color: 'var(--primary-ink)' }}>
           {t('onboarding.usp.solutionLabel')}
         </p>
         <div className="flex items-start gap-3 mb-3">
@@ -78,7 +78,7 @@ export const RecommendationStep: React.FC<RecommendationStepProps> = ({ challeng
               <li key={key} className="flex items-start gap-2.5 text-sm text-slate-500 dark:text-slate-400 leading-relaxed">
                 <span
                   className="shrink-0 w-5 h-5 rounded-full flex items-center justify-center text-[11px] font-black mt-0.5"
-                  style={{ background: 'color-mix(in srgb, var(--primary) 14%, var(--bg-main))', color: 'var(--primary)' }}
+                  style={{ background: 'color-mix(in srgb, var(--primary) 14%, var(--bg-main))', color: 'var(--primary-ink)' }}
                 >
                   {i + 1}
                 </span>

@@ -330,7 +330,7 @@ export const QuizPlayer: React.FC<QuizPlayerProps> = ({
                     className={`flex-1 py-3 rounded-2xl text-[11px] font-black uppercase tracking-widest border-2 transition-all flex items-center justify-center gap-2 ${
                       confidence === 'unsicher' ? '' : 'border-slate-100 dark:border-slate-800 text-slate-400 hover:border-slate-300'
                     }`}
-                    style={confidence === 'unsicher' ? { borderColor: 'var(--primary)', background: 'color-mix(in srgb, var(--primary) 10%, transparent)', color: 'var(--primary)' } : undefined}
+                    style={confidence === 'unsicher' ? { borderColor: 'var(--primary)', background: 'color-mix(in srgb, var(--primary) 10%, transparent)', color: 'var(--primary-ink)' } : undefined}
                   >
                     {t('quiz.unsure')}
                   </button>
@@ -339,7 +339,7 @@ export const QuizPlayer: React.FC<QuizPlayerProps> = ({
                     className={`flex-1 py-3 rounded-2xl text-[11px] font-black uppercase tracking-widest border-2 transition-all flex items-center justify-center gap-2 ${
                       confidence === 'sicher' ? '' : 'border-slate-100 dark:border-slate-800 text-slate-400 hover:border-slate-300'
                     }`}
-                    style={confidence === 'sicher' ? { borderColor: 'var(--primary)', background: 'color-mix(in srgb, var(--primary) 10%, transparent)', color: 'var(--primary)' } : undefined}
+                    style={confidence === 'sicher' ? { borderColor: 'var(--primary)', background: 'color-mix(in srgb, var(--primary) 10%, transparent)', color: 'var(--primary-ink)' } : undefined}
                   >
                     {t('quiz.sure')}
                   </button>
@@ -615,7 +615,7 @@ export const QuizPlayer: React.FC<QuizPlayerProps> = ({
         {/* Multi-Doc-Quizzes: Ursprungs-Dokument der aktuellen Frage
             (services/multiDocSource.ts) — bei Single-Doc-Sessions nicht gesetzt. */}
         {currentQuestion.sourceDocName && (
-          <p className="text-[11px] font-black uppercase tracking-widest break-words" style={{ color: 'var(--primary)' }}>
+          <p className="text-[11px] font-black uppercase tracking-widest break-words" style={{ color: 'var(--primary-ink)' }}>
             {t('quiz.fromDoc', { doc: currentQuestion.sourceDocName })}
           </p>
         )}

@@ -50,9 +50,9 @@ const withSrs = (cards: FlashcardDeck['cards']) => cards.map(c => (c.srs ? c : {
 const C = {
   ink: 'var(--text-main)',
   mute: 'color-mix(in srgb, var(--text-main) 68%, transparent)',
-  soft: 'color-mix(in srgb, var(--text-main) 60%, transparent)',
-  faint: 'color-mix(in srgb, var(--text-main) 55%, transparent)',
-  chevron: 'color-mix(in srgb, var(--text-main) 45%, transparent)',
+  soft: 'color-mix(in srgb, var(--text-main) 68%, transparent)', // Text: mind. 4,5:1
+  faint: 'color-mix(in srgb, var(--text-main) 68%, transparent)', // 4,7:1 im Tagmodus (vorher 55 %: 3,3:1)
+  chevron: 'color-mix(in srgb, var(--text-main) 55%, transparent)', // Symbol: mind. 3:1
   line: 'color-mix(in srgb, var(--text-main) 10%, transparent)',
   hair: 'color-mix(in srgb, var(--text-main) 6%, transparent)',
   card: 'var(--card)',
@@ -435,11 +435,13 @@ export const Dashboard: React.FC<DashboardProps> = ({
       {/* Kopfzeile: Begrüßung + Kennzahlen */}
       <header className="flex flex-wrap items-end justify-between gap-x-6 gap-y-4 animate-card-enter" style={{ ['--stagger-i' as string]: 0 }}>
         <h1 className="min-w-0 text-[28px] sm:text-[32px] leading-[1.1] font-normal" style={{ color: C.ink }}>{greeting}</h1>
-        <div className="flex items-end gap-[22px] max-w-full overflow-x-auto scrollbar-hide">
+        {/* Handy: 2×2-Raster statt seitlich scrollender Zeile (Audit 23.09.2026:
+            Kennzahlen wirkten abgeschnitten). */}
+        <div className="grid grid-cols-2 gap-x-6 gap-y-3 w-full sm:w-auto sm:flex sm:items-end sm:gap-[22px]">
           {kpiItems.map((k, i) => (
             <React.Fragment key={k.key}>
-              {i > 0 && <span aria-hidden className="w-px h-[30px] shrink-0" style={{ background: 'color-mix(in srgb, var(--text-main) 14%, transparent)' }} />}
-              <button onClick={k.onClick} title={k.title} className="shrink-0 text-right transition-opacity hover:opacity-75">
+              {i > 0 && <span aria-hidden className="hidden sm:block w-px h-[30px] shrink-0" style={{ background: 'color-mix(in srgb, var(--text-main) 14%, transparent)' }} />}
+              <button onClick={k.onClick} title={k.title} className="shrink-0 text-left sm:text-right transition-opacity hover:opacity-75">
                 <span className="block text-[11px] font-semibold uppercase tracking-[0.15em] whitespace-nowrap" style={{ color: C.faint }}>{k.label}</span>
                 <span className="block mt-[5px] text-[21px] leading-none whitespace-nowrap tabular-nums" style={{ color: C.ink }}>
                   {k.value}
@@ -601,7 +603,7 @@ export const Dashboard: React.FC<DashboardProps> = ({
                   key={key}
                   title={key === 'home.col.grade' ? t('home.col.gradeHint') : undefined}
                   className={`text-[11px] font-semibold uppercase tracking-[0.14em] ${align}`}
-                  style={{ color: 'color-mix(in srgb, var(--text-main) 50%, transparent)' }}
+                  style={{ color: 'color-mix(in srgb, var(--text-main) 68%, transparent)' }}
                 >
                   {t(key)}
                 </span>

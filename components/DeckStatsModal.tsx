@@ -94,7 +94,7 @@ export const DeckStatsModal: React.FC<DeckStatsModalProps> = ({ deck, onClose })
           {/* Key metrics */}
           <div className="grid grid-cols-3 gap-3">
             <div className="p-4 bg-slate-50 dark:bg-slate-800 rounded-2xl text-center">
-              <p className="text-2xl font-black" style={{ color: 'var(--primary)' }}>{stats.dueToday}</p>
+              <p className="text-2xl font-black" style={{ color: 'var(--primary-ink)' }}>{stats.dueToday}</p>
               <p className="text-[11px] font-black uppercase tracking-widest text-slate-400 mt-1">{t('dashboard.dueToday')}</p>
             </div>
             <div className="p-4 bg-slate-50 dark:bg-slate-800 rounded-2xl text-center">

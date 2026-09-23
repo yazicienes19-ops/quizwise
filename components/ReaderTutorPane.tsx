@@ -51,7 +51,7 @@ export const ReaderTutorPane: React.FC<ReaderTutorPaneProps> = ({
 
       <div className="flex items-center justify-between gap-3">
         <div className="min-w-0">
-          <p className="text-[11px] font-black uppercase tracking-widest" style={{ color: 'var(--primary)' }}>{t('nav.explainer')}</p>
+          <p className="text-[11px] font-black uppercase tracking-widest" style={{ color: 'var(--primary-ink)' }}>{t('nav.explainer')}</p>
           <p className={`text-xs text-slate-400 font-medium ${expanded ? '' : 'hidden'} lg:block`}>{hint}</p>
         </div>
         <button

@@ -600,6 +600,8 @@ interface GraphNodeViewProps {
   onTitleDoubleClick: (e: React.MouseEvent, nodeId: string) => void;
   onHoverChange: (nodeId: string | null) => void;
   onHandlePointerDown: (e: React.PointerEvent, nodeId: string) => void;
+  /** Tastatur: Enter/Leertaste wählt das Konzept aus (wie ein Klick). */
+  onKeySelect: (nodeId: string) => void;
 }
 
 const GraphNodeView = React.memo(function GraphNodeView({
@@ -607,7 +609,7 @@ const GraphNodeView = React.memo(function GraphNodeView({
   borderColor, borderWidth, titleLines, titleFontSize, titleFontWeight,
   titleColor, breathe, showHandle, handleColor, insightText, insightDotFill,
   insightDotStroke, reduceMotion, onNodePointerDown, onNodePointerUp,
-  onTitleDoubleClick, onHoverChange, onHandlePointerDown,
+  onTitleDoubleClick, onHoverChange, onHandlePointerDown, onKeySelect,
 }: GraphNodeViewProps) {
   // Blob-Kontur & Animationsversatz sind deterministisch pro Node-ID — im
   // Kind berechnet (statt als Objekt-Prop), damit die Props rein primitiv
@@ -635,6 +637,17 @@ const GraphNodeView = React.memo(function GraphNodeView({
       onDoubleClick={e => onTitleDoubleClick(e, nodeId)}
       onMouseEnter={() => onHoverChange(nodeId)}
       onMouseLeave={() => onHoverChange(null)}
+      // Tastaturbedienung (Audit 23.09.2026: Wissensnetz war nur mit der Maus
+      // nutzbar): Tab erreicht jedes Konzept, Enter/Leertaste wählt es aus.
+      tabIndex={0}
+      role="button"
+      aria-label={titleLines.join(' ')}
+      onFocus={() => onHoverChange(nodeId)}
+      onBlur={() => onHoverChange(null)}
+      onKeyDown={e => {
+        if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); e.stopPropagation(); onKeySelect(nodeId); }
+      }}
+      className="wn-node"
       style={{ cursor: 'pointer' }}
     >
       {/* Leichtes, pro Node festes Schweben/Atmen (Design-Handoff) — CSS-
@@ -1634,6 +1647,9 @@ export const GraphCanvas: React.FC<GraphCanvasProps> = ({
   const stableNodePointerUp = useCallback((e: React.PointerEvent, nodeId: string) => {
     nodePointerUpRef.current(e, nodeId);
   }, []);
+  const stableNodeKeySelect = useCallback((nodeId: string) => {
+    onSelectionChangeRef.current(selectNode(selectionRef.current, nodeId));
+  }, []);
   const stableHandlePointerDown = useCallback((e: React.PointerEvent, nodeId: string) => {
     handlePointerDownRef.current(e, nodeId);
   }, []);
@@ -1824,6 +1840,7 @@ export const GraphCanvas: React.FC<GraphCanvasProps> = ({
                   reduceMotion={shouldReduceMotion}
                   onNodePointerDown={stableNodePointerDown}
                   onNodePointerUp={stableNodePointerUp}
+                  onKeySelect={stableNodeKeySelect}
                   onTitleDoubleClick={stableTitleDoubleClick}
                   onHoverChange={stableHoverChange}
                   onHandlePointerDown={stableHandlePointerDown}

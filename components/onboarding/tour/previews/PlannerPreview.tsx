@@ -4,7 +4,7 @@ export const PlannerPreview: React.FC = () => (
   <div className="space-y-2">
     <div className="flex items-center justify-between px-3 py-2.5 rounded-[10px]" style={{ background: 'var(--bg-main)', border: '1px solid var(--border-color)' }}>
       <span className="text-[11px] font-bold" style={{ color: 'var(--text-main)' }}>Klausur Entwicklungspsychologie</span>
-      <span className="text-[11px] font-black shrink-0 ml-2" style={{ color: 'var(--primary)' }}>noch 12 Tage</span>
+      <span className="text-[11px] font-black shrink-0 ml-2" style={{ color: 'var(--primary-ink)' }}>noch 12 Tage</span>
     </div>
     <div className="flex items-center justify-between px-3 py-2.5 rounded-[10px]" style={{ background: 'var(--bg-main)', border: '1px solid var(--border-color)' }}>
       <span className="text-[11px] font-bold" style={{ color: 'var(--text-main)' }}>Feynman-Session</span>

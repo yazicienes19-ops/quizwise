@@ -145,7 +145,7 @@ export const AnkiImportModal: React.FC<AnkiImportModalProps> = ({ decks, onClose
                 key={tab2}
                 onClick={() => setTab(tab2)}
                 className={`flex-1 py-2.5 rounded-xl text-[11px] font-black uppercase tracking-widest transition-all ${tab === tab2 ? 'bg-white dark:bg-slate-900 shadow' : 'text-slate-400 hover:text-slate-600'}`}
-                style={tab === tab2 ? { color: 'var(--primary)' } : {}}
+                style={tab === tab2 ? { color: 'var(--primary-ink)' } : {}}
               >
                 {tab2 === 'paste' ? t('aim.pasteText') : t('aim.uploadFile')}
               </button>

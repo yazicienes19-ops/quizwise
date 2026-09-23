@@ -47,7 +47,7 @@ export const PersonalPathStep: React.FC<PersonalPathStepProps> = ({ challenges }
               className="flex items-center gap-3 p-4 rounded-[16px] animate-card-enter"
               style={{ background: 'var(--bg-main)', border: '1px solid var(--border-color)', ['--stagger-i' as string]: i }}
             >
-              <span className="shrink-0 text-[11px] font-black tabular-nums" style={{ color: 'var(--primary)' }}>
+              <span className="shrink-0 text-[11px] font-black tabular-nums" style={{ color: 'var(--primary-ink)' }}>
                 {String(i + 1).padStart(2, '0')}
               </span>
               <span className="shrink-0 text-lg leading-none">{TAB_ICON[tab] ?? '✨'}</span>

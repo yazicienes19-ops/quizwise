@@ -470,7 +470,7 @@ const ExplainActivity: React.FC<{
                   className="px-3 py-1.5 rounded-xl text-[11px] font-black transition-all hover:scale-[1.03] text-left"
                   style={{
                     background: 'color-mix(in srgb, var(--primary) 10%, transparent)',
-                    color: 'var(--primary)',
+                    color: 'var(--primary-ink)',
                     border: '1px solid color-mix(in srgb, var(--primary) 25%, transparent)',
                   }}
                 >
@@ -482,7 +482,7 @@ const ExplainActivity: React.FC<{
 
           {history.map((turn, i) => (
             <div key={i} className="space-y-2">
-              <p className="text-sm font-bold px-2" style={{ color: 'var(--primary)' }}>{turn.question}</p>
+              <p className="text-sm font-bold px-2" style={{ color: 'var(--primary-ink)' }}>{turn.question}</p>
               <div className="rounded-[20px] p-6 border" style={{ borderColor: 'var(--border-color)', background: 'var(--bg-sidebar)' }}>
                 {renderMarkdown(turn.answer)}
               </div>
@@ -495,7 +495,7 @@ const ExplainActivity: React.FC<{
                       className="px-3 py-1.5 rounded-xl text-[11px] font-black transition-all hover:scale-[1.03] text-left"
                       style={{
                         background: 'color-mix(in srgb, var(--primary) 10%, transparent)',
-                        color: 'var(--primary)',
+                        color: 'var(--primary-ink)',
                         border: '1px solid color-mix(in srgb, var(--primary) 25%, transparent)',
                       }}
                     >

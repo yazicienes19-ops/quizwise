@@ -490,7 +490,7 @@ export const ExamSystem: React.FC<ExamSystemProps> = ({ documents, collections, 
             style={{ background: 'color-mix(in srgb, var(--primary) 8%, transparent)', border: '1px dashed color-mix(in srgb, var(--primary) 40%, transparent)' }}
           >
             <span className="min-w-0">
-              <span className="block text-[11px] font-black uppercase tracking-widest" style={{ color: 'var(--primary)' }}>{t('es.graphBridge.title')}</span>
+              <span className="block text-[11px] font-black uppercase tracking-widest" style={{ color: 'var(--primary-ink)' }}>{t('es.graphBridge.title')}</span>
               <span className="block text-[12px] font-bold mt-0.5 truncate" style={{ color: 'var(--text-main)' }}>
                 {t('es.graphBridge.text', { topics: weak.map(w => w.topic).join(', ') })}
               </span>

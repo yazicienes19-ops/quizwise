@@ -78,7 +78,7 @@ export const AdminDashboard: React.FC = () => {
       <div className="flex items-center justify-between gap-4 flex-wrap">
         <div>
           <h1 className="text-xl font-black dark:text-white flex items-center gap-2">
-            <UsersIcon className="w-5 h-5" strokeWidth={1.75} style={{ color: 'var(--primary)' }} />
+            <UsersIcon className="w-5 h-5" strokeWidth={1.75} style={{ color: 'var(--primary-ink)' }} />
             {t('admin.title')}
           </h1>
           <p className="text-[11px] font-medium text-slate-400 mt-1">{t('admin.subtitle')}</p>
@@ -250,7 +250,7 @@ export const AdminDashboard: React.FC = () => {
       <section className="space-y-3 pt-4">
         <div>
           <h2 className="text-base font-black dark:text-white flex items-center gap-2">
-            <Flag className="w-4 h-4" strokeWidth={1.75} style={{ color: 'var(--primary)' }} />
+            <Flag className="w-4 h-4" strokeWidth={1.75} style={{ color: 'var(--primary-ink)' }} />
             {t('admin.reports.title')}
             {reports && reports.total > 0 && (
               <span className="text-[11px] font-black uppercase tracking-widest text-slate-400">{t('admin.reports.count', { n: reports.total })}</span>

@@ -90,7 +90,7 @@ export const AuthPage: React.FC = () => {
         <div className="relative z-10 flex items-center gap-3">
           <BrandMark size={36} strokeColor="#FBF9F4" peakColor="var(--primary)" />
           <span className="text-xl font-black uppercase tracking-tighter text-white">
-            Stude<span style={{ color: 'var(--primary)' }}>Arc</span>
+            Stude<span style={{ color: 'var(--primary-ink)' }}>Arc</span>
           </span>
         </div>
 

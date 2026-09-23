@@ -604,7 +604,7 @@ export const ExplainerSystem: React.FC<ExplainerSystemProps> = ({
           style={{ background: 'var(--bg-sidebar)', border: '1px solid var(--border-color)' }}
         >
           <div className="w-9 h-9 rounded-xl flex items-center justify-center shrink-0" style={{ background: 'color-mix(in srgb, var(--primary) 12%, transparent)' }}>
-            <BookOpen size={18} style={{ color: 'var(--primary)' }} strokeWidth={1.75} />
+            <BookOpen size={18} style={{ color: 'var(--primary-ink)' }} strokeWidth={1.75} />
           </div>
           <div className="flex-1 min-w-0 space-y-0.5">
             <p className="text-sm font-black dark:text-white">{t('ex.landing.readerTitle')}</p>
@@ -664,7 +664,7 @@ export const ExplainerSystem: React.FC<ExplainerSystemProps> = ({
                 >
                   <button onClick={() => resumeSession(s)} className="flex-1 flex items-center gap-3 min-w-0 text-left">
                     <div className="w-8 h-8 rounded-xl flex items-center justify-center shrink-0" style={{ background: 'color-mix(in srgb, var(--primary) 12%, transparent)' }}>
-                      <GraduationCap size={16} style={{ color: 'var(--primary)' }} strokeWidth={1.75} />
+                      <GraduationCap size={16} style={{ color: 'var(--primary-ink)' }} strokeWidth={1.75} />
                     </div>
                     <div className="min-w-0 flex-1">
                       <p className="text-xs font-black truncate dark:text-white">{tutorSessionTitle(s, t('tut.session'))}</p>
@@ -743,7 +743,7 @@ export const ExplainerSystem: React.FC<ExplainerSystemProps> = ({
                     className="w-full flex items-center gap-3 px-4 py-3 rounded-2xl text-left transition-all hover:scale-[1.02]"
                     style={{ background: 'var(--bg-main)', border: '1px solid var(--border-color)' }}
                   >
-                    <BookOpen size={16} className="shrink-0" style={{ color: 'var(--primary)' }} strokeWidth={1.75} />
+                    <BookOpen size={16} className="shrink-0" style={{ color: 'var(--primary-ink)' }} strokeWidth={1.75} />
                     <span className="flex-1 min-w-0 text-xs font-black dark:text-white truncate">{documentDisplayName(doc)}</span>
                     <ChevronRight className="w-4 h-4 text-slate-300 shrink-0" strokeWidth={2} />
                   </button>
@@ -811,7 +811,7 @@ export const ExplainerSystem: React.FC<ExplainerSystemProps> = ({
           <div className="space-y-4">
             <div className="rounded-[28px] p-8 space-y-4 text-center" style={{ background: 'var(--bg-sidebar)', border: '1px solid var(--border-color)' }}>
               <div className="w-14 h-14 mx-auto rounded-2xl flex items-center justify-center" style={{ background: 'color-mix(in srgb, var(--primary) 12%, transparent)' }}>
-                <GraduationCap size={26} style={{ color: 'var(--primary)' }} strokeWidth={1.75} />
+                <GraduationCap size={26} style={{ color: 'var(--primary-ink)' }} strokeWidth={1.75} />
               </div>
               <p className="text-sm font-bold text-slate-600 dark:text-slate-300 max-w-md mx-auto leading-relaxed">
                 {mode === 'explain' && t('tut.intro.explain')}

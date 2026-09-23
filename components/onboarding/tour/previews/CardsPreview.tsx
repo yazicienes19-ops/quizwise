@@ -8,7 +8,7 @@ export const CardsPreview: React.FC = () => (
     <p className="text-sm font-bold mb-3" style={{ color: 'var(--text-main)' }}>
       Was ist das Mehrspeichermodell?
     </p>
-    <p className="text-[11px] font-black uppercase tracking-widest" style={{ color: 'var(--primary)' }}>
+    <p className="text-[11px] font-black uppercase tracking-widest" style={{ color: 'var(--primary-ink)' }}>
       Tippen zum Umdrehen
     </p>
   </div>

@@ -73,7 +73,7 @@ export const UpgradeModal: React.FC<UpgradeModalProps> = ({ onClose }) => {
               <p className="text-4xl font-black dark:text-white">9,99 €</p>
               <p className="text-lg font-black text-slate-300 dark:text-slate-600 line-through mb-1">14,99 €</p>
             </div>
-            <p className="text-[11px] font-black uppercase tracking-widest" style={{ color: 'var(--primary)' }}>{t('um.introPriceForever')}</p>
+            <p className="text-[11px] font-black uppercase tracking-widest" style={{ color: 'var(--primary-ink)' }}>{t('um.introPriceForever')}</p>
             <p className="text-[11px] text-slate-400 font-black uppercase tracking-widest">{t('um.perMonth')}</p>
           </div>
         </div>

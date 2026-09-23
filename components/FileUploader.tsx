@@ -76,7 +76,7 @@ export const FileUploader: React.FC<FileUploaderProps> = ({
           className="max-w-xl mx-auto p-6 lg:p-8 rounded-[28px] border text-center space-y-4"
           style={{ background: 'color-mix(in srgb, var(--primary) 7%, var(--bg-sidebar))', borderColor: 'color-mix(in srgb, var(--primary) 25%, transparent)' }}
         >
-          <p className="text-[11px] font-black uppercase tracking-widest" style={{ color: 'var(--primary)' }}>{t('fu.activeSubject')}</p>
+          <p className="text-[11px] font-black uppercase tracking-widest" style={{ color: 'var(--primary-ink)' }}>{t('fu.activeSubject')}</p>
           <p className="text-2xl font-black dark:text-white">{activeModule.emoji} {activeModule.name}</p>
           <p className="text-[11px] font-medium text-slate-400">
             {tp('fu.sourcesBase', folderResult.includedCount)}
@@ -149,7 +149,7 @@ export const FileUploader: React.FC<FileUploaderProps> = ({
         <div className="fixed inset-0 flex items-center justify-center z-[100] backdrop-blur-sm" style={{ backgroundColor: 'color-mix(in srgb, var(--bg-main) 85%, transparent)' }}>
           <div className="flex flex-col items-center gap-6">
             <div className="w-16 h-16 rounded-full animate-spin" style={{ border: '6px solid var(--primary-soft)', borderTopColor: 'var(--primary)' }}></div>
-            <p className="font-black uppercase tracking-[0.14em] text-[11px] animate-pulse" style={{ color: 'var(--primary)' }}>{t('fu.quizForming')}</p>
+            <p className="font-black uppercase tracking-[0.14em] text-[11px] animate-pulse" style={{ color: 'var(--primary-ink)' }}>{t('fu.quizForming')}</p>
           </div>
         </div>
       )}

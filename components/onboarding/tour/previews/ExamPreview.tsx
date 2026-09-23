@@ -12,7 +12,7 @@ export const ExamPreview: React.FC = () => (
       >
         8 / 10 Punkte
       </span>
-      <span className="text-[11px] font-black" style={{ color: 'var(--primary)' }}>Note 2,0</span>
+      <span className="text-[11px] font-black" style={{ color: 'var(--primary-ink)' }}>Note 2,0</span>
     </div>
   </div>
 );

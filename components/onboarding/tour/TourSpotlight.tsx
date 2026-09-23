@@ -141,7 +141,7 @@ export const TourSpotlight: React.FC<TourSpotlightProps> = ({
     >
       <div className="p-6 pb-0">
         <div className="flex items-center gap-2 mb-2">
-          <p className="text-[11px] font-black uppercase tracking-[0.25em]" style={{ color: 'var(--primary)' }}>
+          <p className="text-[11px] font-black uppercase tracking-[0.25em]" style={{ color: 'var(--primary-ink)' }}>
             {t('onboarding.tour.stepLabel', { n: stepIndex + 1, total: totalSteps })}
           </p>
           {isPrimaryRecommendation && (

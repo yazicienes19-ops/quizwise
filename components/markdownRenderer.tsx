@@ -51,7 +51,7 @@ export function parseInline(text: string, baseKey: string): React.ReactNode[] {
     // (live gefunden: alle bold-umschlossenen Formeln blieben roh sichtbar).
     else if (token.startsWith('**'))   parts.push(<strong key={k} className="font-black text-slate-900 dark:text-white">{parseInline(token.slice(2,-2), k)}</strong>);
     else if (token.startsWith('*'))    parts.push(<em key={k} className="italic text-slate-600 dark:text-slate-300">{parseInline(token.slice(1,-1), k)}</em>);
-    else                               parts.push(<code key={k} className="px-1.5 py-0.5 rounded-md text-[0.85em] font-mono bg-slate-100 dark:bg-slate-800" style={{ color: 'var(--primary)' }}>{token.slice(1,-1)}</code>);
+    else                               parts.push(<code key={k} className="px-1.5 py-0.5 rounded-md text-[0.85em] font-mono bg-slate-100 dark:bg-slate-800" style={{ color: 'var(--primary-ink)' }}>{token.slice(1,-1)}</code>);
     last = match.index + token.length;
   }
   if (last < text.length) parts.push(text.slice(last));
@@ -125,7 +125,7 @@ export function renderMarkdown(text: string): React.ReactNode {
     if (line.startsWith('Allgemeinwissen:')) {
       const content: string[] = [line.replace('Allgemeinwissen:','').trim()]; i++;
       while (i < lines.length && lines[i].trim() && !lines[i].startsWith('#') && !lines[i].match(/^[-*•]\s/) && !lines[i].match(/^\d+\.\s/)) { content.push(lines[i]); i++; }
-      blocks.push(<div key={key++} className="px-5 py-4 rounded-2xl" style={{ background:'color-mix(in srgb,var(--primary) 8%,transparent)', border:'1px solid color-mix(in srgb,var(--primary) 20%,transparent)' }}><p className="text-[11px] font-black uppercase tracking-widest mb-2" style={{ color:'var(--primary)' }}>{t('reader.externalKnowledge')}</p><p className="text-base font-medium text-slate-700 dark:text-slate-300 leading-relaxed">{parseInline(content.join(' '),String(key))}</p></div>);
+      blocks.push(<div key={key++} className="px-5 py-4 rounded-2xl" style={{ background:'color-mix(in srgb,var(--primary) 8%,transparent)', border:'1px solid color-mix(in srgb,var(--primary) 20%,transparent)' }}><p className="text-[11px] font-black uppercase tracking-widest mb-2" style={{ color: 'var(--primary-ink)' }}>{t('reader.externalKnowledge')}</p><p className="text-base font-medium text-slate-700 dark:text-slate-300 leading-relaxed">{parseInline(content.join(' '),String(key))}</p></div>);
       continue;
     }
     if (line.match(/^[-*•]\s/)) {
@@ -137,7 +137,7 @@ export function renderMarkdown(text: string): React.ReactNode {
     if (line.match(/^\d+\.\s/)) {
       const { items, next } = collectListLines(lines, i, /^\d+\.\s/);
       i = next;
-      blocks.push(<ol key={key++} className="space-y-2 pl-1">{items.map((item,idx) => <li key={idx} className="flex gap-3 items-start text-base lg:text-lg font-medium text-slate-700 dark:text-slate-300 leading-relaxed"><span className="font-black shrink-0 w-6 text-right" style={{ color:'var(--primary)' }}>{idx+1}.</span><span>{parseInline(item,`${key}-${idx}`)}</span></li>)}</ol>);
+      blocks.push(<ol key={key++} className="space-y-2 pl-1">{items.map((item,idx) => <li key={idx} className="flex gap-3 items-start text-base lg:text-lg font-medium text-slate-700 dark:text-slate-300 leading-relaxed"><span className="font-black shrink-0 w-6 text-right" style={{ color: 'var(--primary-ink)' }}>{idx+1}.</span><span>{parseInline(item,`${key}-${idx}`)}</span></li>)}</ol>);
       continue;
     }
     const paraLines: string[] = [line]; i++;

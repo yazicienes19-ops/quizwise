@@ -99,7 +99,7 @@ export const LandingPage: React.FC<LandingPageProps> = ({ onAuthClick, onLegalCl
           <div className="flex items-center gap-2.5">
             <BrandMark size={26} strokeColor="#1B2A4A" peakColor="var(--primary)" />
             <span className="text-xl" style={{ ...serif, letterSpacing: '-0.01em' }}>
-              <span style={{ fontWeight: 500 }}>Stude</span><span style={{ fontWeight: 700, color: 'var(--primary)' }}>Arc</span>
+              <span style={{ fontWeight: 500 }}>Stude</span><span style={{ fontWeight: 700, color: 'var(--primary-ink)' }}>Arc</span>
             </span>
           </div>
           <div className="hidden md:flex items-center gap-8 text-[13px] font-medium" style={{ color: '#4A4636' }}>
@@ -129,12 +129,12 @@ export const LandingPage: React.FC<LandingPageProps> = ({ onAuthClick, onLegalCl
 
       {/* Hero */}
       <section className="max-w-5xl mx-auto px-6 sm:px-8 pt-20 sm:pt-28 pb-20 text-center">
-        <p className="text-[13px] font-semibold uppercase tracking-[0.16em] mb-7" style={{ color: 'var(--primary)' }}>
+        <p className="text-[13px] font-semibold uppercase tracking-[0.16em] mb-7" style={{ color: 'var(--primary-ink)' }}>
           {t('landing.hero.badge')}
         </p>
 
         <h1 style={{ ...serif, fontSize: 'clamp(40px, 7vw, 84px)', lineHeight: 1.04, fontWeight: 600, letterSpacing: '-0.02em' }}>
-          {t('landing.hero.title1')} <span style={{ fontWeight: 700, color: 'var(--primary)', fontStyle: 'italic' }}>{t('landing.hero.titleAccent')}</span><br />
+          {t('landing.hero.title1')} <span style={{ fontWeight: 700, color: 'var(--primary-ink)', fontStyle: 'italic' }}>{t('landing.hero.titleAccent')}</span><br />
           {t('landing.hero.title2')}
         </h1>
 
@@ -168,7 +168,7 @@ export const LandingPage: React.FC<LandingPageProps> = ({ onAuthClick, onLegalCl
       <section id="akt1" style={{ background: '#1B2A4A', color: '#FBF9F4', padding: '120px 24px', scrollMarginTop: 'calc(4rem + env(safe-area-inset-top))' }} className="sm:px-14">
         <div className="max-w-5xl mx-auto grid grid-cols-1 lg:grid-cols-2 gap-16 items-center">
           <Reveal>
-            <p style={{ ...serif, fontSize: 15, fontWeight: 600, color: 'var(--primary)', marginBottom: 18 }}>{t('landing.act1.eyebrow')}</p>
+            <p style={{ ...serif, fontSize: 15, fontWeight: 600, color: 'var(--primary-ink)', marginBottom: 18 }}>{t('landing.act1.eyebrow')}</p>
             <h2 style={{ ...serif, fontSize: 'clamp(30px, 3.6vw, 46px)', fontWeight: 600, lineHeight: 1.12, marginBottom: 20 }}>
               {t('landing.act1.title')}
             </h2>
@@ -185,7 +185,7 @@ export const LandingPage: React.FC<LandingPageProps> = ({ onAuthClick, onLegalCl
       {/* Akt II — Features */}
       <section id="akt2" className="max-w-6xl mx-auto px-6 sm:px-8 py-24 sm:py-32" style={{ scrollMarginTop: 'calc(4rem + env(safe-area-inset-top))' }}>
         <Reveal className="text-center mb-16">
-          <p style={{ ...serif, fontSize: 15, fontWeight: 600, color: 'var(--primary)', marginBottom: 18 }}>{t('landing.act2.eyebrow')}</p>
+          <p style={{ ...serif, fontSize: 15, fontWeight: 600, color: 'var(--primary-ink)', marginBottom: 18 }}>{t('landing.act2.eyebrow')}</p>
           <h2 style={{ ...serif, fontSize: 'clamp(30px, 3.6vw, 46px)', fontWeight: 600, lineHeight: 1.12 }}>{t('landing.features.title')}</h2>
         </Reveal>
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
@@ -198,7 +198,7 @@ export const LandingPage: React.FC<LandingPageProps> = ({ onAuthClick, onLegalCl
                   style={{ background: '#FBF9F4' }}
                 >
                   <div className="w-11 h-11 rounded-full border border-[rgba(27,42,74,0.15)] flex items-center justify-center mb-7 transition-all duration-300 group-hover:border-[var(--primary)] group-hover:bg-[var(--primary)]/10">
-                    <Icon className="w-[18px] h-[18px] transition-transform duration-300 group-hover:scale-110" strokeWidth={1.75} style={{ color: 'var(--primary)' }} />
+                    <Icon className="w-[18px] h-[18px] transition-transform duration-300 group-hover:scale-110" strokeWidth={1.75} style={{ color: 'var(--primary-ink)' }} />
                   </div>
                   <h3 style={{ ...serif, fontSize: 20, fontWeight: 600, marginBottom: 12 }}>{t(f.titleKey)}</h3>
                   <p style={{ fontSize: 14, lineHeight: 1.65, color: '#5B5647' }}>{t(f.descKey)}</p>
@@ -216,7 +216,7 @@ export const LandingPage: React.FC<LandingPageProps> = ({ onAuthClick, onLegalCl
             <ArcArt flip />
           </Reveal>
           <Reveal className="order-1 lg:order-2">
-            <p style={{ ...serif, fontSize: 15, fontWeight: 600, color: 'var(--primary)', marginBottom: 18 }}>{t('landing.act3.eyebrow')}</p>
+            <p style={{ ...serif, fontSize: 15, fontWeight: 600, color: 'var(--primary-ink)', marginBottom: 18 }}>{t('landing.act3.eyebrow')}</p>
             <h2 style={{ ...serif, fontSize: 'clamp(30px, 3.6vw, 46px)', fontWeight: 600, lineHeight: 1.12, marginBottom: 20 }}>
               {t('landing.act3.title')}
             </h2>
@@ -265,12 +265,12 @@ export const LandingPage: React.FC<LandingPageProps> = ({ onAuthClick, onLegalCl
               <div className="absolute top-6 right-6 px-2.5 py-1 rounded-full text-[11px] font-black uppercase tracking-widest" style={{ background: 'var(--primary)', color: '#1B2A4A' }}>
                 {t('landing.pricing.recommended')}
               </div>
-              <p className="text-[11px] font-black uppercase tracking-widest mb-2" style={{ color: 'var(--primary)' }}>Pro</p>
+              <p className="text-[11px] font-black uppercase tracking-widest mb-2" style={{ color: 'var(--primary-ink)' }}>Pro</p>
               <div className="flex items-end gap-3 mb-1">
                 <p style={{ ...serif, fontSize: 44, fontWeight: 600 }}>9,99 €</p>
                 <p className="text-xl font-black mb-1.5 line-through" style={{ color: '#5B6B8C' }}>14,99 €</p>
               </div>
-              <p className="text-[11px] font-black uppercase tracking-widest mb-1" style={{ color: 'var(--primary)' }}>{t('landing.pricing.proSub')}</p>
+              <p className="text-[11px] font-black uppercase tracking-widest mb-1" style={{ color: 'var(--primary-ink)' }}>{t('landing.pricing.proSub')}</p>
               <p className="text-[11px] mb-8" style={{ color: '#C9CFDD' }}>{t('landing.pricing.proPeriod')}</p>
               <ul className="space-y-3 mb-8">
                 {proItems.map(item => (
@@ -295,9 +295,9 @@ export const LandingPage: React.FC<LandingPageProps> = ({ onAuthClick, onLegalCl
       {/* Finale / CTA */}
       <section className="px-6 sm:px-8 py-28 sm:py-36 text-center">
         <Reveal className="max-w-2xl mx-auto">
-          <p style={{ ...serif, fontSize: 15, fontWeight: 600, color: 'var(--primary)', marginBottom: 18 }}>{t('landing.final.eyebrow')}</p>
+          <p style={{ ...serif, fontSize: 15, fontWeight: 600, color: 'var(--primary-ink)', marginBottom: 18 }}>{t('landing.final.eyebrow')}</p>
           <h2 style={{ ...serif, fontSize: 'clamp(32px, 4.4vw, 56px)', fontWeight: 600, lineHeight: 1.1, marginBottom: 22 }}>
-            {t('landing.final.titlePre')} <span style={{ fontStyle: 'italic', color: 'var(--primary)' }}>{t('landing.final.titleAccent')}</span>
+            {t('landing.final.titlePre')} <span style={{ fontStyle: 'italic', color: 'var(--primary-ink)' }}>{t('landing.final.titleAccent')}</span>
           </h2>
           <p className="text-lg mb-10" style={{ color: '#5B5647' }}>{t('landing.cta.subtitle')}</p>
           <button
@@ -316,7 +316,7 @@ export const LandingPage: React.FC<LandingPageProps> = ({ onAuthClick, onLegalCl
           <div className="flex items-center gap-2.5">
             <BrandMark size={20} strokeColor="#1B2A4A" peakColor="var(--primary)" />
             <span style={{ ...serif, fontSize: 15 }}>
-              <span style={{ fontWeight: 500 }}>Stude</span><span style={{ fontWeight: 700, color: 'var(--primary)' }}>Arc</span>
+              <span style={{ fontWeight: 500 }}>Stude</span><span style={{ fontWeight: 700, color: 'var(--primary-ink)' }}>Arc</span>
             </span>
           </div>
           <div className="flex gap-6">

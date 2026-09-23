@@ -240,7 +240,7 @@ export const FlashcardPlayer: React.FC<FlashcardPlayerProps> = ({ cards, onRevie
           {showAnswer && (
             <div className="space-y-8 md:space-y-16 animate-in fade-in zoom-in-95 duration-300 border-t border-slate-100 dark:border-slate-800 pt-8 md:pt-16 px-2 md:px-8">
               <div className={longBack ? 'text-left max-w-2xl mx-auto' : 'text-center'}>
-                <p className={`${backSize(currentCard.back)} font-bold leading-relaxed break-words whitespace-pre-line`} style={{ color: 'var(--primary)' }}>
+                <p className={`${backSize(currentCard.back)} font-bold leading-relaxed break-words whitespace-pre-line`} style={{ color: 'var(--primary-ink)' }}>
                   {currentCard.back}
                 </p>
               </div>

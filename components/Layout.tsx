@@ -534,7 +534,7 @@ export const Layout: React.FC<LayoutProps> = ({
       >
         <div className="flex items-center gap-2 shrink-0">
           <BrandMark size={20} strokeColor="var(--mark-stroke)" peakColor="var(--mark-peak)" className="shrink-0" />
-          <span className="text-[11px] font-black uppercase tracking-widest" style={{ color: 'var(--text-main)' }}>Stude<span style={{ color: 'var(--primary)' }}>Arc</span></span>
+          <span className="text-[11px] font-black uppercase tracking-widest" style={{ color: 'var(--text-main)' }}>Stude<span style={{ color: 'var(--primary-ink)' }}>Arc</span></span>
         </div>
 
         <span className="absolute left-1/2 -translate-x-1/2 text-[11px] font-black uppercase tracking-widest text-slate-400 pointer-events-none max-w-[60vw] truncate">
@@ -595,7 +595,7 @@ export const Layout: React.FC<LayoutProps> = ({
               data-tour={`nav-${item.tab}`}
               onClick={() => handleMobileTabChange(item.tab)}
               className="relative flex flex-col items-center gap-1 min-w-[3rem] px-1.5 py-1 rounded-xl transition-all"
-              style={isActive ? { color: 'var(--primary)' } : { color: 'rgb(148 163 184)' }}
+              style={isActive ? { color: 'var(--primary-ink)' } : { color: 'var(--nav-inactive)' }}
             >
               {Icon && <Icon className="w-6 h-6" strokeWidth={1.75} />}
               {item.tab === ActiveTab.CARDS && dueCardsCount > 0 && (
@@ -612,7 +612,7 @@ export const Layout: React.FC<LayoutProps> = ({
         <button
           onClick={() => setIsMobileMenuOpen(v => !v)}
           className="flex flex-col items-center gap-1 min-w-[3rem] px-2 py-1 rounded-xl transition-all"
-          style={isMobileMenuOpen ? { color: 'var(--primary)' } : { color: 'rgb(148 163 184)' }}
+          style={isMobileMenuOpen ? { color: 'var(--primary-ink)' } : { color: 'var(--nav-inactive)' }}
         >
           {isMobileMenuOpen
             ? <X className="w-6 h-6" strokeWidth={1.75} />

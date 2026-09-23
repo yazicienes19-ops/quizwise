@@ -415,7 +415,7 @@ export const LibrarySystem: React.FC<LibrarySystemProps> = ({
                           <p className="text-[11px] text-slate-300 dark:text-slate-600 mt-1">{t('lib.empty')}</p>
                         )}
                       </div>
-                      <div className="flex items-center gap-1 text-[11px] font-black uppercase tracking-widest mt-auto" style={{ color: 'var(--primary)' }}>
+                      <div className="flex items-center gap-1 text-[11px] font-black uppercase tracking-widest mt-auto" style={{ color: 'var(--primary-ink)' }}>
                         Öffnen
                         <svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round">
                           <line x1="5" y1="12" x2="19" y2="12"/><polyline points="12 5 19 12 12 19"/>
@@ -521,7 +521,7 @@ export const LibrarySystem: React.FC<LibrarySystemProps> = ({
                 {t('lib.folders')}
                 {activeColId !== 'all' && activeColId !== 'uncategorized' && (() => {
                   const col = collections.find(c => c.id === activeColId);
-                  return col ? <><span className="text-slate-300 dark:text-slate-600 mx-0.5">/</span><span style={{ color: 'var(--primary)' }}>{col.name}</span></> : null;
+                  return col ? <><span className="text-slate-300 dark:text-slate-600 mx-0.5">/</span><span style={{ color: 'var(--primary-ink)' }}>{col.name}</span></> : null;
                 })()}
               </button>
             )}

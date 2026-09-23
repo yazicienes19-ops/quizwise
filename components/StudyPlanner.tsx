@@ -436,7 +436,7 @@ export const StudyPlanner: React.FC<StudyPlannerProps> = ({ metrics, decks, exam
             <button
               onClick={handleRedistribute}
               className="px-5 py-3 rounded-2xl text-[11px] font-black uppercase tracking-widest transition-all hover:scale-105"
-              style={{ background: 'color-mix(in srgb, var(--primary) 12%, transparent)', color: 'var(--primary)', border: '1px solid color-mix(in srgb, var(--primary) 30%, transparent)' }}
+              style={{ background: 'color-mix(in srgb, var(--primary) 12%, transparent)', color: 'var(--primary-ink)', border: '1px solid color-mix(in srgb, var(--primary) 30%, transparent)' }}
             >
               {t('sp2.redistribute')}
             </button>
@@ -464,7 +464,7 @@ export const StudyPlanner: React.FC<StudyPlannerProps> = ({ metrics, decks, exam
             {dueDecks.slice(0, 3).map(({ deck, due }) => (
               <div key={deck.id} className="flex justify-between items-center">
                 <span className="text-[11px] font-bold text-slate-600 dark:text-slate-300 break-words pr-2">{deck.title}</span>
-                <span className="text-[11px] font-black tabular-nums" style={{ color: 'var(--primary)' }}>{due}</span>
+                <span className="text-[11px] font-black tabular-nums" style={{ color: 'var(--primary-ink)' }}>{due}</span>
               </div>
             ))}
             {dueDecks.length === 0 && <p className="text-[11px] text-slate-400 italic">{t('sp2.allLearned')}</p>}
@@ -715,7 +715,7 @@ export const StudyPlanner: React.FC<StudyPlannerProps> = ({ metrics, decks, exam
                           item.source === 'session'
                             ? { background: `color-mix(in srgb, ${item.color} 16%, transparent)`, color: item.color }
                             : item.isAuto
-                            ? { background: 'color-mix(in srgb, var(--primary) 12%, transparent)', color: 'var(--primary)' }
+                            ? { background: 'color-mix(in srgb, var(--primary) 12%, transparent)', color: 'var(--primary-ink)' }
                             : undefined
                         }
                       >
@@ -747,7 +747,7 @@ export const StudyPlanner: React.FC<StudyPlannerProps> = ({ metrics, decks, exam
               <span className="text-[11px] font-black uppercase tracking-widest text-slate-400">{t('sp2.legendEvent')}</span>
             </div>
             <div className="flex items-center gap-1.5">
-              <RepeatIcon size={11} style={{ color: 'var(--primary)' }} />
+              <RepeatIcon size={11} style={{ color: 'var(--primary-ink)' }} />
               <span className="text-[11px] font-black uppercase tracking-widest text-slate-400">{t('sp2.sessionLegend')}</span>
             </div>
             {spacedEnabled && (
@@ -809,7 +809,7 @@ export const StudyPlanner: React.FC<StudyPlannerProps> = ({ metrics, decks, exam
                   <div className="flex-grow min-w-0">
                     <p className="text-sm font-black dark:text-white">{item.title}</p>
                     {item.description && <p className="text-xs text-slate-400 mt-0.5 break-words">{item.description}</p>}
-                    <p className="text-[11px] font-black uppercase tracking-widest mt-1 flex items-center gap-1.5 flex-wrap" style={isSession ? { color: item.color } : item.isAuto ? { color: 'var(--primary)' } : { color: '#94a3b8' }}>
+                    <p className="text-[11px] font-black uppercase tracking-widest mt-1 flex items-center gap-1.5 flex-wrap" style={isSession ? { color: item.color } : item.isAuto ? { color: 'var(--primary-ink)' } : { color: '#94a3b8' }}>
                       {isSession ? (
                         <>
                           <span className="font-mono tabular-nums normal-case tracking-normal">{item.time}</span>

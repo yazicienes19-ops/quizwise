@@ -39,7 +39,7 @@ export const CookieSettingsModal: React.FC<CookieSettingsModalProps> = ({ onClos
         <div className="p-8 space-y-4 overflow-y-auto">
           <p className="text-[11px] text-slate-500 dark:text-slate-400 leading-relaxed">
             {t('cookie.settings.intro')}{' '}
-            <button onClick={onShowPrivacy} className="underline hover:no-underline font-semibold" style={{ color: 'var(--primary)' }}>
+            <button onClick={onShowPrivacy} className="underline hover:no-underline font-semibold" style={{ color: 'var(--primary-ink)' }}>
               {t('cookie.privacyLink')}
             </button>
           </p>

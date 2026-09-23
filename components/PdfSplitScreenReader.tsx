@@ -414,7 +414,7 @@ export const PdfSplitScreenReader: React.FC<PdfSplitScreenReaderProps> = ({ doc,
           title={t('rd.tocToggle')}
           className="shrink-0 w-8 h-8 rounded-xl flex items-center justify-center transition-all"
           style={tocOpen
-            ? { background: 'color-mix(in srgb, var(--primary) 15%, transparent)', color: 'var(--primary)' }
+            ? { background: 'color-mix(in srgb, var(--primary) 15%, transparent)', color: 'var(--primary-ink)' }
             : { color: 'var(--text-main)', opacity: 0.7 }}
         >
           <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
@@ -530,7 +530,7 @@ export const PdfSplitScreenReader: React.FC<PdfSplitScreenReaderProps> = ({ doc,
               className="px-4 py-2 rounded-xl text-[11px] font-black uppercase tracking-widest transition-all hover:scale-[1.02] disabled:cursor-not-allowed"
               style={activeDone
                 ? { background: 'var(--bg-main)', border: '1px solid var(--border-color)', color: 'var(--text-main)', opacity: 0.7 }
-                : { background: 'color-mix(in srgb, var(--primary) 12%, transparent)', color: 'var(--primary)', border: '1px solid color-mix(in srgb, var(--primary) 30%, transparent)' }}
+                : { background: 'color-mix(in srgb, var(--primary) 12%, transparent)', color: 'var(--primary-ink)', border: '1px solid color-mix(in srgb, var(--primary) 30%, transparent)' }}
             >
               {activeDone ? t('rd.pageDoneRead') : t('rd.markPageDone')}
             </button>
@@ -634,7 +634,7 @@ export const PdfSplitScreenReader: React.FC<PdfSplitScreenReaderProps> = ({ doc,
                 <div className="flex items-center gap-2 flex-wrap">
                   <p className="text-sm font-black dark:text-white break-words">{entry.concept}</p>
                   {entry.expandedScope && (
-                    <span className="shrink-0 px-2 py-0.5 rounded-full text-[11px] font-black uppercase tracking-widest" style={{ background: 'color-mix(in srgb, var(--primary) 15%, transparent)', color: 'var(--primary)' }}>
+                    <span className="shrink-0 px-2 py-0.5 rounded-full text-[11px] font-black uppercase tracking-widest" style={{ background: 'color-mix(in srgb, var(--primary) 15%, transparent)', color: 'var(--primary-ink)' }}>
                       {t('rd.expandedScope')}
                     </span>
                   )}
@@ -652,7 +652,7 @@ export const PdfSplitScreenReader: React.FC<PdfSplitScreenReaderProps> = ({ doc,
                     {entry.quote && (
                       <div className="rounded-2xl p-3.5" style={{ background: 'color-mix(in srgb, var(--primary) 8%, transparent)', border: '1px solid color-mix(in srgb, var(--primary) 25%, transparent)' }}>
                         <div className="flex items-center justify-between gap-2 mb-1">
-                          <p className="text-[11px] font-black uppercase tracking-widest" style={{ color: 'var(--primary)' }}>
+                          <p className="text-[11px] font-black uppercase tracking-widest" style={{ color: 'var(--primary-ink)' }}>
                             {entry.expandedScope ? t('rd.quoteSourceDoc') : t('rd.quoteSourcePage', { n: pageNumber })}
                           </p>
                           {/* Zitate aus dem Gesamtdokument stehen nicht auf dieser Seite, dafür gibt es keine Markierung */}
@@ -665,7 +665,7 @@ export const PdfSplitScreenReader: React.FC<PdfSplitScreenReaderProps> = ({ doc,
                             className="shrink-0 text-[11px] font-black uppercase tracking-widest px-2 py-1 rounded-lg transition-all hover:scale-[1.03]"
                             style={highlight?.page === pageNumber && highlight?.quote === entry.quote
                               ? { background: 'var(--primary)', color: 'var(--primary-text)' }
-                              : { border: '1px solid color-mix(in srgb, var(--primary) 40%, transparent)', color: 'var(--primary)' }}
+                              : { border: '1px solid color-mix(in srgb, var(--primary) 40%, transparent)', color: 'var(--primary-ink)' }}
                           >
                             {highlight?.page === pageNumber && highlight?.quote === entry.quote ? t('rd.unmarkInPdf') : t('rd.markInPdf')}
                           </button>}
@@ -682,7 +682,7 @@ export const PdfSplitScreenReader: React.FC<PdfSplitScreenReaderProps> = ({ doc,
                             className="px-3 py-1.5 rounded-xl text-[11px] font-black transition-all hover:scale-[1.03] text-left"
                             style={{
                               background: 'color-mix(in srgb, var(--primary) 10%, transparent)',
-                              color: 'var(--primary)',
+                              color: 'var(--primary-ink)',
                               border: '1px solid color-mix(in srgb, var(--primary) 25%, transparent)',
                             }}
                           >

@@ -86,8 +86,8 @@ export const ScholarSearch: React.FC<ScholarSearchProps> = ({
       <div className="text-center space-y-3">
         <h1 className="text-4xl lg:text-6xl font-black text-slate-900 dark:text-white tracking-tighter">
           {searchMode === 'scholar'
-            ? <><span>{t('sch.titlePre')} </span><span style={{ color: 'var(--primary)' }}>{t('sch.titleAccent')}</span></>
-            : <><span>{t('sch.webTitle')}</span><span style={{ color: 'var(--primary)' }}>{t('sch.webTitleAccent')}</span></>
+            ? <><span>{t('sch.titlePre')} </span><span style={{ color: 'var(--primary-ink)' }}>{t('sch.titleAccent')}</span></>
+            : <><span>{t('sch.webTitle')}</span><span style={{ color: 'var(--primary-ink)' }}>{t('sch.webTitleAccent')}</span></>
           }
         </h1>
         <p className="text-sm text-slate-500 dark:text-slate-400 font-medium">
@@ -285,7 +285,7 @@ export const ScholarSearch: React.FC<ScholarSearchProps> = ({
                         )}
                         {result.doi && (
                           <p className="text-[11px] font-black uppercase text-slate-400 tracking-widest">
-                            DOI: <span className="normal-case select-all" style={{ color: 'var(--primary)' }}>{result.doi}</span>
+                            DOI: <span className="normal-case select-all" style={{ color: 'var(--primary-ink)' }}>{result.doi}</span>
                           </p>
                         )}
                       </>

@@ -87,7 +87,7 @@ export const AdminBudgetPanel: React.FC<{ reloadSignal: number }> = ({ reloadSig
       <div className="flex items-start justify-between gap-3 flex-wrap">
         <div>
           <h2 className="text-base font-black dark:text-white flex items-center gap-2">
-            <Wallet className="w-4 h-4" strokeWidth={1.75} style={{ color: 'var(--primary)' }} />
+            <Wallet className="w-4 h-4" strokeWidth={1.75} style={{ color: 'var(--primary-ink)' }} />
             {t('admin.budget.title')}
           </h2>
           <p className="text-[11px] font-medium text-slate-400 mt-1 max-w-2xl">{t('admin.budget.subtitle')}</p>

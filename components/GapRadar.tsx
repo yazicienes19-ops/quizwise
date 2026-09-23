@@ -135,7 +135,7 @@ const ProgressChart: React.FC<{
         background: 'var(--bg-sidebar)', borderRadius: 16,
         border: '1px solid var(--border-color)',
       }}>
-        <p style={{ fontSize: 36, fontWeight: 900, color: 'var(--primary)' }}>{ankiAvg}%</p>
+        <p style={{ fontSize: 36, fontWeight: 900, color: 'var(--primary-ink)' }}>{ankiAvg}%</p>
         <p style={{ fontSize: 9, fontWeight: 800, textTransform: 'uppercase', letterSpacing: '0.12em', color: 'var(--mute)', marginTop: 4 }}>
           {translate('gr.noTimeSeries')}
         </p>
@@ -800,7 +800,7 @@ export const GapRadar: React.FC<GapRadarProps> = ({ metrics, onNavigate, onActio
           className="p-6 lg:p-8 rounded-[24px] lg:rounded-[24px] border border-slate-200 dark:border-slate-800 shadow-3d-raised"
           style={{ background: 'var(--card)' }}
         >
-          <h3 className="text-[11px] font-black uppercase tracking-widest mb-3" style={{ color: 'var(--primary)' }}>
+          <h3 className="text-[11px] font-black uppercase tracking-widest mb-3" style={{ color: 'var(--primary-ink)' }}>
             {t('gr.learnToday')}
           </h3>
           <div className="space-y-2">
@@ -1101,7 +1101,7 @@ export const GapRadar: React.FC<GapRadarProps> = ({ metrics, onNavigate, onActio
                       <p className="text-[11px] font-medium mt-1 leading-relaxed" style={{ color: 'var(--ink2)' }}>{error.probableCause}</p>
                     </div>
                     <div className="flex-1">
-                      <p className="text-[11px] font-black uppercase tracking-widest" style={{ color: 'var(--primary)' }}>{t('gr.recommendation')}</p>
+                      <p className="text-[11px] font-black uppercase tracking-widest" style={{ color: 'var(--primary-ink)' }}>{t('gr.recommendation')}</p>
                       <p className="text-sm font-black mt-1" style={{ color: 'var(--ink)' }}>{ERROR_ACTION_LABEL[error.recommendedAction.type] ? t(ERROR_ACTION_LABEL[error.recommendedAction.type]) : error.recommendedAction.type}</p>
                       <p className="text-[11px] italic mt-1 leading-relaxed" style={{ color: 'var(--ink2)' }}>{error.recommendedAction.reasoning}</p>
                       {error.recommendedAction.secondaryType && (

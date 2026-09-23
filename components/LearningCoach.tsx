@@ -291,7 +291,7 @@ export const LearningCoach: React.FC<LearningCoachProps> = ({ metrics, decks, on
           <button
             onClick={() => onModuleChange(null)}
             className="inline-flex items-center gap-1 px-4 py-1.5 rounded-full text-[11px] font-black uppercase tracking-widest mr-2 hover:underline"
-            style={{ color: 'var(--primary)', border: '1px solid color-mix(in srgb, var(--primary) 30%, transparent)' }}
+            style={{ color: 'var(--primary-ink)', border: '1px solid color-mix(in srgb, var(--primary) 30%, transparent)' }}
           >
             <ChevronLeft size={12} /> {t('layout.allSubjects')}
           </button>
@@ -299,14 +299,14 @@ export const LearningCoach: React.FC<LearningCoachProps> = ({ metrics, decks, on
         {activeModule && (
           <p
             className="inline-block px-4 py-1.5 rounded-full text-[11px] font-black uppercase tracking-widest mr-2"
-            style={{ background: 'color-mix(in srgb, var(--primary) 12%, transparent)', color: 'var(--primary)', border: '1px solid color-mix(in srgb, var(--primary) 30%, transparent)' }}
+            style={{ background: 'color-mix(in srgb, var(--primary) 12%, transparent)', color: 'var(--primary-ink)', border: '1px solid color-mix(in srgb, var(--primary) 30%, transparent)' }}
           >
             {t('lc.moduleOnly', { emoji: activeModule.emoji, name: activeModule.name })}
           </p>
         )}
         <p
           className="inline-block px-5 py-2.5 rounded-2xl text-sm font-black"
-          style={{ background: 'color-mix(in srgb, var(--primary) 10%, transparent)', color: 'var(--primary)' }}
+          style={{ background: 'color-mix(in srgb, var(--primary) 10%, transparent)', color: 'var(--primary-ink)' }}
         >
           {profile.motivationLine}
         </p>
@@ -318,7 +318,7 @@ export const LearningCoach: React.FC<LearningCoachProps> = ({ metrics, decks, on
           className="p-6 lg:p-8 rounded-[24px] lg:rounded-[24px] border shadow-3d-raised space-y-4"
           style={{ background: 'var(--card)', borderColor: 'color-mix(in srgb, var(--primary) 25%, var(--border-color))' }}
         >
-          <h3 className="text-[11px] font-black uppercase tracking-widest" style={{ color: 'var(--primary)' }}>
+          <h3 className="text-[11px] font-black uppercase tracking-widest" style={{ color: 'var(--primary-ink)' }}>
             {t('lc.todayYouShould')}
           </h3>
           <div className="space-y-3">
@@ -330,7 +330,7 @@ export const LearningCoach: React.FC<LearningCoachProps> = ({ metrics, decks, on
               >
                 <span
                   className="w-6 h-6 rounded-lg flex items-center justify-center text-[11px] font-black shrink-0 mt-0.5"
-                  style={{ background: 'color-mix(in srgb, var(--primary) 12%, transparent)', color: 'var(--primary)' }}
+                  style={{ background: 'color-mix(in srgb, var(--primary) 12%, transparent)', color: 'var(--primary-ink)' }}
                 >
                   {i + 1}
                 </span>
@@ -339,7 +339,7 @@ export const LearningCoach: React.FC<LearningCoachProps> = ({ metrics, decks, on
                     {step.title}
                     <span
                       className="px-2 py-0.5 rounded-full text-[11px] font-black uppercase tracking-widest shrink-0"
-                      style={{ background: 'color-mix(in srgb, var(--primary) 8%, transparent)', color: 'var(--primary)' }}
+                      style={{ background: 'color-mix(in srgb, var(--primary) 8%, transparent)', color: 'var(--primary-ink)' }}
                     >
                       {t('lc.minShort', { n: step.minutes })}
                     </span>
@@ -400,7 +400,7 @@ export const LearningCoach: React.FC<LearningCoachProps> = ({ metrics, decks, on
                   {t('lc.preliminary')}
                 </span>
               )}
-              <p className="text-5xl font-black" style={{ color: 'var(--primary)' }}>
+              <p className="text-5xl font-black" style={{ color: 'var(--primary-ink)' }}>
                 <CountUp value={parseFloat(forecast.grade)} from={5} decimals={1} finalText={forecast.grade} />
               </p>
               <p className="text-sm font-black mt-2" style={{ color: 'var(--ink)' }}>
@@ -446,7 +446,7 @@ export const LearningCoach: React.FC<LearningCoachProps> = ({ metrics, decks, on
             </p>
           )}
           <div className="w-full mt-4 pt-3 border-t" style={{ borderColor: 'var(--border-soft)' }}>
-            <p className="text-[11px] font-black uppercase tracking-widest mb-1" style={{ color: 'var(--primary)' }}>{t('lc.coachSays')}</p>
+            <p className="text-[11px] font-black uppercase tracking-widest mb-1" style={{ color: 'var(--primary-ink)' }}>{t('lc.coachSays')}</p>
             <p className="text-[11px] font-medium italic leading-relaxed" style={{ color: 'var(--mute)' }}>{contextMotivation}</p>
           </div>
         </div>
@@ -556,7 +556,7 @@ export const LearningCoach: React.FC<LearningCoachProps> = ({ metrics, decks, on
           <div className="p-6 lg:p-8 rounded-[24px] lg:rounded-[24px] border shadow-3d-raised space-y-4" style={{ background: 'var(--card)', borderColor: 'var(--border-color)' }}>
             <div className="flex items-baseline justify-between">
               <h3 className="text-[11px] font-black uppercase tracking-widest" style={{ color: 'var(--mute)' }}>{t('lc.learningScore')}</h3>
-              <span className="text-3xl font-black" style={{ color: 'var(--primary)' }}>{learningScore.overall}</span>
+              <span className="text-3xl font-black" style={{ color: 'var(--primary-ink)' }}>{learningScore.overall}</span>
             </div>
             <div className="space-y-3">
               {learningScore.dimensions.map(d => (
@@ -621,7 +621,7 @@ export const LearningCoach: React.FC<LearningCoachProps> = ({ metrics, decks, on
               {profile.forgetting.map(f => (
                 <div key={f.topic} className="flex justify-between items-center">
                   <span className="text-xs font-bold" style={{ color: 'var(--ink)' }}>{f.topic}</span>
-                  <span className="text-[11px] font-black uppercase" style={{ color: 'var(--primary)' }}>
+                  <span className="text-[11px] font-black uppercase" style={{ color: 'var(--primary-ink)' }}>
                     {f.dueInDays <= 0 ? t('lc.reviewToday') : tp('lc.inDaysN', f.dueInDays)}
                   </span>
                 </div>
@@ -759,7 +759,7 @@ export const LearningCoach: React.FC<LearningCoachProps> = ({ metrics, decks, on
                     <p className="text-[11px] font-medium mb-2" style={{ color: 'var(--mute)' }}>
                       <strong style={{ color: 'var(--ink2)' }}>{t('lc.reason')}</strong> {r.reasoning}
                     </p>
-                    <p className="text-[11px] font-black uppercase tracking-widest" style={{ color: 'var(--primary)' }}>
+                    <p className="text-[11px] font-black uppercase tracking-widest" style={{ color: 'var(--primary-ink)' }}>
                       ➡ {getTabActionLabel(r.tab)}
                     </p>
                   </button>

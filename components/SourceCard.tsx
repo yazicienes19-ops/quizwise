@@ -47,7 +47,7 @@ const DigestInfo: React.FC<{ doc: ProcessedDocument; onRetry?: () => void }> = (
         <button
           onClick={e => { e.stopPropagation(); onRetry(); }}
           className="text-[11px] font-black uppercase tracking-widest px-2 py-0.5 rounded-full transition-all hover:opacity-80"
-          style={{ background: 'color-mix(in srgb, var(--primary) 12%, transparent)', color: 'var(--primary)', border: '1px solid color-mix(in srgb, var(--primary) 30%, transparent)' }}
+          style={{ background: 'color-mix(in srgb, var(--primary) 12%, transparent)', color: 'var(--primary-ink)', border: '1px solid color-mix(in srgb, var(--primary) 30%, transparent)' }}
         >
           {t('card.retryAnalysis')}
         </button>

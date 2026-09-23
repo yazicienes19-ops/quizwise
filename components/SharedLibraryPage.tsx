@@ -133,12 +133,12 @@ export const SharedLibraryPage: React.FC<SharedLibraryPageProps> = ({ shareId, u
           {/* Wordmark */}
           <div className="pt-9 pb-6 text-center" style={{ borderBottom: '1px solid var(--border-color)' }}>
             <p className="text-xl" style={{ fontFamily: 'Georgia, "Times New Roman", serif', color: 'var(--text-main)' }}>
-              Stude<span className="font-bold" style={{ color: 'var(--primary)' }}>Arc</span>
+              Stude<span className="font-bold" style={{ color: 'var(--primary-ink)' }}>Arc</span>
             </p>
           </div>
 
           <div className="px-8 sm:px-10 pt-9 pb-2 text-center">
-            <p className="text-[11px] font-black uppercase tracking-[0.2em] mb-3" style={{ color: 'var(--primary)' }}>
+            <p className="text-[11px] font-black uppercase tracking-[0.2em] mb-3" style={{ color: 'var(--primary-ink)' }}>
               {t('sdp.eyebrow')}
             </p>
             <h1 className="text-[28px] sm:text-[32px] leading-tight mb-4" style={{ fontFamily: 'Georgia, "Times New Roman", serif', color: 'var(--text-main)' }}>
@@ -154,12 +154,12 @@ export const SharedLibraryPage: React.FC<SharedLibraryPageProps> = ({ shareId, u
             <div className="rounded-[18px] p-5 flex items-start gap-4" style={{ background: 'var(--bg-main)', border: '1px solid var(--border-color)' }}>
               <div
                 className="shrink-0 w-11 h-11 rounded-[12px] flex items-center justify-center text-lg"
-                style={{ background: 'color-mix(in srgb, var(--primary) 16%, var(--bg-sidebar))', border: '1px solid var(--primary)', color: 'var(--primary)' }}
+                style={{ background: 'color-mix(in srgb, var(--primary) 16%, var(--bg-sidebar))', border: '1px solid var(--primary)', color: 'var(--primary-ink)' }}
               >
                 {library.emoji || '📁'}
               </div>
               <div className="min-w-0">
-                <p className="text-[11px] font-black uppercase tracking-widest mb-1" style={{ color: 'var(--primary)' }}>
+                <p className="text-[11px] font-black uppercase tracking-widest mb-1" style={{ color: 'var(--primary-ink)' }}>
                   {t('slp.cardLabel')}
                 </p>
                 <p className="text-lg mb-0.5 truncate" style={{ fontFamily: 'Georgia, "Times New Roman", serif', color: 'var(--text-main)' }}>
@@ -217,7 +217,7 @@ export const SharedLibraryPage: React.FC<SharedLibraryPageProps> = ({ shareId, u
                   <li key={i} className="flex items-start gap-3">
                     <span
                       className="shrink-0 w-[26px] h-[26px] rounded-lg flex items-center justify-center text-xs font-bold"
-                      style={{ background: 'var(--bg-main)', border: '1px solid var(--border-color)', color: 'var(--primary)' }}
+                      style={{ background: 'var(--bg-main)', border: '1px solid var(--border-color)', color: 'var(--primary-ink)' }}
                     >
                       {i + 1}
                     </span>

@@ -256,16 +256,16 @@ export const SourceSelector: React.FC<SourceSelectorProps> = ({
                           border: '1px solid color-mix(in srgb, var(--primary) 22%, transparent)',
                         }}
                       >
-                        <FolderOpen size={20} className="shrink-0" style={{ color: 'var(--primary)' }} strokeWidth={1.75} />
+                        <FolderOpen size={20} className="shrink-0" style={{ color: 'var(--primary-ink)' }} strokeWidth={1.75} />
                         <div className="flex-1 min-w-0">
                           <p className="text-[12px] font-black dark:text-white break-words">{collection.emoji} {collection.name}</p>
-                          <p className="text-[11px] font-black uppercase tracking-widest mt-0.5" style={{ color: 'var(--primary)' }}>
+                          <p className="text-[11px] font-black uppercase tracking-widest mt-0.5" style={{ color: 'var(--primary-ink)' }}>
                             {t('ssel.wholeFolder')} · {tp('ssel.sourcesN', count)}
                             {ready && included < count && <> · {t('ssel.usableN', { n: included })}</>}
                             {!ready && <> · {t('ssel.processing')}</>}
                           </p>
                         </div>
-                        <ChevronRight className="w-4 h-4 shrink-0 transition-colors" style={{ color: 'var(--primary)' }} strokeWidth={2} />
+                        <ChevronRight className="w-4 h-4 shrink-0 transition-colors" style={{ color: 'var(--primary-ink)' }} strokeWidth={2} />
                       </button>
                     );
                   })}

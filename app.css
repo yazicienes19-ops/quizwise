@@ -9,12 +9,12 @@
     --border-color:    #E4DFD2;
     --border-soft:     #EEE8DC;
     --text-main:       #1B2A4A;
-    --text-secondary:  #8A8172;
+    --text-secondary:  #6D6659; /* vorher #8A8172: 3,2:1 auf --bg-main, jetzt 4,6:1 */
     /* Semantische Text-/Flächen-Token — wurden in Coach/Radar benutzt,
        waren aber nie definiert (unsichtbare Buttons, transparente Karten) */
     --ink:             #1B2A4A;
     --ink2:            #4A5A7A;
-    --mute:            #8A8172;
+    --mute:            #6D6659; /* vorher #8A8172: 3,2:1, jetzt 4,6:1 */
     --card:            #FBF9F4;
     --accent:          #D9A94E;
     /* Logo-Mark (BrandMark): Icon-Badges drehen sich mit dem Theme —
@@ -70,6 +70,12 @@ body {
 /* ── Dynamic accent color palette ── */
 :root {
     --primary:      #D9A94E;
+    /* Gold als TEXTFARBE auf hellem Grund: reines Gold erreicht nur 1,8:1,
+       58 % Gold + Schwarz 4,7:1 (Audit 23.09.2026). Flächen und Knöpfe
+       bleiben var(--primary). color-mix, damit eigene Akzentfarben mitgehen. */
+    --primary-ink:  color-mix(in srgb, var(--primary) 58%, black);
+    /* Inaktive Symbole der Handy-Leiste: 4,6:1 im Tagmodus */
+    --nav-inactive: #5B687C;
     /* Heller Gold-Ton (statt des vorigen erdigeren #A9772C) braucht dunklen
        statt weißen Text für ausreichenden Kontrast auf der Gold-Fläche —
        genau wie im Dunkelmodus, der das schon richtig gemacht hat. */
@@ -100,6 +106,9 @@ body {
 .dark {
     --primary:      #D9A94E;
     --primary-text: #1a1a2e;
+    /* Auf dunklem Grund ist das helle Gold selbst gut lesbar (~8:1). */
+    --primary-ink:  var(--primary);
+    --nav-inactive: #94A3B8;
 }
 
 /* ── bg solid ── */
@@ -449,3 +458,26 @@ html textarea:focus-visible,
 html select:focus-visible {
   outline-offset: 0;
 }
+
+/* ── Kontrast der Grautöne (Audit 23.09.2026, WCAG AA 4,5:1) ─────────────────
+   Gemessen: slate-400 im Tagmodus 2,1–2,4:1, slate-500/-600 im Nachtmodus
+   3,5 bzw. 2,2:1. Gleicher Farbton, nur dunkler bzw. heller.
+   :where() hält die Spezifität bei einer Klasse: die Regeln ersetzen die
+   Grundfarbe, Hover-, Fokus- und dark:-Varianten gewinnen weiterhin. */
+:where(html:not(.dark)) .text-slate-400,
+:where(html:not(.dark)) .placeholder-slate-400::placeholder { color: #5B687C; }
+:where(html:not(.dark)) .text-slate-300 { color: #788291; } /* Symbole und Deko: 3:1 */
+:where(.dark) .text-slate-500 { color: #818FA2; }
+:where(.dark) .text-slate-600 { color: #85909F; }
+.dark .dark\:text-slate-500 { color: #818FA2; }
+.dark .dark\:text-slate-600 { color: #85909F; }
+
+/* Tastatur-Fokus auf Konzepten im Wissensnetz (SVG-Gruppen) */
+.wn-node:focus { outline: none; }
+.wn-node:focus-visible > g { filter: drop-shadow(0 0 0 var(--primary)) drop-shadow(0 0 4px var(--primary)); }
+
+/* Gold-Text im Tagmodus: text-indigo-* ist auf die Primärfarbe umgebogen,
+   als Textfarbe braucht es die dunkle Variante (s. --primary-ink). */
+html:not(.dark) .text-indigo-300, html:not(.dark) .text-indigo-400,
+html:not(.dark) .text-indigo-500, html:not(.dark) .text-indigo-600,
+html:not(.dark) .text-indigo-700 { color: var(--primary-ink) !important; }
