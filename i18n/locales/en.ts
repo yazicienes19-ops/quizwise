@@ -2329,6 +2329,8 @@ export const en: Translations = {
   'hl.placeCancel': 'Cancel',
   'hl.placeHint': 'Tap the spot in the PDF where the note should go.',
   'hl.pinLabel': 'Note on page {n}',
+  'hl.bubblesShow': 'Show notes on the PDF',
+  'hl.bubblesHide': 'Hide notes on the PDF',
   'hl.color.yellow': 'Yellow',
   'hl.color.green': 'Green',
   'hl.color.blue': 'Blue',

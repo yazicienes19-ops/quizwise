@@ -2330,6 +2330,8 @@ export const de = {
   'hl.placeCancel': 'Abbrechen',
   'hl.placeHint': 'Tippe auf die Stelle im PDF, an die die Notiz soll.',
   'hl.pinLabel': 'Notiz auf Seite {n}',
+  'hl.bubblesShow': 'Notizen auf dem PDF zeigen',
+  'hl.bubblesHide': 'Notizen auf dem PDF ausblenden',
   'hl.color.yellow': 'Gelb',
   'hl.color.green': 'Grün',
   'hl.color.blue': 'Blau',

@@ -2322,6 +2322,8 @@ export const tr: Translations = {
   'hl.placeCancel': 'İptal',
   'hl.placeHint': 'Notun gideceği yere PDF üzerinde dokun.',
   'hl.pinLabel': 'Sayfa {n} notu',
+  'hl.bubblesShow': 'Notları PDF üzerinde göster',
+  'hl.bubblesHide': 'Notları PDF üzerinde gizle',
   'hl.color.yellow': 'Sarı',
   'hl.color.green': 'Yeşil',
   'hl.color.blue': 'Mavi',

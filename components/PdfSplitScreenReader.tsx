@@ -17,11 +17,15 @@ import { toast } from '../services/toast';
 import { useTranslation } from '../i18n/I18nProvider';
 import { ReaderTutorPane } from './ReaderTutorPane';
 import { SelectionActionButton, readSelection, selectionQuestion, type ReaderSelection } from './SelectionActionButton';
-import { Highlighter, StickyNote } from 'lucide-react';
+import { Highlighter, StickyNote, MessageSquareText } from 'lucide-react';
 import { isPinNote, getHighlights, addHighlight, updateHighlight, removeHighlight, restoreHighlight, HIGHLIGHT_HEX, type UserHighlight } from '../services/userHighlights';
 import { PdfHighlightsPanel } from './PdfHighlightsPanel';
 import { CLOUD_PULLED_EVENT } from '../services/syncService';
 import { HighlightNotePopover, NOTE_POPOVER_WIDTH, NOTE_POPOVER_HEIGHT } from './HighlightNotePopover';
+
+/** Sprechblasen auf dem PDF (eigene Notizen). */
+const SHOW_NOTES_KEY = 'studearc_reader_show_notes';
+const NOTE_BUBBLE_WIDTH = 200;
 
 /** Ab dieser Verweildauer gilt eine Seite beim Weiterblättern automatisch als gelesen —
  *  schnelles Durchblättern zählt bewusst nicht, der Button bleibt als Abkürzung. */
@@ -97,6 +101,14 @@ export const PdfSplitScreenReader: React.FC<PdfSplitScreenReaderProps> = ({ doc,
   const [noteOpenId, setNoteOpenId] = useState<string | null>(null);
   /** Nächster Tipp aufs PDF setzt eine freie Notiz (ohne Markierung). */
   const [placingNote, setPlacingNote] = useState(false);
+  /** Notizen als Sprechblasen direkt auf dem PDF zeigen (gemerkt pro Gerät). */
+  const [showNoteBubbles, setShowNoteBubbles] = useState(() => {
+    try { return localStorage.getItem(SHOW_NOTES_KEY) !== '0'; } catch { return true; }
+  });
+  const toggleNoteBubbles = () => setShowNoteBubbles(v => {
+    try { localStorage.setItem(SHOW_NOTES_KEY, v ? '0' : '1'); } catch { /* Speicher gesperrt */ }
+    return !v;
+  });
 
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const firstRectRef = useRef<HTMLDivElement>(null);
@@ -601,6 +613,20 @@ export const PdfSplitScreenReader: React.FC<PdfSplitScreenReaderProps> = ({ doc,
               <StickyNote className="w-3.5 h-3.5" aria-hidden="true" />
               {placingNote ? t('hl.placeCancel') : t('hl.placeNote')}
             </button>
+            {myHighlights.some(h => h.note?.trim()) && (
+              <button
+                onClick={toggleNoteBubbles}
+                aria-pressed={showNoteBubbles}
+                aria-label={showNoteBubbles ? t('hl.bubblesHide') : t('hl.bubblesShow')}
+                title={showNoteBubbles ? t('hl.bubblesHide') : t('hl.bubblesShow')}
+                className="w-9 h-9 flex items-center justify-center rounded-xl transition-all"
+                style={showNoteBubbles
+                  ? { background: 'color-mix(in srgb, var(--primary) 16%, var(--bg-main))', border: '1px solid color-mix(in srgb, var(--primary) 45%, transparent)', color: 'var(--primary-ink)' }
+                  : { background: 'var(--bg-main)', border: '1px solid var(--border-color)', color: 'var(--text-secondary)' }}
+              >
+                <MessageSquareText className="w-4 h-4" aria-hidden="true" />
+              </button>
+            )}
             <button
               onClick={() => setHlOpen(o => !o)}
               aria-expanded={hlOpen}
@@ -728,6 +754,45 @@ export const PdfSplitScreenReader: React.FC<PdfSplitScreenReaderProps> = ({ doc,
                       <StickyNote className="w-3 h-3" aria-hidden="true" />
                     </button>
                   ))}
+                  {/* Sprechblasen: Notiztext direkt neben dem Symbol, Tipp öffnet die Bearbeitung. */}
+                  {canvasCss && showNoteBubbles && noteAnchors
+                    .filter(({ h }) => h.note?.trim() && h.id !== noteOpenId)
+                    .map(({ h, x, y }) => {
+                      const flip = x + 26 + NOTE_BUBBLE_WIDTH > canvasCss.w;
+                      return (
+                        <button
+                          key={`bubble-${h.id}`}
+                          onClick={e => { e.stopPropagation(); setNoteOpenId(h.id); }}
+                          onMouseUp={e => e.stopPropagation()}
+                          aria-label={`${t('hl.showNote')}: ${h.note}`}
+                          className="absolute z-20 text-left rounded-xl px-2.5 py-1.5 shadow-md transition-transform hover:scale-[1.02] animate-in fade-in duration-200"
+                          style={{
+                            left: flip ? Math.max(0, x - NOTE_BUBBLE_WIDTH - 6) : x + 26,
+                            top: Math.max(0, y - 4),
+                            maxWidth: NOTE_BUBBLE_WIDTH,
+                            // Fest auf hellem Papier-Ton: das PDF ist in beiden Modi hell.
+                            background: `color-mix(in srgb, ${HIGHLIGHT_HEX[h.color]} 22%, #ffffff)`,
+                            border: `1px solid ${HIGHLIGHT_HEX[h.color]}`,
+                            color: '#1f1b14',
+                          }}
+                        >
+                          {/* Spitze zeigt zum Notiz-Symbol */}
+                          <span
+                            aria-hidden="true"
+                            className="absolute top-2 w-2 h-2 rotate-45"
+                            style={{
+                              [flip ? 'right' : 'left']: -5,
+                              background: `color-mix(in srgb, ${HIGHLIGHT_HEX[h.color]} 22%, #ffffff)`,
+                              borderLeft: flip ? 'none' : `1px solid ${HIGHLIGHT_HEX[h.color]}`,
+                              borderBottom: flip ? 'none' : `1px solid ${HIGHLIGHT_HEX[h.color]}`,
+                              borderRight: flip ? `1px solid ${HIGHLIGHT_HEX[h.color]}` : 'none',
+                              borderTop: flip ? `1px solid ${HIGHLIGHT_HEX[h.color]}` : 'none',
+                            }}
+                          />
+                          <span className="block text-[12px] leading-snug line-clamp-3 whitespace-pre-line">{h.note}</span>
+                        </button>
+                      );
+                    })}
                   {canvasCss && openNote && (
                     <HighlightNotePopover
                       key={openNote.h.id}
