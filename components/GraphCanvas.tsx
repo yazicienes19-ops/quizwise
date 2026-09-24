@@ -190,8 +190,9 @@ const CULL_MIN_NODES = 50;
 // kosten aber SMIL-Animationen bzw. DOM-Nodes pro Kante/Node.
 const LOD_MIN_ZOOM_K = 0.45;
 /** Mindestzoom beim automatischen Einpassen: Beschriftungen und Kantenlabels
- *  (ab 0.55) bleiben lesbar. */
-const READABLE_ZOOM_K = 0.7;
+ *  (ab 0.55) bleiben lesbar. 0,8 statt 0,7 (Zeugnis 4, 24.09.2026): größere Schrift
+ *  passt nicht in die Blasen, deshalb wird stattdessen weniger verkleinert. */
+const READABLE_ZOOM_K = 0.8;
 // Kanten-Bündelung: ab BUNDLE_MIN_NODES Nodes und unter FADE_START_K faden
 // alle Kanten weich von gerader Linie (wie immer) zu einer sanften Bézier-
 // Krümmung Richtung Netz-Schwerpunkt. Beim Hineinzoomen löst sich die
