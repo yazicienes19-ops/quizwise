@@ -334,7 +334,7 @@ export const LearningCoach: React.FC<LearningCoachProps> = ({ metrics, decks, on
                   <span className="text-sm font-black flex items-center gap-2 flex-wrap" style={{ color: 'var(--ink)' }}>
                     {step.title}
                     <span
-                      className="px-2 py-0.5 rounded-full text-[11px] font-semibold uppercase tracking-[0.08em] shrink-0"
+                      className="px-2 py-0.5 rounded-full text-[13px] font-semibold shrink-0"
                       style={{ background: 'color-mix(in srgb, var(--primary) 8%, transparent)', color: 'var(--primary-ink)' }}
                     >
                       {t('lc.minShort', { n: step.minutes })}

@@ -1,6 +1,6 @@
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { createPortal } from 'react-dom';
-import { Search as SearchIcon } from 'lucide-react';
+import { Search as SearchIcon, Undo2, Redo2 } from 'lucide-react';
 import { Collection, FlashcardDeck, ProcessedDocument } from '../types';
 import type { GraphScope, GraphState } from '../services/graph/types';
 import { canUndo, canRedo, recordUpdateNode, recordCreateEdge, recordCreateNode, type GraphHistory } from '../services/graph/graphHistoryService';
@@ -137,7 +137,10 @@ export const GraphSystem: React.FC<GraphSystemProps> = ({
   // Key, beim Mount einmal gelesen, nach jeder Pan-/Zoom-Geste vom Canvas
   // zurückgeschrieben — nach einem Reload steht der Ausschnitt wieder dort,
   // wo der Nutzer aufgehört hat (vorher: immer Anfangs-Fit).
-  const graphViewKey = `studearc_graph_view_${scope.kind === 'collection' ? scope.collectionId : 'all'}`;
+  // Ausschnitt getrennt nach Handy und Desktop: ein am Desktop gespeicherter
+  // Zoom lag auf dem Handy sonst neben dem Bildschirm (Audit 24.09.2026).
+  const viewportClass = typeof window !== 'undefined' && window.innerWidth < 768 ? '_m' : '';
+  const graphViewKey = `studearc_graph_view_${scope.kind === 'collection' ? scope.collectionId : 'all'}${viewportClass}`;
   const [initialGraphView] = useState<ZoomTransform | undefined>(() => {
     try {
       const raw = localStorage.getItem(graphViewKey);
@@ -530,9 +533,7 @@ export const GraphSystem: React.FC<GraphSystemProps> = ({
             {activeCollection ? `${activeCollection.emoji} ${activeCollection.name}` : t('kg.allSubjects')}
           </h1>
         </div>
-        {/* flex-wrap: auf dem Handy (390px) ragten Rückgängig/Wiederholen sonst
-            ~100px über den Rand und waren wegen main{overflow-x:clip} unerreichbar. */}
-        <div className="ml-auto flex items-center gap-1.5 flex-wrap justify-end min-w-0 max-w-full">
+        <div className="ml-auto flex items-center gap-1.5">
           <button
             onClick={() => { setPaletteQuery(''); setPaletteIndex(0); setPaletteOpen(true); }}
             title={t('kg.search.tooltip')}
@@ -542,49 +543,13 @@ export const GraphSystem: React.FC<GraphSystemProps> = ({
             <span className="hidden sm:inline">{t('kg.search.tooltip')}</span>
           </button>
           <button
-            onClick={() => setShowInsights(v => !v)}
-            title={showInsights ? t('kg.tb.insightsHide') : t('kg.tb.insightsShow')}
-            aria-pressed={showInsights}
-            className="h-8 px-3 flex items-center justify-center rounded-lg text-[12px] font-semibold text-slate-600 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-800 transition-colors"
-            style={showInsights
-              ? { background: 'color-mix(in srgb, var(--primary) 14%, transparent)' }
-              : undefined}
-          >
-            {t('kg.tb.insights')}
-          </button>
-          <span className="hidden md:inline text-[11px] font-semibold uppercase tracking-[0.08em] text-slate-400 pl-2" aria-hidden="true">{t('kg.tb.coachLabel')}</span>
-          <button
-            onClick={handleCheckMissingRelations}
-            disabled={isCheckingRelations}
-            title={t('kg.tb.relationsTitle')}
-            className="h-8 px-3 flex items-center justify-center rounded-lg text-[12px] font-semibold text-slate-600 dark:text-slate-300 disabled:opacity-40 hover:bg-slate-50 dark:hover:bg-slate-800 transition-colors"
-          >
-            {isCheckingRelations ? '…' : t('kg.tb.relations')}
-          </button>
-          <button
-            onClick={handleCheckDuplicates}
-            disabled={isCheckingDuplicates}
-            title={t('kg.tb.duplicatesTitle')}
-            className="h-8 px-3 flex items-center justify-center rounded-lg text-[12px] font-semibold text-slate-600 dark:text-slate-300 disabled:opacity-40 hover:bg-slate-50 dark:hover:bg-slate-800 transition-colors"
-          >
-            {isCheckingDuplicates ? '…' : t('kg.tb.duplicates')}
-          </button>
-          <button
-            onClick={handleCheckMissingConcepts}
-            disabled={isCheckingConcepts}
-            title={t('kg.tb.conceptsTitle')}
-            className="h-8 px-3 flex items-center justify-center rounded-lg text-[12px] font-semibold text-slate-600 dark:text-slate-300 disabled:opacity-40 hover:bg-slate-50 dark:hover:bg-slate-800 transition-colors"
-          >
-            {isCheckingConcepts ? '…' : t('kg.tb.concepts')}
-          </button>
-          <button
             onClick={graph.undo}
             disabled={!canUndo(graph.history)}
             aria-label={t('kg.undo')}
             title={t('kg.undo')}
             className="w-8 h-8 flex items-center justify-center rounded-lg text-slate-500 dark:text-slate-300 disabled:opacity-40 hover:bg-slate-50 dark:hover:bg-slate-800 transition-colors"
           >
-            ↶
+            <Undo2 size={15} strokeWidth={2} aria-hidden="true" />
           </button>
           <button
             onClick={graph.redo}
@@ -593,7 +558,51 @@ export const GraphSystem: React.FC<GraphSystemProps> = ({
             title={t('kg.redo')}
             className="w-8 h-8 flex items-center justify-center rounded-lg text-slate-500 dark:text-slate-300 disabled:opacity-40 hover:bg-slate-50 dark:hover:bg-slate-800 transition-colors"
           >
-            ↷
+            <Redo2 size={15} strokeWidth={2} aria-hidden="true" />
+          </button>
+        </div>
+      </div>
+      {/* Coach-Leiste: eigene Zeile mit Erklärung (Audit 24.09.2026: "Coach prüft"
+          ohne Erklärung, auf dem Handy zerfiel die Leiste). Wischbar statt umbrechend. */}
+      <div className="rounded-2xl px-3 py-2 flex flex-col lg:flex-row lg:items-center gap-2" style={{ background: 'var(--bg-sidebar)', border: '1px solid var(--border-color)' }}>
+        <p className="text-xs px-1 lg:max-w-[260px] shrink-0" style={{ color: 'var(--text-secondary)' }}>
+          <span className="font-semibold" style={{ color: 'var(--ink)' }}>{t('kg.tb.coachLabel')}:</span> {t('kg.tb.coachHint')}
+        </p>
+        <div className="flex items-center gap-1 overflow-x-auto scrollbar-hide -mx-1 px-1">
+          <button
+            onClick={() => setShowInsights(v => !v)}
+            title={showInsights ? t('kg.tb.insightsHide') : t('kg.tb.insightsShow')}
+            aria-pressed={showInsights}
+            className="shrink-0 h-8 px-3 flex items-center justify-center rounded-lg whitespace-nowrap text-[12px] font-semibold text-slate-600 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-800 transition-colors"
+            style={showInsights
+              ? { background: 'color-mix(in srgb, var(--primary) 14%, transparent)' }
+              : undefined}
+          >
+            {t('kg.tb.insights')}
+          </button>
+          <button
+            onClick={handleCheckMissingRelations}
+            disabled={isCheckingRelations}
+            title={t('kg.tb.relationsTitle')}
+            className="shrink-0 h-8 px-3 flex items-center justify-center rounded-lg whitespace-nowrap text-[12px] font-semibold text-slate-600 dark:text-slate-300 disabled:opacity-40 hover:bg-slate-50 dark:hover:bg-slate-800 transition-colors"
+          >
+            {isCheckingRelations ? '…' : t('kg.tb.relations')}
+          </button>
+          <button
+            onClick={handleCheckDuplicates}
+            disabled={isCheckingDuplicates}
+            title={t('kg.tb.duplicatesTitle')}
+            className="shrink-0 h-8 px-3 flex items-center justify-center rounded-lg whitespace-nowrap text-[12px] font-semibold text-slate-600 dark:text-slate-300 disabled:opacity-40 hover:bg-slate-50 dark:hover:bg-slate-800 transition-colors"
+          >
+            {isCheckingDuplicates ? '…' : t('kg.tb.duplicates')}
+          </button>
+          <button
+            onClick={handleCheckMissingConcepts}
+            disabled={isCheckingConcepts}
+            title={t('kg.tb.conceptsTitle')}
+            className="shrink-0 h-8 px-3 flex items-center justify-center rounded-lg whitespace-nowrap text-[12px] font-semibold text-slate-600 dark:text-slate-300 disabled:opacity-40 hover:bg-slate-50 dark:hover:bg-slate-800 transition-colors"
+          >
+            {isCheckingConcepts ? '…' : t('kg.tb.concepts')}
           </button>
         </div>
       </div>

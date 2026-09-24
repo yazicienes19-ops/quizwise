@@ -360,7 +360,7 @@ export const AppContent: React.FC<AppContentProps> = (p) => {
           {dueMistakes > 0 && (
             <div className="max-w-3xl mx-auto px-4 pt-6 pb-2">
               <div
-                className="flex items-center justify-between gap-4 rounded-[20px] px-5 py-4"
+                className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 sm:gap-4 rounded-[20px] px-5 py-4"
                 style={{
                   background: 'color-mix(in srgb, var(--primary) 8%, transparent)',
                   border: '1px solid color-mix(in srgb, var(--primary) 20%, transparent)',
@@ -368,15 +368,15 @@ export const AppContent: React.FC<AppContentProps> = (p) => {
               >
                 <div className="min-w-0">
                   <p className="text-[11px] font-semibold uppercase tracking-[0.08em]" style={{ color: 'var(--primary-ink)' }}>{t('ac.review')}</p>
-                  <p className="text-sm font-black dark:text-white mt-0.5">
+                  <p className="text-sm font-semibold dark:text-white mt-0.5">
                     {tp('ac.dueMistakesN', dueMistakes)}
                   </p>
                   <p className="text-[11px] font-medium text-slate-400 mt-0.5">{t('ac.reviewHint')}</p>
                 </div>
                 <button
                   onClick={handleStartMistakeReview}
-                  className="px-5 py-3 rounded-[14px] text-[13px] font-semibold text-white hover:scale-105 transition-all shrink-0"
-                  style={{ background: 'var(--primary)' }}
+                  className="w-full sm:w-auto px-5 py-3 rounded-[14px] text-[13px] font-semibold hover:scale-105 transition-all shrink-0"
+                  style={{ background: 'var(--primary)', color: 'var(--primary-text)' }}
                 >
                   {t('ac.reviewStart')}
                 </button>
@@ -395,7 +395,7 @@ export const AppContent: React.FC<AppContentProps> = (p) => {
                     </div>
                     <button onClick={() => handleLoadSavedQuiz(sq)} className="flex items-center gap-1.5 px-4 py-2 text-white rounded-[14px] text-[13px] font-semibold hover:scale-105 transition-all shrink-0" style={{ background: 'var(--primary)' }}>
                       <svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round"><polygon points="5 3 19 12 5 21 5 3"/></svg>
-                      Starten
+                      {t('lc.start')}
                     </button>
                     <button onClick={() => handleDeleteSavedQuiz(sq.id)} aria-label={t('lib.delete')} className="w-8 h-8 rounded-[12px] flex items-center justify-center text-slate-400 hover:text-rose-500 hover:bg-rose-50 dark:hover:bg-rose-950/20 transition-all shrink-0">
                       <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14H6L5 6"/><path d="M10 11v6"/><path d="M14 11v6"/><path d="M9 6V4h6v2"/></svg>
@@ -492,7 +492,7 @@ export const AppContent: React.FC<AppContentProps> = (p) => {
                   </div>
                   <button onClick={() => handleLoadSavedExam(se)} className="flex items-center gap-1.5 px-4 py-2 text-white rounded-[14px] text-[13px] font-semibold hover:scale-105 transition-all shrink-0" style={{ background: 'var(--primary)' }}>
                     <svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round"><polygon points="5 3 19 12 5 21 5 3"/></svg>
-                    Starten
+                    {t('lc.start')}
                   </button>
                   <button onClick={() => exportSavedExamToPdf(se.name, se.savedAt, se.questions, t)} className="flex items-center gap-1.5 px-4 py-2 rounded-[14px] border-2 border-slate-200 dark:border-slate-700 text-[13px] font-semibold text-slate-600 dark:text-slate-300 hover:border-slate-400 transition-all shrink-0">
                     <svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>

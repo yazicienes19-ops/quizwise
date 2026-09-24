@@ -447,8 +447,8 @@ export const LibrarySystem: React.FC<LibrarySystemProps> = ({
                           <p className="text-[11px] text-slate-300 dark:text-slate-600 mt-1">{t('lib.empty')}</p>
                         )}
                       </div>
-                      <div className="flex items-center gap-1 text-[11px] font-semibold uppercase tracking-[0.08em] mt-auto" style={{ color: 'var(--primary-ink)' }}>
-                        Öffnen
+                      <div className="flex items-center gap-1 text-[13px] font-semibold mt-auto" style={{ color: 'var(--primary-ink)' }}>
+                        {t('card.open')}
                         <svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round">
                           <line x1="5" y1="12" x2="19" y2="12"/><polyline points="12 5 19 12 12 19"/>
                         </svg>
@@ -472,8 +472,8 @@ export const LibrarySystem: React.FC<LibrarySystemProps> = ({
                 <h3 className="font-black text-base" style={{ color: 'var(--text-main)' }}>{t('lib.allDocs')}</h3>
                 <p className="text-[11px] text-slate-400 mt-1">{documents.length} gesamt</p>
               </div>
-              <div className="flex items-center gap-1 text-[11px] font-semibold uppercase tracking-[0.08em] mt-auto text-slate-400">
-                Alle anzeigen
+              <div className="flex items-center gap-1 text-[13px] font-semibold mt-auto text-slate-400">
+                {t('home.mod.showAll')}
                 <svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round">
                   <line x1="5" y1="12" x2="19" y2="12"/><polyline points="12 5 19 12 12 19"/>
                 </svg>

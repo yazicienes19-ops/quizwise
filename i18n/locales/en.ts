@@ -729,6 +729,7 @@ export const en: Translations = {
   'home.kpi.nextExam': 'Next exam',
   'home.kpi.gradeAvg': 'Grade average',
   'home.kpi.exams': 'Exams',
+  'home.kpi.examsSim': 'Simulated',
   'home.kpi.examsOf': 'of {n} subjects',
   'home.kpi.streak': 'Streak',
   'home.kpi.week': 'This week',
@@ -1064,6 +1065,7 @@ export const en: Translations = {
   'kg.tb.concepts': 'Missing concepts',
   'kg.tb.conceptsTitle': 'Check for missing concepts',
   'kg.tb.coachLabel': 'Coach checks',
+  'kg.tb.coachHint': 'It only suggests. You decide what goes into your map.',
   'kg.unassigned': '{n} concept is not assigned to a subject yet.|{n} concepts are not assigned to a subject yet.',
   'kg.chooseSubject': 'Choose subject…',
   'kg.assign': 'Assign',
@@ -1545,6 +1547,7 @@ export const en: Translations = {
   'eg.quantDistributionHint': 'Approximate target, not a strict ratio. Controls only the rough weighting.',
   'eg.conception': 'Designing...',
   'eg.startSim': 'Start simulation',
+  'eg.pickSourceFirst': 'Choose a source above first.',
 
   // exam view
   'ev.pdf.title': 'Exam Record',
@@ -2065,6 +2068,8 @@ export const en: Translations = {
   'lc.connectionsFound': 'Connections found',
   'lc.reason': 'Reason:',
   'lc.start': 'Start',
+  'ev.newExam': 'New exam',
+  'ev.timeRunning': 'Exam time running …',
   'lc.reasonExams': 'Needs at least 4 exams, you have {n}.',
   'lc.reasonSessions': 'Needs at least {min} study sessions, you have {n}.',
   'lc.reasonTopics': 'Appears after your first quiz, exam, or flashcard session.',

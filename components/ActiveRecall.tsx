@@ -682,6 +682,9 @@ export const ActiveRecall: React.FC<ActiveRecallProps> = ({
                 <span>{t('ar.startDrill')}</span>
               )}
             </button>
+            {!activeSource && !isLoading && (
+              <p className="text-xs mt-2" style={{ color: 'var(--text-secondary)' }}>{t('eg.pickSourceFirst')}</p>
+            )}
           </div>
         </div>
 

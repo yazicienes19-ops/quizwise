@@ -111,6 +111,17 @@ body {
     --nav-inactive: #94A3B8;
 }
 
+/* ── Schrift auf dem Primärton ──
+   Weiß auf Gold (#D9A94E) erreicht nur 2,2:1 (WCAG AA verlangt 4,5:1). Alle
+   Flächen im Primärton bekommen deshalb --primary-text (Navy, 6,6:1), egal ob
+   der Hintergrund über eine umgebogene Indigo-Klasse oder einen Inline-Stil kommt
+   (Audit 24.09.2026, viertes Zeugnis). */
+.bg-indigo-500.text-white, .bg-indigo-600.text-white, .bg-indigo-700.text-white,
+[style*="background: var(--primary)"].text-white,
+[style*="background-color: var(--primary)"].text-white {
+    color: var(--primary-text) !important;
+}
+
 /* ── bg solid ── */
 .bg-indigo-50   { background-color: var(--p50)  !important; }
 .bg-indigo-100  { background-color: var(--p100) !important; }

@@ -703,7 +703,7 @@ export const ExamGenerator: React.FC<ExamGeneratorProps> = ({
             <button
               onClick={handleStart}
               disabled={!contentSource || isLoading}
-              className="w-full py-5 rounded-[24px] font-semibold text-[12px] hover:scale-[1.01] transition-all disabled:opacity-40 disabled:cursor-not-allowed mt-4"
+              className="w-full py-5 rounded-[24px] font-semibold text-sm hover:scale-[1.01] transition-all disabled:opacity-40 disabled:cursor-not-allowed mt-4"
               style={{ background: 'var(--primary)', color: 'var(--primary-text)' }}
             >
               {isLoading ? (
@@ -717,6 +717,9 @@ export const ExamGenerator: React.FC<ExamGeneratorProps> = ({
                 </span>
               )}
             </button>
+            {!contentSource && !isLoading && (
+              <p className="text-xs text-center mt-2" style={{ color: 'var(--text-secondary)' }}>{t('eg.pickSourceFirst')}</p>
+            )}
           </div>
 
         </div>

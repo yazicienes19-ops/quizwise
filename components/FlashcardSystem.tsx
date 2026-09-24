@@ -865,10 +865,10 @@ export const FlashcardSystem: React.FC<FlashcardSystemProps> = ({
             </div>
 
             <div className="space-y-6 pt-4 border-t border-slate-50 dark:border-slate-800">
-              <h3 className="text-[11px] lg:text-[11px] font-semibold uppercase tracking-[0.08em] text-indigo-600">{t('fcs.cardGenerator')}</h3>
+              <h3 className="text-[11px] font-semibold uppercase tracking-[0.08em] text-indigo-600">{t('fcs.cardGenerator')}</h3>
 
               <div className="space-y-4">
-                <div className="flex justify-between items-center text-[11px] lg:text-[11px] font-semibold uppercase text-slate-400 tracking-[0.08em] px-2">
+                <div className="flex justify-between items-center text-[11px] font-semibold uppercase text-slate-400 tracking-[0.08em] px-2">
                   <span>{t('fcs.cardCount')}</span>
                   <span>{selectedCount}</span>
                 </div>
@@ -878,7 +878,7 @@ export const FlashcardSystem: React.FC<FlashcardSystemProps> = ({
                       key={count}
                       onClick={() => setSelectedCount(count)}
                       aria-pressed={selectedCount === count}
-                      className={`flex-1 py-2 rounded-lg lg:rounded-xl text-[13px] lg:text-[11px] font-semibold transition-all ${selectedCount === count ? 'bg-indigo-600 text-white shadow-lg' : 'text-slate-400 hover:text-slate-600'}`}
+                      className={`flex-1 py-2 rounded-lg lg:rounded-xl text-[13px] font-semibold tabular-nums transition-all ${selectedCount === count ? 'bg-indigo-600 text-white shadow-lg' : 'text-slate-400 hover:text-slate-600'}`}
                     >
                       {count}
                     </button>
@@ -907,7 +907,7 @@ export const FlashcardSystem: React.FC<FlashcardSystemProps> = ({
 
         <div className="lg:col-span-7 bg-white dark:bg-slate-900 rounded-[24px] lg:rounded-[28px] border border-slate-200 dark:border-slate-800 shadow-3d-deep order-1 lg:order-2">
           <div className="p-5 sm:p-6 lg:p-10 border-b border-slate-50 dark:border-slate-800 flex flex-col sm:flex-row justify-between items-center gap-4 lg:gap-0">
-            <h3 className="text-[11px] lg:text-[11px] font-semibold uppercase tracking-[0.08em] text-slate-400">{t('fcs.yourDecks', { n: decks.length })}</h3>
+            <h3 className="text-[11px] font-semibold uppercase tracking-[0.08em] text-slate-400">{t('fcs.yourDecks', { n: decks.length })}</h3>
             <div className="flex gap-3 sm:gap-4 items-center flex-wrap justify-center sm:justify-end">
               <input
                 ref={importInputRef}

@@ -104,7 +104,7 @@ export const ApiKeySettings: React.FC<ApiKeySettingsProps> = ({ onClose }) => {
           >
             {saved ? (
               <span className="flex items-center justify-center gap-2">
-                <Check className="w-4 h-4" strokeWidth={2.5} /> Gespeichert
+                <Check className="w-4 h-4" strokeWidth={2.5} /> {t('settings.saved')}
               </span>
             ) : t('aks.save')}
           </button>
@@ -114,7 +114,7 @@ export const ApiKeySettings: React.FC<ApiKeySettingsProps> = ({ onClose }) => {
               className="px-5 py-3.5 rounded-2xl text-[13px] font-semibold text-rose-500 hover:bg-rose-50 dark:hover:bg-rose-950/20 transition-all"
               style={{ border: '1px solid var(--border-color)' }}
             >
-              Löschen
+              {t('common.delete')}
             </button>
           )}
         </div>

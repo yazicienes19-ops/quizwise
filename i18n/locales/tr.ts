@@ -728,6 +728,7 @@ export const tr: Translations = {
   'home.kpi.nextExam': 'Sıradaki sınav',
   'home.kpi.gradeAvg': 'Not ortalaması',
   'home.kpi.exams': 'Sınavlar',
+  'home.kpi.examsSim': 'Simüle edildi',
   'home.kpi.examsOf': '{n} dersten',
   'home.kpi.streak': 'Seri',
   'home.kpi.week': 'Bu hafta',
@@ -1063,6 +1064,7 @@ export const tr: Translations = {
   'kg.tb.concepts': 'Eksik kavramlar',
   'kg.tb.conceptsTitle': 'Eksik kavramları kontrol et',
   'kg.tb.coachLabel': 'Koç kontrol eder',
+  'kg.tb.coachHint': 'Sadece öneride bulunur, ağına neyin gireceğine sen karar verirsin.',
   'kg.unassigned': '{n} kavram henüz bir derse atanmadı.',
   'kg.chooseSubject': 'Ders seç…',
   'kg.assign': 'Ata',
@@ -1538,6 +1540,7 @@ export const tr: Translations = {
   'eg.quantDistributionHint': 'Yaklaşık hedef, katı bir oran değil. Yalnızca kabaca ağırlığı belirler.',
   'eg.conception': 'Hazırlanıyor...',
   'eg.startSim': 'Simülasyonu başlat',
+  'eg.pickSourceFirst': 'Önce yukarıdan bir kaynak seç.',
 
   // exam view
   'ev.pdf.title': 'Sınav tutanağı',
@@ -2058,6 +2061,8 @@ export const tr: Translations = {
   'lc.connectionsFound': 'Bağlantılar bulundu',
   'lc.reason': 'Neden:',
   'lc.start': 'Başlat',
+  'ev.newExam': 'Yeni sınav',
+  'ev.timeRunning': 'Sınav süresi işliyor …',
   'lc.reasonExams': 'En az 4 sınav gerekir, {n} tane var.',
   'lc.reasonSessions': 'En az {min} öğrenme oturumu gerekir, {n} tane var.',
   'lc.reasonTopics': 'İlk test, sınav ya da kart oturumundan sonra görünür.',

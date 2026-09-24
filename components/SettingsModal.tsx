@@ -254,9 +254,10 @@ export const SettingsModal: React.FC<Props> = ({ user, isDark, onToggleTheme, on
 
         {/* Tab Bar */}
         <div className="px-8 pt-6 shrink-0">
-          <div className="flex p-1 rounded-2xl gap-1 overflow-x-auto scrollbar-hide" style={{ background: 'color-mix(in srgb, var(--border-color) 40%, var(--bg-main))' }}>
+          <div role="tablist" className="flex flex-wrap p-1 rounded-2xl gap-1" style={{ background: 'color-mix(in srgb, var(--border-color) 40%, var(--bg-main))' }}>
             {tabs.map(t => (
               <button key={t.id} onClick={() => setTab(t.id)}
+                role="tab" aria-selected={tab === t.id} aria-label={t.label} title={t.label}
                 className={`flex-1 min-w-fit flex items-center justify-center gap-1.5 py-2.5 px-3 rounded-xl text-[13px] font-semibold transition-all whitespace-nowrap ${tab === t.id ? 'bg-indigo-600 shadow-lg' : 'text-slate-400 hover:text-slate-600 dark:hover:text-slate-200'}`}
                 style={tab === t.id ? { color: 'var(--primary-text)' } : {}}>
                 {t.icon}<span className="hidden sm:inline">{t.label}</span>

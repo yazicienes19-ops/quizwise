@@ -730,6 +730,7 @@ export const de = {
   'home.kpi.nextExam': 'Nächste Klausur',
   'home.kpi.gradeAvg': 'Notenschnitt',
   'home.kpi.exams': 'Klausuren',
+  'home.kpi.examsSim': 'Simuliert',
   'home.kpi.examsOf': 'von {n} Fächern',
   'home.kpi.streak': 'Lernserie',
   'home.kpi.week': 'Diese Woche',
@@ -1065,6 +1066,7 @@ export const de = {
   'kg.tb.concepts': 'Fehlende Konzepte',
   'kg.tb.conceptsTitle': 'Fehlende Konzepte prüfen',
   'kg.tb.coachLabel': 'Coach prüft',
+  'kg.tb.coachHint': 'Er schlägt nur vor, du entscheidest, was ins Netz kommt.',
   'kg.unassigned': '{n} Konzept ist noch keinem Fach zugeordnet.|{n} Konzepte sind noch keinem Fach zugeordnet.',
   'kg.chooseSubject': 'Fach wählen…',
   'kg.assign': 'Zuordnen',
@@ -1546,6 +1548,7 @@ export const de = {
   'eg.quantDistributionHint': 'Näherungswert, kein starres Verhältnis. Steuert nur die ungefähre Gewichtung.',
   'eg.conception': 'Konzeption läuft...',
   'eg.startSim': 'Simulation starten',
+  'eg.pickSourceFirst': 'Wähle zuerst oben eine Quelle aus.',
 
   // exam view
   'ev.pdf.title': 'Klausur-Protokoll',
@@ -2066,6 +2069,8 @@ export const de = {
   'lc.connectionsFound': 'Verbindungen erkannt',
   'lc.reason': 'Grund:',
   'lc.start': 'Starten',
+  'ev.newExam': 'Neue Klausur',
+  'ev.timeRunning': 'Prüfungszeit läuft …',
   'lc.reasonExams': 'Braucht mindestens 4 Klausuren, du hast {n}.',
   'lc.reasonSessions': 'Braucht mindestens {min} Lernsessions, du hast {n}.',
   'lc.reasonTopics': 'Erscheint nach deiner ersten Quiz-, Klausur- oder Karteikarten-Session.',

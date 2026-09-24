@@ -104,7 +104,7 @@ export const ScholarSearch: React.FC<ScholarSearchProps> = ({
           onClick={() => handleModeChange('web')}
           className="flex-1 py-2 px-4 rounded-xl text-[11px] font-black uppercase tracking-widest transition-all"
           style={searchMode === 'web'
-            ? { background: 'var(--primary)', color: 'white' }
+            ? { background: 'var(--primary)', color: 'var(--primary-text)' }
             : { background: 'transparent', color: 'var(--text-secondary)' }
           }
         >
@@ -115,7 +115,7 @@ export const ScholarSearch: React.FC<ScholarSearchProps> = ({
           onClick={() => handleModeChange('scholar')}
           className="flex-1 py-2 px-4 rounded-xl text-[11px] font-black uppercase tracking-widest transition-all"
           style={searchMode === 'scholar'
-            ? { background: 'var(--primary)', color: 'white' }
+            ? { background: 'var(--primary)', color: 'var(--primary-text)' }
             : { background: 'transparent', color: 'var(--text-secondary)' }
           }
         >
@@ -200,7 +200,7 @@ export const ScholarSearch: React.FC<ScholarSearchProps> = ({
                   <span
                     className="w-7 h-7 rounded-lg flex items-center justify-center text-[11px] font-black shrink-0 transition-colors"
                     style={expanded
-                      ? { background: 'var(--primary)', color: 'white' }
+                      ? { background: 'var(--primary)', color: 'var(--primary-text)' }
                       : { background: 'var(--border-color)', color: 'var(--text-main)' }
                     }
                   >
