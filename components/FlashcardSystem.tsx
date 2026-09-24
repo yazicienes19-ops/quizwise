@@ -814,6 +814,7 @@ export const FlashcardSystem: React.FC<FlashcardSystemProps> = ({
           decks={decks}
           onClose={() => setShowAnkiImport(false)}
           onImport={handleAnkiImport}
+          userId={userId}
         />
       )}
       {exportingDeck && (

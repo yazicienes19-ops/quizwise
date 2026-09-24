@@ -62,7 +62,7 @@ export default defineConfig(() => {
             // (und landen im HTTP-Cache) — die Installations-/Update-Last der
             // PWA sinkt um ~1,6 MB, der Offline-Kern (Shell + Quiz/Karten/
             // Dashboard) bleibt vollständig precached.
-            globIgnores: ['**/pdf-*.js', '**/pdf.worker*', '**/jspdf*', '**/html2canvas*'],
+            globIgnores: ['**/pdf-*.js', '**/pdf.worker*', '**/jspdf*', '**/html2canvas*', '**/sql-wasm*'],
           },
         }),
       ],
