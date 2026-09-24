@@ -40,16 +40,36 @@ export function findQuoteRects(items: PositionedTextItem[], quote: string): High
   });
 
   let start = page.indexOf(q);
+  let end = start + q.length - 1;
+  if (start < 0) {
+    // Eigene Markierungen: die Textebene hat keine Leerzeichen zwischen den
+    // Zeilen-Spans, eine Auswahl über zwei Zeilen kommt als "PSYCHOLOGIE1.1"
+    // oder "undAusdruck…" an. Dann ohne jeden Leerraum vergleichen.
+    const compactIdx: number[] = [];
+    let compact = '';
+    for (let i = 0; i < page.length; i++) {
+      if (page[i] === ' ') continue;
+      compact += page[i];
+      compactIdx.push(i);
+    }
+    const cq = q.replace(/\s+/g, '');
+    const at = cq.length >= 4 ? compact.indexOf(cq) : -1;
+    if (at >= 0) {
+      start = compactIdx[at];
+      end = compactIdx[at + cq.length - 1];
+    }
+  }
   if (start < 0 && q.length > 60) {
     // Lange Zitate: Anfang reicht zum Verorten (KI paraphrasiert manchmal das Ende)
     const prefix = q.slice(0, 60).replace(/\s+\S*$/, '');
     if (prefix.length >= 12) {
       q = prefix;
       start = page.indexOf(q);
+      end = start + q.length - 1;
     }
   }
   if (start < 0) return null;
-  const end = Math.min(start + q.length - 1, map.length - 1);
+  end = Math.min(end, map.length - 1);
 
   // Pro getroffenem Item den Zeichenbereich sammeln → Teil-Rechtecke
   const ranges = new Map<number, { from: number; to: number }>();

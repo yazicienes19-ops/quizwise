@@ -27,9 +27,18 @@ export interface ReaderSelection {
 }
 
 /** Liest die aktuelle Browser-Textauswahl aus — null, wenn zu kurz oder außerhalb von `area`. */
-export function readSelection(area: HTMLElement | null): ReaderSelection | null {
+/** Auswahltext; mit joinLines werden getrennte Elemente (Zeilen-Spans der
+ *  PDF-Textebene) mit Leerzeichen verbunden statt zusammengeklebt. */
+const selectionText = (sel: Selection, joinLines: boolean): string => {
+  if (!joinLines || sel.rangeCount === 0) return sel.toString();
+  const frag = sel.getRangeAt(0).cloneContents();
+  const parts = Array.from(frag.childNodes).map(n => n.textContent ?? '');
+  return parts.length > 1 ? parts.join(' ') : sel.toString();
+};
+
+export function readSelection(area: HTMLElement | null, opts: { joinLines?: boolean } = {}): ReaderSelection | null {
   const sel = window.getSelection();
-  const text = sel?.toString().replace(/\s+/g, ' ').trim() ?? '';
+  const text = sel ? selectionText(sel, !!opts.joinLines).replace(/\s+/g, ' ').trim() : '';
   if (!area || !sel || sel.rangeCount === 0 || text.length < MIN_SELECTION_CHARS) return null;
   const range = sel.getRangeAt(0);
   if (!area.contains(range.commonAncestorContainer)) return null;

@@ -47,3 +47,26 @@ describe('findQuoteRects', () => {
     expect(findQuoteRects([], 'irgendwas')).toBeNull();
   });
 });
+
+describe('findQuoteRects mit zusammengeklebter Auswahl', () => {
+  // Die Textebene hat keine Leerzeichen zwischen den Zeilen-Spans: eine
+  // Auswahl über zwei Zeilen kommt als "PSYCHOLOGIE1.1" an (Fund 24.09.2026).
+  const lines = [
+    { str: 'DIE GESCHICHTE DER PSYCHOLOGIE', x: 10, y: 10, w: 300, h: 12 },
+    { str: '1.1 ÜBERBLICK & ORGANISATORISCHES', x: 10, y: 30, w: 320, h: 12 },
+    { str: 'Charakterkunde und', x: 10, y: 50, w: 180, h: 12 },
+    { str: 'Ausdruckspsychologie', x: 10, y: 70, w: 200, h: 12 },
+  ];
+
+  it('findet einen Satz über zwei Zeilen ohne Leerzeichen dazwischen', () => {
+    const rects = findQuoteRects(lines as any, 'DIE GESCHICHTE DER PSYCHOLOGIE1.1 ÜBERBLICK & ORGANISATORISCHES');
+    expect(rects).not.toBeNull();
+    expect(rects!.map(r => r.y)).toEqual([10, 30]);
+  });
+
+  it('findet auch Wortteile über den Zeilenumbruch', () => {
+    const rects = findQuoteRects(lines as any, 'undAusdruckspsychologie');
+    expect(rects!.map(r => r.y)).toEqual([50, 70]);
+    expect(rects![0].x).toBeGreaterThan(10); // nur "und", nicht die ganze Zeile
+  });
+});

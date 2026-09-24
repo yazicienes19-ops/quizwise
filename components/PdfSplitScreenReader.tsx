@@ -329,7 +329,7 @@ export const PdfSplitScreenReader: React.FC<PdfSplitScreenReaderProps> = ({ doc,
   // verdeckt sie damit nie), springt aber automatisch UNTER die Markierung,
   // wenn oben nicht genug Platz ist (z.B. ganz oben auf der Seite).
   const handleTextSelection = useCallback(() => {
-    setSelection(readSelection(pdfAreaRef.current));
+    setSelection(readSelection(pdfAreaRef.current, { joinLines: true }));
   }, []);
 
   // Touch-Geräte: Selection-API ist dieselbe wie bei der Maus, aber der native
