@@ -126,6 +126,9 @@ export const GraphNodeDetailPanel: React.FC<GraphNodeDetailPanelProps> = ({
   // Doppelklick auf den Node im Canvas. Gleiches Entwurf-Muster wie
   // description/notes: eigener Draft, nur bei Node-Wechsel neu initialisiert.
   const [titleDraft, setTitleDraft] = useState(node?.title ?? '');
+  // Nur Handy: Leiste eingeklappt starten, damit das Netz bedienbar bleibt.
+  const [sheetExpanded, setSheetExpanded] = useState(false);
+  useEffect(() => { setSheetExpanded(false); }, [nodeId]);
   // Eigene Unterlagen: Picker-Zustand hier oben deklariert (Rules of Hooks —
   // vor dem frühen `if (!node) return null;` unten), auch wenn die Werte erst
   // im JSX-Body gebraucht werden.
@@ -152,7 +155,12 @@ export const GraphNodeDetailPanel: React.FC<GraphNodeDetailPanelProps> = ({
     // stiehlt keinem Textfeld den Fokus (kein ungewolltes Tastatur-Popup),
     // aber Tab landet danach natürlich im Panel-Inhalt (kein Fokus-Trap,
     // das Wissensnetz bleibt währenddessen normal interaktiv).
-    closeButtonRef.current?.focus();
+    // Ausnahme: Wird gerade getippt (z. B. der Titel eines eben angelegten
+    // Konzepts direkt im Netz), bleibt der Fokus dort. Sonst schloss sich die
+    // Titelbearbeitung sofort wieder (Audit 24.09.2026, "+ Konzept").
+    const active = document.activeElement;
+    const typing = active instanceof HTMLInputElement || active instanceof HTMLTextAreaElement;
+    if (!typing) closeButtonRef.current?.focus();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [nodeId]);
 
@@ -368,8 +376,11 @@ export const GraphNodeDetailPanel: React.FC<GraphNodeDetailPanelProps> = ({
 
   return (
     <div
-      className="absolute inset-y-0 right-0 w-full max-w-[340px] flex flex-col z-30 animate-in fade-in duration-200"
-      style={{ background: 'var(--bg-sidebar)', borderLeft: '1px solid var(--border-color)' }}
+      // Handy: einklappbare Leiste unten statt Vollfläche (Audit 24.09.2026:
+      // das Panel verdeckte das ganze Netz, Verbinden per Finger war dadurch
+      // unmöglich). Ab sm wie bisher als Spalte rechts.
+      className="absolute z-30 flex flex-col animate-in fade-in duration-200 inset-x-0 bottom-0 max-h-[75%] rounded-t-[20px] border-t shadow-[0_-8px_28px_rgba(22,41,77,0.18)] sm:shadow-none sm:rounded-none sm:border-t-0 sm:border-l sm:inset-x-auto sm:inset-y-0 sm:right-0 sm:w-full sm:max-w-[340px] sm:max-h-none"
+      style={{ background: 'var(--bg-sidebar)', borderColor: 'var(--border-color)' }}
     >
       {/* Kopfbereich — Titel/Typ/Hierarchie sind in unter einer Sekunde erfassbar,
           bevor überhaupt etwas anderes im Panel gelesen werden muss. */}
@@ -386,7 +397,7 @@ export const GraphNodeDetailPanel: React.FC<GraphNodeDetailPanelProps> = ({
             aria-label={t('kg.panel.titleLabel')}
             className="w-full text-base font-black text-slate-900 dark:text-white bg-transparent outline-none border border-transparent hover:border-slate-200 dark:hover:border-slate-700 focus:border-indigo-400 rounded-lg -mx-1 px-1 py-0.5 transition-colors"
           />
-          <div className="flex items-center gap-1.5 mt-2 flex-wrap">
+          <div className={`${sheetExpanded ? 'flex' : 'hidden'} sm:flex items-center gap-1.5 mt-2 flex-wrap`}>
             <span
               className="text-xs font-semibold px-2 py-1 rounded-full"
               style={{ background: 'var(--bg-main)', color: 'var(--text-muted, #64748b)' }}
@@ -405,13 +416,13 @@ export const GraphNodeDetailPanel: React.FC<GraphNodeDetailPanelProps> = ({
               der Hierarchie-Chip oben. "Auto" (Kreis mit Diagonale) setzt
               node.color zurück auf undefined, GraphCanvas.tsx leitet die
               Farbe dann wieder aus der Hierarchie-Ebene ab. */}
-          <div className="flex items-center gap-1.5 mt-2" role="group" aria-label={t('kg.panel.colorLabel')}>
+          <div className={`${sheetExpanded ? 'flex' : 'hidden'} sm:flex items-center gap-1.5 mt-2`} role="group" aria-label={t('kg.panel.colorLabel')}>
             <button
               onClick={() => commitColor(undefined)}
               title={t('kg.panel.colorAuto')}
               aria-label={t('kg.panel.colorAuto')}
               aria-pressed={!node.color}
-              className="w-5 h-5 rounded-full shrink-0 relative overflow-hidden transition-transform hover:scale-110"
+              className="w-5 h-5 [@media(pointer:coarse)]:w-7 [@media(pointer:coarse)]:h-7 rounded-full shrink-0 relative overflow-hidden transition-transform hover:scale-110"
               style={{
                 background: 'var(--bg-main)',
                 border: `1.5px solid ${!node.color ? 'var(--primary)' : 'var(--border-color)'}`,
@@ -430,7 +441,7 @@ export const GraphNodeDetailPanel: React.FC<GraphNodeDetailPanelProps> = ({
                 title={swatch}
                 aria-label={swatch}
                 aria-pressed={node.color === swatch}
-                className="w-5 h-5 rounded-full shrink-0 transition-transform hover:scale-110"
+                className="w-5 h-5 [@media(pointer:coarse)]:w-7 [@media(pointer:coarse)]:h-7 rounded-full shrink-0 transition-transform hover:scale-110"
                 style={{
                   background: swatch,
                   boxShadow: node.color === swatch ? '0 0 0 2px var(--bg-sidebar), 0 0 0 3.5px var(--primary)' : 'none',
@@ -439,7 +450,16 @@ export const GraphNodeDetailPanel: React.FC<GraphNodeDetailPanelProps> = ({
             ))}
           </div>
         </div>
-        <div className="flex flex-col items-center gap-1 shrink-0">
+        <div className="flex sm:flex-col items-center gap-1 shrink-0">
+          <button
+            type="button"
+            onClick={() => setSheetExpanded(v => !v)}
+            aria-expanded={sheetExpanded}
+            className="sm:hidden h-9 px-3 rounded-lg text-[13px] font-semibold"
+            style={{ border: '1px solid var(--border-color)', color: 'var(--ink2)' }}
+          >
+            {sheetExpanded ? t('kg.panel.less') : t('kg.panel.details')}
+          </button>
           <button
             onClick={handleDeleteNode}
             aria-label={t('kg.panel.delete')}
@@ -462,7 +482,7 @@ export const GraphNodeDetailPanel: React.FC<GraphNodeDetailPanelProps> = ({
       {/* Scrollbarer Körper — EIN Scroll-Container für das ganze Panel statt
           verschachtelter Scrollbars in einzelnen Feldern (ruhiger, weniger
           Overhead bei langen Notizen). */}
-      <div className="flex-1 overflow-y-auto p-4 space-y-5">
+      <div className={`${sheetExpanded ? 'block' : 'hidden'} sm:block flex-1 overflow-y-auto p-4 space-y-5`}>
         <section>
           <div className="flex items-center justify-between mb-1.5">
             <p className="text-[11px] font-semibold uppercase tracking-[0.08em] text-slate-400">

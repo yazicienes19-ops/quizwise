@@ -1,6 +1,7 @@
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useTranslation } from '../i18n/I18nProvider';
 import * as d3 from 'd3';
+import { createDoubleTapDetector, isTapGesture } from '../services/graph/doubleTap';
 import { motion, AnimatePresence, useReducedMotion } from 'framer-motion';
 import type { GraphState, GraphNodePosition, GraphEntityChange, HierarchyLevel } from '../services/graph/types';
 import { buildGraphIndex, neighborIds, outgoingEdges, incomingEdges } from '../services/graph/graphIndex';
@@ -140,8 +141,15 @@ const HIERARCHY_STROKE_WIDTH: Record<HierarchyLevel, number> = {
   detail: 1,
 };
 const SELECTED_STROKE_BONUS = 1.5;
-const HANDLE_RADIUS = 6;
-const HANDLE_OFFSET = 14;
+/**
+ * Finger statt Maus (Audit 24.09.2026): größere Trefferflächen für den
+ * Verbindungspunkt und die Kanten. Einmal beim Laden bestimmt; ein Gerät
+ * wechselt seine Hauptzeigerart im laufenden Betrieb praktisch nie.
+ */
+const COARSE_POINTER = typeof window !== 'undefined' && typeof window.matchMedia === 'function'
+  && window.matchMedia('(pointer: coarse)').matches;
+const HANDLE_RADIUS = COARSE_POINTER ? 9 : 6;
+const HANDLE_OFFSET = COARSE_POINTER ? 20 : 14;
 
 // Wissensnetz-Coach, erster Baustein — Anzeigetexte für services/graph/graphInsightsService.ts.
 const INSIGHT_LABELS: Record<NodeInsightType, string> = {
@@ -151,6 +159,12 @@ const INSIGHT_LABELS: Record<NodeInsightType, string> = {
 };
 const DRAG_THRESHOLD_PX = 4;
 const NODE_DATA_ATTR = 'data-graph-node';
+/** Trägt die Konzept-ID, damit das Ziel einer gezogenen Beziehung per Hit-Test gefunden wird. */
+const NODE_ID_ATTR = 'data-graph-node-id';
+/** Unsichtbarer Trefferbereich einer Kante (zählt beim Doppeltippen nicht als freie Fläche). */
+const EDGE_HIT_ATTR = 'data-graph-edge-hit';
+const HANDLE_HIT_EXTRA = COARSE_POINTER ? 18 : 8;
+const EDGE_HIT_WIDTH_PX = COARSE_POINTER ? 28 : 16;
 // Kein hartes Zeichen-Limit mehr für Kantenlabels (User-Vorgabe 2026-08-04,
 // verschärft 2026-08-05: "Beziehung soll immer lesbar sein, auch wenn sie
 // länger ist") — stattdessen eine großzügige Breite, ab der umgebrochen
@@ -538,7 +552,11 @@ const GraphEdgeView = React.memo(function GraphEdgeView({
           er gebündelten Kurven exakt folgt. */}
       <path
         d={pathD}
-        stroke="transparent" strokeWidth={14} fill="none"
+        {...{ [EDGE_HIT_ATTR]: true }}
+        stroke="transparent" strokeWidth={EDGE_HIT_WIDTH_PX} fill="none"
+        // Feste Breite am Bildschirm: beim Herauszoomen schrumpfte der Bereich
+        // sonst auf wenige Pixel und war per Finger kaum zu treffen.
+        vectorEffect="non-scaling-stroke"
         onClick={e => onHitSelect(e, edgeId)}
         style={{ cursor: 'pointer' }}
       />
@@ -622,7 +640,7 @@ const GraphNodeView = React.memo(function GraphNodeView({
   const lineStep = titleFontSize * 1.1;
   return (
     <motion.g
-      {...{ [NODE_DATA_ATTR]: true }}
+      {...{ [NODE_DATA_ATTR]: true, [NODE_ID_ATTR]: nodeId }}
       initial={reduceMotion
         ? { x, y, opacity: 1, scale: 1 }
         : { x, y, opacity: 0, scale: 0.6 }}
@@ -698,7 +716,7 @@ const GraphNodeView = React.memo(function GraphNodeView({
           {/* Unsichtbarer, deutlich größerer Trefferbereich um den sichtbaren
               Punkt — verpasste Klicks landen sonst auf dem Node darunter und
               lösten unbeabsichtigt den Doppelklick-Titel-Editor aus. */}
-          <circle cx={rx + HANDLE_OFFSET} cy={0} r={HANDLE_RADIUS + 8} fill="transparent" />
+          <circle cx={rx + HANDLE_OFFSET} cy={0} r={HANDLE_RADIUS + HANDLE_HIT_EXTRA} fill="transparent" />
           <circle cx={rx + HANDLE_OFFSET} cy={0} r={HANDLE_RADIUS} fill={handleColor} style={{ pointerEvents: 'none' }} />
         </g>
       )}
@@ -1184,7 +1202,9 @@ export const GraphCanvas: React.FC<GraphCanvasProps> = ({
       .scaleExtent([0.2, 2.5])
       // Klicks/Drags, die auf einem Node beginnen, sollen den Node bewegen,
       // nicht die Canvas verschieben.
-      .filter(event => !event.ctrlKey && !event.button && !(event.target as Element).closest(`[${NODE_DATA_ATTR}]`))
+      // ctrlKey kommt beim Trackpad-Pinch als wheel-Event: das soll zoomen
+      // (d3-Standard), sonst vergrößerte der Browser die ganze Seite.
+      .filter(event => (!event.ctrlKey || event.type === 'wheel') && !event.button && !(event.target as Element).closest(`[${NODE_DATA_ATTR}]`))
       .on('zoom', event => {
         g.attr('transform', event.transform.toString());
         setZoomTransform({ x: event.transform.x, y: event.transform.y, k: event.transform.k });
@@ -1317,6 +1337,8 @@ export const GraphCanvas: React.FC<GraphCanvasProps> = ({
   // ── Node-Drag (Verschieben) ──────────────────────────────────────────────
   interface NodeDragState { nodeId: string; startClientX: number; startClientY: number; startPos: GraphNodePosition; currentPos: GraphNodePosition; moved: boolean; }
   const [nodeDrag, setNodeDrag] = useState<NodeDragState | null>(null);
+  // Ein gemeinsamer Doppeltipp-Detektor für Hintergrund und Konzepte (Schlüssel trennt die Ziele).
+  const doubleTapRef = useRef(createDoubleTapDetector());
 
   // Pointer-Events statt Mouse-Events: iOS feuert bei echten Wisch-Gesten
   // keine kontinuierlichen mousemove-Events — Node verschieben und Kante
@@ -1337,7 +1359,13 @@ export const GraphCanvas: React.FC<GraphCanvasProps> = ({
       const moved = nodeDrag.moved || Math.hypot(e.clientX - nodeDrag.startClientX, e.clientY - nodeDrag.startClientY) > DRAG_THRESHOLD_PX;
       setNodeDrag(prev => prev && { ...prev, currentPos: { x: nodeDrag.startPos.x + dx, y: nodeDrag.startPos.y + dy }, moved });
     };
-    const handleUp = () => {
+    const handleUp = (e: PointerEvent) => {
+      if (!nodeDrag.moved && e.pointerType !== 'mouse'
+        && doubleTapRef.current({ x: e.clientX, y: e.clientY, time: e.timeStamp, key: `node:${nodeDrag.nodeId}` })) {
+        beginEditingTitle(nodeDrag.nodeId, stateRef.current.nodesById.get(nodeDrag.nodeId)?.title ?? '');
+        setNodeDrag(null);
+        return;
+      }
       if (nodeDrag.moved) {
         const result = recordUpdateNode(history, stateForCommit(), nodeDrag.nodeId, { position: nodeDrag.currentPos });
         if (!result.error && result.entity) {
@@ -1378,14 +1406,30 @@ export const GraphCanvas: React.FC<GraphCanvasProps> = ({
     const handleMove = (e: PointerEvent) => {
       setEdgeDraft(prev => prev && { ...prev, pointer: clientToGraphPoint(e.clientX, e.clientY) });
     };
-    const handleUp = () => setEdgeDraft(null); // Fallback: Loslassen außerhalb eines Nodes bricht ab
+    // Ziel per Hit-Test an der Loslass-Stelle: Bei Touch geht pointerup an den
+    // Griff, auf dem der Finger aufsetzte (implizites Pointer-Capture), nie an
+    // das Zielkonzept. Dadurch ließen sich per Finger keine Beziehungen ziehen.
+    const handleUp = (e: PointerEvent) => {
+      // elementsFromPoint statt elementFromPoint: direkt unter dem Finger liegt
+      // die Vorschau-Linie der Beziehung, das Zielkonzept erst darunter.
+      const hit = document.elementsFromPoint(e.clientX, e.clientY)
+        .map(el => el.closest(`[${NODE_ID_ATTR}]`))
+        .find((el): el is Element => !!el);
+      const targetNodeId = hit?.getAttribute(NODE_ID_ATTR) ?? null;
+      const { sourceNodeId } = edgeDraft;
+      setEdgeDraft(null);
+      if (!targetNodeId || targetNodeId === sourceNodeId) return;
+      setEdgePromptError(null);
+      setEdgePrompt({ sourceNodeId, targetNodeId, position: clientToGraphPoint(e.clientX, e.clientY), value: '' });
+    };
+    const handleCancel = () => setEdgeDraft(null);
     window.addEventListener('pointermove', handleMove);
     window.addEventListener('pointerup', handleUp);
-    window.addEventListener('pointercancel', handleUp);
+    window.addEventListener('pointercancel', handleCancel);
     return () => {
       window.removeEventListener('pointermove', handleMove);
       window.removeEventListener('pointerup', handleUp);
-      window.removeEventListener('pointercancel', handleUp);
+      window.removeEventListener('pointercancel', handleCancel);
     };
   }, [edgeDraft, clientToGraphPoint]);
 
@@ -1409,15 +1453,11 @@ export const GraphCanvas: React.FC<GraphCanvasProps> = ({
     if (edgePrompt) edgePromptInputRef.current?.focus();
   }, [edgePrompt]);
 
-  const handleNodePointerUp = (e: React.PointerEvent, targetNodeId: string) => {
-    if (!edgeDraft) return;
-    e.stopPropagation();
-    const { sourceNodeId } = edgeDraft;
-    setEdgeDraft(null);
-    if (sourceNodeId === targetNodeId) return;
-    setEdgePromptError(null);
-    setEdgePrompt({ sourceNodeId, targetNodeId, position: clientToGraphPoint(e.clientX, e.clientY), value: '' });
-  };
+  // Das Ende einer gezogenen Beziehung erkennt der pointerup-Handler am
+  // Fenster per Hit-Test (Maus und Touch gleich). Hier bewusst KEIN
+  // stopPropagation: das pointerup muss das Fenster erreichen, sonst geht die
+  // Beziehung verloren (Touch: pointerup landet auf dem Griff im Konzept).
+  const handleNodePointerUp = (_e: React.PointerEvent, _targetNodeId: string) => {};
 
   const cancelEdgePrompt = () => { setEdgePrompt(null); setEdgePromptError(null); };
 
@@ -1591,8 +1631,36 @@ export const GraphCanvas: React.FC<GraphCanvasProps> = ({
   // ── Hintergrund: Klick = Auswahl aufheben, Doppelklick = neuer Node ─────
   const handleBackgroundClick = () => onSelectionChange(clearSelection(selection));
 
-  const handleBackgroundDoubleClick = (e: React.MouseEvent) => {
-    const position = clientToGraphPoint(e.clientX, e.clientY);
+  const handleBackgroundDoubleClick = (e: React.MouseEvent) => createNodeAt(e.clientX, e.clientY);
+
+  // Doppeltippen auf die freie Fläche (Touch/Stift): nur echte Tipps mit einem
+  // Finger zählen, kein Wischen und kein Pinch.
+  const bgGestureRef = useRef<{ x: number; y: number; pointers: number; multi: boolean } | null>(null);
+  const handleSvgPointerDown = (e: React.PointerEvent) => {
+    const g = bgGestureRef.current;
+    if (g && !e.isPrimary) { g.pointers += 1; g.multi = true; return; }
+    bgGestureRef.current = { x: e.clientX, y: e.clientY, pointers: 1, multi: false };
+  };
+  const handleSvgPointerUp = (e: React.PointerEvent) => {
+    const g = bgGestureRef.current;
+    if (!e.isPrimary) return;
+    bgGestureRef.current = null;
+    if (e.pointerType === 'mouse' || !g || g.multi) return;
+    const target = e.target as Element;
+    if (target.closest(`[${NODE_DATA_ATTR}]`) || target.closest(`[${EDGE_HIT_ATTR}]`)) return;
+    if (!isTapGesture(g, { x: e.clientX, y: e.clientY })) return;
+    if (doubleTapRef.current({ x: e.clientX, y: e.clientY, time: e.timeStamp, key: 'bg' })) createNodeAt(e.clientX, e.clientY);
+  };
+
+  // Knopf "Konzept": legt es in der Mitte des sichtbaren Ausschnitts an (Maus, Finger, Tastatur).
+  const createNodeInView = () => {
+    const rect = svgRef.current?.getBoundingClientRect();
+    if (!rect) return;
+    createNodeAt(rect.left + rect.width / 2, rect.top + rect.height / 2);
+  };
+
+  function createNodeAt(clientX: number, clientY: number) {
+    const position = clientToGraphPoint(clientX, clientY);
     // Echter Bug (User-Fund 2026-08-04, "nur EIN Wissensnetz"): collectionId
     // fehlte hier komplett — neue Nodes landeten unabhängig vom gerade
     // aktiven Fach immer ohne Fach-Zuordnung, dadurch verschwanden sie beim
@@ -1617,7 +1685,7 @@ export const GraphCanvas: React.FC<GraphCanvasProps> = ({
       // (s. beginEditingTitle-Effekt), der erste Tastendruck ersetzt ihn.
       beginEditingTitle(result.entity.id, result.entity.title);
     }
-  };
+  }
 
   // ── Stabile Dispatcher für die memoisierten Views ────────────────────────
   // Die Refs halten stets den frischesten Closure-Stand (state/selection/
@@ -1691,6 +1759,9 @@ export const GraphCanvas: React.FC<GraphCanvasProps> = ({
         </div>
       )}
       <div className="absolute top-3 right-3 z-10 flex gap-1.5">
+        <button onClick={createNodeInView} aria-label={t('kg.canvas.addConcept')} title={t('kg.canvas.addConcept')} className="h-8 px-2.5 flex items-center gap-1 rounded-lg text-[13px] font-semibold" style={{ background: wnTheme.chipBg, border: `1px solid ${wnTheme.chipBorder}`, color: wnTheme.chipText, backdropFilter: 'blur(6px)' }}>
+          <span aria-hidden="true">+</span><span>{t('kg.canvas.addConceptShort')}</span>
+        </button>
         <button onClick={() => zoomBy(1.3)} aria-label={t('kg.canvas.zoomIn')} title={t('kg.canvas.zoomIn')} className="w-8 h-8 flex items-center justify-center rounded-lg text-sm font-black" style={{ background: wnTheme.chipBg, border: `1px solid ${wnTheme.chipBorder}`, color: wnTheme.chipText, backdropFilter: 'blur(6px)' }}>+</button>
         <button onClick={() => zoomBy(1 / 1.3)} aria-label={t('kg.canvas.zoomOut')} title={t('kg.canvas.zoomOut')} className="w-8 h-8 flex items-center justify-center rounded-lg text-sm font-black" style={{ background: wnTheme.chipBg, border: `1px solid ${wnTheme.chipBorder}`, color: wnTheme.chipText, backdropFilter: 'blur(6px)' }}>−</button>
         <button onClick={() => fitView()} aria-label={t('kg.canvas.fit')} title={t('kg.canvas.fit')} className="w-8 h-8 flex items-center justify-center rounded-lg" style={{ background: wnTheme.chipBg, border: `1px solid ${wnTheme.chipBorder}`, color: wnTheme.chipText, backdropFilter: 'blur(6px)' }}>
@@ -1702,6 +1773,8 @@ export const GraphCanvas: React.FC<GraphCanvasProps> = ({
         className="w-full h-full"
         onClick={handleBackgroundClick}
         onDoubleClick={handleBackgroundDoubleClick}
+        onPointerDownCapture={handleSvgPointerDown}
+        onPointerUp={handleSvgPointerUp}
         style={{ touchAction: 'none' }}
       >
         <defs>
@@ -1768,6 +1841,7 @@ export const GraphCanvas: React.FC<GraphCanvasProps> = ({
               return (
                 <GraphEdgeView
                   key={edge.id}
+                  edgeId={edge.id}
                   x1={geom.x1} y1={geom.y1} x2={geom.x2} y2={geom.y2}
                   cx={geom.cx} cy={geom.cy}
                   midX={geom.midX} midY={geom.midY}
@@ -1949,7 +2023,7 @@ export const GraphCanvas: React.FC<GraphCanvasProps> = ({
               onClick={deleteSelectedEdge}
               title={t('kg.canvas.deleteEdge')}
               aria-label={t('kg.canvas.deleteEdge')}
-              className="w-6 h-6 flex items-center justify-center rounded-md bg-white dark:bg-slate-800 text-rose-500 border shrink-0 font-bold"
+              className={`${COARSE_POINTER ? 'w-9 h-9 text-base' : 'w-6 h-6'} flex items-center justify-center rounded-md bg-white dark:bg-slate-800 text-rose-500 border shrink-0 font-bold`}
               style={{ borderColor: 'var(--border-color, #e2e8f0)' }}
             >
               ×
