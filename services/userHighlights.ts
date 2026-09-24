@@ -22,7 +22,10 @@ export interface UserHighlight {
   id: string;
   /** 1-basiert wie die Seitenanzeige im Leser. */
   page: number;
+  /** Markierter Text; leer bei einer frei gesetzten Notiz (siehe pos). */
   quote: string;
+  /** Frei gesetzte Notiz ohne Markierung: Position auf der Seite als Anteil 0 bis 1. */
+  pos?: { x: number; y: number };
   color: HighlightColor;
   note?: string;
   createdAt: number;
@@ -56,6 +59,11 @@ const writeMap = (map: HighlightMap, userId?: string | null): void => {
   }, SYNC_DELAY_MS);
 };
 
+const clamp01 = (v: number) => Math.min(1, Math.max(0, v));
+
+/** Frei gesetzte Notiz (ohne markierten Text). */
+export const isPinNote = (h: Pick<UserHighlight, 'quote' | 'pos'>): boolean => !h.quote && !!h.pos;
+
 const newId = () => `hl_${Date.now().toString(36)}${Math.random().toString(36).slice(2, 7)}`;
 
 /** Sichtbare Markierungen eines Dokuments, nach Seite und Entstehung sortiert. */
@@ -66,13 +74,14 @@ export const getHighlights = (docId: string): UserHighlight[] =>
 
 export const addHighlight = (
   docId: string,
-  input: { page: number; quote: string; color?: HighlightColor; note?: string },
+  input: { page: number; quote?: string; pos?: { x: number; y: number }; color?: HighlightColor; note?: string },
   userId?: string | null,
   now = Date.now(),
 ): UserHighlight => {
   const map = readMap();
   const h: UserHighlight = {
-    id: newId(), page: input.page, quote: input.quote.replace(/\s+/g, ' ').trim(),
+    id: newId(), page: input.page, quote: (input.quote ?? '').replace(/\s+/g, ' ').trim(),
+    ...(input.pos ? { pos: { x: clamp01(input.pos.x), y: clamp01(input.pos.y) } } : {}),
     color: input.color ?? 'yellow', note: input.note, createdAt: now, updatedAt: now,
   };
   map[docId] = [...(map[docId] ?? []), h];

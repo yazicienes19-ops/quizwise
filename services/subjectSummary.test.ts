@@ -53,3 +53,12 @@ describe('buildSubjectSummary mit Markierungen', () => {
     expect(s.markdown).toContain('### Meine Markierungen\n\n- „Halo“ (S. 4): Klausur\n- „Asch“ (S. 7)');
   });
 });
+
+describe('buildSubjectSummary mit freien Notizen', () => {
+  it('zeigt Notizen ohne Markierung mit Seite und Text', () => {
+    const s = buildSubjectSummary('Fach', [doc({ id: 'x', name: 'Folien', digestStatus: 'ready', digestText: 'Inhalt' })],
+      { ...labels, highlights: 'Meine Markierungen', page: n => `S. ${n}` },
+      () => [{ page: 3, quote: '', note: 'Dozent fragen' }]);
+    expect(s.markdown).toContain('- S. 3: Dozent fragen');
+  });
+});

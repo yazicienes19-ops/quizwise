@@ -47,3 +47,15 @@ describe('userHighlights', () => {
     expect(merged[HIGHLIGHTS_KEY].d.map((h: any) => h.id).sort()).toEqual(['a', 'b']);
   });
 });
+
+describe('frei gesetzte Notizen', () => {
+  beforeEach(() => localStorage.clear());
+  it('speichert eine Notiz ohne Markierung mit Position auf der Seite', async () => {
+    const { isPinNote } = await import('./userHighlights');
+    const h = addHighlight('d', { page: 2, pos: { x: 0.25, y: 1.4 }, note: 'Nachfragen' }, null, 1);
+    expect(h).toMatchObject({ quote: '', pos: { x: 0.25, y: 1 }, note: 'Nachfragen' });
+    expect(isPinNote(h)).toBe(true);
+    expect(isPinNote({ quote: 'Text', pos: undefined })).toBe(false);
+    expect(getHighlights('d')).toHaveLength(1);
+  });
+});

@@ -68,7 +68,7 @@ export const HighlightNotePopover: React.FC<Props> = ({ highlight, x, y, onSave,
     >
       <div className="flex gap-2">
         <span className="w-1 self-stretch rounded-full shrink-0" style={{ background: HIGHLIGHT_HEX[highlight.color] }} aria-hidden="true" />
-        <p className="text-[12.5px] leading-snug line-clamp-2" style={{ color: 'var(--text-secondary)' }}>„{highlight.quote}“</p>
+        <p className="text-[12.5px] leading-snug line-clamp-2" style={{ color: 'var(--text-secondary)' }}>{highlight.quote ? `„${highlight.quote}“` : t('hl.pinLabel', { n: highlight.page })}</p>
       </div>
       <textarea
         autoFocus

@@ -20,6 +20,7 @@ export interface SubjectSummaryLabels {
 
 export interface SummaryHighlight { page: number; quote: string; note?: string }
 
+
 export interface SubjectSummary {
   markdown: string;
   included: number;
@@ -44,6 +45,8 @@ const bodyFor = (doc: ProcessedDocument, labels: SubjectSummaryLabels): string |
 const highlightBlock = (list: SummaryHighlight[], labels: SubjectSummaryLabels): string => {
   const lines = list.map(h => {
     const where = labels.page ? ` (${labels.page(h.page)})` : '';
+    // Frei gesetzte Notiz ohne markierten Text: nur Seite und Notiz.
+    if (!h.quote) return `- ${labels.page ? labels.page(h.page) : h.page}${h.note ? `: ${h.note}` : ''}`;
     return `- „${h.quote}“${where}${h.note ? `: ${h.note}` : ''}`;
   });
   return `### ${labels.highlights ?? 'Markierungen'}\n\n${lines.join('\n')}`;
