@@ -17,10 +17,11 @@ import { toast } from '../services/toast';
 import { useTranslation } from '../i18n/I18nProvider';
 import { ReaderTutorPane } from './ReaderTutorPane';
 import { SelectionActionButton, readSelection, selectionQuestion, type ReaderSelection } from './SelectionActionButton';
-import { Highlighter } from 'lucide-react';
+import { Highlighter, StickyNote } from 'lucide-react';
 import { getHighlights, addHighlight, updateHighlight, removeHighlight, restoreHighlight, HIGHLIGHT_HEX, type UserHighlight } from '../services/userHighlights';
 import { PdfHighlightsPanel } from './PdfHighlightsPanel';
 import { CLOUD_PULLED_EVENT } from '../services/syncService';
+import { HighlightNotePopover, NOTE_POPOVER_WIDTH, NOTE_POPOVER_HEIGHT } from './HighlightNotePopover';
 
 /** Ab dieser Verweildauer gilt eine Seite beim Weiterblättern automatisch als gelesen —
  *  schnelles Durchblättern zählt bewusst nicht, der Button bleibt als Abkürzung. */
@@ -92,6 +93,8 @@ export const PdfSplitScreenReader: React.FC<PdfSplitScreenReaderProps> = ({ doc,
   /** Eigene Markierungen (services/userHighlights.ts) und ob die Liste offen ist. */
   const [myHighlights, setMyHighlights] = useState<UserHighlight[]>(() => getHighlights(doc.id));
   const [hlOpen, setHlOpen] = useState(false);
+  /** Offene Notiz-Blase an einer Markierung im PDF. */
+  const [noteOpenId, setNoteOpenId] = useState<string | null>(null);
 
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const firstRectRef = useRef<HTMLDivElement>(null);
@@ -349,16 +352,19 @@ export const PdfSplitScreenReader: React.FC<PdfSplitScreenReaderProps> = ({ doc,
     return () => window.removeEventListener(CLOUD_PULLED_EVENT, refreshHighlights);
   }, [refreshHighlights]);
 
-  const handleHighlightSelection = useCallback(() => {
+  const handleHighlightSelection = useCallback((withNote = false) => {
     if (!selection) return;
-    addHighlight(doc.id, { page: pageNumber, quote: selection.text }, userId);
+    const h = addHighlight(doc.id, { page: pageNumber, quote: selection.text }, userId);
     refreshHighlights();
     setSelection(null);
     window.getSelection()?.removeAllRanges();
-    toast.success(t('hl.added'));
+    // Mit Notiz: Blase direkt an der neuen Markierung öffnen statt einer Meldung.
+    if (withNote) setNoteOpenId(h.id);
+    else toast.success(t('hl.added'));
   }, [selection, doc.id, pageNumber, userId, refreshHighlights, t]);
 
   const handleDeleteHighlight = useCallback((id: string) => {
+    setNoteOpenId(open => (open === id ? null : open));
     removeHighlight(doc.id, id, userId);
     refreshHighlights();
     toast.withAction(t('hl.deleted'), {
@@ -375,6 +381,21 @@ export const PdfSplitScreenReader: React.FC<PdfSplitScreenReaderProps> = ({ doc,
       .map(h => ({ h, rects: findQuoteRects(pageItems.items, h.quote) ?? [] }))
       .filter(x => x.rects.length > 0);
   }, [myHighlights, pageNumber, pageItems]);
+
+  // Notiz-Symbol: am Ende der letzten Zeile einer Markierung (CSS-Pixel auf der Seite).
+  const noteAnchors = useMemo(() => {
+    if (!pageItems || !canvasCss) return [];
+    const sx = canvasCss.w / pageItems.pageW;
+    const sy = canvasCss.h / pageItems.pageH;
+    return pageHighlightRects.map(({ h, rects }) => {
+      const last = rects.reduce((a, b) => (b.y > a.y + 1 || (Math.abs(b.y - a.y) <= 1 && b.x > a.x) ? b : a));
+      return { h, x: Math.min((last.x + last.w) * sx + 2, canvasCss.w - 22), y: Math.max(0, last.y * sy - 12) };
+    });
+  }, [pageHighlightRects, pageItems, canvasCss]);
+  const openNote = noteOpenId ? noteAnchors.find(a => a.h.id === noteOpenId) : undefined;
+
+  // Seitenwechsel schließt eine offene Blase.
+  useEffect(() => { setNoteOpenId(null); }, [pageNumber]);
 
   const handleMarkDone = () => {
     markChapterDone(doc.id, pageIndex, userId);
@@ -639,6 +660,39 @@ export const PdfSplitScreenReader: React.FC<PdfSplitScreenReaderProps> = ({ doc,
                       }}
                     />
                   )))}
+                  {/* Notiz-Symbole: gefüllt mit Notiz, blass ohne. Ein Tipp öffnet die Blase. */}
+                  {canvasCss && noteAnchors.map(({ h, x, y }) => (
+                    <button
+                      key={`note-${h.id}`}
+                      onClick={e => { e.stopPropagation(); setNoteOpenId(open => (open === h.id ? null : h.id)); }}
+                      onMouseUp={e => e.stopPropagation()}
+                      aria-label={h.note ? t('hl.showNote') : t('hl.addNote')}
+                      title={h.note || t('hl.addNote')}
+                      className="absolute z-20 w-5 h-5 rounded-full flex items-center justify-center shadow transition-transform hover:scale-110"
+                      style={{
+                        left: x, top: y,
+                        background: h.note ? HIGHLIGHT_HEX[h.color] : 'var(--bg-sidebar)',
+                        border: `1.5px solid ${HIGHLIGHT_HEX[h.color]}`,
+                        color: h.note ? '#1f1b14' : 'var(--text-secondary)',
+                        opacity: h.note ? 1 : 0.75,
+                      }}
+                    >
+                      <StickyNote className="w-3 h-3" aria-hidden="true" />
+                    </button>
+                  ))}
+                  {canvasCss && openNote && (
+                    <HighlightNotePopover
+                      key={openNote.h.id}
+                      highlight={openNote.h}
+                      x={Math.max(0, Math.min(openNote.x - NOTE_POPOVER_WIDTH / 2, canvasCss.w - NOTE_POPOVER_WIDTH))}
+                      // Unten auf der Seite nach oben aufklappen, sonst ragt die Blase aus dem Bild.
+                      y={openNote.y + 26 + NOTE_POPOVER_HEIGHT > canvasCss.h ? Math.max(0, openNote.y - NOTE_POPOVER_HEIGHT - 6) : openNote.y + 26}
+                      onSave={note => { updateHighlight(doc.id, openNote.h.id, { note }, userId); refreshHighlights(); }}
+                      onColor={color => { updateHighlight(doc.id, openNote.h.id, { color }, userId); refreshHighlights(); }}
+                      onDelete={() => handleDeleteHighlight(openNote.h.id)}
+                      onClose={() => setNoteOpenId(null)}
+                    />
+                  )}
                   {canvasCss && highlightRects && highlight?.page === pageNumber && highlightRects.rects.map((r, i) => (
                     <div
                       key={i}
@@ -686,14 +740,24 @@ export const PdfSplitScreenReader: React.FC<PdfSplitScreenReaderProps> = ({ doc,
                 selection={selection}
                 onClick={handleAskSelection}
                 extra={
+                  <>
                   <button
-                    onClick={handleHighlightSelection}
+                    onClick={() => handleHighlightSelection(true)}
+                    className="flex items-center gap-1.5 px-3.5 py-2 rounded-full text-[11px] font-black uppercase tracking-wide shadow-lg transition-transform hover:scale-105 animate-in fade-in duration-150"
+                    style={{ background: 'var(--bg-sidebar)', color: 'var(--text-main)', border: '1px solid var(--border-color)' }}
+                  >
+                    <StickyNote className="w-3.5 h-3.5" style={{ color: HIGHLIGHT_HEX.yellow }} aria-hidden="true" />
+                    {t('hl.markWithNote')}
+                  </button>
+                  <button
+                    onClick={() => handleHighlightSelection()}
                     className="flex items-center gap-1.5 px-3.5 py-2 rounded-full text-[11px] font-black uppercase tracking-wide shadow-lg transition-transform hover:scale-105 animate-in fade-in duration-150"
                     style={{ background: 'var(--bg-sidebar)', color: 'var(--text-main)', border: '1px solid var(--border-color)' }}
                   >
                     <Highlighter className="w-3.5 h-3.5" style={{ color: HIGHLIGHT_HEX.yellow }} aria-hidden="true" />
                     {t('hl.mark')}
                   </button>
+                  </>
                 }
               />
             )}

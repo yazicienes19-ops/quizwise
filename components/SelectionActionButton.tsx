@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useLayoutEffect, useRef, useState } from 'react';
 import { EmojiImage } from './EmojiImage';
 import { detectSelectionAction, type SelectionAction } from '../services/selectionAction';
 import { useTranslation } from '../i18n/I18nProvider';
@@ -64,8 +64,24 @@ export const SelectionActionButton: React.FC<{ selection: ReaderSelection; onCli
   const anchor: React.CSSProperties = selection.placement === 'above'
     ? { left: selection.x, bottom: `calc(100% - ${selection.y}px)` }
     : { left: selection.x, top: selection.y };
+  // Mehrere Knöpfe sind breiter als die Klemmung in readSelection annimmt:
+  // nach dem Rendern messen und so weit verschieben, dass die Leiste im
+  // umgebenden Bereich bleibt (sonst ragt sie z. B. unter die Seitenleiste).
+  const boxRef = useRef<HTMLDivElement>(null);
+  const [shift, setShift] = useState(0);
+  useLayoutEffect(() => {
+    const box = boxRef.current;
+    const area = box?.offsetParent as HTMLElement | null;
+    if (!box || !area) return;
+    const pad = 8;
+    const half = box.offsetWidth / 2;
+    const left = selection.x - half;
+    const right = selection.x + half;
+    const next = left < pad ? pad - left : right > area.clientWidth - pad ? area.clientWidth - pad - right : 0;
+    setShift(next);
+  }, [selection.x, selection.y, extra]);
   return (
-    <div className="absolute z-20 -translate-x-1/2 flex items-center gap-1.5" style={anchor}>
+    <div ref={boxRef} className="absolute z-20 flex items-center gap-1.5" style={{ ...anchor, transform: `translateX(calc(-50% + ${shift}px))` }}>
       {extra}
       <button
         onClick={onClick}
