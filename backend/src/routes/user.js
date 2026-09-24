@@ -3,6 +3,7 @@ const crypto = require('crypto');
 const Stripe = require('stripe');
 const { supabaseAdmin } = require('../middleware/auth');
 const { buildUserExport } = require('../utils/userExport');
+const { deleteUserStorage } = require('../utils/userStorage');
 const router = express.Router();
 
 const stripe = new Stripe(process.env.STRIPE_SECRET_KEY);
@@ -110,7 +111,7 @@ router.delete('/account', async (req, res, next) => {
     // bestehen und der Nutzer kann es erneut versuchen, statt dass verwaiste
     // Dateien ohne Besitzer zurückbleiben.
     try {
-      await deleteUserStorage(userId);
+      await deleteUserStorage(supabaseAdmin, userId);
     } catch (storageErr) {
       console.error('Storage-Löschung bei Konto-Löschung fehlgeschlagen:', storageErr.message);
       return res.status(502).json({ error: 'Konto konnte nicht gelöscht werden: Deine Dateien ließen sich nicht entfernen. Bitte versuche es erneut oder kontaktiere den Support.' });
