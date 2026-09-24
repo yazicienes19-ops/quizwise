@@ -108,7 +108,7 @@ export const PwaUpdatePrompt: React.FC = () => {
       <div className="flex items-center gap-3 shrink-0">
         <button
           onClick={applyUpdate}
-          className="px-5 py-2.5 rounded-xl bg-indigo-600 hover:bg-indigo-500 text-[11px] font-black uppercase tracking-widest transition-colors shrink-0"
+          className="px-5 py-2.5 rounded-xl bg-indigo-600 hover:bg-indigo-500 text-[13px] font-semibold transition-colors shrink-0"
         >
           {t('pwa.reload')}
         </button>

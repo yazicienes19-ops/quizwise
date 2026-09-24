@@ -525,7 +525,7 @@ export const GraphSystem: React.FC<GraphSystemProps> = ({
         {/* Kompakte Fassung der ruhigen Kopfzeile (PageHeader-Stil), damit die
             Arbeitsfläche Platz behält. */}
         <div className="min-w-0 space-y-1">
-          <p className="text-[11px] font-black uppercase tracking-[0.2em]" style={{ color: 'color-mix(in srgb, var(--primary) 70%, var(--ink))' }}>{t('nav.knowledgeGraph')}</p>
+          <p className="text-[11px] font-semibold uppercase tracking-[0.08em]" style={{ color: 'color-mix(in srgb, var(--primary) 70%, var(--ink))' }}>{t('nav.knowledgeGraph')}</p>
           <h1 className="text-2xl font-normal leading-tight break-words" style={{ color: 'var(--ink)' }}>
             {activeCollection ? `${activeCollection.emoji} ${activeCollection.name}` : t('kg.allSubjects')}
           </h1>
@@ -552,7 +552,7 @@ export const GraphSystem: React.FC<GraphSystemProps> = ({
           >
             {t('kg.tb.insights')}
           </button>
-          <span className="hidden md:inline text-[11px] font-black uppercase tracking-[0.14em] text-slate-400 pl-2" aria-hidden="true">{t('kg.tb.coachLabel')}</span>
+          <span className="hidden md:inline text-[11px] font-semibold uppercase tracking-[0.08em] text-slate-400 pl-2" aria-hidden="true">{t('kg.tb.coachLabel')}</span>
           <button
             onClick={handleCheckMissingRelations}
             disabled={isCheckingRelations}
@@ -613,7 +613,7 @@ export const GraphSystem: React.FC<GraphSystemProps> = ({
             <select
               value={moveTargetId}
               onChange={e => setMoveTargetId(e.target.value)}
-              className="text-[11px] font-black uppercase tracking-widest bg-white dark:bg-slate-800 dark:text-white rounded-xl px-3 py-2 outline-none border"
+              className="text-[13px] font-semibold bg-white dark:bg-slate-800 dark:text-white rounded-xl px-3 py-2 outline-none border"
               style={{ borderColor: 'var(--border-color)' }}
             >
               <option value="">{t('kg.chooseSubject')}</option>
@@ -624,7 +624,7 @@ export const GraphSystem: React.FC<GraphSystemProps> = ({
             <button
               onClick={handleAssignToCollection}
               disabled={!moveTargetId || isMoving}
-              className="text-[11px] font-black uppercase tracking-widest px-4 py-2 rounded-xl text-white disabled:opacity-40 transition-colors"
+              className="text-[13px] font-semibold px-4 py-2 rounded-xl text-white disabled:opacity-40 transition-colors"
               style={{ background: 'var(--primary)' }}
             >
               {isMoving ? '…' : t('kg.assign')}
@@ -661,7 +661,7 @@ export const GraphSystem: React.FC<GraphSystemProps> = ({
             </p>
             <button
               onClick={() => setMissingRelationSuggestions([])}
-              className="text-[11px] font-black uppercase tracking-widest text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 transition-colors shrink-0"
+              className="text-[13px] font-semibold text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 transition-colors shrink-0"
             >
               {t('kg.sugg.ignoreAll')}
             </button>
@@ -678,14 +678,14 @@ export const GraphSystem: React.FC<GraphSystemProps> = ({
                 <div className="flex items-center gap-2 ml-auto shrink-0">
                   <button
                     onClick={() => handleAcceptRelationSuggestion(s)}
-                    className="text-[11px] font-black uppercase tracking-widest px-3 py-2 rounded-xl text-white transition-colors"
+                    className="text-[13px] font-semibold px-3 py-2 rounded-xl text-white transition-colors"
                     style={{ background: 'var(--primary)' }}
                   >
                     {t('kg.sugg.connect')}
                   </button>
                   <button
                     onClick={() => handleDiscardRelationSuggestion(s)}
-                    className="text-[11px] font-black uppercase tracking-widest px-3 py-2 rounded-xl text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors"
+                    className="text-[13px] font-semibold px-3 py-2 rounded-xl text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors"
                   >
                     {t('kg.sugg.ignore')}
                   </button>
@@ -710,7 +710,7 @@ export const GraphSystem: React.FC<GraphSystemProps> = ({
             </p>
             <button
               onClick={() => setDuplicateSuggestions([])}
-              className="text-[11px] font-black uppercase tracking-widest text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 transition-colors shrink-0"
+              className="text-[13px] font-semibold text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 transition-colors shrink-0"
             >
               {t('kg.sugg.ignoreAll')}
             </button>
@@ -732,20 +732,20 @@ export const GraphSystem: React.FC<GraphSystemProps> = ({
                   <div className="flex items-center gap-2 ml-auto shrink-0">
                     <button
                       onClick={() => setMergingPairKey(confirming ? null : key)}
-                      className="text-[11px] font-black uppercase tracking-widest px-3 py-2 rounded-xl text-white transition-colors"
+                      className="text-[13px] font-semibold px-3 py-2 rounded-xl text-white transition-colors"
                       style={{ background: 'var(--primary)' }}
                     >
                       {t('kg.sugg.merge')}
                     </button>
                     <button
                       onClick={() => handleViewDuplicateSuggestion(s)}
-                      className="text-[11px] font-black uppercase tracking-widest px-3 py-2 rounded-xl text-slate-500 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors"
+                      className="text-[13px] font-semibold px-3 py-2 rounded-xl text-slate-500 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors"
                     >
                       {t('kg.sugg.view')}
                     </button>
                     <button
                       onClick={() => handleDiscardDuplicateSuggestion(s)}
-                      className="text-[11px] font-black uppercase tracking-widest px-3 py-2 rounded-xl text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors"
+                      className="text-[13px] font-semibold px-3 py-2 rounded-xl text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors"
                     >
                       {t('kg.sugg.ignore')}
                     </button>
@@ -771,14 +771,14 @@ export const GraphSystem: React.FC<GraphSystemProps> = ({
                     <div className="flex gap-2">
                       <button
                         onClick={() => handleMergeDuplicateSuggestion(s)}
-                        className="text-[11px] font-black uppercase tracking-widest px-4 py-2 rounded-xl text-white transition-colors"
+                        className="text-[13px] font-semibold px-4 py-2 rounded-xl text-white transition-colors"
                         style={{ background: 'var(--primary)' }}
                       >
                         {t('kg.sugg.merge')}
                       </button>
                       <button
                         onClick={() => setMergingPairKey(null)}
-                        className="text-[11px] font-black uppercase tracking-widest px-4 py-2 rounded-xl text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors"
+                        className="text-[13px] font-semibold px-4 py-2 rounded-xl text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors"
                       >
                         {t('quiz.cancel')}
                       </button>
@@ -805,7 +805,7 @@ export const GraphSystem: React.FC<GraphSystemProps> = ({
             </p>
             <button
               onClick={() => setMissingConceptSuggestions([])}
-              className="text-[11px] font-black uppercase tracking-widest text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 transition-colors shrink-0"
+              className="text-[13px] font-semibold text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 transition-colors shrink-0"
             >
               {t('kg.sugg.ignoreAll')}
             </button>
@@ -819,14 +819,14 @@ export const GraphSystem: React.FC<GraphSystemProps> = ({
               <div className="flex items-center gap-2 ml-auto shrink-0">
                 <button
                   onClick={() => handleCreateNodeFromSuggestion(s)}
-                  className="text-[11px] font-black uppercase tracking-widest px-3 py-2 rounded-xl text-white transition-colors"
+                  className="text-[13px] font-semibold px-3 py-2 rounded-xl text-white transition-colors"
                   style={{ background: 'var(--primary)' }}
                 >
                   {t('kg.sugg.createNode')}
                 </button>
                 <button
                   onClick={() => handleDiscardMissingConceptSuggestion(s)}
-                  className="text-[11px] font-black uppercase tracking-widest px-3 py-2 rounded-xl text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors"
+                  className="text-[13px] font-semibold px-3 py-2 rounded-xl text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors"
                 >
                   {t('kg.sugg.ignore')}
                 </button>
@@ -841,7 +841,7 @@ export const GraphSystem: React.FC<GraphSystemProps> = ({
         style={{ background: 'var(--bg-sidebar)', border: '1px solid var(--border-color)' }}
       >
         {graph.loading ? (
-          <div className="absolute inset-0 flex items-center justify-center text-[11px] font-black uppercase tracking-widest text-slate-400">
+          <div className="absolute inset-0 flex items-center justify-center text-[11px] font-semibold uppercase tracking-[0.08em] text-slate-400">
             {t('kg.loading')}
           </div>
         ) : (
@@ -875,7 +875,7 @@ export const GraphSystem: React.FC<GraphSystemProps> = ({
                   <p className="text-xs text-slate-500 dark:text-slate-400 font-medium leading-relaxed">{t('kg.empty.body')}</p>
                   <button
                     onClick={() => { setPaletteQuery(''); setPaletteIndex(0); setPaletteOpen(true); }}
-                    className="px-5 py-3 rounded-2xl text-[11px] font-black uppercase tracking-widest text-white transition-all hover:scale-[1.02]"
+                    className="px-5 py-3 rounded-2xl text-[13px] font-semibold text-white transition-all hover:scale-[1.02]"
                     style={{ background: 'var(--primary)' }}
                   >
                     {t('kg.empty.cta')}
@@ -951,7 +951,7 @@ export const GraphSystem: React.FC<GraphSystemProps> = ({
                 autoFocus
                 className="flex-1 bg-transparent outline-none text-sm font-bold dark:text-white placeholder-slate-400"
               />
-              <kbd className="hidden sm:inline-block text-[11px] font-black uppercase tracking-widest text-slate-400 px-2 py-1 rounded-lg" style={{ border: '1px solid var(--border-color)' }}>Esc</kbd>
+              <kbd className="hidden sm:inline-block text-[11px] font-semibold uppercase tracking-[0.08em] text-slate-400 px-2 py-1 rounded-lg" style={{ border: '1px solid var(--border-color)' }}>Esc</kbd>
             </div>
             <div className="max-h-[46vh] overflow-y-auto p-2">
               {searchResults.map((result, i) => (
@@ -969,7 +969,7 @@ export const GraphSystem: React.FC<GraphSystemProps> = ({
                     style={{ background: 'var(--primary)' }}
                   />
                   <span className="flex-1 min-w-0 text-sm font-black truncate dark:text-white">{result.node.title}</span>
-                  <span className="text-[11px] font-black uppercase tracking-widest text-slate-400 shrink-0">
+                  <span className="text-xs font-semibold text-slate-400 shrink-0">
                     {t(`kg.search.match.${result.matchedOn}` as TKey)}
                   </span>
                 </button>
@@ -987,7 +987,7 @@ export const GraphSystem: React.FC<GraphSystemProps> = ({
                     : undefined}
                 >
                   <span
-                    className="w-5 h-5 rounded-full flex items-center justify-center text-xs font-black shrink-0 text-white"
+                    className="w-5 h-5 rounded-full flex items-center justify-center text-xs font-semibold shrink-0 text-white"
                     style={{ background: 'var(--primary)' }}
                   >
                     +
@@ -999,8 +999,8 @@ export const GraphSystem: React.FC<GraphSystemProps> = ({
               )}
             </div>
             <div className="px-5 py-2.5 border-t flex items-center justify-between" style={{ borderColor: 'var(--border-color)' }}>
-              <p className="text-[11px] font-black uppercase tracking-widest text-slate-400">{t('kg.search.kbdHint')}</p>
-              <p className="text-[11px] font-black uppercase tracking-widest text-slate-400">
+              <p className="text-xs font-semibold text-slate-400">{t('kg.search.kbdHint')}</p>
+              <p className="text-[11px] font-semibold uppercase tracking-[0.08em] text-slate-400">
                 {t('kg.search.count', { n: activeNodeList.length })}
               </p>
             </div>

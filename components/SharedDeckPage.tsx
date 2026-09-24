@@ -67,7 +67,7 @@ export const SharedDeckPage: React.FC<SharedDeckPageProps> = ({
       <div className="min-h-screen flex items-center justify-center" style={{ background: 'var(--bg-main)' }}>
         <div className="text-center space-y-4">
           <div className="w-12 h-12 border-4 border-slate-200 dark:border-slate-700 border-t-indigo-600 rounded-full animate-spin mx-auto" />
-          <p className="text-[11px] font-black uppercase tracking-widest text-slate-400">{t('sdp.loading')}</p>
+          <p className="text-[11px] font-semibold uppercase tracking-[0.08em] text-slate-400">{t('sdp.loading')}</p>
         </div>
       </div>
     );
@@ -82,7 +82,7 @@ export const SharedDeckPage: React.FC<SharedDeckPageProps> = ({
           <p className="text-slate-400 text-sm">{t('sdp.expiredLink')}</p>
           <button
             onClick={() => window.location.href = '/'}
-            className="px-6 py-3 rounded-2xl text-[11px] font-black uppercase tracking-widest transition-all hover:scale-105"
+            className="px-6 py-3 rounded-2xl text-[13px] font-semibold transition-all hover:scale-105"
             style={{ background: 'var(--primary)', color: 'var(--primary-text)' }}
           >
             {t('rpp.backToApp')}
@@ -106,7 +106,7 @@ export const SharedDeckPage: React.FC<SharedDeckPageProps> = ({
           </div>
 
           <div className="px-8 sm:px-10 pt-9 pb-2 text-center">
-            <p className="text-[11px] font-black uppercase tracking-[0.2em] mb-3" style={{ color: 'var(--primary-ink)' }}>
+            <p className="text-[11px] font-semibold uppercase tracking-[0.08em] mb-3" style={{ color: 'var(--primary-ink)' }}>
               {t('sdp.eyebrow')}
             </p>
             <h1 className="text-[28px] sm:text-[32px] leading-tight mb-4" style={{ fontFamily: 'Georgia, "Times New Roman", serif', color: 'var(--text-main)' }}>
@@ -127,7 +127,7 @@ export const SharedDeckPage: React.FC<SharedDeckPageProps> = ({
                 ◆
               </div>
               <div className="min-w-0">
-                <p className="text-[11px] font-black uppercase tracking-widest mb-1" style={{ color: 'var(--primary-ink)' }}>
+                <p className="text-[11px] font-semibold uppercase tracking-[0.08em] mb-1" style={{ color: 'var(--primary-ink)' }}>
                   {t('sdp.cardLabel')}
                 </p>
                 <p className="text-lg mb-0.5 truncate" style={{ fontFamily: 'Georgia, "Times New Roman", serif', color: 'var(--text-main)' }}>
@@ -147,7 +147,7 @@ export const SharedDeckPage: React.FC<SharedDeckPageProps> = ({
                 <p className="font-black text-lg text-emerald-600">{t('sdp.accepted')}</p>
                 <button
                   onClick={() => window.location.href = '/'}
-                  className="px-6 py-3 rounded-2xl text-[11px] font-black uppercase tracking-widest transition-all hover:scale-105"
+                  className="px-6 py-3 rounded-2xl text-[13px] font-semibold transition-all hover:scale-105"
                   style={{ background: 'var(--primary)', color: 'var(--primary-text)' }}
                 >
                   {t('sdp.learnInApp')}
@@ -157,7 +157,7 @@ export const SharedDeckPage: React.FC<SharedDeckPageProps> = ({
               <>
                 <button
                   onClick={handleAccept}
-                  className="w-full py-4 rounded-2xl font-black uppercase tracking-widest text-[13px] transition-all hover:scale-[1.02]"
+                  className="w-full py-4 rounded-2xl font-semibold text-[13px] transition-all hover:scale-[1.02]"
                   style={{ background: 'var(--text-main)', color: 'var(--bg-sidebar)' }}
                 >
                   {t('sdp.acceptButton')} →
@@ -173,7 +173,7 @@ export const SharedDeckPage: React.FC<SharedDeckPageProps> = ({
           {/* What you get */}
           <div className="px-8 sm:px-10 pt-8 pb-9">
             <div style={{ borderTop: '1px solid var(--border-color)' }} className="pt-7">
-              <p className="text-[11px] font-black uppercase tracking-widest mb-4" style={{ color: 'var(--text-secondary)' }}>
+              <p className="text-[11px] font-semibold uppercase tracking-[0.08em] mb-4" style={{ color: 'var(--text-secondary)' }}>
                 {t('sdp.whatYouGet')}
               </p>
               <ul className="space-y-3">

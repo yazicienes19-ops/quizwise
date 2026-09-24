@@ -89,7 +89,7 @@ export const LibraryImportStep: React.FC<LibraryImportStepProps> = ({
       {mode === 'text' && (
         <div className="space-y-3">
           <label className="block">
-            <span className="block text-[11px] font-black uppercase tracking-widest text-slate-400 mb-1.5">
+            <span className="block text-[11px] font-semibold uppercase tracking-[0.08em] text-slate-400 mb-1.5">
               {t('onboarding.flow.import.textTitleLabel')}
             </span>
             <input
@@ -101,7 +101,7 @@ export const LibraryImportStep: React.FC<LibraryImportStepProps> = ({
             />
           </label>
           <label className="block">
-            <span className="block text-[11px] font-black uppercase tracking-widest text-slate-400 mb-1.5">
+            <span className="block text-[11px] font-semibold uppercase tracking-[0.08em] text-slate-400 mb-1.5">
               {t('onboarding.flow.import.textLabel')}
             </span>
             <textarea
@@ -117,7 +117,7 @@ export const LibraryImportStep: React.FC<LibraryImportStepProps> = ({
 
       {mode === 'link' && (
         <label className="block">
-          <span className="block text-[11px] font-black uppercase tracking-widest text-slate-400 mb-1.5">
+          <span className="block text-[11px] font-semibold uppercase tracking-[0.08em] text-slate-400 mb-1.5">
             {t('onboarding.flow.import.linkLabel')}
           </span>
           <input

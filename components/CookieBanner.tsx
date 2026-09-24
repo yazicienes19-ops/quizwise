@@ -17,7 +17,7 @@ export const CookieBanner: React.FC<CookieBannerProps> = ({ onAccept, onDecline,
       style={{ background: 'var(--bg-sidebar)', borderColor: 'var(--border-color)' }}
     >
       <div className="flex-1 min-w-0">
-        <p className="text-[11px] font-black uppercase tracking-widest mb-1" style={{ color: 'var(--primary-ink)' }}>
+        <p className="text-[11px] font-semibold uppercase tracking-[0.08em] mb-1" style={{ color: 'var(--primary-ink)' }}>
           {t('cookie.title')}
         </p>
         <p className="text-xs text-slate-600 dark:text-slate-400 leading-relaxed">
@@ -30,21 +30,21 @@ export const CookieBanner: React.FC<CookieBannerProps> = ({ onAccept, onDecline,
       <div className="flex items-center gap-2 shrink-0 flex-wrap">
         <button
           onClick={onShowSettings}
-          className="px-4 py-2.5 rounded-xl text-[11px] font-black uppercase tracking-widest hover:scale-105 transition-transform"
+          className="px-4 py-2.5 rounded-xl text-[13px] font-semibold hover:scale-105 transition-transform"
           style={{ color: 'var(--text-main)', background: 'var(--border-color)' }}
         >
           {t('cookie.adjust')}
         </button>
         <button
           onClick={onDecline}
-          className="px-4 py-2.5 rounded-xl text-[11px] font-black uppercase tracking-widest hover:scale-105 transition-transform"
+          className="px-4 py-2.5 rounded-xl text-[13px] font-semibold hover:scale-105 transition-transform"
           style={{ color: 'var(--text-main)', background: 'var(--border-color)' }}
         >
           {t('cookie.decline')}
         </button>
         <button
           onClick={onAccept}
-          className="px-5 py-2.5 rounded-xl text-[11px] font-black uppercase tracking-widest text-white hover:scale-105 transition-transform"
+          className="px-5 py-2.5 rounded-xl text-[13px] font-semibold text-white hover:scale-105 transition-transform"
           style={{ background: 'var(--primary)' }}
         >
           {t('cookie.accept')}

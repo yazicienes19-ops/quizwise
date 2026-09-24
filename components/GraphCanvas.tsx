@@ -1684,7 +1684,7 @@ export const GraphCanvas: React.FC<GraphCanvasProps> = ({
       `}</style>
       {selection.selectedNodeId && state.nodesById.get(selection.selectedNodeId) && (
         <div className="absolute top-3 left-4 z-10 pointer-events-none">
-          <p className="m-0 text-[11px] font-bold uppercase tracking-[0.2em]" style={{ color: wnTheme.focusEyebrow }}>{t('kg.canvas.focus')}</p>
+          <p className="m-0 text-[11px] font-bold uppercase tracking-[0.08em]" style={{ color: wnTheme.focusEyebrow }}>{t('kg.canvas.focus')}</p>
           <p className="m-0 mt-0.5 text-sm font-bold" style={{ color: wnTheme.focusLabel }}>
             {state.nodesById.get(selection.selectedNodeId)!.title}
           </p>
@@ -1939,7 +1939,7 @@ export const GraphCanvas: React.FC<GraphCanvasProps> = ({
               <button
                 onClick={() => onExplainEdge(edge.id)}
                 title={t('kg.canvas.explainEdge')}
-                className="h-6 px-2 flex items-center justify-center rounded-md bg-white dark:bg-slate-800 text-[11px] font-black uppercase tracking-wide text-slate-500 dark:text-slate-300 border shrink-0"
+                className="h-6 px-2 flex items-center justify-center rounded-md bg-white dark:bg-slate-800 text-[13px] font-semibold text-slate-500 dark:text-slate-300 border shrink-0"
                 style={{ borderColor: 'var(--border-color, #e2e8f0)' }}
               >
                 {t('kg.canvas.explain')}

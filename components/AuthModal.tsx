@@ -112,10 +112,10 @@ export const AuthModal: React.FC<AuthModalProps> = ({ onClose, onSuccess }) => {
           <div className="flex items-center gap-3">
             <BrandMark size={26} strokeColor="var(--mark-stroke)" peakColor="var(--mark-peak)" className="shrink-0" />
             <div>
-              <h2 id={titleId} className="text-base font-black uppercase tracking-tight" style={{ color: 'var(--text-main)' }}>
+              <h2 id={titleId} className="text-base font-semibold tracking-tight" style={{ color: 'var(--text-main)' }}>
                 Stude<span style={{ color: 'var(--mark-peak)' }}>Arc</span>
               </h2>
-              <p id={descriptionId} className="text-[11px] text-slate-400 font-black uppercase tracking-widest">
+              <p id={descriptionId} className="text-[11px] text-slate-400 font-semibold uppercase tracking-[0.08em]">
                 {mode === 'login' ? t('auth.welcomeBack') : mode === 'forgot' ? t('auth.resetTitle') : t('auth.createAccount')}
               </p>
             </div>
@@ -137,7 +137,7 @@ export const AuthModal: React.FC<AuthModalProps> = ({ onClose, onSuccess }) => {
                 <button
                   key={m}
                   onClick={() => { setMode(m); setError(''); setSuccessMsg(''); }}
-                  className="flex-1 py-2.5 rounded-xl text-[11px] font-black uppercase tracking-widest transition-all"
+                  className="flex-1 py-2.5 rounded-xl text-[13px] font-semibold transition-all"
                   style={mode === m
                     ? { background: 'var(--primary)', color: 'var(--primary-text)', boxShadow: '0 4px 12px color-mix(in srgb, var(--primary) 30%, transparent)' }
                     : { color: 'var(--text-secondary)' }
@@ -173,7 +173,7 @@ export const AuthModal: React.FC<AuthModalProps> = ({ onClose, onSuccess }) => {
 
         <div className="px-8 pt-5 flex items-center gap-3">
           <div className="flex-1 h-px" style={{ background: 'var(--border-color)' }} />
-          <span className="text-[11px] font-black uppercase tracking-widest text-slate-400">{t('auth.orDivider')}</span>
+          <span className="text-[11px] font-semibold uppercase tracking-[0.08em] text-slate-400">{t('auth.orDivider')}</span>
           <div className="flex-1 h-px" style={{ background: 'var(--border-color)' }} />
         </div>
         </>
@@ -183,7 +183,7 @@ export const AuthModal: React.FC<AuthModalProps> = ({ onClose, onSuccess }) => {
         <form onSubmit={handleSubmit} className="p-8 pt-5 space-y-4">
           {mode === 'register' && (
             <div className="space-y-1.5">
-              <label className="text-[11px] font-black uppercase tracking-widest text-slate-400">{t('auth.name')}</label>
+              <label className="text-[11px] font-semibold uppercase tracking-[0.08em] text-slate-400">{t('auth.name')}</label>
               <div className="relative">
                 <User className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" strokeWidth={1.75} />
                 <input
@@ -200,7 +200,7 @@ export const AuthModal: React.FC<AuthModalProps> = ({ onClose, onSuccess }) => {
           )}
 
           <div className="space-y-1.5">
-            <label className="text-[11px] font-black uppercase tracking-widest text-slate-400">{t('auth.email')}</label>
+            <label className="text-[11px] font-semibold uppercase tracking-[0.08em] text-slate-400">{t('auth.email')}</label>
             <div className="relative">
               <Mail className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" strokeWidth={1.75} />
               <input
@@ -217,7 +217,7 @@ export const AuthModal: React.FC<AuthModalProps> = ({ onClose, onSuccess }) => {
 
           {mode !== 'forgot' && (
           <div className="space-y-1.5">
-            <label className="text-[11px] font-black uppercase tracking-widest text-slate-400">{t('auth.password')}</label>
+            <label className="text-[11px] font-semibold uppercase tracking-[0.08em] text-slate-400">{t('auth.password')}</label>
             <div className="relative">
               <Lock className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" strokeWidth={1.75} />
               <input
@@ -262,7 +262,7 @@ export const AuthModal: React.FC<AuthModalProps> = ({ onClose, onSuccess }) => {
           <button
             type="submit"
             disabled={isLoading}
-            className="w-full py-4 rounded-2xl text-[11px] font-black uppercase tracking-widest transition-all hover:scale-[1.02] shadow-lg disabled:opacity-40 disabled:cursor-not-allowed flex items-center justify-center gap-2"
+            className="w-full py-4 rounded-2xl text-[13px] font-semibold transition-all hover:scale-[1.02] shadow-lg disabled:opacity-40 disabled:cursor-not-allowed flex items-center justify-center gap-2"
             style={{ background: 'var(--primary)', color: 'var(--primary-text)' }}
           >
             {isLoading

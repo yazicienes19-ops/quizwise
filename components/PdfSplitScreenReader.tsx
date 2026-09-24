@@ -473,7 +473,7 @@ export const PdfSplitScreenReader: React.FC<PdfSplitScreenReaderProps> = ({ doc,
     return (
       <div className="max-w-3xl mx-auto py-20 px-4 text-center space-y-4">
         <p className="text-lg font-black dark:text-white">{t('rd.pdfLoadFailed')}</p>
-        <button onClick={onBack} className="px-6 py-3 rounded-2xl text-[11px] font-black uppercase tracking-widest" style={{ background: 'var(--primary)', color: 'var(--primary-text)' }}>
+        <button onClick={onBack} className="px-6 py-3 rounded-2xl text-[13px] font-semibold" style={{ background: 'var(--primary)', color: 'var(--primary-text)' }}>
           {t('rd.backToLibrary')}
         </button>
       </div>
@@ -484,7 +484,7 @@ export const PdfSplitScreenReader: React.FC<PdfSplitScreenReaderProps> = ({ doc,
     return (
       <div className="flex flex-col items-center justify-center py-32 gap-4">
         <div className="w-8 h-8 border-4 border-slate-200 dark:border-slate-700 rounded-full animate-spin" style={{ borderTopColor: 'var(--primary)' }} />
-        <p className="text-[11px] font-black uppercase tracking-widest text-slate-400">{t('rd.pdfLoading')}</p>
+        <p className="text-xs font-semibold text-slate-400">{t('rd.pdfLoading')}</p>
       </div>
     );
   }
@@ -507,7 +507,7 @@ export const PdfSplitScreenReader: React.FC<PdfSplitScreenReaderProps> = ({ doc,
             <path d="M6 4h9l3 3v13H6z"/><path d="M15 4v3h3"/><path d="M9 12h6M9 16h6"/>
           </svg>
         </button>
-        <button onClick={onBack} aria-label={t('quizSetup.backToLibrary')} className="shrink-0 text-[11px] font-black uppercase tracking-widest text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 transition-colors">
+        <button onClick={onBack} aria-label={t('quizSetup.backToLibrary')} className="shrink-0 text-[13px] font-semibold text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 transition-colors">
           {t('rd.back')}
         </button>
         <div className="min-w-0 flex-1">
@@ -556,7 +556,7 @@ export const PdfSplitScreenReader: React.FC<PdfSplitScreenReaderProps> = ({ doc,
             className="absolute inset-y-0 left-0 w-[280px] max-w-[80%] rounded-l-[20px] flex flex-col z-20 shadow-2xl transition-transform duration-200"
             style={{ background: 'var(--bg-main)', borderRight: '1px solid var(--border-color)', transform: tocOpen ? 'translateX(0)' : 'translateX(-100%)' }}
           >
-            <div className="shrink-0 px-5 py-4 flex items-center gap-2 text-[11px] font-black uppercase tracking-[0.12em]" style={{ color: 'var(--text-main)', opacity: 0.55, borderBottom: '1px solid var(--border-color)' }}>
+            <div className="shrink-0 px-5 py-4 flex items-center gap-2 text-[11px] font-semibold uppercase tracking-[0.08em]" style={{ color: 'var(--text-main)', opacity: 0.55, borderBottom: '1px solid var(--border-color)' }}>
               <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><path d="M4 6h16M4 12h16M4 18h10"/></svg>
               {t('rd.tocTitle')}
             </div>
@@ -576,7 +576,7 @@ export const PdfSplitScreenReader: React.FC<PdfSplitScreenReaderProps> = ({ doc,
 
           {/* Kompakte Werkzeugleiste: Seite, Zoom, Gelesen-Status */}
           <div className="flex items-center justify-between gap-2 flex-wrap">
-            <div className="flex items-center gap-1.5 text-[11px] font-black dark:text-white">
+            <div className="flex items-center gap-1.5 text-[11px] font-semibold dark:text-white">
               <input
                 type="number"
                 min={1}
@@ -604,7 +604,7 @@ export const PdfSplitScreenReader: React.FC<PdfSplitScreenReaderProps> = ({ doc,
             <button
               onClick={() => setHlOpen(o => !o)}
               aria-expanded={hlOpen}
-              className="flex items-center gap-1.5 px-3 py-2 rounded-xl text-[11px] font-black uppercase tracking-widest transition-all"
+              className="flex items-center gap-1.5 px-3 py-2 rounded-xl text-[13px] font-semibold transition-all"
               style={{ background: 'var(--bg-main)', border: '1px solid var(--border-color)', color: 'var(--text-main)' }}
             >
               <Highlighter className="w-3.5 h-3.5" aria-hidden="true" />
@@ -621,7 +621,7 @@ export const PdfSplitScreenReader: React.FC<PdfSplitScreenReaderProps> = ({ doc,
               >
                 −
               </button>
-              <span className="text-[11px] font-black uppercase tracking-widest text-slate-400 w-10 text-center">{Math.round(zoom * 100)}%</span>
+              <span className="text-xs font-semibold text-slate-400 w-10 text-center">{Math.round(zoom * 100)}%</span>
               <button
                 onClick={() => setZoom(z => Math.min(3, Math.round((z + 0.25) * 100) / 100))}
                 disabled={zoom >= 3}
@@ -635,7 +635,7 @@ export const PdfSplitScreenReader: React.FC<PdfSplitScreenReaderProps> = ({ doc,
             <button
               onClick={handleMarkDone}
               disabled={activeDone}
-              className="px-4 py-2 rounded-xl text-[11px] font-black uppercase tracking-widest transition-all hover:scale-[1.02] disabled:cursor-not-allowed"
+              className="px-4 py-2 rounded-xl text-[13px] font-semibold transition-all hover:scale-[1.02] disabled:cursor-not-allowed"
               style={activeDone
                 ? { background: 'var(--bg-main)', border: '1px solid var(--border-color)', color: 'var(--text-main)', opacity: 0.7 }
                 : { background: 'color-mix(in srgb, var(--primary) 12%, transparent)', color: 'var(--primary-ink)', border: '1px solid color-mix(in srgb, var(--primary) 30%, transparent)' }}
@@ -791,7 +791,7 @@ export const PdfSplitScreenReader: React.FC<PdfSplitScreenReaderProps> = ({ doc,
                   <>
                   <button
                     onClick={() => handleHighlightSelection(true)}
-                    className="flex items-center gap-1.5 px-3.5 py-2 rounded-full text-[11px] font-black uppercase tracking-wide shadow-lg transition-transform hover:scale-105 animate-in fade-in duration-150"
+                    className="flex items-center gap-1.5 px-3.5 py-2 rounded-full text-[13px] font-semibold shadow-lg transition-transform hover:scale-105 animate-in fade-in duration-150"
                     style={{ background: 'var(--bg-sidebar)', color: 'var(--text-main)', border: '1px solid var(--border-color)' }}
                   >
                     <StickyNote className="w-3.5 h-3.5" style={{ color: HIGHLIGHT_HEX.yellow }} aria-hidden="true" />
@@ -799,7 +799,7 @@ export const PdfSplitScreenReader: React.FC<PdfSplitScreenReaderProps> = ({ doc,
                   </button>
                   <button
                     onClick={() => handleHighlightSelection()}
-                    className="flex items-center gap-1.5 px-3.5 py-2 rounded-full text-[11px] font-black uppercase tracking-wide shadow-lg transition-transform hover:scale-105 animate-in fade-in duration-150"
+                    className="flex items-center gap-1.5 px-3.5 py-2 rounded-full text-[13px] font-semibold shadow-lg transition-transform hover:scale-105 animate-in fade-in duration-150"
                     style={{ background: 'var(--bg-sidebar)', color: 'var(--text-main)', border: '1px solid var(--border-color)' }}
                   >
                     <Highlighter className="w-3.5 h-3.5" style={{ color: HIGHLIGHT_HEX.yellow }} aria-hidden="true" />
@@ -837,7 +837,7 @@ export const PdfSplitScreenReader: React.FC<PdfSplitScreenReaderProps> = ({ doc,
                 <div className="flex items-center gap-2 flex-wrap">
                   <p className="text-sm font-black dark:text-white break-words">{entry.concept}</p>
                   {entry.expandedScope && (
-                    <span className="shrink-0 px-2 py-0.5 rounded-full text-[11px] font-black uppercase tracking-widest" style={{ background: 'color-mix(in srgb, var(--primary) 15%, transparent)', color: 'var(--primary-ink)' }}>
+                    <span className="shrink-0 px-2 py-0.5 rounded-full text-xs font-semibold" style={{ background: 'color-mix(in srgb, var(--primary) 15%, transparent)', color: 'var(--primary-ink)' }}>
                       {t('rd.expandedScope')}
                     </span>
                   )}
@@ -855,7 +855,7 @@ export const PdfSplitScreenReader: React.FC<PdfSplitScreenReaderProps> = ({ doc,
                     {entry.quote && (
                       <div className="rounded-2xl p-3.5" style={{ background: 'color-mix(in srgb, var(--primary) 8%, transparent)', border: '1px solid color-mix(in srgb, var(--primary) 25%, transparent)' }}>
                         <div className="flex items-center justify-between gap-2 mb-1">
-                          <p className="text-[11px] font-black uppercase tracking-widest" style={{ color: 'var(--primary-ink)' }}>
+                          <p className="text-xs font-semibold" style={{ color: 'var(--primary-ink)' }}>
                             {entry.expandedScope ? t('rd.quoteSourceDoc') : t('rd.quoteSourcePage', { n: pageNumber })}
                           </p>
                           {/* Zitate aus dem Gesamtdokument stehen nicht auf dieser Seite, dafür gibt es keine Markierung */}
@@ -865,7 +865,7 @@ export const PdfSplitScreenReader: React.FC<PdfSplitScreenReaderProps> = ({ doc,
                                 ? null
                                 : { page: pageNumber, quote: entry.quote! }
                             )}
-                            className="shrink-0 text-[11px] font-black uppercase tracking-widest px-2 py-1 rounded-lg transition-all hover:scale-[1.03]"
+                            className="shrink-0 text-[13px] font-semibold px-2 py-1 rounded-lg transition-all hover:scale-[1.03]"
                             style={highlight?.page === pageNumber && highlight?.quote === entry.quote
                               ? { background: 'var(--primary)', color: 'var(--primary-text)' }
                               : { border: '1px solid color-mix(in srgb, var(--primary) 40%, transparent)', color: 'var(--primary-ink)' }}
@@ -882,7 +882,7 @@ export const PdfSplitScreenReader: React.FC<PdfSplitScreenReaderProps> = ({ doc,
                           <button
                             key={q}
                             onClick={() => handleAsk(q)}
-                            className="px-3 py-1.5 rounded-xl text-[11px] font-black transition-all hover:scale-[1.03] text-left"
+                            className="px-3 py-1.5 rounded-xl text-[13px] font-semibold transition-all hover:scale-[1.03] text-left"
                             style={{
                               background: 'color-mix(in srgb, var(--primary) 10%, transparent)',
                               color: 'var(--primary-ink)',

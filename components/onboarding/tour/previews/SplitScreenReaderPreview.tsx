@@ -16,7 +16,7 @@ export const SplitScreenReaderPreview: React.FC = () => {
         className="flex-[1.2] min-w-0 rounded-[10px] p-2.5"
         style={{ background: 'var(--bg-main)', border: '1px solid var(--border-color)' }}
       >
-        <p className="text-[11px] font-black uppercase tracking-widest mb-1.5 opacity-60" style={{ color: 'var(--text-main)' }}>
+        <p className="text-[11px] font-semibold uppercase tracking-[0.08em] mb-1.5 opacity-60" style={{ color: 'var(--text-main)' }}>
           {t('onboarding.tour.explainer.docLabel')}
         </p>
         <p
@@ -35,7 +35,7 @@ export const SplitScreenReaderPreview: React.FC = () => {
         className="flex-1 min-w-0 rounded-[10px] p-2.5 space-y-1.5"
         style={{ background: 'color-mix(in srgb, var(--primary) 10%, var(--bg-main))', border: '1px solid var(--border-color)' }}
       >
-        <p className="text-[11px] font-black uppercase tracking-widest opacity-60" style={{ color: 'var(--text-main)' }}>
+        <p className="text-[11px] font-semibold uppercase tracking-[0.08em] opacity-60" style={{ color: 'var(--text-main)' }}>
           {t('nav.explainer')}
         </p>
         <p className="text-[11px] font-bold" style={{ color: 'var(--text-main)' }}>"Was bedeutet das hier?"</p>

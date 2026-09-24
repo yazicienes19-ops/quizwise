@@ -151,11 +151,11 @@ export const FlashcardPlayer: React.FC<FlashcardPlayerProps> = ({ cards, onRevie
           </div>
           {presses > 0 && (
             <div className="flex justify-center gap-2 flex-wrap">
-              <span className="px-3 py-1.5 rounded-full text-[11px] font-black uppercase tracking-widest bg-emerald-50 dark:bg-emerald-900/20 text-emerald-600 dark:text-emerald-400">
+              <span className="px-3 py-1.5 rounded-full text-[11px] font-semibold uppercase tracking-[0.08em] bg-emerald-50 dark:bg-emerald-900/20 text-emerald-600 dark:text-emerald-400">
                 {t('fc.summaryKnown', { n: knownPct })}
               </span>
               {tally.again > 0 && (
-                <span className="px-3 py-1.5 rounded-full text-[11px] font-black uppercase tracking-widest bg-rose-50 dark:bg-rose-900/20 text-rose-600 dark:text-rose-400">
+                <span className="px-3 py-1.5 rounded-full text-[11px] font-semibold uppercase tracking-[0.08em] bg-rose-50 dark:bg-rose-900/20 text-rose-600 dark:text-rose-400">
                   {t('fc.summaryAgain', { n: tally.again })}
                 </span>
               )}
@@ -166,7 +166,7 @@ export const FlashcardPlayer: React.FC<FlashcardPlayerProps> = ({ cards, onRevie
             {canContinue && (
               <button
                 onClick={onContinue}
-                className="px-8 py-4 rounded-full text-[11px] font-black uppercase tracking-widest shadow-xl hover:scale-105 transition-all"
+                className="px-8 py-4 rounded-full text-[13px] font-semibold shadow-xl hover:scale-105 transition-all"
                 style={{ background: 'var(--primary)', color: 'var(--primary-text)' }}
               >
                 {t('fc.continueLearning')}
@@ -202,42 +202,42 @@ export const FlashcardPlayer: React.FC<FlashcardPlayerProps> = ({ cards, onRevie
       <div className="p-4 md:p-6 px-4 md:px-12 flex justify-between items-center bg-white dark:bg-slate-900 border-b border-slate-200 dark:border-slate-800 shadow-sm">
         {practiceMode ? (
           <div className="flex items-center gap-3">
-            <span className="inline-flex items-center gap-1.5 bg-emerald-50 dark:bg-emerald-900/20 text-emerald-600 dark:text-emerald-400 text-[11px] font-black uppercase tracking-widest px-3 py-1.5 rounded-full">
+            <span className="inline-flex items-center gap-1.5 bg-emerald-50 dark:bg-emerald-900/20 text-emerald-600 dark:text-emerald-400 text-[11px] font-semibold uppercase tracking-[0.08em] px-3 py-1.5 rounded-full">
               <svg xmlns="http://www.w3.org/2000/svg" width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round"><polyline points="23 4 23 10 17 10"/><path d="M3.51 9a9 9 0 0 1 14.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0 0 20.49 15"/></svg>
               {t('fc.practiceFree')}
             </span>
-            <span className="text-[11px] font-black text-slate-400 uppercase tracking-widest hidden sm:inline">{t('fc.notCounted', { n: stats.remaining })}</span>
+            <span className="text-xs font-semibold text-slate-400 hidden sm:inline">{t('fc.notCounted', { n: stats.remaining })}</span>
           </div>
         ) : (
         <div className="flex gap-4 md:gap-8">
           <div className="flex items-center gap-2">
-            <span className="text-[11px] font-black text-blue-500 uppercase tracking-widest">{stats.newCount}</span>
-            <span className="text-[11px] font-black text-slate-300 uppercase tracking-widest">{t('fc.new')}</span>
+            <span className="text-xs font-semibold text-blue-500">{stats.newCount}</span>
+            <span className="text-[11px] font-semibold text-slate-300 uppercase tracking-[0.08em]">{t('fc.new')}</span>
           </div>
           <div className="flex items-center gap-2">
-            <span className="text-[11px] font-black text-rose-500 uppercase tracking-widest">{stats.learnCount}</span>
-            <span className="text-[11px] font-black text-slate-300 uppercase tracking-widest">{t('fc.learning')}</span>
+            <span className="text-xs font-semibold text-rose-500">{stats.learnCount}</span>
+            <span className="text-[11px] font-semibold text-slate-300 uppercase tracking-[0.08em]">{t('fc.learning')}</span>
           </div>
           <div className="flex items-center gap-2">
-            <span className="text-[11px] font-black text-emerald-500 uppercase tracking-widest">{stats.reviewCount}</span>
-            <span className="text-[11px] font-black text-slate-300 uppercase tracking-widest">{t('fc.due')}</span>
+            <span className="text-xs font-semibold text-emerald-500">{stats.reviewCount}</span>
+            <span className="text-[11px] font-semibold text-slate-300 uppercase tracking-[0.08em]">{t('fc.due')}</span>
           </div>
         </div>
         )}
         <div className="flex items-center gap-3">
-          <label className="flex items-center gap-1.5 text-[11px] font-black uppercase tracking-widest text-slate-500">
+          <label className="flex items-center gap-1.5 text-xs font-semibold text-slate-500">
             <ArrowLeftRight className="w-3.5 h-3.5" aria-hidden="true" />
             <span className="sr-only">{t('fc.direction')}</span>
             <select
               value={direction}
               onChange={e => { const d = e.target.value as CardDirection; setDirection(d); setCardDirection(d); setShowAnswer(false); }}
               aria-label={t('fc.direction')}
-              className="bg-transparent font-black uppercase tracking-widest cursor-pointer outline-none text-slate-600 dark:text-slate-300"
+              className="bg-transparent font-semibold cursor-pointer outline-none text-slate-600 dark:text-slate-300"
             >
               {CARD_DIRECTIONS.map(d => <option key={d} value={d}>{t(`fc.direction.${d}` as const)}</option>)}
             </select>
           </label>
-          <span className="text-[11px] font-black text-slate-300 uppercase tracking-widest hidden md:inline">{t('fc.keyEsc')}</span>
+          <span className="text-[11px] font-semibold text-slate-300 uppercase tracking-[0.08em] hidden md:inline">{t('fc.keyEsc')}</span>
           <button aria-label={t('fc.closeSession')}
             onClick={onClose}
             className="text-slate-400 hover:text-rose-500 transition-colors p-2"
@@ -280,7 +280,7 @@ export const FlashcardPlayer: React.FC<FlashcardPlayerProps> = ({ cards, onRevie
           {!showAnswer ? (
             <button
               onClick={() => setShowAnswer(true)}
-              className="bg-slate-900 dark:bg-slate-700 text-white px-8 md:px-20 py-5 md:py-6 rounded-2xl font-black uppercase tracking-[0.2em] md:tracking-[0.14em] text-xs md:text-sm shadow-2xl hover:scale-105 transition-all w-full md:w-auto md:min-w-[350px]"
+              className="bg-slate-900 dark:bg-slate-700 text-white px-8 md:px-20 py-5 md:py-6 rounded-2xl font-semibold text-xs md:text-sm shadow-2xl hover:scale-105 transition-all w-full md:w-auto md:min-w-[350px]"
             >
               {t('fc.showAnswer')}
             </button>
@@ -290,7 +290,7 @@ export const FlashcardPlayer: React.FC<FlashcardPlayerProps> = ({ cards, onRevie
                 onClick={() => handleDifficulty('again')}
                 className="group flex flex-col items-center gap-2"
               >
-                <div className="w-full bg-rose-500 text-white py-4 md:py-5 rounded-xl md:rounded-2xl font-black uppercase text-[11px] md:text-xs tracking-widest shadow-lg hover:brightness-110 active:scale-95 transition-all">
+                <div className="w-full bg-rose-500 text-white py-4 md:py-5 rounded-xl md:rounded-2xl font-semibold uppercase text-[11px] md:text-xs tracking-[0.08em] shadow-lg hover:brightness-110 active:scale-95 transition-all">
                   {t('fc.again')}
                 </div>
                 <span className="text-[11px] md:text-[11px] font-bold text-slate-300 opacity-60">{t('fc.key1')}</span>
@@ -299,7 +299,7 @@ export const FlashcardPlayer: React.FC<FlashcardPlayerProps> = ({ cards, onRevie
                 onClick={() => handleDifficulty('good')}
                 className="group flex flex-col items-center gap-2"
               >
-                <div className="w-full bg-emerald-500 text-white py-4 md:py-5 rounded-xl md:rounded-2xl font-black uppercase text-[11px] md:text-xs tracking-widest shadow-lg hover:brightness-110 active:scale-95 transition-all">
+                <div className="w-full bg-emerald-500 text-white py-4 md:py-5 rounded-xl md:rounded-2xl font-semibold uppercase text-[11px] md:text-xs tracking-[0.08em] shadow-lg hover:brightness-110 active:scale-95 transition-all">
                   {t('fc.known')}
                 </div>
                 <span className="text-[11px] md:text-[11px] font-bold text-slate-300 opacity-60">{t('fc.key3Space')}</span>
@@ -318,8 +318,8 @@ export const FlashcardPlayer: React.FC<FlashcardPlayerProps> = ({ cards, onRevie
                   onClick={() => handleDifficulty(btn.id)}
                   className="group flex flex-col items-center gap-2"
                 >
-                  <span className="text-[11px] md:text-[11px] font-black text-slate-400 group-hover:text-slate-900 dark:group-hover:text-white transition-colors uppercase tracking-widest">{getIntervalLabel(btn.id, currentCard)}</span>
-                  <div className={`w-full ${btn.color} text-white py-4 md:py-5 rounded-xl md:rounded-2xl font-black uppercase text-[11px] md:text-[11px] tracking-wider md:tracking-widest shadow-lg hover:brightness-110 active:scale-95 transition-all`}>
+                  <span className="text-xs md:text-[11px] font-semibold text-slate-400 group-hover:text-slate-900 dark:group-hover:text-white transition-colors">{getIntervalLabel(btn.id, currentCard)}</span>
+                  <div className={`w-full ${btn.color} text-white py-4 md:py-5 rounded-xl md:rounded-2xl font-semibold text-xs md:text-[11px] shadow-lg hover:brightness-110 active:scale-95 transition-all`}>
                     {btn.label}
                   </div>
                   <span className="text-[11px] md:text-[11px] font-bold text-slate-300 opacity-60 text-center leading-tight">

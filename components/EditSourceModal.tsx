@@ -23,7 +23,7 @@ const Field: React.FC<{
   textarea?: boolean;
 }> = ({ label, value, onChange, placeholder, type = 'text', textarea }) => (
   <div className="space-y-1">
-    <label className="text-[11px] font-black uppercase tracking-widest text-slate-400">{label}</label>
+    <label className="text-xs font-semibold text-slate-400">{label}</label>
     {textarea ? (
       <textarea
         value={value}
@@ -86,7 +86,7 @@ export const EditSourceModal: React.FC<Props> = ({ doc, meta, onClose, onSaved }
         <div className="flex justify-between items-center px-8 py-6 border-b border-slate-100 dark:border-slate-800">
           <div>
             <h2 id={titleId} className="text-xl font-black dark:text-white">{t('esm.title')}</h2>
-            <p className="text-[11px] font-black uppercase tracking-widest text-slate-400 mt-0.5 break-words max-w-[280px]">
+            <p className="text-xs font-semibold text-slate-400 mt-0.5 break-words max-w-[280px]">
               {doc.name}
             </p>
           </div>
@@ -127,7 +127,7 @@ export const EditSourceModal: React.FC<Props> = ({ doc, meta, onClose, onSaved }
             }`}
           >
             <div>
-              <p className={`text-[11px] font-black ${isAltklausur ? 'text-rose-600 dark:text-rose-400' : 'dark:text-white'}`}>
+              <p className={`text-[11px] font-semibold ${isAltklausur ? 'text-rose-600 dark:text-rose-400' : 'dark:text-white'}`}>
                 {t('upl.isOldExam')}
               </p>
               <p className="text-[11px] text-slate-400 mt-0.5">{t('esm.oldExamHint')}</p>
@@ -147,13 +147,13 @@ export const EditSourceModal: React.FC<Props> = ({ doc, meta, onClose, onSaved }
             <button
               type="button"
               onClick={onClose}
-              className="flex-1 py-4 rounded-2xl text-[11px] font-black uppercase tracking-widest border-2 border-slate-200 dark:border-slate-700 text-slate-500 dark:text-slate-400 hover:border-slate-300 transition-all"
+              className="flex-1 py-4 rounded-2xl text-[13px] font-semibold border-2 border-slate-200 dark:border-slate-700 text-slate-500 dark:text-slate-400 hover:border-slate-300 transition-all"
             >
               {t('quiz.cancel')}
             </button>
             <button
               type="submit"
-              className="flex-1 py-4 rounded-2xl text-[11px] font-black uppercase tracking-widest shadow-lg hover:scale-[1.02] transition-all"
+              className="flex-1 py-4 rounded-2xl text-[13px] font-semibold shadow-lg hover:scale-[1.02] transition-all"
               style={{ background: 'var(--primary)', color: 'var(--primary-text)' }}
             >
               {t('common.save')}

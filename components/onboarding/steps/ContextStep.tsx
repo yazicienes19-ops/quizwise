@@ -24,7 +24,7 @@ const Field: React.FC<{ label: string; value: string; onChange: (v: string) => v
   };
   return (
     <label className="block mb-4">
-      <span className="block text-[11px] font-black uppercase tracking-widest text-slate-400 mb-1.5">{label}</span>
+      <span className="block text-xs font-semibold text-slate-400 mb-1.5">{label}</span>
       {textarea ? <textarea {...shared} rows={3} className={`${shared.className} resize-none`} /> : <input type="text" {...shared} />}
     </label>
   );

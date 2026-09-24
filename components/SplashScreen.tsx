@@ -14,11 +14,11 @@ export const SplashScreen: React.FC = () => {
         {/* Logo */}
         <div className="flex items-center gap-3">
           <BrandMark size={40} strokeColor="var(--mark-stroke)" peakColor="var(--mark-peak)" className="shrink-0" />
-          <p className="text-2xl font-black uppercase tracking-tighter text-slate-900 dark:text-white">
+          <p className="text-2xl font-semibold tracking-tighter text-slate-900 dark:text-white">
             Stude<span style={{ color: 'var(--mark-peak)' }}>Arc</span>
           </p>
         </div>
-        <p className="text-[11px] font-bold uppercase tracking-[0.14em] text-slate-400 -mt-4">
+        <p className="text-xs font-bold text-slate-400 -mt-4">
           {t('splash.tagline')}
         </p>
 

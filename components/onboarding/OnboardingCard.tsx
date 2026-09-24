@@ -65,7 +65,7 @@ export const OnboardingCard: React.FC<OnboardingCardProps> = ({
               />
             ))}
           </div>
-          <span className="text-[11px] font-black tabular-nums shrink-0" style={{ color: 'var(--text-secondary)' }}>
+          <span className="text-[11px] font-semibold tabular-nums shrink-0" style={{ color: 'var(--text-secondary)' }}>
             {stepIndex + 1} / {totalSteps}
           </span>
         </div>
@@ -112,7 +112,7 @@ export const OnboardingCard: React.FC<OnboardingCardProps> = ({
             type="button"
             onClick={onPrimary}
             disabled={primaryDisabled}
-            className="w-full py-3 rounded-[16px] text-[11px] font-black uppercase tracking-widest shadow-sm hover:shadow-md hover:scale-[1.015] active:scale-[0.98] transition-all disabled:opacity-40 disabled:hover:scale-100 disabled:cursor-not-allowed"
+            className="w-full py-3 rounded-[16px] text-[13px] font-semibold shadow-sm hover:shadow-md hover:scale-[1.015] active:scale-[0.98] transition-all disabled:opacity-40 disabled:hover:scale-100 disabled:cursor-not-allowed"
             style={{ background: 'var(--primary)', color: 'var(--primary-text)' }}
           >
             {primaryLabel}
@@ -122,7 +122,7 @@ export const OnboardingCard: React.FC<OnboardingCardProps> = ({
               type="button"
               onClick={onBack}
               disabled={!onBack}
-              className="py-3 text-[11px] font-black uppercase tracking-widest text-slate-400 hover:text-slate-600 dark:hover:text-slate-300 transition-colors disabled:opacity-0"
+              className="py-3 text-[13px] font-semibold text-slate-400 hover:text-slate-600 dark:hover:text-slate-300 transition-colors disabled:opacity-0"
             >
               ← {t('common.back')}
             </button>
@@ -130,7 +130,7 @@ export const OnboardingCard: React.FC<OnboardingCardProps> = ({
               <button
                 type="button"
                 onClick={onSkip}
-                className="py-3 text-[11px] font-black uppercase tracking-widest text-slate-400 hover:text-slate-600 dark:hover:text-slate-300 transition-colors"
+                className="py-3 text-[13px] font-semibold text-slate-400 hover:text-slate-600 dark:hover:text-slate-300 transition-colors"
               >
                 {skipLabel ?? t('onboarding.skip')}
               </button>

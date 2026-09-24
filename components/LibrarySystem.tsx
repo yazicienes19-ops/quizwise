@@ -250,7 +250,7 @@ export const LibrarySystem: React.FC<LibrarySystemProps> = ({
     <button
       onClick={() => !isLoading && setShowUpload(true)}
       disabled={isLoading}
-      className="flex items-center gap-2 px-5 py-2.5 rounded-2xl text-[11px] font-black uppercase tracking-widest transition-all hover:scale-[1.02] disabled:opacity-40 disabled:scale-100"
+      className="flex items-center gap-2 px-5 py-2.5 rounded-2xl text-[13px] font-semibold transition-all hover:scale-[1.02] disabled:opacity-40 disabled:scale-100"
       style={{ background: 'var(--primary)', color: 'var(--primary-text)' }}
     >
       {isLoading
@@ -409,13 +409,13 @@ export const LibrarySystem: React.FC<LibrarySystemProps> = ({
                       <div className="flex gap-2">
                         <button
                           type="submit"
-                          className="flex-1 py-2.5 rounded-xl text-[11px] font-black uppercase tracking-widest"
+                          className="flex-1 py-2.5 rounded-xl text-[13px] font-semibold"
                           style={{ background: 'var(--primary)', color: 'var(--primary-text)' }}
                         >{t('lib.save')}</button>
                         <button
                           type="button"
                           onClick={() => setEditColId(null)}
-                          className="px-4 py-2.5 rounded-xl text-[11px] font-black uppercase tracking-widest text-slate-400 border border-slate-200 dark:border-slate-700"
+                          className="px-4 py-2.5 rounded-xl text-[13px] font-semibold text-slate-400 border border-slate-200 dark:border-slate-700"
                         >✕</button>
                       </div>
                     </form>
@@ -432,7 +432,7 @@ export const LibrarySystem: React.FC<LibrarySystemProps> = ({
                         >
                           <EmojiImage emoji={col.emoji} size={28} />
                         </div>
-                        <span className="text-[11px] font-black uppercase tracking-widest text-slate-400 bg-slate-100 dark:bg-slate-800 px-2.5 py-1 rounded-full">
+                        <span className="text-xs font-semibold text-slate-400 bg-slate-100 dark:bg-slate-800 px-2.5 py-1 rounded-full">
                           {count}
                         </span>
                       </div>
@@ -447,7 +447,7 @@ export const LibrarySystem: React.FC<LibrarySystemProps> = ({
                           <p className="text-[11px] text-slate-300 dark:text-slate-600 mt-1">{t('lib.empty')}</p>
                         )}
                       </div>
-                      <div className="flex items-center gap-1 text-[11px] font-black uppercase tracking-widest mt-auto" style={{ color: 'var(--primary-ink)' }}>
+                      <div className="flex items-center gap-1 text-[11px] font-semibold uppercase tracking-[0.08em] mt-auto" style={{ color: 'var(--primary-ink)' }}>
                         Öffnen
                         <svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round">
                           <line x1="5" y1="12" x2="19" y2="12"/><polyline points="12 5 19 12 12 19"/>
@@ -472,7 +472,7 @@ export const LibrarySystem: React.FC<LibrarySystemProps> = ({
                 <h3 className="font-black text-base" style={{ color: 'var(--text-main)' }}>{t('lib.allDocs')}</h3>
                 <p className="text-[11px] text-slate-400 mt-1">{documents.length} gesamt</p>
               </div>
-              <div className="flex items-center gap-1 text-[11px] font-black uppercase tracking-widest mt-auto text-slate-400">
+              <div className="flex items-center gap-1 text-[11px] font-semibold uppercase tracking-[0.08em] mt-auto text-slate-400">
                 Alle anzeigen
                 <svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round">
                   <line x1="5" y1="12" x2="19" y2="12"/><polyline points="12 5 19 12 12 19"/>
@@ -485,7 +485,7 @@ export const LibrarySystem: React.FC<LibrarySystemProps> = ({
           <div className="flex items-center gap-3 pt-2">
             <button
               onClick={() => setIsAddingCol(true)}
-              className="flex items-center gap-2 px-4 py-2.5 rounded-2xl text-[11px] font-black uppercase tracking-widest text-slate-400 hover:text-indigo-600 border border-slate-200 dark:border-slate-700 hover:border-indigo-400 transition-all"
+              className="flex items-center gap-2 px-4 py-2.5 rounded-2xl text-[13px] font-semibold text-slate-400 hover:text-indigo-600 border border-slate-200 dark:border-slate-700 hover:border-indigo-400 transition-all"
             >
               + Neuer Ordner
             </button>
@@ -499,8 +499,8 @@ export const LibrarySystem: React.FC<LibrarySystemProps> = ({
                   className="px-4 py-2.5 rounded-2xl text-xs font-bold outline-none border-2 border-indigo-500"
                   style={{ background: 'var(--bg-main)', color: 'var(--text-main)' }}
                 />
-                <button type="submit" className="px-4 py-2.5 bg-indigo-600 rounded-2xl text-[11px] font-black uppercase tracking-widest" style={{ color: 'var(--primary-text)' }}>{t('lib.create')}</button>
-                <button type="button" onClick={() => { setIsAddingCol(false); setNewColName(''); }} className="px-3 py-2.5 text-slate-400 text-[11px] font-black uppercase">✕</button>
+                <button type="submit" className="px-4 py-2.5 bg-indigo-600 rounded-2xl text-[13px] font-semibold" style={{ color: 'var(--primary-text)' }}>{t('lib.create')}</button>
+                <button type="button" onClick={() => { setIsAddingCol(false); setNewColName(''); }} className="px-3 py-2.5 text-slate-400 text-[13px] font-semibold">✕</button>
               </form>
             )}
           </div>
@@ -512,7 +512,7 @@ export const LibrarySystem: React.FC<LibrarySystemProps> = ({
   const colBtn = (id: string | 'all' | 'uncategorized', emoji: string, label: string, count: number) => (
     <button
       onClick={() => setActiveColId(id)}
-      className={`w-full flex justify-between items-center px-4 py-3 rounded-2xl text-[11px] font-black uppercase tracking-widest transition-all ${
+      className={`w-full flex justify-between items-center px-4 py-3 rounded-2xl text-[13px] font-semibold transition-all ${
         activeColId === id
           ? 'bg-indigo-600 shadow-lg'
           : 'text-slate-500 dark:text-slate-400 hover:bg-slate-50 dark:hover:bg-slate-800'
@@ -546,7 +546,7 @@ export const LibrarySystem: React.FC<LibrarySystemProps> = ({
             {collections.length > 0 && (
               <button
                 onClick={() => setShowFolderView(true)}
-                className="flex items-center gap-1.5 text-[11px] font-black uppercase tracking-widest text-slate-400 hover:text-indigo-500 transition-colors mb-3"
+                className="flex items-center gap-1.5 text-[13px] font-semibold text-slate-400 hover:text-indigo-500 transition-colors mb-3"
               >
                 <svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round">
                   <line x1="19" y1="12" x2="5" y2="12"/><polyline points="12 19 5 12 12 5"/>
@@ -571,7 +571,7 @@ export const LibrarySystem: React.FC<LibrarySystemProps> = ({
             {activeColId !== 'all' && activeColId !== 'uncategorized' && filtered.length > 0 && (
               <button
                 onClick={() => setSummaryColId(activeColId)}
-                className="flex items-center gap-2 px-5 py-2.5 rounded-2xl text-[11px] font-black uppercase tracking-widest transition-all hover:opacity-90"
+                className="flex items-center gap-2 px-5 py-2.5 rounded-2xl text-[13px] font-semibold transition-all hover:opacity-90"
                 style={{ background: 'var(--bg-sidebar)', color: 'var(--text-main)', border: '1px solid var(--border-color)' }}
               >
                 <BookText className="w-3.5 h-3.5" strokeWidth={2.5} /> {t('sum.open')}
@@ -586,7 +586,7 @@ export const LibrarySystem: React.FC<LibrarySystemProps> = ({
           <div className="lg:col-span-3 space-y-6">
             <div className="rounded-[28px] shadow-3d-raised p-6 space-y-4" style={{ background: 'var(--bg-sidebar)', border: '1px solid var(--border-color)' }}>
               <div className="flex justify-between items-center px-1">
-                <span className="text-[11px] font-black uppercase tracking-widest text-slate-400">{t('lib.collections')}</span>
+                <span className="text-[11px] font-semibold uppercase tracking-[0.08em] text-slate-400">{t('lib.collections')}</span>
                 {!isAddingCol && (
                   <button
                     onClick={() => setIsAddingCol(true)}
@@ -606,8 +606,8 @@ export const LibrarySystem: React.FC<LibrarySystemProps> = ({
                     style={{ background: 'var(--bg-main)', color: 'var(--text-main)' }}
                   />
                   <div className="flex gap-2">
-                    <button type="submit" className="flex-1 bg-indigo-600 py-2 rounded-xl text-[11px] font-black uppercase tracking-widest" style={{ color: 'var(--primary-text)' }}>{t('lib.create')}</button>
-                    <button type="button" onClick={() => { setIsAddingCol(false); setNewColName(''); }} className="px-3 text-slate-400 py-2 rounded-xl text-[11px] font-black uppercase" style={{ background: 'var(--bg-main)' }}>✕</button>
+                    <button type="submit" className="flex-1 bg-indigo-600 py-2 rounded-xl text-[13px] font-semibold" style={{ color: 'var(--primary-text)' }}>{t('lib.create')}</button>
+                    <button type="button" onClick={() => { setIsAddingCol(false); setNewColName(''); }} className="px-3 text-slate-400 py-2 rounded-xl text-[13px] font-semibold" style={{ background: 'var(--bg-main)' }}>✕</button>
                   </div>
                 </form>
               )}
@@ -657,11 +657,11 @@ export const LibrarySystem: React.FC<LibrarySystemProps> = ({
             {/* Module filter */}
             {modules.length > 0 && (
               <div className="rounded-[28px] shadow-3d-raised p-6 space-y-3" style={{ background: 'var(--bg-sidebar)', border: '1px solid var(--border-color)' }}>
-                <span className="text-[11px] font-black uppercase tracking-widest text-slate-400 px-1 block">{t('lib.modules')}</span>
+                <span className="text-[11px] font-semibold uppercase tracking-[0.08em] text-slate-400 px-1 block">{t('lib.modules')}</span>
                 <div className="space-y-1">
                   <button
                     onClick={() => setFilterModule('')}
-                    className={`w-full text-left px-4 py-2.5 rounded-xl text-[11px] font-black uppercase tracking-widest transition-all ${!filterModule ? 'bg-indigo-600' : 'text-slate-500 hover:bg-slate-50 dark:hover:bg-slate-800'}`}
+                    className={`w-full text-left px-4 py-2.5 rounded-xl text-[13px] font-semibold transition-all ${!filterModule ? 'bg-indigo-600' : 'text-slate-500 hover:bg-slate-50 dark:hover:bg-slate-800'}`}
                     style={!filterModule ? { color: 'var(--primary-text)' } : {}}
                   >
                     Alle Module
@@ -670,7 +670,7 @@ export const LibrarySystem: React.FC<LibrarySystemProps> = ({
                     <button
                       key={m}
                       onClick={() => setFilterModule(filterModule === m ? '' : m)}
-                      className={`w-full text-left px-4 py-2.5 rounded-xl text-[11px] font-black uppercase tracking-widest transition-all break-words ${filterModule === m ? 'bg-indigo-600' : 'text-slate-500 hover:bg-slate-50 dark:hover:bg-slate-800'}`}
+                      className={`w-full text-left px-4 py-2.5 rounded-xl text-[13px] font-semibold transition-all break-words ${filterModule === m ? 'bg-indigo-600' : 'text-slate-500 hover:bg-slate-50 dark:hover:bg-slate-800'}`}
                       style={filterModule === m ? { color: 'var(--primary-text)' } : {}}
                     >
                       {m}
@@ -702,7 +702,7 @@ export const LibrarySystem: React.FC<LibrarySystemProps> = ({
                 <select
                   value={filterType}
                   onChange={e => setFilterType(e.target.value as FilterType)}
-                  className="flex-1 min-w-[100px] px-3 py-2.5 rounded-2xl text-[11px] font-black uppercase tracking-widest outline-none focus:border-indigo-500 shadow-3d-raised"
+                  className="flex-1 min-w-[100px] px-3 py-2.5 rounded-2xl text-[13px] font-semibold outline-none focus:border-indigo-500 shadow-3d-raised"
                   style={{ background: 'var(--bg-sidebar)', border: '1px solid var(--border-color)', color: 'var(--text-main)' }}
                 >
                   <option value="all">{t('lib.allTypes')}</option>
@@ -714,7 +714,7 @@ export const LibrarySystem: React.FC<LibrarySystemProps> = ({
                 <select
                   value={sortBy}
                   onChange={e => setSortBy(e.target.value as SortKey)}
-                  className="flex-1 min-w-[100px] px-3 py-2.5 rounded-2xl text-[11px] font-black uppercase tracking-widest outline-none focus:border-indigo-500 shadow-3d-raised"
+                  className="flex-1 min-w-[100px] px-3 py-2.5 rounded-2xl text-[13px] font-semibold outline-none focus:border-indigo-500 shadow-3d-raised"
                   style={{ background: 'var(--bg-sidebar)', border: '1px solid var(--border-color)', color: 'var(--text-main)' }}
                 >
                   <option value="recent">{t('lib.newest')}</option>
@@ -742,12 +742,12 @@ export const LibrarySystem: React.FC<LibrarySystemProps> = ({
             {/* Results info */}
             {(search || filterType !== 'all' || filterModule) && (
               <div className="flex items-center justify-between px-1">
-                <p className="text-[11px] font-black uppercase tracking-widest text-slate-400">
+                <p className="text-xs font-semibold text-slate-400">
                   {filtered.length} {filtered.length === 1 ? 'Ergebnis' : 'Ergebnisse'}
                 </p>
                 <button
                   onClick={() => { setSearch(''); setFilterType('all'); setFilterModule(''); }}
-                  className="text-[11px] font-black uppercase tracking-widest text-rose-500 hover:text-rose-600"
+                  className="text-[13px] font-semibold text-rose-500 hover:text-rose-600"
                 >
                   Filter zurücksetzen
                 </button>
@@ -760,7 +760,7 @@ export const LibrarySystem: React.FC<LibrarySystemProps> = ({
             ) : filtered.length === 0 ? (
               <div className="flex flex-col items-center justify-center py-24 text-center space-y-4">
                 <EmojiImage emoji="🔍" size={48} />
-                <p className="text-sm font-black uppercase tracking-widest text-slate-400">{t('lib.noResults')}</p>
+                <p className="text-sm font-semibold text-slate-400">{t('lib.noResults')}</p>
                 <p className="text-xs text-slate-400">{t('lib.noResultsHint')}</p>
               </div>
             ) : viewMode === 'grid' ? (
@@ -813,7 +813,7 @@ const EmptyLibrary: React.FC<{ onUpload: () => void }> = ({ onUpload }) => {
       <EmojiImage emoji="📭" size={48} />
     </div>
     <div className="space-y-3 max-w-sm">
-      <p className="text-lg font-black uppercase tracking-widest text-slate-700 dark:text-slate-200">
+      <p className="text-lg font-semibold text-slate-700 dark:text-slate-200">
         {t('lib.emptyTitle')}
       </p>
       <p className="text-sm text-slate-400 leading-relaxed">
@@ -822,14 +822,14 @@ const EmptyLibrary: React.FC<{ onUpload: () => void }> = ({ onUpload }) => {
     </div>
     <button
       onClick={onUpload}
-      className="flex items-center gap-2 px-8 py-4 bg-indigo-600 rounded-2xl font-black uppercase text-[11px] tracking-widest shadow-lg hover:scale-105 transition-all"
+      className="flex items-center gap-2 px-8 py-4 bg-indigo-600 rounded-2xl font-semibold text-[13px] shadow-lg hover:scale-105 transition-all"
       style={{ color: 'var(--primary-text)' }}
     >
       <IconUpload /> {t('lib.uploadFirst')}
     </button>
     <div className="flex gap-6 pt-4">
       {['PDF', 'DOCX', 'TXT', 'MD'].map(f => (
-        <span key={f} className="text-[11px] font-black uppercase tracking-widest text-slate-300 dark:text-slate-600">{f}</span>
+        <span key={f} className="text-xs font-semibold text-slate-300 dark:text-slate-600">{f}</span>
       ))}
     </div>
   </div>

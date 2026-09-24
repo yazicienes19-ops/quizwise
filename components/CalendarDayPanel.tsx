@@ -177,7 +177,7 @@ export const CalendarDayPanel: React.FC<CalendarDayPanelProps> = ({
       <div className="p-5 space-y-3">
         {totalCount === 0 && (
           <div className="py-6 text-center">
-            <p className="text-[11px] font-black uppercase tracking-widest text-slate-400">{t('sp2.dayPanelEmpty')}</p>
+            <p className="text-[11px] font-semibold uppercase tracking-[0.08em] text-slate-400">{t('sp2.dayPanelEmpty')}</p>
             <p className="text-xs text-slate-400 mt-1">{t('sp2.dayPanelEmptyHint')}</p>
           </div>
         )}
@@ -200,7 +200,7 @@ export const CalendarDayPanel: React.FC<CalendarDayPanelProps> = ({
                 />
                 {collections.length > 0 && (
                   <label className="block">
-                    <span className="text-[11px] font-black uppercase tracking-widest text-slate-400 mb-1 block">{t('sp2.examModuleLabel')}</span>
+                    <span className="text-[11px] font-semibold uppercase tracking-[0.08em] text-slate-400 mb-1 block">{t('sp2.examModuleLabel')}</span>
                     <select
                       value={examEditModuleId}
                       onChange={e => setExamEditModuleId(e.target.value)}
@@ -213,7 +213,7 @@ export const CalendarDayPanel: React.FC<CalendarDayPanelProps> = ({
                 )}
                 {examEditIsPast && (
                   <label className="block">
-                    <span className="text-[11px] font-black uppercase tracking-widest text-slate-400 mb-1 block">{t('sp2.examGradeLabel')}</span>
+                    <span className="text-[11px] font-semibold uppercase tracking-[0.08em] text-slate-400 mb-1 block">{t('sp2.examGradeLabel')}</span>
                     <select
                       value={examEditGrade}
                       onChange={e => setExamEditGrade(e.target.value)}
@@ -228,12 +228,12 @@ export const CalendarDayPanel: React.FC<CalendarDayPanelProps> = ({
                   <button
                     onClick={saveExamEdit}
                     disabled={!examEditTitle.trim() || !examEditDate}
-                    className="flex-1 py-2 rounded-xl text-[11px] font-black uppercase tracking-widest disabled:opacity-40 transition-opacity"
+                    className="flex-1 py-2 rounded-xl text-[13px] font-semibold disabled:opacity-40 transition-opacity"
                     style={{ background: 'var(--primary)', color: 'var(--primary-text, white)' }}
                   >
                     {t('sp2.saveExam')}
                   </button>
-                  <button onClick={() => setEditingExam(null)} className="px-4 py-2 rounded-xl text-[11px] font-black uppercase tracking-widest text-slate-400 bg-slate-100 dark:bg-slate-800">
+                  <button onClick={() => setEditingExam(null)} className="px-4 py-2 rounded-xl text-[13px] font-semibold text-slate-400 bg-slate-100 dark:bg-slate-800">
                     {t('common.cancel')}
                   </button>
                 </div>
@@ -245,7 +245,7 @@ export const CalendarDayPanel: React.FC<CalendarDayPanelProps> = ({
                 </div>
                 <div className="flex-1 min-w-0">
                   <p className="text-sm font-black break-words" style={{ color: 'var(--text-main)' }}>{exam.title}</p>
-                  <p className="text-[11px] font-black uppercase tracking-widest text-slate-400 mt-0.5">
+                  <p className="text-xs font-semibold text-slate-400 mt-0.5">
                     {[
                       t('sp2.examTermLabel'),
                       collections.find(c => c.id === exam.collectionId)?.name,
@@ -294,7 +294,7 @@ export const CalendarDayPanel: React.FC<CalendarDayPanelProps> = ({
                       key={et}
                       type="button"
                       onClick={() => setEventEditType(et)}
-                      className={`flex-1 py-2 rounded-xl text-[11px] font-black uppercase tracking-widest transition-all ${eventEditType === et ? 'bg-indigo-600 text-white' : 'bg-slate-100 dark:bg-slate-800 text-slate-500'}`}
+                      className={`flex-1 py-2 rounded-xl text-[13px] font-semibold transition-all ${eventEditType === et ? 'bg-indigo-600 text-white' : 'bg-slate-100 dark:bg-slate-800 text-slate-500'}`}
                     >
                       {et === 'study' ? t('sp2.studyDate') : t('sp2.reminder')}
                     </button>
@@ -304,12 +304,12 @@ export const CalendarDayPanel: React.FC<CalendarDayPanelProps> = ({
                   <button
                     onClick={saveEventEdit}
                     disabled={!eventEditTitle.trim() || !eventEditDate}
-                    className="flex-1 py-2 rounded-xl text-[11px] font-black uppercase tracking-widest disabled:opacity-40 transition-opacity"
+                    className="flex-1 py-2 rounded-xl text-[13px] font-semibold disabled:opacity-40 transition-opacity"
                     style={{ background: 'var(--primary)', color: 'var(--primary-text, white)' }}
                   >
                     {t('sp2.saveEvent')}
                   </button>
-                  <button onClick={() => setEditingEvent(null)} className="px-4 py-2 rounded-xl text-[11px] font-black uppercase tracking-widest text-slate-400 bg-slate-100 dark:bg-slate-800">
+                  <button onClick={() => setEditingEvent(null)} className="px-4 py-2 rounded-xl text-[13px] font-semibold text-slate-400 bg-slate-100 dark:bg-slate-800">
                     {t('common.cancel')}
                   </button>
                 </div>
@@ -321,7 +321,7 @@ export const CalendarDayPanel: React.FC<CalendarDayPanelProps> = ({
                 </div>
                 <div className="flex-1 min-w-0">
                   <p className="text-sm font-black break-words" style={{ color: 'var(--text-main)' }}>{ev.title}</p>
-                  <p className="text-[11px] font-black uppercase tracking-widest text-slate-400 mt-0.5">{t('sp2.legendEvent')}</p>
+                  <p className="text-[11px] font-semibold uppercase tracking-[0.08em] text-slate-400 mt-0.5">{t('sp2.legendEvent')}</p>
                 </div>
                 <div className="flex items-center gap-1 shrink-0">
                   <button aria-label={t('sp2.edit')} onClick={() => openEditEvent(ev)} className="w-9 h-9 flex items-center justify-center rounded-lg text-slate-300 hover:text-indigo-500 hover:bg-indigo-50 dark:hover:bg-indigo-900/20 transition-colors">
@@ -344,7 +344,7 @@ export const CalendarDayPanel: React.FC<CalendarDayPanelProps> = ({
             <div className="flex-1 min-w-0">
               {s.topic ? (
                 <>
-                  {s.subjectLabel && <p className="text-[11px] font-black uppercase tracking-widest text-slate-400">{s.subjectLabel}</p>}
+                  {s.subjectLabel && <p className="text-xs font-semibold text-slate-400">{s.subjectLabel}</p>}
                   <p className="text-sm font-black break-words leading-tight" style={{ color: 'var(--text-main)' }}>{s.topic}</p>
                 </>
               ) : (
@@ -389,7 +389,7 @@ export const CalendarDayPanel: React.FC<CalendarDayPanelProps> = ({
         {!showForm && (
           <button
             onClick={openAddForm}
-            className="w-full flex items-center justify-center gap-2 py-3.5 rounded-2xl border-2 border-dashed text-slate-400 hover:text-indigo-500 transition-all text-[11px] font-black uppercase tracking-widest"
+            className="w-full flex items-center justify-center gap-2 py-3.5 rounded-2xl border-2 border-dashed text-slate-400 hover:text-indigo-500 transition-all text-[13px] font-semibold"
             style={{ borderColor: 'var(--border-color)' }}
           >
             <Plus size={14} /> {t('sp2.addSession')}
@@ -399,7 +399,7 @@ export const CalendarDayPanel: React.FC<CalendarDayPanelProps> = ({
         {showForm && (
           <div className="rounded-[24px] p-4 space-y-4" style={{ background: 'var(--bg-main)', border: '1px solid var(--border-color)' }}>
             <div className="flex items-center justify-between">
-              <p className="text-[11px] font-black uppercase tracking-widest text-indigo-600">
+              <p className="text-[11px] font-semibold uppercase tracking-[0.08em] text-indigo-600">
                 {editing ? t('sp2.editSession') : t('sp2.addSession')}
               </p>
               <button aria-label={t('common.close')} onClick={() => { setShowForm(false); resetForm(); }} className="w-9 h-9 flex items-center justify-center rounded-lg text-slate-400 hover:text-rose-500 transition-colors">
@@ -408,7 +408,7 @@ export const CalendarDayPanel: React.FC<CalendarDayPanelProps> = ({
             </div>
 
             <div>
-              <span className="text-[11px] font-black uppercase tracking-widest text-slate-400 mb-2 block">{t('sp2.subjectLabel')}</span>
+              <span className="text-[11px] font-semibold uppercase tracking-[0.08em] text-slate-400 mb-2 block">{t('sp2.subjectLabel')}</span>
               <div className="flex flex-wrap gap-2">
                 {collections.map(col => {
                   const color = resolveModuleColor(col.color);
@@ -489,7 +489,7 @@ export const CalendarDayPanel: React.FC<CalendarDayPanelProps> = ({
             </div>
 
             <div>
-              <span className="text-[11px] font-black uppercase tracking-widest text-slate-400 mb-2 block">{t('sp2.topicLabel')}</span>
+              <span className="text-[11px] font-semibold uppercase tracking-[0.08em] text-slate-400 mb-2 block">{t('sp2.topicLabel')}</span>
               <input
                 value={topic}
                 onChange={e => setTopic(e.target.value)}
@@ -500,22 +500,22 @@ export const CalendarDayPanel: React.FC<CalendarDayPanelProps> = ({
 
             <div className="flex gap-3">
               <div className="flex-1">
-                <label className="text-[11px] font-black text-slate-400 uppercase ml-1 mb-1 block">{t('sp2.from')}</label>
+                <label className="text-[11px] font-semibold text-slate-400 uppercase ml-1 mb-1 block">{t('sp2.from')}</label>
                 <input type="time" value={startTime} onChange={e => setStartTime(e.target.value)} className="w-full p-2.5 bg-slate-50 dark:bg-slate-800 rounded-xl outline-none dark:text-white text-sm font-bold" />
               </div>
               <div className="flex-1">
-                <label className="text-[11px] font-black text-slate-400 uppercase ml-1 mb-1 block">{t('sp2.to')}</label>
+                <label className="text-[11px] font-semibold text-slate-400 uppercase ml-1 mb-1 block">{t('sp2.to')}</label>
                 <input type="time" value={endTime} onChange={e => setEndTime(e.target.value)} className="w-full p-2.5 bg-slate-50 dark:bg-slate-800 rounded-xl outline-none dark:text-white text-sm font-bold" />
               </div>
             </div>
 
             <div>
-              <span className="text-[11px] font-black uppercase tracking-widest text-slate-400 mb-2 block">{t('sp2.repeatLabel')}</span>
+              <span className="text-[11px] font-semibold uppercase tracking-[0.08em] text-slate-400 mb-2 block">{t('sp2.repeatLabel')}</span>
               <div className="flex rounded-xl p-1 gap-1" style={{ background: 'var(--bg-sidebar)', border: '1px solid var(--border-color)' }}>
                 <button
                   type="button"
                   onClick={() => setRepeat('once')}
-                  className="flex-1 py-2 rounded-lg text-[11px] font-black transition-all"
+                  className="flex-1 py-2 rounded-lg text-[13px] font-semibold transition-all"
                   style={repeat === 'once' ? { background: 'var(--primary)', color: 'var(--primary-text, white)' } : { color: 'var(--text-muted, #94a3b8)' }}
                 >
                   {t('sp2.repeatOnce')}
@@ -523,7 +523,7 @@ export const CalendarDayPanel: React.FC<CalendarDayPanelProps> = ({
                 <button
                   type="button"
                   onClick={() => setRepeat('weekly')}
-                  className="flex-1 py-2 rounded-lg text-[11px] font-black transition-all"
+                  className="flex-1 py-2 rounded-lg text-[13px] font-semibold transition-all"
                   style={repeat === 'weekly' ? { background: 'var(--primary)', color: 'var(--primary-text, white)' } : { color: 'var(--text-muted, #94a3b8)' }}
                 >
                   {t('sp2.repeatWeekly', { day: weekdayName })}
@@ -539,7 +539,7 @@ export const CalendarDayPanel: React.FC<CalendarDayPanelProps> = ({
             <button
               onClick={handleSave}
               disabled={(!useCustom && !moduleId) || (useCustom && !customSubject.trim())}
-              className="w-full py-3.5 rounded-2xl text-[11px] font-black uppercase tracking-widest transition-opacity disabled:opacity-40"
+              className="w-full py-3.5 rounded-2xl text-[13px] font-semibold transition-opacity disabled:opacity-40"
               style={{ background: 'var(--primary)', color: 'var(--primary-text, white)' }}
             >
               {t('sp2.saveSession')}

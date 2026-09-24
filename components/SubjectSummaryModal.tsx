@@ -61,7 +61,7 @@ export const SubjectSummaryModal: React.FC<Props> = ({ subjectName, docs, onClos
       >
         <div className="flex justify-between items-start gap-4 px-6 sm:px-8 py-5" style={{ borderBottom: '1px solid var(--border-color)' }}>
           <div className="min-w-0 flex-1">
-            <p className="text-[11px] font-black uppercase tracking-widest mb-1" style={{ color: 'var(--primary-ink)' }}>{t('sum.eyebrow')}</p>
+            <p className="text-[11px] font-semibold uppercase tracking-[0.08em] mb-1" style={{ color: 'var(--primary-ink)' }}>{t('sum.eyebrow')}</p>
             <h2 id={titleId} className="text-xl font-black break-words" style={{ color: 'var(--text-main)' }}>{subjectName}</h2>
             <p className="text-[12.5px] mt-1" style={{ color: 'var(--text-secondary)' }}>
               {tp('sum.included', summary.included)}

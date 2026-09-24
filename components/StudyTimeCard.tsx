@@ -43,7 +43,7 @@ export const StudyTimeCard: React.FC<{ userId: string }> = ({ userId }) => {
   return (
     <section className="flex flex-col gap-[9px]">
       <div className="flex flex-wrap items-baseline gap-x-2.5 gap-y-1">
-        <span className="text-[11px] font-semibold uppercase tracking-[0.18em]" style={{ color: GOLD_TEXT }}>{t('home.time.label')}</span>
+        <span className="text-[11px] font-semibold uppercase tracking-[0.08em]" style={{ color: GOLD_TEXT }}>{t('home.time.label')}</span>
         <span className="text-[11.5px]" style={{ color: MUTE }}>{t('home.time.hint')}</span>
       </div>
       <div className="flex flex-wrap items-center gap-x-8 gap-y-4 px-[18px] py-[14px] rounded-[11px]" style={{ background: 'var(--card)', border: `1px solid ${LINE}` }}>

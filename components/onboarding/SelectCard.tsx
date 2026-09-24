@@ -48,7 +48,7 @@ export const SelectCard: React.FC<SelectCardProps> = ({
         </span>
         {priority !== undefined && (
           <span
-            className="shrink-0 w-5 h-5 rounded-full flex items-center justify-center text-[11px] font-black animate-in zoom-in-50 duration-200"
+            className="shrink-0 w-5 h-5 rounded-full flex items-center justify-center text-[11px] font-semibold animate-in zoom-in-50 duration-200"
             style={badgeStyle}
           >
             {priority}
@@ -67,7 +67,7 @@ export const SelectCard: React.FC<SelectCardProps> = ({
     >
       {priority !== undefined && (
         <span
-          className="absolute top-1.5 right-1.5 w-4 h-4 rounded-full flex items-center justify-center text-[11px] font-black animate-in zoom-in-50 duration-200"
+          className="absolute top-1.5 right-1.5 w-4 h-4 rounded-full flex items-center justify-center text-[11px] font-semibold animate-in zoom-in-50 duration-200"
           style={badgeStyle}
         >
           {priority}

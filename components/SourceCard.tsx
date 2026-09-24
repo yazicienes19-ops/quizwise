@@ -46,7 +46,7 @@ const DigestInfo: React.FC<{ doc: ProcessedDocument; onRetry?: () => void }> = (
       {status === 'error' && onRetry && (
         <button
           onClick={e => { e.stopPropagation(); onRetry(); }}
-          className="text-[11px] font-black uppercase tracking-widest px-2 py-0.5 rounded-full transition-all hover:opacity-80"
+          className="text-[13px] font-semibold px-2 py-0.5 rounded-full transition-all hover:opacity-80"
           style={{ background: 'color-mix(in srgb, var(--primary) 12%, transparent)', color: 'var(--primary-ink)', border: '1px solid color-mix(in srgb, var(--primary) 30%, transparent)' }}
         >
           {t('card.retryAnalysis')}
@@ -59,7 +59,7 @@ const DigestInfo: React.FC<{ doc: ProcessedDocument; onRetry?: () => void }> = (
 const Stat: React.FC<{ label: string; value: number }> = ({ label, value }) => (
   <div className="text-center">
     <p className="font-black text-sm" style={{ color: 'var(--text-main)' }}>{value}</p>
-    <p className="text-[11px] font-black uppercase text-slate-400 tracking-widest">{label}</p>
+    <p className="text-xs font-semibold text-slate-400">{label}</p>
   </div>
 );
 
@@ -96,8 +96,8 @@ export const SourceCard: React.FC<Props> = ({ doc, meta, view, onOpen, onView, o
             <DigestInfo doc={doc} onRetry={onRetryAnalysis} />
           </div>
           <div className="flex items-center gap-3 mt-0.5 flex-wrap">
-            {meta.module   && <span className="text-[11px] font-black uppercase text-indigo-600">{meta.module}</span>}
-            {meta.semester && <span className="text-[11px] font-black uppercase text-slate-400">{meta.semester}</span>}
+            {meta.module   && <span className="text-xs font-semibold text-indigo-600">{meta.module}</span>}
+            {meta.semester && <span className="text-xs font-semibold text-slate-400">{meta.semester}</span>}
             <span className="text-[11px] text-slate-300 dark:text-slate-600">
               {lastOpened ? t('card.lastPrefix', { date: lastOpened }) : t('card.uploadedPrefix', { date: uploadedAt })}
             </span>
@@ -106,11 +106,11 @@ export const SourceCard: React.FC<Props> = ({ doc, meta, view, onOpen, onView, o
         <div className="flex items-center gap-2 shrink-0">
           {meta.quizCount      ? <span className="text-[11px] font-bold text-slate-400 hidden sm:block">{t('card.quizCount', { n: meta.quizCount })}</span> : null}
           {meta.flashcardCount ? <span className="text-[11px] font-bold text-slate-400 hidden sm:block">{t('card.cardsCount', { n: meta.flashcardCount })}</span> : null}
-{isDuplicate && <span className="hidden sm:block text-[11px] font-black uppercase tracking-widest px-2 py-0.5 rounded-full bg-amber-100 dark:bg-amber-950/30 text-amber-800 dark:text-amber-300" title={t('card.duplicateHint')}>{t('card.duplicate')}</span>}
-          {meta.isAltklausur && <span className="hidden sm:block text-[11px] font-black uppercase tracking-widest px-2 py-0.5 rounded-full bg-rose-50 dark:bg-rose-950/20 text-rose-500">{t('card.oldExam')}</span>}
+{isDuplicate && <span className="hidden sm:block text-[11px] font-semibold uppercase tracking-[0.08em] px-2 py-0.5 rounded-full bg-amber-100 dark:bg-amber-950/30 text-amber-800 dark:text-amber-300" title={t('card.duplicateHint')}>{t('card.duplicate')}</span>}
+          {meta.isAltklausur && <span className="hidden sm:block text-[11px] font-semibold uppercase tracking-[0.08em] px-2 py-0.5 rounded-full bg-rose-50 dark:bg-rose-950/20 text-rose-500">{t('card.oldExam')}</span>}
           <button
             onClick={onOpen}
-            className="px-4 py-2 bg-indigo-600 text-white rounded-xl text-[11px] font-black uppercase tracking-widest hover:scale-105 transition-all"
+            className="px-4 py-2 bg-indigo-600 text-white rounded-xl text-[13px] font-semibold hover:scale-105 transition-all"
             style={{ color: 'var(--primary-text)' }}
           >
             {t('card.open')}
@@ -133,12 +133,12 @@ export const SourceCard: React.FC<Props> = ({ doc, meta, view, onOpen, onView, o
     <div className="rounded-[28px] p-6 shadow-3d-raised hover:shadow-3d-deep transition-all flex flex-col group" style={{ background: 'var(--bg-sidebar)', border: '1px solid var(--border-color)' }}>
       <div className="flex justify-between items-start mb-4">
         <div className="flex gap-1 flex-wrap flex-grow min-w-0 mr-2">
-{isDuplicate && <span className=" text-[11px] font-black uppercase tracking-widest px-2 py-0.5 rounded-full bg-amber-100 dark:bg-amber-950/30 text-amber-800 dark:text-amber-300" title={t('card.duplicateHint')}>{t('card.duplicate')}</span>}
+{isDuplicate && <span className=" text-[11px] font-semibold uppercase tracking-[0.08em] px-2 py-0.5 rounded-full bg-amber-100 dark:bg-amber-950/30 text-amber-800 dark:text-amber-300" title={t('card.duplicateHint')}>{t('card.duplicate')}</span>}
           {meta.isAltklausur && (
-            <span className="text-[11px] font-black uppercase tracking-widest px-2 py-0.5 rounded-full bg-rose-50 dark:bg-rose-950/20 text-rose-500">{t('card.oldExam')}</span>
+            <span className="text-[11px] font-semibold uppercase tracking-[0.08em] px-2 py-0.5 rounded-full bg-rose-50 dark:bg-rose-950/20 text-rose-500">{t('card.oldExam')}</span>
           )}
           {meta.tags?.slice(0, 2).map(t => (
-            <span key={t} className="bg-indigo-50 dark:bg-indigo-900/20 text-indigo-600 dark:text-indigo-400 text-[11px] font-black px-2 py-0.5 rounded-full uppercase tracking-tight">
+            <span key={t} className="bg-indigo-50 dark:bg-indigo-900/20 text-indigo-600 dark:text-indigo-400 text-xs font-semibold px-2 py-0.5 rounded-full tracking-tight">
               {t}
             </span>
           ))}
@@ -162,8 +162,8 @@ export const SourceCard: React.FC<Props> = ({ doc, meta, view, onOpen, onView, o
       <div className="flex-grow space-y-2">
         <h3 className="font-black leading-snug break-words text-base" style={{ color: 'var(--text-main)' }}>{title}</h3>
         <div className="flex flex-wrap gap-x-3 gap-y-0.5">
-          {meta.module   && <span className="text-[11px] font-black uppercase text-indigo-600">{meta.module}</span>}
-          {meta.semester && <span className="text-[11px] font-black uppercase text-slate-400">{meta.semester}</span>}
+          {meta.module   && <span className="text-xs font-semibold text-indigo-600">{meta.module}</span>}
+          {meta.semester && <span className="text-xs font-semibold text-slate-400">{meta.semester}</span>}
         </div>
         <div className="pt-1 flex items-center gap-1.5 flex-wrap">
           <SourceStatusBadge status={status} />
@@ -184,11 +184,11 @@ export const SourceCard: React.FC<Props> = ({ doc, meta, view, onOpen, onView, o
           <p className="text-[11px] text-slate-400">
             {lastOpened ? t('card.lastPrefix', { date: lastOpened }) : t('card.uploadedPrefix', { date: uploadedAt })}
           </p>
-          <span className="text-[11px] font-black uppercase text-slate-300 dark:text-slate-600">{doc.type.toUpperCase()}</span>
+          <span className="text-xs font-semibold text-slate-300 dark:text-slate-600">{doc.type.toUpperCase()}</span>
         </div>
         <button
           onClick={onOpen}
-          className="w-full bg-indigo-600 py-3 rounded-2xl text-[11px] font-black uppercase tracking-widest hover:scale-[1.02] transition-all shadow-md"
+          className="w-full bg-indigo-600 py-3 rounded-2xl text-[13px] font-semibold hover:scale-[1.02] transition-all shadow-md"
           style={{ color: 'var(--primary-text)' }}
         >
           {t('card.openArrow')}

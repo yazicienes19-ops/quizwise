@@ -388,14 +388,14 @@ export const GraphNodeDetailPanel: React.FC<GraphNodeDetailPanelProps> = ({
           />
           <div className="flex items-center gap-1.5 mt-2 flex-wrap">
             <span
-              className="text-[11px] font-black uppercase tracking-wider px-2 py-1 rounded-full"
+              className="text-xs font-semibold px-2 py-1 rounded-full"
               style={{ background: 'var(--bg-main)', color: 'var(--text-muted, #64748b)' }}
             >
               {typeLabel(node.type)}
             </span>
             <button
               onClick={cycleHierarchy}
-              className="text-[11px] font-black uppercase tracking-wider px-2 py-1 rounded-full transition-colors hover:opacity-80"
+              className="text-[13px] font-semibold px-2 py-1 rounded-full transition-colors hover:opacity-80"
               style={{ background: 'var(--bg-main)', color: 'var(--text-muted, #64748b)' }}
             >
               {node.hierarchyLevel ? HIERARCHY_LEVEL_LABELS[node.hierarchyLevel] : t('kg.panel.hierarchyPlaceholder')}
@@ -465,7 +465,7 @@ export const GraphNodeDetailPanel: React.FC<GraphNodeDetailPanelProps> = ({
       <div className="flex-1 overflow-y-auto p-4 space-y-5">
         <section>
           <div className="flex items-center justify-between mb-1.5">
-            <p className="text-[11px] font-black uppercase tracking-widest text-slate-400">
+            <p className="text-[11px] font-semibold uppercase tracking-[0.08em] text-slate-400">
               {t('kg.panel.description')}
             </p>
             <button
@@ -473,7 +473,7 @@ export const GraphNodeDetailPanel: React.FC<GraphNodeDetailPanelProps> = ({
               disabled={isImproving || (!node.description.trim() && !node.notes.trim())}
               aria-label={t('kg.panel.improveAction')}
               title={t('kg.panel.improveAction')}
-              className="h-5 px-2 flex items-center justify-center rounded-md text-[11px] font-black uppercase tracking-wide text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800 hover:text-slate-600 dark:hover:text-slate-300 disabled:opacity-40 transition-colors"
+              className="h-5 px-2 flex items-center justify-center rounded-md text-[13px] font-semibold text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800 hover:text-slate-600 dark:hover:text-slate-300 disabled:opacity-40 transition-colors"
             >
               {isImproving ? '…' : 'Verbessern'}
             </button>
@@ -490,7 +490,7 @@ export const GraphNodeDetailPanel: React.FC<GraphNodeDetailPanelProps> = ({
 
           {improveSuggestion && (
             <div className="mt-2 space-y-2 rounded-lg border p-3" style={{ borderColor: 'var(--border-color)' }}>
-              <p className="text-[11px] font-black uppercase tracking-widest text-slate-400">
+              <p className="text-[11px] font-semibold uppercase tracking-[0.08em] text-slate-400">
                 {t('kg.panel.improveSuggestion')}
               </p>
               {improveSuggestion.title !== node.title && (
@@ -504,14 +504,14 @@ export const GraphNodeDetailPanel: React.FC<GraphNodeDetailPanelProps> = ({
               <div className="flex gap-1.5">
                 <button
                   onClick={applySuggestion}
-                  className="flex-1 text-[11px] font-black uppercase tracking-widest rounded-lg py-2 transition-colors"
+                  className="flex-1 text-[13px] font-semibold rounded-lg py-2 transition-colors"
                   style={{ background: 'var(--primary)', color: 'var(--primary-text, #fff)' }}
                 >
                   {t('kg.panel.improveApply')}
                 </button>
                 <button
                   onClick={() => setImproveSuggestion(null)}
-                  className="px-3 text-[11px] font-black uppercase tracking-widest rounded-lg py-2 text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors"
+                  className="px-3 text-[13px] font-semibold rounded-lg py-2 text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors"
                 >
                   {t('kg.panel.improveDiscard')}
                 </button>
@@ -521,7 +521,7 @@ export const GraphNodeDetailPanel: React.FC<GraphNodeDetailPanelProps> = ({
         </section>
 
         <section>
-          <p className="text-[11px] font-black uppercase tracking-widest text-slate-400 mb-1.5 flex items-center gap-1">
+          <p className="text-[11px] font-semibold uppercase tracking-[0.08em] text-slate-400 mb-1.5 flex items-center gap-1">
             <EmojiImage emoji="📝" size={11} /> {t('kg.panel.notes')}
           </p>
           <textarea
@@ -537,14 +537,14 @@ export const GraphNodeDetailPanel: React.FC<GraphNodeDetailPanelProps> = ({
 
         <section>
           <div className="flex items-center justify-between mb-1.5">
-            <p className="text-[11px] font-black uppercase tracking-widest text-slate-400 flex items-center gap-1">
+            <p className="text-[11px] font-semibold uppercase tracking-[0.08em] text-slate-400 flex items-center gap-1">
               <EmojiImage emoji="📚" size={11} /> {t('kg.panel.sources')}
             </p>
             <button
               onClick={() => setIsPickingDocument(true)}
               aria-label={t('kg.panel.sourcesAdd')}
               title={t('kg.panel.sourcesAdd')}
-              className="w-5 h-5 flex items-center justify-center rounded-md text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800 hover:text-slate-600 dark:hover:text-slate-300 transition-colors text-xs font-black"
+              className="w-5 h-5 flex items-center justify-center rounded-md text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800 hover:text-slate-600 dark:hover:text-slate-300 transition-colors text-xs font-semibold"
             >
               +
             </button>
@@ -592,14 +592,14 @@ export const GraphNodeDetailPanel: React.FC<GraphNodeDetailPanelProps> = ({
                 <button
                   onClick={confirmLinkDocument}
                   disabled={!pickedDocumentId}
-                  className="flex-1 text-[11px] font-black uppercase tracking-widest rounded-lg py-2 disabled:opacity-40 transition-colors"
+                  className="flex-1 text-[13px] font-semibold rounded-lg py-2 disabled:opacity-40 transition-colors"
                   style={{ background: 'var(--primary)', color: 'var(--primary-text, #fff)' }}
                 >
                   {t('kg.panel.sourcesConfirm')}
                 </button>
                 <button
                   onClick={() => { setIsPickingDocument(false); setPickedDocumentId(''); }}
-                  className="px-3 text-[11px] font-black uppercase tracking-widest rounded-lg py-2 text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors"
+                  className="px-3 text-[13px] font-semibold rounded-lg py-2 text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors"
                 >
                   {t('kg.panel.sourcesCancel')}
                 </button>
@@ -609,7 +609,7 @@ export const GraphNodeDetailPanel: React.FC<GraphNodeDetailPanelProps> = ({
         </section>
 
         <section>
-          <p className="text-[11px] font-black uppercase tracking-widest text-slate-400 mb-1.5 flex items-center gap-1">
+          <p className="text-[11px] font-semibold uppercase tracking-[0.08em] text-slate-400 mb-1.5 flex items-center gap-1">
             <EmojiImage emoji="🔗" size={11} /> {t('kg.panel.related')}
           </p>
 
@@ -635,7 +635,7 @@ export const GraphNodeDetailPanel: React.FC<GraphNodeDetailPanelProps> = ({
         </section>
 
         <section>
-          <p className="text-[11px] font-black uppercase tracking-widest text-slate-400 mb-1.5">
+          <p className="text-[11px] font-semibold uppercase tracking-[0.08em] text-slate-400 mb-1.5">
             {t('kg.panel.activity')}
           </p>
           <div className="flex gap-1.5">
@@ -651,7 +651,7 @@ export const GraphNodeDetailPanel: React.FC<GraphNodeDetailPanelProps> = ({
                 className="flex-1 flex flex-col items-center gap-1 rounded-lg py-2.5 hover:bg-slate-50 dark:hover:bg-slate-800 transition-colors"
               >
                 <EmojiImage emoji={emoji} size={18} />
-                <span className="text-[11px] font-black uppercase tracking-wider text-slate-500 dark:text-slate-400">{t(labelKey)}</span>
+                <span className="text-xs font-semibold text-slate-500 dark:text-slate-400">{t(labelKey)}</span>
               </button>
             ))}
           </div>

@@ -228,7 +228,7 @@ const ProgressChart: React.FC<{
 const LegendDot: React.FC<{ color: string; label: string }> = ({ color, label }) => (
   <div className="flex items-center gap-1.5">
     <div className="w-6 h-[3px] rounded-full" style={{ background: color }} />
-    <span className="text-[11px] font-black uppercase" style={{ color: 'var(--mute)' }}>{label}</span>
+    <span className="text-xs font-semibold" style={{ color: 'var(--mute)' }}>{label}</span>
   </div>
 );
 
@@ -650,7 +650,7 @@ export const GapRadar: React.FC<GapRadarProps> = ({ metrics, onNavigate, onActio
       <div className="flex flex-col items-center justify-center py-32 space-y-6 opacity-30">
         <EmojiImage emoji="📊" size={64} />
         <div className="text-center space-y-2">
-          <p className="font-black text-slate-400 uppercase text-xs tracking-widest">{t('gr.noData')}</p>
+          <p className="font-semibold text-slate-400 uppercase text-xs tracking-[0.08em]">{t('gr.noData')}</p>
           <p className="text-sm text-slate-500 max-w-xs mx-auto">
             {t('gr.emptyHint')}
           </p>
@@ -678,7 +678,7 @@ export const GapRadar: React.FC<GapRadarProps> = ({ metrics, onNavigate, onActio
             <button
               key={m}
               onClick={() => setSelectedMode(m)}
-              className="px-3 py-1.5 rounded-lg text-[11px] font-black uppercase tracking-wider transition-all"
+              className="px-3 py-1.5 rounded-lg text-[13px] font-semibold transition-all"
               style={
                 selectedMode === m
                   ? { background: 'var(--primary)', color: 'var(--primary-text)' }
@@ -698,7 +698,7 @@ export const GapRadar: React.FC<GapRadarProps> = ({ metrics, onNavigate, onActio
             // Breite begrenzen: ein <select> wird so breit wie seine längste
             // Option; lange Dokumentnamen schoben es auf dem Handy 155px über
             // den Rand (main clippt, der Filter war nicht mehr bedienbar).
-            className="px-3 py-2 rounded-xl text-[11px] font-black uppercase tracking-wider border w-full sm:w-auto max-w-full sm:max-w-[320px] min-w-0 truncate"
+            className="px-3 py-2 rounded-xl text-[13px] font-semibold border w-full sm:w-auto max-w-full sm:max-w-[320px] min-w-0 truncate"
             style={{
               background: 'var(--bg-sidebar)',
               borderColor: 'var(--border-color)',
@@ -715,7 +715,7 @@ export const GapRadar: React.FC<GapRadarProps> = ({ metrics, onNavigate, onActio
         {(selectedDoc || selectedMode !== 'all') && (
           <button
             onClick={() => { setSelectedDoc(''); setSelectedMode('all'); }}
-            className="text-[11px] font-black uppercase tracking-wider text-rose-500 hover:text-rose-700 transition-colors"
+            className="text-[13px] font-semibold text-rose-500 hover:text-rose-700 transition-colors"
           >
             {t('gr.resetFilter')}
           </button>
@@ -730,7 +730,7 @@ export const GapRadar: React.FC<GapRadarProps> = ({ metrics, onNavigate, onActio
           className="bg-white dark:bg-slate-900 p-6 lg:p-8 rounded-[24px] lg:rounded-[24px] border border-slate-200 dark:border-slate-800 shadow-3d-raised flex flex-col"
           style={{ background: 'var(--card)' }}
         >
-          <h3 className="text-[11px] font-black uppercase tracking-widest mb-4" style={{ color: 'var(--mute)' }}>
+          <h3 className="text-[11px] font-semibold uppercase tracking-[0.08em] mb-4" style={{ color: 'var(--mute)' }}>
             {t('gr.overallProgress')}
           </h3>
           {overallScore !== null ? (
@@ -750,13 +750,13 @@ export const GapRadar: React.FC<GapRadarProps> = ({ metrics, onNavigate, onActio
                   {overallScore}%
                 </div>
               </div>
-              <p className="text-[11px] text-center font-bold uppercase" style={{ color: 'var(--mute)' }}>
+              <p className="text-xs text-center font-bold" style={{ color: 'var(--mute)' }}>
                 {confidenceLabel(overallScore)}
               </p>
               <div className="mt-2 flex justify-center">
-                {trend === 'up'     && <span className="text-[11px] font-black text-emerald-500">{t('gr.improvement')}</span>}
-                {trend === 'down'   && <span className="text-[11px] font-black text-rose-500">{t('gr.decline')}</span>}
-                {trend === 'stable' && <span className="text-[11px] font-black" style={{ color: 'var(--mute)' }}>{t('gr.stable')}</span>}
+                {trend === 'up'     && <span className="text-[11px] font-semibold text-emerald-500">{t('gr.improvement')}</span>}
+                {trend === 'down'   && <span className="text-[11px] font-semibold text-rose-500">{t('gr.decline')}</span>}
+                {trend === 'stable' && <span className="text-[11px] font-semibold" style={{ color: 'var(--mute)' }}>{t('gr.stable')}</span>}
               </div>
             </>
           ) : (
@@ -769,7 +769,7 @@ export const GapRadar: React.FC<GapRadarProps> = ({ metrics, onNavigate, onActio
           className="p-6 lg:p-8 rounded-[24px] lg:rounded-[24px] border border-l-4 border-l-rose-500 border-slate-200 dark:border-slate-800 shadow-3d-raised"
           style={{ background: 'var(--card)' }}
         >
-          <h3 className="text-[11px] font-black uppercase tracking-widest text-rose-500 mb-3">{t('gr.biggestGap')}</h3>
+          <h3 className="text-[11px] font-semibold uppercase tracking-[0.08em] text-rose-500 mb-3">{t('gr.biggestGap')}</h3>
           {biggestGap ? (
             <>
               <p className="text-sm lg:text-lg font-black leading-tight mb-1" style={{ color: 'var(--ink)' }}>
@@ -783,7 +783,7 @@ export const GapRadar: React.FC<GapRadarProps> = ({ metrics, onNavigate, onActio
                   const tabMap = { exam: ActiveTab.EXAM, anki: ActiveTab.CARDS, quiz: ActiveTab.QUIZ };
                   onNavigate(tabMap[biggestGap.action]);
                 }}
-                className="mt-4 w-full py-2.5 rounded-xl text-[11px] font-black uppercase tracking-widest transition-all hover:opacity-80"
+                className="mt-4 w-full py-2.5 rounded-xl text-[13px] font-semibold transition-all hover:opacity-80"
                 style={{ background: 'color-mix(in srgb, #f43f5e 12%, var(--bg-sidebar))', color: '#f43f5e', border: '1px solid color-mix(in srgb, #f43f5e 25%, transparent)' }}
               >
                 {biggestGap.action === 'exam' ? t('gr.startExam') :
@@ -800,7 +800,7 @@ export const GapRadar: React.FC<GapRadarProps> = ({ metrics, onNavigate, onActio
           className="p-6 lg:p-8 rounded-[24px] lg:rounded-[24px] border border-slate-200 dark:border-slate-800 shadow-3d-raised"
           style={{ background: 'var(--card)' }}
         >
-          <h3 className="text-[11px] font-black uppercase tracking-widest mb-3" style={{ color: 'var(--primary-ink)' }}>
+          <h3 className="text-[11px] font-semibold uppercase tracking-[0.08em] mb-3" style={{ color: 'var(--primary-ink)' }}>
             {t('gr.learnToday')}
           </h3>
           <div className="space-y-2">
@@ -808,14 +808,14 @@ export const GapRadar: React.FC<GapRadarProps> = ({ metrics, onNavigate, onActio
               todayLearn.map((item, i) => (
                 <div key={i} className="flex justify-between items-center">
                   <div className="min-w-0">
-                    <p className="text-[11px] font-black break-words pr-1" style={{ color: 'var(--ink)' }}>
+                    <p className="text-[11px] font-semibold break-words pr-1" style={{ color: 'var(--ink)' }}>
                       {item.topic}
                     </p>
-                    <p className="text-[11px] uppercase font-bold" style={{ color: 'var(--mute)' }}>
+                    <p className="text-xs font-bold" style={{ color: 'var(--mute)' }}>
                       {item.mode}
                     </p>
                   </div>
-                  <span className="text-xs font-black shrink-0" style={{ color: scoreColor(item.score) }}>
+                  <span className="text-xs font-semibold shrink-0" style={{ color: scoreColor(item.score) }}>
                     {item.score}%
                   </span>
                 </div>
@@ -832,7 +832,7 @@ export const GapRadar: React.FC<GapRadarProps> = ({ metrics, onNavigate, onActio
 
       {/* ── „Alle Fächer": Hinweis statt Verlauf/Schwachstellen/Tiefenanalyse ── */}
       {compact && (
-        <p className="text-center text-[11px] font-bold uppercase tracking-wider" style={{ color: 'var(--mute)' }}>
+        <p className="text-center text-xs font-bold" style={{ color: 'var(--mute)' }}>
           {t('gr.compactHint')}
         </p>
       )}
@@ -857,7 +857,7 @@ export const GapRadar: React.FC<GapRadarProps> = ({ metrics, onNavigate, onActio
             {ankiAvg !== null && (selectedMode === 'all' || selectedMode === 'anki') && (
               <div className="flex items-center gap-1.5">
                 <svg width="24" height="4"><line x1="0" y1="2" x2="24" y2="2" stroke="var(--primary)" strokeWidth="2" strokeDasharray="5,3" /></svg>
-                <span className="text-[11px] font-black uppercase" style={{ color: 'var(--mute)' }}>{t('gr.ankiAvg')}</span>
+                <span className="text-[11px] font-semibold uppercase" style={{ color: 'var(--mute)' }}>{t('gr.ankiAvg')}</span>
               </div>
             )}
           </div>
@@ -887,7 +887,7 @@ export const GapRadar: React.FC<GapRadarProps> = ({ metrics, onNavigate, onActio
               <div key={topic} className="relative">
                 <button
                   onClick={() => setOpenTopic(openTopic === topic ? null : topic)}
-                  className="px-3 py-2 rounded-xl text-[11px] font-black uppercase tracking-wider transition-all hover:opacity-80"
+                  className="px-3 py-2 rounded-xl text-[13px] font-semibold transition-all hover:opacity-80"
                   style={{
                     background: 'color-mix(in srgb, #f43f5e 10%, var(--bg-sidebar))',
                     color: '#f43f5e',
@@ -907,7 +907,7 @@ export const GapRadar: React.FC<GapRadarProps> = ({ metrics, onNavigate, onActio
                       border: '1px solid var(--border-color)',
                     }}
                   >
-                    <p className="px-4 pt-3 pb-1 text-[11px] font-black uppercase tracking-widest" style={{ color: 'var(--mute)' }}>
+                    <p className="px-4 pt-3 pb-1 text-xs font-semibold" style={{ color: 'var(--mute)' }}>
                       {topic}
                     </p>
                     {[
@@ -965,7 +965,7 @@ export const GapRadar: React.FC<GapRadarProps> = ({ metrics, onNavigate, onActio
               >
                 {/* Mode badge */}
                 <span
-                  className="shrink-0 px-2 py-1 rounded-full text-[11px] font-black uppercase tracking-wider"
+                  className="shrink-0 px-2 py-1 rounded-full text-xs font-semibold"
                   style={{
                     background: scoreBg(entry.score),
                     color: scoreColor(entry.score),
@@ -975,7 +975,7 @@ export const GapRadar: React.FC<GapRadarProps> = ({ metrics, onNavigate, onActio
                 </span>
 
                 <div className="flex-1 min-w-0">
-                  <p className="text-[11px] font-black break-words" style={{ color: 'var(--ink)' }}>
+                  <p className="text-[11px] font-semibold break-words" style={{ color: 'var(--ink)' }}>
                     {entry.docName}
                   </p>
                   <p className="text-[11px] mt-0.5" style={{ color: 'var(--mute)' }}>
@@ -1017,7 +1017,7 @@ export const GapRadar: React.FC<GapRadarProps> = ({ metrics, onNavigate, onActio
           <button
             onClick={handleRunAnalysis}
             disabled={isAnalyzing || !hasAnyData}
-            className="w-full sm:w-auto px-8 py-4 rounded-2xl font-black uppercase text-[11px] tracking-[0.2em] shadow-xl hover:scale-105 transition-all disabled:opacity-40 shrink-0"
+            className="w-full sm:w-auto px-8 py-4 rounded-2xl font-semibold text-[13px] shadow-xl hover:scale-105 transition-all disabled:opacity-40 shrink-0"
             style={{ background: 'var(--primary)', color: 'var(--primary-text)' }}
           >
             {isAnalyzing ? t('gr.analyzing') : <>{t('gr.deepAnalysis')} <EmojiImage emoji="✨" size={13} /></>}
@@ -1030,7 +1030,7 @@ export const GapRadar: React.FC<GapRadarProps> = ({ metrics, onNavigate, onActio
               className="p-8 lg:p-10 rounded-[24px] shadow-lg border"
               style={{ background: 'var(--card)', color: 'var(--ink)', borderColor: 'color-mix(in srgb, var(--primary) 25%, var(--border-color))' }}
             >
-              <h2 className="text-[11px] font-black uppercase tracking-widest opacity-50 mb-3">
+              <h2 className="text-[11px] font-semibold uppercase tracking-[0.08em] opacity-50 mb-3">
                 {t('gr.psychSynthesis')}
               </h2>
               <p className="text-lg lg:text-xl font-medium leading-relaxed italic opacity-90">
@@ -1085,9 +1085,9 @@ export const GapRadar: React.FC<GapRadarProps> = ({ metrics, onNavigate, onActio
                   >
                     <div>
                       <div className="flex flex-wrap justify-between items-start gap-2">
-                        <p className="text-[11px] font-black uppercase tracking-widest" style={{ color: '#f43f5e' }}>{t('gr.mainProblem')}</p>
+                        <p className="text-[11px] font-semibold uppercase tracking-[0.08em]" style={{ color: '#f43f5e' }}>{t('gr.mainProblem')}</p>
                         <span
-                          className="text-[11px] font-black px-2.5 py-1 rounded-full uppercase tracking-widest shrink-0"
+                          className="text-[11px] font-semibold px-2.5 py-1 rounded-full uppercase tracking-[0.08em] shrink-0"
                           style={{ background: 'var(--primary)', color: 'var(--primary-text)' }}
                         >
                           {t('gr.occurredN', { n: error.count })}
@@ -1097,11 +1097,11 @@ export const GapRadar: React.FC<GapRadarProps> = ({ metrics, onNavigate, onActio
                       <p className="text-[11px] font-medium mt-1 leading-relaxed" style={{ color: 'var(--ink2)' }}>{error.description}</p>
                     </div>
                     <div>
-                      <p className="text-[11px] font-black uppercase tracking-widest" style={{ color: 'var(--mute)' }}>{t('gr.probableCause')}</p>
+                      <p className="text-[11px] font-semibold uppercase tracking-[0.08em]" style={{ color: 'var(--mute)' }}>{t('gr.probableCause')}</p>
                       <p className="text-[11px] font-medium mt-1 leading-relaxed" style={{ color: 'var(--ink2)' }}>{error.probableCause}</p>
                     </div>
                     <div className="flex-1">
-                      <p className="text-[11px] font-black uppercase tracking-widest" style={{ color: 'var(--primary-ink)' }}>{t('gr.recommendation')}</p>
+                      <p className="text-[11px] font-semibold uppercase tracking-[0.08em]" style={{ color: 'var(--primary-ink)' }}>{t('gr.recommendation')}</p>
                       <p className="text-sm font-black mt-1" style={{ color: 'var(--ink)' }}>{ERROR_ACTION_LABEL[error.recommendedAction.type] ? t(ERROR_ACTION_LABEL[error.recommendedAction.type]) : error.recommendedAction.type}</p>
                       <p className="text-[11px] italic mt-1 leading-relaxed" style={{ color: 'var(--ink2)' }}>{error.recommendedAction.reasoning}</p>
                       {error.recommendedAction.secondaryType && (
@@ -1113,7 +1113,7 @@ export const GapRadar: React.FC<GapRadarProps> = ({ metrics, onNavigate, onActio
                     <button
                       onClick={handleLearn}
                       disabled={isGeneratingCards}
-                      className="w-full py-3 rounded-xl text-[11px] font-black uppercase tracking-widest transition-all hover:scale-[1.02] disabled:opacity-60 disabled:hover:scale-100"
+                      className="w-full py-3 rounded-xl text-[13px] font-semibold transition-all hover:scale-[1.02] disabled:opacity-60 disabled:hover:scale-100"
                       style={{ background: 'var(--primary)', color: 'var(--primary-text)' }}
                     >
                       {isGeneratingCards ? t('gr.generatingCards') : 'Jetzt lernen →'}

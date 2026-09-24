@@ -25,7 +25,7 @@ const Toggle: React.FC<{ label: string; description?: string; checked: boolean; 
     style={CARD_BG}
   >
     <div className="min-w-0 pr-3">
-      <p className="text-[11px] font-black uppercase tracking-widest dark:text-white">{label}</p>
+      <p className="text-xs font-semibold dark:text-white">{label}</p>
       {description && <p className="text-[11px] font-medium text-slate-400 mt-0.5">{description}</p>}
     </div>
     <div className="w-11 h-6 rounded-full p-0.5 shrink-0 transition-all" style={{ background: checked ? 'var(--primary)' : 'var(--border-color)' }}>
@@ -35,13 +35,13 @@ const Toggle: React.FC<{ label: string; description?: string; checked: boolean; 
 );
 
 const SectionLabel: React.FC<{ children: React.ReactNode }> = ({ children }) => (
-  <p className="text-[11px] font-black uppercase tracking-widest text-slate-400">{children}</p>
+  <p className="text-xs font-semibold text-slate-400">{children}</p>
 );
 
 const Chip: React.FC<{ active: boolean; onClick: () => void; children: React.ReactNode }> = ({ active, onClick, children }) => (
   <button
     onClick={onClick}
-    className="px-4 py-2 rounded-xl text-[11px] font-black uppercase tracking-widest transition-all flex items-center gap-1.5"
+    className="px-4 py-2 rounded-xl text-[13px] font-semibold transition-all flex items-center gap-1.5"
     style={active ? { background: 'var(--primary)', color: 'var(--primary-text)' } : { ...CARD_BG, color: 'var(--text-main)' }}
   >
     {active && <Check className="w-3 h-3" strokeWidth={3} />}
@@ -107,11 +107,11 @@ export const NotificationSettingsPanel: React.FC<Props> = ({ userId }) => {
           <SectionLabel>{t('sp2e.push.title')}</SectionLabel>
           {permission === 'denied' ? (
             <div className="p-5 rounded-2xl space-y-3" style={CARD_BG}>
-              <p className="text-[11px] font-black uppercase tracking-widest text-amber-500">{t('sp2e.push.denied.title')}</p>
+              <p className="text-xs font-semibold text-amber-500">{t('sp2e.push.denied.title')}</p>
               <p className="text-[11px] font-medium text-slate-400">{t('sp2e.push.denied.desc')}</p>
               <button
                 onClick={() => setShowDeniedHelp(v => !v)}
-                className="px-4 py-2.5 rounded-xl text-[11px] font-black uppercase tracking-widest transition-all"
+                className="px-4 py-2.5 rounded-xl text-[13px] font-semibold transition-all"
                 style={{ background: 'var(--primary)', color: 'var(--primary-text)' }}
               >
                 {t('sp2e.push.denied.button')}
@@ -162,7 +162,7 @@ export const NotificationSettingsPanel: React.FC<Props> = ({ userId }) => {
         {settings.dailyReminder.enabled && (
           <div className="p-5 rounded-2xl space-y-4" style={CARD_BG}>
             <div className="flex items-center justify-between">
-              <span className="text-[11px] font-black uppercase tracking-widest dark:text-white">{t('sp2e.daily.time')}</span>
+              <span className="text-[11px] font-semibold uppercase tracking-[0.08em] dark:text-white">{t('sp2e.daily.time')}</span>
               <input
                 type="time"
                 value={settings.dailyReminder.time}
@@ -202,7 +202,7 @@ export const NotificationSettingsPanel: React.FC<Props> = ({ userId }) => {
         {settings.blockLeadTime.enabled && (
           <div className="p-5 rounded-2xl space-y-4" style={CARD_BG}>
             <div className="space-y-2">
-              <span className="text-[11px] font-black uppercase tracking-widest dark:text-white">{t('sp2e.block.leadLabel')}</span>
+              <span className="text-xs font-semibold dark:text-white">{t('sp2e.block.leadLabel')}</span>
               <div className="flex gap-2 flex-wrap">
                 {([5, 10, 15, 30] as const).map(min => (
                   <Chip key={min} active={settings.blockLeadTime.leadMinutes === min} onClick={() => update('blockLeadTime', { leadMinutes: min })}>
@@ -244,7 +244,7 @@ export const NotificationSettingsPanel: React.FC<Props> = ({ userId }) => {
                 <button
                   key={mode}
                   onClick={() => update('spacedRepetition', { mode })}
-                  className={`flex-1 py-2.5 px-2 rounded-xl text-[11px] font-black uppercase tracking-wider transition-all ${settings.spacedRepetition.mode === mode ? 'shadow-lg' : 'text-slate-400 hover:text-slate-600'}`}
+                  className={`flex-1 py-2.5 px-2 rounded-xl text-[13px] font-semibold transition-all ${settings.spacedRepetition.mode === mode ? 'shadow-lg' : 'text-slate-400 hover:text-slate-600'}`}
                   style={settings.spacedRepetition.mode === mode ? { background: 'var(--primary)', color: 'var(--primary-text)' } : {}}
                 >
                   {t(labelKey)}
@@ -253,7 +253,7 @@ export const NotificationSettingsPanel: React.FC<Props> = ({ userId }) => {
             </div>
             {settings.spacedRepetition.mode === 'threshold' && (
               <div className="flex items-center justify-between">
-                <span className="text-[11px] font-black uppercase tracking-widest dark:text-white">{t('sp2e.srs.thresholdLabel')}</span>
+                <span className="text-xs font-semibold dark:text-white">{t('sp2e.srs.thresholdLabel')}</span>
                 <input
                   type="number"
                   min={1}

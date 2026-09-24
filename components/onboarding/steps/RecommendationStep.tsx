@@ -42,7 +42,7 @@ export const RecommendationStep: React.FC<RecommendationStepProps> = ({ challeng
   return (
     <>
       <div className="mb-6 animate-card-enter" style={{ ['--stagger-i' as string]: 0 }}>
-        <p className="text-[11px] font-black uppercase tracking-widest mb-2" style={{ color: 'var(--text-secondary)' }}>
+        <p className="text-[11px] font-semibold uppercase tracking-[0.08em] mb-2" style={{ color: 'var(--text-secondary)' }}>
           {t('onboarding.usp.problemLabel')}
         </p>
         <p className="text-lg font-black tracking-tight" style={{ color: 'var(--text-main)' }}>
@@ -51,7 +51,7 @@ export const RecommendationStep: React.FC<RecommendationStepProps> = ({ challeng
       </div>
 
       <div className="mb-5 animate-card-enter" style={{ ['--stagger-i' as string]: 1 }}>
-        <p className="text-[11px] font-black uppercase tracking-widest mb-2" style={{ color: 'var(--primary-ink)' }}>
+        <p className="text-[11px] font-semibold uppercase tracking-[0.08em] mb-2" style={{ color: 'var(--primary-ink)' }}>
           {t('onboarding.usp.solutionLabel')}
         </p>
         <div className="flex items-start gap-3 mb-3">
@@ -70,14 +70,14 @@ export const RecommendationStep: React.FC<RecommendationStepProps> = ({ challeng
 
       {howItWorks && (
         <div className="animate-card-enter" style={{ ['--stagger-i' as string]: 2 }}>
-          <p className="text-[11px] font-black uppercase tracking-widest mb-2" style={{ color: 'var(--text-secondary)' }}>
+          <p className="text-[11px] font-semibold uppercase tracking-[0.08em] mb-2" style={{ color: 'var(--text-secondary)' }}>
             {t('onboarding.usp.howItWorksLabel')}
           </p>
           <ol className="space-y-2">
             {howItWorks.map((key, i) => (
               <li key={key} className="flex items-start gap-2.5 text-sm text-slate-500 dark:text-slate-400 leading-relaxed">
                 <span
-                  className="shrink-0 w-5 h-5 rounded-full flex items-center justify-center text-[11px] font-black mt-0.5"
+                  className="shrink-0 w-5 h-5 rounded-full flex items-center justify-center text-[11px] font-semibold mt-0.5"
                   style={{ background: 'color-mix(in srgb, var(--primary) 14%, var(--bg-main))', color: 'var(--primary-ink)' }}
                 >
                   {i + 1}

@@ -296,12 +296,12 @@ export const ExamGenerator: React.FC<ExamGeneratorProps> = ({
           <div className="rounded-[28px] border transition-all overflow-hidden"
             style={{ background: 'var(--bg-sidebar)', borderColor: contentSource ? 'var(--primary)' : 'var(--border-color)' }}>
             <div className="flex items-center gap-3 px-5 sm:px-7 pt-5 sm:pt-6 pb-1">
-              <h3 className="text-[11px] font-black uppercase tracking-[0.2em]" style={{ color: 'var(--text-secondary)' }}>{t('eg.material')}</h3>
+              <h3 className="text-[11px] font-semibold uppercase tracking-[0.08em]" style={{ color: 'var(--text-secondary)' }}>{t('eg.material')}</h3>
               {contentSource && (
                 <div className="ml-auto flex items-center gap-2 bg-emerald-50 dark:bg-emerald-950/20 px-3 py-1.5 rounded-xl">
                   <div className="w-2 h-2 rounded-full bg-emerald-500 shrink-0" />
-                  <p className="text-[11px] text-emerald-600 dark:text-emerald-400 font-black break-words max-w-[120px]">{contentName}</p>
-                  <button onClick={() => { setContentSource(null); setContentName(''); }} className="text-emerald-400 hover:text-rose-500 transition-colors text-xs font-black ml-1">✕</button>
+                  <p className="text-[11px] text-emerald-600 dark:text-emerald-400 font-semibold break-words max-w-[120px]">{contentName}</p>
+                  <button onClick={() => { setContentSource(null); setContentName(''); }} className="text-emerald-400 hover:text-rose-500 transition-colors text-xs font-semibold ml-1">✕</button>
                 </div>
               )}
             </div>
@@ -319,14 +319,14 @@ export const ExamGenerator: React.FC<ExamGeneratorProps> = ({
           <div className={`p-5 sm:p-7 rounded-[28px] border transition-all flex flex-col gap-4 ${(styleFile || styleLibDocId) ? '' : 'border-dashed'}`}
             style={{ background: 'var(--bg-sidebar)', borderColor: (styleFile || styleLibDocId) ? 'var(--primary)' : 'var(--border-color)' }}>
             <div>
-              <h3 className="text-[11px] font-black uppercase tracking-[0.2em]" style={{ color: 'var(--text-secondary)' }}>{t('card.oldExam')}</h3>
+              <h3 className="text-[11px] font-semibold uppercase tracking-[0.08em]" style={{ color: 'var(--text-secondary)' }}>{t('card.oldExam')}</h3>
               <p className="text-[13px] mt-1" style={{ color: 'var(--text-secondary)' }}>{t('eg.oldExamOptional')}</p>
             </div>
 
             {/* Library Altklausur docs */}
             {altklausurDocs.length > 0 && (
               <div className="space-y-2">
-                <p className="text-[11px] font-black uppercase tracking-widest text-slate-400">{t('eg.fromLibrary')}</p>
+                <p className="text-[11px] font-semibold uppercase tracking-[0.08em] text-slate-400">{t('eg.fromLibrary')}</p>
                 {altklausurDocs.map(d => (
                   <button
                     key={d.id}
@@ -351,12 +351,12 @@ export const ExamGenerator: React.FC<ExamGeneratorProps> = ({
                         </svg>
                       )}
                     </div>
-                    <span className="text-[11px] font-black break-words dark:text-white">{documentDisplayName(d)}</span>
+                    <span className="text-[11px] font-semibold break-words dark:text-white">{documentDisplayName(d)}</span>
                   </button>
                 ))}
                 <div className="flex items-center gap-3 my-1">
                   <div className="flex-1 h-px bg-slate-200 dark:bg-slate-700" />
-                  <p className="text-[11px] font-black uppercase tracking-widest text-slate-400">{t('eg.or')}</p>
+                  <p className="text-[11px] font-semibold uppercase tracking-[0.08em] text-slate-400">{t('eg.or')}</p>
                   <div className="flex-1 h-px bg-slate-200 dark:bg-slate-700" />
                 </div>
               </div>
@@ -371,14 +371,14 @@ export const ExamGenerator: React.FC<ExamGeneratorProps> = ({
             />
             <label
               htmlFor="style-input"
-              className="w-full py-4 bg-slate-100 dark:bg-slate-800 text-slate-500 dark:text-slate-400 rounded-2xl text-[11px] font-black uppercase tracking-widest hover:bg-rose-600 hover:text-white transition-all text-center cursor-pointer shadow-sm"
+              className="w-full py-4 bg-slate-100 dark:bg-slate-800 text-slate-500 dark:text-slate-400 rounded-2xl text-[13px] font-semibold hover:bg-rose-600 hover:text-white transition-all text-center cursor-pointer shadow-sm"
             >
               {styleFile ? t('eg.changeFile') : t('eg.uploadFile')}
             </label>
             {styleFile ? (
               <div className="p-3 bg-emerald-50 dark:bg-emerald-950/20 rounded-xl flex items-center gap-3">
-                <p className="text-[11px] text-emerald-600 dark:text-emerald-400 font-black break-words">{styleFile.name}</p>
-                <button type="button" onClick={() => setStyleFile(null)} className="ml-auto text-slate-400 hover:text-rose-500 text-xs font-black">✕</button>
+                <p className="text-[11px] text-emerald-600 dark:text-emerald-400 font-semibold break-words">{styleFile.name}</p>
+                <button type="button" onClick={() => setStyleFile(null)} className="ml-auto text-slate-400 hover:text-rose-500 text-xs font-semibold">✕</button>
               </div>
             ) : !styleLibDocId ? (
               <p className="text-[11px] text-slate-400 italic text-center">{t('eg.defaultStyle')}</p>
@@ -389,11 +389,11 @@ export const ExamGenerator: React.FC<ExamGeneratorProps> = ({
         {/* Config Column */}
         <div className="lg:col-span-5 space-y-6">
           <div className="bg-white dark:bg-slate-900 rounded-[24px] sm:rounded-[24px] border border-slate-200 dark:border-slate-800 shadow-3d-deep p-5 sm:p-8 space-y-8 sm:space-y-10">
-            <h3 className="text-[11px] font-black uppercase tracking-[0.14em] text-indigo-500">{t('eg.setup')}</h3>
+            <h3 className="text-[11px] font-semibold uppercase tracking-[0.08em] text-indigo-500">{t('eg.setup')}</h3>
 
             <div className="space-y-6">
               <div className="space-y-3">
-                <div className="flex justify-between items-center text-[11px] font-black uppercase tracking-widest text-slate-400">
+                <div className="flex justify-between items-center text-[11px] font-semibold uppercase tracking-[0.08em] text-slate-400">
                   <span>{t('eg.questionCount')}</span>
                   <span className="text-slate-900 dark:text-white">{questionCount}</span>
                 </div>
@@ -402,7 +402,7 @@ export const ExamGenerator: React.FC<ExamGeneratorProps> = ({
                     <button
                       key={c}
                       onClick={() => setQuestionCount(c)}
-                      className={`flex-1 py-3 rounded-xl text-[11px] font-black transition-all ${questionCount === c ? 'bg-indigo-600 text-white shadow-lg' : 'text-slate-400 hover:text-slate-600'}`}
+                      className={`flex-1 py-3 rounded-xl text-[13px] font-semibold transition-all ${questionCount === c ? 'bg-indigo-600 text-white shadow-lg' : 'text-slate-400 hover:text-slate-600'}`}
                     >
                       {c}
                     </button>
@@ -411,7 +411,7 @@ export const ExamGenerator: React.FC<ExamGeneratorProps> = ({
               </div>
 
               <div className="space-y-3">
-                <div className="flex justify-between items-center text-[11px] font-black uppercase tracking-widest text-slate-400">
+                <div className="flex justify-between items-center text-xs font-semibold text-slate-400">
                   <span>{t('quizSetup.difficulty')}</span>
                   <span className="text-slate-900 dark:text-white">{t((`diff.${difficulty}`) as TKey)}</span>
                 </div>
@@ -420,7 +420,7 @@ export const ExamGenerator: React.FC<ExamGeneratorProps> = ({
                     <button
                       key={d}
                       onClick={() => setDifficulty(d)}
-                      className={`flex-1 py-3 rounded-xl text-[11px] font-black transition-all uppercase tracking-widest ${difficulty === d ? 'bg-indigo-600 text-white shadow-lg' : 'text-slate-400 hover:text-slate-600'}`}
+                      className={`flex-1 py-3 rounded-xl text-[13px] font-semibold transition-all ${difficulty === d ? 'bg-indigo-600 text-white shadow-lg' : 'text-slate-400 hover:text-slate-600'}`}
                     >
                       {t((`diff.${d}`) as TKey)}
                     </button>
@@ -429,7 +429,7 @@ export const ExamGenerator: React.FC<ExamGeneratorProps> = ({
               </div>
 
               <div className="space-y-3">
-                <div className="text-[11px] font-black uppercase tracking-widest text-slate-400">{t('eg.questionTypes')}</div>
+                <div className="text-[11px] font-semibold uppercase tracking-[0.08em] text-slate-400">{t('eg.questionTypes')}</div>
                 <div className="flex flex-wrap gap-2">
                   {EXAM_TYPE_IDS.map(id => {
                     const active = selectedTypes.includes(id);
@@ -437,7 +437,7 @@ export const ExamGenerator: React.FC<ExamGeneratorProps> = ({
                       <button
                         key={id}
                         onClick={() => toggleType(id)}
-                        className={`px-3 py-1.5 rounded-xl text-[11px] font-black uppercase tracking-widest border-2 transition-all ${active ? 'border-indigo-500 bg-indigo-50 dark:bg-indigo-950/20 text-indigo-600' : 'border-slate-200 dark:border-slate-700 text-slate-400 hover:border-indigo-300'}`}
+                        className={`px-3 py-1.5 rounded-xl text-[13px] font-semibold border-2 transition-all ${active ? 'border-indigo-500 bg-indigo-50 dark:bg-indigo-950/20 text-indigo-600' : 'border-slate-200 dark:border-slate-700 text-slate-400 hover:border-indigo-300'}`}
                       >
                         {active ? '✓ ' : ''}{getTypeLabel(id)}
                       </button>
@@ -448,7 +448,7 @@ export const ExamGenerator: React.FC<ExamGeneratorProps> = ({
             </div>
 
             <div className="space-y-3">
-              <div className="flex justify-between items-center text-[11px] font-black uppercase tracking-widest text-slate-400">
+              <div className="flex justify-between items-center text-xs font-semibold text-slate-400">
                 <span>{t('eg.editTime')}</span>
                 {customMinutes !== null && (
                   <button onClick={() => setCustomMinutes(null)} className="text-indigo-500 hover:text-indigo-700 normal-case tracking-normal font-bold">{t('eg.reset')}</button>
@@ -486,13 +486,13 @@ export const ExamGenerator: React.FC<ExamGeneratorProps> = ({
             {showAdvanced && (
               <div className="space-y-8 animate-in fade-in duration-200">
               <div className="space-y-3">
-                <div className="text-[11px] font-black uppercase tracking-widest text-slate-400">{t('eg.examTypePreset')}</div>
+                <div className="text-[11px] font-semibold uppercase tracking-[0.08em] text-slate-400">{t('eg.examTypePreset')}</div>
                 <div className="grid grid-cols-2 gap-2">
                   {EXAM_TYPE_PRESETS.map(p => (
                     <button
                       key={p}
                       onClick={() => setExamTypePreset(p)}
-                      className={`py-3 px-2 rounded-xl text-[11px] font-black transition-all uppercase tracking-wide text-center leading-tight break-words [hyphens:auto] border-2 ${examTypePreset === p ? 'border-indigo-500 bg-indigo-600 text-white shadow-lg' : 'border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 text-slate-400 hover:text-slate-600'}`}
+                      className={`py-3 px-2 rounded-xl text-[13px] font-semibold transition-all text-center leading-tight break-words [hyphens:auto] border-2 ${examTypePreset === p ? 'border-indigo-500 bg-indigo-600 text-white shadow-lg' : 'border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 text-slate-400 hover:text-slate-600'}`}
                     >
                       {t((`eg.examType.${p}`) as TKey)}
                     </button>
@@ -515,7 +515,7 @@ export const ExamGenerator: React.FC<ExamGeneratorProps> = ({
                     )}
                   </div>
                   <div>
-                    <p className="text-[11px] font-black uppercase tracking-widest dark:text-white">{t('eg.quantMode')}</p>
+                    <p className="text-[11px] font-semibold uppercase tracking-[0.08em] dark:text-white">{t('eg.quantMode')}</p>
                     <p className="text-[11px] text-slate-400 font-medium mt-1">{t('eg.quantModeHint')}</p>
                   </div>
                 </button>
@@ -524,7 +524,7 @@ export const ExamGenerator: React.FC<ExamGeneratorProps> = ({
                   <div className="space-y-5 animate-in fade-in slide-in-from-top-2 duration-300 pl-9">
                     {/* Fach */}
                     <div className="space-y-2">
-                      <p className="text-[11px] font-black uppercase tracking-widest text-slate-400">{t('eg.quantSubject')}</p>
+                      <p className="text-[11px] font-semibold uppercase tracking-[0.08em] text-slate-400">{t('eg.quantSubject')}</p>
                       <input
                         type="text"
                         value={quantSubject}
@@ -541,11 +541,11 @@ export const ExamGenerator: React.FC<ExamGeneratorProps> = ({
                     {/* Themen */}
                     <div className="space-y-2">
                       <div className="flex items-center justify-between">
-                        <p className="text-[11px] font-black uppercase tracking-widest text-slate-400">{t('eg.quantTopics')}</p>
+                        <p className="text-[11px] font-semibold uppercase tracking-[0.08em] text-slate-400">{t('eg.quantTopics')}</p>
                         <button
                           type="button"
                           onClick={() => setQuantAutoTopics(v => !v)}
-                          className={`text-[11px] font-black uppercase tracking-widest px-2 py-1 rounded-lg transition-all ${quantAutoTopics ? 'bg-indigo-600 text-white' : 'bg-slate-100 dark:bg-slate-800 text-slate-400'}`}
+                          className={`text-[13px] font-semibold px-2 py-1 rounded-lg transition-all ${quantAutoTopics ? 'bg-indigo-600 text-white' : 'bg-slate-100 dark:bg-slate-800 text-slate-400'}`}
                         >
                           {t('eg.quantTopicsAuto')}
                         </button>
@@ -563,7 +563,7 @@ export const ExamGenerator: React.FC<ExamGeneratorProps> = ({
 
                     {/* Fragetyp-Verteilung */}
                     <div className="space-y-3">
-                      <p className="text-[11px] font-black uppercase tracking-widest text-slate-400">{t('eg.quantDistribution')}</p>
+                      <p className="text-[11px] font-semibold uppercase tracking-[0.08em] text-slate-400">{t('eg.quantDistribution')}</p>
                       {QUANT_TYPE_IDS.map(id => (
                         <div key={id} className="flex items-center gap-3">
                           <span className="text-[11px] font-bold dark:text-slate-300 w-24 shrink-0">{QUANT_TYPE_LABELS[id]}</span>
@@ -577,7 +577,7 @@ export const ExamGenerator: React.FC<ExamGeneratorProps> = ({
                             className="flex-1 range-fill"
                             style={{ '--range-progress': `${quantDistribution[id]}%` } as React.CSSProperties}
                           />
-                          <span className="text-[11px] font-black dark:text-white w-8 text-right shrink-0">{quantDistribution[id]}</span>
+                          <span className="text-[11px] font-semibold dark:text-white w-8 text-right shrink-0">{quantDistribution[id]}</span>
                         </div>
                       ))}
                       <p className="text-[11px] text-slate-400 italic">{t('eg.quantDistributionHint')}</p>
@@ -587,7 +587,7 @@ export const ExamGenerator: React.FC<ExamGeneratorProps> = ({
               </div>
             {/* Bewertungsprofil */}
             <div className="space-y-4">
-              <div className="text-[11px] font-black uppercase tracking-widest text-slate-400">{t('eg.scoringProfile')}</div>
+              <div className="text-[11px] font-semibold uppercase tracking-[0.08em] text-slate-400">{t('eg.scoringProfile')}</div>
               <div className="flex bg-slate-50 dark:bg-slate-800 p-1 rounded-2xl border shadow-inner">
                 {([
                   { id: 'strict',   label: t('eg.scoreStrict') },
@@ -597,7 +597,7 @@ export const ExamGenerator: React.FC<ExamGeneratorProps> = ({
                   <button
                     key={m.id}
                     onClick={() => setScoringMode(m.id)}
-                    className={`flex-1 py-3 rounded-xl text-[11px] font-black transition-all uppercase tracking-widest break-words leading-tight ${scoringMode === m.id ? 'bg-indigo-600 text-white shadow-lg' : 'text-slate-400 hover:text-slate-600'}`}
+                    className={`flex-1 py-3 rounded-xl text-[13px] font-semibold transition-all break-words leading-tight ${scoringMode === m.id ? 'bg-indigo-600 text-white shadow-lg' : 'text-slate-400 hover:text-slate-600'}`}
                   >{m.label}</button>
                 ))}
               </div>
@@ -613,7 +613,7 @@ export const ExamGenerator: React.FC<ExamGeneratorProps> = ({
                     <button
                       key={e.id}
                       onClick={() => setEmphases(prev => active ? prev.filter(x => x !== e.id) : [...prev, e.id])}
-                      className={`px-3 py-1.5 rounded-xl text-[11px] font-black uppercase tracking-widest border-2 transition-all ${active ? 'border-indigo-500 bg-indigo-50 dark:bg-indigo-950/20 text-indigo-600' : 'border-slate-200 dark:border-slate-700 text-slate-400 hover:border-indigo-300'}`}
+                      className={`px-3 py-1.5 rounded-xl text-[13px] font-semibold border-2 transition-all ${active ? 'border-indigo-500 bg-indigo-50 dark:bg-indigo-950/20 text-indigo-600' : 'border-slate-200 dark:border-slate-700 text-slate-400 hover:border-indigo-300'}`}
                     >
                       {active ? '✓ ' : ''}{e.label}
                     </button>
@@ -641,7 +641,7 @@ export const ExamGenerator: React.FC<ExamGeneratorProps> = ({
                     )}
                   </div>
                   <div>
-                    <p className="text-[11px] font-black uppercase tracking-widest dark:text-white">{t('eg.adaptive')}</p>
+                    <p className="text-xs font-semibold dark:text-white">{t('eg.adaptive')}</p>
                     <p className="text-[11px] text-slate-400 font-medium mt-1">{t('eg.adaptiveHint')}</p>
                   </div>
                 </button>
@@ -652,13 +652,13 @@ export const ExamGenerator: React.FC<ExamGeneratorProps> = ({
                 {adaptiveEnabled && (
                   <div className="space-y-4 animate-in fade-in slide-in-from-top-2 duration-300 pl-9">
                     <div className="space-y-2">
-                      <p className="text-[11px] font-black uppercase tracking-widest text-slate-400">{t('eg.adaptivePreviewTopics')}</p>
+                      <p className="text-xs font-semibold text-slate-400">{t('eg.adaptivePreviewTopics')}</p>
                       {adaptiveTarget.topicWeights.length > 0 ? (
                         <div className="flex flex-wrap gap-2">
                           {adaptiveTarget.topicWeights.map(w => (
                             <span key={w.topic} className="inline-flex items-center gap-2 px-3 py-1.5 rounded-xl text-[11px] font-bold bg-white dark:bg-slate-800 border border-indigo-200 dark:border-indigo-800 text-slate-700 dark:text-slate-200">
                               <span className="break-words">{w.topic}</span>
-                              <span className="text-[11px] font-black uppercase tracking-widest text-indigo-600 dark:text-indigo-400 shrink-0">{t('eg.adaptiveMinCount', { n: w.minCount })}</span>
+                              <span className="text-[11px] font-semibold uppercase tracking-[0.08em] text-indigo-600 dark:text-indigo-400 shrink-0">{t('eg.adaptiveMinCount', { n: w.minCount })}</span>
                             </span>
                           ))}
                         </div>
@@ -668,13 +668,13 @@ export const ExamGenerator: React.FC<ExamGeneratorProps> = ({
                     </div>
 
                     <div className="space-y-2">
-                      <p className="text-[11px] font-black uppercase tracking-widest text-slate-400">{t('eg.adaptivePreviewMix')}</p>
+                      <p className="text-[11px] font-semibold uppercase tracking-[0.08em] text-slate-400">{t('eg.adaptivePreviewMix')}</p>
                       <div className="flex h-2.5 rounded-full overflow-hidden bg-slate-100 dark:bg-slate-800">
                         <div className="bg-emerald-400" style={{ width: `${adaptiveTarget.difficultyMix.leicht}%` }} />
                         <div className="bg-amber-400" style={{ width: `${adaptiveTarget.difficultyMix.mittel}%` }} />
                         <div className="bg-rose-500" style={{ width: `${adaptiveTarget.difficultyMix.schwer}%` }} />
                       </div>
-                      <div className="flex justify-between text-[11px] font-black uppercase tracking-widest">
+                      <div className="flex justify-between text-xs font-semibold">
                         {DIFFICULTY_LEVELS.map(level => (
                           <span key={level} className={level === 'leicht' ? 'text-emerald-600' : level === 'mittel' ? 'text-amber-600' : 'text-rose-600'}>
                             {t((`diff.${level}`) as TKey)} {adaptiveTarget.difficultyMix[level]}%
@@ -703,7 +703,7 @@ export const ExamGenerator: React.FC<ExamGeneratorProps> = ({
             <button
               onClick={handleStart}
               disabled={!contentSource || isLoading}
-              className="w-full py-5 rounded-[24px] font-black uppercase tracking-[0.2em] text-[12px] hover:scale-[1.01] transition-all disabled:opacity-40 disabled:cursor-not-allowed mt-4"
+              className="w-full py-5 rounded-[24px] font-semibold text-[12px] hover:scale-[1.01] transition-all disabled:opacity-40 disabled:cursor-not-allowed mt-4"
               style={{ background: 'var(--primary)', color: 'var(--primary-text)' }}
             >
               {isLoading ? (

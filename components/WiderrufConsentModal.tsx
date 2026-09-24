@@ -31,7 +31,7 @@ export const WiderrufConsentModal: React.FC<WiderrufConsentModalProps> = ({ isLo
         style={{ background: 'var(--bg-sidebar)', border: '1px solid var(--border-color)' }}
       >
         <div className="flex items-center justify-between p-8 pb-0">
-          <h2 id={titleId} className="text-lg font-black dark:text-white uppercase tracking-tight">{t('checkout.consent.title')}</h2>
+          <h2 id={titleId} className="text-lg font-semibold dark:text-white tracking-tight">{t('checkout.consent.title')}</h2>
           <button aria-label={t('common.close')} onClick={onClose} className="w-9 h-9 flex items-center justify-center rounded-xl text-slate-400 hover:text-slate-700 dark:hover:text-white transition-all" style={{ background: 'color-mix(in srgb, var(--border-color) 60%, var(--bg-sidebar))' }}>
             <X className="w-[18px] h-[18px]" strokeWidth={2} />
           </button>
@@ -53,7 +53,7 @@ export const WiderrufConsentModal: React.FC<WiderrufConsentModalProps> = ({ isLo
           <button
             onClick={onConfirm}
             disabled={!checked || isLoading}
-            className="w-full py-3.5 rounded-2xl text-[11px] font-black uppercase tracking-widest text-white transition-all hover:scale-[1.02] disabled:opacity-40 disabled:hover:scale-100 flex items-center justify-center gap-2"
+            className="w-full py-3.5 rounded-2xl text-[13px] font-semibold text-white transition-all hover:scale-[1.02] disabled:opacity-40 disabled:hover:scale-100 flex items-center justify-center gap-2"
             style={{ background: 'var(--primary)' }}
           >
             {isLoading ? <Loader2 className="w-4 h-4 animate-spin" /> : <Zap className="w-4 h-4" strokeWidth={2} />}

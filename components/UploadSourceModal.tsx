@@ -24,7 +24,7 @@ const Field: React.FC<{
   textarea?: boolean;
 }> = ({ label, value, onChange, placeholder, type = 'text', textarea }) => (
   <div className="space-y-1">
-    <label className="text-[11px] font-black uppercase tracking-widest text-slate-400">{label}</label>
+    <label className="text-xs font-semibold text-slate-400">{label}</label>
     {textarea ? (
       <textarea
         value={value}
@@ -184,7 +184,7 @@ export const UploadSourceModal: React.FC<Props> = ({ onClose, onUpload }) => {
         <div className="flex justify-between items-center px-8 py-6 border-b border-slate-100 dark:border-slate-800">
           <div>
             <h2 id={titleId} className="text-xl font-black dark:text-white">{t('upl.title')}</h2>
-            <p className="text-[11px] font-black uppercase tracking-widest text-slate-400 mt-0.5">{t('upl.subtitle')}</p>
+            <p className="text-xs font-semibold text-slate-400 mt-0.5">{t('upl.subtitle')}</p>
           </div>
           <ModalCloseButton onClick={onClose} label={t('upl.close')} className="p-2 text-slate-400 hover:text-rose-500 transition-colors rounded-xl" />
         </div>
@@ -194,7 +194,7 @@ export const UploadSourceModal: React.FC<Props> = ({ onClose, onUpload }) => {
             <div className="space-y-2 py-2">
               <div className="flex items-center justify-center gap-3 text-indigo-600">
                 <span className="w-4 h-4 border-2 border-indigo-200 border-t-indigo-600 rounded-full animate-spin shrink-0" />
-                <span className="text-[11px] font-black uppercase tracking-widest text-center">
+                <span className="text-xs font-semibold text-center">
                   {mode === 'link'
                     ? (linkKind === 'youtube' ? t('upl.videoProcessing') : t('upl.pageLoading'))
                     : uploadProgress && uploadProgress.total > 1
@@ -220,7 +220,7 @@ export const UploadSourceModal: React.FC<Props> = ({ onClose, onUpload }) => {
                 key={m}
                 type="button"
                 onClick={() => setMode(m)}
-                className={`flex-1 py-2.5 rounded-xl text-[11px] font-black uppercase tracking-wider transition-all ${
+                className={`flex-1 py-2.5 rounded-xl text-[13px] font-semibold transition-all ${
                   mode === m ? 'bg-indigo-600 text-white shadow-lg' : 'text-slate-400 hover:text-slate-600 dark:hover:text-slate-200'
                 }`}
               >
@@ -283,7 +283,7 @@ export const UploadSourceModal: React.FC<Props> = ({ onClose, onUpload }) => {
                 >
                   <p className="text-4xl mb-3">📂</p>
                   <p className="font-black dark:text-white text-sm">{t('upl.dropFiles')}</p>
-                  <p className="text-[11px] text-slate-400 mt-1 font-black uppercase tracking-widest">{t('upl.orClick')}</p>
+                  <p className="text-xs text-slate-400 mt-1 font-semibold">{t('upl.orClick')}</p>
                   <p className="text-[11px] text-slate-300 dark:text-slate-600 mt-3">{t('upl.fileTypes')}</p>
                 </div>
               ) : (
@@ -301,7 +301,7 @@ export const UploadSourceModal: React.FC<Props> = ({ onClose, onUpload }) => {
                             className="w-full bg-transparent text-sm font-black dark:text-white outline-none border-b border-transparent focus:border-indigo-400"
                             aria-label={t('upl.titleOptional')}
                           />
-                          <p className="text-[11px] text-slate-400 font-black uppercase tracking-widest truncate">{f.file.name} · {(f.file.size / 1024 / 1024).toFixed(2)} MB</p>
+                          <p className="text-xs text-slate-400 font-semibold truncate">{f.file.name} · {(f.file.size / 1024 / 1024).toFixed(2)} MB</p>
                         </div>
                         <button type="button" onClick={() => setFiles(prev => prev.filter((_, j) => j !== i))} className="text-slate-400 hover:text-rose-500 transition-colors font-black text-lg leading-none shrink-0">×</button>
                       </div>
@@ -310,7 +310,7 @@ export const UploadSourceModal: React.FC<Props> = ({ onClose, onUpload }) => {
                   <button
                     type="button"
                     onClick={() => fileInputRef.current?.click()}
-                    className="w-full py-3 rounded-2xl border-2 border-dashed border-slate-200 dark:border-slate-700 text-[11px] font-black uppercase tracking-widest text-slate-400 hover:border-indigo-400 hover:text-indigo-500 transition-all"
+                    className="w-full py-3 rounded-2xl border-2 border-dashed border-slate-200 dark:border-slate-700 text-[13px] font-semibold text-slate-400 hover:border-indigo-400 hover:text-indigo-500 transition-all"
                   >
                     {t('upl.addMoreFiles')}
                   </button>
@@ -354,7 +354,7 @@ export const UploadSourceModal: React.FC<Props> = ({ onClose, onUpload }) => {
               }`}
             >
               <div>
-                <p className={`text-[11px] font-black ${isAltklausur ? 'text-rose-600 dark:text-rose-400' : 'dark:text-white'}`}>{t('upl.isOldExam')}</p>
+                <p className={`text-[11px] font-semibold ${isAltklausur ? 'text-rose-600 dark:text-rose-400' : 'dark:text-white'}`}>{t('upl.isOldExam')}</p>
                 <p className="text-[11px] text-slate-400 mt-0.5">{t('upl.isOldExamHint')}</p>
               </div>
               <div className={`w-5 h-5 rounded flex items-center justify-center shrink-0 border-2 transition-all ${
@@ -372,7 +372,7 @@ export const UploadSourceModal: React.FC<Props> = ({ onClose, onUpload }) => {
           <button
             type="submit"
             disabled={isUploading || (mode === 'file' ? files.length === 0 : mode === 'text' ? pastedText.trim().length < 20 : !linkKind)}
-            className="w-full bg-indigo-600 py-4 rounded-2xl text-[11px] font-black uppercase tracking-widest shadow-lg hover:scale-[1.02] transition-all disabled:opacity-40 disabled:scale-100"
+            className="w-full bg-indigo-600 py-4 rounded-2xl text-[13px] font-semibold shadow-lg hover:scale-[1.02] transition-all disabled:opacity-40 disabled:scale-100"
             style={{ color: 'var(--primary-text)' }}
           >
             {isUploading ? t('upl.saving') : mode === 'text' ? t('upl.saveNote') : mode === 'link' ? t('upl.linkImport') : files.length > 1 ? tp('upl.uploadSourcesN', files.length) : t('upl.uploadSource')}

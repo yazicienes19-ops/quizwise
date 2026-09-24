@@ -111,12 +111,12 @@ const OverlayShell: React.FC<{ node: GraphNode; activity: GraphLearningActivity;
         <button
           ref={closeButtonRef}
           onClick={onClose}
-          className="flex items-center gap-1.5 text-[11px] font-black uppercase tracking-widest text-slate-500 dark:text-slate-300 hover:text-slate-700 dark:hover:text-white transition-colors shrink-0"
+          className="flex items-center gap-1.5 text-[13px] font-semibold text-slate-500 dark:text-slate-300 hover:text-slate-700 dark:hover:text-white transition-colors shrink-0"
         >
           ← {t('kg.activity.back')}
         </button>
         <div className="min-w-0 flex-1 text-center">
-          <p className="text-[11px] font-black uppercase tracking-widest text-slate-400 break-words">{t(ACTIVITY_TITLES[activity])} · {node.title}</p>
+          <p className="text-xs font-semibold text-slate-400 break-words">{t(ACTIVITY_TITLES[activity])} · {node.title}</p>
         </div>
         <div className="w-[72px] shrink-0" />
       </div>
@@ -132,7 +132,7 @@ const LoadingState: React.FC<{ label: string }> = ({ label }) => (
       <div className="w-16 h-16 border-8 rounded-full" style={{ borderColor: 'var(--border-color)' }} />
       <div className="w-16 h-16 border-8 border-t-transparent rounded-full animate-spin absolute top-0 left-0" style={{ borderColor: 'var(--primary)', borderTopColor: 'transparent' }} />
     </div>
-    <p className="text-sm font-black uppercase tracking-tight dark:text-white text-center">{label}</p>
+    <p className="text-sm font-semibold tracking-tight dark:text-white text-center">{label}</p>
   </div>
 );
 
@@ -143,7 +143,7 @@ const ErrorState: React.FC<{ message: string; onClose: () => void }> = ({ messag
       <p className="text-sm font-bold text-rose-500 max-w-sm">{message}</p>
       <button
         onClick={onClose}
-        className="px-5 py-2.5 rounded-[14px] text-[11px] font-black uppercase tracking-widest text-white"
+        className="px-5 py-2.5 rounded-[14px] text-[13px] font-semibold text-white"
         style={{ background: 'var(--primary)' }}
       >
         {t('kg.activity.back')}
@@ -311,7 +311,7 @@ const QuizActivity: React.FC<{
           </p>
           <button
             onClick={onClose}
-            className="px-6 py-3 rounded-[14px] text-[11px] font-black uppercase tracking-widest text-white"
+            className="px-6 py-3 rounded-[14px] text-[13px] font-semibold text-white"
             style={{ background: 'var(--primary)' }}
           >
             {t('kg.activity.back')}
@@ -467,7 +467,7 @@ const ExplainActivity: React.FC<{
                 <button
                   key={q}
                   onClick={() => handleAsk(q)}
-                  className="px-3 py-1.5 rounded-xl text-[11px] font-black transition-all hover:scale-[1.03] text-left"
+                  className="px-3 py-1.5 rounded-xl text-[13px] font-semibold transition-all hover:scale-[1.03] text-left"
                   style={{
                     background: 'color-mix(in srgb, var(--primary) 10%, transparent)',
                     color: 'var(--primary-ink)',
@@ -492,7 +492,7 @@ const ExplainActivity: React.FC<{
                     <button
                       key={q}
                       onClick={() => handleAsk(q)}
-                      className="px-3 py-1.5 rounded-xl text-[11px] font-black transition-all hover:scale-[1.03] text-left"
+                      className="px-3 py-1.5 rounded-xl text-[13px] font-semibold transition-all hover:scale-[1.03] text-left"
                       style={{
                         background: 'color-mix(in srgb, var(--primary) 10%, transparent)',
                         color: 'var(--primary-ink)',
@@ -537,7 +537,7 @@ const ExplainActivity: React.FC<{
                 <button
                   onClick={() => handleAsk()}
                   disabled={!followUpInput.trim()}
-                  className="px-5 py-2.5 rounded-full text-xs font-black uppercase tracking-wider text-white disabled:opacity-40 transition-opacity shrink-0"
+                  className="px-5 py-2.5 rounded-full text-xs font-semibold text-white disabled:opacity-40 transition-opacity shrink-0"
                   style={{ background: 'var(--primary)' }}
                 >
                   {t('kg.activity.explainAskSend')}

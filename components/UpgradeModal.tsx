@@ -57,8 +57,8 @@ export const UpgradeModal: React.FC<UpgradeModalProps> = ({ onClose }) => {
               <Zap className="w-5 h-5 text-white" strokeWidth={2} />
             </div>
             <div>
-              <h2 id={titleId} className="text-base font-black dark:text-white uppercase tracking-tight">{t('um.pro')}</h2>
-              <p className="text-[11px] text-slate-400 font-black uppercase tracking-widest">{t('um.unlimitedLearn')}</p>
+              <h2 id={titleId} className="text-base font-semibold dark:text-white tracking-tight">{t('um.pro')}</h2>
+              <p className="text-[11px] text-slate-400 font-semibold uppercase tracking-[0.08em]">{t('um.unlimitedLearn')}</p>
             </div>
           </div>
           <button aria-label={t('common.close')} onClick={onClose} className="text-slate-400 hover:text-slate-600 dark:hover:text-white transition-colors">
@@ -73,8 +73,8 @@ export const UpgradeModal: React.FC<UpgradeModalProps> = ({ onClose }) => {
               <p className="text-4xl font-black dark:text-white">9,99 €</p>
               <p className="text-lg font-black text-slate-300 dark:text-slate-600 line-through mb-1">14,99 €</p>
             </div>
-            <p className="text-[11px] font-black uppercase tracking-widest" style={{ color: 'var(--primary-ink)' }}>{t('um.introPriceForever')}</p>
-            <p className="text-[11px] text-slate-400 font-black uppercase tracking-widest">{t('um.perMonth')}</p>
+            <p className="text-xs font-semibold" style={{ color: 'var(--primary-ink)' }}>{t('um.introPriceForever')}</p>
+            <p className="text-xs text-slate-400 font-semibold">{t('um.perMonth')}</p>
           </div>
         </div>
 
@@ -102,7 +102,7 @@ export const UpgradeModal: React.FC<UpgradeModalProps> = ({ onClose }) => {
           <button
             onClick={() => setShowConsent(true)}
             disabled={isLoading}
-            className="w-full py-4 rounded-2xl text-[11px] font-black uppercase tracking-widest text-white transition-all hover:scale-[1.02] shadow-lg disabled:opacity-40 flex items-center justify-center gap-2"
+            className="w-full py-4 rounded-2xl text-[13px] font-semibold text-white transition-all hover:scale-[1.02] shadow-lg disabled:opacity-40 flex items-center justify-center gap-2"
             style={{ background: 'var(--primary)' }}
           >
             {isLoading

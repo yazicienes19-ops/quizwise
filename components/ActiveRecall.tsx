@@ -518,10 +518,10 @@ export const ActiveRecall: React.FC<ActiveRecallProps> = ({
     <div className="flex items-center justify-between gap-3 px-1">
       <div className="flex items-center gap-2 min-w-0">
         <span className="w-2 h-2 rounded-full shrink-0" style={{ background: 'var(--primary)' }} />
-        <span className="text-[11px] font-black uppercase text-slate-400 tracking-widest truncate">{activeSourceName}</span>
+        <span className="text-xs font-semibold text-slate-400 truncate">{activeSourceName}</span>
       </div>
       {withCancel && (
-        <button onClick={handleCancel} className="shrink-0 text-[11px] font-black uppercase text-slate-400 hover:text-rose-500 tracking-widest transition-colors">
+        <button onClick={handleCancel} className="shrink-0 text-[13px] font-semibold text-slate-400 hover:text-rose-500 transition-colors">
           {t('quiz.cancel')}
         </button>
       )}
@@ -541,10 +541,10 @@ export const ActiveRecall: React.FC<ActiveRecallProps> = ({
           >×</button>
           <p className={`${microLabel} mb-2`} style={{ color: GOLD_TEXT }}>{t('nav.recall')}</p>
           <p className="text-sm font-medium leading-relaxed" style={{ color: 'var(--ink)' }}>{t('ar.introBody')}</p>
-          <p className="text-[11px] font-black mt-3 italic" style={{ color: GOLD_TEXT }}>{t('ar.introItalic')}</p>
+          <p className="text-[11px] font-semibold mt-3 italic" style={{ color: GOLD_TEXT }}>{t('ar.introItalic')}</p>
           <button
             onClick={dismissFeynmanIntro}
-            className="mt-4 px-4 py-2 rounded-[14px] text-[11px] font-black uppercase tracking-widest transition-all hover:scale-105"
+            className="mt-4 px-4 py-2 rounded-[14px] text-[13px] font-semibold transition-all hover:scale-105"
             style={primaryButtonStyle}
           >
             {t('ar.understood')}
@@ -556,7 +556,7 @@ export const ActiveRecall: React.FC<ActiveRecallProps> = ({
         /* ── Phase 1: Quelle, Zielgruppe, Fokus, Start ── */
         <div className="space-y-7">
           <header className="space-y-2 text-center">
-            <p className="text-[11px] font-black uppercase tracking-[0.2em]" style={{ color: GOLD_TEXT }}>{t('nav.recall')}</p>
+            <p className="text-[11px] font-semibold uppercase tracking-[0.08em]" style={{ color: GOLD_TEXT }}>{t('nav.recall')}</p>
             <h1 className="text-3xl lg:text-[40px] font-normal leading-tight" style={{ color: 'var(--ink)' }}>{t('ar.title')}</h1>
             <p className="text-sm lg:text-base" style={{ color: 'var(--text-secondary)' }}>{t('ar.subtitle')}</p>
           </header>
@@ -564,10 +564,10 @@ export const ActiveRecall: React.FC<ActiveRecallProps> = ({
           {activeSource ? (
             <div className="rounded-[20px] p-5 flex items-center justify-between gap-4" style={cardStyle}>
               <div className="min-w-0">
-                <p className="text-[11px] font-black uppercase text-slate-400 tracking-widest">{t('ar.activeSource')}</p>
+                <p className="text-[11px] font-semibold uppercase text-slate-400 tracking-[0.08em]">{t('ar.activeSource')}</p>
                 <p className="text-sm font-black break-words" style={{ color: 'var(--ink)' }}>{activeSourceName}</p>
                 {coverage && coverage.total >= 2 && (
-                  <p className="text-[11px] font-black uppercase tracking-widest mt-1" style={{ color: coverage.uncovered.length === 0 ? '#10b981' : GOLD_TEXT }}>
+                  <p className="text-xs font-semibold mt-1" style={{ color: coverage.uncovered.length === 0 ? '#10b981' : GOLD_TEXT }}>
                     {coverage.uncovered.length === 0
                       ? t('ar.coverageDone')
                       : t('ar.coverageProgress', { covered: coverage.coveredCount, total: coverage.total })}
@@ -597,7 +597,7 @@ export const ActiveRecall: React.FC<ActiveRecallProps> = ({
             <div className="space-y-6">
               {/* Zielgruppe: bestimmt, woran die Verständlichkeit gemessen wird */}
               <div className="space-y-2">
-                <p className="text-[11px] font-black uppercase tracking-widest text-slate-400">{t('ar.audienceLabel')}</p>
+                <p className="text-[11px] font-semibold uppercase tracking-[0.08em] text-slate-400">{t('ar.audienceLabel')}</p>
                 <div role="radiogroup" aria-label={t('ar.audienceLabel')} className="flex gap-1 p-1 rounded-xl" style={{ background: 'color-mix(in srgb, var(--ink) 5.5%, transparent)' }}>
                   {AUDIENCES.map(a => (
                     <button
@@ -618,7 +618,7 @@ export const ActiveRecall: React.FC<ActiveRecallProps> = ({
               </div>
 
               <div className="space-y-2">
-                <p className="text-[11px] font-black uppercase tracking-widest text-slate-400">{t('ar.focusTopic')}</p>
+                <p className="text-[11px] font-semibold uppercase tracking-[0.08em] text-slate-400">{t('ar.focusTopic')}</p>
                 <input
                   type="text"
                   value={focusTopic}
@@ -652,10 +652,10 @@ export const ActiveRecall: React.FC<ActiveRecallProps> = ({
                         }}
                       >
                         <span className="min-w-0">
-                          <span className="block text-xs font-black truncate" style={{ color: 'var(--ink)' }}>{g.topic}</span>
+                          <span className="block text-xs font-semibold truncate" style={{ color: 'var(--ink)' }}>{g.topic}</span>
                           <span className="block text-[11px] mt-0.5" style={{ color: 'var(--text-secondary)' }}>{g.reason}</span>
                         </span>
-                        <span className="text-[11px] font-black shrink-0 whitespace-nowrap" style={{ color: GOLD_TEXT }}>
+                        <span className="text-[11px] font-semibold shrink-0 whitespace-nowrap" style={{ color: GOLD_TEXT }}>
                           {selected ? '✓' : t('ar.gap.pick')}
                         </span>
                       </button>
@@ -670,7 +670,7 @@ export const ActiveRecall: React.FC<ActiveRecallProps> = ({
             <button
               onClick={startNewChallenge}
               disabled={isLoading || !activeSource || (autoStart && !chaptersReady)}
-              className="w-full sm:w-auto px-10 py-4 rounded-[20px] font-black uppercase tracking-[0.2em] text-[11px] shadow-3d-deep hover:scale-105 transition-all disabled:opacity-40 disabled:hover:scale-100"
+              className="w-full sm:w-auto px-10 py-4 rounded-[20px] font-semibold text-[13px] shadow-3d-deep hover:scale-105 transition-all disabled:opacity-40 disabled:hover:scale-100"
               style={primaryButtonStyle}
             >
               {isLoading ? (
@@ -700,7 +700,7 @@ export const ActiveRecall: React.FC<ActiveRecallProps> = ({
               <div className="flex items-center justify-between gap-3">
                 <p className={microLabel} style={{ color: GOLD_TEXT }}>{t('ar.lastTimeTitle', { score: lastAttempt.score })}</p>
                 {lastAttempt.answer.trim() && (
-                  <button onClick={() => setUserAnswer(lastAttempt.answer)} className="shrink-0 text-[11px] font-black hover:opacity-70 transition-opacity" style={{ color: GOLD_TEXT }}>
+                  <button onClick={() => setUserAnswer(lastAttempt.answer)} className="shrink-0 text-[13px] font-semibold hover:opacity-70 transition-opacity" style={{ color: GOLD_TEXT }}>
                     {t('ar.useLastAnswer')}
                   </button>
                 )}
@@ -755,7 +755,7 @@ export const ActiveRecall: React.FC<ActiveRecallProps> = ({
               )}
             </div>
             {isListening && (
-              <p className="text-[11px] font-black uppercase tracking-widest text-center animate-pulse" style={{ color: GOLD_TEXT }}>{t('ar.recordingNow')}</p>
+              <p className="text-xs font-semibold text-center animate-pulse" style={{ color: GOLD_TEXT }}>{t('ar.recordingNow')}</p>
             )}
             {interim && (
               <p className="text-sm italic px-2" style={{ color: 'var(--text-secondary)' }}>{interim} …</p>
@@ -764,7 +764,7 @@ export const ActiveRecall: React.FC<ActiveRecallProps> = ({
               <p className="text-[11px] font-semibold text-center" style={{ color: 'var(--text-secondary)' }}>{t('ar.dictationUnsupported')}</p>
             )}
             <div className="flex flex-col sm:flex-row justify-between items-center gap-3 px-2">
-              <span className="text-[11px] font-black uppercase tracking-widest order-2 sm:order-1 text-slate-400">
+              <span className="text-xs font-semibold order-2 sm:order-1 text-slate-400">
                 {t('ar.wordsN', { n: wordCount })} · {t('ar.submitShortcut')}
                 {userAnswer.length > 3000 && (
                   <span className="block mt-1 text-amber-500 normal-case font-bold">{t('ar.truncationHint')}</span>
@@ -773,7 +773,7 @@ export const ActiveRecall: React.FC<ActiveRecallProps> = ({
               <button
                 onClick={handleEvaluate}
                 disabled={!canSubmit}
-                className="w-full sm:w-auto px-10 py-3.5 rounded-2xl font-black uppercase text-[11px] tracking-widest shadow-lg hover:scale-105 transition-all disabled:opacity-40 disabled:hover:scale-100 order-1 sm:order-2 flex items-center justify-center gap-2"
+                className="w-full sm:w-auto px-10 py-3.5 rounded-2xl font-semibold text-[13px] shadow-lg hover:scale-105 transition-all disabled:opacity-40 disabled:hover:scale-100 order-1 sm:order-2 flex items-center justify-center gap-2"
                 style={primaryButtonStyle}
               >
                 {isEvaluating ? (
@@ -790,7 +790,7 @@ export const ActiveRecall: React.FC<ActiveRecallProps> = ({
 
           {isEvaluating && (
             <div className="rounded-[20px] p-5 text-center animate-in fade-in duration-300" style={cardStyle}>
-              <p className="text-[11px] font-black uppercase text-slate-400 tracking-widest">{t('ar.checkingDoc')}</p>
+              <p className="text-xs font-semibold text-slate-400">{t('ar.checkingDoc')}</p>
             </div>
           )}
         </div>
@@ -802,24 +802,24 @@ export const ActiveRecall: React.FC<ActiveRecallProps> = ({
 
           <div className={`grid grid-cols-1 gap-4 ${evaluation.clarity !== undefined ? 'sm:grid-cols-2' : ''}`}>
             <div className="p-7 rounded-[24px] flex flex-col items-center justify-center text-center" style={cardStyle}>
-              <span className="text-[11px] font-black uppercase text-slate-400 tracking-widest mb-2">{t('ar.understanding')}</span>
+              <span className="text-[11px] font-semibold uppercase text-slate-400 tracking-[0.08em] mb-2">{t('ar.understanding')}</span>
               <span className={`text-5xl font-black ${scoreColor(evaluation.score)}`} style={evaluation.score >= 61 && evaluation.score < 86 ? { color: GOLD_TEXT } : undefined}>
                 {evaluation.score}%
               </span>
-              <span className="text-[11px] font-black uppercase tracking-widest mt-2 text-slate-400">
+              <span className="text-[11px] font-semibold uppercase tracking-[0.08em] mt-2 text-slate-400">
                 {evaluation.score >= 86 ? t('ar.rExcellent') : evaluation.score >= 61 ? t('fc.good') : evaluation.score >= 31 ? t('ar.rBasic') : t('ar.rRepeat')}
               </span>
             </div>
             {evaluation.clarity !== undefined && (
               <div className="p-7 rounded-[24px] flex flex-col items-center justify-center text-center" style={cardStyle}>
-                <span className="text-[11px] font-black uppercase text-slate-400 tracking-widest mb-2">
+                <span className="text-xs font-semibold text-slate-400 mb-2">
                   {t('ar.clarity')} · {t((`ar.audience.${audience}`) as TKey)}
                 </span>
                 <span className={`text-5xl font-black ${scoreColor(evaluation.clarity)}`} style={evaluation.clarity >= 61 && evaluation.clarity < 86 ? { color: GOLD_TEXT } : undefined}>
                   {evaluation.clarity} / 100
                 </span>
                 {evaluation.usedExample !== undefined && audience !== 'exam' && (
-                  <span className="text-[11px] font-black uppercase tracking-widest mt-2" style={{ color: evaluation.usedExample ? '#10b981' : 'var(--text-secondary)' }}>
+                  <span className="text-[11px] font-semibold uppercase tracking-[0.08em] mt-2" style={{ color: evaluation.usedExample ? '#10b981' : 'var(--text-secondary)' }}>
                     {evaluation.usedExample ? t('ar.exampleUsed') : t('ar.exampleMissing')}
                   </span>
                 )}
@@ -828,7 +828,7 @@ export const ActiveRecall: React.FC<ActiveRecallProps> = ({
           </div>
 
           {lastAttempt && (
-            <p className="text-center text-[11px] font-black uppercase tracking-widest">
+            <p className="text-center text-xs font-semibold">
               <span className="text-slate-400">{t('ar.delta', { prev: lastAttempt.score, now: evaluation.score })}</span>
               {evaluation.score !== lastAttempt.score && (
                 <span className={`ml-2 ${evaluation.score > lastAttempt.score ? 'text-emerald-500' : 'text-rose-500'}`}>
@@ -853,7 +853,7 @@ export const ActiveRecall: React.FC<ActiveRecallProps> = ({
                 <p className={microLabel} style={{ color: GOLD_TEXT }}>{t('ar.probeTitle')}</p>
                 <p className="text-sm lg:text-base font-semibold mt-1 break-words" style={{ color: 'var(--ink)' }}>„{evaluation.probeQuestion}"</p>
               </div>
-              <button onClick={handleRetry} className="shrink-0 px-5 py-3 rounded-xl text-[11px] font-black uppercase tracking-widest transition-all hover:scale-105" style={primaryButtonStyle}>
+              <button onClick={handleRetry} className="shrink-0 px-5 py-3 rounded-xl text-[13px] font-semibold transition-all hover:scale-105" style={primaryButtonStyle}>
                 {t('ar.probeRetry')}
               </button>
             </div>
@@ -928,7 +928,7 @@ export const ActiveRecall: React.FC<ActiveRecallProps> = ({
                     <button
                       onClick={handleCreateGapCards}
                       disabled={creatingGapCards}
-                      className="mt-4 w-full py-3 rounded-xl text-[11px] font-black uppercase tracking-widest transition-all hover:scale-[1.02] disabled:opacity-60 disabled:hover:scale-100"
+                      className="mt-4 w-full py-3 rounded-xl text-[13px] font-semibold transition-all hover:scale-[1.02] disabled:opacity-60 disabled:hover:scale-100"
                       style={{ background: 'color-mix(in srgb, var(--primary) 12%, transparent)', color: GOLD_TEXT, border: '1px solid color-mix(in srgb, var(--primary) 30%, transparent)' }}
                     >
                       {creatingGapCards ? t('ar.creatingGapCards') : t('ar.saveGapsAsCards')}
@@ -969,21 +969,21 @@ export const ActiveRecall: React.FC<ActiveRecallProps> = ({
             <div className="flex flex-col sm:flex-row gap-3 justify-center">
               <button
                 onClick={handleRetry}
-                className="px-8 py-3 rounded-xl font-black uppercase text-[11px] tracking-widest transition-all hover:scale-105"
+                className="px-8 py-3 rounded-xl font-semibold text-[13px] transition-all hover:scale-105"
                 style={{ background: 'color-mix(in srgb, var(--primary) 12%, transparent)', color: GOLD_TEXT, border: '1px solid color-mix(in srgb, var(--primary) 30%, transparent)' }}
               >
                 {t('ar.retrySame')}
               </button>
               <button
                 onClick={handleNextDrill}
-                className="px-8 py-3 rounded-xl font-black uppercase text-[11px] tracking-widest shadow-lg hover:scale-105 transition-all"
+                className="px-8 py-3 rounded-xl font-semibold text-[13px] shadow-lg hover:scale-105 transition-all"
                 style={primaryButtonStyle}
               >
                 {t('ar.nextDrill')}
               </button>
               <button
                 onClick={handleCancel}
-                className="px-8 py-3 rounded-xl font-black uppercase text-[11px] tracking-widest transition-all text-slate-500 hover:text-slate-700 dark:hover:text-slate-300"
+                className="px-8 py-3 rounded-xl font-semibold text-[13px] transition-all text-slate-500 hover:text-slate-700 dark:hover:text-slate-300"
                 style={{ border: '1px solid var(--border-color)' }}
               >
                 {t('ar.otherDoc')}

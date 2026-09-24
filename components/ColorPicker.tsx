@@ -103,7 +103,7 @@ export const ColorPicker: React.FC = () => {
     <div className="relative">
       <button
         onClick={() => setOpen(o => !o)}
-        className="w-full flex items-center justify-between px-4 py-3 rounded-xl text-[11px] font-black uppercase text-slate-500 dark:text-slate-400 transition-all"
+        className="w-full flex items-center justify-between px-4 py-3 rounded-xl text-[13px] font-semibold text-slate-500 dark:text-slate-400 transition-all"
         style={{ background: 'color-mix(in srgb, var(--border-color) 40%, var(--bg-sidebar))' }}
       >
         <span className="flex items-center gap-2">
@@ -120,7 +120,7 @@ export const ColorPicker: React.FC = () => {
             className="absolute bottom-full mb-2 left-0 right-0 rounded-2xl p-4 shadow-3d-deep z-50"
             style={{ background: 'var(--bg-sidebar)', border: '1px solid var(--border-color)' }}
           >
-            <p className="text-[11px] font-black uppercase tracking-widest text-slate-400 mb-3">{t('cp.chooseColor')}</p>
+            <p className="text-[11px] font-semibold uppercase tracking-[0.08em] text-slate-400 mb-3">{t('cp.chooseColor')}</p>
             <div className="grid grid-cols-4 gap-2 mb-4">
               {PRESETS.map(p => (
                 <button
@@ -143,7 +143,7 @@ export const ColorPicker: React.FC = () => {
                 onChange={e => select(e.target.value)}
                 className="w-9 h-9 rounded-lg cursor-pointer border-0 bg-transparent p-0"
               />
-              <span className="text-[11px] font-black uppercase text-slate-400 tracking-widest">{t('settings.customColor')}</span>
+              <span className="text-[11px] font-semibold uppercase text-slate-400 tracking-[0.08em]">{t('settings.customColor')}</span>
             </label>
           </div>
         </>

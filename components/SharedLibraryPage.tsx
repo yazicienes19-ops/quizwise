@@ -99,7 +99,7 @@ export const SharedLibraryPage: React.FC<SharedLibraryPageProps> = ({ shareId, u
       <div className="min-h-screen flex items-center justify-center" style={{ background: 'var(--bg-main)' }}>
         <div className="text-center space-y-4">
           <div className="w-12 h-12 border-4 border-slate-200 dark:border-slate-700 border-t-indigo-600 rounded-full animate-spin mx-auto" />
-          <p className="text-[11px] font-black uppercase tracking-widest text-slate-400">{t('sdp.loading')}</p>
+          <p className="text-[11px] font-semibold uppercase tracking-[0.08em] text-slate-400">{t('sdp.loading')}</p>
         </div>
       </div>
     );
@@ -114,7 +114,7 @@ export const SharedLibraryPage: React.FC<SharedLibraryPageProps> = ({ shareId, u
           <p className="text-slate-400 text-sm">{t('sdp.expiredLink')}</p>
           <button
             onClick={() => window.location.href = '/'}
-            className="px-6 py-3 rounded-2xl text-[11px] font-black uppercase tracking-widest transition-all hover:scale-105"
+            className="px-6 py-3 rounded-2xl text-[13px] font-semibold transition-all hover:scale-105"
             style={{ background: 'var(--primary)', color: 'var(--primary-text)' }}
           >
             {t('rpp.backToApp')}
@@ -138,7 +138,7 @@ export const SharedLibraryPage: React.FC<SharedLibraryPageProps> = ({ shareId, u
           </div>
 
           <div className="px-8 sm:px-10 pt-9 pb-2 text-center">
-            <p className="text-[11px] font-black uppercase tracking-[0.2em] mb-3" style={{ color: 'var(--primary-ink)' }}>
+            <p className="text-[11px] font-semibold uppercase tracking-[0.08em] mb-3" style={{ color: 'var(--primary-ink)' }}>
               {t('sdp.eyebrow')}
             </p>
             <h1 className="text-[28px] sm:text-[32px] leading-tight mb-4" style={{ fontFamily: 'Georgia, "Times New Roman", serif', color: 'var(--text-main)' }}>
@@ -159,7 +159,7 @@ export const SharedLibraryPage: React.FC<SharedLibraryPageProps> = ({ shareId, u
                 {library.emoji || '📁'}
               </div>
               <div className="min-w-0">
-                <p className="text-[11px] font-black uppercase tracking-widest mb-1" style={{ color: 'var(--primary-ink)' }}>
+                <p className="text-[11px] font-semibold uppercase tracking-[0.08em] mb-1" style={{ color: 'var(--primary-ink)' }}>
                   {t('slp.cardLabel')}
                 </p>
                 <p className="text-lg mb-0.5 truncate" style={{ fontFamily: 'Georgia, "Times New Roman", serif', color: 'var(--text-main)' }}>
@@ -179,7 +179,7 @@ export const SharedLibraryPage: React.FC<SharedLibraryPageProps> = ({ shareId, u
                 <p className="font-black text-lg text-emerald-600">{t('slp.accepted', { name: library.name })}</p>
                 <button
                   onClick={() => window.location.href = '/'}
-                  className="px-6 py-3 rounded-2xl text-[11px] font-black uppercase tracking-widest transition-all hover:scale-105"
+                  className="px-6 py-3 rounded-2xl text-[13px] font-semibold transition-all hover:scale-105"
                   style={{ background: 'var(--primary)', color: 'var(--primary-text)' }}
                 >
                   {t('slp.learnInApp')}
@@ -190,7 +190,7 @@ export const SharedLibraryPage: React.FC<SharedLibraryPageProps> = ({ shareId, u
                 <button
                   onClick={handleAccept}
                   disabled={accepting}
-                  className="w-full py-4 rounded-2xl font-black uppercase tracking-widest text-[13px] transition-all hover:scale-[1.02] disabled:opacity-60 disabled:hover:scale-100 flex items-center justify-center gap-2"
+                  className="w-full py-4 rounded-2xl font-semibold text-[13px] transition-all hover:scale-[1.02] disabled:opacity-60 disabled:hover:scale-100 flex items-center justify-center gap-2"
                   style={{ background: 'var(--text-main)', color: 'var(--bg-sidebar)' }}
                 >
                   {accepting ? (
@@ -209,7 +209,7 @@ export const SharedLibraryPage: React.FC<SharedLibraryPageProps> = ({ shareId, u
           {/* What you get */}
           <div className="px-8 sm:px-10 pt-8 pb-3">
             <div style={{ borderTop: '1px solid var(--border-color)' }} className="pt-7">
-              <p className="text-[11px] font-black uppercase tracking-widest mb-4" style={{ color: 'var(--text-secondary)' }}>
+              <p className="text-[11px] font-semibold uppercase tracking-[0.08em] mb-4" style={{ color: 'var(--text-secondary)' }}>
                 {t('sdp.whatYouGet')}
               </p>
               <ul className="space-y-3">

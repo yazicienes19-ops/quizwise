@@ -15,7 +15,7 @@ export const LearnOverviewPreview: React.FC = () => (
     {METHODS.map(m => (
       <div key={m.label} className="rounded-[12px] p-3 text-center" style={{ background: 'var(--bg-main)', border: '1px solid var(--border-color)' }}>
         <span className="text-lg leading-none block mb-1">{m.icon}</span>
-        <span className="text-[11px] font-black block" style={{ color: 'var(--text-main)' }}>{m.label}</span>
+        <span className="text-[11px] font-semibold block" style={{ color: 'var(--text-main)' }}>{m.label}</span>
         <span className="text-[11px] opacity-60 block" style={{ color: 'var(--text-main)' }}>{m.hint}</span>
       </div>
     ))}

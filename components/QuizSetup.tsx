@@ -67,7 +67,7 @@ const Chip: React.FC<{ selected: boolean; onClick: () => void; label: string; de
       }
     `}
   >
-    <p className="text-[11px] font-black">{label}</p>
+    <p className="text-[11px] font-semibold">{label}</p>
     {desc && <p className={`text-[11px] mt-0.5 ${selected && !accent ? 'text-indigo-500' : selected && accent ? 'text-white/70' : 'text-slate-400'}`}>{desc}</p>}
   </button>
 );
@@ -142,7 +142,7 @@ export const QuizSetup: React.FC<QuizSetupProps> = ({ doc = null, sourceName, ba
       {/* Back */}
       <button
         onClick={onBack}
-        className="flex items-center gap-2 text-slate-400 hover:text-indigo-600 transition-colors text-[11px] font-black uppercase tracking-widest"
+        className="flex items-center gap-2 text-slate-400 hover:text-indigo-600 transition-colors text-[13px] font-semibold"
       >
         <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round">
           <polyline points="15 18 9 12 15 6"/>
@@ -163,7 +163,7 @@ export const QuizSetup: React.FC<QuizSetupProps> = ({ doc = null, sourceName, ba
       {/* Multi-Dokument Auswahl */}
       {otherDocs.length > 0 && (
         <div className="space-y-2">
-          <p className="text-[11px] font-black uppercase tracking-widest text-slate-400">{t('quizSetup.includeDocs')}</p>
+          <p className="text-[11px] font-semibold uppercase tracking-[0.08em] text-slate-400">{t('quizSetup.includeDocs')}</p>
           {doc && [doc, ...otherDocs].map(d => (
             <button
               key={d.id}
@@ -187,8 +187,8 @@ export const QuizSetup: React.FC<QuizSetupProps> = ({ doc = null, sourceName, ba
                   </svg>
                 )}
               </div>
-              <span className="text-[11px] font-black break-words dark:text-white">{documentDisplayName(d)}</span>
-              {d.id === doc.id && <span className="text-[11px] font-black text-slate-400 shrink-0">{t('quizSetup.primary')}</span>}
+              <span className="text-[11px] font-semibold break-words dark:text-white">{documentDisplayName(d)}</span>
+              {d.id === doc.id && <span className="text-[11px] font-semibold text-slate-400 shrink-0">{t('quizSetup.primary')}</span>}
             </button>
           ))}
         </div>
@@ -196,7 +196,7 @@ export const QuizSetup: React.FC<QuizSetupProps> = ({ doc = null, sourceName, ba
 
       {/* Question type */}
       <div className="space-y-3">
-        <p className="text-[11px] font-black uppercase tracking-widest text-slate-400">{t('quizSetup.questionType')}</p>
+        <p className="text-[11px] font-semibold uppercase tracking-[0.08em] text-slate-400">{t('quizSetup.questionType')}</p>
         <div className="grid grid-cols-2 gap-2">
           {QUESTION_TYPES.map(({ value, labelKey, descKey }) => (
             <Chip key={value} selected={selectedTypes.has(value)} onClick={() => toggleType(value)} label={t(labelKey)} desc={t(descKey)} />
@@ -206,7 +206,7 @@ export const QuizSetup: React.FC<QuizSetupProps> = ({ doc = null, sourceName, ba
 
       {/* Difficulty */}
       <div className="space-y-3">
-        <p className="text-[11px] font-black uppercase tracking-widest text-slate-400">{t('quizSetup.difficulty')}</p>
+        <p className="text-[11px] font-semibold uppercase tracking-[0.08em] text-slate-400">{t('quizSetup.difficulty')}</p>
         <div className="grid grid-cols-4 gap-2">
           {DIFFICULTIES.map(({ value, labelKey }) => (
             <Chip key={value} selected={difficulty === value} onClick={() => setDifficulty(value)} label={t(labelKey)} accent={value === 'klausurnah' && difficulty === 'klausurnah'} />
@@ -218,7 +218,7 @@ export const QuizSetup: React.FC<QuizSetupProps> = ({ doc = null, sourceName, ba
       <div className="space-y-3">
         <button
           onClick={() => setShowAdvancedTypes(v => !v)}
-          className="flex items-center gap-2 text-[11px] font-black uppercase tracking-widest text-slate-400 hover:text-indigo-600 transition-colors"
+          className="flex items-center gap-2 text-[13px] font-semibold text-slate-400 hover:text-indigo-600 transition-colors"
         >
           <svg xmlns="http://www.w3.org/2000/svg" width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round"
             className={`transition-transform ${showAdvancedTypes ? 'rotate-90' : ''}`}
@@ -238,7 +238,7 @@ export const QuizSetup: React.FC<QuizSetupProps> = ({ doc = null, sourceName, ba
 
       {/* Count */}
       <div className="space-y-3">
-        <p className="text-[11px] font-black uppercase tracking-widest text-slate-400">{t('quizSetup.count')}</p>
+        <p className="text-[11px] font-semibold uppercase tracking-[0.08em] text-slate-400">{t('quizSetup.count')}</p>
         <div className="grid grid-cols-4 gap-2">
           {COUNTS.map(n => (
             <Chip key={n} selected={!showCustom && questionCount === n} onClick={() => { setShowCustom(false); setQuestionCount(n); }} label={String(n)} />
@@ -262,7 +262,7 @@ export const QuizSetup: React.FC<QuizSetupProps> = ({ doc = null, sourceName, ba
       {/* Focus (only if weak topics exist) */}
       {stats.weakTopics.length > 0 && (
         <div className="space-y-3">
-          <p className="text-[11px] font-black uppercase tracking-widest text-slate-400">{t('quizSetup.focus')}</p>
+          <p className="text-[11px] font-semibold uppercase tracking-[0.08em] text-slate-400">{t('quizSetup.focus')}</p>
           <div className="grid grid-cols-2 gap-2">
             <Chip selected={focus === 'all'} onClick={() => setFocus('all')} label={t('quizSetup.focusAll')} desc={t('quizSetup.focusAllDesc')} />
             <Chip selected={focus === 'weak'} onClick={() => setFocus('weak')} label={t('quizSetup.focusWeak')} desc={stats.weakTopics.slice(0, 2).join(', ')} />
@@ -294,7 +294,7 @@ export const QuizSetup: React.FC<QuizSetupProps> = ({ doc = null, sourceName, ba
             : (Array.from(selectedTypes) as ConcreteQuestionType[]);
           onStart({ questionType, difficulty, questionCount: effectiveCount, focus, examMode }, selectedDocIds);
         }}
-        className="w-full py-5 rounded-[24px] font-black uppercase tracking-widest text-[11px] shadow-3d-deep hover:scale-[1.02] transition-all flex items-center justify-center gap-3"
+        className="w-full py-5 rounded-[24px] font-semibold text-[13px] shadow-3d-deep hover:scale-[1.02] transition-all flex items-center justify-center gap-3"
         style={{ background: 'var(--primary)', color: 'var(--primary-text)' }}
       >
         <span>{t('quizSetup.generate', { n: effectiveCount })}</span>

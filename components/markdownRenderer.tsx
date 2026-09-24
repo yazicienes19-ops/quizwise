@@ -92,7 +92,7 @@ export function renderMarkdown(text: string): React.ReactNode {
     if (HR_RE.test(line)) { blocks.push(<hr key={key++} className="border-0 h-px" style={{ background: 'var(--border-color)' }} />); i++; continue; }
     if (line.startsWith('# '))   { blocks.push(<h2 key={key++} className="text-2xl lg:text-3xl font-black text-slate-900 dark:text-white tracking-tight mt-2">{parseInline(line.slice(2),String(key))}</h2>); i++; continue; }
     if (line.startsWith('## '))  { blocks.push(<h3 key={key++} className="text-xl lg:text-2xl font-black text-slate-900 dark:text-white tracking-tight mt-1">{parseInline(line.slice(3),String(key))}</h3>); i++; continue; }
-    if (line.startsWith('### ')) { blocks.push(<h4 key={key++} className="text-base lg:text-lg font-black text-slate-700 dark:text-slate-200 uppercase tracking-wider mt-1">{parseInline(line.slice(4),String(key))}</h4>); i++; continue; }
+    if (line.startsWith('### ')) { blocks.push(<h4 key={key++} className="text-base lg:text-lg font-semibold text-slate-700 dark:text-slate-200 mt-1">{parseInline(line.slice(4),String(key))}</h4>); i++; continue; }
     const headingMatch = line.match(HEADING_RE);
     if (headingMatch) {
       // Modell setzt nicht immer verlässlich einen Zeilenumbruch nach der
@@ -129,7 +129,7 @@ export function renderMarkdown(text: string): React.ReactNode {
     if (line.startsWith('Allgemeinwissen:')) {
       const content: string[] = [line.replace('Allgemeinwissen:','').trim()]; i++;
       while (i < lines.length && lines[i].trim() && !lines[i].startsWith('#') && !lines[i].match(/^[-*•]\s/) && !lines[i].match(/^\d+\.\s/)) { content.push(lines[i]); i++; }
-      blocks.push(<div key={key++} className="px-5 py-4 rounded-2xl" style={{ background:'color-mix(in srgb,var(--primary) 8%,transparent)', border:'1px solid color-mix(in srgb,var(--primary) 20%,transparent)' }}><p className="text-[11px] font-black uppercase tracking-widest mb-2" style={{ color: 'var(--primary-ink)' }}>{t('reader.externalKnowledge')}</p><p className="text-base font-medium text-slate-700 dark:text-slate-300 leading-relaxed">{parseInline(content.join(' '),String(key))}</p></div>);
+      blocks.push(<div key={key++} className="px-5 py-4 rounded-2xl" style={{ background:'color-mix(in srgb,var(--primary) 8%,transparent)', border:'1px solid color-mix(in srgb,var(--primary) 20%,transparent)' }}><p className="text-[11px] font-semibold uppercase tracking-[0.08em] mb-2" style={{ color: 'var(--primary-ink)' }}>{t('reader.externalKnowledge')}</p><p className="text-base font-medium text-slate-700 dark:text-slate-300 leading-relaxed">{parseInline(content.join(' '),String(key))}</p></div>);
       continue;
     }
     if (line.match(/^[-*•]\s/)) {

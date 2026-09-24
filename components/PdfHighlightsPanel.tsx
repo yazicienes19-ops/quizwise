@@ -69,7 +69,7 @@ export const PdfHighlightsPanel: React.FC<Props> = ({ open, highlights, currentP
               <button onClick={() => onJump(h.page)} className="w-full text-left flex gap-2.5 group">
                 <span className="w-1 self-stretch rounded-full shrink-0" style={{ background: HIGHLIGHT_HEX[h.color] }} aria-hidden="true" />
                 <span className="min-w-0 flex-1">
-                  <span className="block text-[11px] font-semibold uppercase tracking-[0.12em] mb-0.5" style={{ color: 'var(--text-secondary)' }}>{t('hl.page', { n: h.page })}</span>
+                  <span className="block text-[13px] font-semibold mb-0.5" style={{ color: 'var(--text-secondary)' }}>{t('hl.page', { n: h.page })}</span>
                   <span className="block text-[13.5px] leading-snug line-clamp-3 group-hover:underline" style={{ color: 'var(--text-main)' }}>{h.quote ? `„${h.quote}“` : t('hl.pinLabel', { n: h.page })}</span>
                 </span>
               </button>

@@ -30,7 +30,7 @@ export const CookieSettingsModal: React.FC<CookieSettingsModalProps> = ({ onClos
         style={{ background: 'var(--bg-sidebar)', border: '1px solid var(--border-color)' }}
       >
         <div className="flex items-center justify-between p-8 pb-0 shrink-0">
-          <h2 id={titleId} className="text-lg font-black dark:text-white uppercase tracking-tight">{t('cookie.settings.title')}</h2>
+          <h2 id={titleId} className="text-lg font-semibold dark:text-white tracking-tight">{t('cookie.settings.title')}</h2>
           <button aria-label={t('common.close')} onClick={onClose} className="w-9 h-9 flex items-center justify-center rounded-xl text-slate-400 hover:text-slate-700 dark:hover:text-white transition-all" style={{ background: 'color-mix(in srgb, var(--border-color) 60%, var(--bg-sidebar))' }}>
             <X className="w-[18px] h-[18px]" strokeWidth={2} />
           </button>
@@ -47,8 +47,8 @@ export const CookieSettingsModal: React.FC<CookieSettingsModalProps> = ({ onClos
           {/* Essenziell */}
           <div className="p-4 rounded-2xl space-y-2" style={{ background: 'color-mix(in srgb, var(--border-color) 30%, var(--bg-main))', border: '1px solid var(--border-color)' }}>
             <div className="flex items-center justify-between gap-3">
-              <p className="text-[11px] font-black uppercase tracking-widest dark:text-white">{t('cookie.settings.essential.title')}</p>
-              <span className="flex items-center gap-1.5 text-[11px] font-black uppercase tracking-widest text-slate-400">
+              <p className="text-[11px] font-semibold uppercase tracking-[0.08em] dark:text-white">{t('cookie.settings.essential.title')}</p>
+              <span className="flex items-center gap-1.5 text-[11px] font-semibold uppercase tracking-[0.08em] text-slate-400">
                 <Lock className="w-3 h-3" strokeWidth={2.5} /> {t('cookie.settings.essential.always')}
               </span>
             </div>
@@ -64,7 +64,7 @@ export const CookieSettingsModal: React.FC<CookieSettingsModalProps> = ({ onClos
               className="w-4 h-4 mt-0.5 rounded accent-[var(--primary)] shrink-0"
             />
             <span>
-              <span className="block text-[11px] font-black uppercase tracking-widest dark:text-white mb-1">{t('cookie.settings.functional.title')}</span>
+              <span className="block text-[11px] font-semibold uppercase tracking-[0.08em] dark:text-white mb-1">{t('cookie.settings.functional.title')}</span>
               <span className="block text-[11px] text-slate-500 dark:text-slate-400 leading-relaxed">{t('cookie.settings.functional.desc')}</span>
             </span>
           </label>
@@ -78,7 +78,7 @@ export const CookieSettingsModal: React.FC<CookieSettingsModalProps> = ({ onClos
               className="w-4 h-4 mt-0.5 rounded accent-[var(--primary)] shrink-0"
             />
             <span>
-              <span className="block text-[11px] font-black uppercase tracking-widest dark:text-white mb-1">{t('cookie.settings.analytics.title')}</span>
+              <span className="block text-[11px] font-semibold uppercase tracking-[0.08em] dark:text-white mb-1">{t('cookie.settings.analytics.title')}</span>
               <span className="block text-[11px] text-slate-500 dark:text-slate-400 leading-relaxed">{t('cookie.settings.analytics.desc')}</span>
             </span>
           </label>
@@ -86,21 +86,21 @@ export const CookieSettingsModal: React.FC<CookieSettingsModalProps> = ({ onClos
           <div className="flex flex-col sm:flex-row gap-3 pt-2">
             <button
               onClick={() => save({ functional: false, analytics: false })}
-              className="flex-1 py-3.5 rounded-2xl text-[11px] font-black uppercase tracking-widest transition-all"
+              className="flex-1 py-3.5 rounded-2xl text-[13px] font-semibold transition-all"
               style={{ background: 'color-mix(in srgb, var(--border-color) 40%, var(--bg-main))', color: 'var(--text-main)' }}
             >
               {t('cookie.settings.essentialOnly')}
             </button>
             <button
               onClick={() => save({ functional: true, analytics: true })}
-              className="flex-1 py-3.5 rounded-2xl text-[11px] font-black uppercase tracking-widest transition-all"
+              className="flex-1 py-3.5 rounded-2xl text-[13px] font-semibold transition-all"
               style={{ background: 'color-mix(in srgb, var(--border-color) 40%, var(--bg-main))', color: 'var(--text-main)' }}
             >
               {t('cookie.settings.acceptAll')}
             </button>
             <button
               onClick={() => save({ functional, analytics })}
-              className="flex-1 py-3.5 rounded-2xl text-[11px] font-black uppercase tracking-widest text-white transition-all hover:scale-[1.02]"
+              className="flex-1 py-3.5 rounded-2xl text-[13px] font-semibold text-white transition-all hover:scale-[1.02]"
               style={{ background: 'var(--primary)' }}
             >
               {t('cookie.settings.save')}

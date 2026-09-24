@@ -46,7 +46,7 @@ class ErrorBoundaryImpl extends React.Component<React.PropsWithChildren<{}>, EBS
           )}
           <button
             onClick={() => window.location.reload()}
-            className="px-6 py-3 rounded-xl text-[11px] font-black uppercase tracking-widest text-white"
+            className="px-6 py-3 rounded-xl text-[13px] font-semibold text-white"
             style={{ background: 'var(--primary)' }}
           >
             {translate('eb.reload')}

@@ -33,7 +33,7 @@ export const CancellationConfirmModal: React.FC<CancellationConfirmModalProps> =
         <div className="flex items-center justify-between p-8 pb-0">
           <div className="flex items-center gap-2">
             <AlertTriangle className="w-4 h-4 text-amber-500" strokeWidth={2} />
-            <h2 id={titleId} className="text-lg font-black dark:text-white uppercase tracking-tight">{t('settings.cancel.pageTitle')}</h2>
+            <h2 id={titleId} className="text-lg font-semibold dark:text-white tracking-tight">{t('settings.cancel.pageTitle')}</h2>
           </div>
           <button aria-label={t('common.close')} onClick={onClose} className="w-9 h-9 flex items-center justify-center rounded-xl text-slate-400 hover:text-slate-700 dark:hover:text-white transition-all" style={{ background: 'color-mix(in srgb, var(--border-color) 60%, var(--bg-sidebar))' }}>
             <X className="w-[18px] h-[18px]" strokeWidth={2} />
@@ -54,7 +54,7 @@ export const CancellationConfirmModal: React.FC<CancellationConfirmModalProps> =
             <button
               onClick={onClose}
               disabled={isCancelling}
-              className="flex-1 py-3.5 rounded-2xl text-[11px] font-black uppercase tracking-widest transition-all disabled:opacity-40"
+              className="flex-1 py-3.5 rounded-2xl text-[13px] font-semibold transition-all disabled:opacity-40"
               style={{ background: 'color-mix(in srgb, var(--border-color) 40%, var(--bg-main))', color: 'var(--text-main)' }}
             >
               {t('common.cancel')}
@@ -62,7 +62,7 @@ export const CancellationConfirmModal: React.FC<CancellationConfirmModalProps> =
             <button
               onClick={onConfirm}
               disabled={isCancelling}
-              className="flex-1 py-3.5 rounded-2xl text-[11px] font-black uppercase tracking-widest text-white bg-rose-500 hover:bg-rose-600 transition-all disabled:opacity-40 flex items-center justify-center gap-2"
+              className="flex-1 py-3.5 rounded-2xl text-[13px] font-semibold text-white bg-rose-500 hover:bg-rose-600 transition-all disabled:opacity-40 flex items-center justify-center gap-2"
             >
               {isCancelling ? <Loader2 className="w-4 h-4 animate-spin" /> : null}
               {t('settings.cancel.confirmButton')}

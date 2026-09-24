@@ -289,7 +289,7 @@ export const AdminDashboard: React.FC = () => {
                 {g.docNames.length > 0 && <p className="text-[11px] text-slate-400 break-words">{g.docNames.join(', ')}</p>}
                 {(g.details.options?.length || g.details.explanation) && (
                   <details className="text-[11px]">
-                    <summary className="cursor-pointer text-[11px] font-black uppercase tracking-widest text-slate-400">{t('admin.reports.details')}</summary>
+                    <summary className="cursor-pointer text-[13px] font-black text-slate-400">{t('admin.reports.details')}</summary>
                     <ul className="mt-2 space-y-1">
                       {(g.details.options ?? []).map((opt, i) => {
                         const correct = g.details.correctAnswerIndices?.includes(i);

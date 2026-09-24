@@ -35,7 +35,7 @@ export const PersonalPathStep: React.FC<PersonalPathStepProps> = ({ challenges }
       <h2 className="text-lg font-black tracking-tight mb-1.5" style={{ color: 'var(--text-main)' }}>
         {t('onboarding.rec.combined.title')}
       </h2>
-      <p className="text-[11px] font-black uppercase tracking-widest mb-5" style={{ color: 'var(--text-secondary)' }}>
+      <p className="text-[11px] font-semibold uppercase tracking-[0.08em] mb-5" style={{ color: 'var(--text-secondary)' }}>
         {t('onboarding.usp.pathLabel')}
       </p>
       <div className="space-y-2.5 mb-4">
@@ -47,7 +47,7 @@ export const PersonalPathStep: React.FC<PersonalPathStepProps> = ({ challenges }
               className="flex items-center gap-3 p-4 rounded-[16px] animate-card-enter"
               style={{ background: 'var(--bg-main)', border: '1px solid var(--border-color)', ['--stagger-i' as string]: i }}
             >
-              <span className="shrink-0 text-[11px] font-black tabular-nums" style={{ color: 'var(--primary-ink)' }}>
+              <span className="shrink-0 text-[11px] font-semibold tabular-nums" style={{ color: 'var(--primary-ink)' }}>
                 {String(i + 1).padStart(2, '0')}
               </span>
               <span className="shrink-0 text-lg leading-none">{TAB_ICON[tab] ?? '✨'}</span>

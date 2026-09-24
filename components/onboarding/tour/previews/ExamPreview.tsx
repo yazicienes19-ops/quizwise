@@ -7,12 +7,12 @@ export const ExamPreview: React.FC = () => (
     </p>
     <div className="flex items-center gap-2">
       <span
-        className="text-[11px] font-black uppercase tracking-widest px-2.5 py-1 rounded-full"
+        className="text-xs font-semibold px-2.5 py-1 rounded-full"
         style={{ background: 'color-mix(in srgb, #22c55e 18%, var(--bg-main))', color: '#16a34a' }}
       >
         8 / 10 Punkte
       </span>
-      <span className="text-[11px] font-black" style={{ color: 'var(--primary-ink)' }}>Note 2,0</span>
+      <span className="text-[11px] font-semibold" style={{ color: 'var(--primary-ink)' }}>Note 2,0</span>
     </div>
   </div>
 );

@@ -132,7 +132,7 @@ export const AnkiImportModal: React.FC<AnkiImportModalProps> = ({ decks, onClose
         <div className="flex justify-between items-center px-8 py-6 border-b border-slate-100 dark:border-slate-800">
           <div>
             <h2 id={titleId} className="text-xl font-black dark:text-white">{t('aim.title')}</h2>
-            <p className="text-[11px] font-black uppercase tracking-widest text-slate-400 mt-0.5">{t('aim.subtitle')}</p>
+            <p className="text-xs font-semibold text-slate-400 mt-0.5">{t('aim.subtitle')}</p>
           </div>
           <ModalCloseButton onClick={onClose} label={t('upl.close')} className="p-2 text-slate-400 hover:text-rose-500 transition-colors rounded-xl" />
         </div>
@@ -144,7 +144,7 @@ export const AnkiImportModal: React.FC<AnkiImportModalProps> = ({ decks, onClose
               <button
                 key={tab2}
                 onClick={() => setTab(tab2)}
-                className={`flex-1 py-2.5 rounded-xl text-[11px] font-black uppercase tracking-widest transition-all ${tab === tab2 ? 'bg-white dark:bg-slate-900 shadow' : 'text-slate-400 hover:text-slate-600'}`}
+                className={`flex-1 py-2.5 rounded-xl text-[13px] font-semibold transition-all ${tab === tab2 ? 'bg-white dark:bg-slate-900 shadow' : 'text-slate-400 hover:text-slate-600'}`}
                 style={tab === tab2 ? { color: 'var(--primary-ink)' } : {}}
               >
                 {tab2 === 'paste' ? t('aim.pasteText') : t('aim.uploadFile')}
@@ -155,7 +155,7 @@ export const AnkiImportModal: React.FC<AnkiImportModalProps> = ({ decks, onClose
           {/* Input area */}
           {tab === 'paste' ? (
             <div className="space-y-2">
-              <p className="text-[11px] font-black uppercase tracking-widest text-slate-400">{t('aim.oneCardPerLine')}</p>
+              <p className="text-xs font-semibold text-slate-400">{t('aim.oneCardPerLine')}</p>
               <textarea
                 ref={pasteRef}
                 value={pasteText}
@@ -190,7 +190,7 @@ export const AnkiImportModal: React.FC<AnkiImportModalProps> = ({ decks, onClose
               ) : (
                 <>
                   <p className="font-black dark:text-white text-sm">{t('aim.dropCsv')}</p>
-                  <p className="text-[11px] text-slate-400 mt-1 font-black uppercase tracking-widest">{t('aim.orClick')}</p>
+                  <p className="text-xs text-slate-400 mt-1 font-semibold">{t('aim.orClick')}</p>
                 </>
               )}
             </div>
@@ -199,7 +199,7 @@ export const AnkiImportModal: React.FC<AnkiImportModalProps> = ({ decks, onClose
           {/* Preview */}
           {preview.length > 0 && (
             <div className="space-y-2">
-              <p className="text-[11px] font-black uppercase tracking-widest text-slate-400">
+              <p className="text-xs font-semibold text-slate-400">
                 {tp('aim.previewN', parsed.length)}
                 {skipped > 0 && <span className="text-amber-500 ml-2">{t('aim.skippedN', { n: skipped })}</span>}
               </p>
@@ -220,7 +220,7 @@ export const AnkiImportModal: React.FC<AnkiImportModalProps> = ({ decks, onClose
 
           {/* Target deck */}
           <div className="space-y-2">
-            <p className="text-[11px] font-black uppercase tracking-widest text-slate-400">{t('aim.targetDeck')}</p>
+            <p className="text-[11px] font-semibold uppercase tracking-[0.08em] text-slate-400">{t('aim.targetDeck')}</p>
             <select
               value={targetDeckId}
               onChange={e => setTargetDeckId(e.target.value)}
@@ -246,7 +246,7 @@ export const AnkiImportModal: React.FC<AnkiImportModalProps> = ({ decks, onClose
           <button
             onClick={handleImport}
             disabled={!parsed.length}
-            className="w-full py-4 rounded-2xl text-[11px] font-black uppercase tracking-widest shadow-lg hover:scale-[1.02] transition-all disabled:opacity-40 disabled:scale-100"
+            className="w-full py-4 rounded-2xl text-[13px] font-semibold shadow-lg hover:scale-[1.02] transition-all disabled:opacity-40 disabled:scale-100"
             style={{ background: 'var(--primary)', color: 'var(--primary-text)' }}
           >
             {parsed.length

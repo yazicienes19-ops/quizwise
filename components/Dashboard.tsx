@@ -407,7 +407,7 @@ export const Dashboard: React.FC<DashboardProps> = ({
             style={{ background: 'var(--bg-sidebar)', border: '1px solid var(--border-color)', ['--stagger-i' as string]: i + 1 }}
           >
             <div
-              className="w-7 h-7 rounded-lg flex items-center justify-center shrink-0 text-[11px] font-black"
+              className="w-7 h-7 rounded-lg flex items-center justify-center shrink-0 text-[11px] font-semibold"
               style={{ background: 'var(--primary)', color: 'var(--primary-text)' }}
             >{n}</div>
             <div className="min-w-0">
@@ -418,7 +418,7 @@ export const Dashboard: React.FC<DashboardProps> = ({
         ))}
         <button
           onClick={() => onTabChange(ActiveTab.LIBRARY)}
-          className="w-full mt-2 px-8 py-4 rounded-[24px] font-black uppercase text-[11px] tracking-widest shadow-3d-deep hover:scale-[1.02] transition-all flex items-center justify-center gap-3 animate-card-enter"
+          className="w-full mt-2 px-8 py-4 rounded-[24px] font-semibold text-[13px] shadow-3d-deep hover:scale-[1.02] transition-all flex items-center justify-center gap-3 animate-card-enter"
           style={{ background: 'var(--primary)', color: 'var(--primary-text)', ['--stagger-i' as string]: 4 }}
         >
           <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round">
@@ -443,7 +443,7 @@ export const Dashboard: React.FC<DashboardProps> = ({
             <React.Fragment key={k.key}>
               {i > 0 && <span aria-hidden className="hidden sm:block w-px h-[30px] shrink-0" style={{ background: 'color-mix(in srgb, var(--text-main) 14%, transparent)' }} />}
               <button onClick={k.onClick} title={k.title} className="shrink-0 text-left sm:text-right transition-opacity hover:opacity-75">
-                <span className="block text-[11px] font-semibold uppercase tracking-[0.15em] whitespace-nowrap" style={{ color: C.faint }}>{k.label}</span>
+                <span className="block text-xs font-semibold whitespace-nowrap" style={{ color: C.faint }}>{k.label}</span>
                 <span className="block mt-[5px] text-[21px] leading-none whitespace-nowrap tabular-nums" style={{ color: C.ink }}>
                   {k.value}
                   {k.unit && <span className="text-[12px]" style={{ color: C.faint }}> {k.unit}</span>}
@@ -546,7 +546,7 @@ export const Dashboard: React.FC<DashboardProps> = ({
             <div className="flex items-center gap-3.5 px-[17px] py-[11px]" style={{ borderTop: `1px solid ${C.line}` }}>
               {guide.next ? (
                 <>
-                  <span className="text-[11px] font-semibold uppercase tracking-[0.14em] shrink-0" style={{ color: C.faint }}>
+                  <span className="text-[11px] font-semibold uppercase tracking-[0.08em] shrink-0" style={{ color: C.faint }}>
                     {t('guide.next.label')}
                   </span>
                   <button
@@ -606,7 +606,7 @@ export const Dashboard: React.FC<DashboardProps> = ({
                 <span
                   key={key}
                   title={key === 'home.col.grade' ? t('home.col.gradeHint') : undefined}
-                  className={`text-[11px] font-semibold uppercase tracking-[0.14em] ${align}`}
+                  className={`text-xs font-semibold ${align}`}
                   style={{ color: 'color-mix(in srgb, var(--text-main) 68%, transparent)' }}
                 >
                   {t(key)}

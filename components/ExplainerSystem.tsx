@@ -512,7 +512,7 @@ export const ExplainerSystem: React.FC<ExplainerSystemProps> = ({
     return (
       <div className="max-w-3xl mx-auto space-y-8 py-6 lg:py-10 px-4 animate-in fade-in duration-700">
         <div className="space-y-2 text-center">
-          <p className="text-[11px] font-black uppercase" style={{ color: 'color-mix(in srgb, var(--primary) 70%, black)', letterSpacing: '0.2em' }}>
+          <p className="text-xs font-semibold" style={{ color: 'color-mix(in srgb, var(--primary) 70%, black)', letterSpacing: '0.2em' }}>
             {activeSourceName ? `${t('nav.explainer')} · ${activeSourceName}`.toUpperCase() : t('nav.explainer').toUpperCase()}
           </p>
           {userName ? (
@@ -619,7 +619,7 @@ export const ExplainerSystem: React.FC<ExplainerSystemProps> = ({
         {weakSpots.length > 0 && (
           <div className="space-y-2">
             <p className="flex items-baseline gap-2">
-              <span className="text-[11px] font-black uppercase" style={{ color: 'color-mix(in srgb, var(--primary) 70%, black)', letterSpacing: '0.16em' }}>
+              <span className="text-xs font-semibold" style={{ color: 'color-mix(in srgb, var(--primary) 70%, black)', letterSpacing: '0.16em' }}>
                 {t('tut.weakSpots.title')}
               </span>
               <span className="text-[11px]" style={{ color: 'var(--text-secondary)' }}>{t('tut.weakSpots.subtitle')}</span>
@@ -639,10 +639,10 @@ export const ExplainerSystem: React.FC<ExplainerSystemProps> = ({
                   }}
                 >
                   <span className="min-w-0">
-                    <span className="block text-xs font-black dark:text-white truncate">{w.topic}</span>
+                    <span className="block text-xs font-semibold dark:text-white truncate">{w.topic}</span>
                     <span className="block text-[11px] mt-0.5" style={{ color: 'var(--text-secondary)' }}>{w.reason}</span>
                   </span>
-                  <span className="text-[11px] font-black shrink-0 whitespace-nowrap" style={{ color: 'color-mix(in srgb, var(--primary) 70%, black)' }}>
+                  <span className="text-[11px] font-semibold shrink-0 whitespace-nowrap" style={{ color: 'color-mix(in srgb, var(--primary) 70%, black)' }}>
                     {t(MODE_TITLE_KEY.explain)} →
                   </span>
                 </button>
@@ -654,7 +654,7 @@ export const ExplainerSystem: React.FC<ExplainerSystemProps> = ({
         {/* Letzte Sitzungen */}
         {sessions.length > 0 && (
           <div className="space-y-2">
-            <p className="text-[11px] font-black uppercase tracking-widest text-slate-400">{t('tut.sessions')}</p>
+            <p className="text-[11px] font-semibold uppercase tracking-[0.08em] text-slate-400">{t('tut.sessions')}</p>
             <div className="space-y-1.5">
               {sessions.slice(0, 5).map(s => (
                 <div
@@ -667,7 +667,7 @@ export const ExplainerSystem: React.FC<ExplainerSystemProps> = ({
                       <GraduationCap size={16} style={{ color: 'var(--primary-ink)' }} strokeWidth={1.75} />
                     </div>
                     <div className="min-w-0 flex-1">
-                      <p className="text-xs font-black truncate dark:text-white">{tutorSessionTitle(s, t('tut.session'))}</p>
+                      <p className="text-xs font-semibold truncate dark:text-white">{tutorSessionTitle(s, t('tut.session'))}</p>
                       <p className="text-[11px] font-medium text-slate-400 truncate">
                         {t(MODE_TITLE_KEY[s.mode])} · {s.sourceName || t('tut.general')} · {formatDate(s.updatedAt, { day: '2-digit', month: 'short' })}
                       </p>
@@ -699,7 +699,7 @@ export const ExplainerSystem: React.FC<ExplainerSystemProps> = ({
               onClick={e => e.stopPropagation()}
             >
               <div className="flex items-center justify-between">
-                <p className="text-[11px] font-black uppercase tracking-widest text-slate-400">{t('ex.chooseMaterial')}</p>
+                <p className="text-[11px] font-semibold uppercase tracking-[0.08em] text-slate-400">{t('ex.chooseMaterial')}</p>
                 <button aria-label={t('common.close')} onClick={() => setSourcePickerOpen(false)} className="text-slate-400 hover:text-rose-500 transition-colors"><X size={16} strokeWidth={2.5} /></button>
               </div>
               <SourceSelector
@@ -721,7 +721,7 @@ export const ExplainerSystem: React.FC<ExplainerSystemProps> = ({
               onClick={e => e.stopPropagation()}
             >
               <div className="flex items-center justify-between">
-                <p className="text-[11px] font-black uppercase tracking-widest text-slate-400">{t('ex.landing.readerTitle')}</p>
+                <p className="text-[11px] font-semibold uppercase tracking-[0.08em] text-slate-400">{t('ex.landing.readerTitle')}</p>
                 <button aria-label={t('common.close')} onClick={() => setReaderPickerOpen(false)} className="text-slate-400 hover:text-rose-500 transition-colors"><X size={16} strokeWidth={2.5} /></button>
               </div>
               <div className="relative">
@@ -744,7 +744,7 @@ export const ExplainerSystem: React.FC<ExplainerSystemProps> = ({
                     style={{ background: 'var(--bg-main)', border: '1px solid var(--border-color)' }}
                   >
                     <BookOpen size={16} className="shrink-0" style={{ color: 'var(--primary-ink)' }} strokeWidth={1.75} />
-                    <span className="flex-1 min-w-0 text-xs font-black dark:text-white truncate">{documentDisplayName(doc)}</span>
+                    <span className="flex-1 min-w-0 text-xs font-semibold dark:text-white truncate">{documentDisplayName(doc)}</span>
                     <ChevronRight className="w-4 h-4 text-slate-300 shrink-0" strokeWidth={2} />
                   </button>
                 ))}
@@ -821,12 +821,12 @@ export const ExplainerSystem: React.FC<ExplainerSystemProps> = ({
               {(mode === 'socratic' || mode === 'quiz') && (
                 <div className="flex flex-wrap justify-center gap-2">
                   {mode === 'socratic' && (
-                    <button onClick={() => send(t('tut.start.socratic.q'))} className="px-4 py-2.5 rounded-xl text-[11px] font-black uppercase tracking-widest text-white transition-all hover:scale-[1.03]" style={{ background: 'var(--primary)' }}>
+                    <button onClick={() => send(t('tut.start.socratic.q'))} className="px-4 py-2.5 rounded-xl text-[13px] font-semibold text-white transition-all hover:scale-[1.03]" style={{ background: 'var(--primary)' }}>
                       {t('tut.start.socratic')}
                     </button>
                   )}
                   {mode === 'quiz' && (
-                    <button onClick={() => send(t('tut.start.quiz.q'))} className="px-4 py-2.5 rounded-xl text-[11px] font-black uppercase tracking-widest text-white transition-all hover:scale-[1.03]" style={{ background: 'var(--primary)' }}>
+                    <button onClick={() => send(t('tut.start.quiz.q'))} className="px-4 py-2.5 rounded-xl text-[13px] font-semibold text-white transition-all hover:scale-[1.03]" style={{ background: 'var(--primary)' }}>
                       {t('tut.start.quiz')}
                     </button>
                   )}
@@ -838,7 +838,7 @@ export const ExplainerSystem: React.FC<ExplainerSystemProps> = ({
                 bedeutungslose Themen-Chip-Reihe durch Zeilen mit echtem Grund. */}
             {weakSpots.length > 0 && (
               <div className="rounded-[20px] p-5 space-y-3" style={{ background: 'var(--card)', border: '1px solid var(--border-color)' }}>
-                <p className="text-[11px] font-black uppercase" style={{ color: 'color-mix(in srgb, var(--primary) 70%, black)', letterSpacing: '0.16em' }}>
+                <p className="text-xs font-semibold" style={{ color: 'color-mix(in srgb, var(--primary) 70%, black)', letterSpacing: '0.16em' }}>
                   {t('tut.weakSpots.title')}
                 </p>
                 <div className="space-y-2">
@@ -856,7 +856,7 @@ export const ExplainerSystem: React.FC<ExplainerSystemProps> = ({
                       }}
                     >
                       <span className="min-w-0">
-                        <span className="block text-xs font-black dark:text-white truncate">{w.topic}</span>
+                        <span className="block text-xs font-semibold dark:text-white truncate">{w.topic}</span>
                         <span className="block text-[11px] mt-0.5" style={{ color: 'var(--text-secondary)' }}>{w.reason}</span>
                       </span>
                       <ChevronRight className="w-4 h-4 shrink-0" style={{ color: 'var(--text-secondary)' }} strokeWidth={2} />
@@ -873,7 +873,7 @@ export const ExplainerSystem: React.FC<ExplainerSystemProps> = ({
             return (
               <div key={m.id} className="flex justify-center">
                 <span
-                  className="text-[11px] font-black uppercase px-2.5 py-1 rounded-full"
+                  className="text-[11px] font-semibold uppercase px-2.5 py-1 rounded-full"
                   style={{ background: 'color-mix(in srgb, var(--ink) 6%, transparent)', color: 'color-mix(in srgb, var(--ink) 70%, transparent)', letterSpacing: '0.1em' }}
                 >
                   {t('tut.modeChanged')} · {t(MODE_TITLE_KEY[m.content as TutorMode])}
@@ -911,13 +911,13 @@ export const ExplainerSystem: React.FC<ExplainerSystemProps> = ({
                       style={{ background: 'var(--card)', borderTop: '1px solid var(--border-color)', borderRight: '1px solid var(--border-color)', borderBottom: '1px solid var(--border-color)', borderLeft: '3px solid var(--primary)' }}
                     >
                       <div className="flex items-center justify-between gap-3 mb-1">
-                        <p className="text-[11px] font-black uppercase truncate" style={{ color: 'color-mix(in srgb, var(--primary) 70%, black)', letterSpacing: '0.16em' }}>
+                        <p className="text-xs font-semibold truncate" style={{ color: 'color-mix(in srgb, var(--primary) 70%, black)', letterSpacing: '0.16em' }}>
                           {activeSourceName ? t('ex.quoteFrom', { source: activeSourceName }) : t('ex.quoteLabel')}
                         </p>
                         {activeDocForReader && onOpenReader && (
                           <button
                             onClick={() => onOpenReader(activeDocForReader)}
-                            className="text-[11px] font-black shrink-0 whitespace-nowrap hover:opacity-70 transition-opacity"
+                            className="text-[13px] font-semibold shrink-0 whitespace-nowrap hover:opacity-70 transition-opacity"
                             style={{ color: 'color-mix(in srgb, var(--primary) 70%, black)' }}
                           >
                             {t('tut.quote.openInDoc')}
@@ -931,7 +931,7 @@ export const ExplainerSystem: React.FC<ExplainerSystemProps> = ({
                   {/* Follow-up-Chips nur unter der jüngsten Tutor-Antwort */}
                   {m.followUps && m.followUps.length > 0 && idx === lastTutorIdx && !isTyping && (
                     <div>
-                      <p className="text-[11px] font-black uppercase mb-2" style={{ color: 'color-mix(in srgb, var(--primary) 70%, black)', letterSpacing: '0.16em' }}>
+                      <p className="text-[11px] font-semibold uppercase mb-2" style={{ color: 'color-mix(in srgb, var(--primary) 70%, black)', letterSpacing: '0.16em' }}>
                         {t('tut.suggestions')}
                       </p>
                       <div className="flex flex-wrap gap-1.5">
@@ -1007,7 +1007,7 @@ export const ExplainerSystem: React.FC<ExplainerSystemProps> = ({
                 <span className="w-2 h-2 rounded-full animate-bounce" style={{ background: 'var(--primary)', animationDelay: '150ms' }} />
                 <span className="w-2 h-2 rounded-full animate-bounce" style={{ background: 'var(--primary)', animationDelay: '300ms' }} />
               </div>
-              <p className="text-[11px] font-black uppercase tracking-widest text-slate-400">{t(THINKING_KEYS[thinkingIdx])}</p>
+              <p className="text-xs font-semibold text-slate-400">{t(THINKING_KEYS[thinkingIdx])}</p>
             </div>
           </div>
         )}
@@ -1029,7 +1029,7 @@ export const ExplainerSystem: React.FC<ExplainerSystemProps> = ({
               <button
                 key={labelKey}
                 onClick={() => send(t(msgKey))}
-                className="px-3 py-1.5 rounded-full text-[11px] font-black uppercase tracking-widest whitespace-nowrap shrink-0 transition-all hover:opacity-80"
+                className="px-3 py-1.5 rounded-full text-[13px] font-semibold whitespace-nowrap shrink-0 transition-all hover:opacity-80"
                 style={{
                   background: 'color-mix(in srgb, var(--primary) 10%, transparent)',
                   border: '1px solid color-mix(in srgb, var(--primary) 45%, transparent)',

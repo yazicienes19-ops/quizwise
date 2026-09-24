@@ -138,7 +138,7 @@ const SearchDialog: React.FC<Props & { onClose: () => void }> = ({ documents, de
                 return (
                   <React.Fragment key={`${r.kind}-${r.id}`}>
                     {showGroup && (
-                      <li role="presentation" className="px-5 pt-3 pb-1 text-[11px] font-semibold uppercase tracking-[0.14em]" style={{ color: 'var(--text-secondary)' }}>
+                      <li role="presentation" className="px-5 pt-3 pb-1 text-xs font-semibold" style={{ color: 'var(--text-secondary)' }}>
                         {groupLabel[r.kind]}
                       </li>
                     )}

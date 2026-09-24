@@ -89,7 +89,7 @@ export const AuthPage: React.FC = () => {
         {/* Wordmark */}
         <div className="relative z-10 flex items-center gap-3">
           <BrandMark size={36} strokeColor="#FBF9F4" peakColor="var(--primary)" />
-          <span className="text-xl font-black uppercase tracking-tighter text-white">
+          <span className="text-xl font-semibold tracking-tighter text-white">
             Stude<span style={{ color: 'var(--primary-ink)' }}>Arc</span>
           </span>
         </div>
@@ -97,7 +97,7 @@ export const AuthPage: React.FC = () => {
         {/* Headline */}
         <div className="relative z-10 space-y-6">
           <div className="space-y-3">
-            <p className="text-[11px] font-black uppercase tracking-[0.14em] text-white/60">
+            <p className="text-xs font-semibold text-white/60">
               Dein Lernbegleiter fürs Studium
             </p>
             <h1 className="text-4xl font-black tracking-tight text-white leading-tight">
@@ -128,7 +128,7 @@ export const AuthPage: React.FC = () => {
         </div>
 
         {/* Footer */}
-        <p className="relative z-10 text-[11px] text-white/40 font-black uppercase tracking-widest">
+        <p className="relative z-10 text-[11px] text-white/40 font-semibold uppercase tracking-[0.08em]">
           © 2026 StudeArc
         </p>
       </div>
@@ -139,7 +139,7 @@ export const AuthPage: React.FC = () => {
         {/* Mobile-Wordmark */}
         <div className="lg:hidden flex items-center gap-2 mb-10">
           <BrandMark size={32} strokeColor="var(--mark-stroke)" peakColor="var(--mark-peak)" />
-          <span className="text-lg font-black uppercase tracking-tighter text-slate-900 dark:text-white">
+          <span className="text-lg font-semibold tracking-tighter text-slate-900 dark:text-white">
             Stude<span style={{ color: 'var(--mark-peak)' }}>Arc</span>
           </span>
         </div>
@@ -164,7 +164,7 @@ export const AuthPage: React.FC = () => {
               <button
                 key={m}
                 onClick={() => { setMode(m); setError(''); setSuccessMsg(''); }}
-                className={`flex-1 py-2.5 rounded-xl text-[11px] font-black uppercase tracking-widest transition-all ${
+                className={`flex-1 py-2.5 rounded-xl text-[13px] font-semibold transition-all ${
                   mode === m
                     ? 'bg-white dark:bg-slate-700 text-slate-900 dark:text-white shadow'
                     : 'text-slate-400 hover:text-slate-600 dark:hover:text-slate-300'
@@ -179,7 +179,7 @@ export const AuthPage: React.FC = () => {
           <form onSubmit={handleSubmit} className="space-y-4">
             {mode === 'register' && (
               <div className="space-y-1.5">
-                <label className="text-[11px] font-black uppercase tracking-widest text-slate-400">Name</label>
+                <label className="text-[11px] font-semibold uppercase tracking-[0.08em] text-slate-400">Name</label>
                 <div className="relative">
                   <User className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" strokeWidth={1.75} />
                   <input
@@ -196,7 +196,7 @@ export const AuthPage: React.FC = () => {
             )}
 
             <div className="space-y-1.5">
-              <label className="text-[11px] font-black uppercase tracking-widest text-slate-400">E-Mail</label>
+              <label className="text-[11px] font-semibold uppercase tracking-[0.08em] text-slate-400">E-Mail</label>
               <div className="relative">
                 <Mail className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" strokeWidth={1.75} />
                 <input
@@ -211,7 +211,7 @@ export const AuthPage: React.FC = () => {
             </div>
 
             <div className="space-y-1.5">
-              <label className="text-[11px] font-black uppercase tracking-widest text-slate-400">Passwort</label>
+              <label className="text-[11px] font-semibold uppercase tracking-[0.08em] text-slate-400">Passwort</label>
               <div className="relative">
                 <Lock className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" strokeWidth={1.75} />
                 <input
@@ -241,7 +241,7 @@ export const AuthPage: React.FC = () => {
             <button
               type="submit"
               disabled={isLoading}
-              className="w-full py-4 rounded-2xl text-[11px] font-black uppercase tracking-widest text-white transition-all hover:opacity-90 shadow-lg disabled:opacity-40 disabled:cursor-not-allowed flex items-center justify-center gap-2"
+              className="w-full py-4 rounded-2xl text-[13px] font-semibold text-white transition-all hover:opacity-90 shadow-lg disabled:opacity-40 disabled:cursor-not-allowed flex items-center justify-center gap-2"
               style={{ background: 'var(--primary, #D9A94E)' }}
             >
               {isLoading
@@ -253,7 +253,7 @@ export const AuthPage: React.FC = () => {
           {/* Demo-Login */}
           <div className="relative flex items-center gap-3">
             <div className="flex-1 h-px bg-slate-200 dark:bg-slate-700" />
-            <span className="text-[11px] font-black uppercase tracking-widest text-slate-400">oder</span>
+            <span className="text-[11px] font-semibold uppercase tracking-[0.08em] text-slate-400">oder</span>
             <div className="flex-1 h-px bg-slate-200 dark:bg-slate-700" />
           </div>
 
@@ -261,7 +261,7 @@ export const AuthPage: React.FC = () => {
             type="button"
             onClick={handleDemoLogin}
             disabled={isDemoLoading || isLoading}
-            className="w-full py-3.5 rounded-2xl text-[11px] font-black uppercase tracking-widest transition-all hover:opacity-80 disabled:opacity-40 disabled:cursor-not-allowed flex items-center justify-center gap-2 border-2"
+            className="w-full py-3.5 rounded-2xl text-[13px] font-semibold transition-all hover:opacity-80 disabled:opacity-40 disabled:cursor-not-allowed flex items-center justify-center gap-2 border-2"
             style={{ borderColor: 'var(--primary, #D9A94E)', color: 'var(--primary, #D9A94E)' }}
           >
             {isDemoLoading

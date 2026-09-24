@@ -14,7 +14,7 @@ export const SourceStatusBadge: React.FC<{ status: SourceStatus }> = ({ status }
   const { t } = useTranslation();
   const { labelKey, dot, pill } = CONFIG[status];
   return (
-    <span className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[11px] font-black uppercase tracking-widest ${pill}`}>
+    <span className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-semibold ${pill}`}>
       <span className={`w-1.5 h-1.5 rounded-full ${dot}`} />
       {t(labelKey)}
     </span>
@@ -31,7 +31,7 @@ export const DigestStatusBadge: React.FC<{ status: 'pending' | 'ready' | 'error'
   const { t } = useTranslation();
   const { labelKey, dot, pill } = DIGEST_CONFIG[status];
   return (
-    <span className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[11px] font-black uppercase tracking-widest ${pill}`}>
+    <span className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-semibold ${pill}`}>
       <span className={`w-1.5 h-1.5 rounded-full ${dot}`} />
       {t(labelKey)}
     </span>
