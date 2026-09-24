@@ -54,9 +54,10 @@ export const tr: Translations = {
   'language.english': 'İngilizce',
 
   // landing
-  'landing.nav.act1': 'Düşük nokta',
-  'landing.nav.act2': 'Dönüm noktası',
-  'landing.nav.act3': 'Yükseliş',
+  'landing.nav.act1': 'Sorun',
+  'landing.nav.act2': 'Özellikler',
+  'landing.nav.act3': 'İlerleme',
+  'landing.nav.pricing': 'Fiyatlar',
   'landing.nav.login': 'Giriş yap',
   'landing.nav.startFree': 'Ücretsiz başla',
   'landing.hero.badge': 'Üniversite için akıllı öğrenme',

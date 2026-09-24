@@ -55,9 +55,10 @@ export const en: Translations = {
   'language.english': 'English',
 
   // landing
-  'landing.nav.act1': 'The Low Point',
-  'landing.nav.act2': 'The Turning Point',
-  'landing.nav.act3': 'The Rise',
+  'landing.nav.act1': 'The problem',
+  'landing.nav.act2': 'Features',
+  'landing.nav.act3': 'Progress',
+  'landing.nav.pricing': 'Pricing',
   'landing.nav.login': 'Log in',
   'landing.nav.startFree': 'Start for free',
   'landing.hero.badge': 'Smarter learning for university',

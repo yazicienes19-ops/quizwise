@@ -33,7 +33,7 @@ export const LanguageToggle: React.FC<{ className?: string }> = ({ className }) 
           key={l}
           onClick={() => changeLocale(l)}
           aria-label={l === 'de' ? 'Deutsch' : l === 'tr' ? 'Türkçe' : 'English'}
-          className="px-2.5 py-1.5 text-[11px] font-black uppercase tracking-widest transition-colors"
+          className="px-2.5 py-1.5 text-[13px] font-semibold transition-colors"
           style={locale === l
             ? { background: 'var(--primary)', color: 'var(--primary-text)' }
             : { color: 'var(--text-secondary, #94a3b8)' }}
@@ -109,19 +109,20 @@ export const LandingPage: React.FC<LandingPageProps> = ({ onAuthClick, onLegalCl
             <a href="#akt1" className="hover:opacity-70 transition-opacity">{t('landing.nav.act1')}</a>
             <a href="#akt2" className="hover:opacity-70 transition-opacity">{t('landing.nav.act2')}</a>
             <a href="#akt3" className="hover:opacity-70 transition-opacity">{t('landing.nav.act3')}</a>
+            <a href="#preise" className="hover:opacity-70 transition-opacity">{t('landing.nav.pricing')}</a>
           </div>
           <div className="flex items-center gap-2 sm:gap-3">
             <LanguageToggle className="hidden sm:inline-flex" />
             <button
               onClick={() => onAuthClick('login')}
-              className="px-4 py-2 text-[11px] font-black uppercase tracking-widest transition-colors hidden sm:block"
+              className="px-4 py-2 text-[13px] font-semibold transition-colors hidden sm:block"
               style={{ color: '#5B5647' }}
             >
               {t('landing.nav.login')}
             </button>
             <button
               onClick={() => onAuthClick('register')}
-              className="px-4 sm:px-5 py-2.5 rounded-full text-[11px] font-black uppercase tracking-widest text-white transition-all hover:scale-105 whitespace-nowrap"
+              className="px-4 sm:px-5 py-2.5 rounded-full text-[13px] font-semibold text-white transition-all hover:scale-105 whitespace-nowrap"
               style={{ background: '#1B2A4A' }}
             >
               {t('landing.nav.startFree')}
@@ -148,21 +149,21 @@ export const LandingPage: React.FC<LandingPageProps> = ({ onAuthClick, onLegalCl
         <div className="flex flex-col sm:flex-row gap-4 justify-center">
           <button
             onClick={() => onAuthClick('register')}
-            className="px-8 py-4 rounded-full text-[11px] font-black uppercase tracking-widest text-white shadow-xl hover:scale-105 transition-all"
+            className="px-8 py-4 rounded-full text-[13px] font-semibold text-white shadow-xl hover:scale-105 transition-all"
             style={{ background: '#1B2A4A' }}
           >
             {t('landing.hero.ctaPrimary')}
           </button>
           <button
             onClick={() => onAuthClick('login')}
-            className="px-8 py-4 rounded-full text-[11px] font-black uppercase tracking-widest transition-all hover:opacity-70"
+            className="px-8 py-4 rounded-full text-[13px] font-semibold transition-all hover:opacity-70"
             style={{ background: 'transparent', border: '1px solid rgba(27,42,74,0.2)', color: '#1B2A4A' }}
           >
             {t('landing.hero.ctaSecondary')}
           </button>
         </div>
 
-        <p className="mt-7 text-[11px] font-black uppercase tracking-widest" style={{ color: '#8A8172' }}>
+        <p className="mt-7 text-[11px] font-semibold uppercase tracking-[0.08em]" style={{ color: '#6D6659' }}>
           {t('landing.hero.trust')}
         </p>
       </section>
@@ -231,9 +232,9 @@ export const LandingPage: React.FC<LandingPageProps> = ({ onAuthClick, onLegalCl
       </section>
 
       {/* Preise */}
-      <section className="max-w-5xl mx-auto px-6 sm:px-8 py-24 sm:py-32">
+      <section id="preise" className="max-w-5xl mx-auto px-6 sm:px-8 py-24 sm:py-32" style={{ scrollMarginTop: 'calc(4rem + env(safe-area-inset-top))' }}>
         <Reveal className="text-center mb-16">
-          <p className="text-[11px] font-black uppercase tracking-[0.14em] mb-3" style={{ color: '#8A8172' }}>{t('landing.pricing.eyebrow')}</p>
+          <p className="text-[11px] font-semibold uppercase tracking-[0.08em] mb-3" style={{ color: '#6D6659' }}>{t('landing.pricing.eyebrow')}</p>
           <h2 style={{ ...serif, fontSize: 'clamp(30px, 3.6vw, 46px)', fontWeight: 600, lineHeight: 1.12 }}>{t('landing.pricing.title')}</h2>
         </Reveal>
         <div className="grid grid-cols-1 md:grid-cols-2 gap-6 max-w-3xl mx-auto">
@@ -241,9 +242,9 @@ export const LandingPage: React.FC<LandingPageProps> = ({ onAuthClick, onLegalCl
           {/* Free */}
           <Reveal>
             <div className="p-8 rounded-[6px] border border-[rgba(27,42,74,0.15)] h-full transition-all duration-300 hover:-translate-y-1 hover:shadow-lg hover:border-[var(--primary)]">
-              <p className="text-[11px] font-black uppercase tracking-widest mb-2" style={{ color: '#8A8172' }}>{t('landing.pricing.free')}</p>
+              <p className="text-[11px] font-semibold uppercase tracking-[0.08em] mb-2" style={{ color: '#6D6659' }}>{t('landing.pricing.free')}</p>
               <p style={{ ...serif, fontSize: 44, fontWeight: 600 }} className="mb-1">{t('landing.pricing.freePrice')}</p>
-              <p className="text-[11px] mb-8" style={{ color: '#8A8172' }}>{t('landing.pricing.freeSub')}</p>
+              <p className="text-[11px] mb-8" style={{ color: '#6D6659' }}>{t('landing.pricing.freeSub')}</p>
               <ul className="space-y-3 mb-8">
                 {freeItems.map(item => (
                   <li key={item} className="flex items-center gap-3 text-sm" style={{ color: '#4A4636' }}>
@@ -254,7 +255,7 @@ export const LandingPage: React.FC<LandingPageProps> = ({ onAuthClick, onLegalCl
               </ul>
               <button
                 onClick={() => onAuthClick('register')}
-                className="w-full py-3.5 rounded-full text-[11px] font-black uppercase tracking-widest border transition-all hover:opacity-70"
+                className="w-full py-3.5 rounded-full text-[13px] font-semibold border transition-all hover:opacity-70"
                 style={{ borderColor: 'rgba(27,42,74,0.2)', color: '#1B2A4A' }}
               >
                 {t('landing.pricing.freeCta')}
@@ -265,15 +266,15 @@ export const LandingPage: React.FC<LandingPageProps> = ({ onAuthClick, onLegalCl
           {/* Pro */}
           <Reveal style={{ transitionDelay: '90ms' } as React.CSSProperties}>
             <div className="p-8 rounded-[6px] border-2 relative h-full transition-all duration-300 hover:-translate-y-1 hover:shadow-2xl" style={{ borderColor: 'var(--primary)', background: '#1B2A4A', color: '#FBF9F4' }}>
-              <div className="absolute top-6 right-6 px-2.5 py-1 rounded-full text-[11px] font-black uppercase tracking-widest" style={{ background: 'var(--primary)', color: '#1B2A4A' }}>
+              <div className="absolute top-6 right-6 px-2.5 py-1 rounded-full text-[11px] font-semibold uppercase tracking-[0.08em]" style={{ background: 'var(--primary)', color: '#1B2A4A' }}>
                 {t('landing.pricing.recommended')}
               </div>
-              <p className="text-[11px] font-black uppercase tracking-widest mb-2" style={{ color: 'var(--primary-ink)' }}>Pro</p>
+              <p className="text-[11px] font-semibold uppercase tracking-[0.08em] mb-2" style={{ color: 'var(--primary-ink)' }}>Pro</p>
               <div className="flex items-end gap-3 mb-1">
                 <p style={{ ...serif, fontSize: 44, fontWeight: 600 }}>9,99 €</p>
                 <p className="text-xl font-black mb-1.5 line-through" style={{ color: '#5B6B8C' }}>14,99 €</p>
               </div>
-              <p className="text-[11px] font-black uppercase tracking-widest mb-1" style={{ color: 'var(--primary-ink)' }}>{t('landing.pricing.proSub')}</p>
+              <p className="text-xs font-semibold mb-1" style={{ color: 'var(--primary-ink)' }}>{t('landing.pricing.proSub')}</p>
               <p className="text-[11px] mb-8" style={{ color: '#C9CFDD' }}>{t('landing.pricing.proPeriod')}</p>
               <ul className="space-y-3 mb-8">
                 {proItems.map(item => (
@@ -285,7 +286,7 @@ export const LandingPage: React.FC<LandingPageProps> = ({ onAuthClick, onLegalCl
               </ul>
               <button
                 onClick={() => onAuthClick('register')}
-                className="w-full py-3.5 rounded-full text-[11px] font-black uppercase tracking-widest transition-all hover:scale-[1.02]"
+                className="w-full py-3.5 rounded-full text-[13px] font-semibold transition-all hover:scale-[1.02]"
                 style={{ background: 'var(--primary)', color: '#1B2A4A' }}
               >
                 {t('landing.pricing.proCta')}
@@ -305,7 +306,7 @@ export const LandingPage: React.FC<LandingPageProps> = ({ onAuthClick, onLegalCl
           <p className="text-lg mb-10" style={{ color: '#5B5647' }}>{t('landing.cta.subtitle')}</p>
           <button
             onClick={() => onAuthClick('register')}
-            className="px-10 py-5 rounded-full text-[11px] font-black uppercase tracking-widest text-white shadow-xl hover:scale-105 transition-all"
+            className="px-10 py-5 rounded-full text-[13px] font-semibold text-white shadow-xl hover:scale-105 transition-all"
             style={{ background: '#1B2A4A' }}
           >
             {t('landing.cta.button')}
@@ -331,21 +332,21 @@ export const LandingPage: React.FC<LandingPageProps> = ({ onAuthClick, onLegalCl
               <button
                 key={labelKey}
                 onClick={() => onLegalClick(page)}
-                className="text-[11px] font-bold uppercase tracking-widest transition-colors hover:opacity-70"
-                style={{ color: '#8A8172' }}
+                className="text-[13px] font-bold transition-colors hover:opacity-70"
+                style={{ color: '#6D6659' }}
               >
                 {t(labelKey)}
               </button>
             ))}
             <button
               onClick={onCookieSettingsClick}
-              className="text-[11px] font-bold uppercase tracking-widest transition-colors hover:opacity-70"
-              style={{ color: '#8A8172' }}
+              className="text-[13px] font-bold transition-colors hover:opacity-70"
+              style={{ color: '#6D6659' }}
             >
               {t('cookie.settingsLink')}
             </button>
           </div>
-          <p className="text-[11px] font-black tracking-widest uppercase" style={{ color: '#8A8172' }}>
+          <p className="text-[11px] font-semibold tracking-[0.08em] uppercase" style={{ color: '#6D6659' }}>
             © {new Date().getFullYear()} StudeArc
           </p>
         </div>

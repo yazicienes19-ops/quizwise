@@ -56,9 +56,10 @@ export const de = {
   'language.english': 'Englisch',
 
   // landing
-  'landing.nav.act1': 'Der Tiefpunkt',
-  'landing.nav.act2': 'Der Wendepunkt',
-  'landing.nav.act3': 'Der Aufstieg',
+  'landing.nav.act1': 'Das Problem',
+  'landing.nav.act2': 'Funktionen',
+  'landing.nav.act3': 'Fortschritt',
+  'landing.nav.pricing': 'Preise',
   'landing.nav.login': 'Anmelden',
   'landing.nav.startFree': 'Kostenlos starten',
   'landing.hero.badge': 'Cleveres Lernen fürs Studium',
