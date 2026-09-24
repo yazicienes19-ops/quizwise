@@ -1,4 +1,5 @@
 import React, { useEffect, useRef, useState } from 'react';
+import { ArrowUp } from 'lucide-react';
 import { useTranslation } from '../i18n/I18nProvider';
 
 interface ReaderTutorPaneProps {
@@ -36,7 +37,7 @@ export const ReaderTutorPane: React.FC<ReaderTutorPaneProps> = ({
 
   return (
     <div
-      className={`fixed inset-x-0 bottom-[max(4.5rem,calc(env(safe-area-inset-bottom)+4rem))] z-40 flex flex-col gap-3 p-4 rounded-t-[18px] shadow-[0_-8px_28px_rgba(22,41,77,0.14)] ${expanded ? 'h-[62vh]' : ''} lg:static lg:inset-auto lg:z-auto lg:col-span-3 lg:h-[calc(100vh-6rem)] lg:gap-4 lg:p-6 lg:rounded-[24px] lg:shadow-none`}
+      className={`fixed inset-x-0 bottom-[max(4.5rem,calc(env(safe-area-inset-bottom)+4rem))] z-40 flex flex-col gap-3 p-4 rounded-t-[18px] shadow-[0_-8px_28px_rgba(22,41,77,0.14)] ${expanded ? 'h-[62vh]' : ''} lg:static lg:inset-auto lg:z-auto lg:col-span-3 lg:max-h-[calc(100vh-6rem)] lg:min-h-[420px] lg:gap-4 lg:p-6 lg:rounded-[24px] lg:shadow-none`}
       style={{ background: 'var(--bg-sidebar)', border: '1px solid var(--border-color)' }}
     >
       <button
@@ -51,13 +52,13 @@ export const ReaderTutorPane: React.FC<ReaderTutorPaneProps> = ({
 
       <div className="flex items-center justify-between gap-3">
         <div className="min-w-0">
-          <p className="text-[11px] font-black uppercase tracking-widest" style={{ color: 'var(--primary-ink)' }}>{t('nav.explainer')}</p>
+          <p className="text-[11px] font-semibold uppercase tracking-[0.08em]" style={{ color: 'var(--primary-ink)' }}>{t('nav.explainer')}</p>
           <p className={`text-xs text-slate-400 font-medium ${expanded ? '' : 'hidden'} lg:block`}>{hint}</p>
         </div>
         <button
           type="button"
           onClick={() => setExpanded(v => !v)}
-          className="lg:hidden shrink-0 text-[11px] font-black uppercase tracking-widest"
+          className="lg:hidden shrink-0 text-xs font-semibold"
           style={{ color: 'var(--text-secondary)' }}
         >
           {entryCount > 0 && !expanded ? tp('rd.questionsN', entryCount) : toggleLabel}
@@ -77,16 +78,18 @@ export const ReaderTutorPane: React.FC<ReaderTutorPaneProps> = ({
           onFocus={() => setExpanded(true)}
           onKeyDown={e => { if (e.key === 'Enter' && canAsk) onAsk(); }}
           placeholder={placeholder}
-          className="flex-1 px-4 py-3 rounded-2xl text-sm font-bold outline-none transition-all min-w-0"
+          className="flex-1 px-4 py-3 rounded-2xl text-sm outline-none transition-all min-w-0"
           style={{ background: 'var(--bg-main)', border: '1px solid var(--border-color)', color: 'var(--text-main)' }}
         />
         <button
           onClick={onAsk}
           disabled={!canAsk}
-          className="shrink-0 px-5 py-3 rounded-2xl text-[11px] font-black uppercase tracking-widest transition-all disabled:opacity-40 disabled:cursor-not-allowed"
+          aria-label={t('rd.ask')}
+          title={t('rd.ask')}
+          className="shrink-0 w-11 rounded-2xl flex items-center justify-center transition-all disabled:opacity-40 disabled:cursor-not-allowed"
           style={{ background: 'var(--primary)', color: 'var(--primary-text)' }}
         >
-          {t('rd.ask')}
+          <ArrowUp size={18} strokeWidth={2.2} aria-hidden="true" />
         </button>
       </div>
     </div>

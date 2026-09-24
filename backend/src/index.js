@@ -22,6 +22,11 @@ const { requireAdmin } = require('./middleware/requireAdmin');
 const app = express();
 const PORT = process.env.PORT || 4000;
 
+// Railway setzt genau einen Proxy (Edge) vor den Container. Ohne diese
+// Einstellung sieht express-rate-limit nur die Edge-IP, und alle Nutzer teilen
+// sich ein gemeinsames Limit.
+app.set('trust proxy', 1);
+
 app.use(helmet());
 
 const allowedOrigins = [

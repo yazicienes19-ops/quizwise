@@ -467,7 +467,7 @@ export const PdfSplitScreenReader: React.FC<PdfSplitScreenReaderProps> = ({ doc,
   return (
     <div className="w-full space-y-3 animate-in fade-in duration-700">
       {/* Schlanker Kopf — eine Zeile, damit der Split-Screen die Fläche bekommt */}
-      <div className="flex items-center gap-3">
+      <div className="flex flex-wrap items-center gap-x-3 gap-y-2">
         <button
           onClick={() => setTocOpen(v => !v)}
           aria-label={t('rd.tocToggle')}
@@ -504,7 +504,7 @@ export const PdfSplitScreenReader: React.FC<PdfSplitScreenReaderProps> = ({ doc,
         <button
           onClick={() => onStartFeynman(handoffTopic)}
           disabled={doneIndices.length === 0}
-          className="shrink-0 px-4 py-2.5 rounded-2xl text-[11px] font-black uppercase tracking-widest transition-all hover:scale-[1.02] disabled:opacity-40 disabled:cursor-not-allowed"
+          className="w-full sm:w-auto shrink-0 px-4 py-2.5 rounded-2xl text-sm font-semibold transition-all hover:scale-[1.02] disabled:opacity-40 disabled:cursor-not-allowed"
           style={{ background: 'var(--primary)', color: 'var(--primary-text)' }}
         >
           {t('rd.toFeynman')}

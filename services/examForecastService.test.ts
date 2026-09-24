@@ -103,10 +103,21 @@ describe('buildExamForecast — Stufe 3: Mischprognose', () => {
     expect(f.parts.retentionShare).toBeNull();
   });
 
-  it('Vertrauen: hoch braucht >= 4 Klausuren UND zweite Quelle', () => {
+  it('Vertrauen: hoch braucht >= 4 frische Klausuren UND eine zweite Quelle mit Grundlage', () => {
     expect(buildExamForecast({ ...base, examResults: exams })!.confidence).toBe('mittel');
-    expect(buildExamForecast({ ...base, examResults: exams, topicMastery: mkTopics(3, 1) })!.confidence).toBe('hoch');
+    expect(buildExamForecast({ ...base, examResults: exams, topicMastery: mkTopics(4, 1) })!.confidence).toBe('hoch');
+    expect(buildExamForecast({ ...base, examResults: exams, decks: mkDecks(15, 5) })!.confidence).toBe('hoch');
     expect(buildExamForecast({ ...base, examResults: [mkExam(50, 0)] })!.confidence).toBe('gering');
+  });
+
+  it('Vertrauen: nicht hoch bei dünner zweiter Quelle', () => {
+    expect(buildExamForecast({ ...base, examResults: exams, topicMastery: mkTopics(3, 1) })!.confidence).toBe('mittel');
+    expect(buildExamForecast({ ...base, examResults: exams, decks: mkDecks(3, 2) })!.confidence).toBe('mittel');
+  });
+
+  it('Vertrauen: nicht hoch, wenn die Klausuren alt sind', () => {
+    const old = [mkExam(5, 30), mkExam(5, 35), mkExam(5, 40), mkExam(5, 45), mkExam(5, 50), mkExam(5, 60)];
+    expect(buildExamForecast({ ...base, examResults: old, topicMastery: mkTopics(0, 10) })!.confidence).toBe('mittel');
   });
 
   it('ist deterministisch', () => {

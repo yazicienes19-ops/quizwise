@@ -34,6 +34,13 @@ export const FORECAST_CONFIG = {
   RANGE_HALF_MAX: 15,
   /** Vorläufige Prognosen (wenig Daten) bekommen mindestens diese halbe Breite. */
   RANGE_HALF_PRELIMINARY: 8,
+  /** Vertrauen "hoch" braucht so viele frische Klausuren (Summe der Zerfallsgewichte:
+   *  eine heutige Klausur zählt 1, eine vor 14 Tagen 0,5). Alte Klausuren allein
+   *  reichen nicht (Audit 24.09.2026: "hoch" auf dünner, veralteter Datenbasis). */
+  CONFIDENCE_HIGH_RECENT_EXAMS: 2.5,
+  /** Eine zweite Quelle zählt für "hoch" erst ab so vielen Themen bzw. gelernten Karten. */
+  CONFIDENCE_MIN_TOPICS: 5,
+  CONFIDENCE_MIN_CARDS: 20,
   /** Karten gelten als stabil abrufbar ab diesem SRS-Intervall (Tage). */
   RETENTION_STABLE_INTERVAL: 7,
 } as const;
@@ -151,9 +158,12 @@ export const buildExamForecast = (input: ForecastInput): ExamForecast | null => 
     high: Math.round(clamp(expected + half, 0, 100)),
   };
 
-  const sourceCount = 1 + (topicShare !== null ? 1 : 0) + (retentionShare !== null ? 1 : 0);
+  // Vertrauen hängt an der Datenmenge: genug frische Klausuren und eine zweite
+  // Quelle mit echter Grundlage, nicht nur an der Anzahl der Quellen.
+  const substantialSecondSource =
+    topicMastery.length >= C.CONFIDENCE_MIN_TOPICS || established.length >= C.CONFIDENCE_MIN_CARDS;
   const confidence: ExamForecast['confidence'] =
-    !preliminary && sourceCount >= 2 ? 'hoch'
+    !preliminary && totalWeight >= C.CONFIDENCE_HIGH_RECENT_EXAMS && substantialSecondSource ? 'hoch'
     : examResults.length >= 2 ? 'mittel'
     : 'gering';
 

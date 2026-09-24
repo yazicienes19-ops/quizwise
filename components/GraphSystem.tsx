@@ -19,6 +19,7 @@ import { GraphEdgeExplainOverlay } from './GraphEdgeExplainOverlay';
 import { GraphNodeDetailPanel } from './GraphNodeDetailPanel';
 import { GraphLearningOverlay, type GraphLearningActivity } from './GraphLearningOverlay';
 import { useTranslation } from '../i18n/I18nProvider';
+import { renameLegacyDefaultTitles } from '../services/graph/graphLegacyTitles';
 import type { TKey } from '../i18n';
 import { toast } from '../services/toast';
 import { resolveErrorMessage } from '../services/errorMessages';
@@ -116,6 +117,21 @@ export const GraphSystem: React.FC<GraphSystemProps> = ({
     : undefined;
 
   const graph = useKnowledgeGraph({ scope, userId });
+
+  // Ältere Netze enthalten noch Konzepte mit dem früheren Standardtitel
+  // "Neuer Node". Nach dem Laden einmal umbenennen und normal speichern,
+  // ohne Eintrag im Rückgängig-Verlauf.
+  const { loading: graphLoading, getState: getGraphState, onChange: onGraphChange, onEntityChanged: onGraphEntityChanged } = graph;
+  const graphHistory = graph.history;
+  useEffect(() => {
+    if (graphLoading) return;
+    const { state: renamedState, renamed } = renameLegacyDefaultTitles(getGraphState(), t('kg.newConceptTitle'));
+    if (renamed.length === 0) return;
+    onGraphChange({ state: renamedState, history: graphHistory });
+    for (const node of renamed) onGraphEntityChanged({ kind: 'node', entity: node });
+    // Nur nach jedem abgeschlossenen Laden prüfen, nicht bei jeder Änderung.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [graphLoading]);
 
   // Letzter Kamera-Zustand dieses Graphen (View-Persistenz): pro Scope ein
   // Key, beim Mount einmal gelesen, nach jeder Pan-/Zoom-Geste vom Canvas

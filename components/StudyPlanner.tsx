@@ -51,6 +51,12 @@ interface StudyPlannerProps {
   onUpdateCollection: (col: Collection) => void;
 }
 
+/** Klausur in den nächsten 7 Tagen: nur dann wird das Datum rot hervorgehoben. */
+function isExamSoon(date: string): boolean {
+  const d = daysUntilDate(date, new Date());
+  return d >= 0 && d <= 7;
+}
+
 function toDateStr(d: Date): string {
   return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
 }
@@ -447,7 +453,7 @@ export const StudyPlanner: React.FC<StudyPlannerProps> = ({ metrics, decks, exam
       {/* Widgets */}
       <div className="grid grid-cols-1 md:grid-cols-3 gap-6 max-w-5xl mx-auto">
         <div className="p-6 rounded-[24px] bg-white/50 dark:bg-slate-900/50 backdrop-blur-sm border border-slate-200/50 dark:border-slate-800/50 hover:bg-white dark:hover:bg-slate-900 transition-all">
-          <h3 className="text-[11px] font-black uppercase tracking-[0.14em] text-indigo-500 mb-4">{t('sp2.gaps', { n: knowledgeGaps.length })}</h3>
+          <h3 className="text-[11px] font-semibold uppercase tracking-[0.08em] mb-4" style={{ color: 'var(--mute)' }}>{t('sp2.gaps', { n: knowledgeGaps.length })}</h3>
           <div className="space-y-2">
             {knowledgeGaps.slice(0, 3).map(gap => (
               <div key={gap.id} className="flex justify-between items-center">
@@ -459,7 +465,7 @@ export const StudyPlanner: React.FC<StudyPlannerProps> = ({ metrics, decks, exam
           </div>
         </div>
         <div className="p-6 rounded-[24px] bg-white/50 dark:bg-slate-900/50 backdrop-blur-sm border border-slate-200/50 dark:border-slate-800/50 hover:bg-white dark:hover:bg-slate-900 transition-all">
-          <h3 className="text-[11px] font-black uppercase tracking-[0.14em] text-indigo-600 mb-4">{t('sp2.dueCards', { n: dueCardsTotal })}</h3>
+          <h3 className="text-[11px] font-semibold uppercase tracking-[0.08em] mb-4" style={{ color: 'var(--mute)' }}>{t('sp2.dueCards', { n: dueCardsTotal })}</h3>
           <div className="space-y-2">
             {dueDecks.slice(0, 3).map(({ deck, due }) => (
               <div key={deck.id} className="flex justify-between items-center">
@@ -471,12 +477,12 @@ export const StudyPlanner: React.FC<StudyPlannerProps> = ({ metrics, decks, exam
           </div>
         </div>
         <div className="p-6 rounded-[24px] bg-white/50 dark:bg-slate-900/50 backdrop-blur-sm border border-slate-200/50 dark:border-slate-800/50 hover:bg-white dark:hover:bg-slate-900 transition-all">
-          <h3 className="text-[11px] font-black uppercase tracking-[0.14em] text-rose-500 mb-4">{t('sp2.exams', { n: examTerms.length })}</h3>
+          <h3 className="text-[11px] font-semibold uppercase tracking-[0.08em] mb-4" style={{ color: 'var(--mute)' }}>{t('sp2.exams', { n: examTerms.length })}</h3>
           <div className="space-y-2">
             {examTerms.slice(0, 3).map(exam => (
               <div key={exam.id} className="flex justify-between items-center">
                 <span className="text-[11px] font-bold text-slate-600 dark:text-slate-300 break-words pr-2">{exam.title}</span>
-                <span className="text-[11px] font-black text-rose-500">{formatDate(exam.date + 'T12:00:00', { day: '2-digit', month: '2-digit' })}</span>
+                <span className={`text-[11px] font-semibold tabular-nums ${isExamSoon(exam.date) ? 'text-rose-600 dark:text-rose-400' : ''}`} style={isExamSoon(exam.date) ? undefined : { color: 'var(--ink2)' }}>{formatDate(exam.date + 'T12:00:00', { day: '2-digit', month: '2-digit' })}</span>
               </div>
             ))}
             {examTerms.length === 0 && <p className="text-[11px] text-slate-400 italic">{t('sp2.noAppointments')}</p>}

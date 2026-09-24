@@ -311,7 +311,7 @@ export const SplitScreenReader: React.FC<SplitScreenReaderProps> = ({ doc, userI
     <div className="w-full space-y-3 animate-in fade-in duration-700">
       {/* Schlanker Kopf — Dokument-Symbol öffnet das Inhaltsverzeichnis-Overlay
           statt einer permanenten Kapitel-Leiste (analog zum PDF-Reader). */}
-      <div className="flex items-center gap-3">
+      <div className="flex flex-wrap items-center gap-x-3 gap-y-2">
         <button
           onClick={() => setTocOpen(v => !v)}
           aria-label={t('rd.tocToggle')}
@@ -344,18 +344,18 @@ export const SplitScreenReader: React.FC<SplitScreenReaderProps> = ({ doc, userI
         <button
           onClick={handleStartFeynman}
           disabled={doneIndices.length === 0}
-          className="shrink-0 px-4 py-2.5 rounded-2xl text-[11px] font-black uppercase tracking-widest transition-all hover:scale-[1.02] disabled:opacity-40 disabled:cursor-not-allowed"
+          className="w-full sm:w-auto shrink-0 px-4 py-2.5 rounded-2xl text-sm font-semibold transition-all hover:scale-[1.02] disabled:opacity-40 disabled:cursor-not-allowed"
           style={{ background: 'var(--primary)', color: 'var(--primary-text)' }}
         >
           {t('rd.toFeynman')}
         </button>
       </div>
 
-      <div className="grid grid-cols-1 lg:grid-cols-10 gap-4">
+      <div className="grid grid-cols-1 lg:grid-cols-10 lg:items-start gap-4">
         {/* Links: Lesen — "Papier"-Hintergrund mit einem "Blatt" darauf (echter,
             selbst gerenderter HTML-Text — anders als beim PDF-Reader kann hier
             eine eigene Lese-Typografie (Serif) verwendet werden). */}
-        <div className="relative lg:col-span-7 rounded-[24px] flex flex-col h-[calc(100vh-21rem)] min-h-[300px] lg:h-[calc(100vh-6rem)] overflow-hidden" style={{ background: 'var(--bg-main)', border: '1px solid var(--border-color)' }}>
+        <div className="relative lg:col-span-7 rounded-[24px] flex flex-col max-h-[calc(100vh-21rem)] min-h-[300px] lg:max-h-[calc(100vh-6rem)] lg:min-h-[420px] overflow-hidden" style={{ background: 'var(--bg-main)', border: '1px solid var(--border-color)' }}>
           <div
             onClick={() => setTocOpen(false)}
             className="absolute inset-0 rounded-[20px] transition-opacity duration-200 z-10"
@@ -381,8 +381,8 @@ export const SplitScreenReader: React.FC<SplitScreenReaderProps> = ({ doc, userI
             <>
               {/* Nicht scrollender Rahmen als Bezugssystem für den Auswahl-Button,
                   der Text selbst scrollt darin (gleiches Muster wie pdfAreaRef im PDF-Reader). */}
-              <div ref={readerAreaRef} className="relative flex-1 min-h-0">
-              <div className="h-full overflow-y-auto px-4 py-6 lg:px-8 lg:py-8" onMouseUp={handleTextSelection} onTouchEnd={handleTextSelectionTouch}>
+              <div ref={readerAreaRef} className="relative flex-1 min-h-0 flex flex-col">
+              <div className="flex-1 min-h-0 overflow-y-auto px-4 py-6 lg:px-8 lg:py-8" onMouseUp={handleTextSelection} onTouchEnd={handleTextSelectionTouch}>
                 <article className="max-w-[660px] mx-auto rounded-2xl p-8 lg:p-12" style={{ background: 'var(--bg-sidebar)', border: '1px solid var(--border-color)', boxShadow: '0 10px 30px -5px rgba(0, 0, 0, 0.08), 0 4px 10px -2px rgba(0, 0, 0, 0.03), inset 0 1px 0 0 rgba(255, 255, 255, 0.5)' }}>
                   <div className="flex items-center justify-between gap-3 mb-6">
                     <h2 className="text-2xl font-semibold tracking-tight break-words" style={{ fontFamily: 'ui-serif, Georgia, "Iowan Old Style", "Times New Roman", serif', color: 'var(--text-main)' }}>
@@ -420,7 +420,7 @@ export const SplitScreenReader: React.FC<SplitScreenReaderProps> = ({ doc, userI
                 <button
                   onClick={handleMarkDone}
                   disabled={activeDone}
-                  className="w-full max-w-[660px] mx-auto block py-3 rounded-2xl text-[11px] font-black uppercase tracking-widest transition-all hover:scale-[1.02] disabled:opacity-40 disabled:cursor-not-allowed"
+                  className="w-full max-w-[660px] mx-auto block py-3 rounded-2xl text-sm font-semibold transition-all hover:scale-[1.02] disabled:opacity-40 disabled:cursor-not-allowed"
                   style={{ background: activeDone ? 'var(--bg-sidebar)' : 'color-mix(in srgb, var(--primary) 12%, transparent)', color: 'var(--primary-ink)', border: '1px solid color-mix(in srgb, var(--primary) 30%, transparent)' }}
                 >
                   {activeDone ? t('rd.chapterDoneRead') : t('rd.markChapterDone')}
