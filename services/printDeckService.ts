@@ -2,6 +2,7 @@
 // Bogen 1 = Vorderseiten, Bogen 2 = Rückseiten mit je Zeile GESPIEGELTEN
 // Spalten — beim beidseitigen Druck (Wenden an der langen Kante) liegt so
 // jede Rückseite exakt hinter ihrer Vorderseite.
+import { textSides } from './cloze';
 import type { Flashcard } from '../types';
 
 export const PRINT_COLS = 2;
@@ -48,7 +49,8 @@ const sizeClass = (text: string) => (text.length > 220 ? 'xs' : text.length > 11
 
 const cellHtml = (slot: PrintSlot | null, side: 'front' | 'back'): string => {
   if (!slot) return '<div class="cell empty"></div>';
-  const text = side === 'front' ? slot.card.front : slot.card.back;
+  const sides = textSides(slot.card);
+  const text = side === 'front' ? sides.front : sides.back;
   return `<div class="cell"><span class="num">${slot.number}</span><p class="${sizeClass(text)}">${escapeHtml(text).replace(/\n/g, '<br>')}</p></div>`;
 };
 

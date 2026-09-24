@@ -1,3 +1,4 @@
+import { moveDocumentsToCollection } from '../services/duplicateCollections';
 import { useState, useEffect, useRef } from 'react';
 import type { User } from '@supabase/supabase-js';
 import { ProcessedDocument, Collection } from '../types';
@@ -149,6 +150,25 @@ export const useDocuments = ({ user, userPlan, isOffline, setIsLoading, setShowU
       const folderName = `Ordner: ${col.name}`;
       deleteExamResultsForDocName(folderName, user?.id);
       deleteRecallResultsForDocName(folderName, user?.id);
+    }
+  };
+
+  // Doppelte Ordner zusammenführen: Dokumente in einem Schritt umziehen (mehrere
+  // moveDoc-Aufrufe hintereinander würden sich über den alten documents-Stand
+  // gegenseitig überschreiben). Lernverläufe "Ordner: <Name>" bleiben, weil der
+  // behaltene Ordner denselben Namen trägt.
+  const mergeCollections = (keepId: string, dropIds: string[]) => {
+    const drop = new Set(dropIds.filter(id => id !== keepId));
+    if (drop.size === 0) return;
+    const moved = documents.filter(d => d.collectionId && drop.has(d.collectionId));
+    saveDocs(moveDocumentsToCollection(documents, keepId, drop));
+    saveCollections(collections.filter(c => !drop.has(c.id)));
+    if (user) {
+      // Erst umhängen, dann löschen: die Cloud setzt collection_id beim Löschen per FK auf null.
+      void (async () => {
+        for (const d of moved) await updateDocumentCollectionInSupabase(d.id, keepId).catch(() => {});
+        for (const id of drop) await deleteCollectionFromSupabase(id).catch(() => {});
+      })();
     }
   };
 
@@ -356,5 +376,5 @@ export const useDocuments = ({ user, userPlan, isOffline, setIsLoading, setShowU
     setRefreshTick(t => t + 1);
   };
 
-  return { documents, collections, saveDocs, addCollection, removeCollection, updateCollection, deleteDoc, moveDoc, getDocumentSource, handleFileUpload, retryAnalysis };
+  return { documents, collections, saveDocs, addCollection, removeCollection, updateCollection, mergeCollections, deleteDoc, moveDoc, getDocumentSource, handleFileUpload, retryAnalysis };
 };

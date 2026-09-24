@@ -1,4 +1,6 @@
 
+import { ClozeText } from './ClozeText';
+import { hasCloze } from '../services/cloze';
 import React, { useState, useEffect, useMemo, useRef, useCallback } from 'react';
 import { FlashcardDeck, Flashcard, ProcessedDocument, Collection } from '../types';
 import type { GenerationSource } from '../services/geminiService';
@@ -447,7 +449,7 @@ export const FlashcardSystem: React.FC<FlashcardSystemProps> = ({
         const toCards = (raw: unknown): Flashcard[] => (Array.isArray(raw) ? raw : []).flatMap((c: any) => {
           const front = typeof c?.front === 'string' ? c.front.trim() : '';
           const back = typeof c?.back === 'string' ? c.back.trim() : '';
-          if (!front || !back) { skipped++; return []; }
+          if (!front || (!back && !hasCloze(front))) { skipped++; return []; }
           const srs = isValidSrs(c.srs) ? c.srs : createSrsState();
           return [{
             id: newId(),
@@ -775,7 +777,7 @@ export const FlashcardSystem: React.FC<FlashcardSystemProps> = ({
                     {/* Nummer = Position im Deck, auch bei aktiver Suche (vorher Position im Suchergebnis) */}
                     <span className="text-[11px] font-semibold text-slate-300 dark:text-slate-600 w-6 shrink-0 text-right">{deck.cards.indexOf(card) + 1}</span>
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-2 flex-1 min-w-0">
-                      <p className="text-sm font-bold dark:text-white md:border-r md:border-slate-100 md:dark:border-slate-800 md:pr-4 leading-snug break-words whitespace-pre-line line-clamp-4">{card.front}</p>
+                      <p className="text-sm font-bold dark:text-white md:border-r md:border-slate-100 md:dark:border-slate-800 md:pr-4 leading-snug break-words whitespace-pre-line line-clamp-4">{hasCloze(card.front) ? <ClozeText text={card.front} revealed /> : card.front}</p>
                       <p className="text-sm text-slate-400 dark:text-slate-500 leading-snug break-words whitespace-pre-line line-clamp-4">{card.back}</p>
                       {(card.frontImage || card.backImage) && (
                         <div className="md:col-span-2 flex gap-2">

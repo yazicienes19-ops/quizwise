@@ -1,4 +1,6 @@
 
+import { hasCloze } from '../services/cloze';
+import { ClozeText } from './ClozeText';
 import React, { useState, useEffect, useCallback, useMemo } from 'react';
 import { createPortal } from 'react-dom';
 import { Flashcard } from '../types';
@@ -189,7 +191,9 @@ export const FlashcardPlayer: React.FC<FlashcardPlayerProps> = ({ cards, onRevie
   }
 
   // Lernrichtung (services/cardDirection.ts): nur die Anzeige wird getauscht.
-  const reversed = isReversed(currentCard.id, direction);
+  // Lückentext-Karten bleiben immer in Leserichtung: die Lücke ist die Frage.
+  const cloze = hasCloze(currentCard.front);
+  const reversed = !cloze && isReversed(currentCard.id, direction);
   const shownFront = reversed ? currentCard.back : currentCard.front;
   const shownBack = reversed ? currentCard.front : currentCard.back;
   const shownFrontImage = reversed ? currentCard.backImage : currentCard.frontImage;
@@ -255,12 +259,12 @@ export const FlashcardPlayer: React.FC<FlashcardPlayerProps> = ({ cards, onRevie
           <div key={`front-${currentCard.id}-${completed}`} className="text-center animate-in fade-in slide-in-from-top-4 duration-500 px-2 md:px-8 space-y-6">
             {shownFrontImage && <CardImage path={shownFrontImage} alt={t('img.altFront')} />}
             <h2 className={`${frontSize(shownFront)} font-medium text-slate-900 dark:text-slate-100 leading-snug break-words whitespace-pre-line`}>
-              {shownFront}
+              {cloze ? <ClozeText text={currentCard.front} revealed={showAnswer} /> : shownFront}
             </h2>
           </div>
 
           {/* Back of Card (Shown after click) */}
-          {showAnswer && (
+          {showAnswer && !(cloze && !shownBack.trim() && !shownBackImage) && (
             <div className="space-y-8 md:space-y-16 animate-in fade-in zoom-in-95 duration-300 border-t border-slate-100 dark:border-slate-800 pt-8 md:pt-16 px-2 md:px-8">
               <div className={`${longBack ? 'text-left max-w-2xl mx-auto' : 'text-center'} space-y-6`}>
                 {shownBackImage && <CardImage path={shownBackImage} alt={t('img.altBack')} />}

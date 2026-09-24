@@ -1,3 +1,4 @@
+import { textSides } from './cloze';
 import { Type } from "@google/genai";
 import { getReportedQuestionTexts } from './questionReportService';
 import { notifyBudgetSoft, isBudgetExhausted } from './budgetNotice';
@@ -1053,7 +1054,7 @@ const selectDeckCardsForQuiz = (deck: FlashcardDeck) => {
  *  Einstellungen (Fragetyp, Schwierigkeit, Anzahl) nutzen kann wie ein Dokument. */
 export const buildDeckQuizSource = (deck: FlashcardDeck): GenerationSource => ({
   text: `Karteikarten-Stapel "${deck.title}":\n\n` + selectDeckCardsForQuiz(deck)
-    .map(c => `Frage: ${c.front}\nAntwort: ${c.back}`).join('\n\n'),
+    .map(c => { const s = textSides(c); return `Frage: ${s.front}\nAntwort: ${s.back}`; }).join('\n\n'),
 });
 
 export const generatePaperFramework = async (

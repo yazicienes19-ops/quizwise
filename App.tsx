@@ -7,6 +7,8 @@ import { Layout } from './components/Layout';
 import { ToastContainer } from './components/Toast';
 import { SplashScreen } from './components/SplashScreen';
 import { AuthPage } from './components/AuthPage';
+import { MfaGate } from './components/MfaGate';
+import { needsSecondFactor } from './services/mfaService';
 import { OnboardingFlow } from './components/onboarding/OnboardingFlow';
 import { isOnboardingDone, markOnboardingDone, cacheOnboardingProfile, getCachedOnboardingProfile } from './components/onboarding/onboardingState';
 import { getRecommendation, buildCombinedRecommendation } from './services/onboardingRecommendation';
@@ -104,6 +106,17 @@ const App: React.FC = () => {
   const [pendingActionDoc, setPendingActionDoc] = useState<import('./types').ProcessedDocument | null>(null);
   const [pendingTopic, setPendingTopic] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(false);
+  // Zwei-Faktor-Anmeldung: null = wird geprüft, true = Code fehlt noch (components/MfaGate.tsx).
+  const [mfaPending, setMfaPending] = useState<boolean | null>(null);
+  useEffect(() => {
+    if (!auth.user) { setMfaPending(null); return; }
+    let cancelled = false;
+    needsSecondFactor()
+      .then(pending => { if (!cancelled) setMfaPending(pending); })
+      .catch(() => { if (!cancelled) setMfaPending(false); });
+    return () => { cancelled = true; };
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [auth.user?.id]);
   const [isOffline, setIsOffline] = useState(!navigator.onLine);
   const [showUpgradeHint, setShowUpgradeHint] = useState(false);
   const [showUpgradeModal, setShowUpgradeModal] = useState(false);
@@ -382,6 +395,11 @@ const App: React.FC = () => {
     removeMetricsForTopics([docName, ...topicsFromDoc.filter(t => !stillUsed.has(t))]);
   };
 
+  const mergeCollections = (keepId: string, dropIds: string[]) => {
+    docs.mergeCollections(keepId, dropIds);
+    if (activeModuleId && dropIds.includes(activeModuleId)) setActiveModuleId(keepId);
+  };
+
   const removeCollection = (id: string) => {
     const col = docs.collections.find(c => c.id === id);
     const folderName = col ? `Ordner: ${col.name}` : null;
@@ -459,6 +477,14 @@ const App: React.FC = () => {
   }
 
   if (!auth.authChecked) return <SplashScreen />;
+
+  if (auth.user && mfaPending === null) return <SplashScreen />;
+  if (auth.user && mfaPending) return (
+    <>
+      <ToastContainer />
+      <MfaGate onVerified={() => setMfaPending(false)} onSignOut={() => { void supabase.auth.signOut(); }} />
+    </>
+  );
 
   if (!auth.user) return (
     <>
@@ -574,9 +600,9 @@ const App: React.FC = () => {
           </div>
         )}
         {showUpgradeHint && (
-          <div className="mb-4 p-4 bg-indigo-50 dark:bg-indigo-950/30 border border-indigo-200 dark:border-indigo-800 rounded-2xl flex items-center justify-between gap-4">
-            <p className="text-[11px] font-bold text-indigo-700 dark:text-indigo-300">Tageslimit (20 Anfragen) erreicht. Mit <strong>Pro</strong> unlimitiert lernen.</p>
-            <button onClick={() => { setShowUpgradeHint(false); setShowUpgradeModal(true); }} className="text-[10px] font-black uppercase tracking-widest px-4 py-2 rounded-xl text-white shrink-0" style={{ background: 'var(--primary)' }}>Upgrade zu Pro</button>
+          <div className="mb-4 p-4 bg-indigo-50 dark:bg-indigo-950/30 border border-indigo-200 dark:border-indigo-800 rounded-2xl flex flex-col sm:flex-row sm:items-center justify-between gap-3 sm:gap-4">
+            <p className="text-sm" style={{ color: 'var(--ink)' }}>{t('errors.limitReached')}</p>
+            <button onClick={() => { setShowUpgradeHint(false); setShowUpgradeModal(true); }} className="text-[13px] font-semibold px-4 py-2 rounded-xl shrink-0" style={{ background: 'var(--primary)', color: 'var(--primary-text)' }}>{t('layout.upgradePro')}</button>
           </div>
         )}
         <ErrorBoundary>
@@ -588,6 +614,7 @@ const App: React.FC = () => {
             {...docs}
             deleteDoc={deleteDoc}
             removeCollection={removeCollection}
+            mergeCollections={mergeCollections}
             {...quiz}
             pendingActionDoc={pendingActionDoc} setPendingActionDoc={setPendingActionDoc}
             pendingTopic={pendingTopic} setPendingTopic={setPendingTopic}

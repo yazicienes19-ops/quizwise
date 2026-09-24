@@ -1,3 +1,4 @@
+import { MfaSettings } from './MfaSettings';
 import React, { useState, useEffect } from 'react';
 import { createPortal } from 'react-dom';
 import {
@@ -583,6 +584,9 @@ export const SettingsModal: React.FC<Props> = ({ user, isDark, onToggleTheme, on
                   {t('settings.gdprNotice')}
                 </p>
               </div>
+
+              {/* Zwei-Faktor-Anmeldung */}
+              <MfaSettings />
 
               {/* Daten exportieren */}
               <div className="space-y-3">

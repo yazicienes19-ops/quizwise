@@ -2,6 +2,7 @@
 import React, { useState, useMemo, useEffect } from 'react';
 import { TopicMetric, ActiveTab, CoachInsights, FlashcardDeck, LearningFlowResult, ExamTerm, Collection, ProcessedDocument } from '../types';
 import { EmojiImage } from './EmojiImage';
+import { AchievementsPanel } from './AchievementsPanel';
 import { formatGrade } from '../services/gradeScale';
 import { getLocale } from '../i18n';
 import { GapRadar } from './GapRadar';
@@ -366,11 +367,8 @@ export const LearningCoach: React.FC<LearningCoachProps> = ({ metrics, decks, on
             {[...profile.longTermTrend].sort((a, b) => b.delta - a.delta).map(t => (
               <span
                 key={t.label}
-                className="px-3 py-2 rounded-xl text-[11px] font-semibold"
-                style={{
-                  background: `color-mix(in srgb, ${t.delta >= 0 ? '#22c55e' : '#f43f5e'} 12%, var(--bg-sidebar))`,
-                  color: t.delta >= 0 ? '#22c55e' : '#f43f5e',
-                }}
+                className={`px-3 py-2 rounded-xl text-xs font-semibold ${t.delta >= 0 ? 'text-emerald-700 dark:text-emerald-400' : 'text-rose-700 dark:text-rose-400'}`}
+                style={{ background: `color-mix(in srgb, ${t.delta >= 0 ? '#22c55e' : '#f43f5e'} 12%, var(--bg-sidebar))` }}
               >
                 {t.label} {t.delta >= 0 ? '+' : ''}{t.delta}%
               </span>
@@ -378,6 +376,9 @@ export const LearningCoach: React.FC<LearningCoachProps> = ({ metrics, decks, on
           </div>
         </div>
       )}
+
+      {/* ── Erfolge: Stufen je Lernmethode (services/achievements.ts) ── */}
+      <AchievementsPanel decks={decks} documentCount={documents.length} />
 
       {/* ── Coach-Hero: Klausurprognose + Top-Empfehlung ── */}
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-4 lg:gap-6">

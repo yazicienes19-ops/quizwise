@@ -1,6 +1,6 @@
 
 import React, { useEffect, useRef } from 'react';
-import { Layers, RotateCw, HelpCircle, Brain, GraduationCap, Star, type LucideIcon } from 'lucide-react';
+import { Layers, RotateCw, HelpCircle, Brain, GraduationCap, Star, type LucideIcon, BookOpen, Network, Search } from 'lucide-react';
 import { useTranslation } from '../i18n/I18nProvider';
 import type { TKey } from '../i18n';
 import { BrandMark } from './BrandMark';
@@ -18,6 +18,9 @@ const features: { icon: LucideIcon; titleKey: TKey; descKey: TKey }[] = [
   { icon: Brain, titleKey: 'landing.feature.feynman.title', descKey: 'landing.feature.feynman.desc' },
   { icon: GraduationCap, titleKey: 'landing.feature.exam.title', descKey: 'landing.feature.exam.desc' },
   { icon: Star, titleKey: 'landing.feature.streak.title', descKey: 'landing.feature.streak.desc' },
+  { icon: BookOpen, titleKey: 'landing.feature.reader.title', descKey: 'landing.feature.reader.desc' },
+  { icon: Network, titleKey: 'landing.feature.graph.title', descKey: 'landing.feature.graph.desc' },
+  { icon: Search, titleKey: 'landing.feature.search.title', descKey: 'landing.feature.search.desc' },
 ];
 
 /** Kompakter DE/TR-Umschalter, auch vor dem Login sichtbar. */

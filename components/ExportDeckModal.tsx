@@ -1,4 +1,5 @@
 
+import { textSides } from '../services/cloze';
 import React, { useState } from 'react';
 import { createPortal } from 'react-dom';
 import { ShareLinkModal } from './ShareLinkModal';
@@ -126,7 +127,9 @@ export const ExportDeckModal: React.FC<ExportDeckModalProps> = ({ deck, userId, 
     y += 10;
 
     // ── Cards ────────────────────────────────────────────────────────────
-    deck.cards.forEach((card, i) => {
+    deck.cards.forEach((rawCard, i) => {
+      // Lückentext: vorn mit Lücken, hinten ausgefüllt (services/cloze.ts).
+      const card = { ...rawCard, ...textSides(rawCard) };
       const frontLines = doc.splitTextToSize(card.front, colW - 4);
       const backLines  = doc.splitTextToSize(card.back, colW - 4);
       const rowH = Math.max(frontLines.length, backLines.length) * lineHeight(10) + 5;

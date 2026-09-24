@@ -488,6 +488,15 @@ html .focus-ring-none:focus-visible {
 .dark .dark\:text-slate-500 { color: #818FA2; }
 .dark .dark\:text-slate-600 { color: #85909F; }
 
+/* Signalfarben im Tagmodus (Audit 24.09.2026): gemessen auf --card #FBF9F4
+   emerald-500 2,4:1, emerald-600 3,6:1, rose-500 3,5:1, amber-500 2,0:1,
+   blue-500 3,5:1. Die 700er-Stufe desselben Tons liegt bei 4,8 bis 6,4:1.
+   Gleiche :where()-Logik wie oben: dark:- und Hover-Varianten gewinnen. */
+:where(html:not(.dark)) .text-emerald-500, :where(html:not(.dark)) .text-emerald-600 { color: #047857; }
+:where(html:not(.dark)) .text-rose-500, :where(html:not(.dark)) .text-rose-400 { color: #be123c; }
+:where(html:not(.dark)) .text-amber-500, :where(html:not(.dark)) .text-amber-600 { color: #b45309; }
+:where(html:not(.dark)) .text-blue-500 { color: #1d4ed8; }
+
 /* Tastatur-Fokus auf Konzepten im Wissensnetz (SVG-Gruppen) */
 .wn-node:focus { outline: none; }
 .wn-node:focus-visible > g { filter: drop-shadow(0 0 0 var(--primary)) drop-shadow(0 0 4px var(--primary)); }

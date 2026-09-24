@@ -1,3 +1,4 @@
+import { hasCloze } from '../services/cloze';
 import React, { useState, useMemo, useCallback, useRef } from 'react';
 import { createPortal } from 'react-dom';
 import { Flashcard, FlashcardDeck } from '../types';
@@ -57,10 +58,14 @@ function parseLines(text: string): { front: string; back: string }[] {
   return lines
     .map(line => {
       const idx = findUnquotedSeparator(line, sep);
-      if (idx === -1) return null;
+      // Anki-Lückentext kommt oft ohne Rückseite ("Extra"-Feld leer): die Lücke ist die Antwort.
+      if (idx === -1) {
+        const only = unquoteField(line);
+        return hasCloze(only) ? { front: only, back: '' } : null;
+      }
       const front = unquoteField(line.slice(0, idx));
       const back = unquoteField(line.slice(idx + 1));
-      return front && back ? { front, back } : null;
+      return front && (back || hasCloze(front)) ? { front, back } : null;
     })
     .filter((c): c is { front: string; back: string } => c !== null);
 }
@@ -212,7 +217,7 @@ export const AnkiImportModal: React.FC<AnkiImportModalProps> = ({ decks, onClose
                   </div>
                 ))}
                 {parsed.length > 5 && (
-                  <p className="text-[11px] text-slate-400 text-center">+{parsed.length - 5} weitere Karten</p>
+                  <p className="text-[11px] text-slate-400 text-center">{t('sdp.moreCards', { n: parsed.length - 5 })}</p>
                 )}
               </div>
             </div>

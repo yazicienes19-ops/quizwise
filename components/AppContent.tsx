@@ -66,6 +66,7 @@ interface AppContentProps {
   deleteDoc: (id: string) => void;
   addCollection: (col: Collection) => void;
   removeCollection: (id: string) => void;
+  mergeCollections: (keepId: string, dropIds: string[]) => void;
   updateCollection: (col: Collection) => void;
   moveDoc: (docId: string, collectionId: string | undefined) => void;
   getDocumentSource: (doc: ProcessedDocument) => GenerationSource;
@@ -140,7 +141,7 @@ export const AppContent: React.FC<AppContentProps> = (p) => {
   >(null);
   const {
     activeTab, setActiveTab, isLoading, setIsLoading, user, userPlan,
-    documents, collections, handleFileUpload, retryAnalysis, activeModuleId, deleteDoc, addCollection, removeCollection, updateCollection, moveDoc, getDocumentSource,
+    documents, collections, handleFileUpload, retryAnalysis, activeModuleId, deleteDoc, addCollection, removeCollection, mergeCollections, updateCollection, moveDoc, getDocumentSource,
     questions, setQuestions, answers, setAnswers, activeQuizMeta, setActiveQuizMeta,
     quizInitialAnswers, setQuizInitialAnswers, savedQuizzes, setSavedQuizzes,
     savedExams, setSavedExams, examInitialQuestions, setExamInitialQuestions,
@@ -290,7 +291,7 @@ export const AppContent: React.FC<AppContentProps> = (p) => {
           }
           else { setPendingActionDoc(null); setActiveTab(tab); }
         }}
-        onAddCollection={addCollection} onDeleteCollection={removeCollection}
+        onAddCollection={addCollection} onDeleteCollection={removeCollection} onMergeCollections={mergeCollections}
         onUpdateCollection={updateCollection}
         onMoveDocument={moveDoc} isLoading={isLoading}
       />;

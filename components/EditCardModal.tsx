@@ -1,4 +1,5 @@
 
+import { hasCloze, wrapCloze } from '../services/cloze';
 import React, { useState, useEffect, useRef } from 'react';
 import { createPortal } from 'react-dom';
 import { Flashcard } from '../types';
@@ -89,7 +90,18 @@ export const EditCardModal: React.FC<EditCardModalProps> = ({
   }, [front, back, tagInput, frontImg, backImg, saving]);
 
   const hasFront = front.trim().length > 0 || !!(frontImg.path || frontImg.file);
-  const hasBack = back.trim().length > 0 || !!(backImg.path || backImg.file);
+  const isCloze = hasCloze(front);
+  // Lückentext-Karten brauchen keine Rückseite: die Lücke ist die Antwort.
+  const hasBack = isCloze || back.trim().length > 0 || !!(backImg.path || backImg.file);
+
+  const insertCloze = () => {
+    const el = frontRef.current;
+    const start = el?.selectionStart ?? front.length;
+    const end = el?.selectionEnd ?? front.length;
+    const { text, cursor } = wrapCloze(front, start, end);
+    setFront(text);
+    requestAnimationFrame(() => { el?.focus(); el?.setSelectionRange(cursor, cursor); });
+  };
   const canSave = hasFront && hasBack && !saving;
 
   const handleSave = async () => {
@@ -171,9 +183,23 @@ export const EditCardModal: React.FC<EditCardModalProps> = ({
                 className="w-full p-4 bg-slate-50 dark:bg-slate-800 rounded-2xl border-2 border-transparent focus:border-indigo-500 outline-none dark:text-white font-medium resize-none text-sm leading-relaxed transition-colors"
               />
               <div className="flex items-start justify-between gap-2">
-                {userId ? <ImagePicker image={frontImg} onPick={pickImage(setFrontImg)} onClear={clearImage(setFrontImg)} side="front" /> : <span />}
+                <div className="flex flex-wrap items-center gap-2">
+                  {userId && <ImagePicker image={frontImg} onPick={pickImage(setFrontImg)} onClear={clearImage(setFrontImg)} side="front" />}
+                  <button
+                    type="button"
+                    onClick={insertCloze}
+                    title={t('ecm.clozeTitle')}
+                    className="px-3 py-1.5 rounded-lg text-[13px] font-semibold transition-colors"
+                    style={{ border: '1px solid var(--border-color)', color: 'var(--ink2)' }}
+                  >
+                    {t('ecm.cloze')}
+                  </button>
+                </div>
                 <p className="text-[11px] text-slate-300 dark:text-slate-600 text-right pr-1">{front.length}</p>
               </div>
+              {isCloze && (
+                <p className="text-xs" style={{ color: 'var(--text-secondary)' }}>{t('ecm.clozeHint')}</p>
+              )}
             </div>
 
             {/* Back */}

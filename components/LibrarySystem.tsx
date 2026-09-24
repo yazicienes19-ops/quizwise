@@ -1,3 +1,4 @@
+import { findDuplicateCollectionGroups, pickCollectionToKeep } from '../services/duplicateCollections';
 import React, { useState, useMemo, useCallback } from 'react';
 import { Pencil, Trash2, Share2, BookText } from 'lucide-react';
 import { ProcessedDocument, ActiveTab, Collection } from '../types';
@@ -34,6 +35,8 @@ interface LibrarySystemProps {
   onDeleteCollection: (id: string) => void;
   onUpdateCollection: (collection: Collection) => void;
   onMoveDocument: (docId: string, collectionId: string | undefined) => void;
+  /** Doppelte Ordner zusammenführen (services/duplicateCollections.ts). */
+  onMergeCollections?: (keepId: string, dropIds: string[]) => void;
   isLoading: boolean;
   /** Aus der globalen Suche: dieses Fach direkt geöffnet zeigen. */
   initialCollectionId?: string;
@@ -78,10 +81,12 @@ export const LibrarySystem: React.FC<LibrarySystemProps> = ({
   onDeleteCollection,
   onUpdateCollection,
   onMoveDocument,
+  onMergeCollections,
   isLoading,
   initialCollectionId,
 }) => {
   const { t, tp } = useTranslation();
+  const duplicateCollectionGroups = useMemo(() => findDuplicateCollectionGroups(collections), [collections]);
   const [allMeta, setAllMeta]           = useState<Record<string, SourceMeta>>(() => getAllMeta());
   const [viewDocId, setViewDocId]       = useState<string | null>(null);
   const [editDocId, setEditDocId]       = useState<string | null>(null);
@@ -318,6 +323,34 @@ export const LibrarySystem: React.FC<LibrarySystemProps> = ({
             subtitle={`${tp('lib.foldersN', collections.length)} · ${tp('lib.docsN', documents.length)}`}
             actions={uploadButton}
           />
+
+          {/* Doppelte Ordner: Hinweis mit Zusammenführen, wie bei doppelten Stapeln */}
+          {onMergeCollections && duplicateCollectionGroups.length > 0 && (
+            <div className="space-y-2 mb-4">
+              {duplicateCollectionGroups.map(group => {
+                const keep = pickCollectionToKeep(group, documents);
+                return (
+                  <div
+                    key={group[0].id}
+                    className="flex flex-wrap items-center gap-3 px-4 py-3 rounded-2xl"
+                    style={{ background: 'color-mix(in srgb, var(--primary) 8%, transparent)', border: '1px solid color-mix(in srgb, var(--primary) 25%, transparent)' }}
+                  >
+                    <div className="flex-1 min-w-[200px]">
+                      <p className="text-[13px] font-semibold" style={{ color: 'var(--ink)' }}>{t('lib.dupFound', { n: group.length, name: group[0].name })}</p>
+                      <p className="text-[12px]" style={{ color: 'var(--text-secondary)' }}>{t('lib.dupHint')}</p>
+                    </div>
+                    <button
+                      onClick={() => onMergeCollections(keep.id, group.filter(c => c.id !== keep.id).map(c => c.id))}
+                      className="px-4 py-2 rounded-xl text-[13px] font-semibold transition-opacity hover:opacity-90"
+                      style={{ background: 'var(--primary)', color: 'var(--primary-text)' }}
+                    >
+                      {t('fcs.dupMerge')}
+                    </button>
+                  </div>
+                );
+              })}
+            </div>
+          )}
 
           {/* Folder grid */}
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-5">
