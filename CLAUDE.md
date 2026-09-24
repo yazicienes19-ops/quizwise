@@ -8,7 +8,9 @@ muss `npm run dev` fehlerfrei laufen.
 ## Design-Regeln (gelten für ALLES)
 - Primärfarbe: `var(--primary)` — niemals hartkodiertes indigo/coral
 - Ecken: rounded-2xl / rounded-[20px] / rounded-[28px]
-- Microcopy: text-[9px]–[11px] font-black uppercase tracking-widest
+- Schrift (seit Audit v7, 24.09.2026): Versalien NUR für kurze Etiketten (max. 3 Wörter):
+  text-[11px] font-semibold uppercase tracking-[0.08em]. Knöpfe und Inhalte in normaler
+  Schreibweise, font-semibold, Knöpfe text-[13px]. Kein font-black unter text-sm, keine Schrift < 11px.
 - Dark Mode: jede neue UI braucht dark:-Varianten
 - UI-Sprache: Deutsch, Verben statt Substantive ("Klausur üben" nicht "Klausur-Modus")
 - TypeScript strict, keine neuen any-Typen
