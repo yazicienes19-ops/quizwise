@@ -3,6 +3,8 @@ const webpush = require('web-push');
 const { supabaseAdmin } = require('../middleware/auth');
 const { loadContext } = require('./dataLoader');
 const { NOTIFICATION_TYPES } = require('./registry');
+const { EMAIL_TYPE_IDS, buildEmail } = require('./emailDigest');
+const { sendMail, isConfigured: isMailConfigured } = require('../utils/mailer');
 
 /**
  * Beansprucht einen Versand-Slot: schlägt fehl (Unique-Constraint,
@@ -17,13 +19,35 @@ async function claimDedup(userId, dedupKey) {
   return false; // im Zweifel nicht senden statt riskiert doppelt zu senden
 }
 
-async function tick() {
-  const { data: subs, error } = await supabaseAdmin
-    .from('push_subscriptions')
-    .select('endpoint, user_id, subscription');
-  if (error || !subs?.length) return;
+/** Nutzer, die E-Mail-Erinnerungen eingeschaltet haben (Standard: aus). */
+async function loadEmailUserIds() {
+  if (!isMailConfigured()) return [];
+  const { data, error } = await supabaseAdmin
+    .from('profiles')
+    .select('id')
+    .filter('preferences->notification_settings->email->>enabled', 'eq', 'true');
+  if (error) { console.error('email users:', error.message); return []; }
+  return (data || []).map(r => r.id);
+}
 
-  const userIds = [...new Set(subs.map(s => s.user_id))];
+async function sendEmailDigest(userId, messages) {
+  const { data, error } = await supabaseAdmin.auth.admin.getUserById(userId);
+  const to = data?.user?.email;
+  if (error || !to) return;
+  await sendMail({ to, ...buildEmail(messages) });
+}
+
+async function tick() {
+  const [{ data: subs, error }, emailUserIds] = await Promise.all([
+    supabaseAdmin.from('push_subscriptions').select('endpoint, user_id, subscription'),
+    loadEmailUserIds(),
+  ]);
+  if (error) return;
+  const pushSubs = subs || [];
+  const emailUsers = new Set(emailUserIds);
+
+  const userIds = [...new Set([...pushSubs.map(s => s.user_id), ...emailUserIds])];
+  if (!userIds.length) return;
   const data = await loadContext(userIds);
   const now = new Date();
   const ctx = { now, weekday: now.getDay(), userIds, data };
@@ -31,7 +55,7 @@ async function tick() {
   const messages = [];
   for (const type of NOTIFICATION_TYPES) {
     try {
-      messages.push(...(await type.evaluate(ctx)));
+      messages.push(...(await type.evaluate(ctx)).map(m => ({ ...m, typeId: type.id })));
     } catch (e) {
       console.error(`notification type ${type.id}:`, e.message);
     }
@@ -39,13 +63,22 @@ async function tick() {
   if (!messages.length) return;
 
   const subsByUser = new Map();
-  subs.forEach(s => {
+  pushSubs.forEach(s => {
     const arr = subsByUser.get(s.user_id) || [];
     arr.push(s);
     subsByUser.set(s.user_id, arr);
   });
 
+  const emailByUser = new Map();
   for (const msg of messages) {
+    if (emailUsers.has(msg.userId) && EMAIL_TYPE_IDS.has(msg.typeId)
+      && await claimDedup(msg.userId, `email:${msg.dedupKey}`)) {
+      emailByUser.set(msg.userId, [...(emailByUser.get(msg.userId) || []), msg]);
+    }
+
+    // Ohne Push-Abo nichts beanspruchen, sonst wäre die Meldung für ein
+    // später angemeldetes Gerät heute schon als gesendet verbucht.
+    if (!subsByUser.has(msg.userId)) continue;
     const claimed = await claimDedup(msg.userId, msg.dedupKey);
     if (!claimed) continue;
 
@@ -61,6 +94,10 @@ async function tick() {
         }
       }
     }
+  }
+
+  for (const [userId, list] of emailByUser) {
+    await sendEmailDigest(userId, list).catch(e => console.error('email digest:', e.message));
   }
 }
 

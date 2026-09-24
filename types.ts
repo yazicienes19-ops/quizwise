@@ -195,6 +195,11 @@ export interface Flashcard {
   id: string;
   front: string;
   back: string;
+  /** Eigene Schlagwörter (services/cardTags.ts). */
+  tags?: string[];
+  /** Storage-Pfade im Bucket card-images (services/cardImages.ts). */
+  frontImage?: string;
+  backImage?: string;
   level: number;
   nextReview: number;
   lastInterval?: number;

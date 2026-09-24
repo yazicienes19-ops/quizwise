@@ -19,6 +19,8 @@ const SEGMENT_BG = { background: 'color-mix(in srgb, var(--border-color) 40%, va
 const Toggle: React.FC<{ label: string; description?: string; checked: boolean; onChange: () => void }> = ({ label, description, checked, onChange }) => (
   <button
     onClick={onChange}
+    role="switch"
+    aria-checked={checked}
     className="w-full flex items-center justify-between px-5 py-4 rounded-2xl transition-all hover:opacity-90 text-left"
     style={CARD_BG}
   >
@@ -132,6 +134,19 @@ export const NotificationSettingsPanel: React.FC<Props> = ({ userId }) => {
       ) : (
         <div className="p-5 rounded-2xl" style={CARD_BG}>
           <p className="text-[11px] font-medium text-slate-400">{t('sp2e.push.unsupported')}</p>
+        </div>
+      )}
+
+      {/* E-Mail als Alternative zu Push (backend/src/notifications/emailDigest.js) */}
+      {userId && (
+        <div className="space-y-3">
+          <SectionLabel>{t('sp2e.email.title')}</SectionLabel>
+          <Toggle
+            label={t('sp2e.email.toggle')}
+            description={settings.email.enabled ? t('sp2e.email.descOn') : t('sp2e.email.descOff')}
+            checked={settings.email.enabled}
+            onChange={() => update('email', { enabled: !settings.email.enabled })}
+          />
         </div>
       )}
 

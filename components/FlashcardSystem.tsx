@@ -23,6 +23,11 @@ import { MoreHorizontal, ListOrdered, HelpCircle, BarChart2, Pencil, Share2, Pri
 import { PageHeader } from './PageHeader';
 import { confirmDialog } from '../services/confirmDialog';
 import { runUndoable } from '../services/undoable';
+import { findDuplicateDeckGroups, mergeDuplicateDecks } from '../services/duplicateDecks';
+import { collectTags, hasTag } from '../services/cardTags';
+import { CardImage } from './CardImage';
+import type { CardImages } from './EditCardModal';
+import { deleteCardImage, isOwnImage } from '../services/cardImages';
 
 interface FlashcardSystemProps {
   availableDocuments: ProcessedDocument[];
@@ -39,6 +44,9 @@ interface FlashcardSystemProps {
    *  für ein neues Deck zeigte bisher alle Dokumente kontoweit statt nur die
    *  des gewählten Fachs. null/undefined = "Alle Fächer", keine Einschränkung. */
   activeModuleId?: string | null;
+  /** Aus der globalen Suche: diesen Stapel direkt in der Kartenliste öffnen, gefiltert nach initialCardQuery. */
+  initialDeckId?: string;
+  initialCardQuery?: string;
 }
 
 /** Cloud-Speichern bündeln: vorher lief pro Bewertung ein SELECT + UPSERT des
@@ -64,6 +72,8 @@ export const FlashcardSystem: React.FC<FlashcardSystemProps> = ({
   userId,
   userName,
   activeModuleId = null,
+  initialDeckId,
+  initialCardQuery,
 }) => {
   const { t, tp } = useTranslation();
   const moduleDocuments = useMemo(
@@ -85,7 +95,7 @@ export const FlashcardSystem: React.FC<FlashcardSystemProps> = ({
   const [sessionCards, setSessionCards] = useState<Flashcard[]>([]);
   const [isPracticeSession, setIsPracticeSession] = useState(false);
   const sessionReviewCount = React.useRef(0);
-  const [editingDeckId, setEditingDeckId] = useState<string | null>(null);
+  const [editingDeckId, setEditingDeckId] = useState<string | null>(initialDeckId ?? null);
   const [isGenerating, setIsGenerating] = useState<string | null>(null);
   const [selectedCount, setSelectedCount] = useState<number>(15);
   const [freshDeckId, setFreshDeckId] = useState<string | null>(null);
@@ -95,7 +105,8 @@ export const FlashcardSystem: React.FC<FlashcardSystemProps> = ({
   const [showAnkiImport, setShowAnkiImport] = useState(false);
   const [exportingDeck, setExportingDeck] = useState<FlashcardDeck | null>(null);
   const [statsDeck, setStatsDeck] = useState<FlashcardDeck | null>(null);
-  const [cardSearch, setCardSearch] = useState('');
+  const [cardSearch, setCardSearch] = useState(initialCardQuery ?? '');
+  const [tagFilter, setTagFilter] = useState<string | null>(null);
   const [manualDeckTitle, setManualDeckTitle] = useState('');
 
   // null = closed, 'new' = add mode, Flashcard = edit mode
@@ -239,13 +250,16 @@ export const FlashcardSystem: React.FC<FlashcardSystemProps> = ({
     setEditingDeckId(newDeck.id);
   };
 
-  const handleSaveCard = (front: string, back: string) => {
+  const handleSaveCard = (front: string, back: string, tags: string[] = [], images: CardImages = {}) => {
     if (!editingDeckId) return;
 
     if (editingCard === 'new') {
       const newCard: Flashcard = {
         id: newId(),
         front, back,
+        ...(tags.length ? { tags } : {}),
+        ...(images.frontImage ? { frontImage: images.frontImage } : {}),
+        ...(images.backImage ? { backImage: images.backImage } : {}),
         level: 0,
         nextReview: Date.now(),
         lastInterval: 0,
@@ -254,14 +268,24 @@ export const FlashcardSystem: React.FC<FlashcardSystemProps> = ({
       updateDeck(editingDeckId, d => ({ ...d, cards: [newCard, ...d.cards] }));
     } else if (editingCard) {
       const cardId = editingCard.id;
-      updateDeck(editingDeckId, d => ({ ...d, cards: d.cards.map(c => c.id === cardId ? { ...c, front, back } : c) }));
+      updateDeck(editingDeckId, d => ({ ...d, cards: d.cards.map(c => c.id === cardId ? { ...c, front, back, tags: tags.length ? tags : undefined, frontImage: images.frontImage, backImage: images.backImage } : c) }));
     }
 
     setEditingCard(null);
   };
 
+  /** Eigene Kartenbilder löschen, die in keinem verbleibenden Stapel mehr vorkommen. */
+  const cleanupCardImages = (cards: Flashcard[]) => {
+    const used = new Set(decksRef.current.flatMap(d => d.cards.flatMap(c => [c.frontImage, c.backImage])));
+    cards.flatMap(c => [c.frontImage, c.backImage])
+      .filter((p): p is string => !!p && !used.has(p) && isOwnImage(p, userId))
+      .forEach(p => void deleteCardImage(p));
+  };
+
   const handleDeleteCard = (deckId: string, cardId: string) => {
+    const removed = decksRef.current.find(d => d.id === deckId)?.cards.filter(c => c.id === cardId) ?? [];
     updateDeck(deckId, d => ({ ...d, cards: d.cards.filter(c => c.id !== cardId) }));
+    cleanupCardImages(removed);
   };
 
   const handleRenameDeck = (e: React.FormEvent, deckId: string) => {
@@ -270,6 +294,23 @@ export const FlashcardSystem: React.FC<FlashcardSystemProps> = ({
     if (!title) return;
     updateDeck(deckId, d => ({ ...d, title }));
     setIsRenamingDeck(false);
+  };
+
+  // Gleich benannte Stapel zusammenführen (services/duplicateDecks.ts), mit Rückgängig.
+  const duplicateGroups = useMemo(() => findDuplicateDeckGroups(decks), [decks]);
+  const handleMergeDuplicates = (group: FlashcardDeck[]) => {
+    const before = decksRef.current;
+    const merged = mergeDuplicateDecks(group);
+    const originalBase = group.find(d => d.id === merged.id)!;
+    const removedIds = new Set(group.filter(d => d.id !== merged.id).map(d => d.id));
+    removedIds.forEach(id => pendingCloud.current.delete(id));
+    commitDecks(before.filter(d => !removedIds.has(d.id)).map(d => (d.id === merged.id ? merged : d)));
+    queueCloudSave(merged);
+    runUndoable({
+      message: t('fcs.dupMerged', { title: merged.title, n: merged.cards.length }),
+      undo: () => { commitDecks(before); queueCloudSave(originalBase); },
+      commit: () => { if (userId) removedIds.forEach(id => deleteDeckFromSupabase(id, userId).catch(() => {})); },
+    });
   };
 
   // Löschen mit "Rückgängig" statt Bestätigungsfrage (services/undoable.ts).
@@ -287,7 +328,7 @@ export const FlashcardSystem: React.FC<FlashcardSystemProps> = ({
         next.splice(Math.min(Math.max(index, 0), next.length), 0, deck);
         commitDecks(next);
       },
-      commit: () => { if (userId) deleteDeckFromSupabase(deck.id, userId).catch(() => {}); },
+      commit: () => { if (userId) deleteDeckFromSupabase(deck.id, userId).catch(() => {}); cleanupCardImages(deck.cards); },
     });
   };
 
@@ -529,6 +570,23 @@ export const FlashcardSystem: React.FC<FlashcardSystemProps> = ({
     return true;
   };
 
+  /** Nur die Karten mit einem Schlagwort lernen (normale Wiederholungsplanung, fällige zuerst). */
+  const startTagSession = (deckId: string, tag: string) => {
+    const deck = decksRef.current.find(d => d.id === deckId);
+    if (!deck) return;
+    const cards: Flashcard[] = deck.cards
+      .filter(c => hasTag(c, tag))
+      .map(c => (c.srs ? c : { ...c, srs: migrateLegacyCard(c) }))
+      .sort((a, b) => (a.srs?.nextReview ?? 0) - (b.srs?.nextReview ?? 0));
+    if (!cards.length) return;
+    sessionReviewCount.current = 0;
+    setIsPracticeSession(false);
+    setSessionMode('all');
+    setMoreWaiting(0);
+    setSessionCards(cards.slice(0, SESSION_BATCH_SIZE));
+    setActiveDeckId(deckId);
+  };
+
   if (activeDeckId) {
     return (
       <FlashcardPlayer
@@ -557,9 +615,12 @@ export const FlashcardSystem: React.FC<FlashcardSystemProps> = ({
     if (!deck) return null; // Effekt oben schließt den Editor
 
     const query = cardSearch.trim().toLowerCase();
-    const filtered = query
-      ? deck.cards.filter(c => c.front.toLowerCase().includes(query) || c.back.toLowerCase().includes(query))
-      : deck.cards;
+    const deckTags = collectTags(deck.cards);
+    const activeTag = tagFilter && deckTags.some(x => x.tag.toLowerCase() === tagFilter.toLowerCase()) ? tagFilter : null;
+    const filtered = deck.cards.filter(c =>
+      (!query || c.front.toLowerCase().includes(query) || c.back.toLowerCase().includes(query)
+        || (c.tags ?? []).some(x => x.toLowerCase().includes(query)))
+      && (!activeTag || hasTag(c, activeTag)));
 
     return (
       <div className="max-w-4xl mx-auto space-y-8 animate-in slide-in-from-right-12 duration-700 py-6 lg:py-10">
@@ -570,6 +631,8 @@ export const FlashcardSystem: React.FC<FlashcardSystemProps> = ({
             card={editingCard === 'new' ? undefined : editingCard}
             cardIndex={editingCard === 'new' ? undefined : deck.cards.findIndex(c => c.id === (editingCard as Flashcard).id)}
             totalCards={deck.cards.length}
+            knownTags={deckTags.map(x => x.tag)}
+            userId={userId}
             onSave={handleSaveCard}
             onDelete={editingCard !== 'new' ? () => {
               handleDeleteCard(deck.id, (editingCard as Flashcard).id);
@@ -656,6 +719,37 @@ export const FlashcardSystem: React.FC<FlashcardSystemProps> = ({
             </div>
           )}
 
+          {deckTags.length > 0 && (
+            <div className="px-6 py-3 border-b border-slate-50 dark:border-slate-800 flex flex-wrap items-center gap-1.5">
+              <span className="text-[11px] font-black uppercase tracking-widest text-slate-400 mr-1">{t('tags.label')}</span>
+              {deckTags.map(({ tag, count }) => {
+                const on = activeTag?.toLowerCase() === tag.toLowerCase();
+                return (
+                  <button
+                    key={tag}
+                    onClick={() => setTagFilter(on ? null : tag)}
+                    aria-pressed={on}
+                    className="px-2.5 py-1 rounded-full text-[12px] font-semibold transition-colors"
+                    style={on
+                      ? { background: 'var(--primary)', color: 'var(--primary-text)' }
+                      : { background: 'color-mix(in srgb, var(--primary) 12%, transparent)', color: 'var(--primary-ink)' }}
+                  >
+                    #{tag} <span className="opacity-70">{count}</span>
+                  </button>
+                );
+              })}
+              {activeTag && (
+                <button
+                  onClick={() => startTagSession(deck.id, activeTag)}
+                  className="ml-auto px-3.5 py-1.5 rounded-xl text-[11px] font-black uppercase tracking-widest transition-all hover:scale-[1.02]"
+                  style={{ background: 'var(--primary)', color: 'var(--primary-text)' }}
+                >
+                  {tp('tags.learnN', filtered.length)}
+                </button>
+              )}
+            </div>
+          )}
+
           {deck.cards.length === 0 ? (
             <div className="py-20 text-center space-y-4 opacity-30 px-6">
               <p className="text-[11px] font-black uppercase tracking-widest">{t('fcs.noCards')}</p>
@@ -665,7 +759,7 @@ export const FlashcardSystem: React.FC<FlashcardSystemProps> = ({
             <div className="py-12 text-center opacity-40 text-sm">{t('fcs.noCardsForSearch', { q: cardSearch })}</div>
           ) : (
             <>
-              {query && (
+              {(query || activeTag) && (
                 <p className="px-6 pt-3 text-[11px] font-black uppercase tracking-widest text-slate-400">
                   {t('fcs.filteredOf', { n: filtered.length, total: deck.cards.length })}
                 </p>
@@ -683,6 +777,20 @@ export const FlashcardSystem: React.FC<FlashcardSystemProps> = ({
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-2 flex-1 min-w-0">
                       <p className="text-sm font-bold dark:text-white md:border-r md:border-slate-100 md:dark:border-slate-800 md:pr-4 leading-snug break-words whitespace-pre-line line-clamp-4">{card.front}</p>
                       <p className="text-sm text-slate-400 dark:text-slate-500 leading-snug break-words whitespace-pre-line line-clamp-4">{card.back}</p>
+                      {(card.frontImage || card.backImage) && (
+                        <div className="md:col-span-2 flex gap-2">
+                          {[card.frontImage, card.backImage].filter(Boolean).map(p => (
+                            <CardImage key={p} path={p} alt="" className="h-12 w-16 object-cover rounded-md" />
+                          ))}
+                        </div>
+                      )}
+                      {card.tags && card.tags.length > 0 && (
+                        <div className="md:col-span-2 flex flex-wrap gap-1">
+                          {card.tags.map(tag => (
+                            <span key={tag} className="px-2 py-0.5 rounded-full text-[11px] font-semibold" style={{ background: 'color-mix(in srgb, var(--primary) 12%, transparent)', color: 'var(--primary-ink)' }}>#{tag}</span>
+                          ))}
+                        </div>
+                      )}
                     </div>
                     <span className="shrink-0 p-2 rounded-xl text-slate-200 dark:text-slate-700 group-hover:text-indigo-500 group-hover:bg-indigo-50 dark:group-hover:bg-indigo-950/30 transition-all">
                       <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>
@@ -828,6 +936,30 @@ export const FlashcardSystem: React.FC<FlashcardSystemProps> = ({
               )}
             </div>
           </div>
+
+          {duplicateGroups.length > 0 && (
+            <div className="px-5 sm:px-6 lg:px-10 pt-5 space-y-2">
+              {duplicateGroups.map(group => (
+                <div
+                  key={group[0].id}
+                  className="flex flex-wrap items-center gap-3 px-4 py-3 rounded-2xl"
+                  style={{ background: 'color-mix(in srgb, var(--primary) 8%, transparent)', border: '1px solid color-mix(in srgb, var(--primary) 25%, transparent)' }}
+                >
+                  <div className="flex-1 min-w-[200px]">
+                    <p className="text-[13px] font-bold dark:text-white">{t('fcs.dupFound', { n: group.length, title: group[0].title })}</p>
+                    <p className="text-[12px] text-slate-500 dark:text-slate-400">{t('fcs.dupHint')}</p>
+                  </div>
+                  <button
+                    onClick={() => handleMergeDuplicates(group)}
+                    className="px-4 py-2 rounded-xl text-[12px] font-bold transition-opacity hover:opacity-90"
+                    style={{ background: 'var(--primary)', color: 'var(--primary-text)' }}
+                  >
+                    {t('fcs.dupMerge')}
+                  </button>
+                </div>
+              ))}
+            </div>
+          )}
 
           <div className="divide-y divide-slate-50 dark:divide-slate-800">
             {decks.length === 0 ? (

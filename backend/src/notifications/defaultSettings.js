@@ -34,6 +34,10 @@ const DEFAULT_NOTIFICATION_SETTINGS = {
     streakAtRisk: true,
     newPersonalBest: true,
   },
+  // Zweiter Kanal neben Push (notifications/emailDigest.js), nur auf Wunsch.
+  email: {
+    enabled: false,
+  },
 };
 
 module.exports = { DEFAULT_NOTIFICATION_SETTINGS };

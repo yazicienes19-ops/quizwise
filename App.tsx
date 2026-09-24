@@ -40,6 +40,9 @@ import { loadAllCloudData, syncLearningField, syncMetrics, migrateLocalToCloud, 
 import { useTranslation } from './i18n/I18nProvider';
 import { SPACED_PLANNING_KEY, saveSpacedSettings } from './services/spacedPlanningService';
 import { ConfirmDialogHost } from './components/ConfirmDialogHost';
+import { DAILY_GOAL_KEY, setDailyGoal } from './services/studyTimeService';
+import { FocusTimer } from './components/FocusTimer';
+import { GlobalSearch } from './components/GlobalSearch';
 
 const LAST_TAB_KEY = 'studearc_last_tab';
 // READER bewusst ausgeschlossen — hängt an einem konkreten pendingActionDoc,
@@ -179,6 +182,10 @@ const App: React.FC = () => {
       // gälte der Standard "an" auch für Nutzer, die sie ausgeschaltet haben).
       if (typeof cloud.preferences.spaced_planning === 'boolean' && localStorage.getItem(SPACED_PLANNING_KEY) === null) {
         saveSpacedSettings({ enabled: cloud.preferences.spaced_planning, lastRunDay: null });
+      }
+      // Tagesziel der Lernzeit ebenso von einem anderen Gerät übernehmen.
+      if (typeof cloud.preferences.daily_goal_minutes === 'number' && localStorage.getItem(DAILY_GOAL_KEY) === null) {
+        setDailyGoal(cloud.preferences.daily_goal_minutes);
       }
       if (cloud.saved) {
         const saved = cloud.saved;
@@ -480,7 +487,9 @@ const App: React.FC = () => {
   return (
     <>
       <ToastContainer />
-        <ConfirmDialogHost />
+      <ConfirmDialogHost />
+      <FocusTimer />
+      <GlobalSearch documents={docs.documents} decks={decks} collections={docs.collections} isAdminUser={isAdmin(auth.user?.id)} />
       {showOnboarding && (
         <OnboardingFlow
           handleFileUpload={docs.handleFileUpload}

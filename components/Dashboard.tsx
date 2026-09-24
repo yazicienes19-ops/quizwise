@@ -22,6 +22,7 @@ import type { TKey } from '../i18n';
 import { formatDate } from '../i18n/dates';
 import { greetingKind } from '../services/dashboardService';
 import { useCloudDataVersion } from '../hooks/useCloudDataVersion';
+import { StudyTimeCard } from './StudyTimeCard';
 
 interface DashboardProps {
   onTabChange: (tab: ActiveTab) => void;
@@ -483,6 +484,9 @@ export const Dashboard: React.FC<DashboardProps> = ({
           </div>
         )}
       </section>
+
+      {/* Eigene Lernzeit und Tagesziel (Audit 23.09.2026) */}
+      {user?.id && <StudyTimeCard userId={user.id} />}
 
       {/* Dein Weg: die vier Phasen des Fachs, an dem gerade gearbeitet wird */}
       {guide && (

@@ -1,7 +1,13 @@
 /**
- * spacedRepetition.ts — SM-2 Algorithmus (SuperMemo 2) für Karteikarten.
+ * spacedRepetition.ts — Wiederholungsplanung für Karteikarten und Fehlerfragen.
  *
- * FERTIG IMPLEMENTIERT — nur noch in FlashcardPlayer/flashcardService einbauen.
+ * Seit 24.09.2026 FSRS-5 (Free Spaced Repetition Scheduler, Standardgewichte,
+ * Ziel-Behaltensquote 90 %) statt SM-2: Intervalle folgen einem Gedächtnis-
+ * modell aus Stabilität und Schwierigkeit und berücksichtigen, wie lange die
+ * letzte Wiederholung tatsächlich her ist. Die SM-2-Felder (ease, interval,
+ * repetitions) bleiben gefüllt, damit Statistik, Runden-Auswahl und Cloud-Sync
+ * unverändert funktionieren. Bestehende Karten ohne FSRS-Werte werden bei
+ * ihrer nächsten Bewertung aus ihrem SM-2-Stand übernommen.
  *
  * Verwendung:
  *   import { reviewCard, getDueCards, createSrsState } from './spacedRepetition';
@@ -27,6 +33,10 @@ export interface SrsState {
   nextReview: number;
   /** Timestamp der letzten Wiederholung */
   lastReview: number | null;
+  /** FSRS: Tage, nach denen die Abrufwahrscheinlichkeit auf 90 % fällt. */
+  stability?: number;
+  /** FSRS: Schwierigkeit 1 (leicht) bis 10 (schwer). */
+  difficulty?: number;
 }
 
 /** Bewertungsskala für die UI */
@@ -48,35 +58,88 @@ export const createSrsState = (): SrsState => ({
   lastReview: null,
 });
 
+// ── FSRS-5 ──────────────────────────────────────────────────────────────────
+/** Standardgewichte FSRS-5 (open-spaced-repetition, auf großen Anki-Datensätzen trainiert). */
+export const FSRS_WEIGHTS = [
+  0.40255, 1.18385, 3.173, 15.69105, 7.1949, 0.5345, 1.4604, 0.0046, 1.54575, 0.1192,
+  1.01925, 1.9395, 0.11, 0.29605, 2.2698, 0.2315, 2.9898, 0.51655, 0.6621,
+] as const;
+const W = FSRS_WEIGHTS;
+const DECAY = -0.5;
+const FACTOR = 19 / 81; // so gewählt, dass R(S, S) = 90 %
+export const REQUEST_RETENTION = 0.9;
+const MAX_INTERVAL_DAYS = 36500;
+
+type Grade = 1 | 2 | 3 | 4; // Nochmal, Schwer, Gut, Leicht
+
+/** App-Skala 0–5 auf FSRS-Noten: < 3 vergessen, 3 schwer, 4 gut, 5 leicht. */
+const toGrade = (q: number): Grade => (q < 3 ? 1 : q === 3 ? 2 : q === 4 ? 3 : 4);
+
+const clampD = (d: number) => Math.min(10, Math.max(1, d));
+
+/** Abrufwahrscheinlichkeit nach t Tagen bei Stabilität s. */
+export const retrievability = (elapsedDays: number, stability: number): number =>
+  Math.pow(1 + FACTOR * Math.max(0, elapsedDays) / Math.max(0.01, stability), DECAY);
+
+const initStability = (g: Grade) => Math.max(0.1, W[g - 1]);
+const initDifficulty = (g: Grade) => clampD(W[4] - Math.exp(W[5] * (g - 1)) + 1);
+
+const nextDifficulty = (d: number, g: Grade): number => {
+  const delta = -W[6] * (g - 3);
+  const damped = d + delta * (10 - d) / 9;
+  return clampD(W[7] * initDifficulty(4) + (1 - W[7]) * damped);
+};
+
+const recallStability = (d: number, s: number, r: number, g: Grade): number => {
+  const hard = g === 2 ? W[15] : 1;
+  const easy = g === 4 ? W[16] : 1;
+  return s * (Math.exp(W[8]) * (11 - d) * Math.pow(s, -W[9]) * (Math.exp(W[10] * (1 - r)) - 1) * hard * easy + 1);
+};
+
+const forgetStability = (d: number, s: number, r: number): number =>
+  Math.min(s, W[11] * Math.pow(d, -W[12]) * (Math.pow(s + 1, W[13]) - 1) * Math.exp(W[14] * (1 - r)));
+
+/** Intervall in ganzen Tagen für die Ziel-Behaltensquote (bei 90 % = Stabilität). */
+export const intervalForStability = (s: number): number =>
+  Math.min(MAX_INTERVAL_DAYS, Math.max(1, Math.round(s / FACTOR * (Math.pow(REQUEST_RETENTION, 1 / DECAY) - 1))));
+
+/** SM-2-Stand ohne FSRS-Werte übernehmen: Intervall ≈ Stabilität, Ease → Schwierigkeit. */
+const fromSm2 = (state: SrsState): { s: number; d: number } => ({
+  s: Math.max(0.5, state.interval || 1),
+  d: clampD(5 + (2.5 - (state.ease || 2.5)) * 4.17),
+});
+
 /**
- * SM-2 Kernlogik. quality: 0–5.
- * < 3 → Karte gilt als vergessen, Intervall resettet.
- * >= 3 → Intervall wächst: 1 Tag → 6 Tage → interval * ease
- * (Easy schon bei der ersten Bewertung direkt 6 Tage).
+ * Bewertet eine Karte. quality: 0–5 (siehe ReviewQuality).
+ * < 3 → vergessen: Wiederholungen zurück auf 0, kurze neue Stabilität.
+ * >= 3 → gewusst: Stabilität wächst umso stärker, je länger die Karte
+ * ungeübt lag und je leichter sie ist. Leicht bei neuen Karten ≈ 16 Tage
+ * (erfüllt das Paket-1-Kriterium "Easy-Karte ≥ 6 Tage weg").
  */
-export const reviewCard = (state: SrsState, quality: number): SrsState => {
+export const reviewCard = (state: SrsState, quality: number, now: number = Date.now()): SrsState => {
   const q = Math.max(0, Math.min(5, Math.round(quality)));
-  const now = Date.now();
+  const g = toGrade(q);
+  const isNewCard = !state.lastReview;
 
-  let { ease, interval, repetitions } = state;
-
-  if (q < 3) {
-    repetitions = 0;
-    interval = 1;
+  let stability: number;
+  let difficulty: number;
+  if (isNewCard) {
+    stability = initStability(g);
+    difficulty = initDifficulty(g);
   } else {
-    repetitions += 1;
-    // Paket-1-Kriterium ("Easy-Karte ≥ 6 Tage weg"): schon die ERSTE Easy-
-    // Bewertung (5) springt direkt aufs 6-Tage-Intervall — SM-2-Standard
-    // würde sie 1 Tag später wieder fällig machen.
-    if (repetitions === 1 && q === 5) interval = 6;
-    else if (repetitions === 1) interval = 1;
-    else if (repetitions === 2) interval = 6;
-    else interval = Math.round(interval * ease);
+    const prev = state.stability && state.difficulty
+      ? { s: state.stability, d: state.difficulty }
+      : fromSm2(state);
+    const elapsed = (now - (state.lastReview ?? now)) / DAY_MS;
+    const r = retrievability(elapsed, prev.s);
+    stability = g === 1 ? forgetStability(prev.d, prev.s, r) : recallStability(prev.d, prev.s, r, g);
+    difficulty = nextDifficulty(prev.d, g);
   }
 
-  // Ease-Anpassung (SM-2 Formel)
-  ease = ease + (0.1 - (5 - q) * (0.08 + (5 - q) * 0.02));
-  if (ease < 1.3) ease = 1.3;
+  const interval = intervalForStability(stability);
+  const repetitions = g === 1 ? 0 : state.repetitions + 1;
+  // Ease weiter nach SM-2 fortschreiben: dient nur noch als Anzeige-/Statistikwert.
+  const ease = Math.max(1.3, state.ease + (0.1 - (5 - q) * (0.08 + (5 - q) * 0.02)));
 
   return {
     ease,
@@ -84,6 +147,8 @@ export const reviewCard = (state: SrsState, quality: number): SrsState => {
     repetitions,
     nextReview: now + interval * DAY_MS,
     lastReview: now,
+    stability: Math.round(stability * 1000) / 1000,
+    difficulty: Math.round(difficulty * 1000) / 1000,
   };
 };
 
@@ -135,7 +200,9 @@ export function buildSessionBatch<T extends { srs?: SrsState }>(cards: T[], batc
   const isNew = (c: T) => !c.srs?.lastReview;
   const isLearning = (c: T) => {
     const srs = c.srs;
-    return !!srs?.lastReview && (srs.interval < 1 || srs.ease < 2.3);
+    // FSRS-Karten: hohe Schwierigkeit; ältere SM-2-Karten: niedriger Ease.
+    const hard = srs?.difficulty !== undefined ? srs.difficulty >= 6.5 : (srs?.ease ?? 2.5) < 2.3;
+    return !!srs?.lastReview && (srs.interval < 1 || hard);
   };
   const overdueDays = (c: T) => Math.max(0, (now - (c.srs?.nextReview ?? now)) / dayMs);
 

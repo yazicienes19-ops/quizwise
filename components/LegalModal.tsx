@@ -58,7 +58,8 @@ const CONTENT: Record<LegalPage, { title: string; body: React.ReactNode }> = {
             Bei der Registrierung und Nutzung von StudeArc werden folgende personenbezogene Daten
             verarbeitet: E-Mail-Adresse und Anzeigename (Authentifizierung und Kommunikation);
             von dir hochgeladene Dokumente, Fotos, Notizen und Links samt daraus erstellter
-            Zusammenfassungen; deine Lerndaten (Karteikarten, Quiz-, Klausur- und Feynman-Ergebnisse,
+            Zusammenfassungen; deine Lerndaten (Karteikarten samt eigener Bilder und Schlagwörter,
+            Markierungen und Notizen in PDFs, Quiz-, Klausur- und Feynman-Ergebnisse,
             Tutor-Gespräche, Wissensnetz, Kalender und Lernzeit); Nutzungsdaten (Anzahl und Kosten
             der KI-Anfragen zur Umsetzung des Freemium-Modells und der Kostenbremse); Einstellungen
             und, falls aktiviert, Push-Abonnements für Erinnerungen. Zahlungsdaten werden
@@ -97,7 +98,7 @@ const CONTENT: Record<LegalPage, { title: string; body: React.ReactNode }> = {
             <li><strong>Stripe Inc.</strong>: Zahlungsabwicklung nach PCI-DSS-Standard, Drittlandtransfer gemäß EU-Standardvertragsklauseln. Stripe hat eigene DSGVO-konforme Datenschutzbestimmungen.</li>
             <li><strong>Cloudflare, Inc.</strong>: Hosting und Auslieferung des Frontends. Drittlandtransfer gemäß EU-Standardvertragsklauseln.</li>
             <li><strong>Railway Technologies Inc.</strong>: Hosting des Backends, Serverstandort Amsterdam, Niederlande. Zugriffe des US-Anbieters erfolgen auf Grundlage von EU-Standardvertragsklauseln.</li>
-            <li><strong>Resend, Inc.</strong>: Versand transaktionaler E-Mails (z.B. Kündigungsbestätigung nach § 312k Abs. 4 BGB). Verarbeitet werden dabei E-Mail-Adresse und Vorname. Drittlandtransfer gemäß EU-Standardvertragsklauseln.</li>
+            <li><strong>Resend, Inc.</strong>: Versand transaktionaler E-Mails (z.B. Kündigungsbestätigung nach § 312k Abs. 4 BGB) und, nur wenn du sie in den Einstellungen einschaltest, Lernerinnerungen per E-Mail (Art. 6 Abs. 1 lit. a DSGVO, jederzeit abschaltbar). Verarbeitet werden dabei E-Mail-Adresse, Vorname und der Inhalt der Erinnerung (z.B. Anzahl fälliger Karten, Klausurtitel). Drittlandtransfer gemäß EU-Standardvertragsklauseln.</li>
           </ul>
         </div>
         <div>

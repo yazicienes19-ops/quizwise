@@ -1,5 +1,6 @@
 import { supabase } from './supabaseClient';
 import type { TopicMetric, OnboardingProfile } from '../types';
+import { HIGHLIGHTS_KEY, mergeHighlightMaps } from './userHighlights';
 
 /** Wie STREAK_UPDATED_EVENT: App hört darauf und zeigt einen Hinweis, dass
  *  der Cloud-Sync gerade nicht erreichbar ist (Daten bleiben lokal). */
@@ -64,6 +65,7 @@ export interface CloudPreferences {
   feynman_intro_done?: boolean;
   recall_intro_done?: boolean;
   spaced_planning?: boolean;
+  daily_goal_minutes?: number;
   language?: string;
   notification_settings?: Record<string, any>;
   /** Volles Onboarding-Ergebnis für geräteübergreifende Personalisierung — additiv
@@ -117,6 +119,12 @@ type ReadingProgress = Record<string, Record<string | number, { done?: boolean; 
 export function mergeReadingProgress(local: ReadingProgress | null | undefined, cloud: ReadingProgress | null | undefined): ReadingProgress {
   const out: ReadingProgress = { ...(local ?? {}) };
   for (const [docId, cloudChapters] of Object.entries(cloud ?? {})) {
+    // Eigene PDF-Markierungen liegen unter einem reservierten Schlüssel und
+    // brauchen einen Abgleich je Markierung statt je Kapitel.
+    if (docId === HIGHLIGHTS_KEY) {
+      out[docId] = mergeHighlightMaps(local?.[docId], cloudChapters) as unknown as ReadingProgress[string];
+      continue;
+    }
     const localChapters = out[docId];
     if (!localChapters) { out[docId] = cloudChapters; continue; }
     const mergedChapters: Record<string | number, { done?: boolean; doneAt?: number }> = { ...localChapters };

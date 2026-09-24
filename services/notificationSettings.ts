@@ -38,12 +38,17 @@ export interface MotivationSettings {
   newPersonalBest: boolean;
 }
 
+export interface EmailNotifySettings {
+  enabled: boolean;
+}
+
 export interface NotificationSettings {
   dailyReminder: DailyReminderSettings;
   blockLeadTime: BlockLeadTimeSettings;
   spacedRepetition: SpacedRepetitionNotifySettings;
   exams: ExamNotifySettings;
   motivation: MotivationSettings;
+  email: EmailNotifySettings;
 }
 
 export const DEFAULT_NOTIFICATION_SETTINGS: NotificationSettings = {
@@ -75,6 +80,9 @@ export const DEFAULT_NOTIFICATION_SETTINGS: NotificationSettings = {
     streakAtRisk: true,
     newPersonalBest: true,
   },
+  email: {
+    enabled: false,
+  },
 };
 
 const STORAGE_KEY = 'studearc_notification_settings';
@@ -90,6 +98,7 @@ export function loadNotificationSettings(): NotificationSettings {
         spacedRepetition: { ...DEFAULT_NOTIFICATION_SETTINGS.spacedRepetition, ...stored.spacedRepetition },
         exams: { ...DEFAULT_NOTIFICATION_SETTINGS.exams, ...stored.exams },
         motivation: { ...DEFAULT_NOTIFICATION_SETTINGS.motivation, ...stored.motivation },
+        email: { ...DEFAULT_NOTIFICATION_SETTINGS.email, ...stored.email },
       };
     }
   } catch { /* ignore */ }

@@ -31,6 +31,8 @@ interface Props {
   onEdit: () => void;
   /** Stößt die Dokument-Analyse erneut an (nur bei Status 'error' sichtbar). */
   onRetryAnalysis?: () => void;
+  /** Titel und Typ kommen in der Bibliothek mehrfach vor (Audit 23.09.2026). */
+  isDuplicate?: boolean;
 }
 
 /** Digest-Badge + Retry: PDFs/Bilder ohne Status gelten als „wird analysiert" (Nachhol-Lauf läuft). */
@@ -72,7 +74,7 @@ const IconEdit = () => (
   </svg>
 );
 
-export const SourceCard: React.FC<Props> = ({ doc, meta, view, onOpen, onView, onDelete, onEdit, onRetryAnalysis }) => {
+export const SourceCard: React.FC<Props> = ({ doc, meta, view, onOpen, onView, onDelete, onEdit, onRetryAnalysis, isDuplicate = false }) => {
   const { t } = useTranslation();
   const title = meta.displayTitle || doc.name.replace(/\.[^/.]+$/, '');
   const status = meta.status ?? 'ready';
@@ -104,6 +106,7 @@ export const SourceCard: React.FC<Props> = ({ doc, meta, view, onOpen, onView, o
         <div className="flex items-center gap-2 shrink-0">
           {meta.quizCount      ? <span className="text-[11px] font-bold text-slate-400 hidden sm:block">{t('card.quizCount', { n: meta.quizCount })}</span> : null}
           {meta.flashcardCount ? <span className="text-[11px] font-bold text-slate-400 hidden sm:block">{t('card.cardsCount', { n: meta.flashcardCount })}</span> : null}
+{isDuplicate && <span className="hidden sm:block text-[11px] font-black uppercase tracking-widest px-2 py-0.5 rounded-full bg-amber-100 dark:bg-amber-950/30 text-amber-800 dark:text-amber-300" title={t('card.duplicateHint')}>{t('card.duplicate')}</span>}
           {meta.isAltklausur && <span className="hidden sm:block text-[11px] font-black uppercase tracking-widest px-2 py-0.5 rounded-full bg-rose-50 dark:bg-rose-950/20 text-rose-500">{t('card.oldExam')}</span>}
           <button
             onClick={onOpen}
@@ -130,6 +133,7 @@ export const SourceCard: React.FC<Props> = ({ doc, meta, view, onOpen, onView, o
     <div className="rounded-[28px] p-6 shadow-3d-raised hover:shadow-3d-deep transition-all flex flex-col group" style={{ background: 'var(--bg-sidebar)', border: '1px solid var(--border-color)' }}>
       <div className="flex justify-between items-start mb-4">
         <div className="flex gap-1 flex-wrap flex-grow min-w-0 mr-2">
+{isDuplicate && <span className=" text-[11px] font-black uppercase tracking-widest px-2 py-0.5 rounded-full bg-amber-100 dark:bg-amber-950/30 text-amber-800 dark:text-amber-300" title={t('card.duplicateHint')}>{t('card.duplicate')}</span>}
           {meta.isAltklausur && (
             <span className="text-[11px] font-black uppercase tracking-widest px-2 py-0.5 rounded-full bg-rose-50 dark:bg-rose-950/20 text-rose-500">{t('card.oldExam')}</span>
           )}

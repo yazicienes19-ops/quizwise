@@ -79,6 +79,9 @@ function collectListLines(lines: string[], start: number, itemRe: RegExp): { ite
   return { items, next: i };
 }
 
+/** Trennlinie (---, ***, ___), Gemini setzt sie gern zwischen Abschnitte. */
+const HR_RE = /^\s*(?:-{3,}|\*{3,}|_{3,})\s*$/;
+
 export function renderMarkdown(text: string): React.ReactNode {
   const lines = text.split('\n');
   const blocks: React.ReactNode[] = [];
@@ -86,6 +89,7 @@ export function renderMarkdown(text: string): React.ReactNode {
   while (i < lines.length) {
     const line = lines[i];
     if (!line.trim()) { i++; continue; }
+    if (HR_RE.test(line)) { blocks.push(<hr key={key++} className="border-0 h-px" style={{ background: 'var(--border-color)' }} />); i++; continue; }
     if (line.startsWith('# '))   { blocks.push(<h2 key={key++} className="text-2xl lg:text-3xl font-black text-slate-900 dark:text-white tracking-tight mt-2">{parseInline(line.slice(2),String(key))}</h2>); i++; continue; }
     if (line.startsWith('## '))  { blocks.push(<h3 key={key++} className="text-xl lg:text-2xl font-black text-slate-900 dark:text-white tracking-tight mt-1">{parseInline(line.slice(3),String(key))}</h3>); i++; continue; }
     if (line.startsWith('### ')) { blocks.push(<h4 key={key++} className="text-base lg:text-lg font-black text-slate-700 dark:text-slate-200 uppercase tracking-wider mt-1">{parseInline(line.slice(4),String(key))}</h4>); i++; continue; }
@@ -141,7 +145,7 @@ export function renderMarkdown(text: string): React.ReactNode {
       continue;
     }
     const paraLines: string[] = [line]; i++;
-    while (i < lines.length && lines[i].trim() && !lines[i].startsWith('#') && !lines[i].match(/^[-*•]\s/) && !lines[i].match(/^\d+\.\s/) && !lines[i].startsWith('Allgemeinwissen:') && !lines[i].trim().startsWith('$$') && !HEADING_RE.test(lines[i])) { paraLines.push(lines[i]); i++; }
+    while (i < lines.length && lines[i].trim() && !HR_RE.test(lines[i]) && !lines[i].startsWith('#') && !lines[i].match(/^[-*•]\s/) && !lines[i].match(/^\d+\.\s/) && !lines[i].startsWith('Allgemeinwissen:') && !lines[i].trim().startsWith('$$') && !HEADING_RE.test(lines[i])) { paraLines.push(lines[i]); i++; }
     blocks.push(<p key={key++} className="text-base lg:text-lg font-medium text-slate-700 dark:text-slate-300 leading-relaxed">{parseInline(paraLines.join(' '),String(key))}</p>);
   }
   return <div className="space-y-5">{blocks}</div>;

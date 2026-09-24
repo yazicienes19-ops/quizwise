@@ -33,6 +33,8 @@ import {
   LearningFlowResult, QuizConfig,
 } from '../types';
 import type { GenerationSource } from '../services/geminiService';
+import { SEARCH_SELECT_EVENT } from './GlobalSearch';
+import type { SearchResult as GlobalSearchResult } from '../services/globalSearch';
 
 const TermPaperSystem = React.lazy(() => import('./TermPaperSystem').then(m => ({ default: m.TermPaperSystem })));
 const ExamSystem = React.lazy(() => import('./ExamSystem').then(m => ({ default: m.ExamSystem })));
@@ -131,6 +133,11 @@ export const AppContent: React.FC<AppContentProps> = (p) => {
   // Dokument wurde im Quiz-Tab gewählt (nicht in der Bibliothek): "Zurück"
   // führt dann zur Quellenauswahl statt in die Bibliothek.
   const [quizSetupFromQuizTab, setQuizSetupFromQuizTab] = React.useState(false);
+  // Ziel aus der globalen Suche (components/GlobalSearch.tsx). nonce erzwingt
+  // ein frisches Öffnen, auch wenn derselbe Treffer erneut gewählt wird.
+  const [searchTarget, setSearchTarget] = React.useState<
+    { kind: 'deck'; deckId: string; cardQuery?: string; nonce: number } | { kind: 'collection'; id: string; nonce: number } | null
+  >(null);
   const {
     activeTab, setActiveTab, isLoading, setIsLoading, user, userPlan,
     documents, collections, handleFileUpload, retryAnalysis, activeModuleId, deleteDoc, addCollection, removeCollection, updateCollection, moveDoc, getDocumentSource,
@@ -147,6 +154,31 @@ export const AppContent: React.FC<AppContentProps> = (p) => {
     reviewSessionItems, setReviewSessionItems, handleStartMistakeReview,
     handleApiError, updateMetricsAfterSession, isDark,
   } = p;
+
+  React.useEffect(() => {
+    const onSelect = (e: Event) => {
+      const { result: r } = (e as CustomEvent<{ result: GlobalSearchResult; query: string }>).detail;
+      const nonce = Date.now();
+      setQuestions([]); setAnswers([]);
+      switch (r.kind) {
+        case 'page':
+          setSearchTarget(null); setPendingActionDoc(null); setActiveTab(r.tab); break;
+        case 'collection':
+          setSearchTarget({ kind: 'collection', id: r.id, nonce }); setPendingActionDoc(null); setActiveTab(ActiveTab.LIBRARY); break;
+        case 'document': {
+          const doc = documents.find(d => d.id === r.id);
+          if (!doc) return;
+          setSearchTarget(null); setReaderOrigin(ActiveTab.LIBRARY); setPendingActionDoc(doc); setActiveTab(ActiveTab.READER); break;
+        }
+        case 'deck':
+          setSearchTarget({ kind: 'deck', deckId: r.id, nonce }); setPendingActionDoc(null); setActiveTab(ActiveTab.CARDS); break;
+        case 'card':
+          setSearchTarget({ kind: 'deck', deckId: r.deckId, cardQuery: r.title, nonce }); setPendingActionDoc(null); setActiveTab(ActiveTab.CARDS); break;
+      }
+    };
+    window.addEventListener(SEARCH_SELECT_EVENT, onSelect);
+    return () => window.removeEventListener(SEARCH_SELECT_EVENT, onSelect);
+  }, [documents, setActiveTab, setPendingActionDoc, setQuestions, setAnswers]);
 
   // Vorname des eingeloggten Nutzers — für die neuen "{Name} hat ein Deck/Fach
   // mit dir geteilt"-Vorschau-Seiten (SharedDeckPage/SharedLibraryPage), gleiche
@@ -242,6 +274,8 @@ export const AppContent: React.FC<AppContentProps> = (p) => {
 
     case ActiveTab.LIBRARY:
       return <LibrarySystem
+        key={searchTarget?.kind === 'collection' ? `lib-${searchTarget.nonce}` : 'lib'}
+        initialCollectionId={searchTarget?.kind === 'collection' ? searchTarget.id : undefined}
         documents={documents} collections={collections}
         isAdminUser={isAdmin(user?.id)}
         userId={user?.id}
@@ -542,7 +576,9 @@ export const AppContent: React.FC<AppContentProps> = (p) => {
 
     case ActiveTab.CARDS:
       return <FlashcardSystem
-        key={pendingActionDoc ? `cards-${pendingActionDoc.id}` : 'cards'}
+        key={pendingActionDoc ? `cards-${pendingActionDoc.id}` : searchTarget?.kind === 'deck' ? `cards-search-${searchTarget.nonce}` : 'cards'}
+        initialDeckId={searchTarget?.kind === 'deck' ? searchTarget.deckId : undefined}
+        initialCardQuery={searchTarget?.kind === 'deck' ? searchTarget.cardQuery : undefined}
         availableDocuments={documents} collections={collections}
         onDeleteDoc={deleteDoc}
         onSaveToLibrary={file => handleFileUpload(file)}

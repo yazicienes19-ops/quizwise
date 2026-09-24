@@ -21,6 +21,7 @@ import { BrandMark } from './BrandMark';
 import { isAdmin } from '../config/admin';
 import { useTranslation } from '../i18n/I18nProvider';
 import type { TKey } from '../i18n';
+import { openGlobalSearch, SEARCH_SHORTCUT } from './GlobalSearch';
 
 interface LayoutProps {
   children: React.ReactNode;
@@ -240,11 +241,12 @@ export const Layout: React.FC<LayoutProps> = ({
               App-weiten Zustand wie der bestehende Umschalter im Mobile-Menü
               und in den Einstellungen (useAuth().isDark/toggleTheme) — kein
               eigener Theme-Zustand. */}
+          <div className="flex items-center justify-between gap-2 -mt-8 mb-6 shrink-0">
           <button
             onClick={onToggleTheme}
             aria-label={isDark ? t('layout.dayMode') : t('layout.nightMode')}
             title={isDark ? t('layout.dayMode') : t('layout.nightMode')}
-            className="flex items-center gap-1.5 -mt-8 mb-6 shrink-0 transition-colors self-start"
+            className="flex items-center gap-1.5 transition-colors"
             style={{ color: SIDEBAR.textMuted }}
           >
             {isDark ? <Sun className="w-[18px] h-[18px]" strokeWidth={1.75} /> : <Moon className="w-[18px] h-[18px]" strokeWidth={1.75} />}
@@ -252,6 +254,19 @@ export const Layout: React.FC<LayoutProps> = ({
               {isDark ? t('layout.dayMode') : t('layout.nightMode')}
             </span>
           </button>
+          {user && (
+            <button
+              onClick={openGlobalSearch}
+              aria-label={t('gs.open')}
+              title={`${t('gs.open')} (${SEARCH_SHORTCUT})`}
+              className="flex items-center gap-1.5 px-2 py-1 rounded-lg transition-colors hover:opacity-80"
+              style={{ color: SIDEBAR.textMuted, border: `1px solid ${SIDEBAR.chipBorder}` }}
+            >
+              <Search className="w-[15px] h-[15px]" strokeWidth={2} />
+              <span className="text-[11px] font-semibold">{SEARCH_SHORTCUT}</span>
+            </button>
+          )}
+          </div>
 
           {/* Fach-Kontext: gewähltes Modul gilt überall als Vorauswahl.
               Auch ohne Ordner sichtbar — sonst wissen Nutzer nicht, dass es das Feature gibt. */}
@@ -492,6 +507,18 @@ export const Layout: React.FC<LayoutProps> = ({
           className="shrink-0 flex flex-col items-center gap-2 py-3"
           style={{ borderTop: `1px solid ${SIDEBAR.border}` }}
         >
+          {user && (
+            <button
+              onClick={openGlobalSearch}
+              aria-label={t('gs.open')} title={`${t('gs.open')} (${SEARCH_SHORTCUT})`}
+              className="w-12 h-12 flex items-center justify-center rounded-xl transition-all"
+              style={{ color: SIDEBAR.textMuted }}
+              onMouseEnter={e => { e.currentTarget.style.background = SIDEBAR.hoverBg; }}
+              onMouseLeave={e => { e.currentTarget.style.background = 'transparent'; }}
+            >
+              <Search className="w-[18px] h-[18px]" strokeWidth={1.75} />
+            </button>
+          )}
           <button
             onClick={onSettingsClick}
             aria-label={t('layout.settings')} title={t('layout.settings')}
@@ -554,6 +581,15 @@ export const Layout: React.FC<LayoutProps> = ({
                 {streak.current}
               </span>
             </div>
+          )}
+          {user && (
+            <button
+              onClick={openGlobalSearch}
+              aria-label={t('gs.open')}
+              className="w-9 h-9 flex items-center justify-center rounded-xl text-slate-500 hover:bg-slate-100 dark:hover:bg-slate-800 transition-all"
+            >
+              <Search className="w-[18px] h-[18px]" strokeWidth={1.75} />
+            </button>
           )}
           <button
             onClick={onSettingsClick}

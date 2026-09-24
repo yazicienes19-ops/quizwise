@@ -4,6 +4,9 @@ import { createPortal } from 'react-dom';
 import { Flashcard } from '../types';
 import { reviewCard, migrateLegacyCard, ReviewQuality, QUALITY_MAP } from '../services/spacedRepetition';
 import { useTranslation } from '../i18n/I18nProvider';
+import { ArrowLeftRight } from 'lucide-react';
+import { getCardDirection, setCardDirection, isReversed, CARD_DIRECTIONS, type CardDirection } from '../services/cardDirection';
+import { CardImage } from './CardImage';
 
 type Difficulty = 'again' | 'hard' | 'good' | 'easy';
 
@@ -38,6 +41,7 @@ export const FlashcardPlayer: React.FC<FlashcardPlayerProps> = ({ cards, onRevie
   const [showAnswer, setShowAnswer] = useState(false);
   const [sessionDone, setSessionDone] = useState(false);
   const [tally, setTally] = useState<Record<Difficulty, number>>({ again: 0, hard: 0, good: 0, easy: 0 });
+  const [direction, setDirection] = useState<CardDirection>(getCardDirection);
 
   const currentCard = remainingCards[0];
   const canContinue = moreWaiting > 0 && !!onContinue;
@@ -114,16 +118,16 @@ export const FlashcardPlayer: React.FC<FlashcardPlayerProps> = ({ cards, onRevie
   }, [remainingCards]);
 
   const getIntervalLabel = (diff: Difficulty, card: Flashcard): string => {
-    if (diff === 'again') return '< 1m';
+    if (diff === 'again') return t('fc.int.now');
     const srs = card.srs ?? migrateLegacyCard(card);
     const next = reviewCard(srs, QUALITY_MAP[diff] ?? ReviewQuality.GOOD);
-    const days = next.interval;
-    if (days < 1) return '< 1d';
-    if (days === 1) return '1d';
-    if (days < 30) return `${days}d`;
+    const days = Math.max(1, next.interval);
+    if (days < 30) return tp('fc.int.days', days);
     const weeks = Math.round(days / 7);
-    if (weeks < 8) return `${weeks}w`;
-    return `${Math.round(days / 30)}mo`;
+    if (weeks < 8) return tp('fc.int.weeks', weeks);
+    const months = Math.round(days / 30);
+    if (months < 12) return tp('fc.int.months', months);
+    return tp('fc.int.years', Math.round(days / 365));
   };
 
   const total = completed + remainingCards.length;
@@ -184,7 +188,13 @@ export const FlashcardPlayer: React.FC<FlashcardPlayerProps> = ({ cards, onRevie
     );
   }
 
-  const longBack = currentCard.back.length > 160;
+  // Lernrichtung (services/cardDirection.ts): nur die Anzeige wird getauscht.
+  const reversed = isReversed(currentCard.id, direction);
+  const shownFront = reversed ? currentCard.back : currentCard.front;
+  const shownBack = reversed ? currentCard.front : currentCard.back;
+  const shownFrontImage = reversed ? currentCard.backImage : currentCard.frontImage;
+  const shownBackImage = reversed ? currentCard.frontImage : currentCard.backImage;
+  const longBack = shownBack.length > 160;
 
   return createPortal(
     <div className="fixed inset-0 z-[100] bg-[#f8fafc] dark:bg-[#020617] flex flex-col animate-in fade-in duration-300">
@@ -215,6 +225,18 @@ export const FlashcardPlayer: React.FC<FlashcardPlayerProps> = ({ cards, onRevie
         </div>
         )}
         <div className="flex items-center gap-3">
+          <label className="flex items-center gap-1.5 text-[11px] font-black uppercase tracking-widest text-slate-500">
+            <ArrowLeftRight className="w-3.5 h-3.5" aria-hidden="true" />
+            <span className="sr-only">{t('fc.direction')}</span>
+            <select
+              value={direction}
+              onChange={e => { const d = e.target.value as CardDirection; setDirection(d); setCardDirection(d); setShowAnswer(false); }}
+              aria-label={t('fc.direction')}
+              className="bg-transparent font-black uppercase tracking-widest cursor-pointer outline-none text-slate-600 dark:text-slate-300"
+            >
+              {CARD_DIRECTIONS.map(d => <option key={d} value={d}>{t(`fc.direction.${d}` as const)}</option>)}
+            </select>
+          </label>
           <span className="text-[11px] font-black text-slate-300 uppercase tracking-widest hidden md:inline">{t('fc.keyEsc')}</span>
           <button aria-label={t('fc.closeSession')}
             onClick={onClose}
@@ -230,18 +252,20 @@ export const FlashcardPlayer: React.FC<FlashcardPlayerProps> = ({ cards, onRevie
         <div className="w-full max-w-4xl space-y-8 md:space-y-16 py-6 md:py-12">
 
           {/* Front of Card */}
-          <div key={`front-${currentCard.id}-${completed}`} className="text-center animate-in fade-in slide-in-from-top-4 duration-500 px-2 md:px-8">
-            <h2 className={`${frontSize(currentCard.front)} font-medium text-slate-900 dark:text-slate-100 leading-snug break-words whitespace-pre-line`}>
-              {currentCard.front}
+          <div key={`front-${currentCard.id}-${completed}`} className="text-center animate-in fade-in slide-in-from-top-4 duration-500 px-2 md:px-8 space-y-6">
+            {shownFrontImage && <CardImage path={shownFrontImage} alt={t('img.altFront')} />}
+            <h2 className={`${frontSize(shownFront)} font-medium text-slate-900 dark:text-slate-100 leading-snug break-words whitespace-pre-line`}>
+              {shownFront}
             </h2>
           </div>
 
           {/* Back of Card (Shown after click) */}
           {showAnswer && (
             <div className="space-y-8 md:space-y-16 animate-in fade-in zoom-in-95 duration-300 border-t border-slate-100 dark:border-slate-800 pt-8 md:pt-16 px-2 md:px-8">
-              <div className={longBack ? 'text-left max-w-2xl mx-auto' : 'text-center'}>
-                <p className={`${backSize(currentCard.back)} font-bold leading-relaxed break-words whitespace-pre-line`} style={{ color: 'var(--primary-ink)' }}>
-                  {currentCard.back}
+              <div className={`${longBack ? 'text-left max-w-2xl mx-auto' : 'text-center'} space-y-6`}>
+                {shownBackImage && <CardImage path={shownBackImage} alt={t('img.altBack')} />}
+                <p className={`${backSize(shownBack)} font-bold leading-relaxed break-words whitespace-pre-line`} style={{ color: 'var(--primary-ink)' }}>
+                  {shownBack}
                 </p>
               </div>
             </div>

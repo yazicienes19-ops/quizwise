@@ -5,15 +5,50 @@ import { Flashcard } from '../types';
 import { useTranslation } from '../i18n/I18nProvider';
 import { useModalA11y } from '../hooks/useModalA11y';
 import { ModalCloseButton } from './ModalCloseButton';
+import { parseTags, formatTags } from '../services/cardTags';
+import { ImagePlus } from 'lucide-react';
+import { CardImage } from './CardImage';
+import { toast } from '../services/toast';
+import { uploadCardImage, deleteCardImage, isOwnImage, CardImageError } from '../services/cardImages';
 
 interface EditCardModalProps {
   card?: Flashcard;
   cardIndex?: number;
   totalCards?: number;
-  onSave: (front: string, back: string) => void;
+  onSave: (front: string, back: string, tags: string[], images: CardImages) => void;
+  /** Für Bild-Uploads; ohne Anmeldung keine Bilder. */
+  userId?: string;
+  /** Vorhandene Schlagwörter im Stapel, als Vorschläge. */
+  knownTags?: string[];
   onDelete?: () => void;
   onClose: () => void;
 }
+
+export interface CardImages { frontImage?: string; backImage?: string }
+type SideImage = { path?: string; file?: File; preview?: string };
+
+/** Bild für eine Kartenseite wählen, Vorschau zeigen, wieder entfernen. */
+const ImagePicker: React.FC<{ image: SideImage; onPick: (f: File | undefined) => void; onClear: () => void; side: 'front' | 'back' }> = ({ image, onPick, onClear, side }) => {
+  const { t } = useTranslation();
+  const inputRef = useRef<HTMLInputElement>(null);
+  const has = !!(image.path || image.file);
+  return (
+    <div className="flex items-center gap-2 min-w-0">
+      <input ref={inputRef} type="file" accept="image/*" className="hidden" onChange={e => { onPick(e.target.files?.[0]); e.target.value = ''; }} />
+      {has ? (
+        <>
+          <CardImage path={image.path} previewUrl={image.preview} alt={t(side === 'front' ? 'img.altFront' : 'img.altBack')} className="h-14 w-20 object-cover rounded-lg" />
+          <button type="button" onClick={() => inputRef.current?.click()} className="text-[12px] font-semibold text-slate-400 hover:text-indigo-500">{t('img.replace')}</button>
+          <button type="button" onClick={onClear} className="text-[12px] font-semibold text-slate-400 hover:text-rose-500">{t('img.remove')}</button>
+        </>
+      ) : (
+        <button type="button" onClick={() => inputRef.current?.click()} className="flex items-center gap-1.5 text-[12px] font-semibold text-slate-400 hover:text-indigo-500 transition-colors">
+          <ImagePlus className="w-3.5 h-3.5" aria-hidden="true" /> {t('img.add')}
+        </button>
+      )}
+    </div>
+  );
+};
 
 export const EditCardModal: React.FC<EditCardModalProps> = ({
   card,
@@ -22,12 +57,23 @@ export const EditCardModal: React.FC<EditCardModalProps> = ({
   onSave,
   onDelete,
   onClose,
+  knownTags = [],
+  userId,
 }) => {
   const { t } = useTranslation();
   const isNew = !card;
   const [front, setFront] = useState(card?.front ?? '');
   const [back, setBack]   = useState(card?.back  ?? '');
+  const [tagInput, setTagInput] = useState(formatTags(card?.tags));
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
+  // Bilder je Seite: gespeicherter Pfad oder neu gewählte Datei (Upload erst beim Speichern).
+  const [frontImg, setFrontImg] = useState<SideImage>({ path: card?.frontImage });
+  const [backImg, setBackImg] = useState<SideImage>({ path: card?.backImage });
+  const [saving, setSaving] = useState(false);
+  useEffect(() => () => {
+    [frontImg.preview, backImg.preview].forEach(u => { if (u) URL.revokeObjectURL(u); });
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
   const frontRef = useRef<HTMLTextAreaElement>(null);
   const { titleId, dialogProps } = useModalA11y(onClose, frontRef);
 
@@ -40,19 +86,47 @@ export const EditCardModal: React.FC<EditCardModalProps> = ({
     window.addEventListener('keydown', onKey);
     return () => window.removeEventListener('keydown', onKey);
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [front, back]);
+  }, [front, back, tagInput, frontImg, backImg, saving]);
 
-  const handleSave = () => {
-    if (!front.trim() || !back.trim()) return;
-    onSave(front.trim(), back.trim());
+  const hasFront = front.trim().length > 0 || !!(frontImg.path || frontImg.file);
+  const hasBack = back.trim().length > 0 || !!(backImg.path || backImg.file);
+  const canSave = hasFront && hasBack && !saving;
+
+  const handleSave = async () => {
+    if (!canSave) return;
+    setSaving(true);
+    try {
+      const cardKey = card?.id ?? `neu${Date.now().toString(36)}`;
+      const resolve = async (side: SideImage) =>
+        side.file && userId ? uploadCardImage(userId, cardKey, side.file) : side.path;
+      const frontImage = await resolve(frontImg);
+      const backImage = await resolve(backImg);
+      // Ersetzte oder entfernte eigene Bilder aufräumen.
+      for (const [old, next] of [[card?.frontImage, frontImage], [card?.backImage, backImage]] as const) {
+        if (old && old !== next && old !== frontImage && old !== backImage && isOwnImage(old, userId)) void deleteCardImage(old);
+      }
+      onSave(front.trim(), back.trim(), parseTags(tagInput), { frontImage, backImage });
+    } catch (e) {
+      toast.error(e instanceof CardImageError ? t(`img.err.${e.code}` as const) : t('img.err.upload'));
+    } finally {
+      setSaving(false);
+    }
   };
 
   const handleSwap = () => {
     setFront(back);
     setBack(front);
+    setFrontImg(backImg);
+    setBackImg(frontImg);
   };
 
-  const canSave = front.trim().length > 0 && back.trim().length > 0;
+  const pickImage = (setSide: React.Dispatch<React.SetStateAction<SideImage>>) => (file: File | undefined) => {
+    if (!file) return;
+    if (!file.type.startsWith('image/')) { toast.error(t('img.err.not-image')); return; }
+    setSide(prev => { if (prev.preview) URL.revokeObjectURL(prev.preview); return { file, preview: URL.createObjectURL(file) }; });
+  };
+  const clearImage = (setSide: React.Dispatch<React.SetStateAction<SideImage>>) => () =>
+    setSide(prev => { if (prev.preview) URL.revokeObjectURL(prev.preview); return {}; });
 
   return createPortal(
     <div
@@ -96,7 +170,10 @@ export const EditCardModal: React.FC<EditCardModalProps> = ({
                 rows={5}
                 className="w-full p-4 bg-slate-50 dark:bg-slate-800 rounded-2xl border-2 border-transparent focus:border-indigo-500 outline-none dark:text-white font-medium resize-none text-sm leading-relaxed transition-colors"
               />
-              <p className="text-[11px] text-slate-300 dark:text-slate-600 text-right pr-1">{front.length}</p>
+              <div className="flex items-start justify-between gap-2">
+                {userId ? <ImagePicker image={frontImg} onPick={pickImage(setFrontImg)} onClear={clearImage(setFrontImg)} side="front" /> : <span />}
+                <p className="text-[11px] text-slate-300 dark:text-slate-600 text-right pr-1">{front.length}</p>
+              </div>
             </div>
 
             {/* Back */}
@@ -111,8 +188,41 @@ export const EditCardModal: React.FC<EditCardModalProps> = ({
                 rows={5}
                 className="w-full p-4 bg-slate-50 dark:bg-slate-800 rounded-2xl border-2 border-transparent focus:border-indigo-500 outline-none dark:text-white font-medium resize-none text-sm leading-relaxed transition-colors"
               />
-              <p className="text-[11px] text-slate-300 dark:text-slate-600 text-right pr-1">{back.length}</p>
+              <div className="flex items-start justify-between gap-2">
+                {userId ? <ImagePicker image={backImg} onPick={pickImage(setBackImg)} onClear={clearImage(setBackImg)} side="back" /> : <span />}
+                <p className="text-[11px] text-slate-300 dark:text-slate-600 text-right pr-1">{back.length}</p>
+              </div>
             </div>
+          </div>
+
+          {/* Schlagwörter */}
+          <div className="space-y-2">
+            <label htmlFor="card-tags" className="text-[11px] font-black text-slate-400 uppercase tracking-widest ml-1">
+              {t('tags.label')} <span className="text-slate-300 normal-case tracking-normal font-medium">{t('tags.hint')}</span>
+            </label>
+            <input
+              id="card-tags"
+              value={tagInput}
+              onChange={e => setTagInput(e.target.value)}
+              placeholder={t('tags.placeholder')}
+              list="card-tag-suggestions"
+              className="w-full px-4 py-3 bg-slate-50 dark:bg-slate-800 rounded-2xl border-2 border-transparent focus:border-indigo-500 outline-none dark:text-white text-sm transition-colors"
+            />
+            {knownTags.length > 0 && (
+              <div className="flex flex-wrap gap-1.5">
+                {knownTags.filter(k => !parseTags(tagInput).some(x => x.toLowerCase() === k.toLowerCase())).slice(0, 8).map(k => (
+                  <button
+                    key={k}
+                    type="button"
+                    onClick={() => setTagInput(v => formatTags(parseTags(`${v},${k}`)))}
+                    className="px-2.5 py-1 rounded-full text-[12px] font-semibold transition-colors hover:opacity-80"
+                    style={{ background: 'color-mix(in srgb, var(--primary) 12%, transparent)', color: 'var(--primary-ink)' }}
+                  >
+                    + {k}
+                  </button>
+                ))}
+              </div>
+            )}
           </div>
 
           {/* Swap button */}
@@ -183,7 +293,7 @@ export const EditCardModal: React.FC<EditCardModalProps> = ({
             className="flex items-center gap-2 px-6 py-3 rounded-2xl text-[11px] font-black uppercase tracking-widest shadow-lg hover:scale-[1.02] transition-all disabled:opacity-40 disabled:scale-100"
             style={{ background: 'var(--primary)', color: 'var(--primary-text, #fff)' }}
           >
-            {isNew ? t('ecm.add') : t('common.save')}
+            {saving ? t('img.uploading') : isNew ? t('ecm.add') : t('common.save')}
             <span className="opacity-50 text-[11px] normal-case font-bold tracking-normal hidden sm:inline">⌘↵</span>
           </button>
         </div>

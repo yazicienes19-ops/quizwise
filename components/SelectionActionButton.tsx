@@ -56,7 +56,7 @@ export function selectionQuestion(selection: ReaderSelection, t: Translate): str
 
 /** Schwebende Aktions-Leiste an der Textauswahl, weicht wie die native Auswahl nach oben
  *  oder unten aus und verdeckt den markierten Text nie. */
-export const SelectionActionButton: React.FC<{ selection: ReaderSelection; onClick: () => void }> = ({ selection, onClick }) => {
+export const SelectionActionButton: React.FC<{ selection: ReaderSelection; onClick: () => void; extra?: React.ReactNode }> = ({ selection, onClick, extra }) => {
   const { t } = useTranslation();
   const meta = SELECTION_ACTION_META[selection.action];
   // Verankerung über die Rahmen-Kante statt über transform: der Punkt (x, y) ist
@@ -65,7 +65,8 @@ export const SelectionActionButton: React.FC<{ selection: ReaderSelection; onCli
     ? { left: selection.x, bottom: `calc(100% - ${selection.y}px)` }
     : { left: selection.x, top: selection.y };
   return (
-    <div className="absolute z-20 -translate-x-1/2" style={anchor}>
+    <div className="absolute z-20 -translate-x-1/2 flex items-center gap-1.5" style={anchor}>
+      {extra}
       <button
         onClick={onClick}
         className="flex items-center gap-1.5 px-3.5 py-2 rounded-full text-[11px] font-black uppercase tracking-wide shadow-lg transition-transform hover:scale-105 animate-in fade-in duration-150"

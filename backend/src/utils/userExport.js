@@ -39,6 +39,7 @@ const REDACT = {
 
 const FILE_LINK_SECONDS = 7 * 24 * 60 * 60;
 const STORAGE_BUCKET = 'document-files';
+const CARD_IMAGE_BUCKET = 'card-images';
 
 // Tabelle existiert in dieser Datenbank (noch) nicht: überspringen statt den
 // ganzen Export scheitern zu lassen.
@@ -90,12 +91,29 @@ const buildUserExport = async (admin, user) => {
     });
   }
 
+  // Bilder auf Karteikarten (Bucket card-images, Pfad <userId>/...). Fehlt der
+  // Bucket noch (Migration nicht ausgeführt), gibt es schlicht keine.
+  const cardImages = [];
+  try {
+    const bucket = admin.storage.from(CARD_IMAGE_BUCKET);
+    const { data: entries, error: listErr } = await bucket.list(userId, { limit: 1000 });
+    if (!listErr) {
+      for (const entry of entries || []) {
+        if (!entry.id) continue;
+        const path = `${userId}/${entry.name}`;
+        const { data, error } = await bucket.createSignedUrl(path, FILE_LINK_SECONDS);
+        cardImages.push({ path, downloadUrl: error ? null : data?.signedUrl ?? null, validForDays: 7 });
+      }
+    }
+  } catch { /* Bucket nicht vorhanden */ }
+
   return {
     exportedAt: new Date().toISOString(),
     format: 'studearc-export-v2',
     account: { id: userId, email: user.email ?? null },
     tables,
     files,
+    cardImages,
     ...(skipped.length ? { notInThisDatabase: skipped } : {}),
   };
 };

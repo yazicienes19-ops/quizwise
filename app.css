@@ -458,6 +458,11 @@ html textarea:focus-visible,
 html select:focus-visible {
   outline-offset: 0;
 }
+/* Ausnahme für Felder, deren Umgebung den Fokus schon zeigt (z. B. die
+   globale Suche: das Feld ist beim Öffnen immer fokussiert). */
+html .focus-ring-none:focus-visible {
+  outline: none;
+}
 
 /* ── Kontrast der Grautöne (Audit 23.09.2026, WCAG AA 4,5:1) ─────────────────
    Gemessen: slate-400 im Tagmodus 2,1–2,4:1, slate-500/-600 im Nachtmodus

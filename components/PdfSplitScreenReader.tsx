@@ -17,6 +17,10 @@ import { toast } from '../services/toast';
 import { useTranslation } from '../i18n/I18nProvider';
 import { ReaderTutorPane } from './ReaderTutorPane';
 import { SelectionActionButton, readSelection, selectionQuestion, type ReaderSelection } from './SelectionActionButton';
+import { Highlighter } from 'lucide-react';
+import { getHighlights, addHighlight, updateHighlight, removeHighlight, restoreHighlight, HIGHLIGHT_HEX, type UserHighlight } from '../services/userHighlights';
+import { PdfHighlightsPanel } from './PdfHighlightsPanel';
+import { CLOUD_PULLED_EVENT } from '../services/syncService';
 
 /** Ab dieser Verweildauer gilt eine Seite beim Weiterblättern automatisch als gelesen —
  *  schnelles Durchblättern zählt bewusst nicht, der Button bleibt als Abkürzung. */
@@ -85,6 +89,9 @@ export const PdfSplitScreenReader: React.FC<PdfSplitScreenReaderProps> = ({ doc,
   const [toc, setToc] = useState<PdfTocEntry[] | null>(null);
   const [tocOpen, setTocOpen] = useState(false);
   const [expandedToc, setExpandedToc] = useState<Set<string>>(new Set());
+  /** Eigene Markierungen (services/userHighlights.ts) und ob die Liste offen ist. */
+  const [myHighlights, setMyHighlights] = useState<UserHighlight[]>(() => getHighlights(doc.id));
+  const [hlOpen, setHlOpen] = useState(false);
 
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const firstRectRef = useRef<HTMLDivElement>(null);
@@ -336,6 +343,39 @@ export const PdfSplitScreenReader: React.FC<PdfSplitScreenReaderProps> = ({ doc,
     window.getSelection()?.removeAllRanges();
   }, [selection, handleAsk, t]);
 
+  const refreshHighlights = useCallback(() => setMyHighlights(getHighlights(doc.id)), [doc.id]);
+  useEffect(() => {
+    window.addEventListener(CLOUD_PULLED_EVENT, refreshHighlights);
+    return () => window.removeEventListener(CLOUD_PULLED_EVENT, refreshHighlights);
+  }, [refreshHighlights]);
+
+  const handleHighlightSelection = useCallback(() => {
+    if (!selection) return;
+    addHighlight(doc.id, { page: pageNumber, quote: selection.text }, userId);
+    refreshHighlights();
+    setSelection(null);
+    window.getSelection()?.removeAllRanges();
+    toast.success(t('hl.added'));
+  }, [selection, doc.id, pageNumber, userId, refreshHighlights, t]);
+
+  const handleDeleteHighlight = useCallback((id: string) => {
+    removeHighlight(doc.id, id, userId);
+    refreshHighlights();
+    toast.withAction(t('hl.deleted'), {
+      label: t('common.undo'),
+      onClick: () => { restoreHighlight(doc.id, id, userId); refreshHighlights(); },
+    }, 8000);
+  }, [doc.id, userId, refreshHighlights, t]);
+
+  // Eigene Markierungen der aktuellen Seite verorten (gleiche Textsuche wie Tutor-Zitate).
+  const pageHighlightRects = useMemo(() => {
+    if (!pageItems) return [];
+    return myHighlights
+      .filter(h => h.page === pageNumber)
+      .map(h => ({ h, rects: findQuoteRects(pageItems.items, h.quote) ?? [] }))
+      .filter(x => x.rects.length > 0);
+  }, [myHighlights, pageNumber, pageItems]);
+
   const handleMarkDone = () => {
     markChapterDone(doc.id, pageIndex, userId);
     setDoneIndices(getDoneChapterIndices(doc.id));
@@ -503,6 +543,16 @@ export const PdfSplitScreenReader: React.FC<PdfSplitScreenReaderProps> = ({ doc,
               />
               <span className="text-slate-400">/ {pdf.numPages}</span>
             </div>
+            <button
+              onClick={() => setHlOpen(o => !o)}
+              aria-expanded={hlOpen}
+              className="flex items-center gap-1.5 px-3 py-2 rounded-xl text-[11px] font-black uppercase tracking-widest transition-all"
+              style={{ background: 'var(--bg-main)', border: '1px solid var(--border-color)', color: 'var(--text-main)' }}
+            >
+              <Highlighter className="w-3.5 h-3.5" aria-hidden="true" />
+              {t('hl.title')}
+              {myHighlights.length > 0 && <span style={{ color: 'var(--primary-ink)' }}>{myHighlights.length}</span>}
+            </button>
             <div className="flex items-center gap-1.5">
               <button
                 onClick={() => setZoom(z => Math.max(1, Math.round((z - 0.25) * 100) / 100))}
@@ -573,6 +623,22 @@ export const PdfSplitScreenReader: React.FC<PdfSplitScreenReaderProps> = ({ doc,
                       })}
                     </div>
                   )}
+                  {canvasCss && pageItems && pageHighlightRects.flatMap(({ h, rects }) => rects.map((r, i) => (
+                    <div
+                      key={`${h.id}-${i}`}
+                      className="absolute pointer-events-none rounded-[2px]"
+                      title={h.note || undefined}
+                      style={{
+                        left: (r.x / pageItems.pageW) * canvasCss.w - 1,
+                        top: (r.y / pageItems.pageH) * canvasCss.h - 1,
+                        width: (r.w / pageItems.pageW) * canvasCss.w + 2,
+                        height: (r.h / pageItems.pageH) * canvasCss.h + 2,
+                        background: HIGHLIGHT_HEX[h.color],
+                        opacity: 0.42,
+                        mixBlendMode: 'multiply',
+                      }}
+                    />
+                  )))}
                   {canvasCss && highlightRects && highlight?.page === pageNumber && highlightRects.rects.map((r, i) => (
                     <div
                       key={i}
@@ -615,7 +681,32 @@ export const PdfSplitScreenReader: React.FC<PdfSplitScreenReaderProps> = ({ doc,
                 nach dem Umfang der Markierung (siehe detectSelectionAction), Position
                 weicht wie bei nativer Textauswahl nach oben ODER unten aus, verdeckt
                 den markierten Text also nie. */}
-            {selection && <SelectionActionButton selection={selection} onClick={handleAskSelection} />}
+            {selection && (
+              <SelectionActionButton
+                selection={selection}
+                onClick={handleAskSelection}
+                extra={
+                  <button
+                    onClick={handleHighlightSelection}
+                    className="flex items-center gap-1.5 px-3.5 py-2 rounded-full text-[11px] font-black uppercase tracking-wide shadow-lg transition-transform hover:scale-105 animate-in fade-in duration-150"
+                    style={{ background: 'var(--bg-sidebar)', color: 'var(--text-main)', border: '1px solid var(--border-color)' }}
+                  >
+                    <Highlighter className="w-3.5 h-3.5" style={{ color: HIGHLIGHT_HEX.yellow }} aria-hidden="true" />
+                    {t('hl.mark')}
+                  </button>
+                }
+              />
+            )}
+            <PdfHighlightsPanel
+              open={hlOpen}
+              highlights={myHighlights}
+              currentPage={pageNumber}
+              onClose={() => setHlOpen(false)}
+              onJump={p => { goToPage(p); }}
+              onNote={(id, note) => { updateHighlight(doc.id, id, { note }, userId); refreshHighlights(); }}
+              onColor={(id, color) => { updateHighlight(doc.id, id, { color }, userId); refreshHighlights(); }}
+              onDelete={handleDeleteHighlight}
+            />
           </div>
         </div>
 

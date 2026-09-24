@@ -11,61 +11,75 @@ describe('createSrsState', () => {
   });
 });
 
-describe('reviewCard (SM-2)', () => {
-  it('quality < 3 resettet Repetitions', () => {
+describe('reviewCard (FSRS-5)', () => {
+  const DAY = 24 * 60 * 60 * 1000;
+  const T0 = Date.UTC(2026, 8, 1);
+
+  it('neue Karte: Nochmal/Schwer/Gut/Leicht → 1/1/3/16 Tage', () => {
     const s = createSrsState();
-    const r = reviewCard(s, 1);
-    expect(r.repetitions).toBe(0);
-    expect(r.interval).toBe(1);
+    expect([1, 3, 4, 5].map(q => reviewCard(s, q, T0).interval)).toEqual([1, 1, 3, 16]);
   });
 
-  it('quality >= 3 erhöht Repetitions', () => {
-    const s = createSrsState();
-    const r = reviewCard(s, 4);
+  it('erste Easy-Bewertung → mindestens 6 Tage (Paket-1-Kriterium)', () => {
+    const r = reviewCard(createSrsState(), 5, T0);
     expect(r.repetitions).toBe(1);
-    expect(r.interval).toBe(1);
+    expect(r.nextReview).toBeGreaterThanOrEqual(T0 + 6 * DAY);
   });
 
-  it('erste Easy-Bewertung → direkt 6 Tage (Paket-1-Kriterium)', () => {
-    const s = createSrsState();
-    const r = reviewCard(s, 5);
-    expect(r.repetitions).toBe(1);
-    expect(r.interval).toBe(6);
-    expect(r.nextReview).toBeGreaterThanOrEqual(Date.now() + 6 * 24 * 60 * 60 * 1000 - 1000);
+  it('vergessen setzt Wiederholungen zurück und verkürzt das Intervall', () => {
+    let s = reviewCard(createSrsState(), 4, T0);
+    s = reviewCard(s, 4, T0 + 3 * DAY);
+    const before = s.interval;
+    const failed = reviewCard(s, 0, T0 + (3 + before) * DAY);
+    expect(failed.repetitions).toBe(0);
+    expect(failed.interval).toBeLessThan(before);
+    expect(failed.stability!).toBeLessThan(s.stability!);
+    expect(failed.difficulty!).toBeGreaterThan(s.difficulty!);
   });
 
-  it('zweite korrekte Bewertung → 6 Tage Intervall', () => {
+  it('Intervalle wachsen bei pünktlichem Gewusst deutlich', () => {
     let s = createSrsState();
-    s = reviewCard(s, 4);
-    s = reviewCard(s, 4);
-    expect(s.repetitions).toBe(2);
-    expect(s.interval).toBe(6);
+    let t = T0;
+    const intervals: number[] = [];
+    for (let i = 0; i < 5; i++) {
+      s = reviewCard(s, 4, t);
+      intervals.push(s.interval);
+      t += s.interval * DAY;
+    }
+    for (let i = 1; i < intervals.length; i++) expect(intervals[i]).toBeGreaterThan(intervals[i - 1]);
+    expect(intervals[4]).toBeGreaterThan(60);
   });
 
-  it('dritte korrekte Bewertung → Intervall * Ease', () => {
+  it('Wiederholung am selben Tag lässt die Stabilität praktisch unverändert', () => {
+    const s = reviewCard(createSrsState(), 4, T0);
+    const again = reviewCard(s, 4, T0 + 60_000);
+    expect(again.stability!).toBeCloseTo(s.stability!, 1);
+  });
+
+  it('länger ungeübt und trotzdem gewusst → größerer Sprung', () => {
+    const s = reviewCard(createSrsState(), 4, T0);
+    const onTime = reviewCard(s, 4, T0 + 3 * DAY);
+    const late = reviewCard(s, 4, T0 + 20 * DAY);
+    expect(late.stability!).toBeGreaterThan(onTime.stability!);
+  });
+
+  it('übernimmt SM-2-Karten ohne FSRS-Werte', () => {
+    const legacy: SrsState = { ease: 2.5, interval: 20, repetitions: 4, nextReview: T0, lastReview: T0 - 20 * DAY };
+    const r = reviewCard(legacy, 4, T0);
+    expect(r.interval).toBeGreaterThan(20);
+    expect(r.repetitions).toBe(5);
+    expect(r.difficulty).toBeGreaterThan(1);
+  });
+
+  it('Ease wird weiter fortgeschrieben (Anzeige), min 1.3', () => {
     let s = createSrsState();
-    s = reviewCard(s, 4);
-    s = reviewCard(s, 4);
-    s = reviewCard(s, 4);
-    expect(s.repetitions).toBe(3);
-    expect(s.interval).toBe(Math.round(6 * s.ease));
-  });
-
-  it('Easy (5) erhöht Ease', () => {
-    const s = createSrsState();
-    const r = reviewCard(s, 5);
-    expect(r.ease).toBeGreaterThan(2.5);
-  });
-
-  it('Hard (3) senkt Ease, min 1.3', () => {
-    let s = createSrsState();
-    for (let i = 0; i < 20; i++) s = reviewCard(s, 3);
+    expect(reviewCard(s, 5, T0).ease).toBeGreaterThan(2.5);
+    for (let i = 0; i < 20; i++) s = reviewCard(s, 3, T0 + i * DAY);
     expect(s.ease).toBeGreaterThanOrEqual(1.3);
   });
 
   it('nextReview liegt in der Zukunft', () => {
-    const s = createSrsState();
-    const r = reviewCard(s, 4);
+    const r = reviewCard(createSrsState(), 4);
     expect(r.nextReview).toBeGreaterThan(Date.now());
     expect(r.lastReview).toBeLessThanOrEqual(Date.now());
   });

@@ -1,5 +1,6 @@
 import { useEffect } from 'react';
 import { sendActivityHeartbeat } from '../services/userService';
+import { STUDY_TIME_EVENT } from '../services/studyTimeService';
 
 const HEARTBEAT_SECONDS = 60;
 
@@ -14,7 +15,9 @@ export const useActivityHeartbeat = (userId?: string | null): void => {
     if (!userId) return;
     const tick = () => {
       if (document.visibilityState === 'visible') {
-        sendActivityHeartbeat(HEARTBEAT_SECONDS).catch(() => {});
+        sendActivityHeartbeat(HEARTBEAT_SECONDS)
+          .then(() => window.dispatchEvent(new CustomEvent(STUDY_TIME_EVENT)))
+          .catch(() => {});
       }
     };
     const id = window.setInterval(tick, HEARTBEAT_SECONDS * 1000);
