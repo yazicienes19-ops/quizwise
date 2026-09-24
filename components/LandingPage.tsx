@@ -60,25 +60,32 @@ const Reveal: React.FC<{ children: React.ReactNode; className?: string }> = ({ c
   return <div ref={ref} className={`reveal ${className ?? ''}`}>{children}</div>;
 };
 
-/** Dekorative "Redemption Arc"-Illustration (Tiefpunkt → Aufstieg), größere Variante
- *  derselben Formsprache wie BrandMark — `flip` spiegelt sie für den Aufstiegs-Akt. */
-const ArcArt: React.FC<{ flip?: boolean }> = ({ flip = false }) => {
-  const d = flip
-    ? 'M 30 40 C 90 60, 140 140, 170 210 C 190 260, 240 260, 260 200 C 285 130, 330 40, 380 20'
-    : 'M 20 210 C 80 190, 120 100, 150 40 C 165 10, 210 10, 220 50 C 235 110, 270 190, 340 220';
-  const peak = flip ? { x: 380, y: 20 } : { x: 340, y: 220 };
-  const start = flip ? { x: 30, y: 40 } : { x: 20, y: 210 };
+/** Dekorative "Redemption Arc"-Illustration, gleiche Formsprache wie BrandMark.
+ *  Die vier Akte erzählen eine Kurve: "start" steigt voller Vorsätze an,
+ *  "fall" (Tiefpunkt) steigt kurz und stürzt ab, "rise" kommt aus dem Tal
+ *  und endet im Stern (Aufstieg). */
+type ArcVariant = 'start' | 'fall' | 'rise';
+const ARC_PATHS: Record<ArcVariant, { d: string; start: { x: number; y: number }; end: { x: number; y: number } }> = {
+  start: { d: 'M 20 225 C 90 215, 150 170, 210 125 C 260 88, 320 62, 380 52', start: { x: 20, y: 225 }, end: { x: 380, y: 52 } },
+  fall: { d: 'M 20 210 C 80 190, 120 100, 150 40 C 165 10, 210 10, 220 50 C 235 110, 270 190, 340 220', start: { x: 20, y: 210 }, end: { x: 340, y: 220 } },
+  rise: { d: 'M 30 40 C 90 60, 140 140, 170 210 C 190 260, 240 260, 260 200 C 285 130, 330 40, 380 20', start: { x: 30, y: 40 }, end: { x: 380, y: 20 } },
+};
+const ArcArt: React.FC<{ variant: ArcVariant }> = ({ variant }) => {
+  const { d, start, end } = ARC_PATHS[variant];
   const pts: string[] = [];
   for (let i = 0; i < 10; i++) {
     const r = i % 2 === 0 ? 16 : 6.7;
     const ang = -Math.PI / 2 + (i * Math.PI) / 5;
-    pts.push(`${peak.x + r * Math.cos(ang)},${peak.y + r * Math.sin(ang)}`);
+    pts.push(`${end.x + r * Math.cos(ang)},${end.y + r * Math.sin(ang)}`);
   }
   return (
-    <svg width={400} height={260} viewBox="0 0 400 260" fill="none" style={{ maxWidth: '100%', height: 'auto' }}>
+    <svg width={400} height={260} viewBox="0 0 400 260" fill="none" style={{ maxWidth: '100%', height: 'auto' }} aria-hidden="true">
       <path d={d} stroke="var(--primary)" strokeWidth={3} strokeDasharray={700} strokeDashoffset={700} strokeLinecap="round" fill="none" className="draw-arc" />
       <circle cx={start.x} cy={start.y} r={7} fill="none" stroke="var(--primary)" strokeWidth={2.5} opacity={0.6} />
-      <polygon points={pts.join(' ')} fill="var(--primary)" />
+      {/* Stern nur am Ziel der Geschichte; der Aufbruch endet offen, der Absturz im Tal. */}
+      {variant === 'rise'
+        ? <polygon points={pts.join(' ')} fill="var(--primary)" />
+        : <circle cx={end.x} cy={end.y} r={variant === 'start' ? 6 : 8} fill={variant === 'start' ? 'none' : 'var(--primary)'} stroke="var(--primary)" strokeWidth={2.5} />}
     </svg>
   );
 };
@@ -106,9 +113,10 @@ export const LandingPage: React.FC<LandingPageProps> = ({ onAuthClick, onLegalCl
             </span>
           </div>
           <div className="hidden md:flex items-center gap-8 text-[13px] font-medium" style={{ color: '#4A4636' }}>
-            <a href="#akt1" className="hover:opacity-70 transition-opacity">{t('landing.nav.act1')}</a>
-            <a href="#akt2" className="hover:opacity-70 transition-opacity">{t('landing.nav.act2')}</a>
-            <a href="#akt3" className="hover:opacity-70 transition-opacity">{t('landing.nav.act3')}</a>
+            <a href="#aufbruch" className="hover:opacity-70 transition-opacity">{t('landing.nav.start')}</a>
+            <a href="#tiefpunkt" className="hover:opacity-70 transition-opacity">{t('landing.nav.low')}</a>
+            <a href="#funktionen" className="hover:opacity-70 transition-opacity">{t('landing.nav.features')}</a>
+            <a href="#aufstieg" className="hover:opacity-70 transition-opacity">{t('landing.nav.rise')}</a>
             <a href="#preise" className="hover:opacity-70 transition-opacity">{t('landing.nav.pricing')}</a>
           </div>
           <div className="flex items-center gap-2 sm:gap-3">
@@ -168,29 +176,48 @@ export const LandingPage: React.FC<LandingPageProps> = ({ onAuthClick, onLegalCl
         </p>
       </section>
 
-      {/* Akt I — Tiefpunkt */}
-      <section id="akt1" style={{ background: '#1B2A4A', color: '#FBF9F4', padding: '120px 24px', scrollMarginTop: 'calc(4rem + env(safe-area-inset-top))' }} className="sm:px-14">
+      {/* Akt I — Aufbruch: neues Semester, große Vorsätze */}
+      <section id="aufbruch" style={{ background: '#FBF9F4', padding: '120px 24px', scrollMarginTop: 'calc(4rem + env(safe-area-inset-top))' }} className="sm:px-14 border-t border-[rgba(27,42,74,0.08)]">
         <div className="max-w-5xl mx-auto grid grid-cols-1 lg:grid-cols-2 gap-16 items-center">
           <Reveal>
-            <p style={{ ...serif, fontSize: 15, fontWeight: 600, color: 'var(--primary-ink)', marginBottom: 18 }}>{t('landing.act1.eyebrow')}</p>
+            <p style={{ ...serif, fontSize: 15, fontWeight: 600, color: 'var(--primary-ink)', marginBottom: 18 }}>{t('landing.story.start.eyebrow')}</p>
             <h2 style={{ ...serif, fontSize: 'clamp(30px, 3.6vw, 46px)', fontWeight: 600, lineHeight: 1.12, marginBottom: 20 }}>
-              {t('landing.act1.title')}
+              {t('landing.story.start.title')}
             </h2>
-            <p style={{ fontSize: 16, lineHeight: 1.75, color: '#C9CFDD', maxWidth: 440 }}>
-              {t('landing.act1.body')}
+            <p style={{ fontSize: 16, lineHeight: 1.75, color: '#4A4636', maxWidth: 440 }}>
+              {t('landing.story.start.body')}
             </p>
           </Reveal>
           <Reveal className="flex justify-center">
-            <ArcArt />
+            <ArcArt variant="start" />
           </Reveal>
         </div>
       </section>
 
-      {/* Akt II — Features */}
-      <section id="akt2" className="max-w-6xl mx-auto px-6 sm:px-8 py-24 sm:py-32" style={{ scrollMarginTop: 'calc(4rem + env(safe-area-inset-top))' }}>
-        <Reveal className="text-center mb-16">
-          <p style={{ ...serif, fontSize: 15, fontWeight: 600, color: 'var(--primary-ink)', marginBottom: 18 }}>{t('landing.act2.eyebrow')}</p>
-          <h2 style={{ ...serif, fontSize: 'clamp(30px, 3.6vw, 46px)', fontWeight: 600, lineHeight: 1.12 }}>{t('landing.features.title')}</h2>
+      {/* Akt II — Tiefpunkt: man kommt nicht mehr mit */}
+      <section id="tiefpunkt" style={{ background: '#1B2A4A', color: '#FBF9F4', padding: '120px 24px', scrollMarginTop: 'calc(4rem + env(safe-area-inset-top))' }} className="sm:px-14">
+        <div className="max-w-5xl mx-auto grid grid-cols-1 lg:grid-cols-2 gap-16 items-center">
+          <Reveal className="flex justify-center order-2 lg:order-1">
+            <ArcArt variant="fall" />
+          </Reveal>
+          <Reveal className="order-1 lg:order-2">
+            <p style={{ ...serif, fontSize: 15, fontWeight: 600, color: 'var(--primary)', marginBottom: 18 }}>{t('landing.story.low.eyebrow')}</p>
+            <h2 style={{ ...serif, fontSize: 'clamp(30px, 3.6vw, 46px)', fontWeight: 600, lineHeight: 1.12, marginBottom: 20 }}>
+              {t('landing.story.low.title')}
+            </h2>
+            <p style={{ fontSize: 16, lineHeight: 1.75, color: '#C9CFDD', maxWidth: 440 }}>
+              {t('landing.story.low.body')}
+            </p>
+          </Reveal>
+        </div>
+      </section>
+
+      {/* Akt III — Wendepunkt: man findet StudeArc */}
+      <section id="funktionen" className="max-w-6xl mx-auto px-6 sm:px-8 py-24 sm:py-32" style={{ scrollMarginTop: 'calc(4rem + env(safe-area-inset-top))' }}>
+        <Reveal className="text-center mb-16 max-w-2xl mx-auto">
+          <p style={{ ...serif, fontSize: 15, fontWeight: 600, color: 'var(--primary-ink)', marginBottom: 18 }}>{t('landing.story.turn.eyebrow')}</p>
+          <h2 style={{ ...serif, fontSize: 'clamp(30px, 3.6vw, 46px)', fontWeight: 600, lineHeight: 1.12, marginBottom: 16 }}>{t('landing.story.turn.title')}</h2>
+          <p style={{ fontSize: 16, lineHeight: 1.75, color: '#4A4636' }}>{t('landing.story.turn.lead')}</p>
         </Reveal>
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
           {features.map((f, i) => {
@@ -213,20 +240,32 @@ export const LandingPage: React.FC<LandingPageProps> = ({ onAuthClick, onLegalCl
         </div>
       </section>
 
-      {/* Akt III — Aufstieg */}
-      <section id="akt3" style={{ background: '#EDE8DE', padding: '120px 24px', scrollMarginTop: 'calc(4rem + env(safe-area-inset-top))' }} className="sm:px-14">
+      {/* Akt IV — Aufstieg: bestehen, Semester für Semester bis zum Abschluss */}
+      <section id="aufstieg" style={{ background: '#EDE8DE', padding: '120px 24px', scrollMarginTop: 'calc(4rem + env(safe-area-inset-top))' }} className="sm:px-14">
         <div className="max-w-5xl mx-auto grid grid-cols-1 lg:grid-cols-2 gap-16 items-center">
           <Reveal className="flex justify-center order-2 lg:order-1">
-            <ArcArt flip />
+            <ArcArt variant="rise" />
           </Reveal>
           <Reveal className="order-1 lg:order-2">
-            <p style={{ ...serif, fontSize: 15, fontWeight: 600, color: 'var(--primary-ink)', marginBottom: 18 }}>{t('landing.act3.eyebrow')}</p>
+            <p style={{ ...serif, fontSize: 15, fontWeight: 600, color: 'var(--primary-ink)', marginBottom: 18 }}>{t('landing.story.rise.eyebrow')}</p>
             <h2 style={{ ...serif, fontSize: 'clamp(30px, 3.6vw, 46px)', fontWeight: 600, lineHeight: 1.12, marginBottom: 20 }}>
-              {t('landing.act3.title')}
+              {t('landing.story.rise.title')}
             </h2>
             <p style={{ fontSize: 16, lineHeight: 1.75, color: '#4A4636', maxWidth: 440 }}>
-              {t('landing.act3.body')}
+              {t('landing.story.rise.body')}
             </p>
+            {/* Meilensteine: die Etappen des Aufstiegs, gleiche Formsprache wie die Kurve */}
+            <ol className="mt-8 flex flex-wrap items-center gap-x-3 gap-y-2" style={{ color: '#1B2A4A' }}>
+              {(['landing.story.rise.m1', 'landing.story.rise.m2', 'landing.story.rise.m3'] as const).map((key, i) => (
+                <li key={key} className="flex items-center gap-3">
+                  <span className="flex items-center gap-2 text-[14px] font-semibold">
+                    <span className="w-2.5 h-2.5 rounded-full" style={{ background: i === 2 ? 'var(--primary)' : 'transparent', border: '2px solid var(--primary)' }} aria-hidden="true" />
+                    {t(key)}
+                  </span>
+                  {i < 2 && <span aria-hidden="true" style={{ color: 'var(--primary-ink)' }}>→</span>}
+                </li>
+              ))}
+            </ol>
           </Reveal>
         </div>
       </section>
