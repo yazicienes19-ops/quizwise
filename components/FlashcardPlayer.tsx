@@ -6,9 +6,10 @@ import { createPortal } from 'react-dom';
 import { Flashcard } from '../types';
 import { reviewCard, migrateLegacyCard, ReviewQuality, QUALITY_MAP } from '../services/spacedRepetition';
 import { useTranslation } from '../i18n/I18nProvider';
-import { ArrowLeftRight, Undo2, PauseCircle, CalendarClock } from 'lucide-react';
+import { ArrowLeftRight, Undo2, PauseCircle, CalendarClock, Keyboard } from 'lucide-react';
 import { getCardDirection, setCardDirection, isReversed, CARD_DIRECTIONS, type CardDirection } from '../services/cardDirection';
 import { CardImage } from './CardImage';
+import { compareAnswer } from '../services/answerCompare';
 
 type Difficulty = 'again' | 'hard' | 'good' | 'easy';
 
@@ -43,6 +44,8 @@ const backSize = (text: string) =>
   : text.length > 120 ? 'text-lg sm:text-xl md:text-2xl'
   : 'text-xl sm:text-2xl md:text-4xl';
 
+const TYPE_KEY = 'studearc_type_answer';
+
 export const FlashcardPlayer: React.FC<FlashcardPlayerProps> = ({ cards, onReview, onClose, practiceMode = false, onPracticed, moreWaiting = 0, onContinue, onUndo, onSuspend, onBury }) => {
   const { t, tp } = useTranslation();
   const [remainingCards, setRemainingCards] = useState<Flashcard[]>(() => [...cards]);
@@ -56,8 +59,13 @@ export const FlashcardPlayer: React.FC<FlashcardPlayerProps> = ({ cards, onRevie
     remaining: Flashcard[]; completed: number; tally: Record<Difficulty, number>; card: Flashcard;
   }[]>([]);
   const canUndo = history.length > 0 && (practiceMode || !!onUndo);
+  // Antwort eintippen (Anki: "type-in answer"), Wahl pro Gerät gemerkt
+  const [typeMode, setTypeMode] = useState(() => { try { return localStorage.getItem(TYPE_KEY) === '1'; } catch { return false; } });
+  const [typed, setTyped] = useState('');
+  const toggleTypeMode = () => setTypeMode(v => { try { localStorage.setItem(TYPE_KEY, v ? '0' : '1'); } catch { /* gesperrt */ } return !v; });
 
   const currentCard = remainingCards[0];
+  useEffect(() => { setTyped(''); }, [currentCard?.id, completed]);
   const canContinue = moreWaiting > 0 && !!onContinue;
 
   const handleDifficulty = useCallback((diff: Difficulty) => {
@@ -119,6 +127,7 @@ export const FlashcardPlayer: React.FC<FlashcardPlayerProps> = ({ cards, onRevie
   // Keyboard Support
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
+      if ((e.target as HTMLElement | null)?.tagName === 'INPUT' || (e.target as HTMLElement | null)?.tagName === 'TEXTAREA') return;
       // Rückgängig: Z oder Cmd/Ctrl+Z
       if (e.key.toLowerCase() === 'z' && !e.altKey && !e.repeat && !e.shiftKey) {
         if (canUndo) { e.preventDefault(); handleUndo(); }
@@ -243,6 +252,9 @@ export const FlashcardPlayer: React.FC<FlashcardPlayerProps> = ({ cards, onRevie
   const shownFrontImage = reversed ? currentCard.backImage : currentCard.frontImage;
   const shownBackImage = reversed ? currentCard.frontImage : currentCard.backImage;
   const longBack = shownBack.length > 160;
+  // Eintippen nur bei Karten mit Text-Antwort (nicht bei Lückentext oder reiner Bild-Antwort)
+  const typeActive = typeMode && !cloze && !!shownBack.trim();
+  const comparison = typeActive && showAnswer && typed.trim() ? compareAnswer(typed, shownBack) : null;
 
   return createPortal(
     <div className="fixed inset-0 z-[100] bg-[#f8fafc] dark:bg-[#020617] flex flex-col animate-in fade-in duration-300">
@@ -285,6 +297,15 @@ export const FlashcardPlayer: React.FC<FlashcardPlayerProps> = ({ cards, onRevie
               <PauseCircle className="w-4 h-4" aria-hidden="true" />
             </button>
           )}
+          <button
+            onClick={toggleTypeMode}
+            aria-pressed={typeMode}
+            aria-label={t('type.toggle')}
+            title={t('type.toggle')}
+            className={`p-2 rounded-lg transition-colors ${typeMode ? 'text-slate-900 dark:text-white bg-slate-100 dark:bg-slate-800' : 'text-slate-500 hover:text-slate-800 dark:hover:text-slate-200'}`}
+          >
+            <Keyboard className="w-4 h-4" aria-hidden="true" />
+          </button>
           {canUndo && (
             <button
               onClick={handleUndo}
@@ -327,12 +348,44 @@ export const FlashcardPlayer: React.FC<FlashcardPlayerProps> = ({ cards, onRevie
             <h2 className={`${frontSize(shownFront)} font-medium text-slate-900 dark:text-slate-100 leading-snug break-words whitespace-pre-line`}>
               {cloze ? <ClozeText text={currentCard.front} revealed={showAnswer} /> : shownFront}
             </h2>
+            {typeActive && !showAnswer && (
+              <input
+                autoFocus
+                value={typed}
+                onChange={e => setTyped(e.target.value)}
+                onKeyDown={e => { if (e.key === 'Enter') { e.preventDefault(); setShowAnswer(true); } }}
+                placeholder={t('type.placeholder')}
+                aria-label={t('type.placeholder')}
+                className="w-full max-w-xl mx-auto block px-4 py-3 rounded-2xl text-base bg-white dark:bg-slate-900 border-2 border-slate-200 dark:border-slate-700 focus:border-slate-400 outline-none text-slate-900 dark:text-white"
+              />
+            )}
           </div>
 
           {/* Back of Card (Shown after click) */}
           {showAnswer && !(cloze && !shownBack.trim() && !shownBackImage) && (
             <div className="space-y-8 md:space-y-16 animate-in fade-in zoom-in-95 duration-300 border-t border-slate-100 dark:border-slate-800 pt-8 md:pt-16 px-2 md:px-8">
               <div className={`${longBack ? 'text-left max-w-2xl mx-auto' : 'text-center'} space-y-6`}>
+                {comparison && (
+                  <div className="max-w-2xl mx-auto text-left rounded-2xl px-4 py-3 bg-slate-50 dark:bg-slate-800/60 space-y-2" aria-live="polite">
+                    <p className="text-xs font-semibold text-slate-500 dark:text-slate-400">
+                      {t('type.result', { n: Math.round(comparison.score * 100) })}
+                    </p>
+                    <p className="text-[15px] leading-relaxed">
+                      {comparison.expected.map((s, i) => (
+                        <span key={i} className={s.kind === 'ok'
+                          ? 'text-emerald-700 dark:text-emerald-300'
+                          : 'text-rose-700 dark:text-rose-300 underline decoration-2 underline-offset-4'}>
+                          {s.text}{' '}
+                        </span>
+                      ))}
+                    </p>
+                    {comparison.extra.length > 0 && (
+                      <p className="text-xs text-slate-500 dark:text-slate-400">
+                        {t('type.extra')} <span className="line-through">{comparison.extra.join(' ')}</span>
+                      </p>
+                    )}
+                  </div>
+                )}
                 {shownBackImage && <CardImage path={shownBackImage} alt={t('img.altBack')} />}
                 <p className={`${backSize(shownBack)} font-bold leading-relaxed break-words whitespace-pre-line`} style={{ color: 'var(--primary-ink)' }}>
                   {shownBack}
@@ -386,7 +439,8 @@ export const FlashcardPlayer: React.FC<FlashcardPlayerProps> = ({ cards, onRevie
                 <button
                   key={btn.id}
                   onClick={() => handleDifficulty(btn.id)}
-                  className="group flex flex-col items-center gap-2"
+                  className={`group flex flex-col items-center gap-2 rounded-2xl ${comparison?.suggestion === btn.id ? 'ring-2 ring-offset-4 ring-slate-400 dark:ring-offset-slate-900' : ''}`}
+                  aria-describedby={comparison?.suggestion === btn.id ? 'type-suggestion' : undefined}
                 >
                   <span className="text-xs md:text-[11px] font-semibold text-slate-400 group-hover:text-slate-900 dark:group-hover:text-white transition-colors">{getIntervalLabel(btn.id, currentCard)}</span>
                   <div className={`w-full ${btn.color} text-white py-4 md:py-5 rounded-xl md:rounded-2xl font-semibold text-xs md:text-[11px] shadow-lg hover:brightness-110 active:scale-95 transition-all`}>
