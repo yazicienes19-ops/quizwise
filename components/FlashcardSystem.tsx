@@ -34,8 +34,10 @@ import { buildFigureCards, canUseFigures } from '../services/figureCardBuilder';
 import { getCardLimits, setCardLimits, remainingToday, todayUsage, NEW_LIMIT_OPTIONS, REVIEW_LIMIT_OPTIONS, UNLIMITED, type CardLimits } from '../services/cardLimits';
 import { OcclusionEditorModal } from './OcclusionEditorModal';
 import { buildOcclusionCards, cardImagePaths } from '../services/occlusion';
-import { makeEntry, logReview, undoLastReview, ratingFor, type ReviewEntry } from '../services/reviewLog';
+import { makeEntry, logReview, undoLastReview, ratingFor, loadReviews, type ReviewEntry } from '../services/reviewLog';
 import { ReviewStatsPanel } from './ReviewStatsPanel';
+import { getFsrsParams, saveFsrsParams, personalize, MIN_PAIRS, RETENTION_OPTIONS } from '../services/fsrsPersonal';
+import type { FsrsParams } from '../services/spacedRepetition';
 
 interface FlashcardSystemProps {
   availableDocuments: ProcessedDocument[];
@@ -131,6 +133,24 @@ export const FlashcardSystem: React.FC<FlashcardSystemProps> = ({
   const [showLimits, setShowLimits] = useState(false);
   const updateLimits = (l: CardLimits) => { setLimits(l); setCardLimits(l, userId); };
   const limitUsage = useMemo(() => todayUsage(decks), [decks]);
+  // FSRS an mich anpassen (services/fsrsPersonal.ts)
+  const [fsrsParams, setFsrsParamsState] = useState<FsrsParams>(getFsrsParams);
+  const [fsrsBusy, setFsrsBusy] = useState(false);
+  const [fsrsMsg, setFsrsMsg] = useState<string | null>(null);
+  const updateFsrs = (p: FsrsParams) => { setFsrsParamsState(p); saveFsrsParams(p, userId); setFsrsMsg(null); };
+  const runPersonalize = async () => {
+    setFsrsBusy(true);
+    try {
+      const r = personalize(await loadReviews());
+      if (!r.ok) { setFsrsMsg(t('fsrs.tooFew', { n: r.pairsUsed, min: MIN_PAIRS })); return; }
+      updateFsrs({ ...fsrsParams, initialStability: r.initialStability });
+      setFsrsMsg(t('fsrs.done', { n: r.pairsUsed, a: r.initialStability[0], h: r.initialStability[1], g: r.initialStability[2], e: r.initialStability[3] }));
+    } catch {
+      setFsrsMsg(t('fsrs.failed'));
+    } finally {
+      setFsrsBusy(false);
+    }
+  };
   const [manualDeckTitle, setManualDeckTitle] = useState('');
 
   // null = closed, 'new' = add mode, Flashcard = edit mode
@@ -1135,6 +1155,31 @@ export const FlashcardSystem: React.FC<FlashcardSystemProps> = ({
                   </select>
                 </label>
                 <p className="text-xs text-slate-500 dark:text-slate-400 flex-1 min-w-[200px]">{t('limit.hint')}</p>
+              </div>
+              <div className="mt-3 flex flex-wrap items-end gap-4 px-4 py-3 rounded-2xl bg-slate-50 dark:bg-slate-800/60">
+                <label className="flex flex-col gap-1 text-xs text-slate-500 dark:text-slate-400">
+                  {t('fsrs.retention')}
+                  <select value={fsrsParams.retention ?? 0.9} onChange={e => updateFsrs({ ...fsrsParams, retention: Number(e.target.value) })}
+                    className="px-3 py-2 rounded-xl bg-white dark:bg-slate-900 text-[13px] font-semibold text-slate-800 dark:text-slate-100 border border-slate-200 dark:border-slate-700">
+                    {RETENTION_OPTIONS.map(r => <option key={r} value={r}>{Math.round(r * 100)} %</option>)}
+                  </select>
+                </label>
+                <div className="flex flex-col gap-1">
+                  <button type="button" onClick={runPersonalize} disabled={fsrsBusy}
+                    className="px-4 py-2 rounded-xl text-[13px] font-semibold bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 text-slate-800 dark:text-slate-100 disabled:opacity-50">
+                    {fsrsBusy ? t('fsrs.busy') : t('fsrs.personalize')}
+                  </button>
+                  {fsrsParams.initialStability && (
+                    <button type="button" onClick={() => updateFsrs({ retention: fsrsParams.retention })} className="text-xs text-slate-500 hover:text-slate-800 dark:hover:text-slate-200 text-left">
+                      {t('fsrs.reset')}
+                    </button>
+                  )}
+                </div>
+                <p className="text-xs text-slate-500 dark:text-slate-400 flex-1 min-w-[220px]">
+                  {fsrsMsg ?? (fsrsParams.initialStability
+                    ? t('fsrs.active', { a: fsrsParams.initialStability[0], h: fsrsParams.initialStability[1], g: fsrsParams.initialStability[2], e: fsrsParams.initialStability[3] })
+                    : t('fsrs.hint'))}
+                </p>
               </div>
             </div>
           )}

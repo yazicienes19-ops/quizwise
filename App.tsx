@@ -48,6 +48,10 @@ import { GlobalSearch } from './components/GlobalSearch';
 import { isCardDue } from './services/spacedRepetition';
 import { setCardLimits, CARD_LIMITS_KEY } from './services/cardLimits';
 import { setReviewLogUser } from './services/reviewLog';
+import { applyStoredFsrsParams, saveFsrsParams, FSRS_PARAMS_KEY } from './services/fsrsPersonal';
+
+// Persönliche FSRS-Werte vor der ersten Bewertung anwenden (services/fsrsPersonal.ts).
+applyStoredFsrsParams();
 
 const LAST_TAB_KEY = 'studearc_last_tab';
 // READER bewusst ausgeschlossen — hängt an einem konkreten pendingActionDoc,
@@ -207,6 +211,10 @@ const App: React.FC = () => {
       // Tageslimits der Karteikarten ebenso übernehmen.
       if (cloud.preferences.card_limits && localStorage.getItem(CARD_LIMITS_KEY) === null) {
         setCardLimits(cloud.preferences.card_limits);
+      }
+      // Persönliche FSRS-Werte (Behaltensrate, Startwerte) ebenso übernehmen.
+      if (cloud.preferences.fsrs_params && localStorage.getItem(FSRS_PARAMS_KEY) === null) {
+        saveFsrsParams(cloud.preferences.fsrs_params);
       }
       if (cloud.saved) {
         const saved = cloud.saved;

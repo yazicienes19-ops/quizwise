@@ -68,6 +68,8 @@ export interface CloudPreferences {
   daily_goal_minutes?: number;
   /** Tageslimits der Karteikarten (services/cardLimits.ts). */
   card_limits?: { newPerDay: number; reviewsPerDay: number };
+  /** Persönliche FSRS-Werte (services/fsrsPersonal.ts). */
+  fsrs_params?: import('./spacedRepetition').FsrsParams;
   language?: string;
   notification_settings?: Record<string, any>;
   /** Volles Onboarding-Ergebnis für geräteübergreifende Personalisierung — additiv

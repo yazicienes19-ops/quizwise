@@ -78,10 +78,21 @@ export const FSRS_WEIGHTS = [
   0.40255, 1.18385, 3.173, 15.69105, 7.1949, 0.5345, 1.4604, 0.0046, 1.54575, 0.1192,
   1.01925, 1.9395, 0.11, 0.29605, 2.2698, 0.2315, 2.9898, 0.51655, 0.6621,
 ] as const;
-const W = FSRS_WEIGHTS;
-const DECAY = -0.5;
-const FACTOR = 19 / 81; // so gewählt, dass R(S, S) = 90 %
+// Persönliche Werte (services/fsrsPersonal.ts): eigene Startstabilitäten w0 bis w3
+// aus dem Lernverlauf und die gewünschte Behaltensrate. Ohne Anpassung Standard.
+let W: readonly number[] = FSRS_WEIGHTS;
+export const DECAY = -0.5;
+export const FACTOR = 19 / 81; // so gewählt, dass R(S, S) = 90 %
 export const REQUEST_RETENTION = 0.9;
+let requestRetention = REQUEST_RETENTION;
+
+export interface FsrsParams { initialStability?: [number, number, number, number]; retention?: number }
+export const setFsrsParams = (p: FsrsParams | null): void => {
+  const w: number[] = [...FSRS_WEIGHTS];
+  if (p?.initialStability) p.initialStability.forEach((s, i) => { if (Number.isFinite(s) && s > 0) w[i] = s; });
+  W = w;
+  requestRetention = p?.retention && p.retention >= 0.7 && p.retention <= 0.99 ? p.retention : REQUEST_RETENTION;
+};
 const MAX_INTERVAL_DAYS = 36500;
 
 type Grade = 1 | 2 | 3 | 4; // Nochmal, Schwer, Gut, Leicht
@@ -115,7 +126,7 @@ const forgetStability = (d: number, s: number, r: number): number =>
 
 /** Intervall in ganzen Tagen für die Ziel-Behaltensquote (bei 90 % = Stabilität). */
 export const intervalForStability = (s: number): number =>
-  Math.min(MAX_INTERVAL_DAYS, Math.max(1, Math.round(s / FACTOR * (Math.pow(REQUEST_RETENTION, 1 / DECAY) - 1))));
+  Math.min(MAX_INTERVAL_DAYS, Math.max(1, Math.round(s / FACTOR * (Math.pow(requestRetention, 1 / DECAY) - 1))));
 
 /** SM-2-Stand ohne FSRS-Werte übernehmen: Intervall ≈ Stabilität, Ease → Schwierigkeit. */
 const fromSm2 = (state: SrsState): { s: number; d: number } => ({
