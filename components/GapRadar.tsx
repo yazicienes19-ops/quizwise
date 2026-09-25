@@ -473,31 +473,6 @@ export const GapRadar: React.FC<GapRadarProps> = ({ metrics, onNavigate, onActio
     return null;
   }, [selectedMode, filteredExam, filteredMetrics, filteredQuiz, filteredRecall, realTopics]);
 
-  // ── Today learn: priority order ──────────────────────────────────────────────
-  const todayLearn = useMemo(() => {
-    const items: { topic: string; mode: string; score: number }[] = [];
-    const now = Date.now();
-
-    if (selectedMode === 'all' || selectedMode === 'exam') {
-      filteredExam.filter(r => r.score < 70).slice(0, 2).forEach(r =>
-        items.push({ topic: r.docName, mode: getModeLabel('exam'), score: r.score })
-      );
-    }
-    if (selectedMode === 'all' || selectedMode === 'anki') {
-      [...filteredMetrics]
-        .filter(m => m.confidence < 70 || now - m.lastReviewed > 3 * 86400000)
-        .sort((a, b) => a.confidence - b.confidence)
-        .slice(0, 3)
-        .forEach(m => items.push({ topic: m.topic, mode: getModeLabel('anki'), score: m.confidence }));
-    }
-    if (selectedMode === 'all' || selectedMode === 'feynman') {
-      filteredRecall.filter(r => r.score < 70).slice(0, 1).forEach(r =>
-        items.push({ topic: r.topic || r.docName, mode: getModeLabel('feynman'), score: r.score })
-      );
-    }
-
-    return items.slice(0, 3);
-  }, [selectedMode, filteredExam, filteredMetrics, filteredRecall]);
 
   // ── Aggregated weak topics ────────────────────────────────────────────────────
   const weakTopics = useMemo(() => {
@@ -670,8 +645,9 @@ export const GapRadar: React.FC<GapRadarProps> = ({ metrics, onNavigate, onActio
       {/* ── Filter Bar ── */}
       <div className="flex flex-wrap items-center gap-3">
         {/* Mode pills */}
+        {/* flex-wrap: auf dem Handy lief die Leiste rechts aus dem Bild. */}
         <div
-          className="flex gap-1 p-1 rounded-xl"
+          className="flex flex-wrap gap-1 p-1 rounded-xl max-w-full"
           style={{ background: 'var(--bg-sidebar)', border: '1px solid var(--border-color)' }}
         >
           {MODE_ORDER.map(m => (
@@ -723,7 +699,7 @@ export const GapRadar: React.FC<GapRadarProps> = ({ metrics, onNavigate, onActio
       </div>
 
       {/* ── Bento Grid ── */}
-      <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 lg:gap-6">
+      <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 lg:gap-6">
 
         {/* Kachel 1: Gesamtfortschritt */}
         <div
@@ -742,7 +718,7 @@ export const GapRadar: React.FC<GapRadarProps> = ({ metrics, onNavigate, onActio
                   <circle cx="50%" cy="50%" r="38%" stroke="currentColor" strokeWidth="8" fill="transparent"
                     strokeDasharray={251.2}
                     strokeDashoffset={251.2 - (251.2 * overallScore) / 100}
-                    style={{ stroke: scoreColor(overallScore), transition: 'stroke-dashoffset 1s ease' }}
+                    style={{ stroke: 'var(--primary)', transition: 'stroke-dashoffset 1s ease' }}
                   />
                 </svg>
                 <div className="absolute inset-0 flex items-center justify-center font-semibold text-xl dark:text-white"
@@ -754,8 +730,8 @@ export const GapRadar: React.FC<GapRadarProps> = ({ metrics, onNavigate, onActio
                 {confidenceLabel(overallScore)}
               </p>
               <div className="mt-2 flex justify-center">
-                {trend === 'up'     && <span className="text-[11px] font-semibold text-emerald-500">{t('gr.improvement')}</span>}
-                {trend === 'down'   && <span className="text-[11px] font-semibold text-rose-500">{t('gr.decline')}</span>}
+                {trend === 'up'     && <span className="text-xs font-semibold text-emerald-700 dark:text-emerald-400">{t('gr.improvement')}</span>}
+                {trend === 'down'   && <span className="text-xs font-semibold text-rose-700 dark:text-rose-400">{t('gr.decline')}</span>}
                 {trend === 'stable' && <span className="text-[11px] font-semibold" style={{ color: 'var(--mute)' }}>{t('gr.stable')}</span>}
               </div>
             </>
@@ -766,16 +742,16 @@ export const GapRadar: React.FC<GapRadarProps> = ({ metrics, onNavigate, onActio
 
         {/* Kachel 2: Größte Lücke */}
         <div
-          className="p-6 lg:p-8 rounded-[24px] lg:rounded-[24px] border border-l-4 border-l-rose-500 border-slate-200 dark:border-slate-800 shadow-3d-raised"
+          className="p-6 lg:p-8 rounded-[24px] border border-slate-200 dark:border-slate-800 shadow-3d-raised"
           style={{ background: 'var(--card)' }}
         >
-          <h3 className="text-[11px] font-semibold uppercase tracking-[0.08em] text-rose-500 mb-3">{t('gr.biggestGap')}</h3>
+          <h3 className="text-[11px] font-semibold uppercase tracking-[0.08em] mb-3" style={{ color: 'var(--mute)' }}>{t('gr.biggestGap')}</h3>
           {biggestGap ? (
             <>
               <p className="text-sm lg:text-lg font-semibold leading-tight mb-1" style={{ color: 'var(--ink)' }}>
                 {biggestGap.topic}
               </p>
-              <p className="text-[11px] font-bold uppercase" style={{ color: 'var(--mute)' }}>
+              <p className="text-xs" style={{ color: 'var(--text-secondary)' }}>
                 {t('gr.scoreLabel', { n: biggestGap.score })}
               </p>
               <button
@@ -783,51 +759,20 @@ export const GapRadar: React.FC<GapRadarProps> = ({ metrics, onNavigate, onActio
                   const tabMap = { exam: ActiveTab.EXAM, anki: ActiveTab.CARDS, quiz: ActiveTab.QUIZ };
                   onNavigate(tabMap[biggestGap.action]);
                 }}
-                className="mt-4 w-full py-2.5 rounded-xl text-[13px] font-semibold transition-all hover:opacity-80"
-                style={{ background: 'color-mix(in srgb, #f43f5e 12%, var(--bg-sidebar))', color: '#f43f5e', border: '1px solid color-mix(in srgb, #f43f5e 25%, transparent)' }}
+                className="mt-4 px-4 py-2.5 rounded-xl text-[13px] font-semibold transition-all hover:opacity-90"
+                style={{ background: 'var(--primary)', color: 'var(--primary-text)' }}
               >
                 {biggestGap.action === 'exam' ? t('gr.startExam') :
                  biggestGap.action === 'anki' ? t('gr.learnAnki') : t('gr.startQuiz')}
               </button>
             </>
           ) : (
-            <p className="text-[11px] font-bold mt-3 text-emerald-500">{t('gr.noCriticalGaps')}</p>
+            <p className="text-[13px] font-semibold mt-3 text-emerald-700 dark:text-emerald-400">{t('gr.noCriticalGaps')}</p>
           )}
         </div>
 
-        {/* Kachel 3: Heute lernen */}
-        <div
-          className="p-6 lg:p-8 rounded-[24px] lg:rounded-[24px] border border-slate-200 dark:border-slate-800 shadow-3d-raised"
-          style={{ background: 'var(--card)' }}
-        >
-          <h3 className="text-[11px] font-semibold uppercase tracking-[0.08em] mb-3" style={{ color: 'var(--primary-ink)' }}>
-            {t('gr.learnToday')}
-          </h3>
-          <div className="space-y-2">
-            {todayLearn.length > 0 ? (
-              todayLearn.map((item, i) => (
-                <div key={i} className="flex justify-between items-center">
-                  <div className="min-w-0">
-                    <p className="text-[11px] font-semibold break-words pr-1" style={{ color: 'var(--ink)' }}>
-                      {item.topic}
-                    </p>
-                    <p className="text-xs font-bold" style={{ color: 'var(--mute)' }}>
-                      {item.mode}
-                    </p>
-                  </div>
-                  <span className="text-xs font-semibold shrink-0" style={{ color: scoreColor(item.score) }}>
-                    {item.score}%
-                  </span>
-                </div>
-              ))
-            ) : (
-              <p className="text-[11px] font-bold text-emerald-500">{t('gr.allGreen')}</p>
-            )}
-          </div>
-        </div>
-
-        {/* „Nächste Session"-Kachel entfernt — die „Heute solltest du"-Karte
-            im LearningCoach beantwortet dieselbe Frage (eine Quelle statt drei). */}
+        {/* „Heute lernen" und „Nächste Session" entfernt: was heute zu tun ist,
+            steht nur noch auf Heute (Design-Tour 25.09.2026). */}
       </div>
 
       {/* ── „Alle Fächer": Hinweis statt Verlauf/Schwachstellen/Tiefenanalyse ── */}

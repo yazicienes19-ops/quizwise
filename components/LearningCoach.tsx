@@ -8,12 +8,11 @@ import { getLocale } from '../i18n';
 import { GapRadar } from './GapRadar';
 import { CountUp } from './CountUp';
 import { generateCoachInsights, WrongAnswerContext } from '../services/geminiService';
-import { buildLearningProfile, buildRealTopicMastery, buildDailyPlan, buildMethodCommentary, buildContextMotivation, getCategoryLabel, getMethodLabel } from '../services/learningProfileService';
+import { buildLearningProfile, buildRealTopicMastery, buildMethodCommentary, buildContextMotivation, getCategoryLabel, getMethodLabel } from '../services/learningProfileService';
 import { buildLearningScore } from '../services/learningScoreService';
 import { buildExamForecast } from '../services/examForecastService';
-import type { DailyPlanStep } from '../services/learningProfileService';
 import { useModuleScopedActivity } from '../hooks/useModuleScopedActivity';
-import { ChevronLeft, ChevronDown } from 'lucide-react';
+import { ChevronLeft, ChevronDown, ChevronRight } from 'lucide-react';
 import { nextExamForModule } from '../services/examTermService';
 import { getStreak } from '../services/streakService';
 import { getDismissedTopics, dismissTopic } from '../services/dismissedTopicsService';
@@ -125,16 +124,6 @@ export const LearningCoach: React.FC<LearningCoachProps> = ({ metrics, decks, on
   );
   const displayTopics = (realTopics.length > 0 ? realTopics : profile.topicMastery)
     .filter(dt => !dismissedTopics.has(dt.topic));
-
-  const dailyPlan = useMemo(
-    () => buildDailyPlan({ flowResult, realTopics, decks, profile }),
-    [flowResult, realTopics, decks, profile],
-  );
-
-  const runPlanStep = (step: DailyPlanStep) => {
-    if (step.target.kind === 'action' && onAction) onAction(step.target.topic, step.target.mode);
-    else onNavigate(step.target.kind === 'tab' ? step.target.tab : ActiveTab.QUIZ);
-  };
 
   const wrongAnswersCtx = useMemo((): WrongAnswerContext[] =>
     quizResults.slice(0, 5).flatMap(result =>
@@ -288,7 +277,7 @@ export const LearningCoach: React.FC<LearningCoachProps> = ({ metrics, decks, on
     <div className="space-y-10 lg:space-y-12 animate-in fade-in duration-700 pb-20">
 
       {/* ── Header ── */}
-      <div className="text-center space-y-3">
+      <div className="space-y-3">
         <PageHeader eyebrow={t('nav.radar')} title={t('page.progress.title')} subtitle={t('lc.subtitle')} />
         {activeModule && onModuleChange && collections.length > 0 && (
           <button
@@ -309,54 +298,20 @@ export const LearningCoach: React.FC<LearningCoachProps> = ({ metrics, decks, on
         )}
       </div>
 
-      {/* ── Heute solltest du — priorisierte nächste Schritte ── */}
-      {dailyPlan.length > 0 && (
-        <div
-          className="p-6 lg:p-8 rounded-[24px] lg:rounded-[24px] border shadow-3d-raised space-y-4"
-          style={{ background: 'var(--card)', borderColor: 'color-mix(in srgb, var(--primary) 25%, var(--border-color))' }}
-        >
-          <h3 className="text-[11px] font-semibold uppercase tracking-[0.08em]" style={{ color: 'var(--primary-ink)' }}>
-            {t('lc.todayYouShould')}
-          </h3>
-          <div className="space-y-3">
-            {dailyPlan.map((step, i) => (
-              <button
-                key={i}
-                onClick={() => runPlanStep(step)}
-                className="w-full flex items-start gap-3 text-left transition-all hover:opacity-75"
-              >
-                <span
-                  className="w-6 h-6 rounded-lg flex items-center justify-center text-[11px] font-semibold shrink-0 mt-0.5"
-                  style={{ background: 'color-mix(in srgb, var(--primary) 12%, transparent)', color: 'var(--primary-ink)' }}
-                >
-                  {i + 1}
-                </span>
-                <span className="min-w-0">
-                  <span className="text-sm font-semibold flex items-center gap-2 flex-wrap" style={{ color: 'var(--ink)' }}>
-                    {step.title}
-                    <span
-                      className="px-2 py-0.5 rounded-full text-[13px] font-semibold shrink-0"
-                      style={{ background: 'color-mix(in srgb, var(--primary) 8%, transparent)', color: 'var(--primary-ink)' }}
-                    >
-                      {t('lc.minShort', { n: step.minutes })}
-                    </span>
-                  </span>
-                  {step.why && (
-                    <span className="block text-[11px] font-medium mt-0.5" style={{ color: 'var(--mute)' }}>{step.why}</span>
-                  )}
-                </span>
-              </button>
-            ))}
-          </div>
-          <button
-            onClick={() => runPlanStep(dailyPlan[0])}
-            className="px-8 py-4 rounded-2xl font-semibold text-[13px] shadow-xl hover:scale-105 transition-all"
-            style={{ background: 'var(--primary)', color: 'var(--primary-text)' }}
-          >
-            {t('lc.startNow')}
-          </button>
-        </div>
-      )}
+      {/* ── Verweis statt eigener Tagesliste: Heute ist der eine Ort für
+        Empfehlungen. Vorher standen hier drei weitere Listen, die teils etwas
+        anderes empfahlen als Heute (Design-Tour 25.09.2026). ── */}
+      <button
+        onClick={() => onNavigate(ActiveTab.DASHBOARD)}
+        className="w-full flex items-center justify-between gap-4 px-5 py-4 rounded-[20px] border text-left transition-colors hover:border-[color:var(--primary)]"
+        style={{ background: 'var(--card)', borderColor: 'var(--border-color)' }}
+      >
+        <span className="min-w-0">
+          <span className="block text-sm font-semibold" style={{ color: 'var(--ink)' }}>{t('lc.todayLink')}</span>
+          <span className="block text-xs mt-0.5" style={{ color: 'var(--text-secondary)' }}>{t('lc.todayLinkHint')}</span>
+        </span>
+        <ChevronRight size={16} className="shrink-0" style={{ color: 'var(--primary-ink)' }} />
+      </button>
 
       {/* ── Langzeit-Entwicklung: bewusst vor Prognose und Schwächen, damit
         Fortschritt zuerst sichtbar ist (Audit 23.09.2026: Seite war eine rote Wand) ── */}
