@@ -21,7 +21,7 @@ import { buildPrintHtml } from '../services/printDeckService';
 import { ExportDeckModal } from './ExportDeckModal';
 import { EditCardModal } from './EditCardModal';
 import { DeckStatsModal } from './DeckStatsModal';
-import { MoreHorizontal, ListOrdered, HelpCircle, BarChart2, Pencil, Share2, Printer, Trash2 } from 'lucide-react';
+import { MoreHorizontal, ListOrdered, HelpCircle, BarChart2, Pencil, Share2, Printer, Trash2, SquareDashed } from 'lucide-react';
 import { PageHeader } from './PageHeader';
 import { confirmDialog } from '../services/confirmDialog';
 import { runUndoable } from '../services/undoable';
@@ -32,6 +32,8 @@ import type { CardImages } from './EditCardModal';
 import { deleteCardImage, isOwnImage } from '../services/cardImages';
 import { buildFigureCards, canUseFigures } from '../services/figureCardBuilder';
 import { getCardLimits, setCardLimits, remainingToday, todayUsage, NEW_LIMIT_OPTIONS, REVIEW_LIMIT_OPTIONS, UNLIMITED, type CardLimits } from '../services/cardLimits';
+import { OcclusionEditorModal } from './OcclusionEditorModal';
+import { buildOcclusionCards, cardImagePaths } from '../services/occlusion';
 
 interface FlashcardSystemProps {
   availableDocuments: ProcessedDocument[];
@@ -121,6 +123,7 @@ export const FlashcardSystem: React.FC<FlashcardSystemProps> = ({
   const [statsDeck, setStatsDeck] = useState<FlashcardDeck | null>(null);
   const [cardSearch, setCardSearch] = useState(initialCardQuery ?? '');
   const [tagFilter, setTagFilter] = useState<string | null>(null);
+  const [showOcclusion, setShowOcclusion] = useState(false);
   // Tageslimits (Anki-Standard 20 neue / 200 Wiederholungen)
   const [limits, setLimits] = useState<CardLimits>(getCardLimits);
   const [showLimits, setShowLimits] = useState(false);
@@ -295,9 +298,10 @@ export const FlashcardSystem: React.FC<FlashcardSystemProps> = ({
 
   /** Eigene Kartenbilder löschen, die in keinem verbleibenden Stapel mehr vorkommen. */
   const cleanupCardImages = (cards: Flashcard[]) => {
-    const used = new Set(decksRef.current.flatMap(d => d.cards.flatMap(c => [c.frontImage, c.backImage])));
-    cards.flatMap(c => [c.frontImage, c.backImage])
-      .filter((p): p is string => !!p && !used.has(p) && isOwnImage(p, userId))
+    // Verdeckte Bilder teilen sich einen Pfad: erst löschen, wenn keine Karte ihn mehr nutzt.
+    const used = new Set(decksRef.current.flatMap(d => d.cards.flatMap(cardImagePaths)));
+    [...new Set(cards.flatMap(cardImagePaths))]
+      .filter(p => !used.has(p) && isOwnImage(p, userId))
       .forEach(p => void deleteCardImage(p));
   };
 
@@ -722,6 +726,19 @@ export const FlashcardSystem: React.FC<FlashcardSystemProps> = ({
     return (
       <div className="max-w-4xl mx-auto space-y-8 animate-in slide-in-from-right-12 duration-700 py-6 lg:py-10">
 
+        {showOcclusion && userId && (
+          <OcclusionEditorModal
+            userId={userId}
+            onClose={() => setShowOcclusion(false)}
+            onCreate={({ image, masks, mode, header, back }) => {
+              const created = buildOcclusionCards(image, masks, mode, header, back, newId)
+                .map(c => ({ ...c, srs: createSrsState() }));
+              updateDeck(deck.id, d => ({ ...d, cards: [...created, ...d.cards] }));
+              toast.success(tp('occ.created', created.length));
+            }}
+          />
+        )}
+
         {/* Edit Card Modal */}
         {editingCard !== null && (
           <EditCardModal
@@ -780,6 +797,15 @@ export const FlashcardSystem: React.FC<FlashcardSystemProps> = ({
             <p className="text-xs font-semibold text-slate-400">{tp('fcs.cardsInDeck', deck.cards.length)}</p>
           </div>
           <div className="flex items-center gap-3 shrink-0">
+            {userId && (
+              <button
+                onClick={() => setShowOcclusion(true)}
+                className="flex items-center gap-2 px-4 py-2.5 rounded-xl text-[13px] font-semibold bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-200 hover:opacity-80 transition-all"
+              >
+                <SquareDashed className="w-3.5 h-3.5" aria-hidden="true" />
+                {t('occ.title')}
+              </button>
+            )}
             <button
               onClick={() => setEditingCard('new')}
               className="flex items-center gap-2 px-5 py-2.5 rounded-xl text-[13px] font-semibold shadow-sm hover:scale-[1.02] transition-all"
@@ -879,6 +905,12 @@ export const FlashcardSystem: React.FC<FlashcardSystemProps> = ({
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-2 flex-1 min-w-0">
                       <p className="text-sm font-bold dark:text-white md:border-r md:border-slate-100 md:dark:border-slate-800 md:pr-4 leading-snug break-words whitespace-pre-line line-clamp-4">{hasCloze(card.front) ? <ClozeText text={card.front} revealed /> : card.front}</p>
                       <p className="text-sm text-slate-400 dark:text-slate-500 leading-snug break-words whitespace-pre-line line-clamp-4">{card.back}</p>
+                      {card.occlusion && (
+                        <div className="md:col-span-2 flex items-center gap-2">
+                          <CardImage path={card.occlusion.image} alt="" className="h-12 w-16 object-cover rounded-md" />
+                          <span className="text-xs text-slate-500 dark:text-slate-400">{t('occ.cardLabel', { i: card.occlusion.index + 1, n: card.occlusion.masks.length })}</span>
+                        </div>
+                      )}
                       {(card.frontImage || card.backImage) && (
                         <div className="md:col-span-2 flex gap-2">
                           {[card.frontImage, card.backImage].filter(Boolean).map(p => (

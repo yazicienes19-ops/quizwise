@@ -10,7 +10,9 @@ import type { Flashcard, FlashcardDeck } from '../types';
  */
 
 const norm = (s: string): string => s.trim().toLowerCase().replace(/\s+/g, ' ');
-const cardKey = (c: Flashcard): string => `${norm(c.front)}\u0000${norm(c.back)}`;
+// Verdeckte Bilder: gleicher Text, aber andere Stelle; Bild und Stelle gehören zum Schlüssel.
+const cardKey = (c: Flashcard): string =>
+  `${norm(c.front)}\u0000${norm(c.back)}${c.occlusion ? `\u0000${c.occlusion.image}#${c.occlusion.index}` : ''}`;
 const progress = (c: Flashcard): number => c.srs?.repetitions ?? 0;
 
 /** Gruppen gleich benannter Stapel (mind. 2), Reihenfolge wie in der Liste. */

@@ -203,6 +203,8 @@ export interface Flashcard {
   buriedUntil?: number;
   /** Problemkarte (oft vergessen, Anki: "leech"). */
   leech?: boolean;
+  /** Bild verdecken (services/occlusion.ts): Bild, Rechtecke, gefragtes Rechteck. */
+  occlusion?: import('./services/occlusion').OcclusionData;
   /** Storage-Pfade im Bucket card-images (services/cardImages.ts). */
   frontImage?: string;
   backImage?: string;

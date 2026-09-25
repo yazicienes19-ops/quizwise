@@ -10,6 +10,7 @@ import { ArrowLeftRight, Undo2, PauseCircle, CalendarClock, Keyboard } from 'luc
 import { getCardDirection, setCardDirection, isReversed, CARD_DIRECTIONS, type CardDirection } from '../services/cardDirection';
 import { CardImage } from './CardImage';
 import { compareAnswer } from '../services/answerCompare';
+import { OcclusionImage } from './OcclusionImage';
 
 type Difficulty = 'again' | 'hard' | 'good' | 'easy';
 
@@ -246,7 +247,7 @@ export const FlashcardPlayer: React.FC<FlashcardPlayerProps> = ({ cards, onRevie
   // Lernrichtung (services/cardDirection.ts): nur die Anzeige wird getauscht.
   // Lückentext-Karten bleiben immer in Leserichtung: die Lücke ist die Frage.
   const cloze = hasCloze(currentCard.front);
-  const reversed = !cloze && isReversed(currentCard.id, direction);
+  const reversed = !cloze && !currentCard.occlusion && isReversed(currentCard.id, direction);
   const shownFront = reversed ? currentCard.back : currentCard.front;
   const shownBack = reversed ? currentCard.front : currentCard.back;
   const shownFrontImage = reversed ? currentCard.backImage : currentCard.frontImage;
@@ -344,6 +345,7 @@ export const FlashcardPlayer: React.FC<FlashcardPlayerProps> = ({ cards, onRevie
 
           {/* Front of Card */}
           <div key={`front-${currentCard.id}-${completed}`} className="text-center animate-in fade-in slide-in-from-top-4 duration-500 px-2 md:px-8 space-y-6">
+            {currentCard.occlusion && <OcclusionImage occlusion={currentCard.occlusion} revealed={showAnswer} alt={t('occ.alt')} />}
             {shownFrontImage && <CardImage path={shownFrontImage} alt={t('img.altFront')} />}
             <h2 className={`${frontSize(shownFront)} font-medium text-slate-900 dark:text-slate-100 leading-snug break-words whitespace-pre-line`}>
               {cloze ? <ClozeText text={currentCard.front} revealed={showAnswer} /> : shownFront}
@@ -362,7 +364,7 @@ export const FlashcardPlayer: React.FC<FlashcardPlayerProps> = ({ cards, onRevie
           </div>
 
           {/* Back of Card (Shown after click) */}
-          {showAnswer && !(cloze && !shownBack.trim() && !shownBackImage) && (
+          {showAnswer && !((cloze || currentCard.occlusion) && !shownBack.trim() && !shownBackImage) && (
             <div className="space-y-8 md:space-y-16 animate-in fade-in zoom-in-95 duration-300 border-t border-slate-100 dark:border-slate-800 pt-8 md:pt-16 px-2 md:px-8">
               <div className={`${longBack ? 'text-left max-w-2xl mx-auto' : 'text-center'} space-y-6`}>
                 {comparison && (
