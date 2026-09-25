@@ -9,6 +9,7 @@ import { generateFlashcardsFromDocument } from '../services/geminiService';
 import { nextExamForModule } from '../services/examTermService';
 import { createSrsState } from '../services/spacedRepetition';
 import { resolveErrorMessage } from '../services/errorMessages';
+import { GeneratedCardsEditor, splitDraft, type DraftCard } from './GeneratedCardsEditor';
 
 interface Props {
   collections: Collection[];
@@ -36,6 +37,8 @@ export const ModuleDeckModal: React.FC<Props> = ({ collections, documents, examT
   const [running, setRunning] = useState(false);
   const [progress, setProgress] = useState<{ doc: string; done: number; total: number; cards: number } | null>(null);
   const [result, setResult] = useState<{ cards: number; stopped: string | null } | null>(null);
+  /** Prüfschritt: erzeugte Karten vor dem Speichern bearbeiten (GeneratedCardsEditor). */
+  const [review, setReview] = useState<{ title: string; cards: DraftCard[]; stopped: string | null } | null>(null);
   const cancelRef = useRef(false);
 
   const col = collections.find(c => c.id === colId) ?? null;
@@ -77,10 +80,20 @@ export const ModuleDeckModal: React.FC<Props> = ({ collections, documents, examT
     }
     setProgress(null);
     setRunning(false);
-    if (cards.length) {
-      onCreate({ id: newId(), title: col.name, cards });
-    }
-    setResult({ cards: cards.length, stopped });
+    if (cards.length) setReview({ title: col.name, cards, stopped });
+    else setResult({ cards: 0, stopped });
+  };
+
+  const saveReview = () => {
+    if (!review) return;
+    const { keep } = splitDraft(review.cards);
+    const cards: Flashcard[] = keep.map(d => ({
+      id: d.id, front: d.front.trim(), back: d.back.trim(), ...(d.tags ? { tags: d.tags } : {}),
+      level: 0, nextReview: Date.now(), lastInterval: 0, srs: createSrsState(),
+    }));
+    if (cards.length) onCreate({ id: newId(), title: review.title.trim() || col?.name || '', cards });
+    setResult({ cards: cards.length, stopped: review.stopped });
+    setReview(null);
   };
 
   const levelBtn = (l: ModuleLevel) => (
@@ -93,17 +106,21 @@ export const ModuleDeckModal: React.FC<Props> = ({ collections, documents, examT
 
   return createPortal(
     <div className="fixed inset-0 bg-black/60 z-50 flex items-center justify-center p-4 animate-in fade-in duration-200" onClick={running ? undefined : onClose}>
-      <div {...dialogProps} className="bg-white dark:bg-slate-900 rounded-[24px] w-full max-w-xl shadow-3d-deep max-h-[92vh] overflow-y-auto" onClick={e => e.stopPropagation()}>
+      <div {...dialogProps} className={`bg-white dark:bg-slate-900 rounded-[24px] w-full ${review ? 'max-w-3xl' : 'max-w-xl'} shadow-3d-deep max-h-[92vh] overflow-y-auto`} onClick={e => e.stopPropagation()}>
         <div className="flex justify-between items-start gap-4 px-6 sm:px-8 py-5 border-b border-slate-100 dark:border-slate-800">
           <div>
             <h2 id={titleId} className="text-xl font-black dark:text-white">{t('mod.title')}</h2>
             <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5">{t('mod.subtitle')}</p>
           </div>
-          {!running && <ModalCloseButton onClick={onClose} label={t('common.close')} className="p-2 text-slate-400 hover:text-rose-500 transition-colors rounded-xl" />}
+          {review && <p className="sr-only">{t('rev.subtitle')}</p>}
+          {!running && !review && <ModalCloseButton onClick={onClose} label={t('common.close')} className="p-2 text-slate-400 hover:text-rose-500 transition-colors rounded-xl" />}
         </div>
 
         <div className="px-6 sm:px-8 py-5 space-y-5">
-          {result ? (
+          {review ? (
+            <GeneratedCardsEditor title={review.title} cards={review.cards} makeId={newId}
+              onChange={next => setReview(r => (r ? { ...r, ...next } : r))} />
+          ) : result ? (
             <div className="space-y-3">
               <p className="text-[15px] font-semibold text-slate-800 dark:text-slate-100">
                 {result.cards ? tp('mod.done', result.cards, { name: col?.name ?? '' }) : t('mod.none')}
@@ -150,7 +167,15 @@ export const ModuleDeckModal: React.FC<Props> = ({ collections, documents, examT
         </div>
 
         <div className="px-6 sm:px-8 py-4 border-t border-slate-100 dark:border-slate-800 flex justify-end gap-3">
-          {result ? (
+          {review ? (
+            <>
+              <button type="button" onClick={() => { setReview(null); onClose(); }} className="px-5 py-3 rounded-2xl text-[13px] font-semibold text-slate-600 bg-slate-100 dark:bg-slate-800 dark:text-slate-200">{t('rev.discard')}</button>
+              <button type="button" onClick={saveReview} disabled={!splitDraft(review.cards).keep.length}
+                className="px-6 py-3 rounded-2xl text-[13px] font-semibold shadow-lg disabled:opacity-40" style={{ background: 'var(--primary)', color: 'var(--primary-text)' }}>
+                {tp('rev.save', splitDraft(review.cards).keep.length)}
+              </button>
+            </>
+          ) : result ? (
             <button type="button" onClick={onClose} className="px-5 py-3 rounded-2xl text-[13px] font-semibold text-slate-600 bg-slate-100 dark:bg-slate-800 dark:text-slate-200">{t('common.close')}</button>
           ) : running ? (
             <button type="button" onClick={() => { cancelRef.current = true; }} className="px-5 py-3 rounded-2xl text-[13px] font-semibold text-slate-600 bg-slate-100 dark:bg-slate-800 dark:text-slate-200">{t('mod.stop')}</button>

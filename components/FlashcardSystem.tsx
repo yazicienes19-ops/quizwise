@@ -39,6 +39,7 @@ import { ReviewStatsPanel } from './ReviewStatsPanel';
 import { getFsrsParams, saveFsrsParams, personalize, MIN_PAIRS, RETENTION_OPTIONS } from '../services/fsrsPersonal';
 import type { FsrsParams } from '../services/spacedRepetition';
 import { ModuleDeckModal } from './ModuleDeckModal';
+import { GeneratedCardsReviewModal, type DraftCard } from './GeneratedCardsEditor';
 
 interface FlashcardSystemProps {
   availableDocuments: ProcessedDocument[];
@@ -133,6 +134,10 @@ export const FlashcardSystem: React.FC<FlashcardSystemProps> = ({
   const [tagFilter, setTagFilter] = useState<string | null>(null);
   const [showOcclusion, setShowOcclusion] = useState(false);
   const [showModuleDeck, setShowModuleDeck] = useState(false);
+  /** Frisch erzeugter Stapel im Prüfschritt, noch nicht gespeichert. */
+  const [reviewDraft, setReviewDraft] = useState<{ deck: FlashcardDeck } | null>(null);
+  /** Kartenbilder verworfener Entwürfe löschen (Abbildungs-Karten). */
+  const dropDraftImages = (cards: DraftCard[]) => cleanupCardImages(cards as Flashcard[]);
   // Tageslimits (Anki-Standard 20 neue / 200 Wiederholungen)
   const [limits, setLimits] = useState<CardLimits>(getCardLimits);
   const [showLimits, setShowLimits] = useState(false);
@@ -427,11 +432,10 @@ export const FlashcardSystem: React.FC<FlashcardSystemProps> = ({
           srs: createSrsState(),
         })))
       };
-      saveDecks([...decksRef.current, newDeck], newDeck);
-      if (figureCards.length > 0) toast.success(tp('fcs.fig.added', figureCards.length));
-      setFreshDeckId(newDeck.id);
+      // Erst prüfen und anpassen lassen, dann speichern (GeneratedCardsReviewModal).
       if (generated.length < requested) toast.info(t('fcs.deckCreatedPartial', { n: generated.length, total: requested }));
-      else toast.success(tp('fcs.deckCreated', generated.length));
+      if (figureCards.length > 0) toast.success(tp('fcs.fig.added', figureCards.length));
+      setReviewDraft({ deck: newDeck });
     } catch (e) {
       console.error(e);
       toast.error(t('fcs.genError'));
@@ -979,6 +983,34 @@ export const FlashcardSystem: React.FC<FlashcardSystemProps> = ({
 
   return (
     <div className="max-w-6xl mx-auto space-y-10 lg:space-y-16 animate-in fade-in duration-700 py-6 lg:py-10 px-2 sm:px-4">
+      {reviewDraft && (
+        <GeneratedCardsReviewModal
+          initialTitle={reviewDraft.deck.title}
+          cards={reviewDraft.deck.cards}
+          makeId={newId}
+          onSave={(title, keep, dropped) => {
+            const byId = new Map<string, Flashcard>(reviewDraft.deck.cards.map(c => [c.id, c]));
+            const cards: Flashcard[] = keep.map(d => {
+              const base: Pick<Flashcard, 'level' | 'nextReview' | 'lastInterval' | 'srs'> =
+                byId.get(d.id) ?? { level: 0, nextReview: Date.now(), lastInterval: 0, srs: createSrsState() };
+              return {
+                ...base,
+                id: d.id, front: d.front.trim(), back: d.back.trim(),
+                ...(d.tags ? { tags: d.tags } : {}),
+                ...(d.frontImage ? { frontImage: d.frontImage } : {}),
+                ...(d.backImage ? { backImage: d.backImage } : {}),
+              } as Flashcard;
+            });
+            const deck = { ...reviewDraft.deck, title, cards };
+            saveDecks([...decksRef.current, deck], deck);
+            setFreshDeckId(deck.id);
+            dropDraftImages(dropped);
+            setReviewDraft(null);
+            toast.success(tp('fcs.deckCreated', cards.length));
+          }}
+          onDiscard={all => { dropDraftImages(all); setReviewDraft(null); toast.info(t('rev.discarded')); }}
+        />
+      )}
       {showModuleDeck && (
         <ModuleDeckModal
           collections={collections}
