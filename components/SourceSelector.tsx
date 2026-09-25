@@ -175,14 +175,14 @@ export const SourceSelector: React.FC<SourceSelectorProps> = ({
 
       {/* Header */}
       {label && (
-        <div className={framed ? 'px-6 pt-6' : ''}>
+        <div className={framed ? 'px-4 sm:px-6 pt-5 sm:pt-6' : ''}>
           <p className="text-[11px] font-semibold uppercase tracking-[0.08em] text-slate-400">{label}</p>
         </div>
       )}
 
       {/* Reiter: schlanke Textreiter statt einer zweiten goldenen Leiste */}
-      <div className={framed ? 'px-6 pt-4' : 'pt-1'}>
-        <div role="tablist" className="flex flex-wrap gap-x-4 gap-y-1 border-b" style={{ borderColor: 'var(--border-color)' }}>
+      <div className={framed ? 'px-4 sm:px-6 pt-4' : 'pt-1'}>
+        <div role="tablist" className="flex flex-wrap gap-x-3.5 sm:gap-x-4 gap-y-1 border-b" style={{ borderColor: 'var(--border-color)' }}>
           {tabs.map(tb => {
             const active = tab === tb.id;
             return (
@@ -202,7 +202,7 @@ export const SourceSelector: React.FC<SourceSelectorProps> = ({
       </div>
 
       {/* Inhalt */}
-      <div className={framed ? 'p-6 pt-4' : 'pt-4'}>
+      <div className={framed ? 'p-4 sm:p-6 pt-4' : 'pt-4'}>
 
         {/* ── Tab: Bibliothek ─────────────────────────────────────────── */}
         {tab === 'library' && (
