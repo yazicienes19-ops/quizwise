@@ -2371,6 +2371,7 @@ export const de = {
   'fc.direction.normal': 'Vorderseite zuerst',
   'fc.direction.reverse': 'Rückseite zuerst',
   'fc.direction.mixed': 'Gemischt',
+  'fc.undoLast': 'Letzte Bewertung rückgängig',
   'fc.int.now': 'gleich',
   'fc.int.days': '{n} Tag|{n} Tage',
   'fc.int.weeks': '{n} Woche|{n} Wochen',

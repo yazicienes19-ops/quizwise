@@ -6,7 +6,7 @@ import { createPortal } from 'react-dom';
 import { Flashcard } from '../types';
 import { reviewCard, migrateLegacyCard, ReviewQuality, QUALITY_MAP } from '../services/spacedRepetition';
 import { useTranslation } from '../i18n/I18nProvider';
-import { ArrowLeftRight } from 'lucide-react';
+import { ArrowLeftRight, Undo2 } from 'lucide-react';
 import { getCardDirection, setCardDirection, isReversed, CARD_DIRECTIONS, type CardDirection } from '../services/cardDirection';
 import { CardImage } from './CardImage';
 
@@ -23,6 +23,10 @@ interface FlashcardPlayerProps {
    *  Karten — > 0 bietet im Abschluss "Weiter lernen" für die nächste Runde. */
   moreWaiting?: number;
   onContinue?: () => void;
+  /** Letzte Bewertung zurücknehmen: bekommt die Karte im Zustand VOR der
+   *  Bewertung. Ohne diesen Callback gibt es kein Rückgängig (außer beim
+   *  freien Üben, das nichts speichert). */
+  onUndo?: (before: Flashcard) => void;
 }
 
 /** Schriftgröße nach Textlänge: kurze Begriffe groß, lange Fragen bleiben
@@ -36,7 +40,7 @@ const backSize = (text: string) =>
   : text.length > 120 ? 'text-lg sm:text-xl md:text-2xl'
   : 'text-xl sm:text-2xl md:text-4xl';
 
-export const FlashcardPlayer: React.FC<FlashcardPlayerProps> = ({ cards, onReview, onClose, practiceMode = false, onPracticed, moreWaiting = 0, onContinue }) => {
+export const FlashcardPlayer: React.FC<FlashcardPlayerProps> = ({ cards, onReview, onClose, practiceMode = false, onPracticed, moreWaiting = 0, onContinue, onUndo }) => {
   const { t, tp } = useTranslation();
   const [remainingCards, setRemainingCards] = useState<Flashcard[]>(() => [...cards]);
   const [completed, setCompleted] = useState(0);
@@ -44,12 +48,18 @@ export const FlashcardPlayer: React.FC<FlashcardPlayerProps> = ({ cards, onRevie
   const [sessionDone, setSessionDone] = useState(false);
   const [tally, setTally] = useState<Record<Difficulty, number>>({ again: 0, hard: 0, good: 0, easy: 0 });
   const [direction, setDirection] = useState<CardDirection>(getCardDirection);
+  // Rückgängig: Zustand der Runde und bewertete Karte vor jeder Bewertung
+  const [history, setHistory] = useState<{
+    remaining: Flashcard[]; completed: number; tally: Record<Difficulty, number>; card: Flashcard;
+  }[]>([]);
+  const canUndo = history.length > 0 && (practiceMode || !!onUndo);
 
   const currentCard = remainingCards[0];
   const canContinue = moreWaiting > 0 && !!onContinue;
 
   const handleDifficulty = useCallback((diff: Difficulty) => {
     if (!showAnswer || !currentCard) return;
+    setHistory(h => [...h.slice(-19), { remaining: remainingCards, completed, tally, card: currentCard }]);
 
     if (practiceMode) {
       onPracticed?.();           // nur Streak, KEINE SRS-Änderung
@@ -80,11 +90,28 @@ export const FlashcardPlayer: React.FC<FlashcardPlayerProps> = ({ cards, onRevie
         setRemainingCards(r => r.slice(1));
       }
     }
-  }, [showAnswer, currentCard, remainingCards, onReview, practiceMode, onPracticed]);
+  }, [showAnswer, currentCard, remainingCards, completed, tally, onReview, practiceMode, onPracticed]);
+
+  const handleUndo = useCallback(() => {
+    const last = history[history.length - 1];
+    if (!last || !(practiceMode || onUndo)) return;
+    if (!practiceMode) onUndo?.(last.card);
+    setHistory(h => h.slice(0, -1));
+    setRemainingCards(last.remaining);
+    setCompleted(last.completed);
+    setTally(last.tally);
+    setSessionDone(false);
+    setShowAnswer(true); // zurück zur aufgedeckten Karte, neu bewerten
+  }, [history, practiceMode, onUndo]);
 
   // Keyboard Support
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
+      // Rückgängig: Z oder Cmd/Ctrl+Z
+      if (e.key.toLowerCase() === 'z' && !e.altKey && !e.repeat && !e.shiftKey) {
+        if (canUndo) { e.preventDefault(); handleUndo(); }
+        return;
+      }
       // Cmd/Ctrl+1 (Tab-Wechsel) oder gehaltene Leertaste dürfen keine Karten bewerten.
       if (e.metaKey || e.ctrlKey || e.altKey || e.repeat) return;
       if (e.code === 'Escape') { e.preventDefault(); onClose(); return; }
@@ -110,7 +137,7 @@ export const FlashcardPlayer: React.FC<FlashcardPlayerProps> = ({ cards, onRevie
 
     window.addEventListener('keydown', handleKeyDown);
     return () => window.removeEventListener('keydown', handleKeyDown);
-  }, [showAnswer, handleDifficulty, sessionDone, canContinue, onContinue, onClose, practiceMode]);
+  }, [showAnswer, handleDifficulty, sessionDone, canContinue, onContinue, onClose, practiceMode, canUndo, handleUndo]);
 
   const stats = useMemo(() => {
     const newCount = remainingCards.filter(c => !c.srs?.lastReview).length;
@@ -164,6 +191,11 @@ export const FlashcardPlayer: React.FC<FlashcardPlayerProps> = ({ cards, onRevie
             </div>
           )}
           <p className="text-xs text-slate-400 dark:text-slate-500">{practiceMode ? t('fc.summaryPractice') : t('fc.summaryNext')}</p>
+          {canUndo && (
+            <button onClick={handleUndo} className="inline-flex items-center gap-1.5 text-[13px] font-semibold text-slate-500 hover:text-slate-800 dark:hover:text-slate-200 transition-colors">
+              <Undo2 className="w-4 h-4" aria-hidden="true" /> {t('fc.undoLast')}
+            </button>
+          )}
           <div className="flex flex-col sm:flex-row gap-3 justify-center pt-2">
             {canContinue && (
               <button
@@ -229,6 +261,16 @@ export const FlashcardPlayer: React.FC<FlashcardPlayerProps> = ({ cards, onRevie
         </div>
         )}
         <div className="flex items-center gap-3">
+          {canUndo && (
+            <button
+              onClick={handleUndo}
+              aria-label={t('fc.undoLast')}
+              title={`${t('fc.undoLast')} (Z)`}
+              className="p-2 rounded-lg text-slate-500 hover:text-slate-800 dark:hover:text-slate-200 transition-colors"
+            >
+              <Undo2 className="w-4 h-4" aria-hidden="true" />
+            </button>
+          )}
           <label className="flex items-center gap-1.5 text-xs font-semibold text-slate-500">
             <ArrowLeftRight className="w-3.5 h-3.5" aria-hidden="true" />
             <span className="sr-only">{t('fc.direction')}</span>

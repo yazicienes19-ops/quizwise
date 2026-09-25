@@ -2363,6 +2363,7 @@ export const tr: Translations = {
   'fc.direction.normal': 'Önce ön yüz',
   'fc.direction.reverse': 'Önce arka yüz',
   'fc.direction.mixed': 'Karışık',
+  'fc.undoLast': 'Son değerlendirmeyi geri al',
   'fc.int.now': 'hemen',
   'fc.int.days': '{n} gün|{n} gün',
   'fc.int.weeks': '{n} hafta|{n} hafta',

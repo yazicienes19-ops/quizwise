@@ -2370,6 +2370,7 @@ export const en: Translations = {
   'fc.direction.normal': 'Front first',
   'fc.direction.reverse': 'Back first',
   'fc.direction.mixed': 'Mixed',
+  'fc.undoLast': 'Undo last rating',
   'fc.int.now': 'now',
   'fc.int.days': '{n} day|{n} days',
   'fc.int.weeks': '{n} week|{n} weeks',

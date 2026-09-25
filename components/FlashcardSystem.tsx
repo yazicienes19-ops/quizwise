@@ -451,6 +451,18 @@ export const FlashcardSystem: React.FC<FlashcardSystemProps> = ({
   };
 
 
+  /** Letzte Bewertung zurücknehmen: Lernstand der Karte wie vor der Bewertung. */
+  const handleUndoReview = (before: Flashcard) => {
+    if (!activeDeckId) return;
+    updateDeck(activeDeckId, deck => ({
+      ...deck,
+      cards: deck.cards.map(card => (card.id === before.id
+        ? { ...card, srs: before.srs, level: before.level, nextReview: before.nextReview, lastInterval: before.lastInterval }
+        : card)),
+    }));
+    sessionReviewCount.current = Math.max(0, sessionReviewCount.current - 1);
+  };
+
   const handleExportAll = () => {
     // srs mit exportieren: sonst verliert "Alle sichern" trotz des Namens den
     // gesamten Lernfortschritt bei jedem Restore (Re-Import erzeugt sonst
@@ -633,6 +645,7 @@ export const FlashcardSystem: React.FC<FlashcardSystemProps> = ({
         cards={sessionCards}
         practiceMode={isPracticeSession}
         onReview={handleReview}
+        onUndo={handleUndoReview}
         onPracticed={handlePracticed}
         moreWaiting={moreWaiting}
         onContinue={moreWaiting > 0 ? () => {
