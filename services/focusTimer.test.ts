@@ -1,5 +1,8 @@
 import { describe, it, expect, beforeEach } from 'vitest';
-import { startFocus, pauseFocus, resumeFocus, stopFocus, readFocus, remainingMs } from './focusTimer';
+import {
+  startFocus, pauseFocus, resumeFocus, stopFocus, readFocus, remainingMs,
+  clampFocusMinutes, getCustomFocusMinutes, setCustomFocusMinutes, FOCUS_MAX_MINUTES,
+} from './focusTimer';
 
 describe('focusTimer', () => {
   beforeEach(() => localStorage.clear());
@@ -19,5 +22,17 @@ describe('focusTimer', () => {
     expect(remainingMs(readFocus()!, 99 * 60_000)).toBe(0);
     stopFocus();
     expect(readFocus()).toBeNull();
+  });
+
+  it('eigene Dauer: begrenzt, gerundet und gemerkt', () => {
+    expect(clampFocusMinutes(0)).toBe(1);
+    expect(clampFocusMinutes(999)).toBe(FOCUS_MAX_MINUTES);
+    expect(clampFocusMinutes(37.6)).toBe(38);
+    expect(clampFocusMinutes(Number.NaN)).toBe(30);
+    expect(getCustomFocusMinutes()).toBe(30);
+    expect(setCustomFocusMinutes(50)).toBe(50);
+    expect(getCustomFocusMinutes()).toBe(50);
+    startFocus(getCustomFocusMinutes(), 0);
+    expect(remainingMs(readFocus()!, 0)).toBe(50 * 60_000);
   });
 });

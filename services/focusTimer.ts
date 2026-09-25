@@ -8,6 +8,31 @@
 export const FOCUS_KEY = 'studearc_focus_timer';
 export const FOCUS_EVENT = 'studearc:focus-timer';
 export const FOCUS_OPTIONS = [15, 25, 45] as const;
+/** Eigene Dauer (Nutzerwunsch 26.09.2026): frei wählbar in diesen Grenzen. */
+export const FOCUS_MIN_MINUTES = 1;
+export const FOCUS_MAX_MINUTES = 180;
+export const FOCUS_CUSTOM_KEY = 'studearc_focus_custom';
+const FOCUS_CUSTOM_DEFAULT = 30;
+
+/** Ganze Minuten innerhalb der Grenzen; Unsinn fällt auf den Standard zurück. */
+export const clampFocusMinutes = (n: number): number =>
+  Number.isFinite(n) ? Math.min(FOCUS_MAX_MINUTES, Math.max(FOCUS_MIN_MINUTES, Math.round(n))) : FOCUS_CUSTOM_DEFAULT;
+
+/** Zuletzt gewählte eigene Dauer, damit das Feld beim nächsten Mal vorbelegt ist. */
+export const getCustomFocusMinutes = (): number => {
+  try {
+    const raw = localStorage.getItem(FOCUS_CUSTOM_KEY);
+    return raw === null ? FOCUS_CUSTOM_DEFAULT : clampFocusMinutes(Number(raw));
+  } catch {
+    return FOCUS_CUSTOM_DEFAULT;
+  }
+};
+
+export const setCustomFocusMinutes = (n: number): number => {
+  const v = clampFocusMinutes(n);
+  try { localStorage.setItem(FOCUS_CUSTOM_KEY, String(v)); } catch { /* Speicher gesperrt */ }
+  return v;
+};
 
 export type FocusState =
   | { status: 'running'; endsAt: number; minutes: number }

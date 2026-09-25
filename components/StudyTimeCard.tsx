@@ -1,7 +1,9 @@
 import React, { useEffect, useState } from 'react';
 import { CheckCircle2 } from 'lucide-react';
 import { useTranslation } from '../i18n/I18nProvider';
-import { startFocus, FOCUS_OPTIONS } from '../services/focusTimer';
+import {
+  startFocus, FOCUS_OPTIONS, FOCUS_MIN_MINUTES, FOCUS_MAX_MINUTES, getCustomFocusMinutes, setCustomFocusMinutes,
+} from '../services/focusTimer';
 import {
   loadRecentStudyTime, getDailyGoal, setDailyGoal, DAILY_GOAL_OPTIONS, STUDY_TIME_EVENT, type StudyDay,
 } from '../services/studyTimeService';
@@ -21,6 +23,9 @@ export const StudyTimeCard: React.FC<{ userId: string }> = ({ userId }) => {
   const { t } = useTranslation();
   const [days, setDays] = useState<StudyDay[] | null>(null);
   const [goal, setGoal] = useState(getDailyGoal);
+  // Eigene Fokus-Dauer (Nutzerwunsch 26.09.2026): Feld öffnet sich neben den Schnellwahlen.
+  const [customOpen, setCustomOpen] = useState(false);
+  const [customValue, setCustomValue] = useState(() => String(getCustomFocusMinutes()));
 
   useEffect(() => {
     let cancelled = false;
@@ -31,6 +36,17 @@ export const StudyTimeCard: React.FC<{ userId: string }> = ({ userId }) => {
   }, [userId]);
 
   if (!days) return null;
+
+  const beginFocus = (minutes: number) => {
+    startFocus(minutes);
+    try { if ('Notification' in window && Notification.permission === 'default') void Notification.requestPermission(); } catch { /* nicht verfügbar */ }
+  };
+  const startCustom = () => {
+    const m = setCustomFocusMinutes(Number(customValue));
+    setCustomValue(String(m));
+    setCustomOpen(false);
+    beginFocus(m);
+  };
 
   const today = days[days.length - 1]?.minutes ?? 0;
   const week = days.reduce((s, d) => s + d.minutes, 0);
@@ -62,12 +78,12 @@ export const StudyTimeCard: React.FC<{ userId: string }> = ({ userId }) => {
           </div>
           <div className="flex flex-wrap items-center gap-x-3 gap-y-1 text-[12.5px]" style={{ color: MUTE }}>
             <span>{t('home.time.week', { v: fmt(week) })}</span>
-            <span className="inline-flex items-center gap-1">
-              <span>{t('focus.start')}:</span>
+            <span className="inline-flex flex-wrap items-center gap-1">
+              <span className="whitespace-nowrap">{t('focus.start')}:</span>
               {FOCUS_OPTIONS.map(m => (
                 <button
                   key={m}
-                  onClick={() => { startFocus(m); try { if ('Notification' in window && Notification.permission === 'default') void Notification.requestPermission(); } catch { /* nicht verfügbar */ } }}
+                  onClick={() => beginFocus(m)}
                   aria-label={t('focus.startN', { m })}
                   className="px-2 py-0.5 rounded-md font-semibold transition-colors hover:opacity-80"
                   style={{ color: INK, border: `1px solid ${LINE}` }}
@@ -75,6 +91,40 @@ export const StudyTimeCard: React.FC<{ userId: string }> = ({ userId }) => {
                   {m}
                 </button>
               ))}
+              {customOpen ? (
+                <span className="inline-flex items-center gap-1">
+                  <input
+                    type="number"
+                    inputMode="numeric"
+                    autoFocus
+                    min={FOCUS_MIN_MINUTES}
+                    max={FOCUS_MAX_MINUTES}
+                    value={customValue}
+                    onChange={e => setCustomValue(e.target.value)}
+                    onKeyDown={e => { if (e.key === 'Enter') startCustom(); if (e.key === 'Escape') setCustomOpen(false); }}
+                    aria-label={t('focus.customLabel', { min: FOCUS_MIN_MINUTES, max: FOCUS_MAX_MINUTES })}
+                    className="w-14 px-1.5 py-0.5 rounded-md font-semibold text-center bg-transparent outline-none"
+                    style={{ color: INK, border: `1px solid ${LINE}` }}
+                  />
+                  <span>{t('focus.minShort')}</span>
+                  <button
+                    onClick={startCustom}
+                    className="px-2 py-0.5 rounded-md font-semibold transition-opacity hover:opacity-90"
+                    style={{ background: 'var(--primary)', color: 'var(--primary-text)' }}
+                  >
+                    {t('focus.go')}
+                  </button>
+                </span>
+              ) : (
+                <button
+                  onClick={() => setCustomOpen(true)}
+                  aria-label={t('focus.customOpen')}
+                  className="px-2 py-0.5 rounded-md font-semibold transition-colors hover:opacity-80"
+                  style={{ color: INK, border: `1px dashed ${LINE}` }}
+                >
+                  {t('focus.custom')}
+                </button>
+              )}
             </span>
             <label className="inline-flex items-center gap-1.5">
               {t('home.time.goal')}
