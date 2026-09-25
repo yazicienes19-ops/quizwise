@@ -2462,6 +2462,8 @@ export const de = {
   'mod.plan': 'Klausur am {date}: Mit {n} neuen Karten pro Tag hast du in {days} Tagen alles einmal gelernt und danach noch Zeit zum Wiederholen.',
   'mod.applyLimit': 'Tageslimit auf {n} neue Karten setzen',
   'mod.allDocs': 'alle Unterlagen',
+  'mod.reading': 'Lese {doc}: Seite {done} von {total}',
+  'mod.summaryOnly': '{n} PDF ohne lesbaren Text, dafür wird die Zusammenfassung genutzt|{n} PDFs ohne lesbaren Text, dafür wird die Zusammenfassung genutzt',
   'rev.title': 'Karten prüfen',
   'rev.subtitle': 'Passe die Karten an, bevor der Stapel gespeichert wird: Text ändern, Karten entfernen oder eigene ergänzen.',
   'rev.deckTitle': 'Name des Stapels',

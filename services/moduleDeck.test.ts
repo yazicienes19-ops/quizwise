@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { splitSections, planModule, suggestNewPerDay, docTag, MAX_MODULE_CARDS, CHUNK_CHARS } from './moduleDeck';
+import { splitSections, planModule, scaleChunks, suggestNewPerDay, docTag, MAX_MODULE_CARDS, CHUNK_CHARS } from './moduleDeck';
 import type { ProcessedDocument } from '../types';
 
 const doc = (p: Partial<ProcessedDocument>): ProcessedDocument => ({ id: 'd', name: 'Folien.pdf', content: '', type: 'pdf', uploadDate: 0, ...p });
@@ -29,6 +29,36 @@ describe('moduleDeck', () => {
     expect(cards.lang).toBeGreaterThan(cards.kurz);
     expect(planModule(docs, 'thorough').totalCards).toBeGreaterThan(std.totalCards);
     expect(planModule(docs, 'overview').totalCards).toBeLessThan(std.totalCards);
+  });
+
+  it('nutzt den PDF-Volltext statt der Zusammenfassung: ein 300-Seiten-Buch ergibt hunderte Karten', () => {
+    const book = doc({ id: 'buch', digestStatus: 'ready', digestText: para(20000) });
+    const full = new Map([['buch', { text: Array.from({ length: 300 }, () => para(2500)).join('\n\n'), pages: 300 }]]);
+    const fromSummary = planModule([book], 'thorough');
+    const fromFull = planModule([book], 'thorough', full);
+    expect(fromSummary.docs[0].fullText).toBe(false);
+    expect(fromFull.docs[0].fullText).toBe(true);
+    expect(fromFull.totalCards).toBeGreaterThanOrEqual(400); // etwa 1,5 bis 2 Karten je Seite
+    expect(fromFull.totalCards).toBeLessThanOrEqual(600);
+    expect(fromFull.totalCards).toBeGreaterThan(fromSummary.totalCards * 5);
+    expect(planModule([book], 'overview', full).totalCards).toBeLessThan(planModule([book], 'standard', full).totalCards);
+  });
+
+  it('Folien mit wenig Text je Seite: gründlich etwa eine Karte je Seite', () => {
+    const slides = doc({ id: 'folien', digestStatus: 'ready', digestText: para(15000) });
+    const full = new Map([['folien', { text: Array.from({ length: 317 }, () => para(400)).join('\n\n'), pages: 317 }]]);
+    expect(planModule([slides], 'thorough', full).totalCards).toBe(317);
+    expect(planModule([slides], 'standard', full).totalCards).toBe(159);
+    expect(planModule([slides], 'overview', full).totalCards).toBe(79);
+  });
+
+  it('kürzt anteilig exakt auf die Grenze und legt leere Abschnitte zusammen, ohne Text zu verlieren', () => {
+    const chunks = Array.from({ length: 10 }, (_, i) => ({ text: `T${i}`, count: 2 }));
+    const out = scaleChunks(chunks, 7);
+    expect(out.reduce((s, c) => s + c.count, 0)).toBe(7);
+    expect(out.every(c => c.count >= 1)).toBe(true);
+    expect(out.map(c => c.text).join('\n\n').split('\n\n')).toEqual(chunks.map(c => c.text));
+    expect(scaleChunks(chunks, 50)).toBe(chunks);
   });
 
   it('hält die Obergrenze fürs Fach ein', () => {

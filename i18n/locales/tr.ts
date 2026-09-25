@@ -2454,6 +2454,8 @@ export const tr: Translations = {
   'mod.plan': 'Sınav {date}: Günde {n} yeni kartla {days} günde hepsini bir kez öğrenirsin, sonra tekrar için zamanın kalır.',
   'mod.applyLimit': 'Günlük sınırı {n} yeni karta ayarla',
   'mod.allDocs': 'tüm materyaller',
+  'mod.reading': '{doc} okunuyor: sayfa {done} / {total}',
+  'mod.summaryOnly': 'Okunabilir metni olmayan {n} PDF, yerine özeti kullanılıyor|Okunabilir metni olmayan {n} PDF, yerine özetleri kullanılıyor',
   'rev.title': 'Kartları gözden geçir',
   'rev.subtitle': 'Deste kaydedilmeden önce kartları düzenle: metni değiştir, kart kaldır veya kendi kartını ekle.',
   'rev.deckTitle': 'Deste adı',

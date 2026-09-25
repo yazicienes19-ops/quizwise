@@ -2461,6 +2461,8 @@ export const en: Translations = {
   'mod.plan': 'Exam on {date}: with {n} new cards per day you will have studied everything once in {days} days, with time left to review.',
   'mod.applyLimit': 'Set daily limit to {n} new cards',
   'mod.allDocs': 'all materials',
+  'mod.reading': 'Reading {doc}: page {done} of {total}',
+  'mod.summaryOnly': '{n} PDF without readable text, using its summary instead|{n} PDFs without readable text, using their summaries instead',
   'rev.title': 'Review cards',
   'rev.subtitle': 'Adjust the cards before the deck is saved: edit text, remove cards or add your own.',
   'rev.deckTitle': 'Deck name',

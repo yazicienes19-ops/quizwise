@@ -1,14 +1,15 @@
-import React, { useMemo, useRef, useState } from 'react';
+import React, { useEffect, useMemo, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
 import { useTranslation } from '../i18n/I18nProvider';
 import { useModalA11y } from '../hooks/useModalA11y';
 import { ModalCloseButton } from './ModalCloseButton';
 import type { Collection, ExamTerm, Flashcard, FlashcardDeck, ProcessedDocument } from '../types';
-import { planModule, suggestNewPerDay, docTag, type ModuleLevel } from '../services/moduleDeck';
+import { planModule, suggestNewPerDay, docTag, type FullText, type ModuleLevel } from '../services/moduleDeck';
 import { generateFlashcardsFromDocument } from '../services/geminiService';
 import { nextExamForModule } from '../services/examTermService';
 import { createSrsState } from '../services/spacedRepetition';
 import { resolveErrorMessage } from '../services/errorMessages';
+import { canReadFullText, readPdfFullText } from '../services/pdfFullText';
 import { GeneratedCardsEditor, splitDraft, type DraftCard } from './GeneratedCardsEditor';
 
 interface Props {
@@ -22,6 +23,8 @@ interface Props {
 }
 
 const newId = () => Math.random().toString(36).slice(2, 11);
+/** Gleichzeitige Anfragen beim Erzeugen; mehr bringt kaum Tempo und reizt das Ratenlimit. */
+const PARALLEL = 3;
 const normFront = (s: string) => s.toLowerCase().replace(/[^\p{L}\p{N}]+/gu, ' ').trim();
 
 /**
@@ -40,44 +43,86 @@ export const ModuleDeckModal: React.FC<Props> = ({ collections, documents, examT
   /** Prüfschritt: erzeugte Karten vor dem Speichern bearbeiten (GeneratedCardsEditor). */
   const [review, setReview] = useState<{ title: string; cards: DraftCard[]; stopped: string | null } | null>(null);
   const cancelRef = useRef(false);
+  /** Volltext der PDFs (null = keine Textebene, dann Zusammenfassung). */
+  const [fullTexts, setFullTexts] = useState<ReadonlyMap<string, FullText | null>>(new Map());
+  const [reading, setReading] = useState<{ doc: string; done: number; total: number } | null>(null);
 
   const col = collections.find(c => c.id === colId) ?? null;
   const docs = useMemo(() => documents.filter(d => d.collectionId === colId), [documents, colId]);
+
+  // PDFs des Fachs vollständig lesen, damit die Karten den ganzen Inhalt abdecken
+  useEffect(() => {
+    let cancelled = false;
+    const todo = docs.filter(d => canReadFullText(d) && !fullTexts.has(d.id));
+    if (!todo.length) return;
+    (async () => {
+      for (const d of todo) {
+        if (cancelled) return;
+        let text: FullText | null = null;
+        try {
+          text = await readPdfFullText(d, (done, total) => { if (!cancelled) setReading({ doc: d.name, done, total }); }, () => cancelled);
+        } catch { /* nicht ladbar: Zusammenfassung */ }
+        if (cancelled) return;
+        setFullTexts(m => new Map(m).set(d.id, text));
+      }
+      if (!cancelled) setReading(null);
+    })();
+    return () => { cancelled = true; setReading(null); };
+  // eslint-disable-next-line react-hooks/exhaustive-deps -- nur bei Fachwechsel neu lesen
+  }, [docs]);
+
+  const readTexts = useMemo(() => {
+    const m = new Map<string, FullText>();
+    fullTexts.forEach((v, k) => { if (v) m.set(k, v); });
+    return m;
+  }, [fullTexts]);
+  const summaryOnly = docs.filter(d => canReadFullText(d) && fullTexts.get(d.id) === null).length;
   const plans = useMemo(() => ({
-    overview: planModule(docs, 'overview'), standard: planModule(docs, 'standard'), thorough: planModule(docs, 'thorough'),
-  }), [docs]);
+    overview: planModule(docs, 'overview', readTexts), standard: planModule(docs, 'standard', readTexts), thorough: planModule(docs, 'thorough', readTexts),
+  }), [docs, readTexts]);
   const plan = plans[level];
   const exam = col ? nextExamForModule(examTerms, col, new Date()) : null;
   const suggestion = exam ? suggestNewPerDay(result?.cards ?? plan.totalCards, exam.date) : null;
 
   const start = async () => {
-    if (!col || !plan.totalCards) return;
+    if (!col || !plan.totalCards || reading) return;
     setRunning(true); cancelRef.current = false;
-    const cards: Flashcard[] = [];
+    // Alle Abschnitte in Reihenfolge; Ergebnisse je Abschnitt, damit die Karten trotz paralleler Anfragen geordnet bleiben
+    const jobs = plan.docs.flatMap(pd => pd.chunks.map(chunk => ({ pd, chunk, tag: docTag(pd.doc) })));
+    const results: Flashcard[][] = jobs.map(() => []);
     const seen = new Set<string>();
+    const recent: string[] = [];
+    let next = 0;
     let done = 0;
+    let made = 0;
     let stopped: string | null = null;
-    outer: for (const pd of plan.docs) {
-      const tag = docTag(pd.doc);
-      for (const chunk of pd.chunks) {
-        if (cancelRef.current) { stopped = t('mod.cancelled'); break outer; }
-        setProgress({ doc: pd.doc.name, done, total: plan.calls, cards: cards.length });
+    const worker = async () => {
+      while (next < jobs.length && !stopped) {
+        if (cancelRef.current) { stopped = t('mod.cancelled'); return; }
+        const i = next++;
+        const { pd, chunk, tag } = jobs[i];
+        setProgress({ doc: pd.doc.name, done, total: jobs.length, cards: made });
         try {
-          const made = await generateFlashcardsFromDocument({ text: chunk.text }, chunk.count, cards.slice(-30).map(c => c.front));
-          for (const c of made) {
+          const out = await generateFlashcardsFromDocument({ text: chunk.text }, chunk.count, recent.slice(-30));
+          for (const c of out) {
             const key = normFront(c.front ?? '');
             if (!key || seen.has(key)) continue;
             seen.add(key);
-            cards.push({ id: newId(), front: c.front!, back: c.back ?? '', tags: [tag], level: 0, nextReview: Date.now(), lastInterval: 0, srs: createSrsState() });
+            recent.push(c.front!);
+            results[i].push({ id: newId(), front: c.front!, back: c.back ?? '', tags: [tag], level: 0, nextReview: Date.now(), lastInterval: 0, srs: createSrsState() });
+            made++;
           }
         } catch (e) {
           // Budget oder Netz: mit dem Erzeugten weitermachen statt alles zu verlieren
-          stopped = resolveErrorMessage(e);
-          break outer;
+          stopped ??= resolveErrorMessage(e);
+          return;
         }
         done++;
+        setProgress({ doc: pd.doc.name, done, total: jobs.length, cards: made });
       }
-    }
+    };
+    await Promise.all(Array.from({ length: Math.min(PARALLEL, jobs.length) }, worker));
+    const cards = results.flat();
     setProgress(null);
     setRunning(false);
     if (cards.length) setReview({ title: col.name, cards, stopped });
@@ -150,8 +195,17 @@ export const ModuleDeckModal: React.FC<Props> = ({ collections, documents, examT
               <p className="text-xs text-slate-500 dark:text-slate-400">
                 {tp('mod.docsN', plan.docs.length)}
                 {plan.skipped.length > 0 && ` · ${tp('mod.skippedN', plan.skipped.length)}`}
+                {summaryOnly > 0 && ` · ${tp('mod.summaryOnly', summaryOnly)}`}
                 {exam && ` · ${t('mod.exam', { date: new Date(`${exam.date}T12:00`).toLocaleDateString() })}`}
               </p>
+              {reading && (
+                <div className="space-y-2" aria-live="polite">
+                  <div className="h-1.5 rounded-full bg-slate-100 dark:bg-slate-800 overflow-hidden">
+                    <div className="h-full transition-all" style={{ width: `${(reading.done / Math.max(1, reading.total)) * 100}%`, background: 'var(--primary)' }} />
+                  </div>
+                  <p className="text-xs text-slate-600 dark:text-slate-300">{t('mod.reading', { doc: reading.doc, done: reading.done, total: reading.total })}</p>
+                </div>
+              )}
               <div className="flex flex-col sm:flex-row gap-2">{(['overview', 'standard', 'thorough'] as const).map(levelBtn)}</div>
               <p className="text-xs text-slate-500 dark:text-slate-400">{t('mod.budgetHint', { calls: plan.calls })}</p>
               {progress && (
@@ -180,7 +234,7 @@ export const ModuleDeckModal: React.FC<Props> = ({ collections, documents, examT
           ) : running ? (
             <button type="button" onClick={() => { cancelRef.current = true; }} className="px-5 py-3 rounded-2xl text-[13px] font-semibold text-slate-600 bg-slate-100 dark:bg-slate-800 dark:text-slate-200">{t('mod.stop')}</button>
           ) : (
-            <button type="button" onClick={start} disabled={!plan.totalCards}
+            <button type="button" onClick={start} disabled={!plan.totalCards || !!reading}
               className="px-6 py-3 rounded-2xl text-[13px] font-semibold shadow-lg disabled:opacity-40" style={{ background: 'var(--primary)', color: 'var(--primary-text)' }}>
               {tp('mod.start', plan.totalCards)}
             </button>

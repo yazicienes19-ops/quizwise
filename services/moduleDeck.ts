@@ -7,21 +7,35 @@ import type { ProcessedDocument } from '../types';
  */
 export type ModuleLevel = 'overview' | 'standard' | 'thorough';
 
-/** Karten je 1 000 Zeichen Text, Mindestkarten je Abschnitt, Obergrenze je Dokument. */
-export const LEVELS: Record<ModuleLevel, { perKChars: number; minPerChunk: number; maxPerDoc: number }> = {
-  overview: { perKChars: 0.5, minPerChunk: 1, maxPerDoc: 25 },
-  standard: { perKChars: 1.0, minPerChunk: 2, maxPerDoc: 60 },
-  thorough: { perKChars: 1.8, minPerChunk: 3, maxPerDoc: 120 },
+/**
+ * Karten je 1 000 Zeichen Text, Mindestkarten je Abschnitt, Obergrenze je
+ * Dokument. Die Raten gelten für verdichteten Text (Zusammenfassung); für den
+ * vollen PDF-Text gilt FULLTEXT_FACTOR, sonst entstünden bei Lehrbüchern
+ * mehrere Karten pro Seite.
+ */
+export const LEVELS: Record<ModuleLevel, { perKChars: number; perPage: number; minPerChunk: number; maxPerDoc: number }> = {
+  overview: { perKChars: 0.5, perPage: 0.25, minPerChunk: 1, maxPerDoc: 150 },
+  standard: { perKChars: 1.0, perPage: 0.5, minPerChunk: 2, maxPerDoc: 300 },
+  thorough: { perKChars: 1.8, perPage: 1, minPerChunk: 3, maxPerDoc: 600 },
 };
+/** Ausgelesener PDF-Volltext und Zahl der Seiten mit Text. */
+export interface FullText { text: string; pages: number }
+
+/** Voller PDF-Text ist weniger dicht als eine Zusammenfassung (gründlich: etwa 2 Karten je Buchseite). */
+export const FULLTEXT_FACTOR = 0.45;
 /** Obergrenze für ein ganzes Fach (Budget und Bedienbarkeit). */
-export const MAX_MODULE_CARDS = 400;
+export const MAX_MODULE_CARDS = 1000;
 /** Abschnittsgröße pro KI-Aufruf; lange Abschnitte werden geteilt. */
 export const CHUNK_CHARS = 6000;
 /** Höchstens so viele Karten pro KI-Aufruf, darüber wird es ungenau. */
 const MAX_PER_CALL = 25;
+/** Abschnitte mit weniger Karten werden mit dem nächsten zusammengelegt (spart Anfragen). */
+const MIN_PER_CALL = 5;
+/** Obergrenze für zusammengelegte Abschnitte. */
+const MAX_MERGED_CHARS = 20000;
 
 export interface PlannedChunk { text: string; count: number }
-export interface PlannedDoc { doc: ProcessedDocument; chunks: PlannedChunk[]; cards: number }
+export interface PlannedDoc { doc: ProcessedDocument; chunks: PlannedChunk[]; cards: number; fullText: boolean }
 export interface ModulePlan { docs: PlannedDoc[]; skipped: ProcessedDocument[]; totalCards: number; calls: number }
 
 /** Text, mit dem die Karten entstehen: Zusammenfassung, sonst der Text selbst (Text/Word). */
@@ -55,31 +69,77 @@ export const splitSections = (text: string, max = CHUNK_CHARS): string[] => {
   return merged;
 };
 
-export const planModule = (docs: ProcessedDocument[], level: ModuleLevel): ModulePlan => {
+/**
+ * fullTexts: ausgelesener Volltext je Dokument-ID (PDFs). Ist er da, werden
+ * die Karten aus dem ganzen Dokument erzeugt statt aus der Zusammenfassung.
+ */
+/**
+ * Kartenzahlen der Abschnitte anteilig auf eine Summe bringen, exakt
+ * (kumulativ gerundet). Abschnitte, die dabei 0 Karten bekämen, werden mit
+ * dem vorigen zusammengelegt, damit kein Stoff wegfällt.
+ */
+export const fitChunks = (chunks: PlannedChunk[], total: number): PlannedChunk[] => {
+  const sum = chunks.reduce((s, c) => s + c.count, 0);
+  if (!sum || sum === total) return chunks;
+  const f = total / sum;
+  let cum = 0;
+  const out: PlannedChunk[] = [];
+  for (const c of chunks) {
+    const before = Math.round(cum * f);
+    cum += c.count;
+    const count = Math.min(MAX_PER_CALL, Math.round(cum * f) - before);
+    const last = out[out.length - 1];
+    // Ein führender Abschnitt mit 0 Karten bekommt 1; die Überschreitung um eine Karte ist hinnehmbar.
+    if (count > 0 || !last) out.push({ text: c.text, count: Math.max(count, 1) });
+    else last.text = `${last.text}\n\n${c.text}`;
+  }
+  return out;
+};
+
+/** Auf eine Obergrenze kürzen (unverändert, wenn darunter). */
+export const scaleChunks = (chunks: PlannedChunk[], max: number): PlannedChunk[] =>
+  chunks.reduce((s, c) => s + c.count, 0) <= max ? chunks : fitChunks(chunks, max);
+
+/** Benachbarte Abschnitte mit wenigen Karten zusammenlegen, bis eine Anfrage sich lohnt. */
+export const mergeSmallChunks = (chunks: PlannedChunk[]): PlannedChunk[] => {
+  const out: PlannedChunk[] = [];
+  for (const c of chunks) {
+    const last = out[out.length - 1];
+    if (last && last.count < MIN_PER_CALL && last.count + c.count <= MAX_PER_CALL && last.text.length + c.text.length <= MAX_MERGED_CHARS) {
+      out[out.length - 1] = { text: `${last.text}\n\n${c.text}`, count: last.count + c.count };
+    } else out.push({ ...c });
+  }
+  return out;
+};
+
+export const planModule = (docs: ProcessedDocument[], level: ModuleLevel, fullTexts?: ReadonlyMap<string, FullText>): ModulePlan => {
   const cfg = LEVELS[level];
   const planned: PlannedDoc[] = [];
   const skipped: ProcessedDocument[] = [];
   for (const doc of [...docs].sort((a, b) => a.uploadDate - b.uploadDate)) {
-    const text = docStudyText(doc);
+    const ft = fullTexts?.get(doc.id);
+    const full = ft?.text.trim() || null;
+    const text = full ?? docStudyText(doc);
     if (!text) { skipped.push(doc); continue; }
+    const rate = cfg.perKChars * (full ? FULLTEXT_FACTOR : 1);
     let chunks = splitSections(text).map(t => ({
       text: t,
-      count: Math.min(MAX_PER_CALL, Math.max(cfg.minPerChunk, Math.round((t.length / 1000) * cfg.perKChars))),
+      count: Math.min(MAX_PER_CALL, Math.max(cfg.minPerChunk, Math.round((t.length / 1000) * rate))),
     }));
+    // Folien haben wenig Text je Seite: mindestens perPage Karten je Seite
+    const byPages = full && ft ? Math.round(ft.pages * cfg.perPage) : 0;
+    if (byPages > chunks.reduce((s, c) => s + c.count, 0)) chunks = fitChunks(chunks, byPages);
     // Obergrenze je Dokument anteilig auf die Abschnitte verteilen
-    const sum = chunks.reduce((s, c) => s + c.count, 0);
-    if (sum > cfg.maxPerDoc) {
-      const f = cfg.maxPerDoc / sum;
-      chunks = chunks.map(c => ({ ...c, count: Math.max(1, Math.floor(c.count * f)) }));
-    }
-    planned.push({ doc, chunks, cards: chunks.reduce((s, c) => s + c.count, 0) });
+    chunks = scaleChunks(chunks, cfg.maxPerDoc);
+    chunks = mergeSmallChunks(chunks);
+    planned.push({ doc, chunks, cards: chunks.reduce((s, c) => s + c.count, 0), fullText: !!full });
   }
   // Obergrenze fürs Fach: gleichmäßig kürzen
   let total = planned.reduce((s, d) => s + d.cards, 0);
   if (total > MAX_MODULE_CARDS) {
     const f = MAX_MODULE_CARDS / total;
     for (const d of planned) {
-      d.chunks = d.chunks.map(c => ({ ...c, count: Math.max(1, Math.floor(c.count * f)) }));
+      d.chunks = mergeSmallChunks(scaleChunks(d.chunks, Math.max(1, Math.floor(d.cards * f))));
       d.cards = d.chunks.reduce((s, c) => s + c.count, 0);
     }
     total = planned.reduce((s, d) => s + d.cards, 0);
