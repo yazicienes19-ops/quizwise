@@ -14,6 +14,7 @@ const USER_TABLES = [
   ['collections', 'user_id'],
   ['documents', 'user_id'],
   ['flashcard_decks', 'user_id'],
+  ['card_reviews', 'user_id'],
   ['user_learning_data', 'user_id'],
   ['user_saved_content', 'user_id'],
   ['study_plan', 'user_id'],

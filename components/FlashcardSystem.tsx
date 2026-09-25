@@ -34,6 +34,8 @@ import { buildFigureCards, canUseFigures } from '../services/figureCardBuilder';
 import { getCardLimits, setCardLimits, remainingToday, todayUsage, NEW_LIMIT_OPTIONS, REVIEW_LIMIT_OPTIONS, UNLIMITED, type CardLimits } from '../services/cardLimits';
 import { OcclusionEditorModal } from './OcclusionEditorModal';
 import { buildOcclusionCards, cardImagePaths } from '../services/occlusion';
+import { makeEntry, logReview, undoLastReview, ratingFor, type ReviewEntry } from '../services/reviewLog';
+import { ReviewStatsPanel } from './ReviewStatsPanel';
 
 interface FlashcardSystemProps {
   availableDocuments: ProcessedDocument[];
@@ -439,6 +441,8 @@ export const FlashcardSystem: React.FC<FlashcardSystemProps> = ({
     if (!activeDeckId) return;
     const quality = QUALITY_MAP[difficulty];
     let newLeech = false;
+    let entry: ReviewEntry | null = null;
+    const deckIdForLog = activeDeckId;
 
     updateDeck(activeDeckId, deck => ({
       ...deck,
@@ -447,6 +451,7 @@ export const FlashcardSystem: React.FC<FlashcardSystemProps> = ({
         const currentSrs = card.srs ?? migrateLegacyCard(card);
         const nextSrs = reviewCard(currentSrs, quality);
         // Anki-Standard: ab 8 Lapses Problemkarte, nur markieren, nicht aussetzen.
+        entry = makeEntry(card.id, deckIdForLog, ratingFor(difficulty), card.srs, nextSrs);
         const becomesLeech = !card.leech && (nextSrs.lapses ?? 0) >= LEECH_THRESHOLD;
         if (becomesLeech) newLeech = true;
         return {
@@ -460,6 +465,7 @@ export const FlashcardSystem: React.FC<FlashcardSystemProps> = ({
       }),
     }));
     if (newLeech) toast.info(t('leech.toast'));
+    if (entry) logReview(entry);
     sessionReviewCount.current += 1;
     // >= statt ===: recordActivity ist pro Tag idempotent (streakService),
     // ein zweiter Anlauf am selben Tag darf den Streak also noch auslösen.
@@ -477,6 +483,7 @@ export const FlashcardSystem: React.FC<FlashcardSystemProps> = ({
         : card)),
     }));
     sessionReviewCount.current = Math.max(0, sessionReviewCount.current - 1);
+    void undoLastReview(before.id);
   };
 
   /** Karte aussetzen bzw. fortsetzen (in jedem Stapel, der sie enthält). */
@@ -1260,6 +1267,8 @@ export const FlashcardSystem: React.FC<FlashcardSystemProps> = ({
           </div>
         </div>
       </div>
+
+      {decks.length > 0 && <div className="px-0 sm:px-0"><ReviewStatsPanel decks={decks} /></div>}
     </div>
   );
 };

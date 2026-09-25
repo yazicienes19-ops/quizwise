@@ -47,6 +47,7 @@ import { FocusTimer } from './components/FocusTimer';
 import { GlobalSearch } from './components/GlobalSearch';
 import { isCardDue } from './services/spacedRepetition';
 import { setCardLimits, CARD_LIMITS_KEY } from './services/cardLimits';
+import { setReviewLogUser } from './services/reviewLog';
 
 const LAST_TAB_KEY = 'studearc_last_tab';
 // READER bewusst ausgeschlossen — hängt an einem konkreten pendingActionDoc,
@@ -185,6 +186,7 @@ const App: React.FC = () => {
   useEffect(() => {
     // Tutor-Sitzungen und Reader-Chats bekommen keinen userId durchgereicht (s. syncService)
     import('./services/syncService').then(m => m.setSyncUserId(auth.user?.id ?? null)).catch(() => {});
+    setReviewLogUser(auth.user?.id ?? null);
     if (auth.user) claimLocalDecks(auth.user.id);
     // Meldungen, die nur lokal lagen (offline oder aus der Zeit vor dem
     // Cloud-Upload), einmalig nachholen: sie erscheinen dann im Admin-Dashboard.

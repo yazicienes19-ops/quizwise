@@ -11,6 +11,7 @@ import { ImagePlus } from 'lucide-react';
 import { CardImage } from './CardImage';
 import { toast } from '../services/toast';
 import { uploadCardImage, deleteCardImage, isOwnImage, CardImageError } from '../services/cardImages';
+import { loadReviews, type ReviewEntry } from '../services/reviewLog';
 
 interface EditCardModalProps {
   card?: Flashcard;
@@ -28,6 +29,46 @@ interface EditCardModalProps {
 }
 
 export interface CardImages { frontImage?: string; backImage?: string }
+
+/** Verlauf einer Karte (Anki: Karteninfo): Lernstand und letzte Wiederholungen. */
+const CardHistory: React.FC<{ card: Flashcard }> = ({ card }) => {
+  const { t } = useTranslation();
+  const [open, setOpen] = useState(false);
+  const [list, setList] = useState<ReviewEntry[] | null>(null);
+  useEffect(() => {
+    if (!open || list) return;
+    loadReviews({ cardId: card.id }).then(setList).catch(() => setList([]));
+  }, [open, list, card.id]);
+  const s = card.srs;
+  const label = (r: number) => (r === 1 ? t('fc.again') : r === 2 ? t('fc.hard') : r === 3 ? t('fc.good') : t('fc.easy'));
+  return (
+    <div className="rounded-2xl bg-slate-50 dark:bg-slate-800/60 px-4 py-3 space-y-2">
+      <button type="button" onClick={() => setOpen(o => !o)} aria-expanded={open} className="w-full flex items-center justify-between text-[13px] font-semibold text-slate-700 dark:text-slate-200">
+        {t('hist.title')}
+        <span className="text-xs font-normal text-slate-500 dark:text-slate-400">
+          {s?.lastReview
+            ? t('hist.summary', { next: new Date(s.nextReview).toLocaleDateString(), s: s.stability ? s.stability.toFixed(1) : '?', l: s.lapses ?? 0 })
+            : t('hist.new')}
+        </span>
+      </button>
+      {open && (
+        list === null ? <p className="text-xs text-slate-500">{t('hist.loading')}</p>
+        : list.length === 0 ? <p className="text-xs text-slate-500">{t('hist.none')}</p>
+        : (
+          <ul className="text-xs text-slate-600 dark:text-slate-300 space-y-1 max-h-40 overflow-y-auto">
+            {[...list].reverse().slice(0, 20).map(e => (
+              <li key={e.clientId} className="flex justify-between gap-3 tabular-nums">
+                <span>{new Date(e.reviewedAt).toLocaleString(undefined, { dateStyle: 'short', timeStyle: 'short' })}</span>
+                <span className="font-semibold">{label(e.rating)}</span>
+                <span>{t('hist.interval', { n: Math.round(e.intervalDays) })}</span>
+              </li>
+            ))}
+          </ul>
+        )
+      )}
+    </div>
+  );
+};
 type SideImage = { path?: string; file?: File; preview?: string };
 
 /** Bild für eine Kartenseite wählen, Vorschau zeigen, wieder entfernen. */
@@ -223,6 +264,8 @@ export const EditCardModal: React.FC<EditCardModalProps> = ({
               </div>
             </div>
           </div>
+
+          {!isNew && card && <CardHistory card={card} />}
 
           {/* Schlagwörter */}
           <div className="space-y-2">
