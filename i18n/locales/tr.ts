@@ -2456,6 +2456,8 @@ export const tr: Translations = {
   'mod.allDocs': 'tüm materyaller',
   'mod.reading': '{doc} okunuyor: sayfa {done} / {total}',
   'mod.summaryOnly': 'Okunabilir metni olmayan {n} PDF, yerine özeti kullanılıyor|Okunabilir metni olmayan {n} PDF, yerine özetleri kullanılıyor',
+  'mod.loadingDoc': '{doc} yükleniyor',
+  'mod.counting': 'sayılıyor',
   'rev.title': 'Kartları gözden geçir',
   'rev.subtitle': 'Deste kaydedilmeden önce kartları düzenle: metni değiştir, kart kaldır veya kendi kartını ekle.',
   'rev.deckTitle': 'Deste adı',

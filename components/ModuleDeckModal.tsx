@@ -55,9 +55,12 @@ export const ModuleDeckModal: React.FC<Props> = ({ collections, documents, examT
     let cancelled = false;
     const todo = docs.filter(d => canReadFullText(d) && !fullTexts.has(d.id));
     if (!todo.length) return;
+    // Sofort als "wird gelesen" markieren, auch während des Downloads: sonst wirkt die alte Schätzung fertig
+    setReading({ doc: todo[0].name, done: 0, total: 0 });
     (async () => {
       for (const d of todo) {
         if (cancelled) return;
+        setReading({ doc: d.name, done: 0, total: 0 });
         let text: FullText | null = null;
         try {
           text = await readPdfFullText(d, (done, total) => { if (!cancelled) setReading({ doc: d.name, done, total }); }, () => cancelled);
@@ -145,7 +148,7 @@ export const ModuleDeckModal: React.FC<Props> = ({ collections, documents, examT
     <button key={l} type="button" onClick={() => setLevel(l)} aria-pressed={level === l} disabled={running}
       className={`flex-1 text-left px-3 py-2.5 rounded-xl border transition-colors ${level === l ? 'border-slate-800 dark:border-slate-200 bg-slate-50 dark:bg-slate-800' : 'border-slate-200 dark:border-slate-700'}`}>
       <span className="block text-[13px] font-semibold text-slate-800 dark:text-slate-100">{t(`mod.level.${l}` as const)}</span>
-      <span className="block text-xs text-slate-500 dark:text-slate-400">{tp('mod.aboutCards', plans[l].totalCards)}</span>
+      <span className="block text-xs text-slate-500 dark:text-slate-400">{reading ? t('mod.counting') : tp('mod.aboutCards', plans[l].totalCards)}</span>
     </button>
   );
 
@@ -203,11 +206,11 @@ export const ModuleDeckModal: React.FC<Props> = ({ collections, documents, examT
                   <div className="h-1.5 rounded-full bg-slate-100 dark:bg-slate-800 overflow-hidden">
                     <div className="h-full transition-all" style={{ width: `${(reading.done / Math.max(1, reading.total)) * 100}%`, background: 'var(--primary)' }} />
                   </div>
-                  <p className="text-xs text-slate-600 dark:text-slate-300">{t('mod.reading', { doc: reading.doc, done: reading.done, total: reading.total })}</p>
+                  <p className="text-xs text-slate-600 dark:text-slate-300">{reading.total ? t('mod.reading', { doc: reading.doc, done: reading.done, total: reading.total }) : t('mod.loadingDoc', { doc: reading.doc })}</p>
                 </div>
               )}
               <div className="flex flex-col sm:flex-row gap-2">{(['overview', 'standard', 'thorough'] as const).map(levelBtn)}</div>
-              <p className="text-xs text-slate-500 dark:text-slate-400">{t('mod.budgetHint', { calls: plan.calls })}</p>
+              {!reading && <p className="text-xs text-slate-500 dark:text-slate-400">{t('mod.budgetHint', { calls: plan.calls })}</p>}
               {progress && (
                 <div className="space-y-2" aria-live="polite">
                   <div className="h-2 rounded-full bg-slate-100 dark:bg-slate-800 overflow-hidden">

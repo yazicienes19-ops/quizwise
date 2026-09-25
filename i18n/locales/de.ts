@@ -2464,6 +2464,8 @@ export const de = {
   'mod.allDocs': 'alle Unterlagen',
   'mod.reading': 'Lese {doc}: Seite {done} von {total}',
   'mod.summaryOnly': '{n} PDF ohne lesbaren Text, dafür wird die Zusammenfassung genutzt|{n} PDFs ohne lesbaren Text, dafür wird die Zusammenfassung genutzt',
+  'mod.loadingDoc': 'Lade {doc}',
+  'mod.counting': 'wird gezählt',
   'rev.title': 'Karten prüfen',
   'rev.subtitle': 'Passe die Karten an, bevor der Stapel gespeichert wird: Text ändern, Karten entfernen oder eigene ergänzen.',
   'rev.deckTitle': 'Name des Stapels',

@@ -2463,6 +2463,8 @@ export const en: Translations = {
   'mod.allDocs': 'all materials',
   'mod.reading': 'Reading {doc}: page {done} of {total}',
   'mod.summaryOnly': '{n} PDF without readable text, using its summary instead|{n} PDFs without readable text, using their summaries instead',
+  'mod.loadingDoc': 'Loading {doc}',
+  'mod.counting': 'counting',
   'rev.title': 'Review cards',
   'rev.subtitle': 'Adjust the cards before the deck is saved: edit text, remove cards or add your own.',
   'rev.deckTitle': 'Deck name',
