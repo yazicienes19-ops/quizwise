@@ -78,10 +78,10 @@ export const OcclusionEditorModal: React.FC<Props> = ({ userId, onClose, onCreat
 
   return createPortal(
     <div className="fixed inset-0 bg-black/60 z-50 flex items-center justify-center p-4 animate-in fade-in duration-200" onClick={onClose}>
-      <div {...dialogProps} className="bg-white dark:bg-slate-900 rounded-[24px] w-full max-w-3xl shadow-3d-deep max-h-[92vh] overflow-y-auto" onClick={e => e.stopPropagation()}>
+      <div {...dialogProps} className="bg-[var(--card)] dark:bg-slate-900 rounded-[24px] w-full max-w-3xl shadow-3d-deep max-h-[92vh] overflow-y-auto" onClick={e => e.stopPropagation()}>
         <div className="flex justify-between items-center px-6 sm:px-8 py-5 border-b border-slate-100 dark:border-slate-800">
           <div>
-            <h2 id={titleId} className="text-xl font-black dark:text-white">{t('occ.title')}</h2>
+            <h2 id={titleId} className="text-xl font-semibold dark:text-white">{t('occ.title')}</h2>
             <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5">{t('occ.subtitle')}</p>
           </div>
           <ModalCloseButton onClick={onClose} label={t('common.close')} className="p-2 text-slate-400 hover:text-rose-500 transition-colors rounded-xl" />
@@ -107,13 +107,13 @@ export const OcclusionEditorModal: React.FC<Props> = ({ userId, onClose, onCreat
                 <img src={preview} alt="" draggable={false} className="block w-full h-auto pointer-events-none" />
                 {masks.map((m, i) => (
                   <div key={i} className="absolute rounded-[4px] flex items-center justify-center" style={{ ...box(m), background: 'rgba(245,200,75,0.85)', border: '2px solid #8A6420' }}>
-                    <span className="text-[13px] font-black text-[#5b420f]">{i + 1}</span>
+                    <span className="text-[13px] font-semibold text-[#5b420f]">{i + 1}</span>
                     <button
                       type="button"
                       onPointerDown={e => e.stopPropagation()}
                       onClick={() => setMasks(ms => ms.filter((_, j) => j !== i))}
                       aria-label={t('occ.removeMask', { n: i + 1 })}
-                      className="absolute -top-2.5 -right-2.5 w-6 h-6 rounded-full bg-white dark:bg-slate-900 shadow flex items-center justify-center text-slate-600 dark:text-slate-300"
+                      className="absolute -top-2.5 -right-2.5 w-6 h-6 rounded-full bg-[var(--card)] dark:bg-slate-900 shadow flex items-center justify-center text-slate-600 dark:text-slate-300"
                     >
                       <X className="w-3.5 h-3.5" />
                     </button>

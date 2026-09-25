@@ -38,7 +38,7 @@ export const OcclusionImage: React.FC<Props> = ({ occlusion, revealed, alt, clas
               : { background: 'transparent', border: '3px solid #F5C84B', boxShadow: '0 0 0 2px rgba(0,0,0,0.35)' }),
           }}
         >
-          {state === 'target' && <span className="text-[#5b420f] font-black text-lg leading-none select-none">?</span>}
+          {state === 'target' && <span className="text-[#5b420f] font-semibold text-lg leading-none select-none">?</span>}
         </div>
       ))}
     </div>

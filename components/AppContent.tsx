@@ -356,10 +356,11 @@ export const AppContent: React.FC<AppContentProps> = (p) => {
         onSaveQuiz={handleSaveQuiz}
       />;
       const dueMistakes = countDueMistakes();
-      return (
-        <div>
+      // Hinweise stehen unter der Kopfzeile, nicht darüber (Design-Tour 25.09.2026).
+      const quizNotices = (dueMistakes > 0 || savedQuizzes.length > 0) ? (
+        <div className="space-y-4">
           {dueMistakes > 0 && (
-            <div className="max-w-3xl mx-auto px-4 pt-6 pb-2">
+            <div>
               <div
                 className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 sm:gap-4 rounded-[20px] px-5 py-4"
                 style={{
@@ -385,16 +386,16 @@ export const AppContent: React.FC<AppContentProps> = (p) => {
             </div>
           )}
           {savedQuizzes.length > 0 && (
-            <div className="max-w-3xl mx-auto px-4 pt-6 pb-2 space-y-3">
+            <div className="space-y-3">
               <p className="text-[11px] font-semibold uppercase tracking-[0.08em] text-slate-400">{t('ac.savedQuizzes')}</p>
               <div className="space-y-2">
                 {savedQuizzes.map(sq => (
-                  <div key={sq.id} className="flex items-center gap-3 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-[20px] px-5 py-4 shadow-sm">
+                  <div key={sq.id} className="flex items-center gap-3 bg-[var(--card)] dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-[20px] px-5 py-4 shadow-sm">
                     <div className="flex-1 min-w-0">
-                      <p className="text-sm font-black dark:text-white break-words">{sq.name}</p>
+                      <p className="text-sm font-semibold dark:text-white break-words">{sq.name}</p>
                       <p className="text-[11px] text-slate-400 font-medium mt-0.5">{tp('dashboard.questionsN', sq.questions.length)} · {formatDate(sq.savedAt, { day: '2-digit', month: 'short', year: '2-digit' })}</p>
                     </div>
-                    <button onClick={() => handleLoadSavedQuiz(sq)} className="flex items-center gap-1.5 px-4 py-2 text-white rounded-[14px] text-[13px] font-semibold hover:scale-105 transition-all shrink-0" style={{ background: 'var(--primary)' }}>
+                    <button onClick={() => handleLoadSavedQuiz(sq)} className="flex items-center gap-1.5 px-4 py-2 rounded-[14px] text-[13px] font-semibold hover:scale-105 transition-all shrink-0" style={{ background: 'var(--primary)', color: 'var(--primary-text)' }}>
                       <svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round"><polygon points="5 3 19 12 5 21 5 3"/></svg>
                       {t('lc.start')}
                     </button>
@@ -404,9 +405,12 @@ export const AppContent: React.FC<AppContentProps> = (p) => {
                   </div>
                 ))}
               </div>
-              <div className="h-px bg-slate-100 dark:bg-slate-800 my-2" />
             </div>
           )}
+        </div>
+      ) : null;
+      return (
+        <div>
           <FileUploader
             key={`quiz-src-${activeModuleId ?? 'all'}`}
             documents={documents} collections={collections}
@@ -415,6 +419,7 @@ export const AppContent: React.FC<AppContentProps> = (p) => {
             onDeckSelect={(deck) => setQuizSetupSource({ source: buildDeckQuizSource(deck), name: deck.title, topicsKey: deck.id })}
             onSaveToLibrary={file => handleFileUpload(file)}
             availableDecks={decks} isLoading={isLoading} userPlan={userPlan}
+            notices={quizNotices}
           />
         </div>
       );
@@ -486,9 +491,9 @@ export const AppContent: React.FC<AppContentProps> = (p) => {
             <p className="text-[11px] font-semibold uppercase tracking-[0.08em] text-slate-400">{t('ac.savedExams')}</p>
             <div className="space-y-2">
               {savedExams.map(se => (
-                <div key={se.id} className="flex items-center gap-3 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-[20px] px-5 py-4 shadow-sm">
+                <div key={se.id} className="flex items-center gap-3 bg-[var(--card)] dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-[20px] px-5 py-4 shadow-sm">
                   <div className="flex-1 min-w-0">
-                    <p className="text-sm font-black dark:text-white break-words">{se.name}</p>
+                    <p className="text-sm font-semibold dark:text-white break-words">{se.name}</p>
                     <p className="text-[11px] text-slate-400 font-medium mt-0.5">{tp('dashboard.questionsN', se.questions.length)} · {formatDate(se.savedAt, { day: '2-digit', month: 'short', year: '2-digit' })}</p>
                   </div>
                   <button onClick={() => handleLoadSavedExam(se)} className="flex items-center gap-1.5 px-4 py-2 text-white rounded-[14px] text-[13px] font-semibold hover:scale-105 transition-all shrink-0" style={{ background: 'var(--primary)' }}>

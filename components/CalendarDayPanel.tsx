@@ -162,7 +162,7 @@ export const CalendarDayPanel: React.FC<CalendarDayPanelProps> = ({
   return (
     <div className="rounded-[24px] shadow-3d-raised overflow-hidden" style={{ background: 'var(--bg-sidebar)', border: '1px solid var(--border-color)' }}>
       <div className="px-6 py-5" style={{ borderBottom: '1px solid var(--border-color)' }}>
-        <p className="text-lg font-black capitalize" style={{ color: 'var(--text-main)' }}>
+        <p className="text-lg font-semibold capitalize" style={{ color: 'var(--text-main)' }}>
           {formatDate(date, { weekday: 'long', day: 'numeric', month: 'long' })}
         </p>
         <p className="text-[11px] font-bold text-slate-400 mt-1">
@@ -244,7 +244,7 @@ export const CalendarDayPanel: React.FC<CalendarDayPanelProps> = ({
                   <FileText size={16} className="text-rose-500" />
                 </div>
                 <div className="flex-1 min-w-0">
-                  <p className="text-sm font-black break-words" style={{ color: 'var(--text-main)' }}>{exam.title}</p>
+                  <p className="text-sm font-semibold break-words" style={{ color: 'var(--text-main)' }}>{exam.title}</p>
                   <p className="text-xs font-semibold text-slate-400 mt-0.5">
                     {[
                       t('sp2.examTermLabel'),
@@ -320,7 +320,7 @@ export const CalendarDayPanel: React.FC<CalendarDayPanelProps> = ({
                   <MapPin size={16} className="text-blue-500" />
                 </div>
                 <div className="flex-1 min-w-0">
-                  <p className="text-sm font-black break-words" style={{ color: 'var(--text-main)' }}>{ev.title}</p>
+                  <p className="text-sm font-semibold break-words" style={{ color: 'var(--text-main)' }}>{ev.title}</p>
                   <p className="text-[11px] font-semibold uppercase tracking-[0.08em] text-slate-400 mt-0.5">{t('sp2.legendEvent')}</p>
                 </div>
                 <div className="flex items-center gap-1 shrink-0">
@@ -345,10 +345,10 @@ export const CalendarDayPanel: React.FC<CalendarDayPanelProps> = ({
               {s.topic ? (
                 <>
                   {s.subjectLabel && <p className="text-xs font-semibold text-slate-400">{s.subjectLabel}</p>}
-                  <p className="text-sm font-black break-words leading-tight" style={{ color: 'var(--text-main)' }}>{s.topic}</p>
+                  <p className="text-sm font-semibold break-words leading-tight" style={{ color: 'var(--text-main)' }}>{s.topic}</p>
                 </>
               ) : (
-                <p className="text-sm font-black break-words leading-tight" style={{ color: 'var(--text-main)' }}>{s.subjectLabel}</p>
+                <p className="text-sm font-semibold break-words leading-tight" style={{ color: 'var(--text-main)' }}>{s.subjectLabel}</p>
               )}
               <p className="text-[11px] font-bold text-slate-400 mt-0.5 flex items-center gap-1.5 flex-wrap">
                 <span className="font-mono tabular-nums">{s.startTime}–{s.endTime}</span>

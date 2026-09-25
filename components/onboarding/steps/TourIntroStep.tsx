@@ -16,7 +16,7 @@ export const TourIntroStep: React.FC = () => {
       >
         🧭
       </div>
-      <h2 className="text-lg font-black tracking-tight mb-2" style={{ color: 'var(--text-main)' }}>
+      <h2 className="text-lg font-semibold tracking-tight mb-2" style={{ color: 'var(--text-main)' }}>
         {t('onboarding.flow.tourIntro.title')}
       </h2>
       <p className="text-sm text-slate-500 dark:text-slate-400 leading-relaxed">

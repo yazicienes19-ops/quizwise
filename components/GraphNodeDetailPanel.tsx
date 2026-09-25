@@ -395,7 +395,7 @@ export const GraphNodeDetailPanel: React.FC<GraphNodeDetailPanelProps> = ({
               else if (e.key === 'Escape') { e.preventDefault(); setTitleDraft(node.title); (e.target as HTMLInputElement).blur(); }
             }}
             aria-label={t('kg.panel.titleLabel')}
-            className="w-full text-base font-black text-slate-900 dark:text-white bg-transparent outline-none border border-transparent hover:border-slate-200 dark:hover:border-slate-700 focus:border-indigo-400 rounded-lg -mx-1 px-1 py-0.5 transition-colors"
+            className="w-full text-base font-semibold text-slate-900 dark:text-white bg-transparent outline-none border border-transparent hover:border-slate-200 dark:hover:border-slate-700 focus:border-indigo-400 rounded-lg -mx-1 px-1 py-0.5 transition-colors"
           />
           <div className={`${sheetExpanded ? 'flex' : 'hidden'} sm:flex items-center gap-1.5 mt-2 flex-wrap`}>
             <span

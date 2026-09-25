@@ -9,7 +9,7 @@ import { BrandMark } from './BrandMark';
 export const SplashScreen: React.FC = () => {
   const { t } = useTranslation();
   return (
-    <div className="fixed inset-0 z-[100] flex flex-col items-center justify-center bg-white dark:bg-slate-950">
+    <div className="fixed inset-0 z-[100] flex flex-col items-center justify-center bg-[var(--card)] dark:bg-slate-950">
       <div className="flex flex-col items-center gap-6 animate-in fade-in zoom-in-95 duration-500">
         {/* Logo */}
         <div className="flex items-center gap-3">

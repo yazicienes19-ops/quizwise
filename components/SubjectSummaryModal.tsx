@@ -49,7 +49,7 @@ export const SubjectSummaryModal: React.FC<Props> = ({ subjectName, docs, onClos
     URL.revokeObjectURL(url);
   };
 
-  const btn = 'flex-1 sm:flex-none justify-center flex items-center gap-2 px-4 py-2.5 rounded-2xl text-[11px] font-black uppercase tracking-widest transition-all hover:opacity-90';
+  const btn = 'flex-1 sm:flex-none justify-center flex items-center gap-2 px-4 py-2.5 rounded-2xl text-[13px] font-semibold transition-all hover:opacity-90';
 
   return createPortal(
     <div className="fixed inset-0 bg-black/60 z-[60] flex items-center justify-center p-4 animate-in fade-in duration-200" onClick={onClose}>
@@ -62,7 +62,7 @@ export const SubjectSummaryModal: React.FC<Props> = ({ subjectName, docs, onClos
         <div className="flex justify-between items-start gap-4 px-6 sm:px-8 py-5" style={{ borderBottom: '1px solid var(--border-color)' }}>
           <div className="min-w-0 flex-1">
             <p className="text-[11px] font-semibold uppercase tracking-[0.08em] mb-1" style={{ color: 'var(--primary-ink)' }}>{t('sum.eyebrow')}</p>
-            <h2 id={titleId} className="text-xl font-black break-words" style={{ color: 'var(--text-main)' }}>{subjectName}</h2>
+            <h2 id={titleId} className="text-xl font-semibold break-words" style={{ color: 'var(--text-main)' }}>{subjectName}</h2>
             <p className="text-[12.5px] mt-1" style={{ color: 'var(--text-secondary)' }}>
               {tp('sum.included', summary.included)}
               {summary.missing > 0 && ` · ${tp('sum.missingN', summary.missing)}`}

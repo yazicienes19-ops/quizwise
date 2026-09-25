@@ -315,7 +315,7 @@ export const GraphDevHarness: React.FC = () => {
       </div>
 
       {openDocument && createPortal(
-        <div className="fixed inset-0 z-50 bg-white dark:bg-slate-900">
+        <div className="fixed inset-0 z-50 bg-[var(--card)] dark:bg-slate-900">
           <React.Suspense fallback={null}>
             {shouldUsePdfReader(openDocument) ? (
               <PdfSplitScreenReader

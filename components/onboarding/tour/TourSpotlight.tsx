@@ -153,7 +153,7 @@ export const TourSpotlight: React.FC<TourSpotlightProps> = ({
             </span>
           )}
         </div>
-        <h2 className="text-base font-black tracking-tight mb-2" style={{ color: 'var(--text-main)' }}>{title}</h2>
+        <h2 className="text-base font-semibold tracking-tight mb-2" style={{ color: 'var(--text-main)' }}>{title}</h2>
         <p className="text-sm leading-relaxed text-slate-500 dark:text-slate-400 mb-3">{body}</p>
         {previewPanel && (
           <div className="mt-3">

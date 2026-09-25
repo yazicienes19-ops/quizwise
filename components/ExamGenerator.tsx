@@ -388,7 +388,7 @@ export const ExamGenerator: React.FC<ExamGeneratorProps> = ({
 
         {/* Config Column */}
         <div className="lg:col-span-5 space-y-6">
-          <div className="bg-white dark:bg-slate-900 rounded-[24px] sm:rounded-[24px] border border-slate-200 dark:border-slate-800 shadow-3d-deep p-5 sm:p-8 space-y-8 sm:space-y-10">
+          <div className="bg-[var(--card)] dark:bg-slate-900 rounded-[24px] sm:rounded-[24px] border border-slate-200 dark:border-slate-800 shadow-3d-deep p-5 sm:p-8 space-y-8 sm:space-y-10">
             <h3 className="text-[11px] font-semibold uppercase tracking-[0.08em] text-indigo-500">{t('eg.setup')}</h3>
 
             <div className="space-y-6">
@@ -457,12 +457,12 @@ export const ExamGenerator: React.FC<ExamGeneratorProps> = ({
               <div className="flex items-center gap-4">
                 <button
                   onClick={() => setCustomMinutes(Math.max(10, effectiveMinutes - 5))}
-                  className="w-11 h-11 rounded-2xl bg-slate-50 dark:bg-slate-800 text-slate-500 dark:text-slate-400 font-black text-lg hover:bg-slate-100 dark:hover:bg-slate-700 transition-all shrink-0"
+                  className="w-11 h-11 rounded-2xl bg-slate-50 dark:bg-slate-800 text-slate-500 dark:text-slate-400 font-semibold text-lg hover:bg-slate-100 dark:hover:bg-slate-700 transition-all shrink-0"
                 >−</button>
-                <p className="flex-1 text-center text-xl font-black dark:text-white">{effectiveMinutes} Min.</p>
+                <p className="flex-1 text-center text-xl font-semibold dark:text-white">{effectiveMinutes} Min.</p>
                 <button
                   onClick={() => setCustomMinutes(effectiveMinutes + 5)}
-                  className="w-11 h-11 rounded-2xl bg-slate-50 dark:bg-slate-800 text-slate-500 dark:text-slate-400 font-black text-lg hover:bg-slate-100 dark:hover:bg-slate-700 transition-all shrink-0"
+                  className="w-11 h-11 rounded-2xl bg-slate-50 dark:bg-slate-800 text-slate-500 dark:text-slate-400 font-semibold text-lg hover:bg-slate-100 dark:hover:bg-slate-700 transition-all shrink-0"
                 >+</button>
               </div>
             </div>
@@ -531,7 +531,7 @@ export const ExamGenerator: React.FC<ExamGeneratorProps> = ({
                         onChange={e => setQuantSubject(e.target.value)}
                         placeholder={t('eg.quantSubjectPlaceholder')}
                         list="quant-subject-presets"
-                        className="w-full p-3 bg-white dark:bg-slate-800 rounded-xl border-2 border-slate-200 dark:border-slate-700 text-sm font-medium dark:text-white outline-none focus:border-indigo-500 transition-colors"
+                        className="w-full p-3 bg-[var(--card)] dark:bg-slate-800 rounded-xl border-2 border-slate-200 dark:border-slate-700 text-sm font-medium dark:text-white outline-none focus:border-indigo-500 transition-colors"
                       />
                       <datalist id="quant-subject-presets">
                         {QUANT_SUBJECT_PRESETS.map(s => <option key={s} value={s} />)}
@@ -556,7 +556,7 @@ export const ExamGenerator: React.FC<ExamGeneratorProps> = ({
                           value={quantTopics}
                           onChange={e => setQuantTopics(e.target.value)}
                           placeholder={t('eg.quantTopicsPlaceholder')}
-                          className="w-full p-3 bg-white dark:bg-slate-800 rounded-xl border-2 border-slate-200 dark:border-slate-700 text-sm font-medium dark:text-white outline-none focus:border-indigo-500 transition-colors"
+                          className="w-full p-3 bg-[var(--card)] dark:bg-slate-800 rounded-xl border-2 border-slate-200 dark:border-slate-700 text-sm font-medium dark:text-white outline-none focus:border-indigo-500 transition-colors"
                         />
                       )}
                     </div>
@@ -656,7 +656,7 @@ export const ExamGenerator: React.FC<ExamGeneratorProps> = ({
                       {adaptiveTarget.topicWeights.length > 0 ? (
                         <div className="flex flex-wrap gap-2">
                           {adaptiveTarget.topicWeights.map(w => (
-                            <span key={w.topic} className="inline-flex items-center gap-2 px-3 py-1.5 rounded-xl text-[11px] font-bold bg-white dark:bg-slate-800 border border-indigo-200 dark:border-indigo-800 text-slate-700 dark:text-slate-200">
+                            <span key={w.topic} className="inline-flex items-center gap-2 px-3 py-1.5 rounded-xl text-[11px] font-bold bg-[var(--card)] dark:bg-slate-800 border border-indigo-200 dark:border-indigo-800 text-slate-700 dark:text-slate-200">
                               <span className="break-words">{w.topic}</span>
                               <span className="text-[11px] font-semibold uppercase tracking-[0.08em] text-indigo-600 dark:text-indigo-400 shrink-0">{t('eg.adaptiveMinCount', { n: w.minCount })}</span>
                             </span>

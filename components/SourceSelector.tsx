@@ -258,7 +258,7 @@ export const SourceSelector: React.FC<SourceSelectorProps> = ({
                       >
                         <FolderOpen size={20} className="shrink-0" style={{ color: 'var(--primary-ink)' }} strokeWidth={1.75} />
                         <div className="flex-1 min-w-0">
-                          <p className="text-[12px] font-black dark:text-white break-words">{collection.emoji} {collection.name}</p>
+                          <p className="text-[12px] font-semibold dark:text-white break-words">{collection.emoji} {collection.name}</p>
                           <p className="text-xs font-semibold mt-0.5" style={{ color: 'var(--primary-ink)' }}>
                             {t('ssel.wholeFolder')} · {tp('ssel.sourcesN', count)}
                             {ready && included < count && <> · {t('ssel.usableN', { n: included })}</>}
@@ -284,7 +284,7 @@ export const SourceSelector: React.FC<SourceSelectorProps> = ({
                         >
                           <DocIcon type={doc.type} />
                           <div className="flex-1 min-w-0">
-                            <p className="text-[12px] font-black dark:text-white break-words">{docTitle(doc)}</p>
+                            <p className="text-[12px] font-semibold dark:text-white break-words">{docTitle(doc)}</p>
                             <p className="text-xs text-slate-400 font-semibold mt-0.5 break-words">
                               {doc.type.toUpperCase()}
                               {col && <> · {col.emoji} {col.name}</>}

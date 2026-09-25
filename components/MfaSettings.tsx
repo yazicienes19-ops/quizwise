@@ -93,7 +93,7 @@ export const MfaSettings: React.FC = () => {
               value={code}
               onChange={e => setCode(e.target.value.replace(/\D/g, ''))}
               placeholder="······"
-              className="w-36 px-4 py-3 rounded-xl text-lg tracking-[0.3em] font-mono outline-none"
+              className="w-36 px-4 py-3 rounded-xl text-lg tracking-[0.08em] font-mono outline-none"
               style={{ background: 'var(--bg-sidebar)', border: '1px solid var(--border-color)', color: 'var(--ink)' }}
             />
             <button type="submit" disabled={busy || !isValidCode(code)}

@@ -109,7 +109,7 @@ const termDate = (date: string) => `${date}T00:00:00`;
 /** Grobe Zeitschätzung: Antwortzeiten werden nicht gespeichert, daher Pauschalwerte je Fehlerfrage bzw. Karte. */
 const estimateMinutes = (count: number, minutesPerItem: number) => Math.max(1, Math.round(count * minutesPerItem));
 
-const MICRO_LABEL = 'text-[11px] font-semibold uppercase tracking-[0.18em]';
+const MICRO_LABEL = 'text-[11px] font-semibold uppercase tracking-[0.08em]';
 
 export const Dashboard: React.FC<DashboardProps> = ({
   onTabChange, documents = [], decks = [], collections = [], activeModuleId = null, examTerms = [],
@@ -396,7 +396,7 @@ export const Dashboard: React.FC<DashboardProps> = ({
           className="p-6 sm:p-8 rounded-[24px] space-y-2 animate-card-enter"
           style={{ background: 'var(--primary-soft)', border: '1px solid color-mix(in srgb, var(--primary) 30%, transparent)' }}
         >
-          <h2 className="text-2xl sm:text-3xl font-black tracking-tight" style={{ color: 'var(--text-main)' }}>{t('dashboard.empty.welcome')}</h2>
+          <h2 className="text-2xl sm:text-3xl font-semibold tracking-tight" style={{ color: 'var(--text-main)' }}>{t('dashboard.empty.welcome')}</h2>
           <p className="text-sm font-medium" style={{ color: 'var(--text-secondary)' }}>{t('dashboard.empty.subtitle')}</p>
         </div>
         {([
@@ -414,7 +414,7 @@ export const Dashboard: React.FC<DashboardProps> = ({
               style={{ background: 'var(--primary)', color: 'var(--primary-text)' }}
             >{n}</div>
             <div className="min-w-0">
-              <p className="text-sm font-black" style={{ color: 'var(--text-main)' }}>{t(labelKey)}</p>
+              <p className="text-sm font-semibold" style={{ color: 'var(--text-main)' }}>{t(labelKey)}</p>
               <p className="text-[11px]" style={{ color: 'var(--text-secondary)' }}>{t(descKey)}</p>
             </div>
           </div>

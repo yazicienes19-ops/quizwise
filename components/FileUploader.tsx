@@ -20,6 +20,8 @@ interface FileUploaderProps {
   collections: Collection[];
   onSaveToLibrary?: (file: File) => void;
   userPlan?: 'free' | 'pro';
+  /** Hinweise direkt unter der Kopfzeile (fällige Fehlerfragen, gespeicherte Quizze). */
+  notices?: React.ReactNode;
 }
 
 export const FileUploader: React.FC<FileUploaderProps> = ({
@@ -32,6 +34,7 @@ export const FileUploader: React.FC<FileUploaderProps> = ({
   collections,
   onSaveToLibrary,
   userPlan = 'free',
+  notices,
 }) => {
   const { t, tp } = useTranslation();
   const [mode, setMode] = useState<'source' | 'deck'>('source');
@@ -51,19 +54,20 @@ export const FileUploader: React.FC<FileUploaderProps> = ({
   return (
     <div className="space-y-8 lg:space-y-12 max-w-4xl mx-auto py-6 lg:py-10 animate-in fade-in slide-in-from-bottom-12 duration-1000 px-4">
       <PageHeader eyebrow={t('nav.quiz')} title={t('page.quiz.title')} subtitle={t('fu.subtitle')} />
+      {notices}
 
       {/* Mode Switcher */}
-      <div className="flex justify-center">
+      <div className="flex">
         <div className="inline-flex bg-slate-200/50 dark:bg-slate-900 p-1.5 rounded-[24px] shadow-3d-pressed border border-white/40 dark:border-slate-800">
           <button
             onClick={() => setMode('source')}
-            className={`px-6 sm:px-10 py-2.5 rounded-2xl text-[13px] sm:text-[11px] font-semibold transition-all flex items-center gap-2 ${mode === 'source' ? 'bg-white dark:bg-slate-700 text-indigo-600 dark:text-white shadow-3d-raised' : 'text-slate-400'}`}
+            className={`px-6 sm:px-10 py-2.5 rounded-2xl text-[13px] sm:text-[11px] font-semibold transition-all flex items-center gap-2 ${mode === 'source' ? 'bg-[var(--card)] dark:bg-slate-700 text-indigo-600 dark:text-white shadow-3d-raised' : 'text-slate-400'}`}
           >
             <EmojiImage emoji="📚" size={12} /> {t('fu.source')}
           </button>
           <button
             onClick={() => setMode('deck')}
-            className={`px-6 sm:px-10 py-2.5 rounded-2xl text-[13px] sm:text-[11px] font-semibold transition-all flex items-center gap-2 ${mode === 'deck' ? 'bg-white dark:bg-slate-700 text-indigo-600 dark:text-white shadow-3d-raised' : 'text-slate-400'}`}
+            className={`px-6 sm:px-10 py-2.5 rounded-2xl text-[13px] sm:text-[11px] font-semibold transition-all flex items-center gap-2 ${mode === 'deck' ? 'bg-[var(--card)] dark:bg-slate-700 text-indigo-600 dark:text-white shadow-3d-raised' : 'text-slate-400'}`}
           >
             <EmojiImage emoji="🗂️" size={12} /> {t('fu.deck')}
           </button>
@@ -77,7 +81,7 @@ export const FileUploader: React.FC<FileUploaderProps> = ({
           style={{ background: 'color-mix(in srgb, var(--primary) 7%, var(--bg-sidebar))', borderColor: 'color-mix(in srgb, var(--primary) 25%, transparent)' }}
         >
           <p className="text-[11px] font-semibold uppercase tracking-[0.08em]" style={{ color: 'var(--primary-ink)' }}>{t('fu.activeSubject')}</p>
-          <p className="text-2xl font-black dark:text-white">{activeModule.emoji} {activeModule.name}</p>
+          <p className="text-2xl font-semibold dark:text-white">{activeModule.emoji} {activeModule.name}</p>
           <p className="text-[11px] font-medium text-slate-400">
             {tp('fu.sourcesBase', folderResult.includedCount)}
             {folderResult.pendingCount > 0 && <>{t('fu.pendingProcessing', { n: folderResult.pendingCount })}</>}
@@ -116,7 +120,7 @@ export const FileUploader: React.FC<FileUploaderProps> = ({
 
       {/* Deck Selection */}
       {mode === 'deck' && (
-        <div className="bg-white dark:bg-slate-900 rounded-[28px] border border-slate-200 dark:border-slate-800 shadow-3d-deep p-6 space-y-4">
+        <div className="bg-[var(--card)] dark:bg-slate-900 rounded-[28px] border border-slate-200 dark:border-slate-800 shadow-3d-deep p-6 space-y-4">
           <h3 className="text-[11px] font-semibold uppercase tracking-[0.08em] text-slate-400 px-2">{t('fu.existingDecks', { n: availableDecks.length })}</h3>
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 max-h-[400px] overflow-y-auto pr-2 scrollbar-thin">
             {availableDecks.length === 0 ? (
@@ -133,7 +137,7 @@ export const FileUploader: React.FC<FileUploaderProps> = ({
                   className="p-5 bg-slate-50 dark:bg-slate-800/50 rounded-2xl border-2 border-transparent hover:border-indigo-500 text-left transition-all group relative overflow-hidden"
                 >
                   <div className="absolute top-0 left-0 w-1 h-full bg-indigo-600 opacity-0 group-hover:opacity-100 transition-opacity" />
-                  <p className="font-black text-sm text-slate-900 dark:text-white group-hover:text-indigo-600 break-words">{deck.title}</p>
+                  <p className="font-semibold text-sm text-slate-900 dark:text-white group-hover:text-indigo-600 break-words">{deck.title}</p>
                   <div className="flex justify-between items-center mt-1">
                     <p className="text-[11px] font-bold text-slate-400 uppercase">{t('fu.cardsN', { n: deck.cards.length })}</p>
                     <span className="text-[11px] font-semibold text-indigo-600 opacity-0 group-hover:opacity-100 transition-all translate-x-4 group-hover:translate-x-0">{t('fu.choose')}</span>

@@ -49,7 +49,7 @@ export const MfaGate: React.FC<{ onVerified: () => void; onSignOut: () => void }
           value={code}
           onChange={e => setCode(e.target.value.replace(/\D/g, ''))}
           placeholder="······"
-          className="w-full px-4 py-3 rounded-xl text-2xl text-center tracking-[0.4em] font-mono outline-none"
+          className="w-full px-4 py-3 rounded-xl text-2xl text-center tracking-[0.08em] font-mono outline-none"
           style={{ background: 'var(--bg-main)', border: '1px solid var(--border-color)', color: 'var(--ink)' }}
         />
         {error && <p role="alert" className="text-[13px] text-rose-600">{error}</p>}

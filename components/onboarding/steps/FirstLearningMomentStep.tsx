@@ -55,7 +55,7 @@ export const FirstLearningMomentStep: React.FC<FirstLearningMomentStepProps> = (
 
   return (
     <>
-      <h2 className="text-lg font-black tracking-tight mb-2" style={{ color: 'var(--text-main)' }}>
+      <h2 className="text-lg font-semibold tracking-tight mb-2" style={{ color: 'var(--text-main)' }}>
         {t('onboarding.flow.firstMoment.title')}
       </h2>
 

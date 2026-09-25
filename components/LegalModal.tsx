@@ -337,7 +337,7 @@ export const LegalModal: React.FC<LegalModalProps> = ({ page, onClose }) => {
         style={{ background: 'var(--bg-sidebar)', border: '1px solid var(--border-color)' }}
       >
         <div className="flex items-center justify-between p-8 pb-0 shrink-0">
-          <h2 id={titleId} className="text-2xl font-black tracking-tight dark:text-white">{title}</h2>
+          <h2 id={titleId} className="text-2xl font-semibold tracking-tight dark:text-white">{title}</h2>
           <button aria-label={t('common.close')}
             onClick={onClose}
             className="w-10 h-10 rounded-xl flex items-center justify-center text-slate-400 hover:text-slate-700 dark:hover:text-white transition-colors"

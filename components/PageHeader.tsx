@@ -7,8 +7,9 @@ import React from 'react';
  * Farbakzent und Emoji-Symbol (Audit 23.09.2026: zwei Designgenerationen, auf
  * dem Handy füllte die Überschrift den ersten Bildschirm).
  *
- * align="left" + actions: für Verwaltungsseiten mit Aktionsknopf rechts
- * (Bibliothek); sonst zentriert wie Feynman und Tutor.
+ * Standard ist linksbündig wie Heute (Design-Tour 25.09.2026: eine Kopfzeile
+ * für alle Seiten), Aktionen stehen rechts daneben. align="center" bleibt nur
+ * für Sonderfälle ohne Seitenkontext.
  */
 interface PageHeaderProps {
   eyebrow: string;
@@ -23,11 +24,13 @@ interface PageHeaderProps {
 
 const EYEBROW_COLOR = 'color-mix(in srgb, var(--primary) 70%, var(--ink))';
 
-export const PageHeader: React.FC<PageHeaderProps> = ({ eyebrow, title, subtitle, align = 'center', actions, children }) => {
+export const PageHeader: React.FC<PageHeaderProps> = ({ eyebrow, title, subtitle, align = 'left', actions, children }) => {
   const centered = align === 'center';
+  // Linksbündig: Text braucht Platz für die Überschrift in einer Zeile; reicht
+  // er neben den Aktionen nicht, rutschen die Aktionen darunter (flex-wrap).
   const text = (
-    <div className={`space-y-2 min-w-0 ${centered ? 'text-center' : ''}`}>
-      <p className="text-[11px] font-black uppercase tracking-[0.2em]" style={{ color: EYEBROW_COLOR }}>{eyebrow}</p>
+    <div className={`space-y-2 min-w-0 ${centered ? 'text-center' : 'flex-1 basis-[min(100%,34rem)]'}`}>
+      <p className="text-[11px] font-semibold uppercase tracking-[0.08em]" style={{ color: EYEBROW_COLOR }}>{eyebrow}</p>
       <h1 className="text-[26px] sm:text-3xl lg:text-[40px] font-normal leading-tight [text-wrap:balance]" style={{ color: 'var(--ink)' }}>
         {title}
       </h1>
@@ -49,7 +52,7 @@ export const PageHeader: React.FC<PageHeaderProps> = ({ eyebrow, title, subtitle
     );
   }
   return (
-    <header className="flex flex-col sm:flex-row sm:items-end justify-between gap-4">
+    <header className="flex flex-wrap items-end justify-between gap-4">
       {text}
       {actions && <div className="flex flex-wrap gap-2.5 shrink-0">{actions}</div>}
     </header>

@@ -127,9 +127,9 @@ export const GeneratedCardsReviewModal: React.FC<{
   const { keep, dropped } = splitDraft(draft.cards);
   return createPortal(
     <div className="fixed inset-0 bg-black/60 z-50 flex items-center justify-center p-4 animate-in fade-in duration-200">
-      <div role="dialog" aria-modal="true" aria-labelledby="rev-title" className="bg-white dark:bg-slate-900 rounded-[24px] w-full max-w-3xl shadow-3d-deep max-h-[92vh] flex flex-col">
+      <div role="dialog" aria-modal="true" aria-labelledby="rev-title" className="bg-[var(--card)] dark:bg-slate-900 rounded-[24px] w-full max-w-3xl shadow-3d-deep max-h-[92vh] flex flex-col">
         <div className="px-6 sm:px-8 py-5 border-b border-slate-100 dark:border-slate-800">
-          <h2 id="rev-title" className="text-xl font-black dark:text-white">{t('rev.title')}</h2>
+          <h2 id="rev-title" className="text-xl font-semibold dark:text-white">{t('rev.title')}</h2>
           <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5">{t('rev.subtitle')}</p>
         </div>
         <div className="px-6 sm:px-8 py-5 overflow-y-auto flex-1">

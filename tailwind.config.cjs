@@ -30,11 +30,12 @@ module.exports = {
           900: '#312e81',
           950: '#1e1b4b',
         },
+        // 50-300 kommen aus app.css (--slate-*): warm im Tagmodus, unverändert im Nachtmodus.
         slate: {
-          50: '#F8FAFF',
-          100: '#F1F5FF',
-          200: '#E2E9F8',
-          300: '#C8D5EE',
+          50: 'rgb(var(--slate-50) / <alpha-value>)',
+          100: 'rgb(var(--slate-100) / <alpha-value>)',
+          200: 'rgb(var(--slate-200) / <alpha-value>)',
+          300: 'rgb(var(--slate-300) / <alpha-value>)',
           400: '#8FA3C4',
           500: '#607494',
           600: '#475C7A',

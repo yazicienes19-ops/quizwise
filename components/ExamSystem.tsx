@@ -443,9 +443,9 @@ export const ExamSystem: React.FC<ExamSystemProps> = ({ documents, collections, 
 
   return (
     <div className="space-y-10 animate-in fade-in duration-700">
-      <div className="flex justify-between items-center bg-white dark:bg-slate-900 p-6 rounded-[24px] border border-slate-200 dark:border-slate-800 shadow-3d-raised">
+      <div className="flex justify-between items-center bg-[var(--card)] dark:bg-slate-900 p-6 rounded-[24px] border border-slate-200 dark:border-slate-800 shadow-3d-raised">
         <div>
-          <h2 className="text-xl font-black dark:text-white">{t('nav.exam')}</h2>
+          <h2 className="text-xl font-semibold dark:text-white">{t('nav.exam')}</h2>
           <p className="text-xs text-slate-400 font-bold uppercase tracking-[0.08em]">{t('es.statusLabel', { status: mode === 'edit' ? t('es.tabSolve') : mode === 'solve' ? t('es.tabSimulation') : t('es.tabResult') })}</p>
         </div>
         <div className="flex items-center gap-4">

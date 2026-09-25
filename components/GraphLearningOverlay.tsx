@@ -305,7 +305,7 @@ const QuizActivity: React.FC<{
     return (
       <OverlayShell node={node} activity="quiz" onClose={onClose}>
         <div className="flex flex-col items-center justify-center py-24 space-y-6 px-4 text-center">
-          <p className="text-5xl font-black dark:text-white">{score}%</p>
+          <p className="text-5xl font-semibold dark:text-white">{score}%</p>
           <p className="text-sm font-bold text-slate-500 dark:text-slate-400">
             {t('kg.activity.quizResult', { correct, total: answers.length })}
           </p>

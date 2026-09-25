@@ -177,13 +177,13 @@ export const UploadSourceModal: React.FC<Props> = ({ onClose, onUpload }) => {
     >
       <div
         {...dialogProps}
-        className="bg-white dark:bg-slate-900 rounded-[24px] w-full max-w-lg shadow-3d-deep overflow-hidden animate-in zoom-in-95 duration-300"
+        className="bg-[var(--card)] dark:bg-slate-900 rounded-[24px] w-full max-w-lg shadow-3d-deep overflow-hidden animate-in zoom-in-95 duration-300"
         onClick={e => e.stopPropagation()}
       >
         {/* Header */}
         <div className="flex justify-between items-center px-8 py-6 border-b border-slate-100 dark:border-slate-800">
           <div>
-            <h2 id={titleId} className="text-xl font-black dark:text-white">{t('upl.title')}</h2>
+            <h2 id={titleId} className="text-xl font-semibold dark:text-white">{t('upl.title')}</h2>
             <p className="text-xs font-semibold text-slate-400 mt-0.5">{t('upl.subtitle')}</p>
           </div>
           <ModalCloseButton onClick={onClose} label={t('upl.close')} className="p-2 text-slate-400 hover:text-rose-500 transition-colors rounded-xl" />
@@ -282,7 +282,7 @@ export const UploadSourceModal: React.FC<Props> = ({ onClose, onUpload }) => {
                   }`}
                 >
                   <p className="text-4xl mb-3">📂</p>
-                  <p className="font-black dark:text-white text-sm">{t('upl.dropFiles')}</p>
+                  <p className="font-semibold dark:text-white text-sm">{t('upl.dropFiles')}</p>
                   <p className="text-xs text-slate-400 mt-1 font-semibold">{t('upl.orClick')}</p>
                   <p className="text-[11px] text-slate-300 dark:text-slate-600 mt-3">{t('upl.fileTypes')}</p>
                 </div>
@@ -298,12 +298,12 @@ export const UploadSourceModal: React.FC<Props> = ({ onClose, onUpload }) => {
                             type="text"
                             value={f.title}
                             onChange={e => setFiles(prev => prev.map((x, j) => j === i ? { ...x, title: e.target.value } : x))}
-                            className="w-full bg-transparent text-sm font-black dark:text-white outline-none border-b border-transparent focus:border-indigo-400"
+                            className="w-full bg-transparent text-sm font-semibold dark:text-white outline-none border-b border-transparent focus:border-indigo-400"
                             aria-label={t('upl.titleOptional')}
                           />
                           <p className="text-xs text-slate-400 font-semibold truncate">{f.file.name} · {(f.file.size / 1024 / 1024).toFixed(2)} MB</p>
                         </div>
-                        <button type="button" onClick={() => setFiles(prev => prev.filter((_, j) => j !== i))} className="text-slate-400 hover:text-rose-500 transition-colors font-black text-lg leading-none shrink-0">×</button>
+                        <button type="button" onClick={() => setFiles(prev => prev.filter((_, j) => j !== i))} className="text-slate-400 hover:text-rose-500 transition-colors font-semibold text-lg leading-none shrink-0">×</button>
                       </div>
                     );
                   })}

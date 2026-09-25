@@ -93,7 +93,7 @@ export const ExamArchive: React.FC = () => {
                   </p>
                 )}
               </div>
-              <span className="text-slate-400 font-black shrink-0" aria-hidden="true">{groupOpen ? '−' : '+'}</span>
+              <span className="text-slate-400 font-semibold shrink-0" aria-hidden="true">{groupOpen ? '−' : '+'}</span>
             </button>
             {groupOpen && (
               <div className="px-3 pb-3 space-y-2">
@@ -119,7 +119,7 @@ export const ExamArchive: React.FC = () => {
                 </p>
                 <p className="text-[12px] text-slate-500 dark:text-slate-400 mt-0.5">{exam.passed ? t('ea.passed') : t('ea.failed')}</p>
               </div>
-              <span className="text-slate-300 font-black shrink-0">{isOpen ? '−' : '+'}</span>
+              <span className="text-slate-300 font-semibold shrink-0">{isOpen ? '−' : '+'}</span>
             </button>
 
             {isOpen && (

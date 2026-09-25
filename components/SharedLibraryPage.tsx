@@ -110,7 +110,7 @@ export const SharedLibraryPage: React.FC<SharedLibraryPageProps> = ({ shareId, u
       <div className="min-h-screen flex items-center justify-center px-4" style={{ background: 'var(--bg-main)' }}>
         <div className="text-center space-y-4 max-w-sm">
           <p className="text-5xl">🔍</p>
-          <h2 className="text-2xl font-black dark:text-white">{t('sdp.notFound')}</h2>
+          <h2 className="text-2xl font-semibold dark:text-white">{t('sdp.notFound')}</h2>
           <p className="text-slate-400 text-sm">{t('sdp.expiredLink')}</p>
           <button
             onClick={() => window.location.href = '/'}
@@ -176,7 +176,7 @@ export const SharedLibraryPage: React.FC<SharedLibraryPageProps> = ({ shareId, u
           <div className="px-8 sm:px-10 pt-7 text-center">
             {accepted ? (
               <div className="space-y-3 pb-2">
-                <p className="font-black text-lg text-emerald-600">{t('slp.accepted', { name: library.name })}</p>
+                <p className="font-semibold text-lg text-emerald-600">{t('slp.accepted', { name: library.name })}</p>
                 <button
                   onClick={() => window.location.href = '/'}
                   className="px-6 py-3 rounded-2xl text-[13px] font-semibold transition-all hover:scale-105"

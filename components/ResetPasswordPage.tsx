@@ -78,7 +78,7 @@ export const ResetPasswordPage: React.FC<ResetPasswordPageProps> = ({ authChecke
     return (
       <Card>
         <Header />
-        <h2 className="text-lg font-black mb-2" style={{ color: 'var(--text-main)' }}>{t('rpp.invalidTitle')}</h2>
+        <h2 className="text-lg font-semibold mb-2" style={{ color: 'var(--text-main)' }}>{t('rpp.invalidTitle')}</h2>
         <p className="text-sm mb-6" style={{ color: 'var(--text-secondary)' }}>{t('rpp.invalidText')}</p>
         <button
           onClick={() => window.location.href = '/'}
@@ -95,7 +95,7 @@ export const ResetPasswordPage: React.FC<ResetPasswordPageProps> = ({ authChecke
     return (
       <Card>
         <Header />
-        <p className="font-black text-lg mb-4 text-emerald-600">{t('rpp.success')}</p>
+        <p className="font-semibold text-lg mb-4 text-emerald-600">{t('rpp.success')}</p>
         <button
           onClick={() => window.location.href = '/'}
           className="px-6 py-3 rounded-2xl text-[13px] font-semibold transition-all hover:scale-105"
@@ -110,7 +110,7 @@ export const ResetPasswordPage: React.FC<ResetPasswordPageProps> = ({ authChecke
   return (
     <Card>
       <Header />
-      <h2 className="text-lg font-black mb-1" style={{ color: 'var(--text-main)' }}>{t('rpp.title')}</h2>
+      <h2 className="text-lg font-semibold mb-1" style={{ color: 'var(--text-main)' }}>{t('rpp.title')}</h2>
       <p className="text-sm mb-6" style={{ color: 'var(--text-secondary)' }}>{t('rpp.subtitle')}</p>
       <form onSubmit={handleSubmit} className="space-y-4">
         <div className="space-y-1.5">

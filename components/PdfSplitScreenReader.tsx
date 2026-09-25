@@ -484,7 +484,7 @@ export const PdfSplitScreenReader: React.FC<PdfSplitScreenReaderProps> = ({ doc,
   if (loadError) {
     return (
       <div className="max-w-3xl mx-auto py-20 px-4 text-center space-y-4">
-        <p className="text-lg font-black dark:text-white">{t('rd.pdfLoadFailed')}</p>
+        <p className="text-lg font-semibold dark:text-white">{t('rd.pdfLoadFailed')}</p>
         <button onClick={onBack} className="px-6 py-3 rounded-2xl text-[13px] font-semibold" style={{ background: 'var(--primary)', color: 'var(--primary-text)' }}>
           {t('rd.backToLibrary')}
         </button>
@@ -523,7 +523,7 @@ export const PdfSplitScreenReader: React.FC<PdfSplitScreenReaderProps> = ({ doc,
           {t('rd.back')}
         </button>
         <div className="min-w-0 flex-1">
-          <h1 className="text-base lg:text-lg font-black tracking-tight dark:text-white truncate leading-tight">{documentDisplayName(doc)}</h1>
+          <h1 className="text-base lg:text-lg font-semibold tracking-tight dark:text-white truncate leading-tight">{documentDisplayName(doc)}</h1>
           {/* Aktueller Abschnitt aus dem erkannten Inhaltsverzeichnis — echte, sich
               beim Blättern mitändernde Angabe, kein statischer Titel. */}
           {activeTocEntry && (
@@ -642,7 +642,7 @@ export const PdfSplitScreenReader: React.FC<PdfSplitScreenReaderProps> = ({ doc,
                 onClick={() => setZoom(z => Math.max(1, Math.round((z - 0.25) * 100) / 100))}
                 disabled={zoom <= 1}
                 aria-label={t('rd.zoomOut')}
-                className="w-9 h-9 rounded-xl text-sm font-black transition-all disabled:opacity-40 disabled:cursor-not-allowed"
+                className="w-9 h-9 rounded-xl text-sm font-semibold transition-all disabled:opacity-40 disabled:cursor-not-allowed"
                 style={{ background: 'var(--bg-main)', border: '1px solid var(--border-color)', color: 'var(--text-main)' }}
               >
                 −
@@ -652,7 +652,7 @@ export const PdfSplitScreenReader: React.FC<PdfSplitScreenReaderProps> = ({ doc,
                 onClick={() => setZoom(z => Math.min(3, Math.round((z + 0.25) * 100) / 100))}
                 disabled={zoom >= 3}
                 aria-label={t('rd.zoomIn')}
-                className="w-9 h-9 rounded-xl text-sm font-black transition-all disabled:opacity-40 disabled:cursor-not-allowed"
+                className="w-9 h-9 rounded-xl text-sm font-semibold transition-all disabled:opacity-40 disabled:cursor-not-allowed"
                 style={{ background: 'var(--bg-main)', border: '1px solid var(--border-color)', color: 'var(--text-main)' }}
               >
                 +
@@ -828,7 +828,7 @@ export const PdfSplitScreenReader: React.FC<PdfSplitScreenReaderProps> = ({ doc,
               <button
                 onClick={() => goToPage(pageNumber - 1)}
                 aria-label={t('rd.prevPage')}
-                className="absolute left-2 top-1/2 -translate-y-1/2 w-11 h-11 rounded-full flex items-center justify-center text-xl font-black shadow-lg transition-all hover:scale-110"
+                className="absolute left-2 top-1/2 -translate-y-1/2 w-11 h-11 rounded-full flex items-center justify-center text-xl font-semibold shadow-lg transition-all hover:scale-110"
                 style={{ background: 'var(--bg-sidebar)', border: '1px solid var(--border-color)', color: 'var(--text-main)' }}
               >
                 ‹
@@ -838,7 +838,7 @@ export const PdfSplitScreenReader: React.FC<PdfSplitScreenReaderProps> = ({ doc,
               <button
                 onClick={() => goToPage(pageNumber + 1)}
                 aria-label={t('rd.nextPage')}
-                className="absolute right-2 top-1/2 -translate-y-1/2 w-11 h-11 rounded-full flex items-center justify-center text-xl font-black shadow-lg transition-all hover:scale-110"
+                className="absolute right-2 top-1/2 -translate-y-1/2 w-11 h-11 rounded-full flex items-center justify-center text-xl font-semibold shadow-lg transition-all hover:scale-110"
                 style={{ background: 'var(--bg-sidebar)', border: '1px solid var(--border-color)', color: 'var(--text-main)' }}
               >
                 ›
@@ -900,7 +900,7 @@ export const PdfSplitScreenReader: React.FC<PdfSplitScreenReaderProps> = ({ doc,
             {activeChat.map((entry, i) => (
               <div key={i} className="space-y-2">
                 <div className="flex items-center gap-2 flex-wrap">
-                  <p className="text-sm font-black dark:text-white break-words">{entry.concept}</p>
+                  <p className="text-sm font-semibold dark:text-white break-words">{entry.concept}</p>
                   {entry.expandedScope && (
                     <span className="shrink-0 px-2 py-0.5 rounded-full text-xs font-semibold" style={{ background: 'color-mix(in srgb, var(--primary) 15%, transparent)', color: 'var(--primary-ink)' }}>
                       {t('rd.expandedScope')}

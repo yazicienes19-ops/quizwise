@@ -190,12 +190,12 @@ export const FlashcardPlayer: React.FC<FlashcardPlayerProps> = ({ cards, onRevie
     const knownPct = presses > 0 ? Math.round(((presses - tally.again) / presses) * 100) : 0;
     return createPortal(
       <div className="fixed inset-0 z-[100] bg-[#f8fafc] dark:bg-[#020617] flex items-center justify-center p-6 animate-in fade-in duration-300">
-        <div className="max-w-md w-full text-center space-y-6 rounded-[28px] p-8 sm:p-10 bg-white dark:bg-slate-900 shadow-2xl border border-slate-100 dark:border-slate-800">
+        <div className="max-w-md w-full text-center space-y-6 rounded-[28px] p-8 sm:p-10 bg-[var(--card)] dark:bg-slate-900 shadow-2xl border border-slate-100 dark:border-slate-800">
           <div className="w-16 h-16 mx-auto rounded-2xl flex items-center justify-center" style={{ background: 'color-mix(in srgb, var(--primary) 15%, transparent)' }}>
             <svg xmlns="http://www.w3.org/2000/svg" width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="var(--primary)" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round"><polyline points="20 6 9 17 4 12"/></svg>
           </div>
           <div className="space-y-2">
-            <h2 className="text-2xl font-black text-slate-900 dark:text-white">{canContinue ? t('fc.roundDone') : t('fc.allDone')}</h2>
+            <h2 className="text-2xl font-semibold text-slate-900 dark:text-white">{canContinue ? t('fc.roundDone') : t('fc.allDone')}</h2>
             <p className="text-sm text-slate-500 dark:text-slate-400 font-medium">
               {tp('fc.cardsThisRound', completed, { n: completed })}{canContinue && <> · {t('fc.moreWaiting', { n: moreWaiting })}</>}
             </p>
@@ -231,8 +231,8 @@ export const FlashcardPlayer: React.FC<FlashcardPlayerProps> = ({ cards, onRevie
             <button
               onClick={onClose}
               className={canContinue
-                ? 'px-8 py-4 rounded-full text-[11px] font-black uppercase tracking-widest transition-all hover:opacity-70 border border-slate-200 dark:border-slate-700 text-slate-700 dark:text-slate-200'
-                : 'px-8 py-4 rounded-full text-[11px] font-black uppercase tracking-widest shadow-xl hover:scale-105 transition-all'}
+                ? 'px-8 py-4 rounded-full text-[13px] font-semibold transition-all hover:opacity-70 border border-slate-200 dark:border-slate-700 text-slate-700 dark:text-slate-200'
+                : 'px-8 py-4 rounded-full text-[13px] font-semibold shadow-xl hover:scale-105 transition-all'}
               style={canContinue ? undefined : { background: 'var(--primary)', color: 'var(--primary-text)' }}
             >
               {canContinue ? t('fc.doneForNow') : t('fcs.done')}
@@ -260,7 +260,7 @@ export const FlashcardPlayer: React.FC<FlashcardPlayerProps> = ({ cards, onRevie
   return createPortal(
     <div className="fixed inset-0 z-[100] bg-[#f8fafc] dark:bg-[#020617] flex flex-col animate-in fade-in duration-300">
       {/* Anki Header */}
-      <div className="p-4 md:p-6 px-4 md:px-12 flex justify-between items-center bg-white dark:bg-slate-900 border-b border-slate-200 dark:border-slate-800 shadow-sm">
+      <div className="p-4 md:p-6 px-4 md:px-12 flex justify-between items-center bg-[var(--card)] dark:bg-slate-900 border-b border-slate-200 dark:border-slate-800 shadow-sm">
         {practiceMode ? (
           <div className="flex items-center gap-3">
             <span className="inline-flex items-center gap-1.5 bg-emerald-50 dark:bg-emerald-900/20 text-emerald-600 dark:text-emerald-400 text-[11px] font-semibold uppercase tracking-[0.08em] px-3 py-1.5 rounded-full">
@@ -358,7 +358,7 @@ export const FlashcardPlayer: React.FC<FlashcardPlayerProps> = ({ cards, onRevie
                 onKeyDown={e => { if (e.key === 'Enter') { e.preventDefault(); setShowAnswer(true); } }}
                 placeholder={t('type.placeholder')}
                 aria-label={t('type.placeholder')}
-                className="w-full max-w-xl mx-auto block px-4 py-3 rounded-2xl text-base bg-white dark:bg-slate-900 border-2 border-slate-200 dark:border-slate-700 focus:border-slate-400 outline-none text-slate-900 dark:text-white"
+                className="w-full max-w-xl mx-auto block px-4 py-3 rounded-2xl text-base bg-[var(--card)] dark:bg-slate-900 border-2 border-slate-200 dark:border-slate-700 focus:border-slate-400 outline-none text-slate-900 dark:text-white"
               />
             )}
           </div>
@@ -399,7 +399,7 @@ export const FlashcardPlayer: React.FC<FlashcardPlayerProps> = ({ cards, onRevie
       </div>
 
       {/* Anki Controls Footer */}
-      <div className="bg-white dark:bg-slate-900 border-t border-slate-200 dark:border-slate-800 px-4 md:px-8 py-6 md:py-10" style={{ paddingBottom: 'max(1.5rem, env(safe-area-inset-bottom))' }}>
+      <div className="bg-[var(--card)] dark:bg-slate-900 border-t border-slate-200 dark:border-slate-800 px-4 md:px-8 py-6 md:py-10" style={{ paddingBottom: 'max(1.5rem, env(safe-area-inset-bottom))' }}>
         <div className="max-w-4xl mx-auto flex flex-col items-center gap-6 md:gap-8">
 
           {!showAnswer ? (

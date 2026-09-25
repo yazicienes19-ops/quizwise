@@ -297,7 +297,7 @@ export const QuizPlayer: React.FC<QuizPlayerProps> = ({
                   className={`w-full text-left px-5 py-4 rounded-[20px] border-2 transition-all duration-300 font-semibold flex items-center gap-4 min-h-[52px] ${cls}`}
                 >
                   <span
-                    className={`w-8 h-8 rounded-xl flex items-center justify-center text-[11px] font-semibold shrink-0 transition-all ${isSelected && !showResult ? '' : 'bg-white dark:bg-slate-800 text-slate-400 shadow-inner'}`}
+                    className={`w-8 h-8 rounded-xl flex items-center justify-center text-[11px] font-semibold shrink-0 transition-all ${isSelected && !showResult ? '' : 'bg-[var(--card)] dark:bg-slate-800 text-slate-400 shadow-inner'}`}
                     style={isSelected && !showResult ? { background: 'var(--primary)', color: 'var(--primary-text)' } : undefined}
                   >
                     {String.fromCharCode(65 + idx)}
@@ -361,7 +361,7 @@ export const QuizPlayer: React.FC<QuizPlayerProps> = ({
               onChange={e => setOpenText(e.target.value)}
               placeholder={t('quiz.openAnswerPlaceholder')}
               rows={4}
-              className="w-full p-4 bg-white dark:bg-slate-800 rounded-[20px] border-2 border-slate-200 dark:border-slate-700 text-sm font-medium dark:text-white outline-none focus:border-indigo-500 transition-colors resize-y placeholder:text-slate-400 dark:placeholder:text-slate-500"
+              className="w-full p-4 bg-[var(--card)] dark:bg-slate-800 rounded-[20px] border-2 border-slate-200 dark:border-slate-700 text-sm font-medium dark:text-white outline-none focus:border-indigo-500 transition-colors resize-y placeholder:text-slate-400 dark:placeholder:text-slate-500"
             />
           )}
           {!showSampleAnswer ? (
@@ -419,7 +419,7 @@ export const QuizPlayer: React.FC<QuizPlayerProps> = ({
                   <select
                     value={selected ?? ''}
                     onChange={e => setMatchAnswer(prev => ({ ...prev, [li]: e.target.value }))}
-                    className="flex-1 p-3 bg-white dark:bg-slate-800 rounded-[16px] border-2 border-slate-200 dark:border-slate-700 text-sm font-medium dark:text-white outline-none focus:border-indigo-500 transition-colors"
+                    className="flex-1 p-3 bg-[var(--card)] dark:bg-slate-800 rounded-[16px] border-2 border-slate-200 dark:border-slate-700 text-sm font-medium dark:text-white outline-none focus:border-indigo-500 transition-colors"
                   >
                     <option value="">{t('quiz.selectOption')}</option>
                     {shuffledRight.map((r, ri) => (
@@ -497,7 +497,7 @@ export const QuizPlayer: React.FC<QuizPlayerProps> = ({
               <div key={item} className={`flex items-center gap-3 p-3 rounded-[16px] border-2 transition-all ${
                 showResult
                   ? isCorrect ? 'border-emerald-400 bg-emerald-50 dark:bg-emerald-950/20' : 'border-rose-400 bg-rose-50 dark:bg-rose-950/20'
-                  : 'border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800'
+                  : 'border-slate-200 dark:border-slate-700 bg-[var(--card)] dark:bg-slate-800'
               }`}>
                 <span className="w-7 h-7 rounded-lg bg-indigo-100 dark:bg-indigo-900/30 text-indigo-600 text-[11px] font-semibold flex items-center justify-center shrink-0">{i + 1}</span>
                 <span className={`flex-1 text-sm font-medium ${showResult ? isCorrect ? 'text-emerald-700 dark:text-emerald-300' : 'text-rose-700 dark:text-rose-300' : 'text-slate-700 dark:text-slate-300'}`}>{item}</span>
@@ -545,17 +545,17 @@ export const QuizPlayer: React.FC<QuizPlayerProps> = ({
               onChange={e => { if (!showResult) setNumericInput(e.target.value); }}
               disabled={showResult}
               placeholder="0"
-              className={`flex-1 p-4 rounded-[20px] border-2 outline-none transition-all text-xl font-black text-center dark:text-white ${
+              className={`flex-1 p-4 rounded-[20px] border-2 outline-none transition-all text-xl font-semibold text-center dark:text-white ${
                 showResult
                   ? ok ? 'border-emerald-400 bg-emerald-50 dark:bg-emerald-950/20 text-emerald-700' : 'border-rose-400 bg-rose-50 dark:bg-rose-950/20 text-rose-700'
-                  : 'border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 focus:border-indigo-500'
+                  : 'border-slate-200 dark:border-slate-700 bg-[var(--card)] dark:bg-slate-800 focus:border-indigo-500'
               }`}
             />
             {tolerance > 0 && <span className="text-[11px] text-slate-400 font-semibold whitespace-nowrap">±{tolerance}</span>}
           </div>
           {wrong && (
             <p className="text-sm font-bold text-slate-500 dark:text-slate-400 px-1">
-              Korrekte Antwort: <span className="text-emerald-600 font-black">{correct}</span>{tolerance > 0 ? ` ±${tolerance}` : ''}
+              Korrekte Antwort: <span className="text-emerald-600 font-semibold">{correct}</span>{tolerance > 0 ? ` ±${tolerance}` : ''}
             </p>
           )}
         </div>
@@ -623,7 +623,7 @@ export const QuizPlayer: React.FC<QuizPlayerProps> = ({
 
       {/* Speichern-Panel */}
       {showSaveInput && onSave && (
-        <div className="mx-4 mb-4 p-4 bg-white dark:bg-slate-900 rounded-[20px] border border-indigo-200 dark:border-indigo-800 shadow-lg animate-in slide-in-from-top-4 duration-300">
+        <div className="mx-4 mb-4 p-4 bg-[var(--card)] dark:bg-slate-900 rounded-[20px] border border-indigo-200 dark:border-indigo-800 shadow-lg animate-in slide-in-from-top-4 duration-300">
           <p className="text-[11px] font-semibold uppercase tracking-[0.08em] text-slate-400 mb-3">{t('quiz.saveQuiz')}</p>
           <div className="flex gap-2">
             <input
@@ -649,7 +649,7 @@ export const QuizPlayer: React.FC<QuizPlayerProps> = ({
       )}
 
       {/* Question card */}
-      <div className="mx-4 bg-white dark:bg-slate-900 rounded-[24px] border border-slate-100 dark:border-slate-800 shadow-3d-raised overflow-hidden">
+      <div className="mx-4 bg-[var(--card)] dark:bg-slate-900 rounded-[24px] border border-slate-100 dark:border-slate-800 shadow-3d-raised overflow-hidden">
         {badgeLabel && (
           <div className="px-6 pt-5 pb-1">
             <span className="inline-block bg-indigo-600 text-white text-xs font-semibold px-3 py-1 rounded-full">
@@ -659,7 +659,7 @@ export const QuizPlayer: React.FC<QuizPlayerProps> = ({
         )}
 
         <div className="px-6 py-5">
-          <h2 className="text-xl sm:text-2xl font-black text-slate-900 dark:text-white leading-snug tracking-tight">
+          <h2 className="text-xl sm:text-2xl font-semibold text-slate-900 dark:text-white leading-snug tracking-tight">
             {currentQuestion.question}
           </h2>
         </div>

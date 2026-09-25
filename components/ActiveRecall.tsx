@@ -21,6 +21,7 @@ import { detectChaptersForDoc, type Chapter } from '../services/chapterService';
 import { getDoneChapterIndices } from '../services/chapterProgressService';
 import type { RecallResult } from '../services/recallHistoryService';
 import { useModuleScopedActivity } from '../hooks/useModuleScopedActivity';
+import { PageHeader } from './PageHeader';
 
 const EMPTY_DISMISSED = new Set<string>();
 const AUDIENCES: FeynmanAudience[] = ['child', 'peer', 'exam'];
@@ -512,7 +513,7 @@ export const ActiveRecall: React.FC<ActiveRecallProps> = ({
   const canSubmit = !isEvaluating && userAnswer.trim().length >= 10;
   const cardStyle: React.CSSProperties = { background: 'var(--bg-sidebar)', border: '1px solid var(--border-color)' };
   const primaryButtonStyle: React.CSSProperties = { background: 'var(--primary)', color: 'var(--primary-text)' };
-  const microLabel = 'text-[11px] font-black uppercase tracking-[0.16em]';
+  const microLabel = 'text-[11px] font-semibold uppercase tracking-[0.08em]';
 
   const sourceRow = (withCancel: boolean) => (
     <div className="flex items-center justify-between gap-3 px-1">
@@ -531,15 +532,17 @@ export const ActiveRecall: React.FC<ActiveRecallProps> = ({
   return (
     <div className="max-w-3xl mx-auto py-6 lg:py-10 px-4 space-y-8 animate-in fade-in duration-700 pb-32">
 
+      {/* Kopfzeile zuerst, Einführung darunter (Design-Tour 25.09.2026) */}
+      {!challenge && <PageHeader eyebrow={t('nav.recall')} title={t('ar.title')} subtitle={t('ar.subtitle')} />}
+
       {/* Feynman First-Visit-Intro */}
       {showFeynmanIntro && (
         <div className="relative rounded-[24px] p-6 animate-in slide-in-from-top-4 duration-500" style={{ background: 'color-mix(in srgb, var(--primary) 10%, var(--bg-sidebar))', border: '1px solid color-mix(in srgb, var(--primary) 30%, transparent)' }}>
           <button
             onClick={dismissFeynmanIntro}
-            className="absolute top-4 right-4 text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 transition-colors font-black text-lg leading-none"
+            className="absolute top-4 right-4 text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 transition-colors font-semibold text-lg leading-none"
             aria-label={t('upl.close')}
           >×</button>
-          <p className={`${microLabel} mb-2`} style={{ color: GOLD_TEXT }}>{t('nav.recall')}</p>
           <p className="text-sm font-medium leading-relaxed" style={{ color: 'var(--ink)' }}>{t('ar.introBody')}</p>
           <p className="text-[11px] font-semibold mt-3 italic" style={{ color: GOLD_TEXT }}>{t('ar.introItalic')}</p>
           <button
@@ -555,17 +558,11 @@ export const ActiveRecall: React.FC<ActiveRecallProps> = ({
       {!challenge ? (
         /* ── Phase 1: Quelle, Zielgruppe, Fokus, Start ── */
         <div className="space-y-7">
-          <header className="space-y-2 text-center">
-            <p className="text-[11px] font-semibold uppercase tracking-[0.08em]" style={{ color: GOLD_TEXT }}>{t('nav.recall')}</p>
-            <h1 className="text-3xl lg:text-[40px] font-normal leading-tight" style={{ color: 'var(--ink)' }}>{t('ar.title')}</h1>
-            <p className="text-sm lg:text-base" style={{ color: 'var(--text-secondary)' }}>{t('ar.subtitle')}</p>
-          </header>
-
           {activeSource ? (
             <div className="rounded-[20px] p-5 flex items-center justify-between gap-4" style={cardStyle}>
               <div className="min-w-0">
                 <p className="text-[11px] font-semibold uppercase text-slate-400 tracking-[0.08em]">{t('ar.activeSource')}</p>
-                <p className="text-sm font-black break-words" style={{ color: 'var(--ink)' }}>{activeSourceName}</p>
+                <p className="text-sm font-semibold break-words" style={{ color: 'var(--ink)' }}>{activeSourceName}</p>
                 {coverage && coverage.total >= 2 && (
                   <p className="text-xs font-semibold mt-1" style={{ color: coverage.uncovered.length === 0 ? '#10b981' : GOLD_TEXT }}>
                     {coverage.uncovered.length === 0
@@ -574,7 +571,7 @@ export const ActiveRecall: React.FC<ActiveRecallProps> = ({
                   </p>
                 )}
               </div>
-              <button onClick={clearSource} aria-label={t('ex.remove')} className="shrink-0 text-slate-300 hover:text-rose-500 transition-colors font-black text-sm">✕</button>
+              <button onClick={clearSource} aria-label={t('ex.remove')} className="shrink-0 text-slate-300 hover:text-rose-500 transition-colors font-semibold text-sm">✕</button>
             </div>
           ) : (
             <SourceSelector
@@ -806,7 +803,7 @@ export const ActiveRecall: React.FC<ActiveRecallProps> = ({
           <div className={`grid grid-cols-1 gap-4 ${evaluation.clarity !== undefined ? 'sm:grid-cols-2' : ''}`}>
             <div className="p-7 rounded-[24px] flex flex-col items-center justify-center text-center" style={cardStyle}>
               <span className="text-[11px] font-semibold uppercase text-slate-400 tracking-[0.08em] mb-2">{t('ar.understanding')}</span>
-              <span className={`text-5xl font-black ${scoreColor(evaluation.score)}`} style={evaluation.score >= 61 && evaluation.score < 86 ? { color: GOLD_TEXT } : undefined}>
+              <span className={`text-5xl font-semibold ${scoreColor(evaluation.score)}`} style={evaluation.score >= 61 && evaluation.score < 86 ? { color: GOLD_TEXT } : undefined}>
                 {evaluation.score}%
               </span>
               <span className="text-[11px] font-semibold uppercase tracking-[0.08em] mt-2 text-slate-400">
@@ -818,7 +815,7 @@ export const ActiveRecall: React.FC<ActiveRecallProps> = ({
                 <span className="text-xs font-semibold text-slate-400 mb-2">
                   {t('ar.clarity')} · {t((`ar.audience.${audience}`) as TKey)}
                 </span>
-                <span className={`text-5xl font-black ${scoreColor(evaluation.clarity)}`} style={evaluation.clarity >= 61 && evaluation.clarity < 86 ? { color: GOLD_TEXT } : undefined}>
+                <span className={`text-5xl font-semibold ${scoreColor(evaluation.clarity)}`} style={evaluation.clarity >= 61 && evaluation.clarity < 86 ? { color: GOLD_TEXT } : undefined}>
                   {evaluation.clarity} / 100
                 </span>
                 {evaluation.usedExample !== undefined && audience !== 'exam' && (
@@ -954,7 +951,7 @@ export const ActiveRecall: React.FC<ActiveRecallProps> = ({
                 aria-expanded={showModelAnswer}
               >
                 <span>{showModelAnswer ? t('ar.hideModelAnswer') : t('ar.showModelAnswer')}</span>
-                <span className="font-black">{showModelAnswer ? '−' : '+'}</span>
+                <span className="font-semibold">{showModelAnswer ? '−' : '+'}</span>
               </button>
               {showModelAnswer && (
                 <p className="text-sm font-medium leading-relaxed animate-in fade-in duration-300" style={{ color: 'var(--ink2)' }}>{challenge.conceptContext}</p>

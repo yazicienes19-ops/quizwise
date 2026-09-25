@@ -84,12 +84,12 @@ export const ResultView: React.FC<ResultViewProps> = ({
   return (
     <div className="max-w-2xl mx-auto px-4 py-6 lg:py-10 space-y-6 animate-in zoom-in-95 duration-500 pb-20">
       {/* Score hero */}
-      <div className="bg-white dark:bg-slate-900 rounded-[24px] border border-slate-100 dark:border-slate-800 shadow-3d-raised overflow-hidden">
+      <div className="bg-[var(--card)] dark:bg-slate-900 rounded-[24px] border border-slate-100 dark:border-slate-800 shadow-3d-raised overflow-hidden">
         <AnimatedBar percent={score} className="h-1.5 bg-gradient-to-r from-indigo-500 to-violet-500" duration={1000} />
         <div className="p-8 text-center space-y-4">
           <EmojiImage emoji={grade.icon} size={52} className="mx-auto" />
           <div>
-            <p className={`text-6xl font-black ${grade.color}`}><CountUp value={score} duration={800} finalText={`${score}%`} format={n => `${Math.round(n)}%`} /></p>
+            <p className={`text-6xl font-semibold ${grade.color}`}><CountUp value={score} duration={800} finalText={`${score}%`} format={n => `${Math.round(n)}%`} /></p>
             <p className="text-xs font-semibold text-slate-400 mt-1">{grade.label}</p>
           </div>
           {docName && (
@@ -100,15 +100,15 @@ export const ResultView: React.FC<ResultViewProps> = ({
         {/* Stats row */}
         <div className="grid grid-cols-3 divide-x divide-slate-100 dark:divide-slate-800 border-t border-slate-100 dark:border-slate-800">
           <div className="py-4 text-center">
-            <p className="text-2xl font-black text-emerald-600 dark:text-emerald-400">{correctCount}</p>
+            <p className="text-2xl font-semibold text-emerald-600 dark:text-emerald-400">{correctCount}</p>
             <p className="text-[11px] font-semibold uppercase tracking-[0.08em] text-slate-400 mt-0.5">{t('result.correct')}</p>
           </div>
           <div className="py-4 text-center">
-            <p className="text-2xl font-black text-rose-500">{wrongCount}</p>
+            <p className="text-2xl font-semibold text-rose-500">{wrongCount}</p>
             <p className="text-[11px] font-semibold uppercase tracking-[0.08em] text-slate-400 mt-0.5">{t('result.wrong')}</p>
           </div>
           <div className="py-4 text-center">
-            <p className="text-2xl font-black text-slate-800 dark:text-white">{countedAnswers.length}</p>
+            <p className="text-2xl font-semibold text-slate-800 dark:text-white">{countedAnswers.length}</p>
             <p className="text-[11px] font-semibold uppercase tracking-[0.08em] text-slate-400 mt-0.5">{t('result.total')}</p>
           </div>
         </div>
@@ -153,19 +153,19 @@ export const ResultView: React.FC<ResultViewProps> = ({
 
       {/* Metakognitive Kalibrierung: Selbsteinschätzung vs. Ergebnis */}
       {calibration.total >= MIN_CALIBRATED_FOR_DISPLAY && (
-        <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-[24px] p-5">
+        <div className="bg-[var(--card)] dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-[24px] p-5">
           <p className="text-[11px] font-semibold uppercase tracking-[0.08em] text-slate-400 mb-3">{t('result.selfAssessment')}</p>
           <div className="grid grid-cols-3 gap-3">
             <div className="text-center">
-              <p className="text-xl font-black text-emerald-600 dark:text-emerald-400">{pct(calibration.wellCalibrated)}%</p>
+              <p className="text-xl font-semibold text-emerald-600 dark:text-emerald-400">{pct(calibration.wellCalibrated)}%</p>
               <p className="text-[11px] font-semibold uppercase tracking-[0.08em] text-slate-400 mt-0.5 leading-tight">{t('result.calibrated')}</p>
             </div>
             <div className="text-center">
-              <p className="text-xl font-black text-rose-500">{pct(calibration.overconfident)}%</p>
+              <p className="text-xl font-semibold text-rose-500">{pct(calibration.overconfident)}%</p>
               <p className="text-[11px] font-semibold uppercase tracking-[0.08em] text-slate-400 mt-0.5 leading-tight">{t('result.overestimated')}</p>
             </div>
             <div className="text-center">
-              <p className="text-xl font-black text-amber-500">{pct(calibration.underconfident)}%</p>
+              <p className="text-xl font-semibold text-amber-500">{pct(calibration.underconfident)}%</p>
               <p className="text-[11px] font-semibold uppercase tracking-[0.08em] text-slate-400 mt-0.5 leading-tight">{t('result.underestimated')}</p>
             </div>
           </div>
@@ -174,12 +174,12 @@ export const ResultView: React.FC<ResultViewProps> = ({
 
       {/* Save quiz offline */}
       {onSaveQuiz && (
-        <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-[24px] p-5 space-y-3 shadow-3d-raised">
+        <div className="bg-[var(--card)] dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-[24px] p-5 space-y-3 shadow-3d-raised">
           <p className="text-[11px] font-semibold uppercase tracking-[0.08em] text-slate-400">{t('result.saveOffline')}</p>
           {saved ? (
             <div className="flex items-center gap-2 text-emerald-600">
               <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round"><polyline points="20 6 9 17 4 12"/></svg>
-              <span className="text-sm font-black">{t('result.savedOffline')}</span>
+              <span className="text-sm font-semibold">{t('result.savedOffline')}</span>
             </div>
           ) : showSaveInput ? (
             <div className="flex gap-2">
@@ -204,7 +204,7 @@ export const ResultView: React.FC<ResultViewProps> = ({
             >
               <div className="flex items-center gap-3">
                 <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="text-indigo-600"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
-                <span className="text-sm font-black dark:text-white">{t('result.saveForOffline')}</span>
+                <span className="text-sm font-semibold dark:text-white">{t('result.saveForOffline')}</span>
               </div>
               <span className="text-[11px] text-slate-400 font-semibold">{tp('dashboard.questionsN', questions.length)}</span>
             </button>
@@ -222,7 +222,7 @@ export const ResultView: React.FC<ResultViewProps> = ({
             className="w-full flex items-center justify-between px-6 py-5 bg-indigo-600 text-white rounded-[24px] shadow-3d-deep hover:scale-[1.02] transition-all"
           >
             <div className="text-left">
-              <p className="text-sm font-black">{t('result.retryWrong')}</p>
+              <p className="text-sm font-semibold">{t('result.retryWrong')}</p>
               <p className="text-[11px] opacity-70 mt-0.5">{tp('dashboard.questionsN', wrongQuestions.length)}</p>
             </div>
             <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
@@ -234,7 +234,7 @@ export const ResultView: React.FC<ResultViewProps> = ({
         <div className="grid grid-cols-2 gap-2">
           <button
             onClick={onRestart}
-            className="flex items-center justify-center gap-2 px-4 py-4 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 text-slate-700 dark:text-slate-300 rounded-[20px] shadow-3d-raised hover:scale-[1.02] transition-all"
+            className="flex items-center justify-center gap-2 px-4 py-4 bg-[var(--card)] dark:bg-slate-900 border border-slate-200 dark:border-slate-800 text-slate-700 dark:text-slate-300 rounded-[20px] shadow-3d-raised hover:scale-[1.02] transition-all"
           >
             <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
               <polyline points="23 4 23 10 17 10"/><path d="M20.49 15a9 9 0 1 1-.49-3.1"/>
@@ -245,7 +245,7 @@ export const ResultView: React.FC<ResultViewProps> = ({
           {onCreateFlashcards && wrongQuestions.length > 0 && (
             <button
               onClick={() => onCreateFlashcards(wrongQuestions)}
-              className="flex items-center justify-center gap-2 px-4 py-4 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 text-slate-700 dark:text-slate-300 rounded-[20px] shadow-3d-raised hover:scale-[1.02] transition-all"
+              className="flex items-center justify-center gap-2 px-4 py-4 bg-[var(--card)] dark:bg-slate-900 border border-slate-200 dark:border-slate-800 text-slate-700 dark:text-slate-300 rounded-[20px] shadow-3d-raised hover:scale-[1.02] transition-all"
             >
               <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
                 <rect x="2" y="5" width="20" height="14" rx="2"/><line x1="2" y1="10" x2="22" y2="10"/>
@@ -257,7 +257,7 @@ export const ResultView: React.FC<ResultViewProps> = ({
           {onGoToSource && (
             <button
               onClick={onGoToSource}
-              className="flex items-center justify-center gap-2 px-4 py-4 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 text-slate-700 dark:text-slate-300 rounded-[20px] shadow-3d-raised hover:scale-[1.02] transition-all"
+              className="flex items-center justify-center gap-2 px-4 py-4 bg-[var(--card)] dark:bg-slate-900 border border-slate-200 dark:border-slate-800 text-slate-700 dark:text-slate-300 rounded-[20px] shadow-3d-raised hover:scale-[1.02] transition-all"
             >
               <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
                 <path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20"/><path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z"/>
@@ -276,7 +276,7 @@ export const ResultView: React.FC<ResultViewProps> = ({
           const correct = a?.isCorrect;
           const open    = expandedIdx === i;
           return (
-            <div key={i} className="bg-white dark:bg-slate-900 border border-slate-100 dark:border-slate-800 rounded-[20px] overflow-hidden shadow-sm">
+            <div key={i} className="bg-[var(--card)] dark:bg-slate-900 border border-slate-100 dark:border-slate-800 rounded-[20px] overflow-hidden shadow-sm">
               <button
                 onClick={() => setExpandedIdx(open ? null : i)}
                 className="w-full flex items-start gap-4 px-5 py-4 text-left"

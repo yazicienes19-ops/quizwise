@@ -39,7 +39,7 @@ export const SelectCard: React.FC<SelectCardProps> = ({
       >
         {icon && <span className="text-xl leading-none shrink-0 mt-0.5">{icon}</span>}
         <span className="grow min-w-0">
-          <span className="block text-sm font-black tracking-tight">{label}</span>
+          <span className="block text-sm font-semibold tracking-tight">{label}</span>
           {description && (
             <span className="block text-xs font-medium leading-relaxed mt-1 opacity-70">
               {description}
@@ -62,7 +62,7 @@ export const SelectCard: React.FC<SelectCardProps> = ({
     <button
       type="button"
       onClick={onClick}
-      className="relative py-4 px-3 rounded-[16px] text-sm font-black tracking-tight transition-all hover:scale-[1.02] active:scale-[0.97] flex flex-col items-center gap-1.5 text-center"
+      className="relative py-4 px-3 rounded-[16px] text-sm font-semibold tracking-tight transition-all hover:scale-[1.02] active:scale-[0.97] flex flex-col items-center gap-1.5 text-center"
       style={selectedStyle}
     >
       {priority !== undefined && (

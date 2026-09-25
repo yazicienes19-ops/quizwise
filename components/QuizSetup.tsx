@@ -63,7 +63,7 @@ const Chip: React.FC<{ selected: boolean; onClick: () => void; label: string; de
         ? accent
           ? 'bg-indigo-600 border-indigo-600 text-white shadow-3d-deep'
           : 'bg-indigo-50 dark:bg-indigo-900/30 border-indigo-500 text-indigo-700 dark:text-indigo-300 shadow-3d-raised'
-        : 'bg-white dark:bg-slate-900 border-slate-200 dark:border-slate-800 text-slate-700 dark:text-slate-300 hover:border-indigo-300'
+        : 'bg-[var(--card)] dark:bg-slate-900 border-slate-200 dark:border-slate-800 text-slate-700 dark:text-slate-300 hover:border-indigo-300'
       }
     `}
   >
@@ -254,7 +254,7 @@ export const QuizSetup: React.FC<QuizSetupProps> = ({ doc = null, sourceName, ba
             value={customCount}
             onChange={e => setCustomCount(e.target.value)}
             placeholder={t('quizSetup.customPlaceholder')}
-            className="w-full px-5 py-4 bg-white dark:bg-slate-900 border-2 border-indigo-400 rounded-2xl text-lg font-black dark:text-white outline-none focus:border-indigo-600 transition-colors"
+            className="w-full px-5 py-4 bg-[var(--card)] dark:bg-slate-900 border-2 border-indigo-400 rounded-2xl text-lg font-semibold dark:text-white outline-none focus:border-indigo-600 transition-colors"
           />
         )}
       </div>
@@ -271,9 +271,9 @@ export const QuizSetup: React.FC<QuizSetupProps> = ({ doc = null, sourceName, ba
       )}
 
       {/* Exam mode toggle */}
-      <div className="flex items-center justify-between p-5 bg-white dark:bg-slate-900 rounded-[24px] border border-slate-200 dark:border-slate-800 shadow-3d-raised">
+      <div className="flex items-center justify-between p-5 bg-[var(--card)] dark:bg-slate-900 rounded-[24px] border border-slate-200 dark:border-slate-800 shadow-3d-raised">
         <div>
-          <p className="text-sm font-black dark:text-white">{t('quizSetup.examMode')}</p>
+          <p className="text-sm font-semibold dark:text-white">{t('quizSetup.examMode')}</p>
           <p className="text-[11px] text-slate-500 dark:text-slate-400 mt-0.5">{t('quizSetup.examModeDesc')}</p>
         </div>
         <button

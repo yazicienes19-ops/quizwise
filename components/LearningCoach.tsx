@@ -332,7 +332,7 @@ export const LearningCoach: React.FC<LearningCoachProps> = ({ metrics, decks, on
                   {i + 1}
                 </span>
                 <span className="min-w-0">
-                  <span className="text-sm font-black flex items-center gap-2 flex-wrap" style={{ color: 'var(--ink)' }}>
+                  <span className="text-sm font-semibold flex items-center gap-2 flex-wrap" style={{ color: 'var(--ink)' }}>
                     {step.title}
                     <span
                       className="px-2 py-0.5 rounded-full text-[13px] font-semibold shrink-0"
@@ -397,10 +397,10 @@ export const LearningCoach: React.FC<LearningCoachProps> = ({ metrics, decks, on
                   {t('lc.preliminary')}
                 </span>
               )}
-              <p className="text-5xl font-black" style={{ color: 'var(--primary-ink)' }}>
+              <p className="text-5xl font-semibold" style={{ color: 'var(--primary-ink)' }}>
                 <CountUp value={parseFloat(forecast.grade)} from={5} decimals={1} finalText={formatGrade(forecast.grade, getLocale())} />
               </p>
-              <p className="text-sm font-black mt-2" style={{ color: 'var(--ink)' }}>
+              <p className="text-sm font-semibold mt-2" style={{ color: 'var(--ink)' }}>
                 {forecast.preliminary
                   ? t('lc.expectedRange', { low: forecast.range.low, high: forecast.range.high })
                   : t('lc.expectedApprox', { n: forecast.expected })}
@@ -557,7 +557,7 @@ export const LearningCoach: React.FC<LearningCoachProps> = ({ metrics, decks, on
           <div className="p-6 lg:p-8 rounded-[24px] lg:rounded-[24px] border shadow-3d-raised space-y-4" style={{ background: 'var(--card)', borderColor: 'var(--border-color)' }}>
             <div className="flex items-baseline justify-between">
               <h3 className="text-[11px] font-semibold uppercase tracking-[0.08em]" style={{ color: 'var(--mute)' }}>{t('lc.learningScore')}</h3>
-              <span className="text-3xl font-black" style={{ color: 'var(--primary-ink)' }}>{learningScore.overall}</span>
+              <span className="text-3xl font-semibold" style={{ color: 'var(--primary-ink)' }}>{learningScore.overall}</span>
             </div>
             <div className="space-y-3">
               {learningScore.dimensions.map(d => (
@@ -637,24 +637,24 @@ export const LearningCoach: React.FC<LearningCoachProps> = ({ metrics, decks, on
           <div className="grid grid-cols-2 gap-4">
             <div>
               <p className="text-[11px] font-bold uppercase" style={{ color: 'var(--mute)' }}>{t('lc.bestTime')}</p>
-              <p className="text-lg font-black" style={{ color: 'var(--ink)' }}>{profile.timeOfDay.bestPart ? t((`tod.${profile.timeOfDay.bestPart}`) as TKey) : '—'}</p>
+              <p className="text-lg font-semibold" style={{ color: 'var(--ink)' }}>{profile.timeOfDay.bestPart ? t((`tod.${profile.timeOfDay.bestPart}`) as TKey) : '—'}</p>
             </div>
             <div>
               <p className="text-[11px] font-bold uppercase" style={{ color: 'var(--mute)' }}>{t('lc.mostProductiveDay')}</p>
-              <p className="text-lg font-black" style={{ color: 'var(--ink)' }}>{profile.dayOfWeek.bestDay ? t((`dow.${profile.dayOfWeek.bestDay}`) as TKey) : '—'}</p>
+              <p className="text-lg font-semibold" style={{ color: 'var(--ink)' }}>{profile.dayOfWeek.bestDay ? t((`dow.${profile.dayOfWeek.bestDay}`) as TKey) : '—'}</p>
             </div>
             <div>
               <p className="text-[11px] font-bold uppercase" style={{ color: 'var(--mute)' }}>{t('lc.streak')}</p>
-              <p className="text-lg font-black" style={{ color: 'var(--ink)' }}>{t('lc.daysN', { n: profile.volume.streakCurrent })}</p>
+              <p className="text-lg font-semibold" style={{ color: 'var(--ink)' }}>{t('lc.daysN', { n: profile.volume.streakCurrent })}</p>
               <p className="text-[11px] font-medium" style={{ color: 'var(--mute)' }}>{t('lc.recordDays', { n: profile.volume.streakBest })}</p>
             </div>
             <div>
               <p className="text-[11px] font-bold uppercase" style={{ color: 'var(--mute)' }}>{t('lc.sessionsPerWeek')}</p>
-              <p className="text-lg font-black" style={{ color: 'var(--ink)' }}>{profile.volume.sessionsPerWeek}</p>
+              <p className="text-lg font-semibold" style={{ color: 'var(--ink)' }}>{profile.volume.sessionsPerWeek}</p>
             </div>
             <div>
               <p className="text-[11px] font-bold uppercase" style={{ color: 'var(--mute)' }}>{t('lc.totalSessions')}</p>
-              <p className="text-lg font-black" style={{ color: 'var(--ink)' }}>{profile.volume.totalSessions}</p>
+              <p className="text-lg font-semibold" style={{ color: 'var(--ink)' }}>{profile.volume.totalSessions}</p>
             </div>
           </div>
         </div>
@@ -741,7 +741,7 @@ export const LearningCoach: React.FC<LearningCoachProps> = ({ metrics, decks, on
 
           {insights.recommendations.length > 0 && (
             <div className="space-y-3">
-              <h3 className="text-lg font-black" style={{ color: 'var(--ink)' }}>{t('ev.recommendations')}</h3>
+              <h3 className="text-lg font-semibold" style={{ color: 'var(--ink)' }}>{t('ev.recommendations')}</h3>
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                 {[...insights.recommendations]
                   .sort((a, b) => (a.priority === 'hoch' ? 0 : a.priority === 'mittel' ? 1 : 2) - (b.priority === 'hoch' ? 0 : b.priority === 'mittel' ? 1 : 2))
@@ -756,7 +756,7 @@ export const LearningCoach: React.FC<LearningCoachProps> = ({ metrics, decks, on
                     <p className="text-xs font-semibold mb-1" style={{ color: priorityColor(r.priority) }}>
                       {priorityEmoji(r.priority)} {t((`prio.${r.priority}`) as TKey)}
                     </p>
-                    <p className="text-sm font-black mb-1" style={{ color: 'var(--ink)' }}>{r.action}</p>
+                    <p className="text-sm font-semibold mb-1" style={{ color: 'var(--ink)' }}>{r.action}</p>
                     <p className="text-[11px] font-medium mb-2" style={{ color: 'var(--mute)' }}>
                       <strong style={{ color: 'var(--ink2)' }}>{t('lc.reason')}</strong> {r.reasoning}
                     </p>

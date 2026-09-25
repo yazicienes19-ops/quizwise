@@ -34,7 +34,7 @@ export const GoalsStep: React.FC<GoalsStepProps> = ({ value, onChange }) => {
 
   return (
     <>
-      <h2 className="text-lg font-black tracking-tight mb-1.5" style={{ color: 'var(--text-main)' }}>
+      <h2 className="text-lg font-semibold tracking-tight mb-1.5" style={{ color: 'var(--text-main)' }}>
         {t('onboarding.flow.goals.title')}
       </h2>
       <p className="text-xs text-slate-500 dark:text-slate-400 mb-5">{t('onboarding.flow.goals.subtitle')}</p>

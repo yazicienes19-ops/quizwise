@@ -259,7 +259,7 @@ export const SplitScreenReader: React.FC<SplitScreenReaderProps> = ({ doc, userI
       return (
         <div className="max-w-3xl mx-auto py-20 px-4 text-center space-y-4">
           <DigestStatusBadge status="pending" />
-          <p className="text-lg font-black dark:text-white">{t('rd.stillAnalyzing')}</p>
+          <p className="text-lg font-semibold dark:text-white">{t('rd.stillAnalyzing')}</p>
           <p className="text-sm text-slate-400 font-medium">{t('rd.digestHint')}</p>
           <button onClick={onBack} className="px-6 py-3 rounded-2xl text-[13px] font-semibold" style={{ background: 'var(--primary)', color: 'var(--primary-text)' }}>
             {t('rd.backToLibrary')}
@@ -271,7 +271,7 @@ export const SplitScreenReader: React.FC<SplitScreenReaderProps> = ({ doc, userI
       return (
         <div className="max-w-3xl mx-auto py-20 px-4 text-center space-y-4">
           <DigestStatusBadge status="error" />
-          <p className="text-lg font-black dark:text-white">{t('rd.analysisFailed')}</p>
+          <p className="text-lg font-semibold dark:text-white">{t('rd.analysisFailed')}</p>
           <p className="text-sm text-slate-400 font-medium">{t('rd.noDigestHint')}</p>
           <div className="flex gap-3 justify-center">
             {onRetryAnalysis && (
@@ -288,7 +288,7 @@ export const SplitScreenReader: React.FC<SplitScreenReaderProps> = ({ doc, userI
     }
     return (
       <div className="max-w-3xl mx-auto py-20 px-4 text-center space-y-4">
-        <p className="text-lg font-black dark:text-white">{t('rd.noReadableText')}</p>
+        <p className="text-lg font-semibold dark:text-white">{t('rd.noReadableText')}</p>
         <button onClick={onBack} className="px-6 py-3 rounded-2xl text-[13px] font-semibold" style={{ background: 'var(--primary)', color: 'var(--primary-text)' }}>
           {t('rd.backToLibrary')}
         </button>
@@ -299,7 +299,7 @@ export const SplitScreenReader: React.FC<SplitScreenReaderProps> = ({ doc, userI
   if (chapters.length === 0) {
     return (
       <div className="max-w-3xl mx-auto py-20 px-4 text-center space-y-4">
-        <p className="text-lg font-black dark:text-white">{t('dvm.noTextContent')}</p>
+        <p className="text-lg font-semibold dark:text-white">{t('dvm.noTextContent')}</p>
         <button onClick={onBack} className="px-6 py-3 rounded-2xl text-[13px] font-semibold" style={{ background: 'var(--primary)', color: 'var(--primary-text)' }}>
           {t('rd.backToLibrary')}
         </button>
@@ -330,7 +330,7 @@ export const SplitScreenReader: React.FC<SplitScreenReaderProps> = ({ doc, userI
           {t('rd.back')}
         </button>
         <div className="min-w-0 flex-1">
-          <h1 className="text-base lg:text-lg font-black tracking-tight dark:text-white truncate leading-tight">{t('rd.readScript')}</h1>
+          <h1 className="text-base lg:text-lg font-semibold tracking-tight dark:text-white truncate leading-tight">{t('rd.readScript')}</h1>
           {activeChapter && (
             <p className="text-[11px] font-medium text-slate-400 truncate leading-tight mt-0.5">{activeChapter.title}</p>
           )}
@@ -446,7 +446,7 @@ export const SplitScreenReader: React.FC<SplitScreenReaderProps> = ({ doc, userI
             {activeChat.map((entry, i) => (
               <div key={i} className="space-y-2">
                 <div className="flex items-center gap-2 flex-wrap">
-                  <p className="text-sm font-black dark:text-white break-words">{entry.concept}</p>
+                  <p className="text-sm font-semibold dark:text-white break-words">{entry.concept}</p>
                   {entry.highlight && (
                     <span className="shrink-0 px-2 py-0.5 rounded-full text-[11px] font-semibold uppercase tracking-[0.08em]" style={{ background: 'color-mix(in srgb, var(--primary) 15%, transparent)', color: 'var(--primary-ink)' }}>
                       {t('rd.textMarked')}

@@ -1763,8 +1763,8 @@ export const GraphCanvas: React.FC<GraphCanvasProps> = ({
         <button onClick={createNodeInView} aria-label={t('kg.canvas.addConcept')} title={t('kg.canvas.addConcept')} className="h-8 px-2.5 flex items-center gap-1 rounded-lg text-[13px] font-semibold" style={{ background: wnTheme.chipBg, border: `1px solid ${wnTheme.chipBorder}`, color: wnTheme.chipText, backdropFilter: 'blur(6px)' }}>
           <span aria-hidden="true">+</span><span>{t('kg.canvas.addConceptShort')}</span>
         </button>
-        <button onClick={() => zoomBy(1.3)} aria-label={t('kg.canvas.zoomIn')} title={t('kg.canvas.zoomIn')} className="w-8 h-8 flex items-center justify-center rounded-lg text-sm font-black" style={{ background: wnTheme.chipBg, border: `1px solid ${wnTheme.chipBorder}`, color: wnTheme.chipText, backdropFilter: 'blur(6px)' }}>+</button>
-        <button onClick={() => zoomBy(1 / 1.3)} aria-label={t('kg.canvas.zoomOut')} title={t('kg.canvas.zoomOut')} className="w-8 h-8 flex items-center justify-center rounded-lg text-sm font-black" style={{ background: wnTheme.chipBg, border: `1px solid ${wnTheme.chipBorder}`, color: wnTheme.chipText, backdropFilter: 'blur(6px)' }}>−</button>
+        <button onClick={() => zoomBy(1.3)} aria-label={t('kg.canvas.zoomIn')} title={t('kg.canvas.zoomIn')} className="w-8 h-8 flex items-center justify-center rounded-lg text-sm font-semibold" style={{ background: wnTheme.chipBg, border: `1px solid ${wnTheme.chipBorder}`, color: wnTheme.chipText, backdropFilter: 'blur(6px)' }}>+</button>
+        <button onClick={() => zoomBy(1 / 1.3)} aria-label={t('kg.canvas.zoomOut')} title={t('kg.canvas.zoomOut')} className="w-8 h-8 flex items-center justify-center rounded-lg text-sm font-semibold" style={{ background: wnTheme.chipBg, border: `1px solid ${wnTheme.chipBorder}`, color: wnTheme.chipText, backdropFilter: 'blur(6px)' }}>−</button>
         <button onClick={() => fitView()} aria-label={t('kg.canvas.fit')} title={t('kg.canvas.fit')} className="w-8 h-8 flex items-center justify-center rounded-lg" style={{ background: wnTheme.chipBg, border: `1px solid ${wnTheme.chipBorder}`, color: wnTheme.chipText, backdropFilter: 'blur(6px)' }}>
           <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><path d="M8 3H5a2 2 0 0 0-2 2v3m18 0V5a2 2 0 0 0-2-2h-3m0 18h3a2 2 0 0 0 2-2v-3M3 16v3a2 2 0 0 0 2 2h3"/></svg>
         </button>
@@ -1939,7 +1939,7 @@ export const GraphCanvas: React.FC<GraphCanvasProps> = ({
               else if (e.key === 'Escape') { e.preventDefault(); cancelTitleEdit(); }
             }}
             onBlur={commitTitleEdit}
-            className="absolute text-[11px] font-bold text-center rounded-md px-1 py-1 outline-none border-2 bg-white dark:bg-slate-800 dark:text-white"
+            className="absolute text-[11px] font-bold text-center rounded-md px-1 py-1 outline-none border-2 bg-[var(--card)] dark:bg-slate-800 dark:text-white"
             style={{
               left: screenX, top: screenY, transform: 'translate(-50%, -50%)',
               width: Math.max(nodeExtentsOf(editingNodeId).rx * 2 + 16, radiusOf(editingNodeId) * 2 + 16), borderColor: 'var(--primary)', zIndex: 20,
@@ -1965,12 +1965,12 @@ export const GraphCanvas: React.FC<GraphCanvasProps> = ({
                 else if (e.key === 'Escape') { e.preventDefault(); cancelEdgePrompt(); }
               }}
               onBlur={cancelEdgePrompt}
-              className="text-[11px] font-bold rounded-md px-2 py-1.5 outline-none border-2 bg-white dark:bg-slate-800 dark:text-white"
+              className="text-[11px] font-bold rounded-md px-2 py-1.5 outline-none border-2 bg-[var(--card)] dark:bg-slate-800 dark:text-white"
               style={{ width: 160, borderColor: edgePromptError ? '#ef4444' : 'var(--primary)' }}
             />
             {edgePromptError && (
               <div
-                className="text-[11px] font-bold text-rose-500 bg-white dark:bg-slate-800 rounded px-1.5 py-1 shadow-sm mt-1"
+                className="text-[11px] font-bold text-rose-500 bg-[var(--card)] dark:bg-slate-800 rounded px-1.5 py-1 shadow-sm mt-1"
                 style={{ maxWidth: 220 }}
               >
                 {edgePromptError}
@@ -2007,14 +2007,14 @@ export const GraphCanvas: React.FC<GraphCanvasProps> = ({
                 else if (e.key === 'Escape') { e.preventDefault(); cancelEdgeEdit(); }
               }}
               onBlur={() => { setIsEditingEdgeLabel(false); commitEdgeEdit(); }}
-              className="text-[11px] font-bold rounded-md px-2 py-1.5 outline-none border-2 bg-white dark:bg-slate-800 dark:text-white"
+              className="text-[11px] font-bold rounded-md px-2 py-1.5 outline-none border-2 bg-[var(--card)] dark:bg-slate-800 dark:text-white"
               style={{ width: 140, borderColor: edgeEditError ? '#ef4444' : 'var(--primary)' }}
             />
             {onExplainEdge && (
               <button
                 onClick={() => onExplainEdge(edge.id)}
                 title={t('kg.canvas.explainEdge')}
-                className="h-6 px-2 flex items-center justify-center rounded-md bg-white dark:bg-slate-800 text-[13px] font-semibold text-slate-500 dark:text-slate-300 border shrink-0"
+                className="h-6 px-2 flex items-center justify-center rounded-md bg-[var(--card)] dark:bg-slate-800 text-[13px] font-semibold text-slate-500 dark:text-slate-300 border shrink-0"
                 style={{ borderColor: 'var(--border-color, #e2e8f0)' }}
               >
                 {t('kg.canvas.explain')}
@@ -2024,14 +2024,14 @@ export const GraphCanvas: React.FC<GraphCanvasProps> = ({
               onClick={deleteSelectedEdge}
               title={t('kg.canvas.deleteEdge')}
               aria-label={t('kg.canvas.deleteEdge')}
-              className={`${COARSE_POINTER ? 'w-9 h-9 text-base' : 'w-6 h-6'} flex items-center justify-center rounded-md bg-white dark:bg-slate-800 text-rose-500 border shrink-0 font-bold`}
+              className={`${COARSE_POINTER ? 'w-9 h-9 text-base' : 'w-6 h-6'} flex items-center justify-center rounded-md bg-[var(--card)] dark:bg-slate-800 text-rose-500 border shrink-0 font-bold`}
               style={{ borderColor: 'var(--border-color, #e2e8f0)' }}
             >
               ×
             </button>
             {edgeEditError && (
               <div
-                className="absolute text-[11px] font-bold text-rose-500 bg-white dark:bg-slate-800 rounded px-1.5 py-1 shadow-sm"
+                className="absolute text-[11px] font-bold text-rose-500 bg-[var(--card)] dark:bg-slate-800 rounded px-1.5 py-1 shadow-sm"
                 style={{ maxWidth: 220, top: '100%', left: 0, marginTop: 4 }}
               >
                 {edgeEditError}

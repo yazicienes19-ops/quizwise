@@ -275,11 +275,11 @@ export const SettingsModal: React.FC<Props> = ({ user, isDark, onToggleTheme, on
             <>
               {/* Avatar */}
               <div className="flex items-center gap-5">
-                <div className="w-16 h-16 bg-indigo-600 rounded-2xl flex items-center justify-center text-2xl font-black shadow-lg shrink-0" style={{ color: 'var(--primary-text)' }}>
+                <div className="w-16 h-16 bg-indigo-600 rounded-2xl flex items-center justify-center text-2xl font-semibold shadow-lg shrink-0" style={{ color: 'var(--primary-text)' }}>
                   {(name || user.email || 'U')[0].toUpperCase()}
                 </div>
                 <div>
-                  <p className="font-black dark:text-white text-lg">{name || t('settings.noName')}</p>
+                  <p className="font-semibold dark:text-white text-lg">{name || t('settings.noName')}</p>
                   <p className="text-[11px] text-slate-400">{user.email}</p>
                   <p className="text-[11px] text-slate-400 mt-0.5">{t('settings.memberSince', { date: formatDate(user.created_at, { month: 'long', year: 'numeric' }) })}</p>
                 </div>
@@ -465,7 +465,7 @@ export const SettingsModal: React.FC<Props> = ({ user, isDark, onToggleTheme, on
                 <p className="text-[11px] font-semibold uppercase tracking-[0.08em] text-slate-400">{t('settings.appearance')}</p>
                 <div className="flex p-1 rounded-2xl gap-1" style={{ background: 'color-mix(in srgb, var(--border-color) 40%, var(--bg-main))' }}>
                   <button onClick={() => isDark && onToggleTheme()}
-                    className={`flex-1 flex items-center justify-center gap-2 py-3 rounded-xl text-[13px] font-semibold transition-all ${!isDark ? 'bg-white text-slate-900 shadow-lg' : 'text-slate-400 hover:text-slate-600'}`}>
+                    className={`flex-1 flex items-center justify-center gap-2 py-3 rounded-xl text-[13px] font-semibold transition-all ${!isDark ? 'bg-[var(--card)] text-slate-900 shadow-lg' : 'text-slate-400 hover:text-slate-600'}`}>
                     <Sun className="w-4 h-4" strokeWidth={1.75} /> {t('layout.dayMode')}
                   </button>
                   <button onClick={() => !isDark && onToggleTheme()}

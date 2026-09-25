@@ -372,7 +372,7 @@ export const LibrarySystem: React.FC<LibrarySystemProps> = ({
                       <button
                         onClick={e => { e.stopPropagation(); handleShareCollection(col); }}
                         disabled={sharingColId === col.id}
-                        className="w-8 h-8 rounded-xl flex items-center justify-center bg-white dark:bg-slate-800 shadow text-slate-400 hover:text-emerald-500 transition-colors disabled:opacity-50"
+                        className="w-8 h-8 rounded-xl flex items-center justify-center bg-[var(--card)] dark:bg-slate-800 shadow text-slate-400 hover:text-emerald-500 transition-colors disabled:opacity-50"
                         aria-label={t('slp.shareFolder')} title={t('slp.shareFolder')}
                       >
                         {sharingColId === col.id
@@ -382,7 +382,7 @@ export const LibrarySystem: React.FC<LibrarySystemProps> = ({
                       {count > 0 && (
                         <button
                           onClick={e => { e.stopPropagation(); setSummaryColId(col.id); }}
-                          className="w-8 h-8 rounded-xl flex items-center justify-center bg-white dark:bg-slate-800 shadow text-slate-400 hover:text-indigo-500 transition-colors"
+                          className="w-8 h-8 rounded-xl flex items-center justify-center bg-[var(--card)] dark:bg-slate-800 shadow text-slate-400 hover:text-indigo-500 transition-colors"
                           aria-label={t('sum.open')} title={t('sum.open')}
                         >
                           <BookText className="w-3 h-3" strokeWidth={2.5} />
@@ -390,7 +390,7 @@ export const LibrarySystem: React.FC<LibrarySystemProps> = ({
                       )}
                       <button
                         onClick={e => { e.stopPropagation(); setEditColId(col.id); setEditColName(col.name); setEditColEmoji(col.emoji); }}
-                        className="w-8 h-8 rounded-xl flex items-center justify-center bg-white dark:bg-slate-800 shadow text-slate-400 hover:text-indigo-500 transition-colors"
+                        className="w-8 h-8 rounded-xl flex items-center justify-center bg-[var(--card)] dark:bg-slate-800 shadow text-slate-400 hover:text-indigo-500 transition-colors"
                         aria-label={t('lib.editFolder')} title={t('lib.editFolder')}
                       >
                         <Pencil className="w-3 h-3" strokeWidth={2.5} />
@@ -401,7 +401,7 @@ export const LibrarySystem: React.FC<LibrarySystemProps> = ({
                           void confirmDialog({ message: t('lib.deleteFolderConfirm', { name: col.name }), danger: true })
                             .then(ok => { if (ok) onDeleteCollection(col.id); });
                         }}
-                        className="w-8 h-8 rounded-xl flex items-center justify-center bg-white dark:bg-slate-800 shadow text-slate-400 hover:text-rose-500 transition-colors"
+                        className="w-8 h-8 rounded-xl flex items-center justify-center bg-[var(--card)] dark:bg-slate-800 shadow text-slate-400 hover:text-rose-500 transition-colors"
                         aria-label={t('lib.deleteFolder')} title={t('lib.deleteFolder')}
                       >
                         <Trash2 className="w-3 h-3" strokeWidth={2.5} />
@@ -470,7 +470,7 @@ export const LibrarySystem: React.FC<LibrarySystemProps> = ({
                         </span>
                       </div>
                       <div>
-                        <h3 className="font-black text-base leading-snug" style={{ color: 'var(--text-main)' }}>{col.name}</h3>
+                        <h3 className="font-semibold text-base leading-snug" style={{ color: 'var(--text-main)' }}>{col.name}</h3>
                         {recentDoc && (
                           <p className="text-[11px] text-slate-400 mt-1 break-words">
                             Zuletzt: {documentDisplayName(recentDoc)}
@@ -502,7 +502,7 @@ export const LibrarySystem: React.FC<LibrarySystemProps> = ({
                 <EmojiImage emoji="🌐" size={28} />
               </div>
               <div>
-                <h3 className="font-black text-base" style={{ color: 'var(--text-main)' }}>{t('lib.allDocs')}</h3>
+                <h3 className="font-semibold text-base" style={{ color: 'var(--text-main)' }}>{t('lib.allDocs')}</h3>
                 <p className="text-[11px] text-slate-400 mt-1">{documents.length} gesamt</p>
               </div>
               <div className="flex items-center gap-1 text-[13px] font-semibold mt-auto text-slate-400">
@@ -623,7 +623,7 @@ export const LibrarySystem: React.FC<LibrarySystemProps> = ({
                 {!isAddingCol && (
                   <button
                     onClick={() => setIsAddingCol(true)}
-                    className="w-7 h-7 rounded-xl bg-indigo-50 dark:bg-indigo-950/30 text-indigo-600 flex items-center justify-center hover:scale-110 transition-transform text-sm font-black"
+                    className="w-7 h-7 rounded-xl bg-indigo-50 dark:bg-indigo-950/30 text-indigo-600 flex items-center justify-center hover:scale-110 transition-transform text-sm font-semibold"
                   >+</button>
                 )}
               </div>
@@ -656,7 +656,7 @@ export const LibrarySystem: React.FC<LibrarySystemProps> = ({
                         <button
                           onClick={() => handleShareCollection(col)}
                           disabled={sharingColId === col.id}
-                          className="w-6 h-6 rounded-lg flex items-center justify-center bg-white dark:bg-slate-700 shadow text-slate-400 hover:text-emerald-500 transition-colors disabled:opacity-50"
+                          className="w-6 h-6 rounded-lg flex items-center justify-center bg-[var(--card)] dark:bg-slate-700 shadow text-slate-400 hover:text-emerald-500 transition-colors disabled:opacity-50"
                           aria-label={t('slp.shareFolder')} title={t('slp.shareFolder')}
                         >
                           {sharingColId === col.id
@@ -665,7 +665,7 @@ export const LibrarySystem: React.FC<LibrarySystemProps> = ({
                         </button>
                         <button
                           onClick={() => { setShowFolderView(true); setEditColId(col.id); setEditColName(col.name); setEditColEmoji(col.emoji); }}
-                          className="w-6 h-6 rounded-lg flex items-center justify-center bg-white dark:bg-slate-700 shadow text-slate-400 hover:text-indigo-500 transition-colors"
+                          className="w-6 h-6 rounded-lg flex items-center justify-center bg-[var(--card)] dark:bg-slate-700 shadow text-slate-400 hover:text-indigo-500 transition-colors"
                           aria-label={t('lib.edit')} title={t('lib.edit')}
                         >
                           <Pencil className="w-2.5 h-2.5" strokeWidth={2.5} />

@@ -191,13 +191,13 @@ export const EditCardModal: React.FC<EditCardModalProps> = ({
     >
       <div
         {...dialogProps}
-        className="bg-white dark:bg-slate-900 rounded-[24px] w-full max-w-2xl shadow-3d-deep overflow-hidden animate-in zoom-in-95 duration-300"
+        className="bg-[var(--card)] dark:bg-slate-900 rounded-[24px] w-full max-w-2xl shadow-3d-deep overflow-hidden animate-in zoom-in-95 duration-300"
         onClick={e => e.stopPropagation()}
       >
         {/* Header */}
         <div className="flex justify-between items-center px-8 py-6 border-b border-slate-100 dark:border-slate-800">
           <div className="flex items-center gap-3">
-            <h2 id={titleId} className="text-xl font-black dark:text-white">
+            <h2 id={titleId} className="text-xl font-semibold dark:text-white">
               {isNew ? t('ecm.newCard') : t('ecm.editCard')}
             </h2>
             {!isNew && cardIndex !== undefined && totalCards !== undefined && (

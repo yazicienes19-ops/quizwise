@@ -58,7 +58,7 @@ const DigestInfo: React.FC<{ doc: ProcessedDocument; onRetry?: () => void }> = (
 
 const Stat: React.FC<{ label: string; value: number }> = ({ label, value }) => (
   <div className="text-center">
-    <p className="font-black text-sm" style={{ color: 'var(--text-main)' }}>{value}</p>
+    <p className="font-semibold text-sm" style={{ color: 'var(--text-main)' }}>{value}</p>
     <p className="text-xs font-semibold text-slate-400">{label}</p>
   </div>
 );
@@ -91,7 +91,7 @@ export const SourceCard: React.FC<Props> = ({ doc, meta, view, onOpen, onView, o
         <EmojiImage emoji={emoji} size={28} />
         <div className="flex-grow min-w-0">
           <div className="flex items-center gap-2 flex-wrap">
-            <h4 className="font-black text-sm break-words" style={{ color: 'var(--text-main)' }}>{title}</h4>
+            <h4 className="font-semibold text-sm break-words" style={{ color: 'var(--text-main)' }}>{title}</h4>
             <SourceStatusBadge status={status} />
             <DigestInfo doc={doc} onRetry={onRetryAnalysis} />
           </div>
@@ -160,7 +160,7 @@ export const SourceCard: React.FC<Props> = ({ doc, meta, view, onOpen, onView, o
       </div>
 
       <div className="flex-grow space-y-2">
-        <h3 className="font-black leading-snug break-words text-base" style={{ color: 'var(--text-main)' }}>{title}</h3>
+        <h3 className="font-semibold leading-snug break-words text-base" style={{ color: 'var(--text-main)' }}>{title}</h3>
         <div className="flex flex-wrap gap-x-3 gap-y-0.5">
           {meta.module   && <span className="text-xs font-semibold text-indigo-600">{meta.module}</span>}
           {meta.semester && <span className="text-xs font-semibold text-slate-400">{meta.semester}</span>}

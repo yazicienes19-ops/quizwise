@@ -19,7 +19,7 @@ export const AppOverviewStep: React.FC = () => {
   const { t } = useTranslation();
   return (
     <>
-      <h2 className="text-lg font-black tracking-tight mb-4" style={{ color: 'var(--text-main)' }}>
+      <h2 className="text-lg font-semibold tracking-tight mb-4" style={{ color: 'var(--text-main)' }}>
         {t('onboarding.flow.overview.title')}
       </h2>
       <div className="space-y-2.5 mb-4">
@@ -31,7 +31,7 @@ export const AppOverviewStep: React.FC = () => {
           >
             <span className="text-lg leading-none shrink-0">{area.icon}</span>
             <div className="min-w-0">
-              <p className="text-sm font-black" style={{ color: 'var(--text-main)' }}>{t(area.titleKey)}</p>
+              <p className="text-sm font-semibold" style={{ color: 'var(--text-main)' }}>{t(area.titleKey)}</p>
               <p className="text-xs opacity-60" style={{ color: 'var(--text-main)' }}>{t(area.descKey)}</p>
             </div>
           </div>

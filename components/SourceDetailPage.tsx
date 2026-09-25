@@ -72,14 +72,14 @@ export const SourceDetailPage: React.FC<Props> = ({ doc, meta, isAdminUser = fal
       </button>
 
       {/* Source Header */}
-      <div className="bg-white dark:bg-slate-900 rounded-[24px] border border-slate-200 dark:border-slate-800 shadow-3d-raised p-8">
+      <div className="bg-[var(--card)] dark:bg-slate-900 rounded-[24px] border border-slate-200 dark:border-slate-800 shadow-3d-raised p-8">
         <div className="flex flex-col sm:flex-row gap-6 items-start">
           <div className="w-16 h-16 bg-indigo-50 dark:bg-indigo-900/20 rounded-2xl flex items-center justify-center shrink-0">
             <EmojiImage emoji={emoji} size={40} />
           </div>
           <div className="flex-grow min-w-0 space-y-3">
             <div className="flex flex-wrap items-center gap-3">
-              <h1 className="text-2xl lg:text-3xl font-black text-slate-900 dark:text-white leading-tight">{title}</h1>
+              <h1 className="text-2xl lg:text-3xl font-semibold text-slate-900 dark:text-white leading-tight">{title}</h1>
               <SourceStatusBadge status={status} />
               <button
                 onClick={() => onViewDocument(doc)}
@@ -160,7 +160,7 @@ export const SourceDetailPage: React.FC<Props> = ({ doc, meta, isAdminUser = fal
 
       {/* Quiz progress card */}
       {quizStats.count > 0 && (
-        <div className="bg-white dark:bg-slate-900 rounded-[28px] border border-slate-200 dark:border-slate-800 shadow-3d-raised p-6 space-y-4">
+        <div className="bg-[var(--card)] dark:bg-slate-900 rounded-[28px] border border-slate-200 dark:border-slate-800 shadow-3d-raised p-6 space-y-4">
           <div className="flex items-center justify-between">
             <p className="text-[11px] font-semibold uppercase tracking-[0.08em] text-slate-400">{t('sd.progress')}</p>
             <button
@@ -173,12 +173,12 @@ export const SourceDetailPage: React.FC<Props> = ({ doc, meta, isAdminUser = fal
 
           <div className="flex gap-6">
             <div>
-              <p className="text-2xl font-black text-slate-900 dark:text-white">{quizStats.count}</p>
+              <p className="text-2xl font-semibold text-slate-900 dark:text-white">{quizStats.count}</p>
               <p className="text-[11px] font-semibold uppercase tracking-[0.08em] text-slate-400">{t('quizSetup.quizzes')}</p>
             </div>
             {quizStats.avgAccuracy !== null && (
               <div>
-                <p className={`text-2xl font-black ${quizStats.avgAccuracy >= 70 ? 'text-emerald-600' : quizStats.avgAccuracy >= 50 ? 'text-amber-500' : 'text-rose-500'}`}>
+                <p className={`text-2xl font-semibold ${quizStats.avgAccuracy >= 70 ? 'text-emerald-600' : quizStats.avgAccuracy >= 50 ? 'text-amber-500' : 'text-rose-500'}`}>
                   {quizStats.avgAccuracy}%
                 </p>
                 <p className="text-[11px] font-semibold uppercase tracking-[0.08em] text-slate-400">{t('quizSetup.avgAccuracy')}</p>
@@ -186,7 +186,7 @@ export const SourceDetailPage: React.FC<Props> = ({ doc, meta, isAdminUser = fal
             )}
             {quizStats.lastAt && (
               <div>
-                <p className="text-2xl font-black text-slate-900 dark:text-white">
+                <p className="text-2xl font-semibold text-slate-900 dark:text-white">
                   {formatDate(quizStats.lastAt, { day: '2-digit', month: 'short' })}
                 </p>
                 <p className="text-[11px] font-semibold uppercase tracking-[0.08em] text-slate-400">{t('quizSetup.last')}</p>
@@ -245,7 +245,7 @@ export const SourceDetailPage: React.FC<Props> = ({ doc, meta, isAdminUser = fal
 
 const QuickStat: React.FC<{ label: string; value: number }> = ({ label, value }) => (
   <div>
-    <p className="font-black text-slate-900 dark:text-white text-xl">{value}</p>
+    <p className="font-semibold text-slate-900 dark:text-white text-xl">{value}</p>
     <p className="text-xs font-semibold text-slate-400">{label}</p>
   </div>
 );
@@ -254,11 +254,11 @@ const ActionCard: React.FC<{ action: Action; disabled: boolean; onAction: () => 
   const { t } = useTranslation();
   const base = 'rounded-[24px] p-5 flex flex-col gap-3 border transition-all group cursor-pointer text-left';
 
-  let cardClass = 'bg-white dark:bg-slate-900 border-slate-200 dark:border-slate-800 hover:shadow-3d-raised';
+  let cardClass = 'bg-[var(--card)] dark:bg-slate-900 border-slate-200 dark:border-slate-800 hover:shadow-3d-raised';
   if (action.accent) cardClass = 'bg-indigo-600 border-indigo-600 dark:border-indigo-600 hover:shadow-3d-deep';
-  if (action.danger) cardClass = 'bg-white dark:bg-slate-900 border-rose-200 dark:border-rose-900/40 hover:shadow-3d-raised';
+  if (action.danger) cardClass = 'bg-[var(--card)] dark:bg-slate-900 border-rose-200 dark:border-rose-900/40 hover:shadow-3d-raised';
 
-  let btnClass = 'mt-auto w-full py-2.5 rounded-xl text-[11px] font-black uppercase tracking-widest';
+  let btnClass = 'mt-auto w-full py-2.5 rounded-xl text-[13px] font-semibold';
   if (action.accent) btnClass += ' bg-white/20 hover:bg-white/30 transition-colors';
   else if (action.danger) btnClass += ' bg-rose-50 dark:bg-rose-900/20 text-rose-600 dark:text-rose-400';
   else btnClass += ' bg-slate-50 dark:bg-slate-800 text-indigo-600 dark:text-indigo-400';
@@ -282,7 +282,7 @@ const ActionCard: React.FC<{ action: Action; disabled: boolean; onAction: () => 
         )}
       </div>
       <div className="flex-grow">
-        <p className={`text-sm font-black leading-snug ${textColor}`}>{t(action.titleKey)}</p>
+        <p className={`text-sm font-semibold leading-snug ${textColor}`}>{t(action.titleKey)}</p>
         <p className={`text-[11px] mt-1 leading-relaxed ${subColor}`}>{t(action.descKey)}</p>
       </div>
       <div className={`${btnClass} ${btnText}`}>{t(action.ctaKey)}</div>

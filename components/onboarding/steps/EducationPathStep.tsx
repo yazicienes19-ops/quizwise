@@ -27,7 +27,7 @@ export const EducationPathStep: React.FC<EducationPathStepProps> = ({ value, onC
 
   return (
     <>
-      <h2 className="text-lg font-black tracking-tight mb-5" style={{ color: 'var(--text-main)' }}>
+      <h2 className="text-lg font-semibold tracking-tight mb-5" style={{ color: 'var(--text-main)' }}>
         {t('onboarding.flow.path.title')}
       </h2>
       <div className="grid grid-cols-2 gap-3">

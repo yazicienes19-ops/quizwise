@@ -20,7 +20,7 @@ export const SystemOverviewStep: React.FC = () => {
   const { t } = useTranslation();
   return (
     <>
-      <h2 className="text-lg font-black tracking-tight mb-1.5" style={{ color: 'var(--text-main)' }}>
+      <h2 className="text-lg font-semibold tracking-tight mb-1.5" style={{ color: 'var(--text-main)' }}>
         {t('onboarding.flow.system.title')}
       </h2>
       <p className="text-xs text-slate-500 dark:text-slate-400 mb-5 leading-relaxed">
@@ -34,7 +34,7 @@ export const SystemOverviewStep: React.FC = () => {
               style={{ background: 'var(--bg-main)', border: '1px solid var(--border-color)', ['--stagger-i' as string]: i }}
             >
               <span className="text-lg leading-none">{step.icon}</span>
-              <span className="text-sm font-black" style={{ color: 'var(--text-main)' }}>{t(step.labelKey)}</span>
+              <span className="text-sm font-semibold" style={{ color: 'var(--text-main)' }}>{t(step.labelKey)}</span>
             </div>
             {i < FLOW.length - 1 && (
               <div className="flex justify-center py-1">

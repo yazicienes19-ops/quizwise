@@ -12,7 +12,7 @@ export const IntroStep: React.FC = () => {
       >
         👋
       </div>
-      <h2 className="text-xl font-black tracking-tight mb-3" style={{ color: 'var(--text-main)' }}>
+      <h2 className="text-xl font-semibold tracking-tight mb-3" style={{ color: 'var(--text-main)' }}>
         {t('onboarding.flow.intro.title')}
       </h2>
       <p className="text-sm text-slate-500 dark:text-slate-400 leading-relaxed">

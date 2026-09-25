@@ -807,7 +807,7 @@ export const FlashcardSystem: React.FC<FlashcardSystemProps> = ({
                   value={renameTitle}
                   onChange={e => setRenameTitle(e.target.value)}
                   aria-label={t('fcs.renameDeck')}
-                  className="flex-1 min-w-0 text-2xl font-black bg-transparent border-b-2 border-indigo-500 outline-none dark:text-white pb-1"
+                  className="flex-1 min-w-0 text-2xl font-semibold bg-transparent border-b-2 border-indigo-500 outline-none dark:text-white pb-1"
                   onKeyDown={e => e.key === 'Escape' && setIsRenamingDeck(false)}
                 />
                 <button type="submit" className="px-4 py-1.5 bg-indigo-600 text-white rounded-xl text-[13px] font-semibold shrink-0">
@@ -819,7 +819,7 @@ export const FlashcardSystem: React.FC<FlashcardSystemProps> = ({
               </form>
             ) : (
               <div className="flex items-start gap-3">
-                <h2 className="min-w-0 flex-1 text-2xl sm:text-3xl font-black dark:text-white break-words" style={{ textWrap: 'balance' as any }}>{deck.title}</h2>
+                <h2 className="min-w-0 flex-1 text-2xl sm:text-3xl font-semibold dark:text-white break-words" style={{ textWrap: 'balance' as any }}>{deck.title}</h2>
                 <button
                   onClick={() => { setRenameTitle(deck.title); setIsRenamingDeck(true); }}
                   className="p-2 rounded-xl text-slate-300 hover:text-indigo-500 hover:bg-indigo-50 dark:hover:bg-indigo-950/30 transition-all shrink-0"
@@ -860,7 +860,7 @@ export const FlashcardSystem: React.FC<FlashcardSystemProps> = ({
         </div>
 
         {/* Search + Card list */}
-        <div className="bg-white dark:bg-slate-900 rounded-[28px] border border-slate-200 dark:border-slate-800 shadow-3d-raised overflow-hidden">
+        <div className="bg-[var(--card)] dark:bg-slate-900 rounded-[28px] border border-slate-200 dark:border-slate-800 shadow-3d-raised overflow-hidden">
           {deck.cards.length > 0 && (
             <div className="px-6 py-4 border-b border-slate-50 dark:border-slate-800">
               <div className="relative">
@@ -1057,7 +1057,7 @@ export const FlashcardSystem: React.FC<FlashcardSystemProps> = ({
       <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 lg:gap-10">
 
         <div className="lg:col-span-5 space-y-6 lg:space-y-8 order-2 lg:order-1">
-          <div className="bg-white dark:bg-slate-900 rounded-[24px] lg:rounded-[28px] border border-slate-200 dark:border-slate-800 shadow-3d-raised p-5 lg:p-7 space-y-8">
+          <div className="bg-[var(--card)] dark:bg-slate-900 rounded-[24px] lg:rounded-[28px] border border-slate-200 dark:border-slate-800 shadow-3d-raised p-5 lg:p-7 space-y-8">
 
             <div className="space-y-4">
               <h3 className="text-[11px] font-semibold uppercase tracking-[0.08em] text-indigo-600">{t('fcs.manualDeck')}</h3>
@@ -1156,7 +1156,7 @@ export const FlashcardSystem: React.FC<FlashcardSystemProps> = ({
           </div>
         </div>
 
-        <div className="lg:col-span-7 bg-white dark:bg-slate-900 rounded-[24px] lg:rounded-[28px] border border-slate-200 dark:border-slate-800 shadow-3d-deep order-1 lg:order-2">
+        <div className="lg:col-span-7 bg-[var(--card)] dark:bg-slate-900 rounded-[24px] lg:rounded-[28px] border border-slate-200 dark:border-slate-800 shadow-3d-deep order-1 lg:order-2">
           <div className="p-5 sm:p-6 lg:p-10 border-b border-slate-50 dark:border-slate-800 flex flex-col sm:flex-row justify-between items-center gap-4 lg:gap-0">
             <div className="flex flex-col items-center sm:items-start gap-1">
               <h3 className="text-[11px] font-semibold uppercase tracking-[0.08em] text-slate-400">{t('fcs.yourDecks', { n: decks.length })}</h3>
@@ -1207,14 +1207,14 @@ export const FlashcardSystem: React.FC<FlashcardSystemProps> = ({
                 <label className="flex flex-col gap-1 text-xs text-slate-500 dark:text-slate-400">
                   {t('limit.newPerDay')}
                   <select value={limits.newPerDay} onChange={e => updateLimits({ ...limits, newPerDay: Number(e.target.value) })}
-                    className="px-3 py-2 rounded-xl bg-white dark:bg-slate-900 text-[13px] font-semibold text-slate-800 dark:text-slate-100 border border-slate-200 dark:border-slate-700">
+                    className="px-3 py-2 rounded-xl bg-[var(--card)] dark:bg-slate-900 text-[13px] font-semibold text-slate-800 dark:text-slate-100 border border-slate-200 dark:border-slate-700">
                     {NEW_LIMIT_OPTIONS.map(o => <option key={o} value={o}>{o >= UNLIMITED ? t('limit.unlimited') : o}</option>)}
                   </select>
                 </label>
                 <label className="flex flex-col gap-1 text-xs text-slate-500 dark:text-slate-400">
                   {t('limit.reviewsPerDay')}
                   <select value={limits.reviewsPerDay} onChange={e => updateLimits({ ...limits, reviewsPerDay: Number(e.target.value) })}
-                    className="px-3 py-2 rounded-xl bg-white dark:bg-slate-900 text-[13px] font-semibold text-slate-800 dark:text-slate-100 border border-slate-200 dark:border-slate-700">
+                    className="px-3 py-2 rounded-xl bg-[var(--card)] dark:bg-slate-900 text-[13px] font-semibold text-slate-800 dark:text-slate-100 border border-slate-200 dark:border-slate-700">
                     {REVIEW_LIMIT_OPTIONS.map(o => <option key={o} value={o}>{o >= UNLIMITED ? t('limit.unlimited') : o}</option>)}
                   </select>
                 </label>
@@ -1224,13 +1224,13 @@ export const FlashcardSystem: React.FC<FlashcardSystemProps> = ({
                 <label className="flex flex-col gap-1 text-xs text-slate-500 dark:text-slate-400">
                   {t('fsrs.retention')}
                   <select value={fsrsParams.retention ?? 0.9} onChange={e => updateFsrs({ ...fsrsParams, retention: Number(e.target.value) })}
-                    className="px-3 py-2 rounded-xl bg-white dark:bg-slate-900 text-[13px] font-semibold text-slate-800 dark:text-slate-100 border border-slate-200 dark:border-slate-700">
+                    className="px-3 py-2 rounded-xl bg-[var(--card)] dark:bg-slate-900 text-[13px] font-semibold text-slate-800 dark:text-slate-100 border border-slate-200 dark:border-slate-700">
                     {RETENTION_OPTIONS.map(r => <option key={r} value={r}>{Math.round(r * 100)} %</option>)}
                   </select>
                 </label>
                 <div className="flex flex-col gap-1">
                   <button type="button" onClick={runPersonalize} disabled={fsrsBusy}
-                    className="px-4 py-2 rounded-xl text-[13px] font-semibold bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 text-slate-800 dark:text-slate-100 disabled:opacity-50">
+                    className="px-4 py-2 rounded-xl text-[13px] font-semibold bg-[var(--card)] dark:bg-slate-900 border border-slate-200 dark:border-slate-700 text-slate-800 dark:text-slate-100 disabled:opacity-50">
                     {fsrsBusy ? t('fsrs.busy') : t('fsrs.personalize')}
                   </button>
                   {fsrsParams.initialStability && (
@@ -1292,7 +1292,7 @@ export const FlashcardSystem: React.FC<FlashcardSystemProps> = ({
                   >
                     <div className="flex-grow min-w-0 text-center sm:text-left">
                       <div className="flex items-center gap-2 flex-wrap justify-center sm:justify-start">
-                        <h4 className="text-base lg:text-lg font-black text-slate-900 dark:text-white break-words group-hover:text-indigo-600 transition-colors cursor-pointer" style={{ textWrap: 'balance' as any }} onClick={() => handleOpenDeck(deck.id)}>
+                        <h4 className="text-base lg:text-lg font-semibold text-slate-900 dark:text-white break-words group-hover:text-indigo-600 transition-colors cursor-pointer" style={{ textWrap: 'balance' as any }} onClick={() => handleOpenDeck(deck.id)}>
                           {deck.title}
                         </h4>
                         {!deck.sourceDocumentId && <span className="bg-slate-100 dark:bg-slate-800 text-[11px] font-semibold uppercase px-2 py-0.5 rounded text-slate-400 tracking-tighter">{t('fcs.manual')}</span>}

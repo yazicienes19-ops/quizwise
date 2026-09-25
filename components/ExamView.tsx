@@ -338,7 +338,7 @@ export const ExamView: React.FC<ExamViewProps> = ({
             {userOrder.map((item, i) => (
               <div key={item} className="flex items-center gap-3">
                 <span className="w-7 h-7 rounded-lg bg-indigo-100 dark:bg-indigo-900/30 text-indigo-600 text-[11px] font-semibold flex items-center justify-center shrink-0">{i + 1}</span>
-                <div className="flex-1 p-3 rounded-2xl border-2 border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-sm font-medium dark:text-white">{item}</div>
+                <div className="flex-1 p-3 rounded-2xl border-2 border-slate-200 dark:border-slate-700 bg-[var(--card)] dark:bg-slate-800 text-sm font-medium dark:text-white">{item}</div>
                 <div className="flex flex-col gap-1 shrink-0">
                   <button disabled={i === 0} onClick={() => {
                     const next = [...userOrder];
@@ -387,7 +387,7 @@ export const ExamView: React.FC<ExamViewProps> = ({
                 value={(ans as string) || ''}
                 onChange={e => setAnswer(q.id, e.target.value)}
                 placeholder={t('ev.numericPlaceholder')}
-                className="flex-1 p-4 bg-slate-50 dark:bg-slate-800 rounded-[20px] border-2 border-transparent focus:border-indigo-500 outline-none transition-all dark:text-white font-black text-xl text-center"
+                className="flex-1 p-4 bg-slate-50 dark:bg-slate-800 rounded-[20px] border-2 border-transparent focus:border-indigo-500 outline-none transition-all dark:text-white font-semibold text-xl text-center"
               />
               {q.numericTolerance ? <span className="text-[11px] text-slate-400 font-semibold">±{q.numericTolerance}</span> : null}
             </div>
@@ -403,9 +403,9 @@ export const ExamView: React.FC<ExamViewProps> = ({
       const ok = rawAnswer.trim() !== '' && checkNumericEquivalence(rawAnswer, correct, { tolerance: q.numericTolerance ?? 0 });
       return (
         <div className="pl-4 lg:pl-10 flex items-center gap-4">
-          <span className={`text-2xl font-black ${ok ? 'text-emerald-600' : 'text-rose-600'}`}>{isNaN(user) ? '—' : rawAnswer}</span>
+          <span className={`text-2xl font-semibold ${ok ? 'text-emerald-600' : 'text-rose-600'}`}>{isNaN(user) ? '—' : rawAnswer}</span>
           {!ok && <span className="text-sm text-slate-500 dark:text-slate-400">{t('ev.correctPrefix')}<strong className="text-emerald-600">{correct}</strong>{q.numericTolerance ? ` ±${q.numericTolerance}` : ''}</span>}
-          {ok && <span className="text-sm text-emerald-600 font-black">✓ Korrekt</span>}
+          {ok && <span className="text-sm text-emerald-600 font-semibold">✓ Korrekt</span>}
         </div>
       );
     }
@@ -432,9 +432,9 @@ export const ExamView: React.FC<ExamViewProps> = ({
       const ok = !!userExpr.trim() && !!correctExpr.trim() && checkExpressionEquivalence(userExpr, correctExpr, q.expressionVariables);
       return (
         <div className="pl-4 lg:pl-10 flex flex-col gap-2">
-          <span className={`font-mono text-lg font-black ${ok ? 'text-emerald-600' : 'text-rose-600'}`}>{userExpr || '—'}</span>
+          <span className={`font-mono text-lg font-semibold ${ok ? 'text-emerald-600' : 'text-rose-600'}`}>{userExpr || '—'}</span>
           {!ok && <span className="text-sm text-slate-500 dark:text-slate-400">{t('ev.correctPrefix')}<strong className="text-emerald-600 font-mono">{correctExpr}</strong></span>}
-          {ok && <span className="text-sm text-emerald-600 font-black">✓ Korrekt</span>}
+          {ok && <span className="text-sm text-emerald-600 font-semibold">✓ Korrekt</span>}
         </div>
       );
     }
@@ -548,7 +548,7 @@ export const ExamView: React.FC<ExamViewProps> = ({
               return (
                 <button key={String(val)} disabled={mode !== 'solve'}
                   onClick={() => setAnswer(q.id, { ...(tfAns || {}), tf: val })}
-                  className={`flex-1 py-4 rounded-[20px] font-black text-sm border-2 transition-all ${cls}`}
+                  className={`flex-1 py-4 rounded-[20px] font-semibold text-sm border-2 transition-all ${cls}`}
                 >
                   {val ? '✓ Richtig' : '✗ Falsch'}
                 </button>
@@ -610,7 +610,7 @@ export const ExamView: React.FC<ExamViewProps> = ({
                       next[li] = parseInt(e.target.value);
                       setAnswer(q.id, next);
                     }}
-                    className="flex-1 p-3 bg-white dark:bg-slate-800 rounded-2xl border-2 border-slate-200 dark:border-slate-700 text-sm font-medium dark:text-white outline-none focus:border-indigo-500 transition-colors"
+                    className="flex-1 p-3 bg-[var(--card)] dark:bg-slate-800 rounded-2xl border-2 border-slate-200 dark:border-slate-700 text-sm font-medium dark:text-white outline-none focus:border-indigo-500 transition-colors"
                   >
                     <option value="">{t('quiz.selectOption')}</option>
                     {q.matchRight.map((right, ri) => (
@@ -748,11 +748,11 @@ export const ExamView: React.FC<ExamViewProps> = ({
           <div className="flex justify-end gap-6">
             <div className="text-right">
               <p className="text-[11px] font-semibold uppercase text-slate-400">{t('ev.totalPoints')}</p>
-              <p className="text-lg font-black">{achievedTotal} / {totalPoints}</p>
+              <p className="text-lg font-semibold">{achievedTotal} / {totalPoints}</p>
             </div>
             <div className="text-right">
               <p className="text-[11px] font-semibold uppercase text-slate-400">{t('ev.percent')}</p>
-              <p className="text-lg font-black">{Math.round(percentage)}%</p>
+              <p className="text-lg font-semibold">{Math.round(percentage)}%</p>
             </div>
           </div>
         </div>
@@ -763,7 +763,7 @@ export const ExamView: React.FC<ExamViewProps> = ({
         <div className={`grid grid-cols-1 md:grid-cols-3 gap-6 sm:gap-8 ${gradeInfo.bg} dark:bg-slate-900/40 p-5 sm:p-10 rounded-[28px] sm:rounded-[28px] border-2 ${gradeInfo.passed ? 'border-emerald-500' : 'border-rose-500'} animate-in zoom-in-95`}>
           <div className="flex flex-col items-center justify-center border-b md:border-b-0 md:border-r border-slate-200 dark:border-slate-800 pb-6 md:pb-0">
             <span className="text-[11px] font-semibold uppercase tracking-[0.08em] text-slate-400 mb-2">{t('ev.finalGrade')}</span>
-            <span className={`text-6xl sm:text-7xl font-black ${gradeInfo.color}`}>
+            <span className={`text-6xl sm:text-7xl font-semibold ${gradeInfo.color}`}>
               {gradeInfo.system === 'letter'
                 ? <CountUp value={percentage} from={0} decimals={0} duration={900} finalText={gradeInfo.grade} />
                 : <CountUp value={parseFloat(gradeInfo.grade)} from={5} decimals={1} duration={900} finalText={gradeInfo.grade} />}
@@ -799,7 +799,7 @@ export const ExamView: React.FC<ExamViewProps> = ({
                 ) : showSaveInput ? (
                   <div className="flex gap-2 mb-2">
                     <input autoFocus value={saveName} onChange={e => setSaveName(e.target.value)}
-                      className="flex-1 px-4 py-2 bg-white dark:bg-slate-800 border-2 border-slate-200 dark:border-slate-700 rounded-[14px] text-sm font-medium dark:text-white outline-none focus:border-indigo-500 transition-colors"
+                      className="flex-1 px-4 py-2 bg-[var(--card)] dark:bg-slate-800 border-2 border-slate-200 dark:border-slate-700 rounded-[14px] text-sm font-medium dark:text-white outline-none focus:border-indigo-500 transition-colors"
                       placeholder={t('ev.examNamePlaceholder')} />
                     <button onClick={() => { onSaveExam(saveName.trim() || t('ev.myExam')); setExamSaved(true); setShowSaveInput(false); }}
                       className="px-4 py-2 bg-indigo-600 text-white rounded-[14px] text-[13px] font-semibold hover:scale-105 transition-all shrink-0">
@@ -873,7 +873,7 @@ export const ExamView: React.FC<ExamViewProps> = ({
       {mode === 'result' && categoryBreakdown && categoryBreakdown.length > 0 && (
         <div className="rounded-[24px] sm:rounded-[24px] p-5 sm:p-8 space-y-4 animate-in fade-in duration-500" style={{ background: 'var(--bg-sidebar)', border: '1px solid var(--border-color)' }}>
           <div>
-            <h3 className="text-lg font-black dark:text-white">{t('ev.categoryBreakdown')}</h3>
+            <h3 className="text-lg font-semibold dark:text-white">{t('ev.categoryBreakdown')}</h3>
             <p className="text-xs font-semibold text-slate-400">{t('ev.categoryBreakdownHint')}</p>
           </div>
           <div className="space-y-3">
@@ -902,7 +902,7 @@ export const ExamView: React.FC<ExamViewProps> = ({
       {mode === 'result' && targetBloomDistribution && hasBloomData && (
         <div className="rounded-[24px] sm:rounded-[24px] p-5 sm:p-8 space-y-4 animate-in fade-in duration-500" style={{ background: 'var(--bg-sidebar)', border: '1px solid var(--border-color)' }}>
           <div>
-            <h3 className="text-lg font-black dark:text-white">{t('ev.bloomBreakdownTitle')}</h3>
+            <h3 className="text-lg font-semibold dark:text-white">{t('ev.bloomBreakdownTitle')}</h3>
             <p className="text-xs font-semibold text-slate-400">{t('ev.bloomBreakdownHint')}</p>
           </div>
           <div className="space-y-3">
@@ -927,17 +927,17 @@ export const ExamView: React.FC<ExamViewProps> = ({
       {mode === 'result' && fatigue && (
         <div className="rounded-[24px] sm:rounded-[24px] p-5 sm:p-8 space-y-4 animate-in fade-in duration-500" style={{ background: 'var(--bg-sidebar)', border: '1px solid var(--border-color)' }}>
           <div>
-            <h3 className="text-lg font-black dark:text-white">{t('ev.fatigueTitle')}</h3>
+            <h3 className="text-lg font-semibold dark:text-white">{t('ev.fatigueTitle')}</h3>
             <p className="text-xs font-semibold text-slate-400">{t('ev.fatigueHint')}</p>
           </div>
           <div className="grid grid-cols-2 gap-4">
             <div>
               <p className="text-[11px] font-semibold uppercase tracking-[0.08em] text-slate-400 mb-1">{t('ev.fatigueEarly')}</p>
-              <p className="text-2xl font-black dark:text-white">{fatigue.earlyScore}%</p>
+              <p className="text-2xl font-semibold dark:text-white">{fatigue.earlyScore}%</p>
             </div>
             <div>
               <p className="text-[11px] font-semibold uppercase tracking-[0.08em] text-slate-400 mb-1">{t('ev.fatigueLate')}</p>
-              <p className="text-2xl font-black dark:text-white">{fatigue.lateScore}%</p>
+              <p className="text-2xl font-semibold dark:text-white">{fatigue.lateScore}%</p>
             </div>
           </div>
           {/* Gleicher Schwellenwert wie learningProfileService.ts (fatigueExams-Filter) */}
@@ -951,7 +951,7 @@ export const ExamView: React.FC<ExamViewProps> = ({
       {mode === 'result' && analysis && (
         <div className="rounded-[24px] sm:rounded-[24px] p-5 sm:p-8 space-y-6 animate-in fade-in duration-700" style={{ background: 'var(--bg-sidebar)', border: '1px solid var(--border-color)' }}>
           <div>
-            <h3 className="text-lg font-black dark:text-white">{t('ev.learningAnalysis')}</h3>
+            <h3 className="text-lg font-semibold dark:text-white">{t('ev.learningAnalysis')}</h3>
             <p className="text-xs font-semibold text-slate-400">{t('ev.basedOnAnswers')}</p>
           </div>
 
@@ -962,7 +962,7 @@ export const ExamView: React.FC<ExamViewProps> = ({
                 <ul className="space-y-2">
                   {analysis.strengths.map((s, i) => (
                     <li key={i} className="flex items-start gap-2 text-sm text-slate-700 dark:text-slate-300">
-                      <span className="text-emerald-500 shrink-0 mt-0.5 font-black">✓</span>{s}
+                      <span className="text-emerald-500 shrink-0 mt-0.5 font-semibold">✓</span>{s}
                     </li>
                   ))}
                 </ul>
@@ -974,7 +974,7 @@ export const ExamView: React.FC<ExamViewProps> = ({
                 <ul className="space-y-2">
                   {analysis.weaknesses.map((w, i) => (
                     <li key={i} className="flex items-start gap-2 text-sm text-slate-700 dark:text-slate-300">
-                      <span className="text-rose-400 shrink-0 mt-0.5 font-black">✗</span>{w}
+                      <span className="text-rose-400 shrink-0 mt-0.5 font-semibold">✗</span>{w}
                     </li>
                   ))}
                 </ul>
@@ -1032,7 +1032,7 @@ export const ExamView: React.FC<ExamViewProps> = ({
       {mode === 'edit' && hasBloomData && (
         <div className="rounded-[24px] sm:rounded-[24px] p-5 sm:p-8 space-y-4" style={{ background: 'var(--bg-sidebar)', border: '1px solid var(--border-color)' }}>
           <div>
-            <h3 className="text-lg font-black dark:text-white">{t('ev.bloomPreviewTitle')}</h3>
+            <h3 className="text-lg font-semibold dark:text-white">{t('ev.bloomPreviewTitle')}</h3>
             {examTypePreset && (
               <p className="text-xs font-semibold text-slate-400">{t('ev.bloomPreviewHint', { preset: t((`eg.examType.${examTypePreset}`) as TKey) })}</p>
             )}
@@ -1058,7 +1058,7 @@ export const ExamView: React.FC<ExamViewProps> = ({
       {(mode === 'edit' || mode === 'result') && adaptiveTarget && (
         <div className="rounded-[24px] sm:rounded-[24px] p-5 sm:p-8 space-y-5 animate-in fade-in duration-500" style={{ background: 'var(--bg-sidebar)', border: '1px solid var(--border-color)' }}>
           <div>
-            <h3 className="text-lg font-black dark:text-white">{t('ev.adaptiveTitle')}</h3>
+            <h3 className="text-lg font-semibold dark:text-white">{t('ev.adaptiveTitle')}</h3>
             <p className="text-xs font-semibold text-slate-400">{mode === 'result' ? t('ev.adaptiveHintResult') : t('ev.adaptiveHintEdit')}</p>
           </div>
 
@@ -1107,7 +1107,7 @@ export const ExamView: React.FC<ExamViewProps> = ({
             <div key={q.id} className="relative group p-6 -m-6 rounded-[24px] hover:bg-slate-50 dark:hover:bg-slate-900/50 transition-colors">
 
               {mode === 'edit' && !isEditing && (
-                <button onClick={() => startEditing(q)} aria-label={t('ev.editQuestion')} className="absolute top-6 right-6 opacity-0 group-hover:opacity-100 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 p-2 rounded-xl text-slate-400 hover:text-indigo-600 transition-all shadow-sm z-10">
+                <button onClick={() => startEditing(q)} aria-label={t('ev.editQuestion')} className="absolute top-6 right-6 opacity-0 group-hover:opacity-100 bg-[var(--card)] dark:bg-slate-800 border border-slate-200 dark:border-slate-700 p-2 rounded-xl text-slate-400 hover:text-indigo-600 transition-all shadow-sm z-10">
                   <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
                     <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 1 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/>
                   </svg>
@@ -1115,10 +1115,10 @@ export const ExamView: React.FC<ExamViewProps> = ({
               )}
 
               {isEditing && tempQuestion ? (
-                <div className="space-y-6 animate-in fade-in zoom-in-95 p-5 sm:p-8 bg-white dark:bg-slate-800 rounded-[24px] sm:rounded-[24px] shadow-2xl ring-4 ring-indigo-500/20">
+                <div className="space-y-6 animate-in fade-in zoom-in-95 p-5 sm:p-8 bg-[var(--card)] dark:bg-slate-800 rounded-[24px] sm:rounded-[24px] shadow-2xl ring-4 ring-indigo-500/20">
                   <div className="flex justify-between items-center">
-                    <h3 className="text-xl font-black dark:text-white">{t('ev.editTaskN', { n: idx + 1 })}</h3>
-                    <input type="number" value={tempQuestion.points} onChange={e => setTempQuestion({ ...tempQuestion, points: Math.max(0, parseInt(e.target.value, 10) || 0) })} className="w-16 p-2 bg-slate-50 dark:bg-slate-900 rounded-xl text-center font-black dark:text-white" />
+                    <h3 className="text-xl font-semibold dark:text-white">{t('ev.editTaskN', { n: idx + 1 })}</h3>
+                    <input type="number" value={tempQuestion.points} onChange={e => setTempQuestion({ ...tempQuestion, points: Math.max(0, parseInt(e.target.value, 10) || 0) })} className="w-16 p-2 bg-slate-50 dark:bg-slate-900 rounded-xl text-center font-semibold dark:text-white" />
                   </div>
                   <textarea value={tempQuestion.question} onChange={e => setTempQuestion({ ...tempQuestion, question: e.target.value })} className="w-full p-4 bg-slate-50 dark:bg-slate-900 rounded-2xl dark:text-white border-2 border-transparent focus:border-indigo-500 outline-none" />
                   <div className="flex justify-end gap-3">
@@ -1130,7 +1130,7 @@ export const ExamView: React.FC<ExamViewProps> = ({
                 <div className="space-y-6">
                   <div className={`flex justify-between items-start gap-4 ${mode === 'edit' ? 'pr-12' : ''}`}>
                     <div className="flex items-center gap-3">
-                      <span className="font-black text-xl dark:text-white">{t('ev.taskN', { n: idx + 1 })}:</span>
+                      <span className="font-semibold text-xl dark:text-white">{t('ev.taskN', { n: idx + 1 })}:</span>
                       <span className="text-xs font-semibold bg-slate-100 dark:bg-slate-800 text-slate-400 px-2.5 py-1 rounded-full">
                         {getTypeLabel(q.type)}
                       </span>
@@ -1162,7 +1162,7 @@ export const ExamView: React.FC<ExamViewProps> = ({
                               </span>
                             )}
                           </div>
-                          <span className="text-sm font-black dark:text-white">{q.achievedPoints ?? 0} / {q.points} Pkt.</span>
+                          <span className="text-sm font-semibold dark:text-white">{q.achievedPoints ?? 0} / {q.points} Pkt.</span>
                         </div>
 
                         {/* Erwartungshorizont: Rubrik-Kriterien (nur für open) */}
@@ -1266,7 +1266,7 @@ export const ExamView: React.FC<ExamViewProps> = ({
         <div className="fixed bottom-[calc(4.5rem+env(safe-area-inset-bottom))] md:bottom-10 left-1/2 -translate-x-1/2 z-[50] flex flex-col items-center gap-3">
           {/* Speichern-Panel */}
           {showProgressInput && onSaveProgress && (
-            <div className="bg-white dark:bg-slate-900 rounded-[20px] border border-indigo-200 dark:border-indigo-800 shadow-xl p-4 w-80 animate-in slide-in-from-bottom-4 duration-300">
+            <div className="bg-[var(--card)] dark:bg-slate-900 rounded-[20px] border border-indigo-200 dark:border-indigo-800 shadow-xl p-4 w-80 animate-in slide-in-from-bottom-4 duration-300">
               <p className="text-[11px] font-semibold uppercase tracking-[0.08em] text-slate-400 mb-3">{t('ev.saveExam')}</p>
               <div className="flex gap-2">
                 <input

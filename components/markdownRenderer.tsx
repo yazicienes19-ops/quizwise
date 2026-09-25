@@ -49,7 +49,7 @@ export function parseInline(text: string, baseKey: string): React.ReactNode[] {
     // sonst gewinnt z.B. bei "**$s$**" der Bold-Regex an der Startposition
     // und verschluckt die Formel als literalen String statt sie zu rendern
     // (live gefunden: alle bold-umschlossenen Formeln blieben roh sichtbar).
-    else if (token.startsWith('**'))   parts.push(<strong key={k} className="font-black text-slate-900 dark:text-white">{parseInline(token.slice(2,-2), k)}</strong>);
+    else if (token.startsWith('**'))   parts.push(<strong key={k} className="font-semibold text-slate-900 dark:text-white">{parseInline(token.slice(2,-2), k)}</strong>);
     else if (token.startsWith('*'))    parts.push(<em key={k} className="italic text-slate-600 dark:text-slate-300">{parseInline(token.slice(1,-1), k)}</em>);
     else                               parts.push(<code key={k} className="px-1.5 py-0.5 rounded-md text-[0.85em] font-mono bg-slate-100 dark:bg-slate-800" style={{ color: 'var(--primary-ink)' }}>{token.slice(1,-1)}</code>);
     last = match.index + token.length;
@@ -90,8 +90,8 @@ export function renderMarkdown(text: string): React.ReactNode {
     const line = lines[i];
     if (!line.trim()) { i++; continue; }
     if (HR_RE.test(line)) { blocks.push(<hr key={key++} className="border-0 h-px" style={{ background: 'var(--border-color)' }} />); i++; continue; }
-    if (line.startsWith('# '))   { blocks.push(<h2 key={key++} className="text-2xl lg:text-3xl font-black text-slate-900 dark:text-white tracking-tight mt-2">{parseInline(line.slice(2),String(key))}</h2>); i++; continue; }
-    if (line.startsWith('## '))  { blocks.push(<h3 key={key++} className="text-xl lg:text-2xl font-black text-slate-900 dark:text-white tracking-tight mt-1">{parseInline(line.slice(3),String(key))}</h3>); i++; continue; }
+    if (line.startsWith('# '))   { blocks.push(<h2 key={key++} className="text-2xl lg:text-3xl font-semibold text-slate-900 dark:text-white tracking-tight mt-2">{parseInline(line.slice(2),String(key))}</h2>); i++; continue; }
+    if (line.startsWith('## '))  { blocks.push(<h3 key={key++} className="text-xl lg:text-2xl font-semibold text-slate-900 dark:text-white tracking-tight mt-1">{parseInline(line.slice(3),String(key))}</h3>); i++; continue; }
     if (line.startsWith('### ')) { blocks.push(<h4 key={key++} className="text-base lg:text-lg font-semibold text-slate-700 dark:text-slate-200 mt-1">{parseInline(line.slice(4),String(key))}</h4>); i++; continue; }
     const headingMatch = line.match(HEADING_RE);
     if (headingMatch) {
@@ -99,7 +99,7 @@ export function renderMarkdown(text: string): React.ReactNode {
       // Überschrift ("Grundlagen Der Text geht munter weiter…") — Überschrift
       // und Rest sauber trennen, statt den ganzen Satz in die Heading-Optik zu ziehen.
       const rest = line.slice(headingMatch[0].length).trim();
-      blocks.push(<h3 key={key++} className="text-xl lg:text-2xl font-black text-slate-900 dark:text-white tracking-tight mt-1">{headingMatch[1]}</h3>);
+      blocks.push(<h3 key={key++} className="text-xl lg:text-2xl font-semibold text-slate-900 dark:text-white tracking-tight mt-1">{headingMatch[1]}</h3>);
       i++;
       if (rest) {
         const paraLines: string[] = [rest];
@@ -141,7 +141,7 @@ export function renderMarkdown(text: string): React.ReactNode {
     if (line.match(/^\d+\.\s/)) {
       const { items, next } = collectListLines(lines, i, /^\d+\.\s/);
       i = next;
-      blocks.push(<ol key={key++} className="space-y-2 pl-1">{items.map((item,idx) => <li key={idx} className="flex gap-3 items-start text-base lg:text-lg font-medium text-slate-700 dark:text-slate-300 leading-relaxed"><span className="font-black shrink-0 w-6 text-right" style={{ color: 'var(--primary-ink)' }}>{idx+1}.</span><span>{parseInline(item,`${key}-${idx}`)}</span></li>)}</ol>);
+      blocks.push(<ol key={key++} className="space-y-2 pl-1">{items.map((item,idx) => <li key={idx} className="flex gap-3 items-start text-base lg:text-lg font-medium text-slate-700 dark:text-slate-300 leading-relaxed"><span className="font-semibold shrink-0 w-6 text-right" style={{ color: 'var(--primary-ink)' }}>{idx+1}.</span><span>{parseInline(item,`${key}-${idx}`)}</span></li>)}</ol>);
       continue;
     }
     const paraLines: string[] = [line]; i++;

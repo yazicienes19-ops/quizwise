@@ -622,7 +622,7 @@ export const GraphSystem: React.FC<GraphSystemProps> = ({
             <select
               value={moveTargetId}
               onChange={e => setMoveTargetId(e.target.value)}
-              className="text-[13px] font-semibold bg-white dark:bg-slate-800 dark:text-white rounded-xl px-3 py-2 outline-none border"
+              className="text-[13px] font-semibold bg-[var(--card)] dark:bg-slate-800 dark:text-white rounded-xl px-3 py-2 outline-none border"
               style={{ borderColor: 'var(--border-color)' }}
             >
               <option value="">{t('kg.chooseSubject')}</option>
@@ -880,7 +880,7 @@ export const GraphSystem: React.FC<GraphSystemProps> = ({
                   className="max-w-sm w-full text-center space-y-4 pointer-events-auto rounded-[24px] p-8 animate-in fade-in duration-500"
                   style={{ background: 'color-mix(in srgb, var(--bg-sidebar) 90%, transparent)', border: '1px solid var(--border-color)' }}
                 >
-                  <p className="text-base font-black dark:text-white">{t('kg.empty.title')}</p>
+                  <p className="text-base font-semibold dark:text-white">{t('kg.empty.title')}</p>
                   <p className="text-xs text-slate-500 dark:text-slate-400 font-medium leading-relaxed">{t('kg.empty.body')}</p>
                   <button
                     onClick={() => { setPaletteQuery(''); setPaletteIndex(0); setPaletteOpen(true); }}
@@ -932,7 +932,7 @@ export const GraphSystem: React.FC<GraphSystemProps> = ({
         )}
         {graph.error && (
           <div
-            className="absolute bottom-4 left-1/2 -translate-x-1/2 text-[11px] font-bold text-rose-500 rounded-lg px-3 py-2 shadow-sm border border-rose-200 dark:border-rose-900 bg-white dark:bg-slate-800"
+            className="absolute bottom-4 left-1/2 -translate-x-1/2 text-[11px] font-bold text-rose-500 rounded-lg px-3 py-2 shadow-sm border border-rose-200 dark:border-rose-900 bg-[var(--card)] dark:bg-slate-800"
           >
             {t('kg.errorPull')}
           </div>
@@ -977,7 +977,7 @@ export const GraphSystem: React.FC<GraphSystemProps> = ({
                     className="w-2 h-2 rounded-full shrink-0"
                     style={{ background: 'var(--primary)' }}
                   />
-                  <span className="flex-1 min-w-0 text-sm font-black truncate dark:text-white">{result.node.title}</span>
+                  <span className="flex-1 min-w-0 text-sm font-semibold truncate dark:text-white">{result.node.title}</span>
                   <span className="text-xs font-semibold text-slate-400 shrink-0">
                     {t(`kg.search.match.${result.matchedOn}` as TKey)}
                   </span>
@@ -1001,7 +1001,7 @@ export const GraphSystem: React.FC<GraphSystemProps> = ({
                   >
                     +
                   </span>
-                  <span className="flex-1 min-w-0 text-sm font-black truncate dark:text-white">
+                  <span className="flex-1 min-w-0 text-sm font-semibold truncate dark:text-white">
                     {t('kg.search.create', { q: paletteQuery.trim() })}
                   </span>
                 </button>
@@ -1019,7 +1019,7 @@ export const GraphSystem: React.FC<GraphSystemProps> = ({
 
       {openDocument && createPortal(
         <div
-          className="fixed inset-0 z-50 bg-white dark:bg-slate-900 pt-[env(safe-area-inset-top)] pb-[env(safe-area-inset-bottom)]"
+          className="fixed inset-0 z-50 bg-[var(--card)] dark:bg-slate-900 pt-[env(safe-area-inset-top)] pb-[env(safe-area-inset-bottom)]"
         >
           <React.Suspense fallback={null}>
             {shouldUsePdfReader(openDocument) ? (

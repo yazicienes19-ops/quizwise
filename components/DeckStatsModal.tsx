@@ -51,14 +51,14 @@ export const DeckStatsModal: React.FC<DeckStatsModalProps> = ({ deck, onClose })
     >
       <div
         {...dialogProps}
-        className="bg-white dark:bg-slate-900 rounded-[24px] w-full max-w-md shadow-3d-deep overflow-hidden animate-in zoom-in-95 duration-300"
+        className="bg-[var(--card)] dark:bg-slate-900 rounded-[24px] w-full max-w-md shadow-3d-deep overflow-hidden animate-in zoom-in-95 duration-300"
         onClick={e => e.stopPropagation()}
       >
         {/* Header */}
         <div className="flex justify-between items-start px-8 py-6 border-b border-slate-100 dark:border-slate-800">
           <div className="min-w-0 flex-1 pr-4">
             <p className="text-[11px] font-semibold uppercase tracking-[0.08em] text-slate-400 mb-1">{t('dsm.stats')}</p>
-            <h2 id={titleId} className="text-xl font-black dark:text-white break-words">{deck.title}</h2>
+            <h2 id={titleId} className="text-xl font-semibold dark:text-white break-words">{deck.title}</h2>
             <p className="text-[11px] font-bold text-slate-400 mt-0.5">{t('dsm.totalCards', { n: stats.total })}</p>
           </div>
           <ModalCloseButton onClick={onClose} label={t('upl.close')} />
@@ -83,7 +83,7 @@ export const DeckStatsModal: React.FC<DeckStatsModalProps> = ({ deck, onClose })
                   <div key={s.label} className="flex items-center gap-2.5 p-3 bg-slate-50 dark:bg-slate-800 rounded-2xl">
                     <div className={`w-2.5 h-2.5 rounded-full ${s.color} shrink-0`} />
                     <div>
-                      <p className={`text-lg font-black ${s.text}`}>{s.value}</p>
+                      <p className={`text-lg font-semibold ${s.text}`}>{s.value}</p>
                       <p className="text-xs font-semibold text-slate-400">{s.label}</p>
                     </div>
                   </div>
@@ -95,15 +95,15 @@ export const DeckStatsModal: React.FC<DeckStatsModalProps> = ({ deck, onClose })
           {/* Key metrics */}
           <div className="grid grid-cols-3 gap-3">
             <div className="p-4 bg-slate-50 dark:bg-slate-800 rounded-2xl text-center">
-              <p className="text-2xl font-black" style={{ color: 'var(--primary-ink)' }}>{stats.dueToday}</p>
+              <p className="text-2xl font-semibold" style={{ color: 'var(--primary-ink)' }}>{stats.dueToday}</p>
               <p className="text-[11px] font-semibold uppercase tracking-[0.08em] text-slate-400 mt-1">{t('dashboard.dueToday')}</p>
             </div>
             <div className="p-4 bg-slate-50 dark:bg-slate-800 rounded-2xl text-center">
-              <p className="text-2xl font-black text-slate-700 dark:text-slate-200">{stats.masteredPct}%</p>
+              <p className="text-2xl font-semibold text-slate-700 dark:text-slate-200">{stats.masteredPct}%</p>
               <p className="text-[11px] font-semibold uppercase tracking-[0.08em] text-slate-400 mt-1">{t('dsm.mastered')}</p>
             </div>
             <div className="p-4 bg-slate-50 dark:bg-slate-800 rounded-2xl text-center">
-              <p className="text-2xl font-black text-slate-700 dark:text-slate-200">{stats.avgEase.toFixed(2)}</p>
+              <p className="text-2xl font-semibold text-slate-700 dark:text-slate-200">{stats.avgEase.toFixed(2)}</p>
               <p className="text-[11px] font-semibold uppercase tracking-[0.08em] text-slate-400 mt-1">{t('dsm.avgEase')}</p>
             </div>
           </div>

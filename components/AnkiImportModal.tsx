@@ -206,13 +206,13 @@ export const AnkiImportModal: React.FC<AnkiImportModalProps> = ({ decks, onClose
     >
       <div
         {...dialogProps}
-        className="bg-white dark:bg-slate-900 rounded-[24px] w-full max-w-lg shadow-3d-deep overflow-hidden animate-in zoom-in-95 duration-300 max-h-[90vh] overflow-y-auto"
+        className="bg-[var(--card)] dark:bg-slate-900 rounded-[24px] w-full max-w-lg shadow-3d-deep overflow-hidden animate-in zoom-in-95 duration-300 max-h-[90vh] overflow-y-auto"
         onClick={e => e.stopPropagation()}
       >
         {/* Header */}
         <div className="flex justify-between items-center px-8 py-6 border-b border-slate-100 dark:border-slate-800">
           <div>
-            <h2 id={titleId} className="text-xl font-black dark:text-white">{t('aim.title')}</h2>
+            <h2 id={titleId} className="text-xl font-semibold dark:text-white">{t('aim.title')}</h2>
             <p className="text-xs font-semibold text-slate-400 mt-0.5">{t('aim.subtitle')}</p>
           </div>
           <ModalCloseButton onClick={onClose} label={t('upl.close')} className="p-2 text-slate-400 hover:text-rose-500 transition-colors rounded-xl" />
@@ -225,7 +225,7 @@ export const AnkiImportModal: React.FC<AnkiImportModalProps> = ({ decks, onClose
               <button
                 key={tab2}
                 onClick={() => setTab(tab2)}
-                className={`flex-1 py-2.5 rounded-xl text-[13px] font-semibold transition-all ${tab === tab2 ? 'bg-white dark:bg-slate-900 shadow' : 'text-slate-400 hover:text-slate-600'}`}
+                className={`flex-1 py-2.5 rounded-xl text-[13px] font-semibold transition-all ${tab === tab2 ? 'bg-[var(--card)] dark:bg-slate-900 shadow' : 'text-slate-400 hover:text-slate-600'}`}
                 style={tab === tab2 ? { color: 'var(--primary-ink)' } : {}}
               >
                 {tab2 === 'paste' ? t('aim.pasteText') : t('aim.uploadFile')}
@@ -268,7 +268,7 @@ export const AnkiImportModal: React.FC<AnkiImportModalProps> = ({ decks, onClose
               <p className="text-2xl mb-2">📂</p>
               {fileName ? (
                 <>
-                  <p className="font-black dark:text-white text-sm">{fileName}</p>
+                  <p className="font-semibold dark:text-white text-sm">{fileName}</p>
                   {apkgBusy && <p className="text-xs text-slate-400 mt-1 font-semibold">{t('aim.apkg.reading')}</p>}
                   {apkgError && <p className="text-xs text-rose-600 dark:text-rose-400 mt-1 font-semibold">{apkgError}</p>}
                   {apkg && (
@@ -279,7 +279,7 @@ export const AnkiImportModal: React.FC<AnkiImportModalProps> = ({ decks, onClose
                 </>
               ) : (
                 <>
-                  <p className="font-black dark:text-white text-sm">{t('aim.dropCsv')}</p>
+                  <p className="font-semibold dark:text-white text-sm">{t('aim.dropCsv')}</p>
                   <p className="text-xs text-slate-400 mt-1 font-semibold">{t('aim.orClick')}</p>
                 </>
               )}
@@ -296,7 +296,7 @@ export const AnkiImportModal: React.FC<AnkiImportModalProps> = ({ decks, onClose
               <div className="space-y-1.5">
                 {preview.map((c, i) => (
                   <div key={i} className="flex gap-3 px-3 py-2 bg-slate-50 dark:bg-slate-800 rounded-xl text-xs">
-                    <span className="font-black dark:text-white shrink-0 break-words max-w-[45%]">
+                    <span className="font-semibold dark:text-white shrink-0 break-words max-w-[45%]">
                       {c.front || (('frontImage' in c && c.frontImage) ? t('aim.apkg.imageOnly') : '')}
                       {'frontImage' in c && c.frontImage && c.front && <span className="ml-1 text-slate-400 font-semibold">{t('aim.apkg.withImage')}</span>}
                     </span>

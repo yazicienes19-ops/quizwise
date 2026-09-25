@@ -35,7 +35,7 @@ class ErrorBoundaryImpl extends React.Component<React.PropsWithChildren<{}>, EBS
               <circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/>
             </svg>
           </div>
-          <h1 className="text-xl font-black">{translate('eb.title')}</h1>
+          <h1 className="text-xl font-semibold">{translate('eb.title')}</h1>
           <p className="text-sm text-slate-500 dark:text-slate-400 leading-relaxed">
             {translate('eb.desc')}
           </p>

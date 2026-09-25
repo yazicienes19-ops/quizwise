@@ -73,7 +73,7 @@ export const AuthPage: React.FC = () => {
   ];
 
   return (
-    <div className="min-h-screen flex bg-white dark:bg-slate-950">
+    <div className="min-h-screen flex bg-[var(--card)] dark:bg-slate-950">
 
       {/* ── Linke Branding-Seite (nur Desktop) ── */}
       <div
@@ -100,7 +100,7 @@ export const AuthPage: React.FC = () => {
             <p className="text-xs font-semibold text-white/60">
               Dein Lernbegleiter fürs Studium
             </p>
-            <h1 className="text-4xl font-black tracking-tight text-white leading-tight">
+            <h1 className="text-4xl font-semibold tracking-tight text-white leading-tight">
               Lerne smarter,<br />nicht länger.
             </h1>
             <p className="text-base text-white/75 leading-relaxed max-w-sm">
@@ -148,7 +148,7 @@ export const AuthPage: React.FC = () => {
 
           {/* Titel */}
           <div className="space-y-1">
-            <h2 className="text-2xl font-black tracking-tight text-slate-900 dark:text-white">
+            <h2 className="text-2xl font-semibold tracking-tight text-slate-900 dark:text-white">
               {mode === 'login' ? 'Willkommen zurück' : 'Konto erstellen'}
             </h2>
             <p className="text-sm text-slate-500 dark:text-slate-400">
@@ -166,7 +166,7 @@ export const AuthPage: React.FC = () => {
                 onClick={() => { setMode(m); setError(''); setSuccessMsg(''); }}
                 className={`flex-1 py-2.5 rounded-xl text-[13px] font-semibold transition-all ${
                   mode === m
-                    ? 'bg-white dark:bg-slate-700 text-slate-900 dark:text-white shadow'
+                    ? 'bg-[var(--card)] dark:bg-slate-700 text-slate-900 dark:text-white shadow'
                     : 'text-slate-400 hover:text-slate-600 dark:hover:text-slate-300'
                 }`}
               >

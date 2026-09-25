@@ -516,9 +516,9 @@ export const StudyPlanner: React.FC<StudyPlannerProps> = ({ metrics, decks, exam
 
       {/* Klausur Form */}
       {showExamForm && (
-        <div className="max-w-xl mx-auto p-8 bg-white dark:bg-slate-900 rounded-[24px] border border-slate-200 dark:border-slate-800 shadow-3d-raised animate-in zoom-in-95 duration-200">
+        <div className="max-w-xl mx-auto p-8 bg-[var(--card)] dark:bg-slate-900 rounded-[24px] border border-slate-200 dark:border-slate-800 shadow-3d-raised animate-in zoom-in-95 duration-200">
           <div className="flex items-center justify-between mb-6">
-            <h3 className="text-lg font-black dark:text-white">{t('sp2.enterExam')}</h3>
+            <h3 className="text-lg font-semibold dark:text-white">{t('sp2.enterExam')}</h3>
             <button aria-label={t('common.close')} onClick={() => setShowExamForm(false)} className="w-8 h-8 flex items-center justify-center rounded-xl bg-slate-100 dark:bg-slate-800 text-slate-400 hover:text-rose-500 transition-colors"><X size={14} /></button>
           </div>
           <div className="space-y-3">
@@ -553,9 +553,9 @@ export const StudyPlanner: React.FC<StudyPlannerProps> = ({ metrics, decks, exam
 
       {/* Event Form */}
       {showEventForm && (
-        <div className="max-w-xl mx-auto p-8 bg-white dark:bg-slate-900 rounded-[24px] border border-slate-200 dark:border-slate-800 shadow-3d-raised animate-in zoom-in-95 duration-200">
+        <div className="max-w-xl mx-auto p-8 bg-[var(--card)] dark:bg-slate-900 rounded-[24px] border border-slate-200 dark:border-slate-800 shadow-3d-raised animate-in zoom-in-95 duration-200">
           <div className="flex items-center justify-between mb-6">
-            <h3 className="text-lg font-black dark:text-white">{t('sp2.addAppointment')}</h3>
+            <h3 className="text-lg font-semibold dark:text-white">{t('sp2.addAppointment')}</h3>
             <button aria-label={t('common.close')} onClick={() => setShowEventForm(false)} className="w-8 h-8 flex items-center justify-center rounded-xl bg-slate-100 dark:bg-slate-800 text-slate-400 hover:text-rose-500 transition-colors"><X size={14} /></button>
           </div>
           <div className="space-y-3">
@@ -580,9 +580,9 @@ export const StudyPlanner: React.FC<StudyPlannerProps> = ({ metrics, decks, exam
 
       {/* Handy-Kalender-Sync */}
       {showSyncModal && (
-        <div className="max-w-xl mx-auto p-8 bg-white dark:bg-slate-900 rounded-[24px] border border-slate-200 dark:border-slate-800 shadow-3d-raised animate-in zoom-in-95 duration-200">
+        <div className="max-w-xl mx-auto p-8 bg-[var(--card)] dark:bg-slate-900 rounded-[24px] border border-slate-200 dark:border-slate-800 shadow-3d-raised animate-in zoom-in-95 duration-200">
           <div className="flex items-center justify-between mb-6">
-            <h3 className="text-lg font-black dark:text-white flex items-center gap-2"><Smartphone size={18} />{t('sp2.syncTitle')}</h3>
+            <h3 className="text-lg font-semibold dark:text-white flex items-center gap-2"><Smartphone size={18} />{t('sp2.syncTitle')}</h3>
             <button aria-label={t('common.close')} onClick={() => setShowSyncModal(false)} className="w-8 h-8 flex items-center justify-center rounded-xl bg-slate-100 dark:bg-slate-800 text-slate-400 hover:text-rose-500 transition-colors"><X size={14} /></button>
           </div>
           <div className="space-y-4">
@@ -657,7 +657,7 @@ export const StudyPlanner: React.FC<StudyPlannerProps> = ({ metrics, decks, exam
               <button aria-label={t('sp.nextMonth')} onClick={goNext} className="w-9 h-9 flex items-center justify-center rounded-xl transition-colors hover:opacity-80" style={{ background: 'var(--bg-main)', color: 'var(--text-main)' }}>
                 <ChevronRight size={16} />
               </button>
-              <h2 className="text-base font-black capitalize ml-1" style={{ color: 'var(--text-main)' }}>{monthLabel}</h2>
+              <h2 className="text-base font-semibold capitalize ml-1" style={{ color: 'var(--text-main)' }}>{monthLabel}</h2>
             </div>
             <button onClick={goToday} className="px-4 py-2 rounded-xl text-[13px] font-semibold transition-colors hover:opacity-80" style={{ background: 'var(--bg-main)', color: 'var(--text-main)' }}>
               {t('sp2.today')}
@@ -807,13 +807,13 @@ export const StudyPlanner: React.FC<StudyPlannerProps> = ({ metrics, decks, exam
               const isSession = item.source === 'session';
               const sessionWeekdayName = isSession ? t((`dow.${WEEKDAY_KEYS[d.getDay()]}`) as TKey) : '';
               return (
-                <div key={item.id} className={`flex items-center gap-4 px-6 py-5 bg-white dark:bg-slate-900 rounded-[20px] border shadow-sm ${item.source === 'exam' ? 'border-rose-100 dark:border-rose-900/30' : 'border-slate-100 dark:border-slate-800'}`}>
+                <div key={item.id} className={`flex items-center gap-4 px-6 py-5 bg-[var(--card)] dark:bg-slate-900 rounded-[20px] border shadow-sm ${item.source === 'exam' ? 'border-rose-100 dark:border-rose-900/30' : 'border-slate-100 dark:border-slate-800'}`}>
                   <div
                     className={`w-2 h-10 rounded-full shrink-0 ${item.source === 'exam' ? 'bg-rose-400' : isSession ? '' : item.isAuto ? '' : 'bg-blue-400'}`}
                     style={isSession ? { background: item.color } : item.isAuto ? { background: 'var(--primary)' } : undefined}
                   />
                   <div className="flex-grow min-w-0">
-                    <p className="text-sm font-black dark:text-white">{item.title}</p>
+                    <p className="text-sm font-semibold dark:text-white">{item.title}</p>
                     {item.description && <p className="text-xs text-slate-400 mt-0.5 break-words">{item.description}</p>}
                     <p className="text-xs font-semibold mt-1 flex items-center gap-1.5 flex-wrap" style={isSession ? { color: item.color } : item.isAuto ? { color: 'var(--primary-ink)' } : { color: '#94a3b8' }}>
                       {isSession ? (
@@ -827,7 +827,7 @@ export const StudyPlanner: React.FC<StudyPlannerProps> = ({ metrics, decks, exam
                     </p>
                   </div>
                   <div className="text-right shrink-0">
-                    <p className="text-sm font-black dark:text-white">{formatDate(d, { day: '2-digit', month: '2-digit', year: 'numeric' })}</p>
+                    <p className="text-sm font-semibold dark:text-white">{formatDate(d, { day: '2-digit', month: '2-digit', year: 'numeric' })}</p>
                     <p className={`text-xs font-semibold mt-0.5 ${daysUntil <= 7 ? 'text-rose-500' : daysUntil <= 14 ? 'text-amber-500' : 'text-slate-400'}`}>
                       {daysUntil === 0 ? t('sp2.today') : daysUntil === 1 ? t('sp2.tomorrow') : t('lc.inDaysN', { n: daysUntil })}
                     </p>

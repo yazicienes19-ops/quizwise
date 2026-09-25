@@ -600,7 +600,7 @@ const App: React.FC = () => {
         )}
         {isOffline && (
           <div className="mb-4 p-3 bg-amber-500/10 border border-amber-500/30 rounded-2xl flex items-center justify-center gap-2">
-            <p className="text-[10px] font-bold text-amber-600 dark:text-amber-400 uppercase tracking-widest">Offline-Modus aktiv</p>
+            <p className="text-[10px] font-bold text-amber-600 dark:text-amber-400 uppercase tracking-[0.08em]">Offline-Modus aktiv</p>
           </div>
         )}
         {syncDegraded && !isOffline && (

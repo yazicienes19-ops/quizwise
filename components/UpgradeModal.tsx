@@ -70,8 +70,8 @@ export const UpgradeModal: React.FC<UpgradeModalProps> = ({ onClose }) => {
         <div className="px-8 pb-6">
           <div className="p-6 rounded-[24px] text-center space-y-1" style={{ background: 'color-mix(in srgb, var(--primary) 10%, transparent)', border: '1px solid color-mix(in srgb, var(--primary) 30%, transparent)' }}>
             <div className="flex items-end justify-center gap-2.5">
-              <p className="text-4xl font-black dark:text-white">9,99 €</p>
-              <p className="text-lg font-black text-slate-300 dark:text-slate-600 line-through mb-1">14,99 €</p>
+              <p className="text-4xl font-semibold dark:text-white">9,99 €</p>
+              <p className="text-lg font-semibold text-slate-300 dark:text-slate-600 line-through mb-1">14,99 €</p>
             </div>
             <p className="text-xs font-semibold" style={{ color: 'var(--primary-ink)' }}>{t('um.introPriceForever')}</p>
             <p className="text-xs text-slate-400 font-semibold">{t('um.perMonth')}</p>

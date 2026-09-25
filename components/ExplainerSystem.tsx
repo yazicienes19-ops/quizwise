@@ -26,6 +26,7 @@ import { buildWeakSpotReasons } from '../services/learningProfileService';
 import { useModuleScopedActivity } from '../hooks/useModuleScopedActivity';
 import { renderMarkdown, parseInline } from './markdownRenderer';
 import { BrandMark } from './BrandMark';
+import { PageHeader } from './PageHeader';
 
 // ─── Typen ────────────────────────────────────────────────────────────────────
 
@@ -511,18 +512,10 @@ export const ExplainerSystem: React.FC<ExplainerSystemProps> = ({
   if (view === 'start') {
     return (
       <div className="max-w-3xl mx-auto space-y-8 py-6 lg:py-10 px-4 animate-in fade-in duration-700">
-        <div className="space-y-2 text-center">
-          <p className="text-xs font-semibold" style={{ color: 'color-mix(in srgb, var(--primary) 70%, black)', letterSpacing: '0.2em' }}>
-            {activeSourceName ? `${t('nav.explainer')} · ${activeSourceName}`.toUpperCase() : t('nav.explainer').toUpperCase()}
-          </p>
-          {userName ? (
-            <h1 className="text-3xl lg:text-[40px] font-normal leading-tight" style={{ color: 'var(--ink)' }}>
-              {t('tut.landing.greeting')}<br /><span className="italic">{userName}</span>?
-            </h1>
-          ) : (
-            <h1 className="text-3xl lg:text-[40px] font-normal leading-tight" style={{ color: 'var(--ink)' }}>{t('tut.landing.headline')}</h1>
-          )}
-        </div>
+        <PageHeader
+          eyebrow={activeSourceName ? `${t('nav.explainer')} · ${activeSourceName}` : t('nav.explainer')}
+          title={userName ? <>{t('tut.landing.greeting')} <span className="italic">{userName}</span>?</> : t('tut.landing.headline')}
+        />
 
         {/* Vereinheitlichter Composer (Redesign 2026-09-10, "Startbildschirm 1a") —
             ersetzt Modus-Karten + Dokument-Karte + SourceSelector + Allgemeinwissen-
@@ -607,7 +600,7 @@ export const ExplainerSystem: React.FC<ExplainerSystemProps> = ({
             <BookOpen size={18} style={{ color: 'var(--primary-ink)' }} strokeWidth={1.75} />
           </div>
           <div className="flex-1 min-w-0 space-y-0.5">
-            <p className="text-sm font-black dark:text-white">{t('ex.landing.readerTitle')}</p>
+            <p className="text-sm font-semibold dark:text-white">{t('ex.landing.readerTitle')}</p>
             <p className="text-[11px] text-slate-400 font-medium leading-snug">{t('ex.landing.readerDesc')}</p>
           </div>
           <ChevronRight className="w-4 h-4 text-slate-300 shrink-0" strokeWidth={2} />
@@ -619,7 +612,7 @@ export const ExplainerSystem: React.FC<ExplainerSystemProps> = ({
         {weakSpots.length > 0 && (
           <div className="space-y-2">
             <p className="flex items-baseline gap-2">
-              <span className="text-xs font-semibold" style={{ color: 'color-mix(in srgb, var(--primary) 70%, black)', letterSpacing: '0.16em' }}>
+              <span className="text-xs font-semibold" style={{ color: 'color-mix(in srgb, var(--primary) 70%, black)', letterSpacing: '0.08em' }}>
                 {t('tut.weakSpots.title')}
               </span>
               <span className="text-[11px]" style={{ color: 'var(--text-secondary)' }}>{t('tut.weakSpots.subtitle')}</span>
@@ -780,7 +773,7 @@ export const ExplainerSystem: React.FC<ExplainerSystemProps> = ({
           <ArrowLeft size={16} strokeWidth={2} />
         </button>
         <div className="flex-1 min-w-0">
-          <p className="text-sm font-black truncate" style={{ color: 'var(--ink)' }}>{chatTitle}</p>
+          <p className="text-sm font-semibold truncate" style={{ color: 'var(--ink)' }}>{chatTitle}</p>
           {activeSourceName && (
             <p className="text-xs truncate" style={{ color: 'var(--text-secondary)' }}>
               {t('ex.fromSource', { source: activeSourceName })}
@@ -838,7 +831,7 @@ export const ExplainerSystem: React.FC<ExplainerSystemProps> = ({
                 bedeutungslose Themen-Chip-Reihe durch Zeilen mit echtem Grund. */}
             {weakSpots.length > 0 && (
               <div className="rounded-[20px] p-5 space-y-3" style={{ background: 'var(--card)', border: '1px solid var(--border-color)' }}>
-                <p className="text-xs font-semibold" style={{ color: 'color-mix(in srgb, var(--primary) 70%, black)', letterSpacing: '0.16em' }}>
+                <p className="text-xs font-semibold" style={{ color: 'color-mix(in srgb, var(--primary) 70%, black)', letterSpacing: '0.08em' }}>
                   {t('tut.weakSpots.title')}
                 </p>
                 <div className="space-y-2">
@@ -874,7 +867,7 @@ export const ExplainerSystem: React.FC<ExplainerSystemProps> = ({
               <div key={m.id} className="flex justify-center">
                 <span
                   className="text-[11px] font-semibold uppercase px-2.5 py-1 rounded-full"
-                  style={{ background: 'color-mix(in srgb, var(--ink) 6%, transparent)', color: 'color-mix(in srgb, var(--ink) 70%, transparent)', letterSpacing: '0.1em' }}
+                  style={{ background: 'color-mix(in srgb, var(--ink) 6%, transparent)', color: 'color-mix(in srgb, var(--ink) 70%, transparent)', letterSpacing: '0.08em' }}
                 >
                   {t('tut.modeChanged')} · {t(MODE_TITLE_KEY[m.content as TutorMode])}
                 </span>
@@ -911,7 +904,7 @@ export const ExplainerSystem: React.FC<ExplainerSystemProps> = ({
                       style={{ background: 'var(--card)', borderTop: '1px solid var(--border-color)', borderRight: '1px solid var(--border-color)', borderBottom: '1px solid var(--border-color)', borderLeft: '3px solid var(--primary)' }}
                     >
                       <div className="flex items-center justify-between gap-3 mb-1">
-                        <p className="text-xs font-semibold truncate" style={{ color: 'color-mix(in srgb, var(--primary) 70%, black)', letterSpacing: '0.16em' }}>
+                        <p className="text-xs font-semibold truncate" style={{ color: 'color-mix(in srgb, var(--primary) 70%, black)', letterSpacing: '0.08em' }}>
                           {activeSourceName ? t('ex.quoteFrom', { source: activeSourceName }) : t('ex.quoteLabel')}
                         </p>
                         {activeDocForReader && onOpenReader && (
@@ -931,7 +924,7 @@ export const ExplainerSystem: React.FC<ExplainerSystemProps> = ({
                   {/* Follow-up-Chips nur unter der jüngsten Tutor-Antwort */}
                   {m.followUps && m.followUps.length > 0 && idx === lastTutorIdx && !isTyping && (
                     <div>
-                      <p className="text-[11px] font-semibold uppercase mb-2" style={{ color: 'color-mix(in srgb, var(--primary) 70%, black)', letterSpacing: '0.16em' }}>
+                      <p className="text-[11px] font-semibold uppercase mb-2" style={{ color: 'color-mix(in srgb, var(--primary) 70%, black)', letterSpacing: '0.08em' }}>
                         {t('tut.suggestions')}
                       </p>
                       <div className="flex flex-wrap gap-1.5">

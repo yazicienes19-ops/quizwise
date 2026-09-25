@@ -45,7 +45,7 @@ export const RecommendationStep: React.FC<RecommendationStepProps> = ({ challeng
         <p className="text-[11px] font-semibold uppercase tracking-[0.08em] mb-2" style={{ color: 'var(--text-secondary)' }}>
           {t('onboarding.usp.problemLabel')}
         </p>
-        <p className="text-lg font-black tracking-tight" style={{ color: 'var(--text-main)' }}>
+        <p className="text-lg font-semibold tracking-tight" style={{ color: 'var(--text-main)' }}>
           "{t('onboarding.usp.problemQuote', { label: problemLabelKey ? t(problemLabelKey) : '' })}"
         </p>
       </div>
@@ -61,7 +61,7 @@ export const RecommendationStep: React.FC<RecommendationStepProps> = ({ challeng
           >
             {TAB_ICON[lead.primaryTab] ?? '✨'}
           </span>
-          <h2 className="text-lg font-black tracking-tight pt-1.5" style={{ color: 'var(--text-main)' }}>
+          <h2 className="text-lg font-semibold tracking-tight pt-1.5" style={{ color: 'var(--text-main)' }}>
             {t('onboarding.usp.solutionHeadline', { feature: tabLabel(lead.primaryTab) })}
           </h2>
         </div>

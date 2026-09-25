@@ -28,8 +28,20 @@
     --font-app:        'Inter', system-ui, sans-serif;
     --line-height-app: 1.6;
     --ease-out:        cubic-bezier(0.23, 1, 0.32, 1); /* AUDIT.md §2 canonical strong ease-out */
+    /* Helle slate-Stufen (Flächen, Rahmen) im Tagmodus warm statt blaustichig
+       (Design-Tour 25.09.2026: blassblaue Flächen auf Beige). Als RGB-Tripel,
+       damit Tailwinds Deckkraft-Modifier (bg-slate-200/50) weiter funktionieren. */
+    --slate-50:  251 249 244;
+    --slate-100: 244 240 231;
+    --slate-200: 228 223 210;
+    --slate-300: 211 204 188;
 }
 .dark {
+    /* Nachtmodus: unveränderte ursprüngliche Werte */
+    --slate-50:  248 250 255;
+    --slate-100: 241 245 255;
+    --slate-200: 226 233 248;
+    --slate-300: 200 213 238;
     --bg-main:       #0B1525;
     --bg-sidebar:    #0F1E35;
     --border-color:  #1A3055;

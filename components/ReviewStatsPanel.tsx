@@ -48,7 +48,7 @@ export const ReviewStatsPanel: React.FC<{ decks: FlashcardDeck[] }> = ({ decks }
   );
 
   return (
-    <section className="rounded-[24px] border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 p-5 sm:p-7 space-y-6" aria-labelledby="stats-title">
+    <section className="rounded-[24px] border border-slate-200 dark:border-slate-800 bg-[var(--card)] dark:bg-slate-900 p-5 sm:p-7 space-y-6" aria-labelledby="stats-title">
       <div className="flex flex-wrap items-baseline justify-between gap-2">
         <h3 id="stats-title" className="text-[11px] font-semibold uppercase tracking-[0.08em] text-slate-500">{t('stats.title')}</h3>
         {entries && entries.length === 0 && <p className="text-xs text-slate-500 dark:text-slate-400">{t('stats.empty')}</p>}

@@ -86,7 +86,7 @@ const ChartTooltip: React.FC<{ active?: boolean; payload?: any[]; label?: number
     }}>
       <p style={{
         color: 'var(--mute)', fontSize: 9, fontWeight: 800,
-        textTransform: 'uppercase', letterSpacing: '0.12em', marginBottom: 8,
+        textTransform: 'uppercase', letterSpacing: '0.08em', marginBottom: 8,
       }}>
         {fmtDate(label)}
       </p>
@@ -136,7 +136,7 @@ const ProgressChart: React.FC<{
         border: '1px solid var(--border-color)',
       }}>
         <p style={{ fontSize: 36, fontWeight: 900, color: 'var(--primary-ink)' }}>{ankiAvg}%</p>
-        <p style={{ fontSize: 9, fontWeight: 800, textTransform: 'uppercase', letterSpacing: '0.12em', color: 'var(--mute)', marginTop: 4 }}>
+        <p style={{ fontSize: 9, fontWeight: 800, textTransform: 'uppercase', letterSpacing: '0.08em', color: 'var(--mute)', marginTop: 4 }}>
           {translate('gr.noTimeSeries')}
         </p>
       </div>
@@ -727,7 +727,7 @@ export const GapRadar: React.FC<GapRadarProps> = ({ metrics, onNavigate, onActio
 
         {/* Kachel 1: Gesamtfortschritt */}
         <div
-          className="bg-white dark:bg-slate-900 p-6 lg:p-8 rounded-[24px] lg:rounded-[24px] border border-slate-200 dark:border-slate-800 shadow-3d-raised flex flex-col"
+          className="bg-[var(--card)] dark:bg-slate-900 p-6 lg:p-8 rounded-[24px] lg:rounded-[24px] border border-slate-200 dark:border-slate-800 shadow-3d-raised flex flex-col"
           style={{ background: 'var(--card)' }}
         >
           <h3 className="text-[11px] font-semibold uppercase tracking-[0.08em] mb-4" style={{ color: 'var(--mute)' }}>
@@ -745,7 +745,7 @@ export const GapRadar: React.FC<GapRadarProps> = ({ metrics, onNavigate, onActio
                     style={{ stroke: scoreColor(overallScore), transition: 'stroke-dashoffset 1s ease' }}
                   />
                 </svg>
-                <div className="absolute inset-0 flex items-center justify-center font-black text-xl dark:text-white"
+                <div className="absolute inset-0 flex items-center justify-center font-semibold text-xl dark:text-white"
                   style={{ color: 'var(--ink)' }}>
                   {overallScore}%
                 </div>
@@ -772,7 +772,7 @@ export const GapRadar: React.FC<GapRadarProps> = ({ metrics, onNavigate, onActio
           <h3 className="text-[11px] font-semibold uppercase tracking-[0.08em] text-rose-500 mb-3">{t('gr.biggestGap')}</h3>
           {biggestGap ? (
             <>
-              <p className="text-sm lg:text-lg font-black leading-tight mb-1" style={{ color: 'var(--ink)' }}>
+              <p className="text-sm lg:text-lg font-semibold leading-tight mb-1" style={{ color: 'var(--ink)' }}>
                 {biggestGap.topic}
               </p>
               <p className="text-[11px] font-bold uppercase" style={{ color: 'var(--mute)' }}>
@@ -843,7 +843,7 @@ export const GapRadar: React.FC<GapRadarProps> = ({ metrics, onNavigate, onActio
       {(hasChartData || (ankiAvg !== null && (selectedMode === 'all' || selectedMode === 'anki'))) && (
         <div className="space-y-4">
           <div>
-            <h3 className="text-lg font-black" style={{ color: 'var(--ink)' }}>{t('gr.history')}</h3>
+            <h3 className="text-lg font-semibold" style={{ color: 'var(--ink)' }}>{t('gr.history')}</h3>
             <p className="text-xs mt-0.5" style={{ color: 'var(--mute)' }}>
               {t('gr.historyHint')}
             </p>
@@ -877,7 +877,7 @@ export const GapRadar: React.FC<GapRadarProps> = ({ metrics, onNavigate, onActio
       {weakTopics.length > 0 && (
         <div className="space-y-4" ref={weakTopicsRef}>
           <div>
-            <h3 className="text-lg font-black" style={{ color: 'var(--ink)' }}>{t('gr.commonWeak')}</h3>
+            <h3 className="text-lg font-semibold" style={{ color: 'var(--ink)' }}>{t('gr.commonWeak')}</h3>
             <p className="text-xs mt-0.5" style={{ color: 'var(--mute)' }}>
               {t('gr.commonWeakHint')}
             </p>
@@ -948,7 +948,7 @@ export const GapRadar: React.FC<GapRadarProps> = ({ metrics, onNavigate, onActio
       {combinedHistory.length > 0 && (
         <div className="space-y-4">
           <div>
-            <h3 className="text-lg font-black" style={{ color: 'var(--ink)' }}>{t('gr.learnHistory')}</h3>
+            <h3 className="text-lg font-semibold" style={{ color: 'var(--ink)' }}>{t('gr.learnHistory')}</h3>
             <p className="text-xs mt-0.5" style={{ color: 'var(--mute)' }}>
               {t('gr.lastSessions', { n: combinedHistory.length })}
             </p>
@@ -987,14 +987,14 @@ export const GapRadar: React.FC<GapRadarProps> = ({ metrics, onNavigate, onActio
                   <div className="w-20 h-1.5 rounded-full overflow-hidden" style={{ background: 'var(--border-color)' }}>
                     <AnimatedBar percent={entry.score} className="h-full rounded-full" style={{ background: scoreColor(entry.score) }} />
                   </div>
-                  <span className="text-sm font-black w-10 text-right" style={{ color: scoreColor(entry.score) }}>
+                  <span className="text-sm font-semibold w-10 text-right" style={{ color: scoreColor(entry.score) }}>
                     {entry.score}%
                   </span>
                   <button
                     onClick={() => handleDeleteSession(entry.kind, entry.id)}
                     aria-label={t('gr.deleteSession')}
                     title={t('gr.deleteSession')}
-                    className="text-slate-300 hover:text-rose-500 transition-colors font-black text-base leading-none"
+                    className="text-slate-300 hover:text-rose-500 transition-colors font-semibold text-base leading-none"
                   >×</button>
                 </div>
               </div>
@@ -1007,7 +1007,7 @@ export const GapRadar: React.FC<GapRadarProps> = ({ metrics, onNavigate, onActio
       <div className="pt-8 border-t space-y-6" style={{ borderColor: 'var(--border-color)' }}>
         <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
           <div>
-            <h3 className="text-xl font-black" style={{ color: 'var(--ink)' }}>{t('gr.errorAnalysis')}</h3>
+            <h3 className="text-xl font-semibold" style={{ color: 'var(--ink)' }}>{t('gr.errorAnalysis')}</h3>
             <p className="text-xs mt-0.5" style={{ color: 'var(--mute)' }}>
               {wrongAnswersCtx.length > 0
                 ? t('gr.aiAnalyzes', { n: wrongAnswersCtx.length })
@@ -1093,7 +1093,7 @@ export const GapRadar: React.FC<GapRadarProps> = ({ metrics, onNavigate, onActio
                           {t('gr.occurredN', { n: error.count })}
                         </span>
                       </div>
-                      <h4 className="text-base font-black mt-1" style={{ color: 'var(--ink)' }}>{error.pattern}</h4>
+                      <h4 className="text-base font-semibold mt-1" style={{ color: 'var(--ink)' }}>{error.pattern}</h4>
                       <p className="text-[11px] font-medium mt-1 leading-relaxed" style={{ color: 'var(--ink2)' }}>{error.description}</p>
                     </div>
                     <div>
@@ -1102,7 +1102,7 @@ export const GapRadar: React.FC<GapRadarProps> = ({ metrics, onNavigate, onActio
                     </div>
                     <div className="flex-1">
                       <p className="text-[11px] font-semibold uppercase tracking-[0.08em]" style={{ color: 'var(--primary-ink)' }}>{t('gr.recommendation')}</p>
-                      <p className="text-sm font-black mt-1" style={{ color: 'var(--ink)' }}>{ERROR_ACTION_LABEL[error.recommendedAction.type] ? t(ERROR_ACTION_LABEL[error.recommendedAction.type]) : error.recommendedAction.type}</p>
+                      <p className="text-sm font-semibold mt-1" style={{ color: 'var(--ink)' }}>{ERROR_ACTION_LABEL[error.recommendedAction.type] ? t(ERROR_ACTION_LABEL[error.recommendedAction.type]) : error.recommendedAction.type}</p>
                       <p className="text-[11px] italic mt-1 leading-relaxed" style={{ color: 'var(--ink2)' }}>{error.recommendedAction.reasoning}</p>
                       {error.recommendedAction.secondaryType && (
                         <p className="text-[11px] mt-1.5" style={{ color: 'var(--mute)' }}>

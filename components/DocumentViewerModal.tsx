@@ -89,13 +89,13 @@ export const DocumentViewerModal: React.FC<DocumentViewerModalProps> = ({ doc, o
     >
       <div
         {...dialogProps}
-        className="bg-white dark:bg-slate-900 rounded-[24px] w-full max-w-4xl h-[88vh] shadow-3d-deep overflow-hidden flex flex-col animate-in zoom-in-95 duration-300"
+        className="bg-[var(--card)] dark:bg-slate-900 rounded-[24px] w-full max-w-4xl h-[88vh] shadow-3d-deep overflow-hidden flex flex-col animate-in zoom-in-95 duration-300"
         onClick={e => e.stopPropagation()}
       >
         {/* Header */}
         <div className="flex justify-between items-center px-6 py-4 border-b border-slate-100 dark:border-slate-800 shrink-0">
           <div className="min-w-0 flex-1 pr-4">
-            <h2 id={titleId} className="text-base font-black dark:text-white break-words">{documentDisplayName(doc)}</h2>
+            <h2 id={titleId} className="text-base font-semibold dark:text-white break-words">{documentDisplayName(doc)}</h2>
             <p className="text-xs font-semibold text-slate-400 mt-0.5">
               {doc.type === 'docx'
                 ? t('dvm.extractedText')
