@@ -46,6 +46,7 @@ import { DAILY_GOAL_KEY, setDailyGoal } from './services/studyTimeService';
 import { FocusTimer } from './components/FocusTimer';
 import { GlobalSearch } from './components/GlobalSearch';
 import { isCardDue } from './services/spacedRepetition';
+import { setCardLimits, CARD_LIMITS_KEY } from './services/cardLimits';
 
 const LAST_TAB_KEY = 'studearc_last_tab';
 // READER bewusst ausgeschlossen — hängt an einem konkreten pendingActionDoc,
@@ -200,6 +201,10 @@ const App: React.FC = () => {
       // Tagesziel der Lernzeit ebenso von einem anderen Gerät übernehmen.
       if (typeof cloud.preferences.daily_goal_minutes === 'number' && localStorage.getItem(DAILY_GOAL_KEY) === null) {
         setDailyGoal(cloud.preferences.daily_goal_minutes);
+      }
+      // Tageslimits der Karteikarten ebenso übernehmen.
+      if (cloud.preferences.card_limits && localStorage.getItem(CARD_LIMITS_KEY) === null) {
+        setCardLimits(cloud.preferences.card_limits);
       }
       if (cloud.saved) {
         const saved = cloud.saved;

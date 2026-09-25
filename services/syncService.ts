@@ -66,6 +66,8 @@ export interface CloudPreferences {
   recall_intro_done?: boolean;
   spaced_planning?: boolean;
   daily_goal_minutes?: number;
+  /** Tageslimits der Karteikarten (services/cardLimits.ts). */
+  card_limits?: { newPerDay: number; reviewsPerDay: number };
   language?: string;
   notification_settings?: Record<string, any>;
   /** Volles Onboarding-Ergebnis für geräteübergreifende Personalisierung — additiv

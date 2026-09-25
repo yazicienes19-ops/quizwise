@@ -31,6 +31,7 @@ import { CardImage } from './CardImage';
 import type { CardImages } from './EditCardModal';
 import { deleteCardImage, isOwnImage } from '../services/cardImages';
 import { buildFigureCards, canUseFigures } from '../services/figureCardBuilder';
+import { getCardLimits, setCardLimits, remainingToday, todayUsage, NEW_LIMIT_OPTIONS, REVIEW_LIMIT_OPTIONS, UNLIMITED, type CardLimits } from '../services/cardLimits';
 
 interface FlashcardSystemProps {
   availableDocuments: ProcessedDocument[];
@@ -120,6 +121,11 @@ export const FlashcardSystem: React.FC<FlashcardSystemProps> = ({
   const [statsDeck, setStatsDeck] = useState<FlashcardDeck | null>(null);
   const [cardSearch, setCardSearch] = useState(initialCardQuery ?? '');
   const [tagFilter, setTagFilter] = useState<string | null>(null);
+  // Tageslimits (Anki-Standard 20 neue / 200 Wiederholungen)
+  const [limits, setLimits] = useState<CardLimits>(getCardLimits);
+  const [showLimits, setShowLimits] = useState(false);
+  const updateLimits = (l: CardLimits) => { setLimits(l); setCardLimits(l, userId); };
+  const limitUsage = useMemo(() => todayUsage(decks), [decks]);
   const [manualDeckTitle, setManualDeckTitle] = useState('');
 
   // null = closed, 'new' = add mode, Flashcard = edit mode
@@ -598,7 +604,7 @@ export const FlashcardSystem: React.FC<FlashcardSystemProps> = ({
   };
 
   /** true = Session gestartet, false = nichts zu lernen (Toast ging raus). */
-  const handleOpenDeck = (deckId: string, mode: 'due' | 'all' | 'free' = 'due'): boolean => {
+  const handleOpenDeck = (deckId: string, mode: 'due' | 'all' | 'free' = 'due', ignoreLimits = false): boolean => {
     const deck = decksRef.current.find(d => d.id === deckId);
     if (!deck) return false;
     // Explizite Annotation: die map-returnte Union (Flashcard | Spread mit
@@ -629,13 +635,24 @@ export const FlashcardSystem: React.FC<FlashcardSystemProps> = ({
       cardsToLearn = sorted.slice(0, SESSION_BATCH_SIZE);
       remaining = sorted.length - cardsToLearn.length;
     } else {
-      const batch = buildSessionBatch(migratedCards);
+      // Tageslimits (services/cardLimits.ts) über alle Stapel; "Heute trotzdem lernen" hebt sie auf.
+      const left = ignoreLimits ? undefined : remainingToday(decksRef.current);
+      const batch = buildSessionBatch(migratedCards, SESSION_BATCH_SIZE, left);
       if (batch.cards.length === 0) {
-        toast.success(t('fcs.deckDoneToday'));
+        if (batch.heldBack > 0) {
+          toast.withAction(tp('limit.reached', batch.heldBack), {
+            label: t('limit.learnAnyway'),
+            onClick: () => { handleOpenDeck(deckId, mode, true); },
+          }, 10000);
+        } else {
+          toast.success(t('fcs.deckDoneToday'));
+        }
         return false;
       }
       cardsToLearn = batch.cards;
-      remaining = batch.remainingAfter;
+      // Zurückgehaltene Karten sind heute nicht mehr dran, also nicht "weitere Runde".
+      remaining = batch.remainingAfter - batch.heldBack;
+      if (batch.heldBack > 0) toast.info(tp('limit.partial', batch.heldBack));
     }
 
     sessionReviewCount.current = 0;
@@ -1018,7 +1035,20 @@ export const FlashcardSystem: React.FC<FlashcardSystemProps> = ({
 
         <div className="lg:col-span-7 bg-white dark:bg-slate-900 rounded-[24px] lg:rounded-[28px] border border-slate-200 dark:border-slate-800 shadow-3d-deep order-1 lg:order-2">
           <div className="p-5 sm:p-6 lg:p-10 border-b border-slate-50 dark:border-slate-800 flex flex-col sm:flex-row justify-between items-center gap-4 lg:gap-0">
-            <h3 className="text-[11px] font-semibold uppercase tracking-[0.08em] text-slate-400">{t('fcs.yourDecks', { n: decks.length })}</h3>
+            <div className="flex flex-col items-center sm:items-start gap-1">
+              <h3 className="text-[11px] font-semibold uppercase tracking-[0.08em] text-slate-400">{t('fcs.yourDecks', { n: decks.length })}</h3>
+              <button
+                type="button"
+                onClick={() => setShowLimits(v => !v)}
+                aria-expanded={showLimits}
+                className="text-xs text-slate-500 dark:text-slate-400 hover:text-slate-800 dark:hover:text-slate-200 transition-colors"
+              >
+                {t('limit.summary', {
+                  n: limitUsage.newToday, max: limits.newPerDay >= UNLIMITED ? '∞' : limits.newPerDay,
+                  r: limitUsage.reviewsToday, rmax: limits.reviewsPerDay >= UNLIMITED ? '∞' : limits.reviewsPerDay,
+                })}
+              </button>
+            </div>
             <div className="flex gap-3 sm:gap-4 items-center flex-wrap justify-center sm:justify-end">
               <input
                 ref={importInputRef}
@@ -1047,6 +1077,28 @@ export const FlashcardSystem: React.FC<FlashcardSystemProps> = ({
               )}
             </div>
           </div>
+
+          {showLimits && (
+            <div className="px-5 sm:px-6 lg:px-10 pt-5">
+              <div className="flex flex-wrap items-end gap-4 px-4 py-3 rounded-2xl bg-slate-50 dark:bg-slate-800/60">
+                <label className="flex flex-col gap-1 text-xs text-slate-500 dark:text-slate-400">
+                  {t('limit.newPerDay')}
+                  <select value={limits.newPerDay} onChange={e => updateLimits({ ...limits, newPerDay: Number(e.target.value) })}
+                    className="px-3 py-2 rounded-xl bg-white dark:bg-slate-900 text-[13px] font-semibold text-slate-800 dark:text-slate-100 border border-slate-200 dark:border-slate-700">
+                    {NEW_LIMIT_OPTIONS.map(o => <option key={o} value={o}>{o >= UNLIMITED ? t('limit.unlimited') : o}</option>)}
+                  </select>
+                </label>
+                <label className="flex flex-col gap-1 text-xs text-slate-500 dark:text-slate-400">
+                  {t('limit.reviewsPerDay')}
+                  <select value={limits.reviewsPerDay} onChange={e => updateLimits({ ...limits, reviewsPerDay: Number(e.target.value) })}
+                    className="px-3 py-2 rounded-xl bg-white dark:bg-slate-900 text-[13px] font-semibold text-slate-800 dark:text-slate-100 border border-slate-200 dark:border-slate-700">
+                    {REVIEW_LIMIT_OPTIONS.map(o => <option key={o} value={o}>{o >= UNLIMITED ? t('limit.unlimited') : o}</option>)}
+                  </select>
+                </label>
+                <p className="text-xs text-slate-500 dark:text-slate-400 flex-1 min-w-[200px]">{t('limit.hint')}</p>
+              </div>
+            </div>
+          )}
 
           {duplicateGroups.length > 0 && (
             <div className="px-5 sm:px-6 lg:px-10 pt-5 space-y-2">

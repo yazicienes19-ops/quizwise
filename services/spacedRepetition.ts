@@ -199,6 +199,8 @@ export interface SessionBatch<T> {
   cards: T[];
   /** Wie viele fällige Karten nach dieser Runde noch warten. */
   remainingAfter: number;
+  /** Davon durch die Tageslimits zurückgehalten (heute nicht mehr dran). */
+  heldBack: number;
 }
 
 /**
@@ -210,7 +212,12 @@ export interface SessionBatch<T> {
  *    Vertiefung", wie das Kapitel-Coverage beim Recall
  * 3. weiterführende Wiederholungen, überfälligste zuerst
  */
-export function buildSessionBatch<T extends { srs?: SrsState }>(cards: T[], batchSize: number = SESSION_BATCH_SIZE): SessionBatch<T> {
+export function buildSessionBatch<T extends DueFlags>(
+  cards: T[],
+  batchSize: number = SESSION_BATCH_SIZE,
+  /** Rest der Tageslimits (services/cardLimits.ts); ohne Angabe unbegrenzt. */
+  limits?: { newLeft: number; reviewLeft: number },
+): SessionBatch<T> {
   const now = Date.now();
   const due = getDueCards(cards);
 
@@ -228,16 +235,23 @@ export function buildSessionBatch<T extends { srs?: SrsState }>(cards: T[], batc
   // Neu-Karten-Limit greift NUR, wenn mehr fällig ist als in eine Runde passt —
   // ein kleines Deck spielt alles, nur in sinnvoller Reihenfolge.
   const freshLimit = due.length > batchSize ? NEW_CARDS_PER_SESSION : due.length;
-  const fresh = due.filter(isNew).slice(0, freshLimit);
+  const newCandidates = due.filter(isNew);
+  const fresh = newCandidates.slice(0, Math.min(freshLimit, limits?.newLeft ?? Infinity));
   const inBatch = new Set([...learning, ...fresh]);
   // Neue Karten, die das Limit nicht schafften, zählen NICHT alsReviews-Füller
   // — sonst würde das Neu-Limit wirkungslos (Fund aus dem Unit-Test).
-  const reviews = due
+  const reviewCandidates = due
     .filter(c => !inBatch.has(c) && !isNew(c))
     .sort((a, b) => overdueDays(b) - overdueDays(a));
+  // Lernkarten (gerade vergessen oder sehr schwer) laufen außerhalb des Limits, wie in Anki.
+  const reviews = reviewCandidates.slice(0, limits?.reviewLeft ?? Infinity);
 
   const batch = [...learning, ...fresh, ...reviews].slice(0, batchSize);
-  return { cards: batch, remainingAfter: due.length - batch.length };
+  const heldBack = limits
+    ? Math.max(0, newCandidates.length - Math.min(newCandidates.length, limits.newLeft))
+      + Math.max(0, reviewCandidates.length - Math.min(reviewCandidates.length, limits.reviewLeft))
+    : 0;
+  return { cards: batch, remainingAfter: due.length - batch.length, heldBack };
 }
 
 /** Migration: bestehende Karten mit level/nextReview auf SRS umstellen */
