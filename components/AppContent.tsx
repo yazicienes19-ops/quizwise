@@ -580,6 +580,7 @@ export const AppContent: React.FC<AppContentProps> = (p) => {
         key={pendingActionDoc ? `cards-${pendingActionDoc.id}` : searchTarget?.kind === 'deck' ? `cards-search-${searchTarget.nonce}` : 'cards'}
         initialDeckId={searchTarget?.kind === 'deck' ? searchTarget.deckId : undefined}
         initialCardQuery={searchTarget?.kind === 'deck' ? searchTarget.cardQuery : undefined}
+        examTerms={examTerms}
         availableDocuments={documents} collections={collections}
         onDeleteDoc={deleteDoc}
         onSaveToLibrary={file => handleFileUpload(file)}

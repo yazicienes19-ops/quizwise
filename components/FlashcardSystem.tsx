@@ -2,7 +2,7 @@
 import { ClozeText } from './ClozeText';
 import { hasCloze } from '../services/cloze';
 import React, { useState, useEffect, useMemo, useRef, useCallback } from 'react';
-import { FlashcardDeck, Flashcard, ProcessedDocument, Collection } from '../types';
+import { FlashcardDeck, Flashcard, ProcessedDocument, Collection, ExamTerm } from '../types';
 import type { GenerationSource } from '../services/geminiService';
 import { EmojiImage } from './EmojiImage';
 import { generateFlashcardsFromDocument } from '../services/geminiService';
@@ -38,10 +38,13 @@ import { makeEntry, logReview, undoLastReview, ratingFor, loadReviews, type Revi
 import { ReviewStatsPanel } from './ReviewStatsPanel';
 import { getFsrsParams, saveFsrsParams, personalize, MIN_PAIRS, RETENTION_OPTIONS } from '../services/fsrsPersonal';
 import type { FsrsParams } from '../services/spacedRepetition';
+import { ModuleDeckModal } from './ModuleDeckModal';
 
 interface FlashcardSystemProps {
   availableDocuments: ProcessedDocument[];
   collections: Collection[];
+  /** Klausurtermine für den Lernplan beim "Ganzen Fach als Karten". */
+  examTerms?: ExamTerm[];
   onDeleteDoc: (id: string) => void;
   onSaveToLibrary?: (file: File) => void;
   onGenerateQuizFromDeck: (deck: FlashcardDeck) => void;
@@ -74,6 +77,7 @@ const isValidSrs = (s: unknown): s is SrsState => {
 export const FlashcardSystem: React.FC<FlashcardSystemProps> = ({
   availableDocuments,
   collections,
+  examTerms = [],
   onDeleteDoc,
   onSaveToLibrary,
   onGenerateQuizFromDeck,
@@ -128,6 +132,7 @@ export const FlashcardSystem: React.FC<FlashcardSystemProps> = ({
   const [cardSearch, setCardSearch] = useState(initialCardQuery ?? '');
   const [tagFilter, setTagFilter] = useState<string | null>(null);
   const [showOcclusion, setShowOcclusion] = useState(false);
+  const [showModuleDeck, setShowModuleDeck] = useState(false);
   // Tageslimits (Anki-Standard 20 neue / 200 Wiederholungen)
   const [limits, setLimits] = useState<CardLimits>(getCardLimits);
   const [showLimits, setShowLimits] = useState(false);
@@ -974,6 +979,23 @@ export const FlashcardSystem: React.FC<FlashcardSystemProps> = ({
 
   return (
     <div className="max-w-6xl mx-auto space-y-10 lg:space-y-16 animate-in fade-in duration-700 py-6 lg:py-10 px-2 sm:px-4">
+      {showModuleDeck && (
+        <ModuleDeckModal
+          collections={collections}
+          documents={availableDocuments}
+          examTerms={examTerms}
+          initialCollectionId={activeModuleId}
+          onCreate={deck => {
+            // Gleichnamigen Stapel nicht überschreiben: Titel eindeutig machen.
+            const title = decksRef.current.some(d => d.title === deck.title) ? `${deck.title} · ${t('mod.allDocs')}` : deck.title;
+            const created = { ...deck, title };
+            saveDecks([...decksRef.current, created], created);
+            setFreshDeckId(created.id);
+          }}
+          onSetNewPerDay={n => updateLimits({ ...limits, newPerDay: n })}
+          onClose={() => setShowModuleDeck(false)}
+        />
+      )}
       {showAnkiImport && (
         <AnkiImportModal
           decks={decks}
@@ -1034,6 +1056,16 @@ export const FlashcardSystem: React.FC<FlashcardSystemProps> = ({
 
             <div className="space-y-6 pt-4 border-t border-slate-50 dark:border-slate-800">
               <h3 className="text-[11px] font-semibold uppercase tracking-[0.08em] text-indigo-600">{t('fcs.cardGenerator')}</h3>
+              {collections.length > 0 && (
+                <button
+                  type="button"
+                  onClick={() => setShowModuleDeck(true)}
+                  className="w-full text-left px-4 py-3 rounded-2xl border border-slate-200 dark:border-slate-700 hover:border-slate-400 transition-colors"
+                >
+                  <span className="block text-[13px] font-semibold text-slate-800 dark:text-slate-100">{t('mod.title')}</span>
+                  <span className="block text-xs text-slate-500 dark:text-slate-400">{t('mod.entryHint')}</span>
+                </button>
+              )}
 
               <div className="space-y-4">
                 <div className="flex justify-between items-center text-[11px] font-semibold uppercase text-slate-400 tracking-[0.08em] px-2">
