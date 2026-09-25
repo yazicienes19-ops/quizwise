@@ -30,6 +30,7 @@ import { collectTags, hasTag } from '../services/cardTags';
 import { CardImage } from './CardImage';
 import type { CardImages } from './EditCardModal';
 import { deleteCardImage, isOwnImage } from '../services/cardImages';
+import { buildFigureCards, canUseFigures } from '../services/figureCardBuilder';
 
 interface FlashcardSystemProps {
   availableDocuments: ProcessedDocument[];
@@ -56,6 +57,7 @@ interface FlashcardSystemProps {
 const CLOUD_SAVE_DELAY_MS = 1500;
 
 const newId = () => Math.random().toString(36).slice(2, 11);
+const FIGURES_KEY = 'studearc_cards_with_figures';
 
 const isValidSrs = (s: unknown): s is SrsState => {
   const v = s as SrsState;
@@ -100,6 +102,15 @@ export const FlashcardSystem: React.FC<FlashcardSystemProps> = ({
   const [editingDeckId, setEditingDeckId] = useState<string | null>(initialDeckId ?? null);
   const [isGenerating, setIsGenerating] = useState<string | null>(null);
   const [selectedCount, setSelectedCount] = useState<number>(15);
+  /** Abbildungen aus dem PDF als zusätzliche Bildkarten (services/figureCardBuilder.ts). */
+  const [withFigures, setWithFigures] = useState(() => {
+    try { return localStorage.getItem(FIGURES_KEY) === '1'; } catch { return false; }
+  });
+  const [figureProgress, setFigureProgress] = useState<{ done: number; total: number } | null>(null);
+  const toggleFigures = () => setWithFigures(v => {
+    try { localStorage.setItem(FIGURES_KEY, v ? '0' : '1'); } catch { /* Speicher gesperrt */ }
+    return !v;
+  });
   const [freshDeckId, setFreshDeckId] = useState<string | null>(null);
 
   // States for manual deck creation
@@ -340,6 +351,21 @@ export const FlashcardSystem: React.FC<FlashcardSystemProps> = ({
     try {
       const generated = await generateFlashcardsFromDocument(source, requested);
       if (generated.length === 0) { toast.error(t('fcs.noCardsGenerated')); return; }
+
+      // Zusätzlich Abbildungs-Karten, wenn gewünscht und die Quelle ein PDF ist.
+      const doc = docId ? availableDocuments.find(d => d.id === docId) : undefined;
+      let figureCards: { front: string; back: string; frontImage?: string; backImage?: string }[] = [];
+      if (withFigures && userId && canUseFigures(doc)) {
+        try {
+          figureCards = await buildFigureCards(doc!, userId, Math.max(2, Math.round(requested / 3)),
+            (done, total) => setFigureProgress({ done, total }));
+          if (figureCards.length === 0) toast.info(t('fcs.fig.none'));
+        } catch {
+          toast.info(t('fcs.fig.failed'));
+        } finally {
+          setFigureProgress(null);
+        }
+      }
       const newDeck: FlashcardDeck = {
         id: newId(),
         title: name.replace(/\.[^/.]+$/, ''),
@@ -352,9 +378,20 @@ export const FlashcardSystem: React.FC<FlashcardSystemProps> = ({
           nextReview: Date.now(),
           lastInterval: 0,
           srs: createSrsState(),
-        }))
+        })).concat(figureCards.map(c => ({
+          id: newId(),
+          front: c.front,
+          back: c.back,
+          ...(c.frontImage ? { frontImage: c.frontImage } : {}),
+          ...(c.backImage ? { backImage: c.backImage } : {}),
+          level: 0,
+          nextReview: Date.now(),
+          lastInterval: 0,
+          srs: createSrsState(),
+        })))
       };
       saveDecks([...decksRef.current, newDeck], newDeck);
+      if (figureCards.length > 0) toast.success(tp('fcs.fig.added', figureCards.length));
       setFreshDeckId(newDeck.id);
       if (generated.length < requested) toast.info(t('fcs.deckCreatedPartial', { n: generated.length, total: requested }));
       else toast.success(tp('fcs.deckCreated', generated.length));
@@ -887,12 +924,31 @@ export const FlashcardSystem: React.FC<FlashcardSystemProps> = ({
                     </button>
                   ))}
                 </div>
+                <button
+                  type="button"
+                  role="switch"
+                  aria-checked={withFigures}
+                  onClick={toggleFigures}
+                  className="w-full flex items-center justify-between gap-3 px-3 py-2.5 rounded-xl text-left transition-colors hover:bg-slate-50 dark:hover:bg-slate-800"
+                >
+                  <span className="min-w-0">
+                    <span className="block text-[13px] font-semibold text-slate-700 dark:text-slate-200">{t('fcs.fig.toggle')}</span>
+                    <span className="block text-xs text-slate-500 dark:text-slate-400">{t('fcs.fig.hint')}</span>
+                  </span>
+                  <span className="w-10 h-6 rounded-full p-0.5 shrink-0 transition-all" style={{ background: withFigures ? 'var(--primary)' : 'var(--border-color)' }}>
+                    <span className={`block w-5 h-5 rounded-full bg-white shadow transition-transform ${withFigures ? 'translate-x-4' : ''}`} />
+                  </span>
+                </button>
               </div>
 
               {isGenerating ? (
                 <div className="py-8 flex flex-col items-center gap-3 text-center">
                   <div className="w-8 h-8 border-4 border-indigo-100 border-t-indigo-600 rounded-full animate-spin" />
-                  <p className="text-xs font-semibold text-indigo-600 animate-pulse">{t('fcs.cardsForming')}</p>
+                  <p className="text-xs font-semibold text-indigo-600 animate-pulse">
+                    {figureProgress
+                      ? t('fcs.fig.progress', { done: figureProgress.done, total: figureProgress.total })
+                      : t('fcs.cardsForming')}
+                  </p>
                 </div>
               ) : (
                 <SourceSelector

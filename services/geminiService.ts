@@ -866,6 +866,50 @@ STRENGE DIVERSITÄTS-REGELN:
   return parseAiJson<unknown>(text || '[]');
 };
 
+/**
+ * Abbildungs-Karten: das Modell sieht das echte PDF (nicht den Text-Digest)
+ * und nennt lernrelevante Abbildungen mit Seite und Bildbereich im Gemini-
+ * Format [ymin, xmin, ymax, xmax] (0 bis 1000). Ausschneiden und Prüfen
+ * passiert im Browser (services/figureCardBuilder.ts, services/figureCards.ts).
+ */
+export const generateFigureFlashcards = async (pdfSource: GenerationSource, max: number): Promise<unknown[]> => {
+  const parts: any[] = [sourceTopart(pdfSource), { text: `Finde in diesem PDF bis zu ${max} Abbildungen, die für das Lernen wichtig sind: Diagramme, Modelle, Grafiken, Schaubilder, anatomische oder technische Darstellungen, Abläufe, Tabellen mit grafischem Aufbau.
+NICHT verwenden: Logos, Fotos von Personen ohne fachlichen Inhalt, Stockfotos, Hintergründe, Dekoration, reine Textblöcke, Kopf- und Fußzeilen.
+Für jede Abbildung eine Karteikarte:
+- page: Seitennummer im PDF, 1-basiert
+- box: Bildbereich der Abbildung als [ymin, xmin, ymax, xmax], Werte 0 bis 1000 relativ zur Seite, eng um die Abbildung inklusive ihrer Beschriftungen
+- side: wo das Bild auf der Karte steht, damit es die Antwort NICHT verrät:
+  "front", wenn man die Abbildung zum Beantworten braucht und sie die Antwort nicht enthält (z. B. "Welches Modell zeigt die Abbildung?", "Was passiert im Schritt mit dem Pfeil?")
+  "back", wenn die Abbildung die Antwort selbst enthält (Tabellen, Zeitstrahlen, beschriftete Übersichten, Aufzählungen). Dann fragt die Vorderseite den Inhalt ab, und die Abbildung dient auf der Rückseite als Lösung.
+- front: die Frage; bei side "back" so formuliert, dass sie ohne Bild verständlich ist
+- back: die Antwort, 1 bis 3 Sätze, ausschließlich aus dem Dokument
+Wenn es keine geeigneten Abbildungen gibt, gib eine leere Liste zurück. Erfinde keine Abbildungen.${outputLangDirective()}` }];
+  const text = await callBackend({
+    complexity: 'heavy',
+    parts,
+    config: {
+      thinkingConfig: { thinkingBudget: 0 },
+      responseMimeType: 'application/json',
+      responseSchema: {
+        type: Type.ARRAY,
+        items: {
+          type: Type.OBJECT,
+          properties: {
+            page: { type: Type.INTEGER },
+            box: { type: Type.ARRAY, items: { type: Type.NUMBER } },
+            side: { type: Type.STRING, enum: ['front', 'back'] },
+            front: { type: Type.STRING },
+            back: { type: Type.STRING },
+          },
+          required: ['page', 'box', 'side', 'front', 'back'],
+        },
+      },
+    },
+  });
+  const parsed = parseAiJson<unknown>(text || '[]');
+  return Array.isArray(parsed) ? parsed.slice(0, max) : [];
+};
+
 /** Phase 3B: gezielte Karteikarten aus konkreten Fehlern (ErrorPattern.sourceErrorIds,
  *  services/errorPool.ts) statt aus einem ganzen Dokument wie generateFlashcardsFromDocument —
  *  Grounding ausschließlich auf die tatsächlich falsch beantworteten Fragen + Erklärung/
