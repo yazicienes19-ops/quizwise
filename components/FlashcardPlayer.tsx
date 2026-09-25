@@ -189,7 +189,7 @@ export const FlashcardPlayer: React.FC<FlashcardPlayerProps> = ({ cards, onRevie
     const presses = tally.again + tally.hard + tally.good + tally.easy;
     const knownPct = presses > 0 ? Math.round(((presses - tally.again) / presses) * 100) : 0;
     return createPortal(
-      <div className="fixed inset-0 z-[100] bg-[#f8fafc] dark:bg-[#020617] flex items-center justify-center p-6 animate-in fade-in duration-300">
+      <div className="fixed inset-0 z-[100] bg-[var(--bg-main)] flex items-center justify-center p-6 animate-in fade-in duration-300">
         <div className="max-w-md w-full text-center space-y-6 rounded-[28px] p-8 sm:p-10 bg-[var(--card)] dark:bg-slate-900 shadow-2xl border border-slate-100 dark:border-slate-800">
           <div className="w-16 h-16 mx-auto rounded-2xl flex items-center justify-center" style={{ background: 'color-mix(in srgb, var(--primary) 15%, transparent)' }}>
             <svg xmlns="http://www.w3.org/2000/svg" width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="var(--primary)" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round"><polyline points="20 6 9 17 4 12"/></svg>
@@ -202,11 +202,11 @@ export const FlashcardPlayer: React.FC<FlashcardPlayerProps> = ({ cards, onRevie
           </div>
           {presses > 0 && (
             <div className="flex justify-center gap-2 flex-wrap">
-              <span className="px-3 py-1.5 rounded-full text-[11px] font-semibold uppercase tracking-[0.08em] bg-emerald-50 dark:bg-emerald-900/20 text-emerald-600 dark:text-emerald-400">
+              <span className="px-3 py-1.5 rounded-full text-xs font-semibold bg-emerald-50 dark:bg-emerald-900/20 text-emerald-700 dark:text-emerald-400">
                 {t('fc.summaryKnown', { n: knownPct })}
               </span>
               {tally.again > 0 && (
-                <span className="px-3 py-1.5 rounded-full text-[11px] font-semibold uppercase tracking-[0.08em] bg-rose-50 dark:bg-rose-900/20 text-rose-600 dark:text-rose-400">
+                <span className="px-3 py-1.5 rounded-full text-xs font-semibold bg-rose-50 dark:bg-rose-900/20 text-rose-600 dark:text-rose-400">
                   {t('fc.summaryAgain', { n: tally.again })}
                 </span>
               )}
@@ -258,34 +258,34 @@ export const FlashcardPlayer: React.FC<FlashcardPlayerProps> = ({ cards, onRevie
   const comparison = typeActive && showAnswer && typed.trim() ? compareAnswer(typed, shownBack) : null;
 
   return createPortal(
-    <div className="fixed inset-0 z-[100] bg-[#f8fafc] dark:bg-[#020617] flex flex-col animate-in fade-in duration-300">
+    <div className="fixed inset-0 z-[100] bg-[var(--bg-main)] flex flex-col animate-in fade-in duration-300">
       {/* Anki Header */}
-      <div className="p-4 md:p-6 px-4 md:px-12 flex justify-between items-center bg-[var(--card)] dark:bg-slate-900 border-b border-slate-200 dark:border-slate-800 shadow-sm">
+      <div className="px-4 md:px-12 py-3 md:py-5 flex flex-wrap justify-between items-center gap-x-4 gap-y-2 bg-[var(--card)] dark:bg-slate-900 border-b border-slate-200 dark:border-slate-800">
         {practiceMode ? (
           <div className="flex items-center gap-3">
-            <span className="inline-flex items-center gap-1.5 bg-emerald-50 dark:bg-emerald-900/20 text-emerald-600 dark:text-emerald-400 text-[11px] font-semibold uppercase tracking-[0.08em] px-3 py-1.5 rounded-full">
+            <span className="inline-flex items-center gap-1.5 bg-emerald-50 dark:bg-emerald-900/20 text-emerald-700 dark:text-emerald-400 text-xs font-semibold px-3 py-1.5 rounded-full">
               <svg xmlns="http://www.w3.org/2000/svg" width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round"><polyline points="23 4 23 10 17 10"/><path d="M3.51 9a9 9 0 0 1 14.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0 0 20.49 15"/></svg>
               {t('fc.practiceFree')}
             </span>
             <span className="text-xs font-semibold text-slate-400 hidden sm:inline">{t('fc.notCounted', { n: stats.remaining })}</span>
           </div>
         ) : (
-        <div className="flex gap-4 md:gap-8">
-          <div className="flex items-center gap-2">
-            <span className="text-xs font-semibold text-blue-500">{stats.newCount}</span>
-            <span className="text-[11px] font-semibold text-slate-300 uppercase tracking-[0.08em]">{t('fc.new')}</span>
+        <div className="flex gap-4 md:gap-6">
+          <div className="flex items-center gap-1.5">
+            <span className="text-[13px] font-semibold text-slate-900 dark:text-white">{stats.newCount}</span>
+            <span className="text-xs text-slate-500 dark:text-slate-400">{t('fc.new')}</span>
           </div>
           <div className="flex items-center gap-2">
-            <span className="text-xs font-semibold text-rose-500">{stats.learnCount}</span>
-            <span className="text-[11px] font-semibold text-slate-300 uppercase tracking-[0.08em]">{t('fc.learning')}</span>
+            <span className="text-[13px] font-semibold text-slate-900 dark:text-white">{stats.learnCount}</span>
+            <span className="text-xs text-slate-500 dark:text-slate-400">{t('fc.learning')}</span>
           </div>
           <div className="flex items-center gap-2">
-            <span className="text-xs font-semibold text-emerald-500">{stats.reviewCount}</span>
-            <span className="text-[11px] font-semibold text-slate-300 uppercase tracking-[0.08em]">{t('fc.due')}</span>
+            <span className="text-[13px] font-semibold text-slate-900 dark:text-white">{stats.reviewCount}</span>
+            <span className="text-xs text-slate-500 dark:text-slate-400">{t('fc.due')}</span>
           </div>
         </div>
         )}
-        <div className="flex items-center gap-3">
+        <div className="flex items-center gap-1 sm:gap-3 ml-auto">
           {onBury && (
             <button onClick={() => dropCurrent(onBury)} aria-label={t('bury.action')} title={t('bury.action')}
               className="p-2 rounded-lg text-slate-500 hover:text-slate-800 dark:hover:text-slate-200 transition-colors">
@@ -329,7 +329,7 @@ export const FlashcardPlayer: React.FC<FlashcardPlayerProps> = ({ cards, onRevie
               {CARD_DIRECTIONS.map(d => <option key={d} value={d}>{t(`fc.direction.${d}` as const)}</option>)}
             </select>
           </label>
-          <span className="text-[11px] font-semibold text-slate-300 uppercase tracking-[0.08em] hidden md:inline">{t('fc.keyEsc')}</span>
+          <span className="text-xs text-slate-400 hidden md:inline">{t('fc.keyEsc')}</span>
           <button aria-label={t('fc.closeSession')}
             onClick={onClose}
             className="text-slate-400 hover:text-rose-500 transition-colors p-2"
@@ -389,7 +389,7 @@ export const FlashcardPlayer: React.FC<FlashcardPlayerProps> = ({ cards, onRevie
                   </div>
                 )}
                 {shownBackImage && <CardImage path={shownBackImage} alt={t('img.altBack')} />}
-                <p className={`${backSize(shownBack)} font-bold leading-relaxed break-words whitespace-pre-line`} style={{ color: 'var(--primary-ink)' }}>
+                <p className={`${backSize(shownBack)} ${longBack ? 'font-normal' : 'font-semibold'} leading-relaxed break-words whitespace-pre-line`} style={{ color: longBack ? 'var(--ink)' : 'var(--primary-ink)' }}>
                   {shownBack}
                 </p>
               </div>
@@ -405,7 +405,8 @@ export const FlashcardPlayer: React.FC<FlashcardPlayerProps> = ({ cards, onRevie
           {!showAnswer ? (
             <button
               onClick={() => setShowAnswer(true)}
-              className="bg-slate-900 dark:bg-slate-700 text-white px-8 md:px-20 py-5 md:py-6 rounded-2xl font-semibold text-xs md:text-sm shadow-2xl hover:scale-105 transition-all w-full md:w-auto md:min-w-[350px]"
+              className="px-8 md:px-20 py-4 md:py-5 rounded-2xl font-semibold text-[15px] hover:opacity-90 transition-all w-full md:w-auto md:min-w-[350px]"
+              style={{ background: 'var(--primary)', color: 'var(--primary-text)' }}
             >
               {t('fc.showAnswer')}
             </button>
@@ -415,28 +416,28 @@ export const FlashcardPlayer: React.FC<FlashcardPlayerProps> = ({ cards, onRevie
                 onClick={() => handleDifficulty('again')}
                 className="group flex flex-col items-center gap-2"
               >
-                <div className="w-full bg-rose-500 text-white py-4 md:py-5 rounded-xl md:rounded-2xl font-semibold uppercase text-[11px] md:text-xs tracking-[0.08em] shadow-lg hover:brightness-110 active:scale-95 transition-all">
+                <div className="w-full bg-rose-50 text-rose-700 border border-rose-200 dark:bg-rose-950/40 dark:text-rose-300 dark:border-rose-900 py-3.5 md:py-4 rounded-xl md:rounded-2xl font-semibold text-[13px] hover:brightness-95 active:scale-95 transition-all">
                   {t('fc.again')}
                 </div>
-                <span className="text-[11px] md:text-[11px] font-bold text-slate-300 opacity-60">{t('fc.key1')}</span>
+                <span className="text-[11px] font-semibold text-slate-400">{t('fc.key1')}</span>
               </button>
               <button
                 onClick={() => handleDifficulty('good')}
                 className="group flex flex-col items-center gap-2"
               >
-                <div className="w-full bg-emerald-500 text-white py-4 md:py-5 rounded-xl md:rounded-2xl font-semibold uppercase text-[11px] md:text-xs tracking-[0.08em] shadow-lg hover:brightness-110 active:scale-95 transition-all">
+                <div className="w-full bg-emerald-50 text-emerald-800 border border-emerald-200 dark:bg-emerald-950/40 dark:text-emerald-300 dark:border-emerald-900 py-3.5 md:py-4 rounded-xl md:rounded-2xl font-semibold text-[13px] hover:brightness-95 active:scale-95 transition-all">
                   {t('fc.known')}
                 </div>
-                <span className="text-[11px] md:text-[11px] font-bold text-slate-300 opacity-60">{t('fc.key3Space')}</span>
+                <span className="text-[11px] font-semibold text-slate-400">{t('fc.key3Space')}</span>
               </button>
             </div>
           ) : (
             <div className="grid grid-cols-4 gap-2 sm:gap-4 w-full">
               {([
-                { id: 'again', label: t('fc.again'), color: 'bg-rose-500', key: '1' },
-                { id: 'hard',  label: t('fc.hard'),  color: 'bg-amber-500', key: '2' },
-                { id: 'good',  label: t('fc.good'),  color: 'bg-emerald-500', key: '3' },
-                { id: 'easy',  label: t('fc.easy'),  color: 'bg-blue-500', key: '4' },
+                { id: 'again', label: t('fc.again'), color: 'bg-rose-50 text-rose-700 border border-rose-200 dark:bg-rose-950/40 dark:text-rose-300 dark:border-rose-900', key: '1' },
+                { id: 'hard',  label: t('fc.hard'),  color: 'bg-amber-50 text-amber-800 border border-amber-200 dark:bg-amber-950/40 dark:text-amber-300 dark:border-amber-900', key: '2' },
+                { id: 'good',  label: t('fc.good'),  color: 'bg-emerald-50 text-emerald-800 border border-emerald-200 dark:bg-emerald-950/40 dark:text-emerald-300 dark:border-emerald-900', key: '3' },
+                { id: 'easy',  label: t('fc.easy'),  color: 'bg-sky-50 text-sky-800 border border-sky-200 dark:bg-sky-950/40 dark:text-sky-300 dark:border-sky-900', key: '4' },
               ] as const).map(btn => (
                 <button
                   key={btn.id}
@@ -445,10 +446,10 @@ export const FlashcardPlayer: React.FC<FlashcardPlayerProps> = ({ cards, onRevie
                   aria-describedby={comparison?.suggestion === btn.id ? 'type-suggestion' : undefined}
                 >
                   <span className="text-xs md:text-[11px] font-semibold text-slate-400 group-hover:text-slate-900 dark:group-hover:text-white transition-colors">{getIntervalLabel(btn.id, currentCard)}</span>
-                  <div className={`w-full ${btn.color} text-white py-4 md:py-5 rounded-xl md:rounded-2xl font-semibold text-xs md:text-[11px] shadow-lg hover:brightness-110 active:scale-95 transition-all`}>
+                  <div className={`w-full ${btn.color} py-3.5 md:py-4 rounded-xl md:rounded-2xl font-semibold text-[13px] hover:brightness-95 active:scale-95 transition-all`}>
                     {btn.label}
                   </div>
-                  <span className="text-[11px] md:text-[11px] font-bold text-slate-300 opacity-60 text-center leading-tight">
+                  <span className="text-[11px] font-semibold text-slate-400 text-center leading-tight">
                     <span className="md:hidden">{btn.key}</span>
                     <span className="hidden md:inline">{btn.id === 'good' ? t('fc.key3Space') : t('fc.keyN', { n: btn.key })}</span>
                   </span>

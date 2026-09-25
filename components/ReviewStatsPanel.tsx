@@ -61,36 +61,40 @@ export const ReviewStatsPanel: React.FC<{ decks: FlashcardDeck[] }> = ({ decks }
         {stat(String(reviewStreak(counts)), t('stats.streak'))}
       </div>
 
-      <div className="space-y-2">
-        <p className="text-xs font-semibold text-slate-500 dark:text-slate-400">{t('stats.heatmap', { n: WEEKS })}</p>
-        <div className="overflow-x-auto">
-          <div className="flex gap-[3px] w-max" role="img" aria-label={t('stats.heatmapAria', { n: entries?.length ?? 0 })}>
-            {weeks.map((week, w) => (
-              <div key={w} className="flex flex-col gap-[3px]">
-                {week.map(d => (
-                  <div
-                    key={d.key}
-                    title={d.count >= 0 ? t('stats.dayTitle', { date: new Date(`${d.key}T12:00`).toLocaleDateString(), n: d.count }) : undefined}
-                    className="w-3 h-3 rounded-[3px]"
-                    style={{ background: d.count < 0 ? 'transparent' : HEAT[heatLevel(d.count)] }}
-                  />
-                ))}
+      {/* Heatmap und Vorschau nebeneinander, sobald Platz ist (vorher nutzte die
+          Heatmap nur ein Drittel der Breite, Design-Tour 25.09.2026). */}
+      <div className="grid gap-6 lg:grid-cols-2 lg:items-end">
+        <div className="space-y-2">
+          <p className="text-xs font-semibold text-slate-500 dark:text-slate-400">{t('stats.heatmap', { n: WEEKS })}</p>
+          <div className="overflow-x-auto">
+            <div className="flex gap-[3px] w-max" role="img" aria-label={t('stats.heatmapAria', { n: entries?.length ?? 0 })}>
+              {weeks.map((week, w) => (
+                <div key={w} className="flex flex-col gap-[3px]">
+                  {week.map(d => (
+                    <div
+                      key={d.key}
+                      title={d.count >= 0 ? t('stats.dayTitle', { date: new Date(`${d.key}T12:00`).toLocaleDateString(), n: d.count }) : undefined}
+                      className="w-3 h-3 rounded-[3px]"
+                      style={{ background: d.count < 0 ? 'transparent' : HEAT[heatLevel(d.count)] }}
+                    />
+                  ))}
+                </div>
+              ))}
+            </div>
+          </div>
+        </div>
+
+        <div className="space-y-2">
+          <p className="text-xs font-semibold text-slate-500 dark:text-slate-400">{t('stats.forecast', { n: FORECAST_DAYS })}</p>
+          <div className="flex items-end gap-1 h-24" role="img" aria-label={t('stats.forecastAria', { list: forecast.join(', ') })}>
+            {forecast.map((n, i) => (
+              <div key={i} className="flex-1 flex flex-col items-center justify-end gap-1 h-full">
+                <span className="text-[11px] tabular-nums text-slate-500 dark:text-slate-400">{n || ''}</span>
+                <div className="w-full rounded-t-[4px]" style={{ height: `${(n / maxForecast) * 70}%`, minHeight: n ? 3 : 0, background: i === 0 ? 'var(--primary)' : 'color-mix(in srgb, var(--primary) 45%, transparent)' }} />
+                <span className="text-[11px] text-slate-500 dark:text-slate-400">{i === 0 ? t('stats.todayShort') : new Date(Date.now() + i * DAY_MS).toLocaleDateString(undefined, { weekday: 'narrow' })}</span>
               </div>
             ))}
           </div>
-        </div>
-      </div>
-
-      <div className="space-y-2">
-        <p className="text-xs font-semibold text-slate-500 dark:text-slate-400">{t('stats.forecast', { n: FORECAST_DAYS })}</p>
-        <div className="flex items-end gap-1 h-24" role="img" aria-label={t('stats.forecastAria', { list: forecast.join(', ') })}>
-          {forecast.map((n, i) => (
-            <div key={i} className="flex-1 flex flex-col items-center justify-end gap-1 h-full">
-              <span className="text-[11px] tabular-nums text-slate-500 dark:text-slate-400">{n || ''}</span>
-              <div className="w-full rounded-t-[4px]" style={{ height: `${(n / maxForecast) * 70}%`, minHeight: n ? 3 : 0, background: i === 0 ? 'var(--primary)' : 'color-mix(in srgb, var(--primary) 45%, transparent)' }} />
-              <span className="text-[11px] text-slate-500 dark:text-slate-400">{i === 0 ? t('stats.todayShort') : new Date(Date.now() + i * DAY_MS).toLocaleDateString(undefined, { weekday: 'narrow' })}</span>
-            </div>
-          ))}
         </div>
       </div>
     </section>

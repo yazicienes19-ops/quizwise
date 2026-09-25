@@ -1158,14 +1158,14 @@ export const FlashcardSystem: React.FC<FlashcardSystemProps> = ({
         </div>
 
         <div className="lg:col-span-7 bg-[var(--card)] dark:bg-slate-900 rounded-[24px] lg:rounded-[28px] border border-slate-200 dark:border-slate-800 shadow-3d-deep order-1 lg:order-2">
-          <div className="p-5 sm:p-6 lg:p-10 border-b border-slate-50 dark:border-slate-800 flex flex-col sm:flex-row justify-between items-center gap-4 lg:gap-0">
-            <div className="flex flex-col items-center sm:items-start gap-1">
+          <div className="px-5 sm:px-6 lg:px-8 py-5 border-b border-slate-100 dark:border-slate-800 flex flex-wrap justify-between items-start gap-3">
+            <div className="flex flex-col items-start gap-1 min-w-0">
               <h3 className="text-[11px] font-semibold uppercase tracking-[0.08em] text-slate-400">{t('fcs.yourDecks', { n: decks.length })}</h3>
               <button
                 type="button"
                 onClick={() => setShowLimits(v => !v)}
                 aria-expanded={showLimits}
-                className="text-xs text-slate-500 dark:text-slate-400 hover:text-slate-800 dark:hover:text-slate-200 transition-colors"
+                className="text-xs text-left text-slate-500 dark:text-slate-400 hover:text-slate-800 dark:hover:text-slate-200 transition-colors"
               >
                 {t('limit.summary', {
                   n: limitUsage.newToday, max: limits.newPerDay >= UNLIMITED ? '∞' : limits.newPerDay,
@@ -1173,7 +1173,7 @@ export const FlashcardSystem: React.FC<FlashcardSystemProps> = ({
                 })}
               </button>
             </div>
-            <div className="flex gap-3 sm:gap-4 items-center flex-wrap justify-center sm:justify-end">
+            <div className="flex gap-2 items-center flex-wrap">
               <input
                 ref={importInputRef}
                 type="file"
@@ -1288,39 +1288,49 @@ export const FlashcardSystem: React.FC<FlashcardSystemProps> = ({
                   <div
                     key={deck.id}
                     id={`deck-row-${deck.id}`}
-                    className={`flex flex-col sm:flex-row items-center justify-between p-6 lg:p-8 hover:bg-slate-50 dark:hover:bg-slate-800/30 transition-all group gap-6 last:rounded-b-[30px] lg:last:rounded-b-[40px] ${isFresh ? 'bg-indigo-50/70 dark:bg-indigo-950/30' : ''}`}
+                    className={`flex flex-col sm:flex-row sm:items-center justify-between px-5 sm:px-6 lg:px-8 py-4 lg:py-5 hover:bg-slate-50 dark:hover:bg-slate-800/30 transition-colors group gap-3 sm:gap-6 ${isFresh ? 'bg-indigo-50/70 dark:bg-indigo-950/30' : ''}`}
                     style={isFresh ? { boxShadow: 'inset 4px 0 0 var(--primary)' } : undefined}
                   >
-                    <div className="flex-grow min-w-0 text-center sm:text-left">
-                      <div className="flex items-center gap-2 flex-wrap justify-center sm:justify-start">
-                        <h4 className="text-base lg:text-lg font-semibold text-slate-900 dark:text-white break-words group-hover:text-indigo-600 transition-colors cursor-pointer" style={{ textWrap: 'balance' as any }} onClick={() => handleOpenDeck(deck.id)}>
+                    <div className="flex-grow min-w-0">
+                      <div className="flex items-center gap-2 flex-wrap">
+                        <h4 className="text-base font-semibold text-slate-900 dark:text-white break-words cursor-pointer hover:underline" style={{ textWrap: 'balance' as any }} onClick={() => handleOpenDeck(deck.id)}>
                           {deck.title}
                         </h4>
-                        {!deck.sourceDocumentId && <span className="bg-slate-100 dark:bg-slate-800 text-[11px] font-semibold uppercase px-2 py-0.5 rounded text-slate-400 tracking-tighter">{t('fcs.manual')}</span>}
+                        {!deck.sourceDocumentId && <span className="text-[11px] font-semibold px-2 py-0.5 rounded-full border border-slate-200 dark:border-slate-700 text-slate-500 dark:text-slate-400">{t('fcs.manual')}</span>}
                       </div>
-                      {/* Zahlen mit Beschriftung statt drei farbiger Ziffern ohne Legende
-                          (Audit 23.09.2026). */}
-                      <p className="flex flex-wrap items-center gap-x-3 gap-y-1 mt-1.5 text-[11px] font-bold text-slate-500 dark:text-slate-400 justify-center sm:justify-start">
-                        <span>{t('fcs.totalCards', { n: deck.cards.length })}</span>
-                        <span className="inline-flex items-center gap-1.5"><span className="w-2 h-2 rounded-full bg-blue-500" aria-hidden="true" />{t('fcs.countNew', { n: stats?.newCards || 0 })}</span>
-                        <span className="inline-flex items-center gap-1.5"><span className="w-2 h-2 rounded-full bg-rose-500" aria-hidden="true" />{t('fcs.countLearn', { n: stats?.learnCards || 0 })}</span>
-                        <span className="inline-flex items-center gap-1.5"><span className="w-2 h-2 rounded-full bg-emerald-500" aria-hidden="true" />{t('fcs.countDue', { n: stats?.reviewCards || 0 })}</span>
+                      {/* "Heute fällig" zählt wie Heute und die Seitenleiste (neu + im Lernen
+                          + Wiederholung); vorher hieß nur der letzte Teil "fällig", deshalb
+                          stand "0 fällig" neben "59 fällig" auf Heute (Design-Tour 25.09.2026). */}
+                      <p className="mt-1 text-[13px]" style={{ color: 'var(--text-secondary)' }}>
+                        <span className="font-semibold" style={{ color: (stats?.dueCount || 0) > 0 ? 'var(--primary-ink)' : undefined }}>
+                          {(stats?.dueCount || 0) > 0 ? t('fcs.dueToday', { n: stats?.dueCount || 0 }) : t('fcs.nothingDue')}
+                        </span>
+                        {' · '}{t('fcs.totalCards', { n: deck.cards.length })}
                       </p>
+                      {(stats?.dueCount || 0) > 0 && (
+                        <p className="mt-0.5 text-xs text-slate-400">
+                          {[
+                            stats?.newCards ? t('fcs.countNew', { n: stats.newCards }) : null,
+                            stats?.learnCards ? t('fcs.countLearn', { n: stats.learnCards }) : null,
+                            stats?.reviewCards ? t('fcs.countDue', { n: stats.reviewCards }) : null,
+                          ].filter(Boolean).join(' · ')}
+                        </p>
+                      )}
                     </div>
 
                     {/* Zwei Hauptaktionen sichtbar, alles Weitere im Menü: vorher neun
                         Knöpfe je Stapel, auf dem Handy zwei volle Zeilen. */}
-                    <div className="flex items-center gap-2 w-full sm:w-auto justify-center sm:justify-end">
+                    <div className="flex items-center gap-2 w-full sm:w-auto">
                       <button
                         onClick={() => handleOpenDeck(deck.id)}
-                        className="flex-1 sm:flex-none px-6 py-3 rounded-2xl text-[13px] font-semibold transition-all hover:scale-[1.02]"
+                        className="flex-1 sm:flex-none px-5 py-2.5 rounded-xl text-[13px] font-semibold transition-all hover:opacity-90"
                         style={{ background: 'var(--primary)', color: 'var(--primary-text)' }}
                       >
                         {t('fcs.learn')}
                       </button>
                       <button
                         onClick={() => handleOpenDeck(deck.id, 'free')}
-                        className="flex-1 sm:flex-none px-5 py-3 rounded-2xl text-[13px] font-semibold border-2 border-slate-200 dark:border-slate-700 text-slate-600 dark:text-slate-300 transition-all hover:border-[color:var(--primary)]"
+                        className="flex-1 sm:flex-none px-4 py-2.5 rounded-xl text-[13px] font-semibold border border-slate-200 dark:border-slate-700 text-slate-600 dark:text-slate-300 transition-all hover:border-[color:var(--primary)]"
                         title={t('fcs.practiceTitle')}
                       >
                         {t('fcs.practice')}
@@ -1336,7 +1346,7 @@ export const FlashcardSystem: React.FC<FlashcardSystemProps> = ({
                           aria-haspopup="menu"
                           aria-expanded={menuDeckId === deck.id}
                           title={t('fcs.moreActions')}
-                          className="w-11 h-11 flex items-center justify-center rounded-2xl border-2 border-slate-200 dark:border-slate-700 text-slate-500 dark:text-slate-400 transition-all hover:border-[color:var(--primary)]"
+                          className="w-10 h-10 flex items-center justify-center rounded-xl border border-slate-200 dark:border-slate-700 text-slate-500 dark:text-slate-400 transition-all hover:border-[color:var(--primary)]"
                         >
                           <MoreHorizontal className="w-5 h-5" strokeWidth={2} />
                         </button>
