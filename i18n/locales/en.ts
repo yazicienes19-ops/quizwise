@@ -679,6 +679,8 @@ export const en: Translations = {
   'ssel.uploadFirst': 'Upload first file →',
   'ssel.searchPlaceholder': 'Search document...',
   'ssel.all': 'All',
+  'ssel.showAll': 'Show all {n}',
+  'ssel.showLess': 'Show less',
   'ssel.wholeFolder': 'Whole folder',
   'ssel.sourcesN': '{n} source|{n} sources',
   'ssel.usableN': '{n} usable',

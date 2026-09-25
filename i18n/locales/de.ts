@@ -680,6 +680,8 @@ export const de = {
   'ssel.uploadFirst': 'Erste Datei hochladen →',
   'ssel.searchPlaceholder': 'Dokument suchen...',
   'ssel.all': 'Alle',
+  'ssel.showAll': 'Alle {n} anzeigen',
+  'ssel.showLess': 'Weniger anzeigen',
   'ssel.wholeFolder': 'Ganzer Ordner',
   'ssel.sourcesN': '{n} Quelle|{n} Quellen',
   'ssel.usableN': '{n} nutzbar',

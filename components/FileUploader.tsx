@@ -61,13 +61,13 @@ export const FileUploader: React.FC<FileUploaderProps> = ({
         <div className="inline-flex bg-slate-200/50 dark:bg-slate-900 p-1.5 rounded-[24px] shadow-3d-pressed border border-white/40 dark:border-slate-800">
           <button
             onClick={() => setMode('source')}
-            className={`px-6 sm:px-10 py-2.5 rounded-2xl text-[13px] sm:text-[11px] font-semibold transition-all flex items-center gap-2 ${mode === 'source' ? 'bg-[var(--card)] dark:bg-slate-700 text-indigo-600 dark:text-white shadow-3d-raised' : 'text-slate-400'}`}
+            className={`px-6 sm:px-10 py-2.5 rounded-2xl text-[13px] font-semibold transition-all flex items-center gap-2 ${mode === 'source' ? 'bg-[var(--card)] dark:bg-slate-700 text-indigo-600 dark:text-white shadow-3d-raised' : 'text-slate-400'}`}
           >
             <EmojiImage emoji="📚" size={12} /> {t('fu.source')}
           </button>
           <button
             onClick={() => setMode('deck')}
-            className={`px-6 sm:px-10 py-2.5 rounded-2xl text-[13px] sm:text-[11px] font-semibold transition-all flex items-center gap-2 ${mode === 'deck' ? 'bg-[var(--card)] dark:bg-slate-700 text-indigo-600 dark:text-white shadow-3d-raised' : 'text-slate-400'}`}
+            className={`px-6 sm:px-10 py-2.5 rounded-2xl text-[13px] font-semibold transition-all flex items-center gap-2 ${mode === 'deck' ? 'bg-[var(--card)] dark:bg-slate-700 text-indigo-600 dark:text-white shadow-3d-raised' : 'text-slate-400'}`}
           >
             <EmojiImage emoji="🗂️" size={12} /> {t('fu.deck')}
           </button>

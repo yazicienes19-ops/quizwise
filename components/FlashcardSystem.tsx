@@ -1144,6 +1144,7 @@ export const FlashcardSystem: React.FC<FlashcardSystemProps> = ({
                 </div>
               ) : (
                 <SourceSelector
+                  framed={false}
                   documents={moduleDocuments}
                   collections={collections}
                   onSelectDocument={handleSelectDocument}

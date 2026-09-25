@@ -696,6 +696,7 @@ export const ExplainerSystem: React.FC<ExplainerSystemProps> = ({
                 <button aria-label={t('common.close')} onClick={() => setSourcePickerOpen(false)} className="text-slate-400 hover:text-rose-500 transition-colors"><X size={16} strokeWidth={2.5} /></button>
               </div>
               <SourceSelector
+                framed={false}
                 documents={moduleDocuments} collections={collections}
                 onSelectDocument={doc => { handleSelectDocument(doc); setSourcePickerOpen(false); }}
                 onSelectSource={(source, name) => { setActiveSource(source); setActiveSourceName(name); setSourceRef(null); setSourcePickerOpen(false); }}

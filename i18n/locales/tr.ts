@@ -678,6 +678,8 @@ export const tr: Translations = {
   'ssel.uploadFirst': 'İLK DOSYAYI YÜKLE →',
   'ssel.searchPlaceholder': 'Belge ara...',
   'ssel.all': 'Tümü',
+  'ssel.showAll': '{n} öğenin tümünü göster',
+  'ssel.showLess': 'Daha az göster',
   'ssel.wholeFolder': 'TÜM KLASÖR',
   'ssel.sourcesN': '{n} KAYNAK',
   'ssel.usableN': '{n} KULLANILABİLİR',

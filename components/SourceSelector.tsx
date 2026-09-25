@@ -20,15 +20,19 @@ interface SourceSelectorProps {
   /** Anzeige-Text über dem Selektor, z. B. "Quiz-Quelle wählen" */
   label?: string;
   userPlan?: 'free' | 'pro';
+  /** false: ohne eigenen Rahmen, wenn der Bereich die Auswahl schon in eine
+   *  Tafel legt (Karten-Generator, Klausur, Tutor-Fenster). Vorher lagen dort
+   *  drei Rahmen ineinander (Design-Tour 25.09.2026). */
+  framed?: boolean;
 }
 
 type Tab = 'library' | 'upload' | 'text';
 
+const LIST_PREVIEW = 6;
+
 const DocIcon = ({ type }: { type: string }) => {
-  if (type === 'pdf') return <FileText size={20} className="text-rose-500 shrink-0" />;
-  if (type === 'docx') return <File size={20} className="text-blue-500 shrink-0" />;
-  if (type === 'image') return <Image size={20} className="text-emerald-500 shrink-0" />;
-  return <FileText size={20} className="text-slate-400 shrink-0" />;
+  const Icon = type === 'docx' ? File : type === 'image' ? Image : FileText;
+  return <Icon size={18} className="shrink-0" style={{ color: 'var(--text-secondary)' }} strokeWidth={1.75} />;
 };
 
 export const SourceSelector: React.FC<SourceSelectorProps> = ({
@@ -40,6 +44,7 @@ export const SourceSelector: React.FC<SourceSelectorProps> = ({
   isLoading,
   label,
   userPlan = 'free',
+  framed = true,
 }) => {
   const { t, tp } = useTranslation();
   const [tab, setTab] = useState<Tab>(documents.length > 0 ? 'library' : 'upload');
@@ -55,6 +60,8 @@ export const SourceSelector: React.FC<SourceSelectorProps> = ({
   const [uploadError, setUploadError] = useState<string | null>(null);
   const [uploadWarning, setUploadWarning] = useState<string | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
+  // Statt einer inneren Scrollbox: die ersten Einträge zeigen, Rest auf Wunsch.
+  const [showAll, setShowAll] = useState(false);
 
   const MAX_FILE_SIZE = 50 * 1024 * 1024;
 
@@ -135,10 +142,10 @@ export const SourceSelector: React.FC<SourceSelectorProps> = ({
     onSelectSource(result.source, result.name, { collectionId: collection.id });
   };
 
-  const tabs: { id: Tab; label: string; icon: React.ReactNode }[] = [
-    { id: 'library', label: t('ssel.tabLibrary'), icon: <BookOpen className="w-4 h-4" strokeWidth={1.75} /> },
-    { id: 'upload',  label: t('ssel.tabUpload'), icon: <Upload className="w-4 h-4" strokeWidth={1.75} /> },
-    { id: 'text',    label: t('ssel.tabText'), icon: <FileText className="w-4 h-4" strokeWidth={1.75} /> },
+  const tabs: { id: Tab; label: string }[] = [
+    { id: 'library', label: t('ssel.tabLibrary') },
+    { id: 'upload',  label: t('ssel.tabUpload') },
+    { id: 'text',    label: t('ssel.tabText') },
   ];
 
   // Ordner-Zeilen erscheinen direkt in der Bibliotheks-Liste (kein eigener Tab):
@@ -152,53 +159,62 @@ export const SourceSelector: React.FC<SourceSelectorProps> = ({
     [foldersWithDocs, search, filterCol],
   );
 
+  // Ordner und Dokumente als eine Liste; ohne Suche nur die ersten Einträge.
+  const rows = [
+    ...visibleFolders.map(f => ({ kind: 'folder' as const, ...f })),
+    ...filtered.map(doc => ({ kind: 'doc' as const, doc })),
+  ];
+  const shownRows = showAll || search ? rows : rows.slice(0, LIST_PREVIEW);
+  const rowClass = 'w-full flex items-center gap-3 px-3 py-3 rounded-xl text-left transition-colors hover:bg-slate-100 dark:hover:bg-slate-800/60 disabled:opacity-40';
+
   return (
-    <div className="rounded-[24px] overflow-hidden" style={{ background: 'var(--bg-sidebar)', border: '1px solid var(--border-color)' }}>
+    <div
+      className={framed ? 'rounded-[24px]' : ''}
+      style={framed ? { background: 'var(--bg-sidebar)', border: '1px solid var(--border-color)' } : undefined}
+    >
 
       {/* Header */}
       {label && (
-        <div className="px-8 pt-7 pb-0">
-          <p className="text-xs font-semibold text-slate-400">{label}</p>
+        <div className={framed ? 'px-6 pt-6' : ''}>
+          <p className="text-[11px] font-semibold uppercase tracking-[0.08em] text-slate-400">{label}</p>
         </div>
       )}
 
-      {/* Tab-Leiste */}
-      <div className="px-6 pt-5 pb-0">
-        <div className="flex p-1 rounded-2xl gap-1 min-w-0" style={{ background: 'color-mix(in srgb, var(--border-color) 40%, var(--bg-main))' }}>
-          {tabs.map(tb => (
-            <button
-              key={tb.id}
-              onClick={() => setTab(tb.id)}
-              title={tb.label}
-              // Icon über Text statt nebeneinander — nebeneinander brauchte pro Tab
-              // mehr Breite, als in schmalen Zwei-Spalten-Layouts (Karteikarten-
-              // Generator, Klausur-Simulator) zur Verfügung steht; die "Text bei
-              // schmalem Bildschirm ausblenden"-Regel griff dort nicht, weil sie
-              // sich am Viewport orientiert, nicht an der (schmalen) Kartenbreite.
-              className={`flex-1 min-w-0 flex flex-col items-center justify-center gap-1 py-2 px-1 rounded-xl text-[13px] font-semibold transition-all ${
-                tab === tb.id ? 'bg-indigo-600 text-white shadow-lg' : 'text-slate-400 hover:text-slate-600 dark:hover:text-slate-200'
-              }`}
-            >
-              <span className="shrink-0">{tb.icon}</span>
-              <span className="break-words text-center leading-tight">{tb.label}</span>
-            </button>
-          ))}
+      {/* Reiter: schlanke Textreiter statt einer zweiten goldenen Leiste */}
+      <div className={framed ? 'px-6 pt-4' : 'pt-1'}>
+        <div role="tablist" className="flex flex-wrap gap-x-4 gap-y-1 border-b" style={{ borderColor: 'var(--border-color)' }}>
+          {tabs.map(tb => {
+            const active = tab === tb.id;
+            return (
+              <button
+                key={tb.id}
+                role="tab"
+                aria-selected={active}
+                onClick={() => setTab(tb.id)}
+                className={`-mb-px py-2.5 text-[13px] font-semibold border-b-2 transition-colors ${active ? '' : 'border-transparent text-slate-400 hover:text-slate-600 dark:hover:text-slate-200'}`}
+                style={active ? { borderColor: 'var(--primary)', color: 'var(--ink)' } : undefined}
+              >
+                {tb.label}
+              </button>
+            );
+          })}
         </div>
       </div>
 
       {/* Inhalt */}
-      <div className="p-6">
+      <div className={framed ? 'p-6 pt-4' : 'pt-4'}>
 
         {/* ── Tab: Bibliothek ─────────────────────────────────────────── */}
         {tab === 'library' && (
-          <div className="space-y-4">
+          <div className="space-y-3">
             {documents.length === 0 ? (
-              <div className="py-12 flex flex-col items-center gap-4 text-center opacity-50">
-                <span className="text-5xl">📭</span>
-                <p className="text-[11px] font-semibold uppercase tracking-[0.08em] dark:text-white">{t('ssel.emptyLibrary')}</p>
+              <div className="py-10 flex flex-col items-center gap-3 text-center">
+                <BookOpen className="w-8 h-8 text-slate-300" strokeWidth={1.5} />
+                <p className="text-sm" style={{ color: 'var(--text-secondary)' }}>{t('ssel.emptyLibrary')}</p>
                 <button
                   onClick={() => setTab('upload')}
-                  className="text-[13px] font-semibold text-indigo-600 hover:underline"
+                  className="text-[13px] font-semibold hover:underline"
+                  style={{ color: 'var(--primary-ink)' }}
                 >
                   {t('ssel.uploadFirst')}
                 </button>
@@ -208,15 +224,15 @@ export const SourceSelector: React.FC<SourceSelectorProps> = ({
                 {/* Suche + Sammlungsfilter. Mindestbreiten + Umbruch: vorher wurde das
                     Suchfeld in schmalen Spalten neben einem langen Ordnernamen auf
                     wenige Pixel zusammengedrückt (Audit 23.09.2026). */}
-                <div className="flex flex-wrap gap-3">
+                <div className="flex flex-wrap gap-2">
                   <div className="relative flex-[2] min-w-[180px]">
                     <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" strokeWidth={1.75} />
                     <input
                       value={search}
                       onChange={e => setSearch(e.target.value)}
                       placeholder={t('ssel.searchPlaceholder')}
-                      className="w-full pl-10 pr-4 py-2.5 rounded-2xl text-sm dark:text-white placeholder-slate-400 outline-none"
-                      style={{ background: 'color-mix(in srgb, var(--border-color) 30%, var(--bg-main))', border: '1px solid var(--border-color)' }}
+                      className="w-full pl-10 pr-4 py-2.5 rounded-xl text-sm dark:text-white placeholder-slate-400 outline-none"
+                      style={{ background: 'var(--bg-main)', border: '1px solid var(--border-color)' }}
                     />
                     {search && (
                       <button aria-label={t('common.clear')} onClick={() => setSearch('')} className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600">
@@ -228,8 +244,8 @@ export const SourceSelector: React.FC<SourceSelectorProps> = ({
                     <select
                       value={filterCol}
                       onChange={e => setFilterCol(e.target.value)}
-                      className="flex-1 min-w-[140px] max-w-full truncate px-3 py-2.5 rounded-2xl text-[11px] font-bold dark:text-white outline-none"
-                      style={{ background: 'color-mix(in srgb, var(--border-color) 30%, var(--bg-main))', border: '1px solid var(--border-color)' }}
+                      className="flex-1 min-w-[140px] max-w-full truncate px-3 py-2.5 rounded-xl text-[13px] font-semibold dark:text-white outline-none"
+                      style={{ background: 'var(--bg-main)', border: '1px solid var(--border-color)' }}
                     >
                       <option value="all">{t('ssel.all')}</option>
                       {collections.map(c => (
@@ -239,63 +255,66 @@ export const SourceSelector: React.FC<SourceSelectorProps> = ({
                   )}
                 </div>
 
-                {/* Dokumenten-Liste — Ordner zuerst (ganzer Ordner = eine Wissensbasis) */}
-                <div className="space-y-2 max-h-72 overflow-y-auto pr-1">
-                  {visibleFolders.map(({ collection, count }) => {
-                    const result = buildCollectionSource(collection, documents);
-                    const included = result?.includedCount ?? 0;
-                    const ready = included > 0;
-                    return (
-                      <button
-                        key={`folder-${collection.id}`}
-                        onClick={() => handleSelectFolder(collection)}
-                        disabled={isLoading || !ready}
-                        className="w-full flex items-center gap-4 px-5 py-4 rounded-2xl text-left transition-all hover:scale-[1.02] disabled:opacity-40 group"
-                        style={{
-                          background: 'color-mix(in srgb, var(--primary) 7%, var(--bg-main))',
-                          border: '1px solid color-mix(in srgb, var(--primary) 22%, transparent)',
-                        }}
-                      >
-                        <FolderOpen size={20} className="shrink-0" style={{ color: 'var(--primary-ink)' }} strokeWidth={1.75} />
-                        <div className="flex-1 min-w-0">
-                          <p className="text-[12px] font-semibold dark:text-white break-words">{collection.emoji} {collection.name}</p>
-                          <p className="text-xs font-semibold mt-0.5" style={{ color: 'var(--primary-ink)' }}>
-                            {t('ssel.wholeFolder')} · {tp('ssel.sourcesN', count)}
-                            {ready && included < count && <> · {t('ssel.usableN', { n: included })}</>}
-                            {!ready && <> · {t('ssel.processing')}</>}
-                          </p>
-                        </div>
-                        <ChevronRight className="w-4 h-4 shrink-0 transition-colors" style={{ color: 'var(--primary-ink)' }} strokeWidth={2} />
-                      </button>
-                    );
-                  })}
-                  {filtered.length === 0 && visibleFolders.length === 0 ? (
-                    <p className="text-center text-[11px] text-slate-400 py-8 italic">{t('ssel.noHits', { q: search })}</p>
-                  ) : (
-                    filtered.map(doc => {
+                {/* Liste — Ordner zuerst (ganzer Ordner = eine Wissensbasis). Zeilen
+                    statt einzelner Kästen, keine innere Scrollbox mehr. */}
+                {rows.length === 0 ? (
+                  <p className="text-center text-[13px] text-slate-400 py-8">{t('ssel.noHits', { q: search })}</p>
+                ) : (
+                  <div className="-mx-1 divide-y" style={{ borderColor: 'var(--border-soft)' }}>
+                    {shownRows.map(row => {
+                      if (row.kind === 'folder') {
+                        const { collection, count } = row;
+                        const result = buildCollectionSource(collection, documents);
+                        const included = result?.includedCount ?? 0;
+                        const ready = included > 0;
+                        return (
+                          <div key={`folder-${collection.id}`} className="py-0.5" style={{ borderColor: 'var(--border-soft)' }}>
+                            <button onClick={() => handleSelectFolder(collection)} disabled={isLoading || !ready} className={rowClass}>
+                              <span className="w-7 h-7 rounded-lg flex items-center justify-center shrink-0 text-base" style={{ background: 'var(--primary-soft)' }}>
+                                {collection.emoji || <FolderOpen size={16} style={{ color: 'var(--primary-ink)' }} strokeWidth={1.75} />}
+                              </span>
+                              <div className="flex-1 min-w-0">
+                                <p className="text-[13px] font-semibold break-words" style={{ color: 'var(--ink)' }}>{collection.name}</p>
+                                <p className="text-xs mt-0.5" style={{ color: 'var(--text-secondary)' }}>
+                                  {t('ssel.wholeFolder')} · {tp('ssel.sourcesN', count)}
+                                  {ready && included < count && <> · {t('ssel.usableN', { n: included })}</>}
+                                  {!ready && <> · {t('ssel.processing')}</>}
+                                </p>
+                              </div>
+                              <ChevronRight className="w-4 h-4 shrink-0 text-slate-300" strokeWidth={2} />
+                            </button>
+                          </div>
+                        );
+                      }
+                      const { doc } = row;
                       const col = collections.find(c => c.id === doc.collectionId);
                       return (
-                        <button
-                          key={doc.id}
-                          onClick={() => onSelectDocument(doc)}
-                          disabled={isLoading}
-                          className="w-full flex items-center gap-4 px-5 py-4 rounded-2xl text-left transition-all hover:scale-[1.02] disabled:opacity-40 group"
-                          style={{ background: 'color-mix(in srgb, var(--border-color) 25%, var(--bg-main))', border: '1px solid var(--border-color)' }}
-                        >
-                          <DocIcon type={doc.type} />
-                          <div className="flex-1 min-w-0">
-                            <p className="text-[12px] font-semibold dark:text-white break-words">{docTitle(doc)}</p>
-                            <p className="text-xs text-slate-400 font-semibold mt-0.5 break-words">
-                              {doc.type.toUpperCase()}
-                              {col && <> · {col.emoji} {col.name}</>}
-                            </p>
-                          </div>
-                          <ChevronRight className="w-4 h-4 text-slate-300 group-hover:text-indigo-500 transition-colors shrink-0" strokeWidth={2} />
-                        </button>
+                        <div key={doc.id} className="py-0.5" style={{ borderColor: 'var(--border-soft)' }}>
+                          <button onClick={() => onSelectDocument(doc)} disabled={isLoading} className={rowClass}>
+                            <span className="w-7 h-7 flex items-center justify-center shrink-0"><DocIcon type={doc.type} /></span>
+                            <div className="flex-1 min-w-0">
+                              <p className="text-[13px] font-semibold break-words" style={{ color: 'var(--ink)' }}>{docTitle(doc)}</p>
+                              <p className="text-xs mt-0.5 break-words" style={{ color: 'var(--text-secondary)' }}>
+                                {doc.type.toUpperCase()}
+                                {col && <> · {col.name}</>}
+                              </p>
+                            </div>
+                            <ChevronRight className="w-4 h-4 shrink-0 text-slate-300" strokeWidth={2} />
+                          </button>
+                        </div>
                       );
-                    })
-                  )}
-                </div>
+                    })}
+                  </div>
+                )}
+                {!search && rows.length > LIST_PREVIEW && (
+                  <button
+                    onClick={() => setShowAll(v => !v)}
+                    className="text-[13px] font-semibold hover:underline"
+                    style={{ color: 'var(--primary-ink)' }}
+                  >
+                    {showAll ? t('ssel.showLess') : t('ssel.showAll', { n: rows.length })}
+                  </button>
+                )}
               </>
             )}
           </div>
@@ -325,12 +344,12 @@ export const SourceSelector: React.FC<SourceSelectorProps> = ({
             <button
               onClick={() => fileInputRef.current?.click()}
               disabled={isProcessing || isLoading || (userPlan === 'free' && saveToLib && documents.length >= 5)}
-              className="w-full py-12 rounded-[24px] border-2 border-dashed transition-all flex flex-col items-center gap-4 hover:border-indigo-500 group disabled:opacity-40"
+              className="w-full py-10 rounded-2xl border-2 border-dashed transition-all flex flex-col items-center gap-4 hover:border-indigo-500 group disabled:opacity-40"
               style={{ borderColor: 'var(--border-color)', background: 'color-mix(in srgb, var(--border-color) 15%, var(--bg-main))' }}
             >
-              <span className="text-4xl">{isProcessing ? '⏳' : '📂'}</span>
+              <Upload className={`w-7 h-7 text-slate-400 ${isProcessing ? 'animate-pulse' : ''}`} strokeWidth={1.5} />
               <div className="text-center space-y-1">
-                <p className="text-[11px] font-semibold uppercase tracking-[0.08em] dark:text-white group-hover:text-indigo-600 transition-colors">
+                <p className="text-[13px] font-semibold dark:text-white group-hover:text-indigo-600 transition-colors">
                   {isProcessing ? t('ssel.processingFile') : t('ssel.chooseFile')}
                 </p>
                 <p className="text-[11px] text-slate-400">{t('ssel.fileTypes')}</p>
@@ -399,8 +418,8 @@ export const SourceSelector: React.FC<SourceSelectorProps> = ({
               <button
                 onClick={handleTextSubmit}
                 disabled={pastedText.trim().length < 20 || isLoading}
-                className="px-6 py-3 rounded-2xl text-[13px] font-semibold text-white transition-all hover:scale-[1.02] disabled:opacity-40"
-                style={{ background: 'var(--primary)' }}
+                className="px-6 py-3 rounded-2xl text-[13px] font-semibold transition-all hover:scale-[1.02] disabled:opacity-40"
+                style={{ background: 'var(--primary)', color: 'var(--primary-text)' }}
               >
                 {t('ssel.continue')}
               </button>

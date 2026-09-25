@@ -305,14 +305,17 @@ export const ExamGenerator: React.FC<ExamGeneratorProps> = ({
                 </div>
               )}
             </div>
-            <SourceSelector
-              documents={moduleDocuments}
-              collections={collections}
-              onSelectDocument={handleSelectDocument}
-              onSelectSource={(source, name) => { setContentSource(source); setContentName(name); }}
-              onSaveToLibrary={onSaveToLibrary}
-              isLoading={isLoading}
-            />
+            <div className="px-5 sm:px-7 pb-6">
+              <SourceSelector
+                framed={false}
+                documents={moduleDocuments}
+                collections={collections}
+                onSelectDocument={handleSelectDocument}
+                onSelectSource={(source, name) => { setContentSource(source); setContentName(name); }}
+                onSaveToLibrary={onSaveToLibrary}
+                isLoading={isLoading}
+              />
+            </div>
           </div>
 
           {/* Altklausur (optional, Stil-Referenz) */}
