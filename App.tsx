@@ -45,6 +45,7 @@ import { ConfirmDialogHost } from './components/ConfirmDialogHost';
 import { DAILY_GOAL_KEY, setDailyGoal } from './services/studyTimeService';
 import { FocusTimer } from './components/FocusTimer';
 import { GlobalSearch } from './components/GlobalSearch';
+import { isCardDue } from './services/spacedRepetition';
 
 const LAST_TAB_KEY = 'studearc_last_tab';
 // READER bewusst ausgeschlossen — hängt an einem konkreten pendingActionDoc,
@@ -506,7 +507,7 @@ const App: React.FC = () => {
   const streak = getStreak();
   const totalDueCards = decks.reduce((sum, d) => {
     const now = Date.now();
-    return sum + d.cards.filter(c => !c.srs || (c.srs as any).nextReview <= now).length;
+    return sum + d.cards.filter(c => isCardDue(c, now)).length;
   }, 0);
   const showStreakWarning = !streakDismissed && streak.current >= 2 && !streak.todayDone && totalDueCards > 0;
 

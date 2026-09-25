@@ -37,7 +37,21 @@ export interface SrsState {
   stability?: number;
   /** FSRS: Schwierigkeit 1 (leicht) bis 10 (schwer). */
   difficulty?: number;
+  /** Wie oft eine bereits gelernte Karte vergessen wurde (Anki: "lapses"). */
+  lapses?: number;
+  /** Zeitpunkt der allerersten Bewertung (für das Tageslimit neuer Karten). */
+  firstReview?: number;
 }
+
+/** Anki-Standard: ab so vielen Lapses gilt eine Karte als Problemkarte. */
+export const LEECH_THRESHOLD = 8;
+
+/** Felder, mit denen eine Karte aus der Wiederholung genommen wird. */
+export interface DueFlags { srs?: SrsState; suspended?: boolean; buriedUntil?: number }
+
+/** Fällig = Zeitpunkt erreicht und weder ausgesetzt noch für heute zurückgestellt. */
+export const isCardDue = (c: DueFlags, now: number = Date.now()): boolean =>
+  !c.suspended && !(c.buriedUntil && c.buriedUntil > now) && (!c.srs || c.srs.nextReview <= now);
 
 /** Bewertungsskala für die UI */
 export enum ReviewQuality {
@@ -138,6 +152,8 @@ export const reviewCard = (state: SrsState, quality: number, now: number = Date.
 
   const interval = intervalForStability(stability);
   const repetitions = g === 1 ? 0 : state.repetitions + 1;
+  // Lapse: eine schon gelernte Karte wird vergessen (neue Karten zählen nicht).
+  const lapses = (state.lapses ?? 0) + (g === 1 && !isNewCard ? 1 : 0);
   // Ease weiter nach SM-2 fortschreiben: dient nur noch als Anzeige-/Statistikwert.
   const ease = Math.max(1.3, state.ease + (0.1 - (5 - q) * (0.08 + (5 - q) * 0.02)));
 
@@ -149,19 +165,21 @@ export const reviewCard = (state: SrsState, quality: number, now: number = Date.
     lastReview: now,
     stability: Math.round(stability * 1000) / 1000,
     difficulty: Math.round(difficulty * 1000) / 1000,
+    ...(lapses ? { lapses } : {}),
+    firstReview: state.firstReview ?? (isNewCard ? now : state.lastReview ?? now),
   };
 };
 
 /** Karten die jetzt fällig sind, sortiert: überfälligste zuerst */
-export const getDueCards = <T extends { srs?: SrsState }>(cards: T[]): T[] => {
+export const getDueCards = <T extends DueFlags>(cards: T[]): T[] => {
   const now = Date.now();
   return cards
-    .filter(c => !c.srs || c.srs.nextReview <= now)
+    .filter(c => isCardDue(c, now))
     .sort((a, b) => (a.srs?.nextReview ?? 0) - (b.srs?.nextReview ?? 0));
 };
 
 /** Anzahl fälliger Karten — für Dashboard-Badge */
-export const countDueCards = <T extends { srs?: SrsState }>(cards: T[]): number =>
+export const countDueCards = <T extends DueFlags>(cards: T[]): number =>
   getDueCards(cards).length;
 
 // ── Lernrunden für große Decks (wie beim Recall: "Erklären üben") ────────────

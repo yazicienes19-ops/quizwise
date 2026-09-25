@@ -11,6 +11,7 @@ import type { RecallResult } from './recallHistoryService';
 import { t, tp, getLocale } from '../i18n';
 import type { TKey } from '../i18n';
 import { computeBloomStage } from './bloomProgression';
+import { isCardDue } from './spacedRepetition';
 
 const DAY_MS = 24 * 60 * 60 * 1000;
 
@@ -639,7 +640,7 @@ export const buildDailyPlan = (input: {
   const now = Date.now();
 
   const dueCount = decks.reduce((sum, d) =>
-    sum + d.cards.filter(c => !c.srs || c.srs.nextReview <= now).length, 0);
+    sum + d.cards.filter(c => isCardDue(c, now)).length, 0);
   if (dueCount > 0) {
     steps.push({
       title: tp('lp.dp.dueCards', dueCount),

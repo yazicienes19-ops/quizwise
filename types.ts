@@ -197,6 +197,12 @@ export interface Flashcard {
   back: string;
   /** Eigene Schlagwörter (services/cardTags.ts). */
   tags?: string[];
+  /** Aus der Wiederholung genommen, bis man sie wieder fortsetzt. */
+  suspended?: boolean;
+  /** Für heute zurückgestellt: erst ab diesem Zeitpunkt wieder fällig. */
+  buriedUntil?: number;
+  /** Problemkarte (oft vergessen, Anki: "leech"). */
+  leech?: boolean;
   /** Storage-Pfade im Bucket card-images (services/cardImages.ts). */
   frontImage?: string;
   backImage?: string;

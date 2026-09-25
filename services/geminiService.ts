@@ -47,6 +47,7 @@ import type { RawLearningAnalysis } from './analysisValidation';
 import type { TopicCalibrationGap } from './calibrationGap';
 import { checkNumericEquivalence, checkExpressionEquivalence } from './mathValidation';
 import type { TopicWeight, DifficultyMix } from './examAdaptive';
+import { isCardDue } from './spacedRepetition';
 
 const BACKEND_URL = import.meta.env.VITE_BACKEND_URL || 'http://localhost:4000';
 
@@ -1085,7 +1086,7 @@ const selectDeckCardsForQuiz = (deck: FlashcardDeck) => {
   return sorted.length <= MAX_CARDS_FOR_QUIZ
     ? sorted
     : (() => {
-        const due = sorted.filter(c => !c.srs || c.srs.nextReview <= Date.now()).slice(0, MAX_CARDS_FOR_QUIZ);
+        const due = sorted.filter(c => isCardDue(c)).slice(0, MAX_CARDS_FOR_QUIZ);
         if (due.length >= MAX_CARDS_FOR_QUIZ) return due;
         const rest = sorted.slice(due.length);
         const step = rest.length / (MAX_CARDS_FOR_QUIZ - due.length);

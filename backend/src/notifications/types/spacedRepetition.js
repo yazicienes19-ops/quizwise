@@ -6,6 +6,8 @@ const countDueCards = (decks) => {
   let due = 0;
   for (const deck of decks || []) {
     for (const card of deck.cards || []) {
+      // Ausgesetzte und für heute zurückgestellte Karten zählen nicht (wie isCardDue im Frontend).
+      if (card.suspended || (card.buriedUntil && card.buriedUntil > now)) continue;
       const next = card.srs?.nextReview ?? card.nextReview ?? 0;
       if (next <= now) due += 1;
     }

@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { createSrsState, reviewCard, getDueCards, countDueCards, migrateLegacyCard, buildSessionBatch, SESSION_BATCH_SIZE, NEW_CARDS_PER_SESSION, type SrsState } from './spacedRepetition';
+import { createSrsState, reviewCard, getDueCards, countDueCards, migrateLegacyCard, buildSessionBatch, SESSION_BATCH_SIZE, NEW_CARDS_PER_SESSION, isCardDue, LEECH_THRESHOLD, type SrsState } from './spacedRepetition';
 
 describe('createSrsState', () => {
   it('startet mit Ease 2.5 und sofort fällig', () => {
@@ -179,5 +179,35 @@ describe('buildSessionBatch', () => {
     const batch = buildSessionBatch(cards);
     const reviewIds = batch.cards.filter(c => c.srs?.lastReview && c.srs!.interval >= 1).map(c => c.id);
     expect(reviewIds).toEqual(['old1', 'old3', 'old2']); // 30d > 10d > 2d überfällig
+  });
+});
+
+describe('Aussetzen, Zurückstellen, Problemkarten', () => {
+  const DAY = 24 * 60 * 60 * 1000;
+  const T0 = Date.UTC(2026, 8, 1);
+  const past = { ...createSrsState(), nextReview: T0 - 1000 };
+
+  it('isCardDue schließt ausgesetzte und zurückgestellte Karten aus', () => {
+    expect(isCardDue({ srs: past }, T0)).toBe(true);
+    expect(isCardDue({ srs: past, suspended: true }, T0)).toBe(false);
+    expect(isCardDue({ srs: past, buriedUntil: T0 + DAY }, T0)).toBe(false);
+    expect(isCardDue({ srs: past, buriedUntil: T0 - 1 }, T0)).toBe(true);
+    expect(countDueCards([{ srs: past }, { srs: past, suspended: true }])).toBe(1);
+  });
+
+  it('zählt Lapses nur bei schon gelernten Karten', () => {
+    let s = reviewCard(createSrsState(), 0, T0);
+    expect(s.lapses ?? 0).toBe(0); // neue Karte vergessen = kein Lapse
+    s = reviewCard(s, 4, T0 + DAY);
+    s = reviewCard(s, 0, T0 + 5 * DAY);
+    expect(s.lapses).toBe(1);
+    for (let i = 0; i < 7; i++) s = reviewCard(reviewCard(s, 4, T0 + (10 + i * 2) * DAY), 0, T0 + (11 + i * 2) * DAY);
+    expect(s.lapses).toBe(LEECH_THRESHOLD);
+  });
+
+  it('merkt sich die erste Bewertung', () => {
+    const s = reviewCard(createSrsState(), 4, T0);
+    expect(s.firstReview).toBe(T0);
+    expect(reviewCard(s, 4, T0 + 3 * DAY).firstReview).toBe(T0);
   });
 });

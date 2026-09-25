@@ -14,7 +14,7 @@ import { saveDeckToSupabase, deleteDeckFromSupabase, uploadAllDecksToSupabase } 
 import { readLocalDecks, writeLocalDecks, subscribeLocalDecks, claimLocalDecks } from '../services/deckStore';
 import { syncDecksWithCloud } from '../services/deckCloudSync';
 import { documentDisplayName } from '../services/libraryService';
-import { createSrsState, migrateLegacyCard, countDueCards, QUALITY_MAP, reviewCard, buildSessionBatch, SESSION_BATCH_SIZE, type SrsState } from '../services/spacedRepetition';
+import { createSrsState, migrateLegacyCard, countDueCards, QUALITY_MAP, reviewCard, buildSessionBatch, SESSION_BATCH_SIZE, isCardDue, LEECH_THRESHOLD, type SrsState } from '../services/spacedRepetition';
 import { recordActivity } from '../services/streakService';
 import { AnkiImportModal } from './AnkiImportModal';
 import { buildPrintHtml } from '../services/printDeckService';
@@ -26,7 +26,7 @@ import { PageHeader } from './PageHeader';
 import { confirmDialog } from '../services/confirmDialog';
 import { runUndoable } from '../services/undoable';
 import { findDuplicateDeckGroups, mergeDuplicateDecks } from '../services/duplicateDecks';
-import { collectTags, hasTag } from '../services/cardTags';
+import { collectTags, hasTag, parseTags } from '../services/cardTags';
 import { CardImage } from './CardImage';
 import type { CardImages } from './EditCardModal';
 import { deleteCardImage, isOwnImage } from '../services/cardImages';
@@ -417,7 +417,7 @@ export const FlashcardSystem: React.FC<FlashcardSystemProps> = ({
     return decks.map(deck => {
       const migratedCards = deck.cards.map(c => c.srs ? c : { ...c, srs: migrateLegacyCard(c) });
       const dueCount = countDueCards(migratedCards);
-      const dueCards = migratedCards.filter(c => !c.srs || c.srs.nextReview <= now);
+      const dueCards = migratedCards.filter(c => isCardDue(c, now));
       const newCards = dueCards.filter(c => !c.srs?.lastReview).length;
       const learnCards = dueCards.filter(c => c.srs?.lastReview && c.srs.interval < 7).length;
       const reviewCards = dueCards.filter(c => c.srs?.lastReview && c.srs.interval >= 7).length;
@@ -428,6 +428,7 @@ export const FlashcardSystem: React.FC<FlashcardSystemProps> = ({
   const handleReview = (cardId: string, difficulty: 'again' | 'hard' | 'good' | 'easy') => {
     if (!activeDeckId) return;
     const quality = QUALITY_MAP[difficulty];
+    let newLeech = false;
 
     updateDeck(activeDeckId, deck => ({
       ...deck,
@@ -435,15 +436,20 @@ export const FlashcardSystem: React.FC<FlashcardSystemProps> = ({
         if (card.id !== cardId) return card;
         const currentSrs = card.srs ?? migrateLegacyCard(card);
         const nextSrs = reviewCard(currentSrs, quality);
+        // Anki-Standard: ab 8 Lapses Problemkarte, nur markieren, nicht aussetzen.
+        const becomesLeech = !card.leech && (nextSrs.lapses ?? 0) >= LEECH_THRESHOLD;
+        if (becomesLeech) newLeech = true;
         return {
           ...card,
           srs: nextSrs,
           level: nextSrs.repetitions,
           nextReview: nextSrs.nextReview,
           lastInterval: nextSrs.interval,
+          ...(becomesLeech ? { leech: true, tags: parseTags([...(card.tags ?? []), t('leech.tag')].join(',')) } : {}),
         };
       }),
     }));
+    if (newLeech) toast.info(t('leech.toast'));
     sessionReviewCount.current += 1;
     // >= statt ===: recordActivity ist pro Tag idempotent (streakService),
     // ein zweiter Anlauf am selben Tag darf den Streak also noch auslösen.
@@ -457,10 +463,27 @@ export const FlashcardSystem: React.FC<FlashcardSystemProps> = ({
     updateDeck(activeDeckId, deck => ({
       ...deck,
       cards: deck.cards.map(card => (card.id === before.id
-        ? { ...card, srs: before.srs, level: before.level, nextReview: before.nextReview, lastInterval: before.lastInterval }
+        ? { ...card, srs: before.srs, level: before.level, nextReview: before.nextReview, lastInterval: before.lastInterval, leech: before.leech, tags: before.tags }
         : card)),
     }));
     sessionReviewCount.current = Math.max(0, sessionReviewCount.current - 1);
+  };
+
+  /** Karte aussetzen bzw. fortsetzen (in jedem Stapel, der sie enthält). */
+  const setCardFlags = (cardId: string, patch: Partial<Pick<Flashcard, 'suspended' | 'buriedUntil'>>) => {
+    const deck = decksRef.current.find(d => d.cards.some(c => c.id === cardId));
+    if (!deck) return;
+    updateDeck(deck.id, d => ({ ...d, cards: d.cards.map(c => (c.id === cardId ? { ...c, ...patch } : c)) }));
+  };
+  const handleSuspend = (cardId: string, suspended = true) => {
+    setCardFlags(cardId, { suspended: suspended || undefined });
+    toast.info(suspended ? t('susp.done') : t('susp.resumed'));
+  };
+  /** Anki: zurückgestellt bis zum nächsten Tag (lokale Mitternacht). */
+  const handleBury = (cardId: string) => {
+    const midnight = new Date(); midnight.setHours(24, 0, 0, 0);
+    setCardFlags(cardId, { buriedUntil: midnight.getTime() });
+    toast.info(t('bury.done'));
   };
 
   const handleExportAll = () => {
@@ -581,7 +604,10 @@ export const FlashcardSystem: React.FC<FlashcardSystemProps> = ({
     // Explizite Annotation: die map-returnte Union (Flashcard | Spread mit
     // srs) ist zu Flashcard[] zuweisbar, und die Typ-Inferenz der
     // Session-Batch-Funktion bleibt sauber auf Flashcard statt Constraint.
-    const migratedCards: Flashcard[] = deck.cards.map(c => c.srs ? c : { ...c, srs: migrateLegacyCard(c) });
+    const nowTs = Date.now();
+    const migratedCards: Flashcard[] = deck.cards
+      .filter(c => !c.suspended && !(mode !== 'free' && c.buriedUntil && c.buriedUntil > nowTs))
+      .map(c => c.srs ? c : { ...c, srs: migrateLegacyCard(c) });
 
     let cardsToLearn: Flashcard[];
     let remaining = 0;
@@ -626,7 +652,7 @@ export const FlashcardSystem: React.FC<FlashcardSystemProps> = ({
     const deck = decksRef.current.find(d => d.id === deckId);
     if (!deck) return;
     const cards: Flashcard[] = deck.cards
-      .filter(c => hasTag(c, tag))
+      .filter(c => hasTag(c, tag) && !c.suspended)
       .map(c => (c.srs ? c : { ...c, srs: migrateLegacyCard(c) }))
       .sort((a, b) => (a.srs?.nextReview ?? 0) - (b.srs?.nextReview ?? 0));
     if (!cards.length) return;
@@ -646,6 +672,8 @@ export const FlashcardSystem: React.FC<FlashcardSystemProps> = ({
         practiceMode={isPracticeSession}
         onReview={handleReview}
         onUndo={handleUndoReview}
+        onSuspend={id => handleSuspend(id, true)}
+        onBury={handleBury}
         onPracticed={handlePracticed}
         moreWaiting={moreWaiting}
         onContinue={moreWaiting > 0 ? () => {
@@ -686,6 +714,11 @@ export const FlashcardSystem: React.FC<FlashcardSystemProps> = ({
             knownTags={deckTags.map(x => x.tag)}
             userId={userId}
             onSave={handleSaveCard}
+            onToggleSuspend={editingCard !== 'new' ? () => {
+              const c = editingCard as Flashcard;
+              handleSuspend(c.id, !c.suspended);
+              setEditingCard(null);
+            } : undefined}
             onDelete={editingCard !== 'new' ? () => {
               handleDeleteCard(deck.id, (editingCard as Flashcard).id);
               setEditingCard(null);
@@ -834,6 +867,12 @@ export const FlashcardSystem: React.FC<FlashcardSystemProps> = ({
                           {[card.frontImage, card.backImage].filter(Boolean).map(p => (
                             <CardImage key={p} path={p} alt="" className="h-12 w-16 object-cover rounded-md" />
                           ))}
+                        </div>
+                      )}
+                      {(card.suspended || card.leech) && (
+                        <div className="md:col-span-2 flex flex-wrap gap-1">
+                          {card.suspended && <span className="px-2 py-0.5 rounded-full text-[11px] font-semibold bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300">{t('susp.badge')}</span>}
+                          {card.leech && <span className="px-2 py-0.5 rounded-full text-[11px] font-semibold bg-rose-50 dark:bg-rose-900/20 text-rose-700 dark:text-rose-300">{t('leech.badge')}</span>}
                         </div>
                       )}
                       {card.tags && card.tags.length > 0 && (

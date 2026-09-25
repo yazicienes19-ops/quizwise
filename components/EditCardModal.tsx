@@ -22,6 +22,8 @@ interface EditCardModalProps {
   /** Vorhandene Schlagwörter im Stapel, als Vorschläge. */
   knownTags?: string[];
   onDelete?: () => void;
+  /** Karte aussetzen bzw. fortsetzen. */
+  onToggleSuspend?: () => void;
   onClose: () => void;
 }
 
@@ -60,6 +62,7 @@ export const EditCardModal: React.FC<EditCardModalProps> = ({
   onClose,
   knownTags = [],
   userId,
+  onToggleSuspend,
 }) => {
   const { t } = useTranslation();
   const isNew = !card;
@@ -274,6 +277,15 @@ export const EditCardModal: React.FC<EditCardModalProps> = ({
         <div className="px-8 py-5 border-t border-slate-100 dark:border-slate-800 flex items-center gap-3">
 
           {/* Delete — only in edit mode */}
+          {!isNew && onToggleSuspend && (
+            <button
+              type="button"
+              onClick={onToggleSuspend}
+              className="px-3 py-2 rounded-xl text-[13px] font-semibold text-slate-500 hover:text-slate-800 dark:hover:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors"
+            >
+              {card?.suspended ? t('susp.resume') : t('susp.action')}
+            </button>
+          )}
           {!isNew && onDelete && (
             showDeleteConfirm ? (
               <div className="flex items-center gap-2 animate-in fade-in duration-150">

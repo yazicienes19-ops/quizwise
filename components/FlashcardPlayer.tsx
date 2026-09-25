@@ -6,7 +6,7 @@ import { createPortal } from 'react-dom';
 import { Flashcard } from '../types';
 import { reviewCard, migrateLegacyCard, ReviewQuality, QUALITY_MAP } from '../services/spacedRepetition';
 import { useTranslation } from '../i18n/I18nProvider';
-import { ArrowLeftRight, Undo2 } from 'lucide-react';
+import { ArrowLeftRight, Undo2, PauseCircle, CalendarClock } from 'lucide-react';
 import { getCardDirection, setCardDirection, isReversed, CARD_DIRECTIONS, type CardDirection } from '../services/cardDirection';
 import { CardImage } from './CardImage';
 
@@ -27,6 +27,9 @@ interface FlashcardPlayerProps {
    *  Bewertung. Ohne diesen Callback gibt es kein Rückgängig (außer beim
    *  freien Üben, das nichts speichert). */
   onUndo?: (before: Flashcard) => void;
+  /** Karte aus der Wiederholung nehmen bzw. für heute zurückstellen (ohne Bewertung). */
+  onSuspend?: (cardId: string) => void;
+  onBury?: (cardId: string) => void;
 }
 
 /** Schriftgröße nach Textlänge: kurze Begriffe groß, lange Fragen bleiben
@@ -40,7 +43,7 @@ const backSize = (text: string) =>
   : text.length > 120 ? 'text-lg sm:text-xl md:text-2xl'
   : 'text-xl sm:text-2xl md:text-4xl';
 
-export const FlashcardPlayer: React.FC<FlashcardPlayerProps> = ({ cards, onReview, onClose, practiceMode = false, onPracticed, moreWaiting = 0, onContinue, onUndo }) => {
+export const FlashcardPlayer: React.FC<FlashcardPlayerProps> = ({ cards, onReview, onClose, practiceMode = false, onPracticed, moreWaiting = 0, onContinue, onUndo, onSuspend, onBury }) => {
   const { t, tp } = useTranslation();
   const [remainingCards, setRemainingCards] = useState<Flashcard[]>(() => [...cards]);
   const [completed, setCompleted] = useState(0);
@@ -91,6 +94,15 @@ export const FlashcardPlayer: React.FC<FlashcardPlayerProps> = ({ cards, onRevie
       }
     }
   }, [showAnswer, currentCard, remainingCards, completed, tally, onReview, practiceMode, onPracticed]);
+
+  /** Karte ohne Bewertung aus dieser Runde nehmen (nach Aussetzen/Zurückstellen). */
+  const dropCurrent = useCallback((action: (id: string) => void) => {
+    if (!currentCard) return;
+    action(currentCard.id);
+    setShowAnswer(false);
+    if (remainingCards.length <= 1) { setRemainingCards([]); setSessionDone(true); }
+    else setRemainingCards(r => r.slice(1));
+  }, [currentCard, remainingCards.length]);
 
   const handleUndo = useCallback(() => {
     const last = history[history.length - 1];
@@ -261,6 +273,18 @@ export const FlashcardPlayer: React.FC<FlashcardPlayerProps> = ({ cards, onRevie
         </div>
         )}
         <div className="flex items-center gap-3">
+          {onBury && (
+            <button onClick={() => dropCurrent(onBury)} aria-label={t('bury.action')} title={t('bury.action')}
+              className="p-2 rounded-lg text-slate-500 hover:text-slate-800 dark:hover:text-slate-200 transition-colors">
+              <CalendarClock className="w-4 h-4" aria-hidden="true" />
+            </button>
+          )}
+          {onSuspend && (
+            <button onClick={() => dropCurrent(onSuspend)} aria-label={t('susp.action')} title={t('susp.action')}
+              className="p-2 rounded-lg text-slate-500 hover:text-slate-800 dark:hover:text-slate-200 transition-colors">
+              <PauseCircle className="w-4 h-4" aria-hidden="true" />
+            </button>
+          )}
           {canUndo && (
             <button
               onClick={handleUndo}

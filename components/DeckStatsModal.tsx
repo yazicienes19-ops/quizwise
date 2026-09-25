@@ -6,6 +6,7 @@ import { migrateLegacyCard } from '../services/spacedRepetition';
 import { useTranslation } from '../i18n/I18nProvider';
 import { useModalA11y } from '../hooks/useModalA11y';
 import { ModalCloseButton } from './ModalCloseButton';
+import { isCardDue } from '../services/spacedRepetition';
 
 interface DeckStatsModalProps {
   deck: FlashcardDeck;
@@ -24,7 +25,7 @@ export const DeckStatsModal: React.FC<DeckStatsModalProps> = ({ deck, onClose })
     const learning      = cards.filter(c => c.srs?.lastReview && c.srs.interval <= 6).length;
     const reviewing     = cards.filter(c => c.srs?.lastReview && c.srs.interval >= 7 && c.srs.interval < 21).length;
     const mastered      = cards.filter(c => c.srs?.lastReview && c.srs.interval >= 21).length;
-    const dueToday      = cards.filter(c => !c.srs || c.srs.nextReview <= now).length;
+    const dueToday      = cards.filter(c => isCardDue(c, now)).length;
 
     const cardsWithEase = cards.filter(c => c.srs?.lastReview);
     const avgEase = cardsWithEase.length > 0
