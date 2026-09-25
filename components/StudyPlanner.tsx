@@ -414,7 +414,7 @@ export const StudyPlanner: React.FC<StudyPlannerProps> = ({ metrics, decks, exam
         />
 
         {/* Spaced-Modus: Opt-in für automatische Wiederholungsplanung */}
-        <div className="flex flex-wrap items-center justify-center gap-3 pt-2">
+        <div className="flex flex-wrap items-center gap-3">
           <button
             onClick={handleToggleSpaced}
             className="flex items-center gap-3 px-5 py-3 rounded-2xl transition-all hover:opacity-90 text-left"
@@ -447,46 +447,6 @@ export const StudyPlanner: React.FC<StudyPlannerProps> = ({ metrics, decks, exam
               {t('sp2.redistribute')}
             </button>
           )}
-        </div>
-      </div>
-
-      {/* Widgets */}
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-6 max-w-5xl mx-auto">
-        <div className="p-6 rounded-[24px] bg-white/50 dark:bg-slate-900/50 backdrop-blur-sm border border-slate-200/50 dark:border-slate-800/50 hover:bg-white dark:hover:bg-slate-900 transition-all">
-          <h3 className="text-[11px] font-semibold uppercase tracking-[0.08em] mb-4" style={{ color: 'var(--mute)' }}>{t('sp2.gaps', { n: knowledgeGaps.length })}</h3>
-          <div className="space-y-2">
-            {knowledgeGaps.slice(0, 3).map(gap => (
-              <div key={gap.id} className="flex justify-between items-center">
-                <span className="text-[11px] font-bold text-slate-600 dark:text-slate-300 break-words pr-2">{gap.topic}</span>
-                <span className="text-[11px] font-semibold text-indigo-600">{gap.confidence}%</span>
-              </div>
-            ))}
-            {knowledgeGaps.length === 0 && <p className="text-[11px] text-slate-400 italic">{t('sp2.noGaps')}</p>}
-          </div>
-        </div>
-        <div className="p-6 rounded-[24px] bg-white/50 dark:bg-slate-900/50 backdrop-blur-sm border border-slate-200/50 dark:border-slate-800/50 hover:bg-white dark:hover:bg-slate-900 transition-all">
-          <h3 className="text-[11px] font-semibold uppercase tracking-[0.08em] mb-4" style={{ color: 'var(--mute)' }}>{t('sp2.dueCards', { n: dueCardsTotal })}</h3>
-          <div className="space-y-2">
-            {dueDecks.slice(0, 3).map(({ deck, due }) => (
-              <div key={deck.id} className="flex justify-between items-center">
-                <span className="text-[11px] font-bold text-slate-600 dark:text-slate-300 break-words pr-2">{deck.title}</span>
-                <span className="text-[11px] font-semibold tabular-nums" style={{ color: 'var(--primary-ink)' }}>{due}</span>
-              </div>
-            ))}
-            {dueDecks.length === 0 && <p className="text-[11px] text-slate-400 italic">{t('sp2.allLearned')}</p>}
-          </div>
-        </div>
-        <div className="p-6 rounded-[24px] bg-white/50 dark:bg-slate-900/50 backdrop-blur-sm border border-slate-200/50 dark:border-slate-800/50 hover:bg-white dark:hover:bg-slate-900 transition-all">
-          <h3 className="text-[11px] font-semibold uppercase tracking-[0.08em] mb-4" style={{ color: 'var(--mute)' }}>{t('sp2.exams', { n: examTerms.length })}</h3>
-          <div className="space-y-2">
-            {examTerms.slice(0, 3).map(exam => (
-              <div key={exam.id} className="flex justify-between items-center">
-                <span className="text-[11px] font-bold text-slate-600 dark:text-slate-300 break-words pr-2">{exam.title}</span>
-                <span className={`text-[11px] font-semibold tabular-nums ${isExamSoon(exam.date) ? 'text-rose-600 dark:text-rose-400' : ''}`} style={isExamSoon(exam.date) ? undefined : { color: 'var(--ink2)' }}>{formatDate(exam.date + 'T12:00:00', { day: '2-digit', month: '2-digit' })}</span>
-              </div>
-            ))}
-            {examTerms.length === 0 && <p className="text-[11px] text-slate-400 italic">{t('sp2.noAppointments')}</p>}
-          </div>
         </div>
       </div>
 
@@ -627,7 +587,7 @@ export const StudyPlanner: React.FC<StudyPlannerProps> = ({ metrics, decks, exam
       )}
 
       {/* ── View Toggle ── */}
-      <div className="max-w-5xl mx-auto">
+      <div>
         <div className="inline-flex bg-slate-100 dark:bg-slate-800/60 rounded-2xl p-1 gap-1">
           {([['monat', t('sp2.month')], ['liste', t('sp2.list')]] as [ViewMode, string][]).map(([mode, label]) => (
             <button
@@ -644,7 +604,7 @@ export const StudyPlanner: React.FC<StudyPlannerProps> = ({ metrics, decks, exam
 
       {/* ── MONAT VIEW ── */}
       {viewMode === 'monat' && (
-        <div className={selectedDate ? 'max-w-6xl mx-auto grid grid-cols-1 lg:grid-cols-[1.6fr_1fr] gap-6 items-start' : 'max-w-5xl mx-auto'}>
+        <div className={selectedDate ? 'grid grid-cols-1 lg:grid-cols-[1.6fr_1fr] gap-6 items-start' : ''}>
         <div className="rounded-[24px] shadow-3d-raised overflow-hidden" style={{ background: 'var(--bg-sidebar)', border: '1px solid var(--border-color)' }}>
           {/* Calendar Nav */}
           <div className="flex items-center justify-between px-6 py-5" style={{ borderBottom: '1px solid var(--border-color)' }}>
@@ -698,7 +658,7 @@ export const StudyPlanner: React.FC<StudyPlannerProps> = ({ metrics, decks, exam
                   <span
                     className="inline-flex items-center justify-center w-7 h-7 text-xs font-bold rounded-full mb-1.5 transition-colors"
                     style={isToday
-                      ? { background: 'rgb(251,191,36)', color: 'rgb(120,53,15)', fontWeight: 900 }
+                      ? { background: 'var(--primary)', color: 'var(--primary-text)', fontWeight: 600 }
                       : { color: cell.isCurrentMonth ? 'var(--text-main)' : 'var(--border-color)' }
                     }
                   >
@@ -746,25 +706,25 @@ export const StudyPlanner: React.FC<StudyPlannerProps> = ({ metrics, decks, exam
           <div className="flex items-center gap-4 px-6 py-4 flex-wrap" style={{ borderTop: '1px solid var(--border-color)' }}>
             <div className="flex items-center gap-1.5">
               <div className="w-3 h-3 rounded-sm bg-rose-200 dark:bg-rose-900/50" />
-              <span className="text-[11px] font-semibold uppercase tracking-[0.08em] text-slate-400">{t('nav.exam')}</span>
+              <span className="text-xs text-slate-500 dark:text-slate-400">{t('nav.exam')}</span>
             </div>
             <div className="flex items-center gap-1.5">
               <div className="w-3 h-3 rounded-sm bg-blue-200 dark:bg-blue-900/50" />
-              <span className="text-[11px] font-semibold uppercase tracking-[0.08em] text-slate-400">{t('sp2.legendEvent')}</span>
+              <span className="text-xs text-slate-500 dark:text-slate-400">{t('sp2.legendEvent')}</span>
             </div>
             <div className="flex items-center gap-1.5">
               <RepeatIcon size={11} style={{ color: 'var(--primary-ink)' }} />
-              <span className="text-[11px] font-semibold uppercase tracking-[0.08em] text-slate-400">{t('sp2.sessionLegend')}</span>
+              <span className="text-xs text-slate-500 dark:text-slate-400">{t('sp2.sessionLegend')}</span>
             </div>
             {spacedEnabled && (
               <div className="flex items-center gap-1.5">
                 <div className="w-3 h-3 rounded-sm" style={{ background: 'color-mix(in srgb, var(--primary) 25%, transparent)' }} />
-                <span className="text-[11px] font-semibold uppercase tracking-[0.08em] text-slate-400">{t('sp2.autoReview')}</span>
+                <span className="text-xs text-slate-500 dark:text-slate-400">{t('sp2.autoReview')}</span>
               </div>
             )}
             <div className="flex items-center gap-1.5">
-              <div className="w-7 h-7 rounded-full bg-amber-400 flex items-center justify-center text-[11px] font-semibold text-amber-900">{today.getDate()}</div>
-              <span className="text-[11px] font-semibold uppercase tracking-[0.08em] text-slate-400">{t('sp2.today')}</span>
+              <div className="w-6 h-6 rounded-full flex items-center justify-center text-[11px] font-semibold" style={{ background: 'var(--primary)', color: 'var(--primary-text)' }}>{today.getDate()}</div>
+              <span className="text-xs text-slate-500 dark:text-slate-400">{t('sp2.today')}</span>
             </div>
           </div>
         </div>
@@ -794,7 +754,7 @@ export const StudyPlanner: React.FC<StudyPlannerProps> = ({ metrics, decks, exam
 
       {/* ── LISTE VIEW ── */}
       {viewMode === 'liste' && (
-        <div className="max-w-5xl mx-auto space-y-3">
+        <div className="space-y-3">
           {upcomingItems.length === 0 ? (
             <div className="text-center py-16 text-slate-400">
               <p className="text-xs font-semibold">{t('sp2.noUpcoming')}</p>
@@ -862,6 +822,47 @@ export const StudyPlanner: React.FC<StudyPlannerProps> = ({ metrics, decks, exam
           )}
         </div>
       )}
+
+      {/* Übersicht unter dem Kalender: der Kalender ist das Werkzeug der Seite und
+          stand auf dem Handy erst auf dem dritten Bildschirm (Design-Tour 25.09.2026). */}
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+        <div className="p-5 rounded-[20px] border border-slate-200 dark:border-slate-800 bg-[var(--card)] dark:bg-slate-900">
+          <h3 className="text-[11px] font-semibold uppercase tracking-[0.08em] mb-4" style={{ color: 'var(--mute)' }}>{t('sp2.gaps', { n: knowledgeGaps.length })}</h3>
+          <div className="space-y-2">
+            {knowledgeGaps.slice(0, 3).map(gap => (
+              <div key={gap.id} className="flex justify-between items-center">
+                <span className="text-[13px] font-medium text-slate-700 dark:text-slate-300 break-words pr-2">{gap.topic}</span>
+                <span className="text-[13px] font-semibold text-indigo-600">{gap.confidence}%</span>
+              </div>
+            ))}
+            {knowledgeGaps.length === 0 && <p className="text-[11px] text-slate-400 italic">{t('sp2.noGaps')}</p>}
+          </div>
+        </div>
+        <div className="p-5 rounded-[20px] border border-slate-200 dark:border-slate-800 bg-[var(--card)] dark:bg-slate-900">
+          <h3 className="text-[11px] font-semibold uppercase tracking-[0.08em] mb-4" style={{ color: 'var(--mute)' }}>{t('sp2.dueCards', { n: dueCardsTotal })}</h3>
+          <div className="space-y-2">
+            {dueDecks.slice(0, 3).map(({ deck, due }) => (
+              <div key={deck.id} className="flex justify-between items-center">
+                <span className="text-[13px] font-medium text-slate-700 dark:text-slate-300 break-words pr-2">{deck.title}</span>
+                <span className="text-[11px] font-semibold tabular-nums" style={{ color: 'var(--primary-ink)' }}>{due}</span>
+              </div>
+            ))}
+            {dueDecks.length === 0 && <p className="text-[11px] text-slate-400 italic">{t('sp2.allLearned')}</p>}
+          </div>
+        </div>
+        <div className="p-5 rounded-[20px] border border-slate-200 dark:border-slate-800 bg-[var(--card)] dark:bg-slate-900">
+          <h3 className="text-[11px] font-semibold uppercase tracking-[0.08em] mb-4" style={{ color: 'var(--mute)' }}>{t('sp2.exams', { n: examTerms.length })}</h3>
+          <div className="space-y-2">
+            {examTerms.slice(0, 3).map(exam => (
+              <div key={exam.id} className="flex justify-between items-center">
+                <span className="text-[13px] font-medium text-slate-700 dark:text-slate-300 break-words pr-2">{exam.title}</span>
+                <span className={`text-[11px] font-semibold tabular-nums ${isExamSoon(exam.date) ? 'text-rose-600 dark:text-rose-400' : ''}`} style={isExamSoon(exam.date) ? undefined : { color: 'var(--ink2)' }}>{formatDate(exam.date + 'T12:00:00', { day: '2-digit', month: '2-digit' })}</span>
+              </div>
+            ))}
+            {examTerms.length === 0 && <p className="text-[11px] text-slate-400 italic">{t('sp2.noAppointments')}</p>}
+          </div>
+        </div>
+      </div>
     </div>
   );
 };

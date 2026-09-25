@@ -54,7 +54,8 @@ export const PageHeader: React.FC<PageHeaderProps> = ({ eyebrow, title, subtitle
   return (
     <header className="flex flex-wrap items-end justify-between gap-4">
       {text}
-      {actions && <div className="flex flex-wrap gap-2.5 shrink-0">{actions}</div>}
+      {/* kein shrink-0: sonst liefen die Knöpfe auf dem Handy aus dem Bild */}
+      {actions && <div className="flex flex-wrap gap-2.5 max-w-full">{actions}</div>}
     </header>
   );
 };

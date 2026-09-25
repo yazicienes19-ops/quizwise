@@ -725,6 +725,20 @@ export const ExamGenerator: React.FC<ExamGeneratorProps> = ({
             )}
           </div>
 
+          {/* Handy: nach der Quellenwahl lag "Simulation starten" drei Bildschirme
+              tiefer. Feste Leiste über der unteren Navigation (Design-Tour 25.09.2026). */}
+          {contentSource && !isLoading && (
+            <div className="lg:hidden fixed inset-x-4 md:left-auto md:w-80 z-40 bottom-[calc(84px+env(safe-area-inset-bottom))] md:bottom-6">
+              <button
+                onClick={handleStart}
+                className="w-full py-4 rounded-2xl font-semibold text-[15px] shadow-3d-deep"
+                style={{ background: 'var(--primary)', color: 'var(--primary-text)' }}
+              >
+                {t('eg.startSim')}
+              </button>
+            </div>
+          )}
+
         </div>
       </div>
     </div>

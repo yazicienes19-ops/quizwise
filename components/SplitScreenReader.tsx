@@ -329,7 +329,7 @@ export const SplitScreenReader: React.FC<SplitScreenReaderProps> = ({ doc, userI
         <button onClick={onBack} className="shrink-0 text-[13px] font-semibold text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 transition-colors">
           {t('rd.back')}
         </button>
-        <div className="min-w-0 flex-1">
+        <div className="min-w-[55%] sm:min-w-0 flex-1">
           <h1 className="text-base lg:text-lg font-semibold tracking-tight dark:text-white truncate leading-tight">{t('rd.readScript')}</h1>
           {activeChapter && (
             <p className="text-[11px] font-medium text-slate-400 truncate leading-tight mt-0.5">{activeChapter.title}</p>
@@ -344,8 +344,12 @@ export const SplitScreenReader: React.FC<SplitScreenReaderProps> = ({ doc, userI
         <button
           onClick={handleStartFeynman}
           disabled={doneIndices.length === 0}
-          className="w-full sm:w-auto shrink-0 px-4 py-2.5 rounded-2xl text-sm font-semibold transition-all hover:scale-[1.02] disabled:opacity-40 disabled:cursor-not-allowed"
-          style={{ background: 'var(--primary)', color: 'var(--primary-text)' }}
+          // Kompakt statt volle Breite auf dem Handy; gesperrt als ruhiger Rahmen
+          // statt blasser Goldfläche (Design-Tour 25.09.2026).
+          className="ml-auto shrink-0 px-3.5 sm:px-4 py-2 sm:py-2.5 rounded-xl text-[13px] font-semibold transition-all disabled:cursor-not-allowed"
+          style={doneIndices.length === 0
+            ? { border: '1px solid var(--border-color)', color: 'var(--text-secondary)' }
+            : { background: 'var(--primary)', color: 'var(--primary-text)' }}
         >
           {t('rd.toFeynman')}
         </button>

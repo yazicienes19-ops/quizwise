@@ -456,31 +456,32 @@ export const LibrarySystem: React.FC<LibrarySystemProps> = ({
                     /* Normal clickable content */
                     <button
                       onClick={() => openFolder(col.id)}
-                      className="text-left p-6 flex flex-col gap-4 flex-1 hover:scale-[1.02] transition-transform rounded-[28px]"
+                      // Handy: kompakte Zeile statt 220-px-Kachel (Design-Tour 25.09.2026)
+                      className="text-left p-4 sm:p-6 flex flex-row sm:flex-col items-center sm:items-stretch gap-4 flex-1 sm:hover:scale-[1.02] transition-transform rounded-[28px]"
                     >
-                      <div className="flex justify-between items-start">
+                      <div className="flex justify-between items-start shrink-0">
                         <div
-                          className="w-14 h-14 rounded-2xl flex items-center justify-center text-2xl shadow-md"
+                          className="w-11 h-11 sm:w-14 sm:h-14 rounded-2xl flex items-center justify-center text-2xl sm:shadow-md"
                           style={{ background: 'color-mix(in srgb, var(--primary) 12%, var(--bg-main))' }}
                         >
-                          <EmojiImage emoji={col.emoji} size={28} />
+                          <EmojiImage emoji={col.emoji} size={24} />
                         </div>
-                        <span className="text-xs font-semibold text-slate-400 bg-slate-100 dark:bg-slate-800 px-2.5 py-1 rounded-full">
-                          {count}
-                        </span>
                       </div>
-                      <div>
+                      <div className="min-w-0 flex-1">
                         <h3 className="font-semibold text-base leading-snug" style={{ color: 'var(--text-main)' }}>{col.name}</h3>
                         {recentDoc && (
-                          <p className="text-[11px] text-slate-400 mt-1 break-words">
-                            Zuletzt: {documentDisplayName(recentDoc)}
+                          <p className="text-xs text-slate-400 mt-1 truncate sm:whitespace-normal sm:break-words">
+                            {t('lib.recentDoc', { name: documentDisplayName(recentDoc) })}
                           </p>
                         )}
                         {count === 0 && (
-                          <p className="text-[11px] text-slate-300 dark:text-slate-600 mt-1">{t('lib.empty')}</p>
+                          <p className="text-xs text-slate-400 mt-1">{t('lib.empty')}</p>
                         )}
                       </div>
-                      <div className="flex items-center gap-1 text-[13px] font-semibold mt-auto" style={{ color: 'var(--primary-ink)' }}>
+                      <span className="shrink-0 text-xs font-semibold text-slate-500 dark:text-slate-400 bg-slate-100 dark:bg-slate-800 px-2.5 py-1 rounded-full sm:absolute sm:top-6 sm:right-6 sm:group-hover:opacity-0 transition-opacity">
+                        {count}
+                      </span>
+                      <div className="hidden sm:flex items-center gap-1 text-[13px] font-semibold mt-auto" style={{ color: 'var(--primary-ink)' }}>
                         {t('card.open')}
                         <svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round">
                           <line x1="5" y1="12" x2="19" y2="12"/><polyline points="12 5 19 12 12 19"/>
@@ -495,17 +496,17 @@ export const LibrarySystem: React.FC<LibrarySystemProps> = ({
             {/* Alle Dokumente card */}
             <button
               onClick={() => openFolder('all')}
-              className="group text-left rounded-[28px] p-6 border-2 border-dashed hover:border-indigo-400 dark:hover:border-indigo-600 transition-all flex flex-col gap-4 hover:scale-[1.02]"
+              className="group text-left rounded-[28px] p-4 sm:p-6 border-2 border-dashed hover:border-indigo-400 dark:hover:border-indigo-600 transition-all flex flex-row sm:flex-col items-center sm:items-stretch gap-4 sm:hover:scale-[1.02]"
               style={{ borderColor: 'var(--border-color)' }}
             >
-              <div className="w-14 h-14 rounded-2xl flex items-center justify-center text-2xl bg-slate-100 dark:bg-slate-800">
-                <EmojiImage emoji="🌐" size={28} />
+              <div className="w-11 h-11 sm:w-14 sm:h-14 shrink-0 rounded-2xl flex items-center justify-center text-2xl bg-slate-100 dark:bg-slate-800">
+                <EmojiImage emoji="🌐" size={24} />
               </div>
-              <div>
+              <div className="min-w-0 flex-1">
                 <h3 className="font-semibold text-base" style={{ color: 'var(--text-main)' }}>{t('lib.allDocs')}</h3>
-                <p className="text-[11px] text-slate-400 mt-1">{documents.length} gesamt</p>
+                <p className="text-xs text-slate-400 mt-1">{t('lib.totalN', { n: documents.length })}</p>
               </div>
-              <div className="flex items-center gap-1 text-[13px] font-semibold mt-auto text-slate-400">
+              <div className="hidden sm:flex items-center gap-1 text-[13px] font-semibold mt-auto text-slate-500">
                 {t('home.mod.showAll')}
                 <svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round">
                   <line x1="5" y1="12" x2="19" y2="12"/><polyline points="12 5 19 12 12 19"/>
@@ -520,7 +521,7 @@ export const LibrarySystem: React.FC<LibrarySystemProps> = ({
               onClick={() => setIsAddingCol(true)}
               className="flex items-center gap-2 px-4 py-2.5 rounded-2xl text-[13px] font-semibold text-slate-400 hover:text-indigo-600 border border-slate-200 dark:border-slate-700 hover:border-indigo-400 transition-all"
             >
-              + Neuer Ordner
+              {t('lib.newFolderBtn')}
             </button>
             {isAddingCol && (
               <form onSubmit={handleCreateCol} className="flex items-center gap-2">
@@ -532,7 +533,7 @@ export const LibrarySystem: React.FC<LibrarySystemProps> = ({
                   className="px-4 py-2.5 rounded-2xl text-xs font-bold outline-none border-2 border-indigo-500"
                   style={{ background: 'var(--bg-main)', color: 'var(--text-main)' }}
                 />
-                <button type="submit" className="px-4 py-2.5 bg-indigo-600 rounded-2xl text-[13px] font-semibold" style={{ color: 'var(--primary-text)' }}>{t('lib.create')}</button>
+                <button type="submit" className="px-4 py-2.5 rounded-2xl text-[13px] font-semibold" style={{ background: 'var(--primary)', color: 'var(--primary-text)' }}>{t('lib.create')}</button>
                 <button type="button" onClick={() => { setIsAddingCol(false); setNewColName(''); }} className="px-3 py-2.5 text-slate-400 text-[13px] font-semibold">✕</button>
               </form>
             )}

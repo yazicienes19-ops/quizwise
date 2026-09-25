@@ -511,7 +511,9 @@ export const Dashboard: React.FC<DashboardProps> = ({
                   <button
                     key={phase.key}
                     onClick={() => openGuidePhase(GUIDE_PHASE_TAB[phase.key])}
-                    className={`px-[17px] py-[13px] text-left transition-colors hover:bg-[color-mix(in_srgb,var(--text-main)_3%,transparent)] ${
+                    // flex-col + justify-start: ein <button> zentriert seinen Inhalt sonst
+                    // senkrecht, die erledigte Phase (eine Zeile weniger) saß tiefer.
+                    className={`flex flex-col justify-start px-[17px] py-[13px] text-left transition-colors hover:bg-[color-mix(in_srgb,var(--text-main)_3%,transparent)] ${
                       i > 0 ? 'border-t sm:border-t-0 sm:border-l' : ''
                     }`}
                     style={{ borderColor: C.hair }}
@@ -530,7 +532,7 @@ export const Dashboard: React.FC<DashboardProps> = ({
                       </span>
                     </span>
                     <span className="block mt-[7px] text-[11px]" style={{ color: current ? C.goldText : C.soft }}>
-                      {done ? t('guide.state.done') : current ? t('guide.state.here') : phaseCount(phase)}
+                      {done ? t('guide.state.done') : current ? t('guide.state.here') : t('guide.state.open')}
                     </span>
                     <span className="mt-[6px] block h-[3px] rounded-full overflow-hidden" style={{ background: C.line }}>
                       <span

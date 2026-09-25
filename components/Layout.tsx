@@ -8,12 +8,11 @@ import { usePersistentState } from '../hooks/usePersistentState';
 import {
   Home, BookOpen, HelpCircle, Calendar, Brain, GraduationCap,
   Layers, Lightbulb, BarChart2, Search, FileText, Moon, Sun,
-  X, Menu, KeyRound, LogIn, LogOut, Zap, Settings, Star, Users,
+  X, Menu, LogIn, LogOut, Zap, Settings, Star, Users,
   PanelLeftClose, PanelLeftOpen, Network, type LucideIcon
 } from 'lucide-react';
 import type { User } from '@supabase/supabase-js';
 import { ColorPicker } from './ColorPicker';
-import { ApiKeySettings } from './ApiKeySettings';
 import { LegalModal } from './LegalModal';
 import { CookieSettingsModal } from './CookieSettingsModal';
 import { NAV_GROUPS, LABOR_GROUP } from './navConfig';
@@ -87,7 +86,6 @@ export const Layout: React.FC<LayoutProps> = ({
 }) => {
   const { t, tp } = useTranslation();
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
-  const [showApiSettings, setShowApiSettings] = useState(false);
   const [legalPage, setLegalPage] = useState<'impressum' | 'datenschutz' | 'agb' | null>(null);
   const [showCookieSettings, setShowCookieSettings] = useState(false);
   // Nur die breite Desktop-Sidebar (≥1024px) betroffen — Tablet-Icon-Leiste und
@@ -271,7 +269,7 @@ export const Layout: React.FC<LayoutProps> = ({
           {/* Fach-Kontext: gewähltes Modul gilt überall als Vorauswahl.
               Auch ohne Ordner sichtbar — sonst wissen Nutzer nicht, dass es das Feature gibt. */}
           {onModuleChange && collections.length === 0 && (
-            <div className="mb-6 -mt-6">
+            <div className="mb-6 -mt-3">
               <p className="text-[11px] font-semibold uppercase tracking-[0.08em] mb-1.5 px-1" style={{ color: SIDEBAR.textMuted }}>{t('layout.activeSubject')}</p>
               <button
                 onClick={() => onTabChange(ActiveTab.LIBRARY)}
@@ -284,7 +282,7 @@ export const Layout: React.FC<LayoutProps> = ({
             </div>
           )}
           {onModuleChange && collections.length > 0 && (
-            <div className="mb-6 -mt-6">
+            <div className="mb-6 -mt-3">
               <p className="text-[11px] font-semibold uppercase tracking-[0.08em] mb-1.5 px-1" style={{ color: SIDEBAR.textMuted }}>{t('layout.activeSubject')}</p>
               <select
                 value={activeModuleId ?? ''}
@@ -698,22 +696,6 @@ export const Layout: React.FC<LayoutProps> = ({
 
               <div className="h-px" style={{ background: 'var(--border-color)' }} />
 
-              {/* API Key */}
-              <button
-                onClick={() => { setIsMobileMenuOpen(false); setShowApiSettings(true); }}
-                className="w-full flex items-center justify-between px-5 py-4 rounded-2xl border transition-all"
-                style={{
-                  borderColor: 'var(--border-color)',
-                  background: 'color-mix(in srgb, var(--border-color) 40%, var(--bg-sidebar))',
-                }}
-              >
-                <span className="text-[13px] font-semibold flex items-center gap-2">
-                  <KeyRound className="w-4 h-4" strokeWidth={1.75} />
-                  {t('layout.apiKey')}
-                </span>
-                <span className="w-2 h-2 rounded-full shrink-0 bg-emerald-500" />
-              </button>
-
               {/* Theme toggle */}
               <button
                 onClick={onToggleTheme}
@@ -787,9 +769,6 @@ export const Layout: React.FC<LayoutProps> = ({
         <div className={`relative z-10 ${activeTab === ActiveTab.READER || activeTab === ActiveTab.KNOWLEDGE_GRAPH ? 'w-full' : 'max-w-6xl mx-auto'}`}>{children}</div>
       </main>
 
-      {showApiSettings && (
-        <ApiKeySettings onClose={() => setShowApiSettings(false)} />
-      )}
       {legalPage && (
         <LegalModal page={legalPage} onClose={() => setLegalPage(null)} />
       )}

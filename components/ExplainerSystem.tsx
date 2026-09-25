@@ -27,6 +27,7 @@ import { useModuleScopedActivity } from '../hooks/useModuleScopedActivity';
 import { renderMarkdown, parseInline } from './markdownRenderer';
 import { BrandMark } from './BrandMark';
 import { PageHeader } from './PageHeader';
+import { createPortal } from 'react-dom';
 
 // ─── Typen ────────────────────────────────────────────────────────────────────
 
@@ -684,8 +685,8 @@ export const ExplainerSystem: React.FC<ExplainerSystemProps> = ({
             wickelt den bestehenden SourceSelector ein (Bibliothek/Neue Datei/
             Text einfügen bleiben vollständig erhalten, nur nicht mehr
             dauerhaft auf der Seite sichtbar). */}
-        {sourcePickerOpen && (
-          <div className="fixed inset-0 z-50 flex items-center justify-center p-4" style={{ background: 'rgba(0,0,0,0.45)' }} onClick={() => setSourcePickerOpen(false)}>
+        {sourcePickerOpen && createPortal(
+          <div className="fixed inset-0 z-[100] flex items-center justify-center p-4" style={{ background: 'rgba(0,0,0,0.45)' }} onClick={() => setSourcePickerOpen(false)}>
             <div
               className="w-full max-w-lg max-h-[80vh] flex flex-col rounded-[28px] p-5 space-y-3 animate-in fade-in zoom-in-95 duration-200 overflow-y-auto"
               style={{ background: 'var(--bg-sidebar)', border: '1px solid var(--border-color)' }}
@@ -703,12 +704,13 @@ export const ExplainerSystem: React.FC<ExplainerSystemProps> = ({
                 onSaveToLibrary={onSaveToLibrary} isLoading={false}
               />
             </div>
-          </div>
+          </div>,
+          document.body,
         )}
 
         {/* Reader-Picker Overlay */}
-        {readerPickerOpen && (
-          <div className="fixed inset-0 z-50 flex items-center justify-center p-4" style={{ background: 'rgba(0,0,0,0.45)' }} onClick={() => setReaderPickerOpen(false)}>
+        {readerPickerOpen && createPortal(
+          <div className="fixed inset-0 z-[100] flex items-center justify-center p-4" style={{ background: 'rgba(0,0,0,0.45)' }} onClick={() => setReaderPickerOpen(false)}>
             <div
               className="w-full max-w-md max-h-[70vh] flex flex-col rounded-[28px] p-5 space-y-3 animate-in fade-in zoom-in-95 duration-200"
               style={{ background: 'var(--bg-sidebar)', border: '1px solid var(--border-color)' }}
@@ -734,11 +736,10 @@ export const ExplainerSystem: React.FC<ExplainerSystemProps> = ({
                   <button
                     key={doc.id}
                     onClick={() => { setReaderPickerOpen(false); onOpenReader?.(doc); }}
-                    className="w-full flex items-center gap-3 px-4 py-3 rounded-2xl text-left transition-all hover:scale-[1.02]"
-                    style={{ background: 'var(--bg-main)', border: '1px solid var(--border-color)' }}
+                    className="w-full flex items-center gap-3 px-3 py-3 rounded-xl text-left transition-colors hover:bg-slate-100 dark:hover:bg-slate-800/60"
                   >
                     <BookOpen size={16} className="shrink-0" style={{ color: 'var(--primary-ink)' }} strokeWidth={1.75} />
-                    <span className="flex-1 min-w-0 text-xs font-semibold dark:text-white truncate">{documentDisplayName(doc)}</span>
+                    <span className="flex-1 min-w-0 text-[13px] font-semibold dark:text-white truncate">{documentDisplayName(doc)}</span>
                     <ChevronRight className="w-4 h-4 text-slate-300 shrink-0" strokeWidth={2} />
                   </button>
                 ))}
@@ -747,7 +748,8 @@ export const ExplainerSystem: React.FC<ExplainerSystemProps> = ({
                 )}
               </div>
             </div>
-          </div>
+          </div>,
+          document.body,
         )}
       </div>
     );

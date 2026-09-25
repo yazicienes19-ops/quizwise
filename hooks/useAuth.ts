@@ -5,6 +5,7 @@ import { fetchUserProfile } from '../services/geminiService';
 import { setLocale } from '../i18n';
 import { setFunctionalPref } from '../services/cookieConsent';
 import { claimLocalUserData, watchOwnerChange } from '../services/localAccountGuard';
+import { applyTypography } from '../services/appFonts';
 
 export const useAuth = () => {
   const [user, setUser] = useState<User | null>(null);
@@ -74,6 +75,7 @@ export const useAuth = () => {
           }
           if (pr.font_choice) setFunctionalPref('font_choice', pr.font_choice);
           if (pr.line_height) setFunctionalPref('line_height', pr.line_height);
+          applyTypography(pr.font_choice, pr.line_height);
           if (pr.notification_settings) setFunctionalPref('studearc_notification_settings', JSON.stringify(pr.notification_settings));
           if (pr.language === 'de' || pr.language === 'tr' || pr.language === 'en') { setFunctionalPref('studearc_language', pr.language); setLocale(pr.language); }
           // Einmal-Flags aus der Cloud wiederherstellen — sonst hält die App

@@ -21,6 +21,7 @@ import { formatDate } from '../i18n/dates';
 import type { Locale } from '../i18n';
 import { useModalA11y } from '../hooks/useModalA11y';
 import { resolveErrorMessage } from '../services/errorMessages';
+import { FONT_STACKS } from '../services/appFonts';
 
 const PRESETS = [
   { name: 'StudeArc Gold', value: '#D9A94E' },
@@ -34,12 +35,12 @@ const PRESETS = [
 ];
 
 const FONTS = [
-  { id: 'inter',        name: 'Inter',        labelKey: 'settings.font.modern',   stack: "'Inter', system-ui, sans-serif" },
-  { id: 'garamond',     name: 'EB Garamond',  labelKey: 'settings.font.classic',  stack: "'EB Garamond', Georgia, serif" },
-  { id: 'dm-sans',      name: 'DM Sans',      labelKey: 'settings.font.clear',    stack: "'DM Sans', system-ui, sans-serif" },
-  { id: 'lato',         name: 'Lato',         labelKey: 'settings.font.friendly', stack: "'Lato', system-ui, sans-serif" },
-  { id: 'nunito',       name: 'Nunito',       labelKey: 'settings.font.round',    stack: "'Nunito', system-ui, sans-serif" },
-  { id: 'merriweather', name: 'Merriweather', labelKey: 'settings.font.readable', stack: "'Merriweather', Georgia, serif" },
+  { id: 'inter',        name: 'Inter',        labelKey: 'settings.font.modern',   stack: FONT_STACKS['inter'] },
+  { id: 'garamond',     name: 'EB Garamond',  labelKey: 'settings.font.classic',  stack: FONT_STACKS['garamond'] },
+  { id: 'dm-sans',      name: 'DM Sans',      labelKey: 'settings.font.clear',    stack: FONT_STACKS['dm-sans'] },
+  { id: 'lato',         name: 'Lato',         labelKey: 'settings.font.friendly', stack: FONT_STACKS['lato'] },
+  { id: 'nunito',       name: 'Nunito',       labelKey: 'settings.font.round',    stack: FONT_STACKS['nunito'] },
+  { id: 'merriweather', name: 'Merriweather', labelKey: 'settings.font.readable', stack: FONT_STACKS['merriweather'] },
 ] as const;
 
 const SPACING_OPTIONS = [
