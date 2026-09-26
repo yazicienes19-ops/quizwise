@@ -4,7 +4,7 @@ import { createNode, createEdge, createRelationType } from './graphMutationServi
 import {
   createEmptyHistory, canUndo, canRedo, undo, redo,
   recordCreateNode, recordUpdateNode, recordArchiveNode, recordRestoreNode,
-  recordCreateEdge, recordUpdateEdge, recordArchiveEdge, recordRestoreEdge,
+  recordCreateEdge, recordUpdateEdge, recordArchiveEdge, recordRestoreEdge, recordMoveNodes,
 } from './graphHistoryService';
 
 describe('createEmptyHistory / canUndo / canRedo', () => {
@@ -198,5 +198,26 @@ describe('Edges: recordCreateEdge / recordUpdateEdge / recordArchiveEdge / recor
     const restored = recordRestoreEdge(createEmptyHistory(), afterUndo.state, edgeId);
     // restoreEdge auf einer bereits aktiven Kante: idempotent, kein Fehler, keine neue History nötig
     expect(restored.error).toBeUndefined();
+  });
+});
+
+describe('recordMoveNodes', () => {
+  it('verschiebt mehrere Nodes in einem einzigen Rückgängig-Schritt', () => {
+    let state = createEmptyGraphState({ kind: 'all' });
+    let history = createEmptyHistory();
+    const a = recordCreateNode(history, state, { title: 'A', position: { x: 0, y: 0 } });
+    const b = recordCreateNode(a.history, a.state, { title: 'B', position: { x: 5, y: 5 } });
+    state = b.state; history = b.history;
+    const stackBefore = history.undoStack.length;
+
+    const moved = recordMoveNodes(history, state, new Map([[a.entity!.id, { x: 100, y: 0 }], [b.entity!.id, { x: 200, y: 0 }]]));
+    expect(moved.moved).toHaveLength(2);
+    expect(moved.history.undoStack.length).toBe(stackBefore + 1);
+
+    const back = undo(moved.history, moved.state);
+    expect(back.state.nodesById.get(a.entity!.id)?.position).toEqual({ x: 0, y: 0 });
+    expect(back.state.nodesById.get(b.entity!.id)?.position).toEqual({ x: 5, y: 5 });
+    const again = redo(back.history, back.state);
+    expect(again.state.nodesById.get(b.entity!.id)?.position).toEqual({ x: 200, y: 0 });
   });
 });

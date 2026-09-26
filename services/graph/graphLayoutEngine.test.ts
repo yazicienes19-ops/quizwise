@@ -1,6 +1,6 @@
 import { describe, it, expect } from 'vitest';
 import {
-  computeForceLayout, computeBounds, findOverlapClusters, resolveOverlaps, findFreePosition, NODE_GAP, type LayoutNodeInput,
+  computeForceLayout, computeBounds, findOverlapClusters, resolveOverlaps, findFreePosition, NODE_GAP, separateOverlapping, countOverlapping, type LayoutNodeInput,
 } from './graphLayoutEngine';
 
 const node = (id: string, x: number, y: number, pinned = false): LayoutNodeInput => ({
@@ -135,5 +135,27 @@ describe('findFreePosition', () => {
 
   it('ohne andere Nodes bleibt die Position unverändert', () => {
     expect(findFreePosition({ x: -3, y: 7 }, { rx: 40, ry: 40 }, [])).toEqual({ x: -3, y: 7 });
+  });
+});
+
+describe('separateOverlapping', () => {
+  const fp = (id: string, x: number, y: number) => ({ id, position: { x, y }, rx: 60, ry: 32 });
+  it('lässt ein Netz ohne Überlappung unverändert', () => {
+    expect(separateOverlapping([fp('a', 0, 0), fp('b', 300, 0)]).size).toBe(0);
+  });
+  it('verschiebt nur den späteren von zwei übereinanderliegenden Nodes, danach keine Überlappung', () => {
+    const nodes = [fp('alt', 0, 0), fp('neu', 20, 10), fp('fern', 600, 600)];
+    const moved = separateOverlapping(nodes);
+    expect([...moved.keys()]).toEqual(['neu']);
+    const after = nodes.map(n => ({ ...n, position: moved.get(n.id) ?? n.position }));
+    expect(countOverlapping(after)).toBe(0);
+  });
+  it('löst auch Ketten aus mehreren überlappenden Nodes', () => {
+    const nodes = [fp('a', 0, 0), fp('b', 10, 0), fp('c', 20, 0), fp('d', 30, 0)];
+    expect(countOverlapping(nodes)).toBe(4);
+    const moved = separateOverlapping(nodes);
+    const after = nodes.map(n => ({ ...n, position: moved.get(n.id) ?? n.position }));
+    expect(countOverlapping(after)).toBe(0);
+    expect(moved.has('a')).toBe(false);
   });
 });

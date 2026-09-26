@@ -1153,6 +1153,8 @@ export const en: Translations = {
   'kg.canvas.fit': 'Fit view',
   'kg.canvas.addConcept': 'Add concept',
   'kg.canvas.addConceptShort': 'Concept',
+  'kg.canvas.resolveOverlaps': 'Fix overlap ({n})|Fix overlaps ({n})',
+  'kg.canvas.resolveOverlapsTitle': 'Pull overlapping concepts apart, older ones stay in place. Can be undone.',
   'kg.canvas.edgePlaceholder': 'Enter relation (optional)…',
   'kg.canvas.explainEdge': 'Explain relation',
   'kg.canvas.explain': 'Explain',

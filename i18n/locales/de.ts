@@ -1154,6 +1154,8 @@ export const de = {
   'kg.canvas.fit': 'Ansicht einpassen',
   'kg.canvas.addConcept': 'Konzept hinzufügen',
   'kg.canvas.addConceptShort': 'Konzept',
+  'kg.canvas.resolveOverlaps': 'Überlappung lösen ({n})|Überlappungen lösen ({n})',
+  'kg.canvas.resolveOverlapsTitle': 'Übereinanderliegende Konzepte auseinanderziehen, ältere bleiben liegen. Rückgängig möglich.',
   'kg.canvas.edgePlaceholder': 'Beziehung eingeben (optional)…',
   'kg.canvas.explainEdge': 'Beziehung erklären',
   'kg.canvas.explain': 'Erklären',

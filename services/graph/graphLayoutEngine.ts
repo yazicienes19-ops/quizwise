@@ -213,3 +213,40 @@ export function findFreePosition(
   }
   return desired;
 }
+
+/**
+ * "Überlappungen lösen": findet Nodes, die sich tatsächlich überdecken (Abstand
+ * 0), und schiebt sie auf den nächsten freien Platz (mit NODE_GAP). Die
+ * Reihenfolge von `nodes` entscheidet, wer liegen bleibt: frühere Nodes sind
+ * fest, spätere weichen aus. Gibt NUR die verschobenen Nodes zurück.
+ *
+ * Grund (26.09.2026): findFreePosition verhindert neue Überlappungen, bestehende
+ * Netze konnten aber bereits übereinanderliegende Konzepte enthalten.
+ * Nutzerausgelöst (Knopf), daher mit der Regel "manuelle Position ist die
+ * Wahrheit" vereinbar.
+ */
+export function separateOverlapping(
+  nodes: (NodeFootprint & { id: string })[],
+  gap: number = NODE_GAP,
+): Map<string, GraphNodePosition> {
+  const moved = new Map<string, GraphNodePosition>();
+  const placed: NodeFootprint[] = [];
+  for (const node of nodes) {
+    const hit = placed.some(p => overlaps(node.position, node.rx, node.ry, p, 0));
+    const position = hit ? findFreePosition(node.position, node, placed, gap) : node.position;
+    if (hit) moved.set(node.id, position);
+    placed.push({ position, rx: node.rx, ry: node.ry });
+  }
+  return moved;
+}
+
+/** Anzahl der Nodes, die mindestens einen anderen überdecken (für die Knopf-Beschriftung). */
+export function countOverlapping(nodes: NodeFootprint[]): number {
+  let count = 0;
+  for (let i = 0; i < nodes.length; i++) {
+    for (let j = 0; j < nodes.length; j++) {
+      if (i !== j && overlaps(nodes[i].position, nodes[i].rx, nodes[i].ry, nodes[j], 0)) { count++; break; }
+    }
+  }
+  return count;
+}

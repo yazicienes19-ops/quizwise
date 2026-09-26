@@ -90,6 +90,33 @@ export function recordCreateNode(history: GraphHistory, state: GraphState, input
   return { state: result.state, history: pushEntry(history, entry), entity: result.entity };
 }
 
+/** Mehrere Nodes in EINEM Schritt verschieben ("Überlappungen lösen"):
+ *  ein einziges Rückgängig stellt alle alten Positionen wieder her. */
+export function recordMoveNodes(
+  history: GraphHistory,
+  state: GraphState,
+  moves: Map<string, GraphNode['position']>,
+): { state: GraphState; history: GraphHistory; moved: GraphNode[] } {
+  const before = new Map<string, GraphNode['position']>();
+  let working = state;
+  const moved: GraphNode[] = [];
+  for (const [nodeId, position] of moves) {
+    const node = working.nodesById.get(nodeId);
+    if (!node) continue;
+    const result = updateNode(working, nodeId, { position });
+    if (result.error || !result.entity) continue;
+    before.set(nodeId, node.position);
+    working = result.state;
+    moved.push(result.entity);
+  }
+  if (moved.length === 0) return { state, history, moved };
+  const entry: HistoryEntry = {
+    undo: s => [...before].reduce((acc, [id, position]) => updateNode(acc, id, { position }).state, s),
+    redo: s => [...moves].filter(([id]) => before.has(id)).reduce((acc, [id, position]) => updateNode(acc, id, { position }).state, s),
+  };
+  return { state: working, history: pushEntry(history, entry), moved };
+}
+
 /** Speichert nur die VORHER-Werte der tatsächlich im patch enthaltenen
  *  Felder, nicht den kompletten Node — der kleinstmögliche Undo-Schritt. */
 export function recordUpdateNode(history: GraphHistory, state: GraphState, nodeId: string, patch: UpdateNodeInput): HistoryMutationResult<GraphNode> {

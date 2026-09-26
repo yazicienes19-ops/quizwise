@@ -1152,6 +1152,8 @@ export const tr: Translations = {
   'kg.canvas.fit': 'Görünüme sığdır',
   'kg.canvas.addConcept': 'Kavram ekle',
   'kg.canvas.addConceptShort': 'Kavram',
+  'kg.canvas.resolveOverlaps': 'Çakışmayı çöz ({n})|Çakışmaları çöz ({n})',
+  'kg.canvas.resolveOverlapsTitle': 'Üst üste binen kavramları ayır, eskiler yerinde kalır. Geri alınabilir.',
   'kg.canvas.edgePlaceholder': 'İlişki gir (isteğe bağlı)…',
   'kg.canvas.explainEdge': 'İlişkiyi açıkla',
   'kg.canvas.explain': 'Açıkla',

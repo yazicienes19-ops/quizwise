@@ -6,12 +6,12 @@ import { motion, AnimatePresence, useReducedMotion } from 'framer-motion';
 import type { GraphState, GraphNodePosition, GraphEntityChange, HierarchyLevel } from '../services/graph/types';
 import { buildGraphIndex, neighborIds, outgoingEdges, incomingEdges } from '../services/graph/graphIndex';
 import { computeNodeInsights, groupInsightsByNode, type NodeInsightType } from '../services/graph/graphInsightsService';
-import { resolveOverlaps, findFreePosition } from '../services/graph/graphLayoutEngine';
+import { resolveOverlaps, findFreePosition, separateOverlapping, countOverlapping } from '../services/graph/graphLayoutEngine';
 import {
   type GraphSelectionState, selectNode, selectEdge, clearSelection, hoverNode, isSelected, isHovered, isEdgeSelected,
 } from '../services/graph/graphSelectionService';
 import {
-  type GraphHistory, recordCreateNode, recordUpdateNode, recordArchiveNode,
+  type GraphHistory, recordCreateNode, recordUpdateNode, recordArchiveNode, recordMoveNodes,
   recordCreateEdge, recordUpdateEdge, recordArchiveEdge,
 } from '../services/graph/graphHistoryService';
 import { createRelationType } from '../services/graph/graphMutationService';
@@ -803,7 +803,7 @@ export const GraphCanvas: React.FC<GraphCanvasProps> = ({
   const zoomBehaviorRef = useRef<d3.ZoomBehavior<SVGSVGElement, unknown> | null>(null);
   const [zoomTransform, setZoomTransform] = useState<ZoomTransform>({ x: 0, y: 0, k: 1 });
   const shouldReduceMotion = useReducedMotion();
-  const { t } = useTranslation();
+  const { t, tp } = useTranslation();
 
   // Last-Write-Wins-Fix: ALLE Mutationen committen gegen diesen Stand, nie
   // direkt gegen die `state`-Closure — die kann zwischen Gesten-Beginn und
@@ -995,6 +995,23 @@ export const GraphCanvas: React.FC<GraphCanvasProps> = ({
     if (!node) return { rx: baseR, ry: baseR };
     return extentsForTitle(node.title, node.hierarchyLevel, baseR);
   }, [state.nodesById, radiusOf]);
+
+  // "Überlappungen lösen": nur sichtbar, wenn sich Konzepte tatsächlich
+  // überdecken (Altbestand aus der Zeit vor findFreePosition). Ältere Konzepte
+  // bleiben liegen, jüngere weichen aus; ein einziger Rückgängig-Schritt.
+  const overlapCount = useMemo(
+    () => countOverlapping(activeNodes.map(n => ({ position: positionOf(n.id), ...nodeExtentsOf(n.id) }))),
+    [activeNodes, positionOf, nodeExtentsOf],
+  );
+  const resolveAllOverlaps = () => {
+    const ordered = [...activeNodes].sort((a, b) => a.createdAt - b.createdAt)
+      .map(n => ({ id: n.id, position: positionOf(n.id), ...nodeExtentsOf(n.id) }));
+    const moves = separateOverlapping(ordered);
+    if (moves.size === 0) return;
+    const result = recordMoveNodes(history, stateForCommit(), moves);
+    onChange({ state: result.state, history: result.history });
+    result.moved.forEach(entity => onEntityChanged?.({ kind: 'node', entity }));
+  };
 
   // Platzbedarf aller übrigen aktiven Nodes, für findFreePosition beim
   // Anlegen/Ablegen/Umbenennen (Nutzungstest 26.09.2026: Konzepte konnten
@@ -1914,6 +1931,11 @@ export const GraphCanvas: React.FC<GraphCanvasProps> = ({
         </div>
       )}
       <div className="absolute top-3 z-10 flex gap-1.5" style={{ right: 12 + rightInset, transition: 'right .2s ease' }}>
+        {overlapCount > 0 && (
+          <button onClick={resolveAllOverlaps} title={t('kg.canvas.resolveOverlapsTitle')} className="h-8 px-2.5 flex items-center gap-1 rounded-lg text-[13px] font-semibold" style={{ background: wnTheme.chipBg, border: `1px solid ${wnTheme.chipBorder}`, color: wnTheme.chipText, backdropFilter: 'blur(6px)' }}>
+            {tp('kg.canvas.resolveOverlaps', overlapCount)}
+          </button>
+        )}
         <button onClick={createNodeInView} aria-label={t('kg.canvas.addConcept')} title={t('kg.canvas.addConcept')} className="h-8 px-2.5 flex items-center gap-1 rounded-lg text-[13px] font-semibold" style={{ background: wnTheme.chipBg, border: `1px solid ${wnTheme.chipBorder}`, color: wnTheme.chipText, backdropFilter: 'blur(6px)' }}>
           <span aria-hidden="true">+</span><span>{t('kg.canvas.addConceptShort')}</span>
         </button>
