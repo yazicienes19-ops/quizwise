@@ -183,19 +183,35 @@ export function useKnowledgeGraph({ scope, userId }: UseKnowledgeGraphOptions): 
     }
   }, [userId]);
 
+  // Rückgängig/Wiederholen ändern Nodes und Kanten wie jede andere Aktion,
+  // wurden bisher aber nie gespeichert: nach dem Neuladen war z. B. ein per
+  // "Rückgängig" zurückgeholtes Konzept wieder gelöscht (gefunden 26.09.2026).
+  // Mutationen erzeugen neue Objekte, geänderte Entitäten erkennt man daher
+  // an der Referenz.
+  const commitDiff = useCallback((before: GraphState, after: GraphState) => {
+    for (const [id, node] of after.nodesById) {
+      if (before.nodesById.get(id) !== node) onEntityChanged({ kind: 'node', entity: node });
+    }
+    for (const [id, edge] of after.edgesById) {
+      if (before.edgesById.get(id) !== edge) onEntityChanged({ kind: 'edge', entity: edge });
+    }
+  }, [onEntityChanged]);
+
   const undo = useCallback(() => {
     const result = undoHistory(history, state);
     stateRef.current = result.state;
     setState(result.state);
     setHistory(result.history);
-  }, [history, state]);
+    commitDiff(state, result.state);
+  }, [history, state, commitDiff]);
 
   const redo = useCallback(() => {
     const result = redoHistory(history, state);
     stateRef.current = result.state;
     setState(result.state);
     setHistory(result.history);
-  }, [history, state]);
+    commitDiff(state, result.state);
+  }, [history, state, commitDiff]);
 
   const getState = useCallback(() => stateRef.current, []);
 

@@ -210,6 +210,27 @@ describe('useKnowledgeGraph — undo/redo', () => {
     act(() => { result.current.redo(); });
     expect(result.current.state.nodesById.get(nodeId)?.archivedAt).toBeUndefined();
   });
+
+  it('speichert die durch Rückgängig/Wiederholen geänderten Konzepte (vorher nur im Speicher)', async () => {
+    const commit = vi.spyOn(persistence, 'commitNode');
+    const { result } = renderHook(() => useKnowledgeGraph({ scope: ALL }));
+    await waitFor(() => expect(result.current.loading).toBe(false));
+
+    const recorded = recordCreateNode(createEmptyHistory(), result.current.state, { title: 'Y', position: { x: 0, y: 0 } });
+    act(() => { result.current.onChange({ state: recorded.state, history: recorded.history }); });
+    const nodeId = recorded.entity!.id;
+    commit.mockClear();
+
+    act(() => { result.current.undo(); });
+    expect(commit).toHaveBeenCalledTimes(1);
+    expect(commit.mock.calls[0][0].id).toBe(nodeId);
+    expect(commit.mock.calls[0][0].archivedAt).toBeDefined();
+
+    act(() => { result.current.redo(); });
+    expect(commit).toHaveBeenCalledTimes(2);
+    expect(commit.mock.calls[1][0].archivedAt).toBeUndefined();
+    commit.mockRestore();
+  });
 });
 
 describe('useKnowledgeGraph — Persistence-Lifecycle', () => {
