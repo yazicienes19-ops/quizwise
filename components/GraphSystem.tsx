@@ -268,7 +268,19 @@ export const GraphSystem: React.FC<GraphSystemProps> = ({
   const [showInsights, setShowInsights] = useState(false);
   // .size (betroffene Nodes), nicht .length (Insight-Einträge) — ein Node
   // ohne Beschreibung UND Notizen hat 2 Einträge, soll aber nur 1x zählen.
-  const nodeInsightCount = useMemo(() => groupInsightsByNode(computeNodeInsights(graph.state)).size, [graph.state]);
+  const nodeInsightGroups = useMemo(() => groupInsightsByNode(computeNodeInsights(graph.state)), [graph.state]);
+  const nodeInsightCount = nodeInsightGroups.size;
+  // "Nächstes ansehen": springt der Reihe nach zu den Konzepten mit Hinweis,
+  // die Detailspalte öffnet sich dort, wo Beschreibung oder Notizen fehlen
+  // (Nutzungstest 26.09.2026: der Hinweis sagte nur "könnten ausgebaut werden").
+  const jumpToNextInsight = () => {
+    const ids = [...nodeInsightGroups.keys()];
+    if (ids.length === 0) return;
+    const current = graph.selection.selectedNodeId ? ids.indexOf(graph.selection.selectedNodeId) : -1;
+    const id = ids[(current + 1) % ids.length];
+    graph.onSelectionChange(selectNode(graph.selection, id));
+    setCenterRequest({ id, nonce: Date.now() });
+  };
 
   // Wissensnetz-Coach, Baustein 4 ("Fehlende Beziehungen erkennen", Punkt 1)
   // — erste graphweite KI-Aktion, deshalb bewusst KEIN Dauer-Toggle wie
@@ -607,7 +619,8 @@ export const GraphSystem: React.FC<GraphSystemProps> = ({
         </div>
       </div>
 
-      {unassignedNodes.length > 0 && (
+      {/* Ohne Fächer gibt es nichts zuzuordnen, die Leiste wäre nur Ballast über dem Netz. */}
+      {unassignedNodes.length > 0 && collections.length > 0 && (
         <div
           className="flex items-center gap-3 flex-wrap px-4 py-3 rounded-[18px]"
           style={{
@@ -650,15 +663,25 @@ export const GraphSystem: React.FC<GraphSystemProps> = ({
             border: '1px solid color-mix(in srgb, var(--primary) 20%, transparent)',
           }}
         >
-          <p className="text-xs font-medium text-slate-600 dark:text-slate-300 min-w-0">
-            {tp('kg.insightsBanner', nodeInsightCount)}
-          </p>
+          <div className="min-w-0 flex-1">
+            <p className="text-xs font-medium text-slate-600 dark:text-slate-300">
+              {tp('kg.insightsBanner', nodeInsightCount)}
+            </p>
+            <p className="text-[11px] text-slate-500 dark:text-slate-400">{t('kg.insightsHint')}</p>
+          </div>
+          <button
+            onClick={jumpToNextInsight}
+            className="ml-auto shrink-0 text-[13px] font-semibold px-3 py-2 rounded-xl text-white transition-colors"
+            style={{ background: 'var(--primary)' }}
+          >
+            {t('kg.insightsNext')}
+          </button>
         </div>
       )}
 
       {missingRelationSuggestions && missingRelationSuggestions.length > 0 && (
         <div
-          className="space-y-2 px-4 py-3 rounded-[18px]"
+          className="space-y-2 px-4 py-3 rounded-[18px] max-h-56 overflow-y-auto"
           style={{
             background: 'color-mix(in srgb, var(--primary) 8%, transparent)',
             border: '1px solid color-mix(in srgb, var(--primary) 20%, transparent)',
@@ -707,7 +730,7 @@ export const GraphSystem: React.FC<GraphSystemProps> = ({
 
       {duplicateSuggestions && duplicateSuggestions.length > 0 && (
         <div
-          className="space-y-2 px-4 py-3 rounded-[18px]"
+          className="space-y-2 px-4 py-3 rounded-[18px] max-h-56 overflow-y-auto"
           style={{
             background: 'color-mix(in srgb, var(--primary) 8%, transparent)',
             border: '1px solid color-mix(in srgb, var(--primary) 20%, transparent)',
@@ -802,7 +825,7 @@ export const GraphSystem: React.FC<GraphSystemProps> = ({
 
       {missingConceptSuggestions && missingConceptSuggestions.length > 0 && (
         <div
-          className="space-y-2 px-4 py-3 rounded-[18px]"
+          className="space-y-2 px-4 py-3 rounded-[18px] max-h-56 overflow-y-auto"
           style={{
             background: 'color-mix(in srgb, var(--primary) 8%, transparent)',
             border: '1px solid color-mix(in srgb, var(--primary) 20%, transparent)',
@@ -869,6 +892,7 @@ export const GraphSystem: React.FC<GraphSystemProps> = ({
               centerOnNode={centerRequest}
               initialView={initialGraphView}
               onViewChange={handleGraphViewChange}
+              detailPanelOpen={!!graph.selection.selectedNodeId && !openDocument && !activeActivity}
             />
             {/* Kaltstart (Konzept-Risiko "Der leere Graph"): ohne Führung bleibt
                 die Fläche einschüchternd. Wrapper pointer-events-none, damit

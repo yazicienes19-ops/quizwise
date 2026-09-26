@@ -6,7 +6,7 @@ import { motion, AnimatePresence, useReducedMotion } from 'framer-motion';
 import type { GraphState, GraphNodePosition, GraphEntityChange, HierarchyLevel } from '../services/graph/types';
 import { buildGraphIndex, neighborIds, outgoingEdges, incomingEdges } from '../services/graph/graphIndex';
 import { computeNodeInsights, groupInsightsByNode, type NodeInsightType } from '../services/graph/graphInsightsService';
-import { resolveOverlaps } from '../services/graph/graphLayoutEngine';
+import { resolveOverlaps, findFreePosition } from '../services/graph/graphLayoutEngine';
 import {
   type GraphSelectionState, selectNode, selectEdge, clearSelection, hoverNode, isSelected, isHovered, isEdgeSelected,
 } from '../services/graph/graphSelectionService';
@@ -109,6 +109,10 @@ export interface GraphCanvasProps {
    *  (d3-'end'-Event, kein Feuern während der Bewegung) — Aufrufer speichert
    *  ihn z.B. pro Graph in localStorage. */
   onViewChange?: (view: ZoomTransform) => void;
+  /** Liegt die Detailspalte gerade über der Fläche? Ab sm verdeckt sie rechts
+   *  DETAIL_PANEL_WIDTH px (s. GraphNodeDetailPanel). Werkzeugknöpfe, Einpassen
+   *  und das ausgewählte Konzept weichen dann in den sichtbaren Bereich aus. */
+  detailPanelOpen?: boolean;
 }
 
 export interface ZoomTransform { x: number; y: number; k: number; }
@@ -164,6 +168,9 @@ const NODE_ID_ATTR = 'data-graph-node-id';
 /** Unsichtbarer Trefferbereich einer Kante (zählt beim Doppeltippen nicht als freie Fläche). */
 const EDGE_HIT_ATTR = 'data-graph-edge-hit';
 const HANDLE_HIT_EXTRA = COARSE_POINTER ? 18 : 8;
+/** Breite der Detailspalte ab sm (sm:max-w-[340px] in GraphNodeDetailPanel). */
+const DETAIL_PANEL_WIDTH = 340;
+const WIDE_LAYOUT_QUERY = '(min-width: 640px)';
 const EDGE_HIT_WIDTH_PX = COARSE_POINTER ? 28 : 16;
 // Kein hartes Zeichen-Limit mehr für Kantenlabels (User-Vorgabe 2026-08-04,
 // verschärft 2026-08-05: "Beziehung soll immer lesbar sein, auch wenn sie
@@ -273,7 +280,9 @@ const WN_THEME: Record<'night' | 'day', WnTheme> = {
     tier: {
       focus: { bg: '#D9A94E', border: 'rgba(255,242,200,.9)', text: '#1B2A4A', glow: '#D9A94E', glowOpacity: .4, opacity: 1, blurPx: 0 },
       neighbor: { bg: '#4A7BD4', border: 'rgba(150,190,255,.55)', text: '#EAF0FD', glow: '#4A7BD4', glowOpacity: .3, opacity: .97, blurPx: 0 },
-      far: { bg: '#26355C', border: 'rgba(90,110,160,.16)', text: '#7186B4', glow: '#1B2740', glowOpacity: .1, opacity: .38, blurPx: 1.1 },
+      // Ohne Unschärfe und mit lesbarem Titel (Nutzungstest 26.09.2026: beim
+      // Aufbauen sind die fernen Konzepte genau die, die man als Nächstes verbindet).
+      far: { bg: '#26355C', border: 'rgba(90,110,160,.3)', text: '#B7C4E4', glow: '#1B2740', glowOpacity: .1, opacity: .72, blurPx: 0 },
     },
     edge: { focus: '#7B93C8', neighbor: '#4E6CA8', far: '#26355C' },
     label: { focus: '#F3D48B', far: '#8CA0D0' },
@@ -299,7 +308,7 @@ const WN_THEME: Record<'night' | 'day', WnTheme> = {
       // Fern-Nodes waschen ins PAPIER aus (heller + entsättigt statt
       // mittleres Schiefergrau) — das Hellmodus-Gegenstück dazu, wie
       // Fern-Nodes im Nachtmodus in die Dunkelheit versinken.
-      far: { bg: '#C9CBD6', border: 'rgba(130,138,165,.14)', text: '#878DA0', glow: '#DADCE2', glowOpacity: .06, opacity: .42, blurPx: 1.1 },
+      far: { bg: '#C9CBD6', border: 'rgba(130,138,165,.3)', text: '#3F4659', glow: '#DADCE2', glowOpacity: .06, opacity: .72, blurPx: 0 },
     },
     edge: { focus: '#AC8840', neighbor: '#7D8BB8', far: '#C9CDDA' },
     label: { focus: '#8A5A1E', far: '#8A93B4' },
@@ -438,7 +447,9 @@ function splitWordWithHyphen(word: string, maxWidthPx: number, fontSizePx: numbe
   return [`${word.slice(0, splitAt)}-`, word.slice(splitAt)];
 }
 
-const TITLE_FONT_SIZE_STEPS = [10, 9, 8];
+// Nutzungstest 26.09.2026 (User-Entscheidung "lesbar"): 10 px waren beim
+// üblichen Einpass-Zoom um 0,8 nur ~8 px auf dem Bildschirm.
+const TITLE_FONT_SIZE_STEPS = [13, 12, 11, 10];
 // Harte Obergrenze an Zeilen für Node-Titel — verhindert, dass ein
 // pathologisch langer Titel die Kapsel unbegrenzt hoch wachsen lässt.
 // Alles bis hierhin ist "mehrzeilige Darstellung" (User-Vorgabe
@@ -481,6 +492,18 @@ function wrapTitleAllLines(
     i = j;
   }
   return { lines, truncated: false };
+}
+
+/** Kapsel-Halbachsen für einen Titel (s. nodeExtentsOf in GraphCanvas). */
+function extentsForTitle(title: string, level: HierarchyLevel | undefined, baseR: number): { rx: number; ry: number } {
+  const fontWeight = level === 'hauptthema' ? 800 : level === 'detail' ? 600 : 700;
+  const singleLineWidth = measureTextWidthPx(title, TITLE_FONT_SIZE_STEPS[0], fontWeight);
+  const desiredRx = Math.max(baseR, singleLineWidth / (2 * 0.86) + 6);
+  const rx = Math.min(desiredRx, baseR * 2.6);
+  const maxWidth = rx * 2 * 0.86;
+  const { lines } = wrapTitleAdaptive(title, maxWidth, fontWeight);
+  const ry = lines.length <= 1 ? baseR : baseR * (1 + 0.22 * (lines.length - 1));
+  return { rx, ry };
 }
 
 /** Letzter Fallback vor "…" (User-Vorgabe 2026-08-04: "Keine '...' wenn es
@@ -736,9 +759,20 @@ const GraphNodeView = React.memo(function GraphNodeView({
 });
 
 export const GraphCanvas: React.FC<GraphCanvasProps> = ({
-  state, history, selection, onChange, onSelectionChange, onEntityChanged, getState, isDark, showInsights, onExplainEdge, centerOnNode, initialView, onViewChange,
+  state, history, selection, onChange, onSelectionChange, onEntityChanged, getState, isDark, showInsights, onExplainEdge, centerOnNode, initialView, onViewChange, detailPanelOpen = false,
 }) => {
   const svgRef = useRef<SVGSVGElement | null>(null);
+  // Auf dem Handy ist die Detailspalte eine Leiste unten und verdeckt rechts nichts.
+  const [wideLayout, setWideLayout] = useState(() => typeof window !== 'undefined' && window.matchMedia(WIDE_LAYOUT_QUERY).matches);
+  useEffect(() => {
+    const mq = window.matchMedia(WIDE_LAYOUT_QUERY);
+    const update = () => setWideLayout(mq.matches);
+    mq.addEventListener('change', update);
+    return () => mq.removeEventListener('change', update);
+  }, []);
+  const rightInset = detailPanelOpen && wideLayout ? DETAIL_PANEL_WIDTH : 0;
+  const rightInsetRef = useRef(rightInset);
+  rightInsetRef.current = rightInset;
   const gRef = useRef<SVGGElement | null>(null);
   const zoomBehaviorRef = useRef<d3.ZoomBehavior<SVGSVGElement, unknown> | null>(null);
   const [zoomTransform, setZoomTransform] = useState<ZoomTransform>({ x: 0, y: 0, k: 1 });
@@ -933,15 +967,15 @@ export const GraphCanvas: React.FC<GraphCanvasProps> = ({
     const node = state.nodesById.get(nodeId);
     const baseR = radiusOf(nodeId);
     if (!node) return { rx: baseR, ry: baseR };
-    const fontWeight = node.hierarchyLevel === 'hauptthema' ? 800 : node.hierarchyLevel === 'detail' ? 600 : 700;
-    const singleLineWidth = measureTextWidthPx(node.title, 10, fontWeight);
-    const desiredRx = Math.max(baseR, singleLineWidth / (2 * 0.86) + 6);
-    const rx = Math.min(desiredRx, baseR * 2.1);
-    const maxWidth = rx * 2 * 0.86;
-    const { lines } = wrapTitleAdaptive(node.title, maxWidth, fontWeight);
-    const ry = lines.length <= 1 ? baseR : baseR * (1 + 0.22 * (lines.length - 1));
-    return { rx, ry };
+    return extentsForTitle(node.title, node.hierarchyLevel, baseR);
   }, [state.nodesById, radiusOf]);
+
+  // Platzbedarf aller übrigen aktiven Nodes, für findFreePosition beim
+  // Anlegen/Ablegen/Umbenennen (Nutzungstest 26.09.2026: Konzepte konnten
+  // übereinander landen und sich gegenseitig verdecken).
+  const footprintsExcept = (nodeId: string | null) => activeNodes
+    .filter(n => n.id !== nodeId)
+    .map(n => ({ position: positionOf(n.id), ...nodeExtentsOf(n.id) }));
 
   // Am jeweiligen Node-Rand (Ellipse, s. nodeExtentsOf) gekürzte Endpunkte
   // einer Kante plus Mittelpunkt — einmal berechnet, sowohl fürs
@@ -1039,14 +1073,42 @@ export const GraphCanvas: React.FC<GraphCanvasProps> = ({
 
   // Finale Render-Geometrie je Kante — einmal je Positions-/Bündel-Stufen-
   // Änderung berechnet, vom Rendering UND den Overlays gelesen.
+  // Beschriftung nicht mitten auf ein fremdes Konzept legen (Nutzungstest
+  // 26.09.2026: "gehört zu" lag unlesbar in "Behaviorismus", weil die Kante
+  // hinter ihm durchlief). Liegt der Mittelpunkt in einem anderen Konzept,
+  // rutscht die Beschriftung entlang der Kante an die nächste freie Stelle.
   const edgeRenderById = useMemo(() => {
     const map = new Map<string, EdgeRenderGeom>();
+    const LABEL_PAD = 8;
+    const footprints = activeNodes.map(n => ({ id: n.id, pos: positionOf(n.id), ...nodeExtentsOf(n.id) }));
     for (const edge of visibleEdges) {
       const g = computeEdgeGeometry(edge);
-      map.set(edge.id, { ...g, ...curveForEndpoints(g.x1, g.y1, g.x2, g.y2) });
+      const curve = curveForEndpoints(g.x1, g.y1, g.x2, g.y2);
+      const pointAt = (t: number) => {
+        if (curve.cx === null || curve.cy === null) return { x: g.x1 + (g.x2 - g.x1) * t, y: g.y1 + (g.y2 - g.y1) * t };
+        const u = 1 - t;
+        return { x: u * u * g.x1 + 2 * u * t * curve.cx + t * t * g.x2, y: u * u * g.y1 + 2 * u * t * curve.cy + t * t * g.y2 };
+      };
+      const minX = Math.min(g.x1, g.x2, curve.cx ?? g.x1), maxX = Math.max(g.x1, g.x2, curve.cx ?? g.x1);
+      const minY = Math.min(g.y1, g.y2, curve.cy ?? g.y1), maxY = Math.max(g.y1, g.y2, curve.cy ?? g.y1);
+      const blockers = footprints.filter(f => f.id !== edge.sourceNodeId && f.id !== edge.targetNodeId
+        && f.pos.x + f.rx >= minX && f.pos.x - f.rx <= maxX && f.pos.y + f.ry >= minY && f.pos.y - f.ry <= maxY);
+      let mid = { x: curve.midX, y: curve.midY };
+      if (blockers.length > 0) {
+        const inside = (p: { x: number; y: number }) => blockers.some(f => {
+          const dx = (p.x - f.pos.x) / (f.rx + LABEL_PAD);
+          const dy = (p.y - f.pos.y) / (f.ry + LABEL_PAD);
+          return dx * dx + dy * dy < 1;
+        });
+        if (inside(mid)) {
+          const free = [0.4, 0.6, 0.3, 0.7, 0.2, 0.8].map(pointAt).find(p => !inside(p));
+          if (free) mid = free;
+        }
+      }
+      map.set(edge.id, { ...g, ...curve, midX: mid.x, midY: mid.y });
     }
     return map;
-  }, [visibleEdges, computeEdgeGeometry, curveForEndpoints]);
+  }, [visibleEdges, activeNodes, positionOf, nodeExtentsOf, computeEdgeGeometry, curveForEndpoints]);
 
   // Kantenlabels (Umbruch + Parallel-Versatz) — die teure Textmessung läuft
   // nur bei Änderungen der Kantenmenge/-typen, nicht bei jedem Zoom-Tick.
@@ -1147,7 +1209,8 @@ export const GraphCanvas: React.FC<GraphCanvasProps> = ({
   // ── Pan/Zoom (Muster aus MindmapCanvas.tsx, angepasst) ──────────────────
   /** Transform, der die gegebenen Nodes mittig einpasst (max. Zoom 1.2). */
   const fitTransformFor = useCallback((nodes: typeof activeNodes) => {
-    const svgW = svgRef.current?.clientWidth || 800;
+    // Nur die sichtbare Breite links der Detailspalte zählt.
+    const svgW = Math.max(200, (svgRef.current?.clientWidth || 800) - rightInsetRef.current);
     const svgH = svgRef.current?.clientHeight || 500;
     const minX = Math.min(...nodes.map(n => positionOf(n.id).x - nodeExtentsOf(n.id).rx));
     const maxX = Math.max(...nodes.map(n => positionOf(n.id).x + nodeExtentsOf(n.id).rx));
@@ -1263,7 +1326,7 @@ export const GraphCanvas: React.FC<GraphCanvasProps> = ({
     if (!centerOnNode || !svgRef.current || !zoomBehaviorRef.current) return;
     const node = state.nodesById.get(centerOnNode.id);
     if (!node || node.archivedAt !== undefined) return;
-    const svgW = svgRef.current.clientWidth || 800;
+    const svgW = Math.max(200, (svgRef.current.clientWidth || 800) - rightInset);
     const svgH = svgRef.current.clientHeight || 500;
     const k = Math.max(zoomTransform.k, 0.9);
     const tx = svgW / 2 - k * positionOf(node.id).x;
@@ -1271,6 +1334,29 @@ export const GraphCanvas: React.FC<GraphCanvasProps> = ({
     d3.select(svgRef.current).transition().duration(350)
       .call(zoomBehaviorRef.current.transform, d3.zoomIdentity.translate(tx, ty).scale(k));
   }, [centerOnNode?.nonce]); // eslint-disable-line react-hooks/exhaustive-deps
+
+  // Ausgewähltes (oder eben angelegtes) Konzept samt Verbindungspunkt nie
+  // unter der Detailspalte lassen: minimal seitlich schieben, bis es sichtbar
+  // ist (Nutzungstest 26.09.2026: rechts angelegte Konzepte verschwanden
+  // hinter der Spalte, Beziehungen ließen sich dort nicht mehr ziehen).
+  useEffect(() => {
+    const id = selection.selectedNodeId;
+    if (!id || !svgRef.current || !zoomBehaviorRef.current) return;
+    const svgW = svgRef.current.clientWidth || 800;
+    const { x, y, k } = zoomTransform;
+    const pos = positionOf(id);
+    const { rx } = nodeExtentsOf(id);
+    const margin = 16;
+    const left = x + k * (pos.x - rx) - margin;
+    const right = x + k * (pos.x + rx + HANDLE_OFFSET + HANDLE_RADIUS) + margin;
+    const visibleRight = svgW - rightInset;
+    let dx = 0;
+    if (right > visibleRight) dx = visibleRight - right;
+    if (left + dx < 0) dx = -left;
+    if (Math.abs(dx) < 1) return;
+    d3.select(svgRef.current).transition().duration(250)
+      .call(zoomBehaviorRef.current.transform, d3.zoomIdentity.translate(x + dx, y).scale(k));
+  }, [selection.selectedNodeId, rightInset]); // eslint-disable-line react-hooks/exhaustive-deps
 
   const zoomBy = (factor: number) => {
     if (!svgRef.current || !zoomBehaviorRef.current) return;
@@ -1321,7 +1407,14 @@ export const GraphCanvas: React.FC<GraphCanvasProps> = ({
     // leeren Titel) — die Bearbeitung schließt einfach, ohne den
     // bestehenden Titel zu verwerfen. Kein Fehler-UI nötig dafür.
     if (trimmed.length > 0) {
-      const result = recordUpdateNode(history, stateForCommit(), editingNodeId, { title: trimmed });
+      // Ein längerer Titel macht die Kapsel breiter; ragt sie dann in ein
+      // Nachbarkonzept, rückt NUR dieses Konzept auf den nächsten freien Platz.
+      const edited = stateForCommit().nodesById.get(editingNodeId);
+      const current = positionOf(editingNodeId);
+      const size = extentsForTitle(trimmed, edited?.hierarchyLevel, radiusOf(editingNodeId));
+      const free = findFreePosition(current, size, footprintsExcept(editingNodeId));
+      const moved = free.x !== current.x || free.y !== current.y;
+      const result = recordUpdateNode(history, stateForCommit(), editingNodeId, moved ? { title: trimmed, position: free } : { title: trimmed });
       if (!result.error && result.entity) {
         onChange({ state: result.state, history: result.history });
         onEntityChanged?.({ kind: 'node', entity: result.entity });
@@ -1368,7 +1461,8 @@ export const GraphCanvas: React.FC<GraphCanvasProps> = ({
         return;
       }
       if (nodeDrag.moved) {
-        const result = recordUpdateNode(history, stateForCommit(), nodeDrag.nodeId, { position: nodeDrag.currentPos });
+        const dropAt = findFreePosition(nodeDrag.currentPos, nodeExtentsOf(nodeDrag.nodeId), footprintsExcept(nodeDrag.nodeId));
+        const result = recordUpdateNode(history, stateForCommit(), nodeDrag.nodeId, { position: dropAt });
         if (!result.error && result.entity) {
           onChange({ state: result.state, history: result.history });
           onEntityChanged?.({ kind: 'node', entity: result.entity });
@@ -1661,7 +1755,13 @@ export const GraphCanvas: React.FC<GraphCanvasProps> = ({
   };
 
   function createNodeAt(clientX: number, clientY: number) {
-    const position = clientToGraphPoint(clientX, clientY);
+    const hierarchyLevelForNew = activeNodes.length === 0 ? 'hauptthema' as const : undefined;
+    const baseRForNew = hierarchyLevelForNew ? HIERARCHY_RADIUS[hierarchyLevelForNew] : NODE_RADIUS;
+    const position = findFreePosition(
+      clientToGraphPoint(clientX, clientY),
+      extentsForTitle(t('kg.newConceptTitle'), hierarchyLevelForNew, baseRForNew),
+      footprintsExcept(null),
+    );
     // Echter Bug (User-Fund 2026-08-04, "nur EIN Wissensnetz"): collectionId
     // fehlte hier komplett — neue Nodes landeten unabhängig vom gerade
     // aktiven Fach immer ohne Fach-Zuordnung, dadurch verschwanden sie beim
@@ -1674,7 +1774,7 @@ export const GraphCanvas: React.FC<GraphCanvasProps> = ({
     // golden starten statt erst über den Hierarchie-Klick-Zyklus manuell
     // dorthin geschaltet werden zu müssen. Nur beim allerersten Node
     // (activeNodes leer), jeder weitere bleibt ohne Vorbelegung wie bisher.
-    const hierarchyLevel = activeNodes.length === 0 ? 'hauptthema' : undefined;
+    const hierarchyLevel = hierarchyLevelForNew;
     const result = recordCreateNode(history, commitState, { title: t('kg.newConceptTitle'), position, collectionId, hierarchyLevel });
     if (!result.error && result.entity) {
       onChange({ state: result.state, history: result.history });
@@ -1759,7 +1859,7 @@ export const GraphCanvas: React.FC<GraphCanvasProps> = ({
           </p>
         </div>
       )}
-      <div className="absolute top-3 right-3 z-10 flex gap-1.5">
+      <div className="absolute top-3 z-10 flex gap-1.5" style={{ right: 12 + rightInset, transition: 'right .2s ease' }}>
         <button onClick={createNodeInView} aria-label={t('kg.canvas.addConcept')} title={t('kg.canvas.addConcept')} className="h-8 px-2.5 flex items-center gap-1 rounded-lg text-[13px] font-semibold" style={{ background: wnTheme.chipBg, border: `1px solid ${wnTheme.chipBorder}`, color: wnTheme.chipText, backdropFilter: 'blur(6px)' }}>
           <span aria-hidden="true">+</span><span>{t('kg.canvas.addConceptShort')}</span>
         </button>
@@ -1903,7 +2003,7 @@ export const GraphCanvas: React.FC<GraphCanvasProps> = ({
                   borderColor={tc.border}
                   borderWidth={(node.hierarchyLevel ? HIERARCHY_STROKE_WIDTH[node.hierarchyLevel] : HIERARCHY_STROKE_WIDTH.unterthema) + (selected ? SELECTED_STROKE_BONUS : 0)}
                   titleLines={editingNodeId === node.id || !title ? NO_EDGE_LABEL_LINES : title.lines}
-                  titleFontSize={title?.fontSize ?? 10}
+                  titleFontSize={title?.fontSize ?? TITLE_FONT_SIZE_STEPS[0]}
                   titleFontWeight={title?.fontWeight ?? 700}
                   titleColor={node.color ? '#fff' : tc.text}
                   breathe={tier === 'focus'}
@@ -1982,7 +2082,7 @@ export const GraphCanvas: React.FC<GraphCanvasProps> = ({
       {selection.selectedEdgeId && edgeEditDraft && (() => {
         const edge = state.edgesById.get(selection.selectedEdgeId!);
         if (!edge) return null;
-        const { midX, midY } = computeEdgeGeometry(edge);
+        const { midX, midY } = edgeRenderById.get(edge.id) ?? computeEdgeGeometry(edge);
         // Derselbe Versatz wie beim Label-Rendering oben (inkl. der
         // größeren Schrittweite bei zweizeiligen Labels) — sonst würde das
         // Overlay beim Auswählen einer von mehreren parallelen Kanten an

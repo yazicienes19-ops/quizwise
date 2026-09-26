@@ -126,6 +126,24 @@ export const GraphNodeDetailPanel: React.FC<GraphNodeDetailPanelProps> = ({
   // Doppelklick auf den Node im Canvas. Gleiches Entwurf-Muster wie
   // description/notes: eigener Draft, nur bei Node-Wechsel neu initialisiert.
   const [titleDraft, setTitleDraft] = useState(node?.title ?? '');
+  // Änderungen von außen (Umbenennen direkt im Netz, Rückgängig/Wiederholen,
+  // Zusammenführen) in die Entwürfe übernehmen, solange das jeweilige Feld
+  // nicht gerade bearbeitet wird. Sonst zeigte das Panel den alten Stand, und
+  // ein Klick ins Feld und wieder heraus schrieb ihn beim Blur zurück
+  // (Nutzungstest 26.09.2026: "Neues Konzept" überschrieb die Umbenennung).
+  const titleInputRef = useRef<HTMLInputElement | null>(null);
+  const descriptionRef = useRef<HTMLTextAreaElement | null>(null);
+  const notesRef = useRef<HTMLTextAreaElement | null>(null);
+  const isEditing = (el: HTMLElement | null) => el !== null && document.activeElement === el;
+  useEffect(() => {
+    if (!isEditing(titleInputRef.current)) setTitleDraft(node?.title ?? '');
+  }, [node?.title]);
+  useEffect(() => {
+    if (!isEditing(descriptionRef.current)) setDescriptionDraft(node?.description ?? '');
+  }, [node?.description]);
+  useEffect(() => {
+    if (!isEditing(notesRef.current)) setNotesDraft(node?.notes ?? '');
+  }, [node?.notes]);
   // Nur Handy: Leiste eingeklappt starten, damit das Netz bedienbar bleibt.
   const [sheetExpanded, setSheetExpanded] = useState(false);
   useEffect(() => { setSheetExpanded(false); }, [nodeId]);
@@ -387,6 +405,7 @@ export const GraphNodeDetailPanel: React.FC<GraphNodeDetailPanelProps> = ({
       <div className="flex items-start gap-2 p-4 border-b" style={{ borderColor: 'var(--border-color)' }}>
         <div className="min-w-0 flex-1">
           <input
+            ref={titleInputRef}
             value={titleDraft}
             onChange={e => setTitleDraft(e.target.value)}
             onBlur={commitTitle}
@@ -495,10 +514,11 @@ export const GraphNodeDetailPanel: React.FC<GraphNodeDetailPanelProps> = ({
               title={t('kg.panel.improveAction')}
               className="h-5 px-2 flex items-center justify-center rounded-md text-[13px] font-semibold text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800 hover:text-slate-600 dark:hover:text-slate-300 disabled:opacity-40 transition-colors"
             >
-              {isImproving ? '…' : 'Verbessern'}
+              {isImproving ? '…' : t('kg.panel.improveShort')}
             </button>
           </div>
           <textarea
+            ref={descriptionRef}
             value={descriptionDraft}
             placeholder={t('kg.panel.descriptionPlaceholder')}
             onChange={e => setDescriptionDraft(e.target.value)}
@@ -545,6 +565,7 @@ export const GraphNodeDetailPanel: React.FC<GraphNodeDetailPanelProps> = ({
             <EmojiImage emoji="📝" size={11} /> {t('kg.panel.notes')}
           </p>
           <textarea
+            ref={notesRef}
             value={notesDraft}
             placeholder={t('kg.panel.notesPlaceholder')}
             onChange={e => setNotesDraft(e.target.value)}

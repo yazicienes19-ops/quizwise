@@ -157,3 +157,59 @@ export function resolveOverlaps(nodes: LayoutNodeInput[], edges: LayoutEdgeInput
   }
   return positions;
 }
+
+/** Platzbedarf eines Nodes auf der Fläche: Mittelpunkt plus Halbachsen der Kapsel. */
+export interface NodeFootprint {
+  position: GraphNodePosition;
+  rx: number;
+  ry: number;
+}
+
+/** Mindestabstand zwischen zwei Kapseln, damit Ränder und Verbindungspunkte frei bleiben. */
+export const NODE_GAP = 16;
+const SEARCH_STEP = 10;
+const SEARCH_RINGS = 80;
+
+function overlaps(pos: GraphNodePosition, rx: number, ry: number, other: NodeFootprint, gap: number): boolean {
+  const dx = (pos.x - other.position.x) / (rx + other.rx + gap);
+  const dy = (pos.y - other.position.y) / (ry + other.ry + gap);
+  return dx * dx + dy * dy < 1;
+}
+
+/**
+ * Nächster freier Platz für GENAU EINEN Node, den der Nutzer gerade selbst
+ * platziert (anlegen, loslassen nach dem Ziehen, breiter durch Umbenennen).
+ * Liegt die gewünschte Stelle frei, bleibt sie exakt so. Sonst wird spiralförmig
+ * nach außen der nächstgelegene freie Punkt gesucht. Andere Nodes werden nie
+ * bewegt, die Regel "manuelle Position ist die Wahrheit" (Datei-Kommentar oben)
+ * bleibt damit gewahrt.
+ *
+ * Grund (Nutzungstest 26.09.2026): Ein neues Konzept landete halb auf einem
+ * bestehenden und verdeckte es. Beziehungen, die zum verdeckten Konzept
+ * gezogen wurden, landeten unbemerkt beim oberen.
+ */
+export function findFreePosition(
+  desired: GraphNodePosition,
+  size: { rx: number; ry: number },
+  others: NodeFootprint[],
+  gap: number = NODE_GAP,
+): GraphNodePosition {
+  const isFree = (pos: GraphNodePosition) => others.every(o => !overlaps(pos, size.rx, size.ry, o, gap));
+  if (isFree(desired)) return desired;
+  for (let ring = 1; ring <= SEARCH_RINGS; ring++) {
+    const radius = ring * SEARCH_STEP;
+    const steps = Math.max(8, Math.round((2 * Math.PI * radius) / SEARCH_STEP));
+    let best: GraphNodePosition | null = null;
+    let bestScore = Infinity;
+    for (let i = 0; i < steps; i++) {
+      const angle = (i / steps) * 2 * Math.PI;
+      // Waagerecht ausweichen bevorzugen: Kapseln sind breiter als hoch.
+      const candidate = { x: desired.x + Math.cos(angle) * radius * 1.4, y: desired.y + Math.sin(angle) * radius };
+      if (!isFree(candidate)) continue;
+      const score = Math.hypot(candidate.x - desired.x, candidate.y - desired.y);
+      if (score < bestScore) { best = candidate; bestScore = score; }
+    }
+    if (best) return best;
+  }
+  return desired;
+}

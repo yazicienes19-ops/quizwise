@@ -141,6 +141,19 @@ export function useKnowledgeGraph({ scope, userId }: UseKnowledgeGraphOptions): 
   // das niemand auf.
   useEffect(() => persistence.initAutoFlush(), []);
 
+  // Offline gescheiterte Speicherungen nachholen, sobald das Netz zurück ist.
+  // Bisher passierte das erst beim nächsten Öffnen des Wissensnetzes (pullSince);
+  // bis dahin fehlte die Änderung auf anderen Geräten (Nutzungstest 26.09.2026).
+  useEffect(() => {
+    if (!userId) return;
+    const handleOnline = () => {
+      persistence.flushAllPendingCommits();
+      void sync.retryPendingWrites(userId, stateRef.current);
+    };
+    window.addEventListener('online', handleOnline);
+    return () => window.removeEventListener('online', handleOnline);
+  }, [userId]);
+
   const onChange = useCallback((next: { state: GraphState; history: GraphHistory }) => {
     stateRef.current = next.state;
     setState(next.state);

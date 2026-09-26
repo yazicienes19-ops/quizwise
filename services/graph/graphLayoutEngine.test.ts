@@ -1,6 +1,6 @@
 import { describe, it, expect } from 'vitest';
 import {
-  computeForceLayout, computeBounds, findOverlapClusters, resolveOverlaps, type LayoutNodeInput,
+  computeForceLayout, computeBounds, findOverlapClusters, resolveOverlaps, findFreePosition, NODE_GAP, type LayoutNodeInput,
 } from './graphLayoutEngine';
 
 const node = (id: string, x: number, y: number, pinned = false): LayoutNodeInput => ({
@@ -104,5 +104,36 @@ describe('resolveOverlaps', () => {
     const b = result.get('b')!;
     const distance = Math.hypot(a.x - b.x, a.y - b.y);
     expect(distance).toBeGreaterThan(5); // nicht mehr überlappend
+  });
+});
+
+describe('findFreePosition', () => {
+  const at = (x: number, y: number, rx = 60, ry = 32) => ({ position: { x, y }, rx, ry });
+  const clear = (p: { x: number; y: number }, o: ReturnType<typeof at>, size = { rx: 60, ry: 32 }) => {
+    const dx = (p.x - o.position.x) / (size.rx + o.rx + NODE_GAP);
+    const dy = (p.y - o.position.y) / (size.ry + o.ry + NODE_GAP);
+    return dx * dx + dy * dy >= 1 - 1e-9;
+  };
+
+  it('behält eine freie Wunschposition exakt bei', () => {
+    expect(findFreePosition({ x: 500, y: 500 }, { rx: 60, ry: 32 }, [at(0, 0)])).toEqual({ x: 500, y: 500 });
+  });
+
+  it('weicht bei teilweiser Überlappung auf den nächsten freien Platz aus', () => {
+    const other = at(0, 0);
+    const result = findFreePosition({ x: 30, y: 10 }, { rx: 60, ry: 32 }, [other]);
+    expect(clear(result, other)).toBe(true);
+    // nächstgelegen: nicht beliebig weit weg geschoben
+    expect(Math.hypot(result.x - 30, result.y - 10)).toBeLessThan(200);
+  });
+
+  it('findet auch zwischen mehreren Nodes einen Platz, der keinen berührt', () => {
+    const others = [at(0, 0), at(150, 0), at(0, 90), at(150, 90)];
+    const result = findFreePosition({ x: 75, y: 45 }, { rx: 60, ry: 32 }, others);
+    for (const o of others) expect(clear(result, o)).toBe(true);
+  });
+
+  it('ohne andere Nodes bleibt die Position unverändert', () => {
+    expect(findFreePosition({ x: -3, y: 7 }, { rx: 40, ry: 40 }, [])).toEqual({ x: -3, y: 7 });
   });
 });
