@@ -1180,7 +1180,7 @@ export const de = {
   'kg.search.match.tag-exact': 'Tag',
   'kg.search.match.tag-contains': 'Tag enthält',
   'kg.empty.title': 'Dein Wissensnetz beginnt hier',
-  'kg.empty.body': 'Doppelklick oder Doppeltippen auf die freie Fläche (oder der Knopf „+ Konzept“) legt ein Konzept an. Wähle ein Konzept aus und zieh vom Punkt an seinem Rand eine Beziehung zu einem anderen. Alles Weitere wächst mit.',
+  'kg.empty.body': 'Doppelklick oder Doppeltippen auf die freie Fläche (oder der Knopf „+ Konzept“) legt ein Konzept an. Zieh vom Rand eines Konzepts eine Beziehung zu einem anderen, in der Nähe loslassen genügt. Alles Weitere wächst mit.',
   'kg.empty.cta': 'Erstes Konzept anlegen',
   'kg.empty.hint': 'Jedes Konzept lässt sich später direkt lernen: Karten, Quiz, Feynman oder Tutor.',
   'kg.newConceptTitle': 'Neues Konzept',

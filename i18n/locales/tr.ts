@@ -1178,7 +1178,7 @@ export const tr: Translations = {
   'kg.search.match.tag-exact': 'Etiket',
   'kg.search.match.tag-contains': 'Etiket içerir',
   'kg.empty.title': 'Bilgi ağın burada başlıyor',
-  'kg.empty.body': 'Boş alana çift tıkla veya çift dokun (ya da „+ Kavram“ düğmesi) ve bir kavram ekle. Bir kavramı seç ve kenarındaki noktadan başka bir kavrama sürükleyerek ilişki kur. Gerisi zamanla büyür.',
+  'kg.empty.body': 'Boş alana çift tıkla veya çift dokun (ya da „+ Kavram“ düğmesi) ve bir kavram ekle. Bir kavramın kenarından başka bir kavrama sürükleyerek ilişki kur, yakınında bırakmak yeterli. Gerisi zamanla büyür.',
   'kg.empty.cta': 'İlk kavramı oluştur',
   'kg.empty.hint': 'Her kavramı sonra doğrudan öğrenebilirsin: kart, test, Feynman veya eğitmen.',
   'kg.newConceptTitle': 'Yeni kavram',

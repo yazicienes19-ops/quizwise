@@ -11,6 +11,13 @@ const email = `e2e-graph-${Date.now()}@studearc.test`; const password = 'E2e-Gra
 const { data: created, error: cErr } = await admin.auth.admin.createUser({ email, password, email_confirm: true });
 if (cErr) { console.log('createUser FEHLER', cErr.message); process.exit(1); }
 const uid = created.user.id;
+// Greifpunkt auf dem Verbindungsring eines Konzepts (rechts oder oben), als kleine Box.
+const ringGrip = async (page, name, side = 'right') => {
+  const r = await page.locator('[data-graph-node-id]', { hasText: name }).first().locator('[data-graph-connect-ring]').boundingBox();
+  if (!r) return null;
+  const [x, y] = side === 'top' ? [r.x + r.width / 2, r.y] : [r.x + r.width, r.y + r.height / 2];
+  return { x: x - 2, y: y - 2, width: 4, height: 4 };
+};
 const ok = m => console.log('✓', m); const bad = m => console.log('✗', m);
 const browser = await chromium.launch();
 const init = () => { try { localStorage.setItem('studearc_onboarding_done', 'true'); localStorage.setItem('cookie_consent', 'accepted'); } catch {} };
@@ -50,9 +57,9 @@ try {
   const a = await nodeBox('Alpha'), b = await nodeBox('Beta');
   if (!a || !b) throw new Error('Konzepte nicht gefunden');
   await tap(a.x + a.width / 2, a.y + a.height / 2); await p.waitForTimeout(700);
-  const handle = await p.locator('[data-graph-node-id]', { hasText: 'Alpha' }).first().locator('circle[fill="transparent"]').boundingBox();
-  if (!handle) bad('Touch: Verbindungspunkt nach Antippen nicht sichtbar'); else {
-    ok(`Touch: Verbindungspunkt sichtbar (Trefferfläche ${Math.round(handle.width)} px)`);
+  const handle = await ringGrip(p, 'Alpha');
+  if (!handle) bad('Touch: Greifring nicht gefunden'); else {
+    ok('Touch: Greifring am Rand vorhanden');
     const bNow = await nodeBox('Beta');
     const x1 = handle.x + handle.width / 2, y1 = handle.y + handle.height / 2, x2 = bNow.x + bNow.width / 2, y2 = bNow.y + bNow.height / 2;
     await touch('touchStart', x1, y1); for (let i = 1; i <= 12; i++) { await touch('touchMove', x1 + (x2 - x1) * i / 12, y1 + (y2 - y1) * i / 12); await p.waitForTimeout(16); }
@@ -114,9 +121,10 @@ try {
   const e1 = await m.locator('[data-graph-node-id]', { hasText: 'Epsilon' }).first().boundingBox();
   const d1 = await m.locator('[data-graph-node-id]', { hasText: 'Delta' }).first().boundingBox();
   await m.mouse.click(e1.x + e1.width / 2, e1.y + e1.height / 2); await m.waitForTimeout(500);
-  const h2 = await m.locator('[data-graph-node-id]', { hasText: 'Epsilon' }).first().locator('circle[fill="transparent"]').boundingBox();
+  // Vom oberen Rand losziehen und NEBEN dem Ziel loslassen: der Magnet muss einrasten.
+  const h2 = await ringGrip(m, 'Epsilon', 'top');
   await m.mouse.move(h2.x + h2.width / 2, h2.y + h2.height / 2); await m.mouse.down();
-  await m.mouse.move(d1.x + d1.width / 2, d1.y + d1.height / 2, { steps: 12 }); await m.mouse.up(); await m.waitForTimeout(700);
+  await m.mouse.move(d1.x + d1.width + 12, d1.y + d1.height / 2, { steps: 12 }); await m.mouse.up(); await m.waitForTimeout(700);
   const r2 = m.locator('input:focus');
   if (await r2.count()) { await r2.fill('gehört zu'); await r2.press('Enter'); await m.waitForTimeout(800); (await m.getByText('gehört zu').count()) ? ok('Maus: Beziehung ziehen') : bad('Maus: Beziehung fehlt'); } else bad('Maus: Beziehungs-Eingabe fehlt');
   const [emx, emy] = await m.evaluate(() => {

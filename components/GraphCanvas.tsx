@@ -153,7 +153,6 @@ const SELECTED_STROKE_BONUS = 1.5;
 const COARSE_POINTER = typeof window !== 'undefined' && typeof window.matchMedia === 'function'
   && window.matchMedia('(pointer: coarse)').matches;
 const HANDLE_RADIUS = COARSE_POINTER ? 9 : 6;
-const HANDLE_OFFSET = COARSE_POINTER ? 20 : 14;
 
 // Wissensnetz-Coach, erster Baustein — Anzeigetexte für services/graph/graphInsightsService.ts.
 const INSIGHT_LABELS: Record<NodeInsightType, string> = {
@@ -167,7 +166,13 @@ const NODE_DATA_ATTR = 'data-graph-node';
 const NODE_ID_ATTR = 'data-graph-node-id';
 /** Unsichtbarer Trefferbereich einer Kante (zählt beim Doppeltippen nicht als freie Fläche). */
 const EDGE_HIT_ATTR = 'data-graph-edge-hit';
-const HANDLE_HIT_EXTRA = COARSE_POINTER ? 18 : 8;
+/** Greifring zum Verbinden (Nutzungstest 26.09.2026: der kleine Punkt rechts
+ *  war schwer zu treffen). Abstand des Rings vom Konzeptrand und Breite der
+ *  unsichtbaren Trefferzone, bei Finger-Bedienung großzügiger. */
+const CONNECT_RING_GAP = COARSE_POINTER ? 14 : 9;
+const CONNECT_RING_HIT = COARSE_POINTER ? 26 : 14;
+/** Magnet: so nah (Bildschirm-px) am Rand eines Konzepts rastet eine gezogene Beziehung ein. */
+const CONNECT_SNAP_PX = COARSE_POINTER ? 60 : 44;
 /** Breite der Detailspalte ab sm (sm:max-w-[340px] in GraphNodeDetailPanel). */
 const DETAIL_PANEL_WIDTH = 340;
 const WIDE_LAYOUT_QUERY = '(min-width: 640px)';
@@ -635,6 +640,8 @@ interface GraphNodeViewProps {
   titleLines: string[]; titleFontSize: number; titleFontWeight: number; titleColor: string;
   breathe: boolean;
   showHandle: boolean; handleColor: string;
+  /** Ziel einer gerade gezogenen Beziehung (Magnet hat eingerastet). */
+  isConnectTarget: boolean;
   insightText: string | null; insightDotFill: string; insightDotStroke: string;
   reduceMotion: boolean;
   onNodePointerDown: (e: React.PointerEvent, nodeId: string) => void;
@@ -649,7 +656,7 @@ interface GraphNodeViewProps {
 const GraphNodeView = React.memo(function GraphNodeView({
   nodeId, x, y, rx, ry, fill, glowColor, glowOpacity, bodyOpacity, blurPx,
   borderColor, borderWidth, titleLines, titleFontSize, titleFontWeight,
-  titleColor, breathe, showHandle, handleColor, insightText, insightDotFill,
+  titleColor, breathe, showHandle, handleColor, isConnectTarget, insightText, insightDotFill,
   insightDotStroke, reduceMotion, onNodePointerDown, onNodePointerUp,
   onTitleDoubleClick, onHoverChange, onHandlePointerDown, onKeySelect,
 }: GraphNodeViewProps) {
@@ -735,14 +742,33 @@ const GraphNodeView = React.memo(function GraphNodeView({
           </text>
         )}
       </g>
-      {showHandle && (
-        <g onPointerDown={e => onHandlePointerDown(e, nodeId)} style={{ cursor: 'crosshair' }}>
-          {/* Unsichtbarer, deutlich größerer Trefferbereich um den sichtbaren
-              Punkt — verpasste Klicks landen sonst auf dem Node darunter und
-              lösten unbeabsichtigt den Doppelklick-Titel-Editor aus. */}
-          <circle cx={rx + HANDLE_OFFSET} cy={0} r={HANDLE_RADIUS + HANDLE_HIT_EXTRA} fill="transparent" />
-          <circle cx={rx + HANDLE_OFFSET} cy={0} r={HANDLE_RADIUS} fill={handleColor} style={{ pointerEvents: 'none' }} />
-        </g>
+      {/* Greifring: von überall am Rand losziehen, nicht nur vom Punkt rechts.
+          Die Trefferzone ist immer da (unsichtbar), damit schon das Überfahren
+          des Rands den Ring einblendet; sichtbar wird er bei Hover/Auswahl. */}
+      <g onPointerDown={e => onHandlePointerDown(e, nodeId)} style={{ cursor: 'crosshair' }}>
+        <ellipse
+          data-graph-connect-ring=""
+          cx={0} cy={0} rx={rx + CONNECT_RING_GAP} ry={ry + CONNECT_RING_GAP}
+          fill="none" stroke="transparent" strokeWidth={CONNECT_RING_HIT}
+          style={{ pointerEvents: 'stroke' }}
+        />
+        {showHandle && (
+          <>
+            <ellipse
+              cx={0} cy={0} rx={rx + CONNECT_RING_GAP} ry={ry + CONNECT_RING_GAP}
+              fill="none" stroke={handleColor} strokeWidth={1.5} strokeDasharray="3 5" opacity={0.7}
+              style={{ pointerEvents: 'none' }}
+            />
+            <circle cx={rx + CONNECT_RING_GAP} cy={0} r={HANDLE_RADIUS} fill={handleColor} style={{ pointerEvents: 'none' }} />
+          </>
+        )}
+      </g>
+      {isConnectTarget && (
+        <ellipse
+          cx={0} cy={0} rx={rx + CONNECT_RING_GAP} ry={ry + CONNECT_RING_GAP}
+          fill="none" stroke={handleColor} strokeWidth={3}
+          style={{ pointerEvents: 'none', filter: `drop-shadow(0 0 6px ${handleColor})` }}
+        />
       )}
       {/* Wissensnetz-Coach: dezenter, immer sichtbarer Hinweis-Punkt — bewusst
           KEINE Warnfarbe (rot/rose ist app-weit für "kritisch/schwach"
@@ -1268,7 +1294,10 @@ export const GraphCanvas: React.FC<GraphCanvasProps> = ({
       // nicht die Canvas verschieben.
       // ctrlKey kommt beim Trackpad-Pinch als wheel-Event: das soll zoomen
       // (d3-Standard), sonst vergrößerte der Browser die ganze Seite.
-      .filter(event => (!event.ctrlKey || event.type === 'wheel') && !event.button && !(event.target as Element).closest(`[${NODE_DATA_ATTR}]`))
+      // Mausrad/Trackpad zoomt auch mit dem Zeiger über einem Konzept oder
+      // seinem Greifring (der Ring vergrößert die Konzeptfläche spürbar).
+      .filter(event => (!event.ctrlKey || event.type === 'wheel') && !event.button
+        && (event.type === 'wheel' || !(event.target as Element).closest(`[${NODE_DATA_ATTR}]`)))
       .on('zoom', event => {
         g.attr('transform', event.transform.toString());
         setZoomTransform({ x: event.transform.x, y: event.transform.y, k: event.transform.k });
@@ -1348,7 +1377,7 @@ export const GraphCanvas: React.FC<GraphCanvasProps> = ({
     const { rx } = nodeExtentsOf(id);
     const margin = 16;
     const left = x + k * (pos.x - rx) - margin;
-    const right = x + k * (pos.x + rx + HANDLE_OFFSET + HANDLE_RADIUS) + margin;
+    const right = x + k * (pos.x + rx + CONNECT_RING_GAP + HANDLE_RADIUS) + margin;
     const visibleRight = svgW - rightInset;
     let dx = 0;
     if (right > visibleRight) dx = visibleRight - right;
@@ -1487,19 +1516,43 @@ export const GraphCanvas: React.FC<GraphCanvasProps> = ({
   }, [nodeDrag, zoomTransform.k]);
 
   // ── Kanten-Erstellung per Ziehen vom Connector-Handle ───────────────────
-  interface EdgeDraftState { sourceNodeId: string; pointer: GraphNodePosition; }
+  interface EdgeDraftState { sourceNodeId: string; pointer: GraphNodePosition; snapTargetId: string | null; }
   const [edgeDraft, setEdgeDraft] = useState<EdgeDraftState | null>(null);
 
   const handleHandlePointerDown = (e: React.PointerEvent, nodeId: string) => {
     e.stopPropagation();
     if (e.button !== 0 || !e.isPrimary) return;
-    setEdgeDraft({ sourceNodeId: nodeId, pointer: clientToGraphPoint(e.clientX, e.clientY) });
+    setEdgeDraft({ sourceNodeId: nodeId, pointer: clientToGraphPoint(e.clientX, e.clientY), snapTargetId: null });
+  };
+
+  // Magnet: nächstes Konzept, dessen Rand der Zeiger auf CONNECT_SNAP_PX nahe
+  // kommt (Nutzungstest 26.09.2026: Loslassen knapp neben dem Ziel tat
+  // kommentarlos nichts). Gemessen wird der kürzeste Abstand zum Kapselrand
+  // (Sampson-Näherung f/|∇f|), damit er auch schräg neben breiten, flachen
+  // Konzepten dem sichtbaren Abstand entspricht.
+  const findSnapTarget = (pointer: GraphNodePosition, sourceNodeId: string): string | null => {
+    const snap = CONNECT_SNAP_PX / Math.max(zoomTransform.k, 0.01);
+    let best: string | null = null;
+    let bestDist = snap;
+    for (const node of activeNodes) {
+      if (node.id === sourceNodeId) continue;
+      const pos = positionOf(node.id);
+      const { rx, ry } = nodeExtentsOf(node.id);
+      const dx = pointer.x - pos.x;
+      const dy = pointer.y - pos.y;
+      const f = (dx * dx) / (rx * rx) + (dy * dy) / (ry * ry) - 1;
+      const grad = 2 * Math.hypot(dx / (rx * rx), dy / (ry * ry));
+      const dist = f <= 0 ? 0 : f / Math.max(grad, 1e-9);
+      if (dist < bestDist) { bestDist = dist; best = node.id; }
+    }
+    return best;
   };
 
   useEffect(() => {
     if (!edgeDraft) return;
     const handleMove = (e: PointerEvent) => {
-      setEdgeDraft(prev => prev && { ...prev, pointer: clientToGraphPoint(e.clientX, e.clientY) });
+      const pointer = clientToGraphPoint(e.clientX, e.clientY);
+      setEdgeDraft(prev => prev && { ...prev, pointer, snapTargetId: findSnapTarget(pointer, prev.sourceNodeId) });
     };
     // Ziel per Hit-Test an der Loslass-Stelle: Bei Touch geht pointerup an den
     // Griff, auf dem der Finger aufsetzte (implizites Pointer-Capture), nie an
@@ -1510,8 +1563,9 @@ export const GraphCanvas: React.FC<GraphCanvasProps> = ({
       const hit = document.elementsFromPoint(e.clientX, e.clientY)
         .map(el => el.closest(`[${NODE_ID_ATTR}]`))
         .find((el): el is Element => !!el);
-      const targetNodeId = hit?.getAttribute(NODE_ID_ATTR) ?? null;
       const { sourceNodeId } = edgeDraft;
+      const targetNodeId = hit?.getAttribute(NODE_ID_ATTR)
+        ?? findSnapTarget(clientToGraphPoint(e.clientX, e.clientY), sourceNodeId);
       setEdgeDraft(null);
       if (!targetNodeId || targetNodeId === sourceNodeId) return;
       setEdgePromptError(null);
@@ -1526,7 +1580,7 @@ export const GraphCanvas: React.FC<GraphCanvasProps> = ({
       window.removeEventListener('pointerup', handleUp);
       window.removeEventListener('pointercancel', handleCancel);
     };
-  }, [edgeDraft, clientToGraphPoint]);
+  }, [edgeDraft, clientToGraphPoint]); // eslint-disable-line react-hooks/exhaustive-deps
 
   // ── Beziehung bewusst wählen (Phase 5A Punkt 5) ─────────────────────────
   // Kein stiller Standard-Beziehungstyp mehr. Loslassen über einem Zielnode
@@ -1963,13 +2017,21 @@ export const GraphCanvas: React.FC<GraphCanvasProps> = ({
                 />
               );
             })}
-            {edgeDraft && (
-              <line
-                x1={positionOf(edgeDraft.sourceNodeId).x} y1={positionOf(edgeDraft.sourceNodeId).y}
-                x2={edgeDraft.pointer.x} y2={edgeDraft.pointer.y}
-                stroke={wnTheme.focusLabel} strokeWidth={2} strokeDasharray="4 4"
-              />
-            )}
+            {edgeDraft && (() => {
+              // Eingerastet: Linie endet sauber am Rand des Ziels, durchgezogen.
+              const snapped = edgeDraft.snapTargetId
+                ? computeEdgeGeometry({ sourceNodeId: edgeDraft.sourceNodeId, targetNodeId: edgeDraft.snapTargetId })
+                : null;
+              const from = positionOf(edgeDraft.sourceNodeId);
+              return (
+                <line
+                  x1={snapped ? snapped.x1 : from.x} y1={snapped ? snapped.y1 : from.y}
+                  x2={snapped ? snapped.x2 : edgeDraft.pointer.x} y2={snapped ? snapped.y2 : edgeDraft.pointer.y}
+                  stroke={wnTheme.focusLabel} strokeWidth={snapped ? 2.5 : 2} strokeDasharray={snapped ? undefined : '4 4'}
+                  style={{ pointerEvents: 'none' }}
+                />
+              );
+            })()}
             {culledNodes.map(node => {
               const pos = nodeDrag?.nodeId === node.id ? nodeDrag.currentPos : positionOf(node.id);
               const selected = isSelected(selection, node.id);
@@ -2007,7 +2069,8 @@ export const GraphCanvas: React.FC<GraphCanvasProps> = ({
                   titleFontWeight={title?.fontWeight ?? 700}
                   titleColor={node.color ? '#fff' : tc.text}
                   breathe={tier === 'focus'}
-                  showHandle={hovered || selected}
+                  showHandle={hovered || selected || edgeDraft?.sourceNodeId === node.id}
+                  isConnectTarget={edgeDraft?.snapTargetId === node.id}
                   handleColor={wnTheme.focusLabel}
                   insightText={(lodDetailOn && insightTextById?.get(node.id)) || null}
                   insightDotFill={wnTheme.chipText}
@@ -2039,7 +2102,7 @@ export const GraphCanvas: React.FC<GraphCanvasProps> = ({
               else if (e.key === 'Escape') { e.preventDefault(); cancelTitleEdit(); }
             }}
             onBlur={commitTitleEdit}
-            className="absolute text-[11px] font-bold text-center rounded-md px-1 py-1 outline-none border-2 bg-[var(--card)] dark:bg-slate-800 dark:text-white"
+            className="absolute text-[13px] font-bold text-center rounded-md px-1 py-1 outline-none border-2 bg-[var(--card)] dark:bg-slate-800 dark:text-white"
             style={{
               left: screenX, top: screenY, transform: 'translate(-50%, -50%)',
               width: Math.max(nodeExtentsOf(editingNodeId).rx * 2 + 16, radiusOf(editingNodeId) * 2 + 16), borderColor: 'var(--primary)', zIndex: 20,
@@ -2065,8 +2128,8 @@ export const GraphCanvas: React.FC<GraphCanvasProps> = ({
                 else if (e.key === 'Escape') { e.preventDefault(); cancelEdgePrompt(); }
               }}
               onBlur={cancelEdgePrompt}
-              className="text-[11px] font-bold rounded-md px-2 py-1.5 outline-none border-2 bg-[var(--card)] dark:bg-slate-800 dark:text-white"
-              style={{ width: 160, borderColor: edgePromptError ? '#ef4444' : 'var(--primary)' }}
+              className="text-[13px] font-semibold rounded-md px-2 py-1.5 outline-none border-2 bg-[var(--card)] dark:bg-slate-800 dark:text-white"
+              style={{ width: 230, borderColor: edgePromptError ? '#ef4444' : 'var(--primary)' }}
             />
             {edgePromptError && (
               <div

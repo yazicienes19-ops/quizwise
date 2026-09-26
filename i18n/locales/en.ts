@@ -1179,7 +1179,7 @@ export const en: Translations = {
   'kg.search.match.tag-exact': 'Tag',
   'kg.search.match.tag-contains': 'Tag contains',
   'kg.empty.title': 'Your knowledge network starts here',
-  'kg.empty.body': 'Double-click or double-tap an empty spot (or use “+ Concept”) to add a concept. Select a concept and drag from the dot on its edge to another one to connect them. Everything else grows from there.',
+  'kg.empty.body': 'Double-click or double-tap an empty spot (or use “+ Concept”) to add a concept. Drag from the edge of a concept to another one to connect them; releasing nearby is enough. Everything else grows from there.',
   'kg.empty.cta': 'Create first concept',
   'kg.empty.hint': 'Every concept can be studied directly later: cards, quiz, Feynman or tutor.',
   'kg.newConceptTitle': 'New concept',
