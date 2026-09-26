@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { mergeCard, mergeDeck, mergeDecks } from './deckMerge';
+import { mergeCard, mergeDeck, mergeDecks, mergeTombstones } from './deckMerge';
 import type { Flashcard, FlashcardDeck } from '../types';
 
 const mkCard = (id: string, lastReview: number | null, front = 'F'): Flashcard => ({
@@ -62,5 +62,44 @@ describe('mergeDecks', () => {
     const cards = merged[0].cards;
     expect(cards.find(c => c.id === 'a')?.srs?.lastReview).toBe(500);
     expect(cards.find(c => c.id === 'b')?.srs?.lastReview).toBe(500);
+  });
+});
+
+describe('Löschvermerke', () => {
+  const now = Date.now();
+
+  it('eine lokal gelöschte Karte kommt aus der Cloud nicht zurück', () => {
+    const local = { ...mkDeck('d', [mkCard('a', 1)]), deletedCardIds: { b: now } };
+    const cloud = mkDeck('d', [mkCard('a', 1), mkCard('b', 5)]);
+    const merged = mergeDeck(local, cloud);
+    expect(merged.cards.map(c => c.id)).toEqual(['a']);
+    expect(merged.deletedCardIds).toEqual({ b: now });
+  });
+
+  it('ein Löschvermerk aus der Cloud entfernt die Karte auch lokal (anderes Gerät)', () => {
+    const local = mkDeck('d', [mkCard('a', 1), mkCard('b', 9)]);
+    const cloud = { ...mkDeck('d', [mkCard('a', 1)]), deletedCardIds: { b: now } };
+    expect(mergeDeck(local, cloud).cards.map(c => c.id)).toEqual(['a']);
+  });
+
+  it('ohne Vermerke bleibt der Stapel ohne deletedCardIds', () => {
+    expect(mergeDeck(mkDeck('d', [mkCard('a', 1)]), mkDeck('d', [])).deletedCardIds).toBeUndefined();
+  });
+
+  it('vereint Vermerke, nimmt den jüngsten Zeitpunkt und verwirft abgelaufene', () => {
+    const old = now - 200 * 24 * 60 * 60 * 1000;
+    expect(mergeTombstones({ a: now - 3000, x: old }, { a: now - 2000, b: now - 1000 }, now))
+      .toEqual({ a: now - 2000, b: now - 1000 });
+  });
+
+  it('ein in der Cloud gelöschter Stapel verschwindet auch lokal', () => {
+    const local = [mkDeck('a', [mkCard('1', 1)]), mkDeck('b', [])];
+    const cloud = [{ ...mkDeck('a', []), deletedAt: now }];
+    expect(mergeDecks(local, cloud).map(d => d.id)).toEqual(['b']);
+  });
+
+  it('ein lokal gelöschter Stapel kommt aus der Cloud nicht zurück', () => {
+    const cloud = [mkDeck('a', [mkCard('1', 1)]), mkDeck('b', [])];
+    expect(mergeDecks([], cloud, ['a']).map(d => d.id)).toEqual(['b']);
   });
 });

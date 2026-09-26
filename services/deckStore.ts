@@ -42,6 +42,41 @@ export const upsertLocalDeck = (deck: FlashcardDeck): FlashcardDeck[] => {
   return next;
 };
 
+/**
+ * Lokale Löschvermerke für ganze Stapel (Stapel-ID → Zeitpunkt). Gesetzt beim
+ * Löschen selbst, nicht erst nach Ablauf von "Rückgängig": Wurde der Tab
+ * vorher geschlossen, ging die Löschung sonst verloren und der Abgleich holte
+ * den Stapel aus der Cloud zurück. deckCloudSync überträgt offene Vermerke.
+ */
+export const DELETED_DECKS_KEY = 'flashcard_decks_deleted';
+
+export const readDeletedDeckIds = (): Record<string, number> => {
+  try {
+    const raw: unknown = JSON.parse(localStorage.getItem(DELETED_DECKS_KEY) || '{}');
+    return raw && typeof raw === 'object' && !Array.isArray(raw) ? (raw as Record<string, number>) : {};
+  } catch {
+    return {};
+  }
+};
+
+const writeDeletedDeckIds = (ids: Record<string, number>): void => {
+  try { localStorage.setItem(DELETED_DECKS_KEY, JSON.stringify(ids)); } catch { /* ignore */ }
+};
+
+export const markDecksDeleted = (deckIds: Iterable<string>): void => {
+  const ids = readDeletedDeckIds();
+  const now = Date.now();
+  for (const id of deckIds) ids[id] = now;
+  writeDeletedDeckIds(ids);
+};
+
+/** "Rückgängig": Vermerk zurücknehmen. */
+export const unmarkDecksDeleted = (deckIds: Iterable<string>): void => {
+  const ids = readDeletedDeckIds();
+  for (const id of deckIds) delete ids[id];
+  writeDeletedDeckIds(ids);
+};
+
 export const DECKS_OWNER_KEY = 'flashcard_decks_owner';
 
 /**
@@ -55,7 +90,7 @@ export const claimLocalDecks = (userId: string): void => {
   let owner: string | null = null;
   try { owner = localStorage.getItem(DECKS_OWNER_KEY); } catch { return; }
   if (owner === userId) return;
-  if (owner) writeLocalDecks([]);
+  if (owner) { writeLocalDecks([]); writeDeletedDeckIds({}); }
   try { localStorage.setItem(DECKS_OWNER_KEY, userId); } catch { /* ignore */ }
 };
 

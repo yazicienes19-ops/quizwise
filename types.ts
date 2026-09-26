@@ -219,6 +219,11 @@ export interface FlashcardDeck {
   title: string;
   cards: Flashcard[];
   sourceDocumentId?: string;
+  /** Löschvermerke: Karten-ID → Zeitpunkt (ms). Verhindert, dass der Abgleich
+   *  gelöschte Karten aus der Cloud oder von einem anderen Gerät zurückholt. */
+  deletedCardIds?: Record<string, number>;
+  /** Nur an Cloud-Zeilen: Stapel wurde gelöscht (Löschvermerk statt Zeile entfernen). */
+  deletedAt?: number;
 }
 
 export interface ProcessedDocument {

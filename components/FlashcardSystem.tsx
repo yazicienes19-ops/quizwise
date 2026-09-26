@@ -11,7 +11,7 @@ import { useTranslation } from '../i18n/I18nProvider';
 import { FlashcardPlayer } from './FlashcardPlayer';
 import { SourceSelector } from './SourceSelector';
 import { saveDeckToSupabase, deleteDeckFromSupabase, uploadAllDecksToSupabase } from '../services/flashcardService';
-import { readLocalDecks, writeLocalDecks, subscribeLocalDecks, claimLocalDecks } from '../services/deckStore';
+import { readLocalDecks, writeLocalDecks, subscribeLocalDecks, claimLocalDecks, markDecksDeleted, unmarkDecksDeleted } from '../services/deckStore';
 import { syncDecksWithCloud } from '../services/deckCloudSync';
 import { documentDisplayName } from '../services/libraryService';
 import { createSrsState, migrateLegacyCard, countDueCards, QUALITY_MAP, reviewCard, buildSessionBatch, SESSION_BATCH_SIZE, isCardDue, LEECH_THRESHOLD, type SrsState } from '../services/spacedRepetition';
@@ -339,7 +339,12 @@ export const FlashcardSystem: React.FC<FlashcardSystemProps> = ({
 
   const handleDeleteCard = (deckId: string, cardId: string) => {
     const removed = decksRef.current.find(d => d.id === deckId)?.cards.filter(c => c.id === cardId) ?? [];
-    updateDeck(deckId, d => ({ ...d, cards: d.cards.filter(c => c.id !== cardId) }));
+    // Löschvermerk, sonst holt der Abgleich die Karte aus der Cloud zurück.
+    updateDeck(deckId, d => ({
+      ...d,
+      cards: d.cards.filter(c => c.id !== cardId),
+      deletedCardIds: { ...d.deletedCardIds, [cardId]: Date.now() },
+    }));
     cleanupCardImages(removed);
   };
 
@@ -359,11 +364,12 @@ export const FlashcardSystem: React.FC<FlashcardSystemProps> = ({
     const originalBase = group.find(d => d.id === merged.id)!;
     const removedIds = new Set(group.filter(d => d.id !== merged.id).map(d => d.id));
     removedIds.forEach(id => pendingCloud.current.delete(id));
+    markDecksDeleted(removedIds);
     commitDecks(before.filter(d => !removedIds.has(d.id)).map(d => (d.id === merged.id ? merged : d)));
     queueCloudSave(merged);
     runUndoable({
       message: t('fcs.dupMerged', { title: merged.title, n: merged.cards.length }),
-      undo: () => { commitDecks(before); queueCloudSave(originalBase); },
+      undo: () => { unmarkDecksDeleted(removedIds); commitDecks(before); queueCloudSave(originalBase); },
       commit: () => { if (userId) removedIds.forEach(id => deleteDeckFromSupabase(id, userId).catch(() => {})); },
     });
   };
@@ -374,10 +380,14 @@ export const FlashcardSystem: React.FC<FlashcardSystemProps> = ({
     // Ausstehenden Upload verwerfen, sonst legt der gebündelte Save das
     // gerade gelöschte Deck in der Cloud wieder an.
     pendingCloud.current.delete(deck.id);
+    // Vermerk sofort, nicht erst nach Ablauf von "Rückgängig": schließt der
+    // Tab vorher, trägt der nächste Abgleich die Löschung nach.
+    markDecksDeleted([deck.id]);
     commitDecks(decksRef.current.filter(d => d.id !== deck.id));
     runUndoable({
       message: t('undo.deckDeleted', { title: deck.title }),
       undo: () => {
+        unmarkDecksDeleted([deck.id]);
         if (decksRef.current.some(d => d.id === deck.id)) return;
         const next = [...decksRef.current];
         next.splice(Math.min(Math.max(index, 0), next.length), 0, deck);
