@@ -11,6 +11,7 @@ import { resolveErrorMessage } from '../services/errorMessages';
 import { BLOOM_LEVELS, BLOOM_LEVEL_LABELS, EXAM_TYPE_BLOOM_TARGETS, computeActualBloomDistribution } from '../services/bloomPresets';
 import { DIFFICULTY_LEVELS, computeActualDifficultyMix, computeTopicCoverage, type AdaptiveExamTarget } from '../services/examAdaptive';
 import type { TKey } from '../i18n';
+import { MathText } from './MathText';
 import { EmojiImage } from './EmojiImage';
 import { AnimatedBar } from './AnimatedBar';
 import { CountUp } from './CountUp';
@@ -1141,7 +1142,7 @@ export const ExamView: React.FC<ExamViewProps> = ({
                   </div>
 
                   <p className="text-xl leading-relaxed text-slate-800 dark:text-slate-200 font-medium">
-                    {q.question}
+                    <MathText text={q.question} />
                   </p>
 
                   {renderQuestionBody(q)}

@@ -1,5 +1,6 @@
 
 import { hasCloze } from '../services/cloze';
+import { MathText } from './MathText';
 import { ClozeText } from './ClozeText';
 import React, { useState, useEffect, useCallback, useMemo } from 'react';
 import { createPortal } from 'react-dom';
@@ -348,7 +349,7 @@ export const FlashcardPlayer: React.FC<FlashcardPlayerProps> = ({ cards, onRevie
             {currentCard.occlusion && <OcclusionImage occlusion={currentCard.occlusion} revealed={showAnswer} alt={t('occ.alt')} />}
             {shownFrontImage && <CardImage path={shownFrontImage} alt={t('img.altFront')} />}
             <h2 className={`${frontSize(shownFront)} font-medium text-slate-900 dark:text-slate-100 leading-snug break-words whitespace-pre-line`}>
-              {cloze ? <ClozeText text={currentCard.front} revealed={showAnswer} /> : shownFront}
+              {cloze ? <ClozeText text={currentCard.front} revealed={showAnswer} /> : <MathText text={shownFront} />}
             </h2>
             {typeActive && !showAnswer && (
               <input
@@ -390,7 +391,7 @@ export const FlashcardPlayer: React.FC<FlashcardPlayerProps> = ({ cards, onRevie
                 )}
                 {shownBackImage && <CardImage path={shownBackImage} alt={t('img.altBack')} />}
                 <p className={`${backSize(shownBack)} ${longBack ? 'font-normal' : 'font-semibold'} leading-relaxed break-words whitespace-pre-line`} style={{ color: longBack ? 'var(--ink)' : 'var(--primary-ink)' }}>
-                  {shownBack}
+                  <MathText text={shownBack} />
                 </p>
               </div>
             </div>

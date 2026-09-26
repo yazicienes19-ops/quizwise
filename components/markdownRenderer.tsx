@@ -28,6 +28,32 @@ function renderMath(latex: string, displayMode: boolean, key: string): React.Rea
   }
 }
 
+/**
+ * Nur Formeln setzen, sonst Text unverändert (für Karten, Quiz, Klausur: dort
+ * keine Markdown-Optik, aber KI-Karten aus Mathe-PDFs enthalten LaTeX, das
+ * bisher roh als "$\\frac{a}{b}$" erschien; gefunden 26.09.2026).
+ * Inline-$ nach Pandoc-Regel (kein Leerzeichen innen am Rand, keine Ziffer
+ * direkt dahinter), damit "5$ und 10$" kein Formelbereich wird.
+ */
+export const MATH_TEXT_RE = /(\$\$[^$]+?\$\$|\\\[[\s\S]+?\\\]|\\\([^)]+?\\\)|\$(?=\S)[^$\n]*?\S\$(?!\d)|\$\S\$(?!\d))/g;
+
+export function renderMathText(text: string, baseKey = 'mt'): React.ReactNode[] {
+  const out: React.ReactNode[] = [];
+  let last = 0;
+  for (const m of text.matchAll(MATH_TEXT_RE)) {
+    const token = m[0]; const idx = m.index ?? 0;
+    if (idx > last) out.push(text.slice(last, idx));
+    const k = `${baseKey}-${idx}`;
+    if (token.startsWith('$$')) out.push(renderMath(token.slice(2, -2), true, k));
+    else if (token.startsWith('\\[')) out.push(renderMath(token.slice(2, -2), true, k));
+    else if (token.startsWith('\\(')) out.push(renderMath(token.slice(2, -2), false, k));
+    else out.push(renderMath(token.slice(1, -1), false, k));
+    last = idx + token.length;
+  }
+  if (last < text.length) out.push(text.slice(last));
+  return out;
+}
+
 export function parseInline(text: string, baseKey: string): React.ReactNode[] {
   const parts: React.ReactNode[] = [];
   // Math-Delimiter zuerst in der Alternation (sonst würde z.B. ein "*" in

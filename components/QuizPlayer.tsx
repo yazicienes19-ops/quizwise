@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useMemo, useCallback } from 'react';
 import { QuizQuestion, UserAnswer } from '../types';
+import { MathText } from './MathText';
 import { EmojiImage } from './EmojiImage';
 import { AnimatedBar } from './AnimatedBar';
 import { useTranslation } from '../i18n/I18nProvider';
@@ -302,7 +303,7 @@ export const QuizPlayer: React.FC<QuizPlayerProps> = ({
                   >
                     {String.fromCharCode(65 + idx)}
                   </span>
-                  <span className="text-sm sm:text-base leading-snug flex-1">{option}</span>
+                  <span className="text-sm sm:text-base leading-snug flex-1"><MathText text={option} /></span>
                   {!showResult && idx < 4 && (
                     <span className="text-[11px] font-semibold text-slate-300 shrink-0">{idx + 1}</span>
                   )}
@@ -374,7 +375,7 @@ export const QuizPlayer: React.FC<QuizPlayerProps> = ({
             <div className="space-y-3 animate-in slide-in-from-bottom-4 duration-500">
               <div className="p-5 bg-indigo-50 dark:bg-indigo-900/20 rounded-[20px] border border-indigo-200 dark:border-indigo-800">
                 <p className="text-[11px] font-semibold uppercase tracking-[0.08em] text-indigo-500 mb-2">{t('quiz.sample')}</p>
-                <p className="text-sm text-slate-700 dark:text-slate-300 leading-relaxed">{currentQuestion.explanation}</p>
+                <p className="text-sm text-slate-700 dark:text-slate-300 leading-relaxed"><MathText text={currentQuestion.explanation} /></p>
               </div>
               {selfAssessCorrect === null && (
                 <div className="grid grid-cols-2 gap-2">
@@ -660,7 +661,7 @@ export const QuizPlayer: React.FC<QuizPlayerProps> = ({
 
         <div className="px-6 py-5">
           <h2 className="text-xl sm:text-2xl font-semibold text-slate-900 dark:text-white leading-snug tracking-tight">
-            {currentQuestion.question}
+            <MathText text={currentQuestion.question} />
           </h2>
         </div>
 
@@ -681,7 +682,7 @@ export const QuizPlayer: React.FC<QuizPlayerProps> = ({
               <p className="text-[11px] font-semibold uppercase tracking-[0.08em] mb-1.5"
                 style={{ color: !checkCorrectness() ? 'var(--primary)' : '#94a3b8' }}
               >{t('quiz.explanation')}</p>
-              <p className="text-sm text-slate-700 dark:text-slate-300 leading-relaxed">{currentQuestion.explanation}</p>
+              <p className="text-sm text-slate-700 dark:text-slate-300 leading-relaxed"><MathText text={currentQuestion.explanation} /></p>
               {currentQuestion.sourceReference && (
                 <p className="mt-2 text-xs text-slate-400 font-semibold">{currentQuestion.sourceReference}</p>
               )}

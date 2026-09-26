@@ -37,6 +37,7 @@ import { buildOcclusionCards, cardImagePaths } from '../services/occlusion';
 import { makeEntry, logReview, undoLastReview, ratingFor, loadReviews, type ReviewEntry } from '../services/reviewLog';
 import { ReviewStatsPanel } from './ReviewStatsPanel';
 import { MobileCollapsible } from './MobileCollapsible';
+import { MathText } from './MathText';
 import { getFsrsParams, saveFsrsParams, personalize, MIN_PAIRS, RETENTION_OPTIONS } from '../services/fsrsPersonal';
 import type { FsrsParams } from '../services/spacedRepetition';
 import { ModuleDeckModal } from './ModuleDeckModal';
@@ -950,8 +951,8 @@ export const FlashcardSystem: React.FC<FlashcardSystemProps> = ({
                     {/* Nummer = Position im Deck, auch bei aktiver Suche (vorher Position im Suchergebnis) */}
                     <span className="text-[11px] font-semibold text-slate-300 dark:text-slate-600 w-6 shrink-0 text-right">{deck.cards.indexOf(card) + 1}</span>
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-2 flex-1 min-w-0">
-                      <p className="text-sm font-bold dark:text-white md:border-r md:border-slate-100 md:dark:border-slate-800 md:pr-4 leading-snug break-words whitespace-pre-line line-clamp-4">{hasCloze(card.front) ? <ClozeText text={card.front} revealed /> : card.front}</p>
-                      <p className="text-sm text-slate-400 dark:text-slate-500 leading-snug break-words whitespace-pre-line line-clamp-4">{card.back}</p>
+                      <p className="text-sm font-bold dark:text-white md:border-r md:border-slate-100 md:dark:border-slate-800 md:pr-4 leading-snug break-words whitespace-pre-line line-clamp-4">{hasCloze(card.front) ? <ClozeText text={card.front} revealed /> : <MathText text={card.front} />}</p>
+                      <p className="text-sm text-slate-400 dark:text-slate-500 leading-snug break-words whitespace-pre-line line-clamp-4"><MathText text={card.back} /></p>
                       {card.occlusion && (
                         <div className="md:col-span-2 flex items-center gap-2">
                           <CardImage path={card.occlusion.image} alt="" className="h-12 w-16 object-cover rounded-md" />

@@ -1,5 +1,6 @@
 import React from 'react';
 import { parseCloze } from '../services/cloze';
+import { MathText } from './MathText';
 import { useTranslation } from '../i18n/I18nProvider';
 
 /**
@@ -11,14 +12,14 @@ export const ClozeText: React.FC<{ text: string; revealed: boolean }> = ({ text,
   return (
   <>
     {parseCloze(text).map((seg, i) => {
-      if (seg.kind === 'text') return <React.Fragment key={i}>{seg.text}</React.Fragment>;
+      if (seg.kind === 'text') return <MathText key={i} text={seg.text} />;
       return revealed ? (
         <mark
           key={i}
           className="rounded px-1 font-semibold"
           style={{ background: 'color-mix(in srgb, var(--primary) 22%, transparent)', color: 'var(--ink)' }}
         >
-          {seg.answer}
+          <MathText text={seg.answer} />
         </mark>
       ) : (
         <span
