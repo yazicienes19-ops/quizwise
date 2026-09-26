@@ -9,6 +9,8 @@ import { useTranslation } from '../i18n/I18nProvider';
 import { formatDate } from '../i18n/dates';
 import { useCloudDataVersion } from '../hooks/useCloudDataVersion';
 
+const MOBILE_VISIBLE = 2;
+
 interface ExamGroup {
   name: string;
   /** Neueste zuerst. */
@@ -39,6 +41,8 @@ export const ExamArchive: React.FC = () => {
   }, [dataVersion]);
   const [openGroup, setOpenGroup] = useState<string | null>(null);
   const [openId, setOpenId] = useState<string | null>(null);
+  // Handy: erst zwei Klausuren, Rest auf Wunsch (Zeugnis 6: Seite über 3 000 px).
+  const [showAllMobile, setShowAllMobile] = useState(false);
 
   if (groups.length === 0) return null;
 
@@ -56,13 +60,13 @@ export const ExamArchive: React.FC = () => {
           {tp('ea.topicsN', groups.length)} · {tp('ea.attemptsN', totalAttempts)} · {t('ea.passedOf', { n: passedTopics, total: groups.length })} · {t('ea.passLine', { pct: passAt })}
         </p>
       </div>
-      {groups.map(group => {
+      {groups.map((group, groupIndex) => {
         const { grade: bestGrade } = gradeFromPercentage(group.best.score);
         const groupOpen = openGroup === group.name;
         const first = group.attempts[group.attempts.length - 1];
         const delta = group.attempts[0].score - first.score;
         return (
-          <div key={group.name} className="rounded-[24px] overflow-hidden" style={{ background: 'var(--bg-sidebar)', border: '1px solid var(--border-color)' }}>
+          <div key={group.name} className={`rounded-[24px] overflow-hidden ${groupIndex >= MOBILE_VISIBLE && !showAllMobile ? 'hidden sm:block' : ''}`} style={{ background: 'var(--bg-sidebar)', border: '1px solid var(--border-color)' }}>
             <button
               onClick={() => { setOpenGroup(groupOpen ? null : group.name); setOpenId(null); }}
               className="w-full flex items-center gap-4 px-5 py-4 text-left"
@@ -186,6 +190,13 @@ export const ExamArchive: React.FC = () => {
           </div>
         );
       })}
+      {!showAllMobile && groups.length > MOBILE_VISIBLE && (
+        <button type="button" onClick={() => setShowAllMobile(true)}
+          className="sm:hidden w-full py-3 rounded-[20px] text-[13px] font-semibold text-slate-700 dark:text-slate-200"
+          style={{ background: 'var(--bg-sidebar)', border: '1px solid var(--border-color)' }}>
+          {t('ea.showAll', { n: groups.length })}
+        </button>
+      )}
     </div>
   );
 };

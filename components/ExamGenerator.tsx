@@ -3,6 +3,7 @@ import React, { useState, useMemo, useEffect } from 'react';
 import { ProcessedDocument, Collection, ScoringProfile, ScoringMode, ExamQuestion, TopicMetric, FlashcardDeck, ExamTypePreset, QuantModeConfig, QuantTypeDistribution, ExamTerm } from '../types';
 import { nextExamForModule } from '../services/examTermService';
 import { GenerationSource } from '../services/geminiService';
+import { MobileCollapsible } from './MobileCollapsible';
 import { SourceSelector } from './SourceSelector';
 import { getAllMeta, documentDisplayName } from '../services/libraryService';
 import { useTranslation } from '../i18n/I18nProvider';
@@ -319,7 +320,8 @@ export const ExamGenerator: React.FC<ExamGeneratorProps> = ({
           </div>
 
           {/* Altklausur (optional, Stil-Referenz) */}
-          <div className={`p-5 sm:p-7 rounded-[28px] border transition-all flex flex-col gap-4 ${(styleFile || styleLibDocId) ? '' : 'border-dashed'}`}
+<MobileCollapsible title={t('card.oldExam')} summary={t('eg.oldExamOptional')} persistKey="exam_oldexam" enabled={!(styleFile || styleLibDocId)}>
+                    <div className={`p-5 sm:p-7 rounded-[28px] border transition-all flex flex-col gap-4 ${(styleFile || styleLibDocId) ? '' : 'border-dashed'}`}
             style={{ background: 'var(--bg-sidebar)', borderColor: (styleFile || styleLibDocId) ? 'var(--primary)' : 'var(--border-color)' }}>
             <div>
               <h3 className="text-[11px] font-semibold uppercase tracking-[0.08em]" style={{ color: 'var(--text-secondary)' }}>{t('card.oldExam')}</h3>
@@ -387,6 +389,7 @@ export const ExamGenerator: React.FC<ExamGeneratorProps> = ({
               <p className="text-[11px] text-slate-400 italic text-center">{t('eg.defaultStyle')}</p>
             ) : null}
           </div>
+          </MobileCollapsible>
         </div>
 
         {/* Config Column */}

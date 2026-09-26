@@ -1,5 +1,6 @@
 import React, { useMemo } from 'react';
 import { Flame, Layers, HelpCircle, Brain, GraduationCap, BookOpen, type LucideIcon } from 'lucide-react';
+import { MobileCollapsible } from './MobileCollapsible';
 import type { FlashcardDeck } from '../types';
 import { computeAchievements, type AchievementId } from '../services/achievements';
 import { getStreak } from '../services/streakService';
@@ -35,7 +36,9 @@ export const AchievementsPanel: React.FC<{ decks: FlashcardDeck[]; documentCount
   }), [decks, documentCount, dataVersion]);
   const reached = achievements.reduce((s, a) => s + a.tier, 0);
 
+  // Handy: eingeklappt mit Fortschritt als Zusammenfassung (Zeugnis 6: Seite über 3 000 px).
   return (
+    <MobileCollapsible title={t('ach.title')} summary={t('ach.progress', { n: reached, total: achievements.length * 3 })} persistKey="progress_achievements">
     <section
       className="p-6 lg:p-8 rounded-[24px] border space-y-5"
       style={{ background: 'var(--card)', borderColor: 'var(--border-color)' }}
@@ -91,5 +94,6 @@ export const AchievementsPanel: React.FC<{ decks: FlashcardDeck[]; documentCount
         })}
       </ul>
     </section>
+    </MobileCollapsible>
   );
 };

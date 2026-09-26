@@ -29,6 +29,8 @@ interface SourceSelectorProps {
 type Tab = 'library' | 'upload' | 'text';
 
 const LIST_PREVIEW = 6;
+/** Auf dem Handy nur die ersten drei, der Rest über "Alle n anzeigen" (Zeugnis 6: Seiten über 3 000 px). */
+const MOBILE_PREVIEW = 3;
 
 const DocIcon = ({ type }: { type: string }) => {
   const Icon = type === 'docx' ? File : type === 'image' ? Image : FileText;
@@ -261,14 +263,15 @@ export const SourceSelector: React.FC<SourceSelectorProps> = ({
                   <p className="text-center text-[13px] text-slate-400 py-8">{t('ssel.noHits', { q: search })}</p>
                 ) : (
                   <div className="-mx-1 divide-y" style={{ borderColor: 'var(--border-soft)' }}>
-                    {shownRows.map(row => {
+                    {shownRows.map((row, rowIndex) => {
+                      const mobileHidden = !showAll && !search && rowIndex >= MOBILE_PREVIEW ? ' hidden sm:block' : '';
                       if (row.kind === 'folder') {
                         const { collection, count } = row;
                         const result = buildCollectionSource(collection, documents);
                         const included = result?.includedCount ?? 0;
                         const ready = included > 0;
                         return (
-                          <div key={`folder-${collection.id}`} className="py-0.5" style={{ borderColor: 'var(--border-soft)' }}>
+                          <div key={`folder-${collection.id}`} className={`py-0.5${mobileHidden}`} style={{ borderColor: 'var(--border-soft)' }}>
                             <button onClick={() => handleSelectFolder(collection)} disabled={isLoading || !ready} className={rowClass}>
                               <span className="w-7 h-7 rounded-lg flex items-center justify-center shrink-0 text-base" style={{ background: 'var(--primary-soft)' }}>
                                 {collection.emoji || <FolderOpen size={16} style={{ color: 'var(--primary-ink)' }} strokeWidth={1.75} />}
@@ -289,7 +292,7 @@ export const SourceSelector: React.FC<SourceSelectorProps> = ({
                       const { doc } = row;
                       const col = collections.find(c => c.id === doc.collectionId);
                       return (
-                        <div key={doc.id} className="py-0.5" style={{ borderColor: 'var(--border-soft)' }}>
+                        <div key={doc.id} className={`py-0.5${mobileHidden}`} style={{ borderColor: 'var(--border-soft)' }}>
                           <button onClick={() => onSelectDocument(doc)} disabled={isLoading} className={rowClass}>
                             <span className="w-7 h-7 flex items-center justify-center shrink-0"><DocIcon type={doc.type} /></span>
                             <div className="flex-1 min-w-0">
@@ -306,10 +309,10 @@ export const SourceSelector: React.FC<SourceSelectorProps> = ({
                     })}
                   </div>
                 )}
-                {!search && rows.length > LIST_PREVIEW && (
+                {!search && rows.length > MOBILE_PREVIEW && (
                   <button
                     onClick={() => setShowAll(v => !v)}
-                    className="text-[13px] font-semibold hover:underline"
+                    className={`${rows.length > LIST_PREVIEW ? '' : 'sm:hidden '}text-[13px] font-semibold hover:underline`}
                     style={{ color: 'var(--primary-ink)' }}
                   >
                     {showAll ? t('ssel.showLess') : t('ssel.showAll', { n: rows.length })}

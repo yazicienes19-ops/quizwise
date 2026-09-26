@@ -21,7 +21,7 @@ import { buildPrintHtml } from '../services/printDeckService';
 import { ExportDeckModal } from './ExportDeckModal';
 import { EditCardModal } from './EditCardModal';
 import { DeckStatsModal } from './DeckStatsModal';
-import { MoreHorizontal, ListOrdered, HelpCircle, BarChart2, Pencil, Share2, Printer, Trash2, SquareDashed } from 'lucide-react';
+import { MoreHorizontal, ListOrdered, HelpCircle, BarChart2, Pencil, Share2, Printer, Trash2, SquareDashed, Dumbbell } from 'lucide-react';
 import { PageHeader } from './PageHeader';
 import { confirmDialog } from '../services/confirmDialog';
 import { runUndoable } from '../services/undoable';
@@ -36,6 +36,7 @@ import { OcclusionEditorModal } from './OcclusionEditorModal';
 import { buildOcclusionCards, cardImagePaths } from '../services/occlusion';
 import { makeEntry, logReview, undoLastReview, ratingFor, loadReviews, type ReviewEntry } from '../services/reviewLog';
 import { ReviewStatsPanel } from './ReviewStatsPanel';
+import { MobileCollapsible } from './MobileCollapsible';
 import { getFsrsParams, saveFsrsParams, personalize, MIN_PAIRS, RETENTION_OPTIONS } from '../services/fsrsPersonal';
 import type { FsrsParams } from '../services/spacedRepetition';
 import { ModuleDeckModal } from './ModuleDeckModal';
@@ -1067,6 +1068,7 @@ export const FlashcardSystem: React.FC<FlashcardSystemProps> = ({
       <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 lg:gap-10">
 
         <div className="lg:col-span-5 space-y-6 lg:space-y-8 order-2 lg:order-1">
+          <MobileCollapsible title={t('fcs.createSection')} summary={t('fcs.createSectionHint')} persistKey="cards_create" enabled={decks.length > 0}>
           <div className="bg-[var(--card)] dark:bg-slate-900 rounded-[24px] lg:rounded-[28px] border border-slate-200 dark:border-slate-800 shadow-3d-raised p-5 lg:p-7 space-y-8">
 
             <div className="space-y-4">
@@ -1165,6 +1167,7 @@ export const FlashcardSystem: React.FC<FlashcardSystemProps> = ({
               )}
             </div>
           </div>
+          </MobileCollapsible>
         </div>
 
         <div className="lg:col-span-7 bg-[var(--card)] dark:bg-slate-900 rounded-[24px] lg:rounded-[28px] border border-slate-200 dark:border-slate-800 shadow-3d-deep order-1 lg:order-2">
@@ -1298,7 +1301,7 @@ export const FlashcardSystem: React.FC<FlashcardSystemProps> = ({
                   <div
                     key={deck.id}
                     id={`deck-row-${deck.id}`}
-                    className={`flex flex-col sm:flex-row sm:items-center justify-between px-5 sm:px-6 lg:px-8 py-4 lg:py-5 hover:bg-slate-50 dark:hover:bg-slate-800/30 transition-colors group gap-3 sm:gap-6 ${isFresh ? 'bg-indigo-50/70 dark:bg-indigo-950/30' : ''}`}
+                    className={`flex flex-row items-center justify-between px-5 sm:px-6 lg:px-8 py-3.5 sm:py-4 lg:py-5 hover:bg-slate-50 dark:hover:bg-slate-800/30 transition-colors group gap-3 sm:gap-6 ${isFresh ? 'bg-indigo-50/70 dark:bg-indigo-950/30' : ''}`}
                     style={isFresh ? { boxShadow: 'inset 4px 0 0 var(--primary)' } : undefined}
                   >
                     <div className="flex-grow min-w-0">
@@ -1329,18 +1332,20 @@ export const FlashcardSystem: React.FC<FlashcardSystemProps> = ({
                     </div>
 
                     {/* Zwei Hauptaktionen sichtbar, alles Weitere im Menü: vorher neun
-                        Knöpfe je Stapel, auf dem Handy zwei volle Zeilen. */}
-                    <div className="flex items-center gap-2 w-full sm:w-auto">
+                        Knöpfe je Stapel, auf dem Handy zwei volle Zeilen. Auf dem Handy
+                        steht nur "Lernen" neben dem Titel, "Üben" liegt dort im Menü
+                        (Zeugnis 6: Seite über 3 000 px lang). */}
+                    <div className="flex items-center gap-2 shrink-0">
                       <button
                         onClick={() => handleOpenDeck(deck.id)}
-                        className="flex-1 sm:flex-none px-5 py-2.5 rounded-xl text-[13px] font-semibold transition-all hover:opacity-90"
+                        className="px-4 sm:px-5 py-2.5 rounded-xl text-[13px] font-semibold transition-all hover:opacity-90"
                         style={{ background: 'var(--primary)', color: 'var(--primary-text)' }}
                       >
                         {t('fcs.learn')}
                       </button>
                       <button
                         onClick={() => handleOpenDeck(deck.id, 'free')}
-                        className="flex-1 sm:flex-none px-4 py-2.5 rounded-xl text-[13px] font-semibold border border-slate-200 dark:border-slate-700 text-slate-600 dark:text-slate-300 transition-all hover:border-[color:var(--primary)]"
+                        className="hidden sm:inline-flex px-4 py-2.5 rounded-xl text-[13px] font-semibold border border-slate-200 dark:border-slate-700 text-slate-600 dark:text-slate-300 transition-all hover:border-[color:var(--primary)]"
                         title={t('fcs.practiceTitle')}
                       >
                         {t('fcs.practice')}
@@ -1367,6 +1372,7 @@ export const FlashcardSystem: React.FC<FlashcardSystemProps> = ({
                             style={{ background: 'var(--bg-sidebar)', border: '1px solid var(--border-color)' }}
                           >
                             {([
+                              { key: 'practice', label: t('fcs.practice'), icon: Dumbbell, onClick: () => handleOpenDeck(deck.id, 'free'), mobileOnly: true },
                               { key: 'all', label: t('fcs.menuLearnAll'), icon: ListOrdered, onClick: () => handleOpenDeck(deck.id, 'all') },
                               { key: 'quiz', label: t('fcs.menuQuiz'), icon: HelpCircle, onClick: () => onGenerateQuizFromDeck(deck), disabled: isQuizLoading || deck.cards.length === 0 },
                               { key: 'stats', label: t('fcs.statsTitle'), icon: BarChart2, onClick: () => setStatsDeck(deck) },
@@ -1380,7 +1386,7 @@ export const FlashcardSystem: React.FC<FlashcardSystemProps> = ({
                                 role="menuitem"
                                 disabled={'disabled' in item ? item.disabled : false}
                                 onClick={() => { setMenuDeckId(null); item.onClick(); }}
-                                className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-[13px] font-semibold text-left transition-colors disabled:opacity-40 ${'danger' in item ? 'text-rose-600 dark:text-rose-400 hover:bg-rose-50 dark:hover:bg-rose-950/30' : 'text-slate-700 dark:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-800'}`}
+                                className={`w-full ${'mobileOnly' in item ? 'flex sm:hidden' : 'flex'} items-center gap-3 px-3 py-2.5 rounded-xl text-[13px] font-semibold text-left transition-colors disabled:opacity-40 ${'danger' in item ? 'text-rose-600 dark:text-rose-400 hover:bg-rose-50 dark:hover:bg-rose-950/30' : 'text-slate-700 dark:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-800'}`}
                               >
                                 <item.icon className="w-4 h-4 shrink-0" strokeWidth={2} />
                                 {item.label}
@@ -1398,7 +1404,11 @@ export const FlashcardSystem: React.FC<FlashcardSystemProps> = ({
         </div>
       </div>
 
-      {decks.length > 0 && <div className="px-0 sm:px-0"><ReviewStatsPanel decks={decks} /></div>}
+      {decks.length > 0 && (
+        <MobileCollapsible title={t('stats.title')} summary={t('fcs.statsSectionHint')} persistKey="cards_stats">
+          <ReviewStatsPanel decks={decks} />
+        </MobileCollapsible>
+      )}
     </div>
   );
 };
