@@ -600,7 +600,7 @@ const App: React.FC = () => {
         )}
         {isOffline && (
           <div className="mb-4 p-3 bg-amber-500/10 border border-amber-500/30 rounded-2xl flex items-center justify-center gap-2">
-            <p className="text-[10px] font-bold text-amber-600 dark:text-amber-400 uppercase tracking-[0.08em]">Offline-Modus aktiv</p>
+            <p className="text-[11px] font-bold text-amber-600 dark:text-amber-400 uppercase tracking-[0.08em]">{t('app.offline')}</p>
           </div>
         )}
         {syncDegraded && !isOffline && (
@@ -608,7 +608,7 @@ const App: React.FC = () => {
             <p className="text-[11px] font-bold text-amber-800 dark:text-amber-300">{t('app.syncDegraded')}</p>
             <button
               onClick={() => setSyncDegraded(false)}
-              aria-label="Banner schließen"
+              aria-label={t('app.closeBanner')}
               className="text-amber-400 hover:text-amber-600 transition-colors shrink-0"
             >
               <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>

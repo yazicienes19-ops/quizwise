@@ -655,6 +655,8 @@ export const de = {
   'settings.saved': 'Gespeichert',
   'ac.oneMoment': 'Einen Moment …',
   'app.syncDegraded': 'Cloud-Sync gerade nicht erreichbar. Deine Änderungen bleiben lokal gespeichert und werden später synchronisiert.',
+  'app.offline': 'Offline-Modus aktiv',
+  'app.closeBanner': 'Hinweis schließen',
   'ac.generatingQuiz': 'Quiz wird generiert',
   'ac.readingSource': 'Deine Quelle wird gelesen …',
   'ac.quizSaved': 'Quiz gespeichert!',

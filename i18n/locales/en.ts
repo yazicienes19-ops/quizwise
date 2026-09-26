@@ -654,6 +654,8 @@ export const en: Translations = {
   'settings.saved': 'Saved',
   'ac.oneMoment': 'One moment …',
   'app.syncDegraded': 'Cloud sync is currently unavailable. Your changes are saved locally and will sync later.',
+  'app.offline': 'Offline mode',
+  'app.closeBanner': 'Close notice',
   'ac.generatingQuiz': 'Generating quiz',
   'ac.readingSource': 'Reading your source …',
   'ac.quizSaved': 'Quiz saved!',

@@ -653,6 +653,8 @@ export const tr: Translations = {
   'settings.saved': 'KAYDEDİLDİ',
   'ac.oneMoment': 'Bir saniye …',
   'app.syncDegraded': 'Bulut senkronizasyonu şu anda kullanılamıyor. Değişikliklerin yerel olarak saklanıyor ve daha sonra senkronize edilecek.',
+  'app.offline': 'Çevrimdışı mod',
+  'app.closeBanner': 'Bildirimi kapat',
   'ac.generatingQuiz': 'Test oluşturuluyor',
   'ac.readingSource': 'Kaynağın okunuyor …',
   'ac.quizSaved': 'Test kaydedildi!',
