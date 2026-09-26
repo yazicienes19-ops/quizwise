@@ -2481,6 +2481,8 @@ export const tr: Translations = {
   'mod.applyLimit': 'Günlük sınırı {n} yeni karta ayarla',
   'mod.allDocs': 'tüm materyaller',
   'mod.reading': '{doc} okunuyor: sayfa {done} / {total}',
+  'mod.transcribing': '{doc} aktarılıyor: sayfa {done} / {total}',
+  'mod.transcribeHint': '{n} PDF formül içeriyor veya taranmış. Kesirler ve formüller doğru olsun diye oluşturmadan önce sayfa sayfa aktarılır; bu biraz daha uzun sürer ve kotana sayılır.|{n} PDF formül içeriyor veya taranmış. Kesirler ve formüller doğru olsun diye oluşturmadan önce sayfa sayfa aktarılır; bu biraz daha uzun sürer ve kotana sayılır.',
   'mod.summaryOnly': 'Okunabilir metni olmayan {n} PDF, yerine özeti kullanılıyor|Okunabilir metni olmayan {n} PDF, yerine özetleri kullanılıyor',
   'mod.loadingDoc': '{doc} yükleniyor',
   'mod.counting': 'sayılıyor',

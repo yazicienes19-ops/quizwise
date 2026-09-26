@@ -2489,6 +2489,8 @@ export const de = {
   'mod.applyLimit': 'Tageslimit auf {n} neue Karten setzen',
   'mod.allDocs': 'alle Unterlagen',
   'mod.reading': 'Lese {doc}: Seite {done} von {total}',
+  'mod.transcribing': 'Schreibe {doc} ab: Seite {done} von {total}',
+  'mod.transcribeHint': '{n} PDF enthält Formeln oder ist gescannt. Es wird vor dem Erzeugen Seite für Seite abgeschrieben, damit Brüche und Formeln stimmen; das dauert etwas länger und zählt zum Kontingent.|{n} PDFs enthalten Formeln oder sind gescannt. Sie werden vor dem Erzeugen Seite für Seite abgeschrieben, damit Brüche und Formeln stimmen; das dauert etwas länger und zählt zum Kontingent.',
   'mod.summaryOnly': '{n} PDF ohne lesbaren Text, dafür wird die Zusammenfassung genutzt|{n} PDFs ohne lesbaren Text, dafür wird die Zusammenfassung genutzt',
   'mod.loadingDoc': 'Lade {doc}',
   'mod.counting': 'wird gezählt',

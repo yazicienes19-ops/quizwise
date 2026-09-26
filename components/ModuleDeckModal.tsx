@@ -9,7 +9,7 @@ import { generateFlashcardsFromDocument } from '../services/geminiService';
 import { nextExamForModule } from '../services/examTermService';
 import { createSrsState } from '../services/spacedRepetition';
 import { resolveErrorMessage } from '../services/errorMessages';
-import { canReadFullText, readPdfFullText } from '../services/pdfFullText';
+import { canReadFullText, readPdfFullText, transcribePdf } from '../services/pdfFullText';
 import { GeneratedCardsEditor, splitDraft, type DraftCard } from './GeneratedCardsEditor';
 
 interface Props {
@@ -46,6 +46,8 @@ export const ModuleDeckModal: React.FC<Props> = ({ collections, documents, examT
   /** Volltext der PDFs (null = keine Textebene, dann Zusammenfassung). */
   const [fullTexts, setFullTexts] = useState<ReadonlyMap<string, FullText | null>>(new Map());
   const [reading, setReading] = useState<{ doc: string; done: number; total: number } | null>(null);
+  // Mathe-PDFs und Scans: erst beim Start abschreiben (kostet Budget, daher nicht schon beim Öffnen).
+  const [transcribing, setTranscribing] = useState<{ doc: string; done: number; total: number } | null>(null);
 
   const col = collections.find(c => c.id === colId) ?? null;
   const docs = useMemo(() => documents.filter(d => d.collectionId === colId), [documents, colId]);
@@ -84,14 +86,38 @@ export const ModuleDeckModal: React.FC<Props> = ({ collections, documents, examT
     overview: planModule(docs, 'overview', readTexts), standard: planModule(docs, 'standard', readTexts), thorough: planModule(docs, 'thorough', readTexts),
   }), [docs, readTexts]);
   const plan = plans[level];
+  const toTranscribe = plan.docs.filter(pd => fullTexts.get(pd.doc.id)?.transcribe).length;
   const exam = col ? nextExamForModule(examTerms, col, new Date()) : null;
   const suggestion = exam ? suggestNewPerDay(result?.cards ?? plan.totalCards, exam.date) : null;
 
   const start = async () => {
     if (!col || !plan.totalCards || reading) return;
     setRunning(true); cancelRef.current = false;
+    // Mathe-PDFs und Scans zuerst abschreiben lassen (Formeln als LaTeX, richtige
+    // Lesereihenfolge), dann mit dem sauberen Text neu planen.
+    let livePlan = plan;
+    const needs = plan.docs.map(pd => pd.doc).filter(d => fullTexts.get(d.id)?.transcribe);
+    if (needs.length) {
+      const texts = new Map<string, FullText>(readTexts);
+      for (const d of needs) {
+        if (cancelRef.current) break;
+        setTranscribing({ doc: d.name, done: 0, total: 0 });
+        try {
+          const tx = await transcribePdf(d, (done, total) => setTranscribing({ doc: d.name, done, total }), () => cancelRef.current);
+          if (tx) texts.set(d.id, tx);
+        } catch (e) {
+          setTranscribing(null); setRunning(false);
+          setResult({ cards: 0, stopped: resolveErrorMessage(e) });
+          return;
+        }
+      }
+      setTranscribing(null);
+      if (cancelRef.current) { setRunning(false); setResult({ cards: 0, stopped: t('mod.cancelled') }); return; }
+      setFullTexts(prev => { const next = new Map(prev); texts.forEach((v, k) => next.set(k, v)); return next; });
+      livePlan = planModule(docs, level, texts);
+    }
     // Alle Abschnitte in Reihenfolge; Ergebnisse je Abschnitt, damit die Karten trotz paralleler Anfragen geordnet bleiben
-    const jobs = plan.docs.flatMap(pd => pd.chunks.map(chunk => ({ pd, chunk, tag: docTag(pd.doc) })));
+    const jobs = livePlan.docs.flatMap(pd => pd.chunks.map(chunk => ({ pd, chunk, tag: docTag(pd.doc) })));
     const results: Flashcard[][] = jobs.map(() => []);
     const seen = new Set<string>();
     const recent: string[] = [];
@@ -211,6 +237,17 @@ export const ModuleDeckModal: React.FC<Props> = ({ collections, documents, examT
               )}
               <div className="flex flex-col sm:flex-row gap-2">{(['overview', 'standard', 'thorough'] as const).map(levelBtn)}</div>
               {!reading && <p className="text-xs text-slate-500 dark:text-slate-400">{t('mod.budgetHint', { calls: plan.calls })}</p>}
+              {!reading && toTranscribe > 0 && !transcribing && (
+                <p className="text-xs text-slate-600 dark:text-slate-300">{tp('mod.transcribeHint', toTranscribe)}</p>
+              )}
+              {transcribing && (
+                <div className="space-y-2" aria-live="polite">
+                  <div className="h-2 rounded-full bg-slate-100 dark:bg-slate-800 overflow-hidden">
+                    <div className="h-full transition-all" style={{ width: `${(transcribing.done / Math.max(1, transcribing.total)) * 100}%`, background: 'var(--primary)' }} />
+                  </div>
+                  <p className="text-xs text-slate-600 dark:text-slate-300">{transcribing.total ? t('mod.transcribing', { doc: transcribing.doc, done: transcribing.done, total: transcribing.total }) : t('mod.loadingDoc', { doc: transcribing.doc })}</p>
+                </div>
+              )}
               {progress && (
                 <div className="space-y-2" aria-live="polite">
                   <div className="h-2 rounded-full bg-slate-100 dark:bg-slate-800 overflow-hidden">

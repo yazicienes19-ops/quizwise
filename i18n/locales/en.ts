@@ -2488,6 +2488,8 @@ export const en: Translations = {
   'mod.applyLimit': 'Set daily limit to {n} new cards',
   'mod.allDocs': 'all materials',
   'mod.reading': 'Reading {doc}: page {done} of {total}',
+  'mod.transcribing': 'Transcribing {doc}: page {done} of {total}',
+  'mod.transcribeHint': '{n} PDF contains formulas or is scanned. It is transcribed page by page before generating so fractions and formulas come out right; this takes a bit longer and counts toward your quota.|{n} PDFs contain formulas or are scanned. They are transcribed page by page before generating so fractions and formulas come out right; this takes a bit longer and counts toward your quota.',
   'mod.summaryOnly': '{n} PDF without readable text, using its summary instead|{n} PDFs without readable text, using their summaries instead',
   'mod.loadingDoc': 'Loading {doc}',
   'mod.counting': 'counting',

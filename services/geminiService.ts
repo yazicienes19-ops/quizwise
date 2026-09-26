@@ -873,6 +873,28 @@ STRENGE DIVERSITÄTS-REGELN:
  * Format [ymin, xmin, ymax, xmax] (0 bis 1000). Ausschneiden und Prüfen
  * passiert im Browser (services/figureCardBuilder.ts, services/figureCards.ts).
  */
+/**
+ * Seiten originalgetreu abschreiben (Bilder einer PDF-Seitengruppe), für
+ * "Ganzes Fach als Karten" bei Mathe-PDFs und Scans: die Textebene zerlegt dort
+ * Brüche, Summen und Spalten (gemessen 26.09.2026: "2/3" wurde "2 3", die
+ * Kovarianz-Formel unlesbar). Keine Zusammenfassung, Originalsprache.
+ */
+export const transcribePdfPages = async (jpegPages: string[], firstPage: number): Promise<string> => {
+  const parts: any[] = [
+    ...jpegPages.map(data => ({ inlineData: { data, mimeType: 'image/jpeg' } })),
+    { text: `Die Bilder sind die Seiten ${firstPage} bis ${firstPage + jpegPages.length - 1} eines Lehrdokuments, in dieser Reihenfolge.
+Schreibe ihren Inhalt vollständig und originalgetreu ab, in der Originalsprache. Keine Zusammenfassung, nichts weglassen, nichts ergänzen, nichts lösen.
+- Formeln, Brüche, Potenzen, Indizes, Summen, Wurzeln und Gleichungen in LaTeX: inline $...$, abgesetzt $$...$$.
+- Mehrspaltiges Layout in natürlicher Lesereihenfolge. Eine Aufgabe bleibt mit ihren Antwortoptionen (A) bis E)) zusammen.
+- Lösungsschlüssel, Antwortlisten und Lösungen als eigenen Absatz am Ende, eingeleitet mit dem Wort für "Lösungen" in der Sprache des Dokuments; nicht zwischen die Aufgaben mischen.
+- Tabellen als Markdown-Tabelle. Abbildungen kurz in eckigen Klammern beschreiben, z. B. [Abbildung: Streudiagramm Wochen gegen Punkte].
+- Kopf- und Fußzeilen, Seitenzahlen und Werbung weglassen.
+- Silbentrennung am Zeilenende zusammenfügen.
+Trenne die Seiten mit einer Leerzeile. Gib nur den abgeschriebenen Text aus.` },
+  ];
+  return callBackend({ complexity: 'light', parts, config: { temperature: 0 } });
+};
+
 export const generateFigureFlashcards = async (pdfSource: GenerationSource, max: number): Promise<unknown[]> => {
   const parts: any[] = [sourceTopart(pdfSource), { text: `Finde in diesem PDF bis zu ${max} Abbildungen, die für das Lernen wichtig sind: Diagramme, Modelle, Grafiken, Schaubilder, anatomische oder technische Darstellungen, Abläufe, Tabellen mit grafischem Aufbau.
 NICHT verwenden: Logos, Fotos von Personen ohne fachlichen Inhalt, Stockfotos, Hintergründe, Dekoration, reine Textblöcke, Kopf- und Fußzeilen.

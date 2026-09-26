@@ -18,8 +18,10 @@ export const LEVELS: Record<ModuleLevel, { perKChars: number; perPage: number; m
   standard: { perKChars: 1.0, perPage: 0.5, minPerChunk: 2, maxPerDoc: 300 },
   thorough: { perKChars: 1.8, perPage: 1, minPerChunk: 3, maxPerDoc: 600 },
 };
-/** Ausgelesener PDF-Volltext und Zahl der Seiten mit Text. */
-export interface FullText { text: string; pages: number }
+/** Ausgelesener PDF-Volltext und Zahl der Seiten mit Text. `transcribe`:
+ *  die Textebene taugt nicht (Formeln zerfallen oder Scan), vor dem Erzeugen
+ *  werden die Seiten abgeschrieben (pdfFullText.transcribePdf). */
+export interface FullText { text: string; pages: number; transcribe?: 'math' | 'scan' }
 
 /** Voller PDF-Text ist weniger dicht als eine Zusammenfassung (gründlich: etwa 2 Karten je Buchseite). */
 export const FULLTEXT_FACTOR = 0.45;
