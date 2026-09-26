@@ -1,6 +1,6 @@
-import React, { useLayoutEffect, useRef, useState } from 'react';
+import React, { useLayoutEffect, useMemo, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
-import { Plus, RotateCcw, X } from 'lucide-react';
+import { Plus, RotateCcw, Search, X } from 'lucide-react';
 import { useTranslation } from '../i18n/I18nProvider';
 import type { Flashcard } from '../types';
 import { CardImage } from './CardImage';
@@ -43,15 +43,50 @@ const Grow: React.FC<{ value: string; onChange: (v: string) => void; label: stri
  * Karte direkt bearbeiten, entfernen oder zurückholen, eigene ergänzen,
  * Stapelnamen ändern. Gespeichert wird erst danach, durch den Aufrufer.
  */
+/** Ab dieser Kartenzahl: Suche, Filter, Sammelaktion und schrittweises Anzeigen. */
+const LARGE_DECK = 50;
+const PAGE = 50;
+
 export const GeneratedCardsEditor: React.FC<Props> = ({ title, cards, onChange, makeId }) => {
   const { t, tp } = useTranslation();
   const [focusNew, setFocusNew] = useState<string | null>(null);
   const kept = cards.filter(c => !c.removed && (c.front.trim() || c.frontImage)).length;
   const update = (id: string, patch: Partial<DraftCard>) =>
     onChange({ title, cards: cards.map(c => (c.id === id ? { ...c, ...patch } : c)) });
+
+  // Bei mehreren hundert Karten ("Ganzes Fach", 317-Seiten-PDF) wurde die Liste
+  // sehr lang und träge: Suche, Filter nach Schlagwort bzw. entfernten Karten,
+  // Sammelaktion für die angezeigten Karten und Anzeige in 50er-Schritten.
+  const large = cards.length > LARGE_DECK;
+  const [query, setQuery] = useState('');
+  const [tagFilter, setTagFilter] = useState('');
+  const [onlyRemoved, setOnlyRemoved] = useState(false);
+  const [visible, setVisible] = useState(PAGE);
+  const allTags = useMemo(
+    () => [...new Set<string>(cards.flatMap(c => c.tags ?? []))].sort((a, b) => a.localeCompare(b)),
+    [cards],
+  );
+  const filtered = useMemo(() => {
+    const q = query.trim().toLowerCase();
+    return cards
+      .map((c, index) => ({ c, index }))
+      .filter(({ c }) => (!onlyRemoved || c.removed)
+        && (!tagFilter || (c.tags ?? []).includes(tagFilter))
+        && (!q || c.front.toLowerCase().includes(q) || c.back.toLowerCase().includes(q)));
+  }, [cards, query, tagFilter, onlyRemoved]);
+  const filtering = query.trim() !== '' || tagFilter !== '' || onlyRemoved;
+  const shown = large ? filtered.slice(0, visible) : filtered;
+  const allShownRemoved = filtered.length > 0 && filtered.every(({ c }) => c.removed);
+  const setRemovedForFiltered = (removed: boolean) => {
+    const ids = new Set(filtered.map(({ c }) => c.id));
+    onChange({ title, cards: cards.map(c => (ids.has(c.id) ? { ...c, removed } : c)) });
+  };
+
   const add = () => {
     const id = makeId();
     setFocusNew(id);
+    // Neue Karte steht am Ende: Filter lösen und bis dorthin aufklappen.
+    setQuery(''); setTagFilter(''); setOnlyRemoved(false); setVisible(cards.length + 1);
     onChange({ title, cards: [...cards, { id, front: '', back: '' }] });
   };
 
@@ -64,8 +99,51 @@ export const GeneratedCardsEditor: React.FC<Props> = ({ title, cards, onChange, 
       </label>
       <p className="text-xs text-slate-500 dark:text-slate-400">{tp('rev.summary', kept, { total: cards.length })}</p>
 
+      {large && (
+        <div className="space-y-2">
+          <div className="flex flex-wrap items-center gap-2">
+            <label className="relative flex-1 min-w-[180px]">
+              <Search className="w-4 h-4 text-slate-400 absolute left-3 top-1/2 -translate-y-1/2" aria-hidden="true" />
+              <input
+                type="search" value={query}
+                onChange={e => { setQuery(e.target.value); setVisible(PAGE); }}
+                placeholder={t('rev.search')} aria-label={t('rev.search')}
+                className="w-full pl-9 pr-3 py-2 rounded-xl bg-slate-50 dark:bg-slate-800 text-[13px] text-slate-900 dark:text-white border border-slate-200 dark:border-slate-700 outline-none"
+              />
+            </label>
+            {allTags.length > 0 && (
+              <select
+                value={tagFilter} aria-label={t('rev.tagFilter')}
+                onChange={e => { setTagFilter(e.target.value); setVisible(PAGE); }}
+                className="py-2 px-3 rounded-xl bg-slate-50 dark:bg-slate-800 text-[13px] font-semibold text-slate-700 dark:text-slate-200 border border-slate-200 dark:border-slate-700 outline-none max-w-[220px]"
+              >
+                <option value="">{t('rev.allTags')}</option>
+                {allTags.map(tag => <option key={tag} value={tag}>#{tag}</option>)}
+              </select>
+            )}
+            <label className="flex items-center gap-2 text-[13px] font-semibold text-slate-600 dark:text-slate-300 cursor-pointer">
+              <input type="checkbox" checked={onlyRemoved} onChange={e => { setOnlyRemoved(e.target.checked); setVisible(PAGE); }} />
+              {t('rev.onlyRemoved')}
+            </label>
+          </div>
+          {filtering && (
+            <div className="flex flex-wrap items-center gap-3 text-[13px]">
+              <span className="text-slate-500 dark:text-slate-400">{tp('rev.matches', filtered.length)}</span>
+              {filtered.length > 0 && (
+                <button type="button" onClick={() => setRemovedForFiltered(!allShownRemoved)}
+                  className="font-semibold text-slate-700 dark:text-slate-200 underline underline-offset-2 hover:text-slate-900 dark:hover:text-white">
+                  {allShownRemoved ? tp('rev.restoreMatches', filtered.length) : tp('rev.removeMatches', filtered.length)}
+                </button>
+              )}
+            </div>
+          )}
+        </div>
+      )}
+
+      {filtered.length === 0 && <p className="text-[13px] text-slate-500 dark:text-slate-400">{t('rev.noMatch')}</p>}
+
       <ol className="space-y-2">
-        {cards.map((c, i) => (
+        {shown.map(({ c, index: i }) => (
           <li key={c.id} className={`rounded-2xl border px-3 py-2 ${c.removed ? 'border-dashed border-slate-200 dark:border-slate-700 opacity-60' : 'border-slate-200 dark:border-slate-700'}`}>
             <div className="flex items-start gap-2">
               <span className="text-[11px] text-slate-400 w-6 pt-2 text-right tabular-nums shrink-0">{i + 1}</span>
@@ -101,6 +179,12 @@ export const GeneratedCardsEditor: React.FC<Props> = ({ title, cards, onChange, 
           </li>
         ))}
       </ol>
+      {large && filtered.length > shown.length && (
+        <button type="button" onClick={() => setVisible(v => v + PAGE)}
+          className="w-full py-2.5 rounded-xl border border-slate-200 dark:border-slate-700 text-[13px] font-semibold text-slate-700 dark:text-slate-200 hover:bg-slate-50 dark:hover:bg-slate-800">
+          {t('rev.showMore', { n: Math.min(PAGE, filtered.length - shown.length), rest: filtered.length - shown.length })}
+        </button>
+      )}
       <button type="button" onClick={add} className="flex items-center gap-2 text-[13px] font-semibold text-slate-600 dark:text-slate-300 hover:text-slate-900 dark:hover:text-white">
         <Plus className="w-4 h-4" aria-hidden="true" /> {t('rev.add')}
       </button>
