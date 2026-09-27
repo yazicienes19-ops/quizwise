@@ -376,14 +376,15 @@ export const Layout: React.FC<LayoutProps> = ({
                     <p className="text-[13px] font-semibold leading-snug break-words line-clamp-2 min-w-0" style={{ color: SIDEBAR.text }}>
                       {user.user_metadata?.full_name || t('layout.user')}
                     </p>
-                  </div>
-                  <div className="flex items-center gap-2">
-                    {userPlan === 'pro' ? (
+                    {userPlan === 'pro' && (
                       <span
-                        className="text-[11px] font-semibold uppercase tracking-[0.08em] rounded-full px-2 py-0.5"
+                        className="text-[11px] font-semibold uppercase tracking-[0.08em] rounded-full px-2 py-0.5 shrink-0"
                         style={{ background: SIDEBAR.gold, color: SIDEBAR.bg }}
                       >Pro</span>
-                    ) : (
+                    )}
+                  </div>
+                  <div className="flex items-center gap-2">
+                    {userPlan !== 'pro' && (
                       // Nur bei wenig Fensterhöhe sichtbar, dann fehlt der große Upgrade-Knopf (app.css).
                       <button
                         onClick={onUpgradeClick}
