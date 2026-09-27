@@ -23,6 +23,20 @@ export interface AdminUserRow {
   last7DaysActiveSeconds: number;
   /** null solange backend/migration_ai_budget.sql fehlt. */
   monthCostEur: number | null;
+  /** Freiwillige Angaben aus dem Onboarding; null = nichts angegeben (ältere Backends liefern das Feld nicht). */
+  study?: AdminStudyInfo | null;
+}
+
+export interface AdminStudyInfo {
+  path: string | null;
+  subject: string | null;
+  stage: string | null;
+  currentTopic: string | null;
+  upcomingExam: string | null;
+  goalText: string | null;
+  freeText: string | null;
+  goals: string[];
+  challenges: string[];
 }
 
 export const fetchAdminUsers = async (): Promise<AdminUserRow[]> => {

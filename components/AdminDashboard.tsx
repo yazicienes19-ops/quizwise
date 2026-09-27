@@ -1,6 +1,6 @@
 import React, { useEffect, useState, useCallback } from 'react';
 import { RefreshCw, AlertCircle, Users as UsersIcon, Flag } from 'lucide-react';
-import { fetchAdminUsers, fetchQuestionReports, grantPro, revokePro, suspendUser, unsuspendUser, type AdminUserRow, type QuestionReportsResponse } from '../services/adminService';
+import { fetchAdminUsers, fetchQuestionReports, grantPro, revokePro, suspendUser, unsuspendUser, type AdminUserRow, type AdminStudyInfo, type QuestionReportsResponse } from '../services/adminService';
 import { useTranslation } from '../i18n/I18nProvider';
 import type { TKey } from '../i18n';
 import { formatDateTime } from '../i18n/dates';
@@ -20,6 +20,37 @@ const REPORT_REASON_KEYS: Record<string, TKey> = {
   unclear: 'result.fb.unclear', wrong: 'result.fb.wrong', no_correct: 'result.fb.noCorrect',
   duplicate: 'result.fb.duplicate', too_easy: 'result.fb.tooEasy', too_hard: 'result.fb.tooHard', other: 'result.fb.other',
   too_strict: 'ev.fbTooStrict', too_lenient: 'ev.fbTooLenient', incomplete_solution: 'ev.fbMissing', unrealistic: 'ev.fbUnrealistic',
+};
+
+const PATH_KEYS: Record<string, TKey> = {
+  university: 'onboarding.flow.path.university',
+  school: 'onboarding.flow.path.school',
+  apprenticeship: 'onboarding.flow.path.apprenticeship',
+  continuing_education: 'onboarding.flow.path.continuing',
+  self_directed: 'onboarding.flow.path.self',
+  other: 'onboarding.flow.path.other',
+};
+
+/** Was der Nutzer im Onboarding angegeben hat (Bildungsweg, Fach, Semester, Thema, Ziele). */
+const StudyCell: React.FC<{ study: AdminStudyInfo | null | undefined }> = ({ study }) => {
+  const { t } = useTranslation();
+  if (!study) return <span className="text-slate-400 italic">{t('admin.study.none')}</span>;
+  const head = [study.path && PATH_KEYS[study.path] ? t(PATH_KEYS[study.path]) : null, study.subject, study.stage].filter(Boolean).join(' · ');
+  const label = (prefix: string, id: string) => {
+    const key = `onboarding.flow.${prefix}.${id}${prefix === 'challenges' ? '.label' : ''}` as TKey;
+    const text = t(key);
+    return text === key ? id : text;
+  };
+  return (
+    <div className="space-y-0.5 max-w-[260px]">
+      {head && <p className="font-black dark:text-white break-words">{head}</p>}
+      {study.currentTopic && <p className="text-slate-500 dark:text-slate-400 break-words">{t('admin.study.topic', { v: study.currentTopic })}</p>}
+      {study.upcomingExam && <p className="text-slate-500 dark:text-slate-400 break-words">{t('admin.study.exam', { v: study.upcomingExam })}</p>}
+      {(study.goalText || study.freeText) && <p className="text-slate-500 dark:text-slate-400 break-words">{study.goalText || study.freeText}</p>}
+      {study.goals.length > 0 && <p className="text-slate-400 break-words">{t('admin.study.goals', { v: study.goals.map(g => label('goals', g)).join(', ') })}</p>}
+      {study.challenges.length > 0 && <p className="text-slate-400 break-words">{t('admin.study.challenges', { v: study.challenges.map(c => label('challenges', c)).join(', ') })}</p>}
+    </div>
+  );
 };
 
 const GRANT_OPTIONS: { days: number; key: TKey }[] = [
@@ -117,12 +148,35 @@ export const AdminDashboard: React.FC = () => {
         <p className="text-[11px] text-slate-400 italic">{t('admin.empty')}</p>
       )}
 
+      {users && users.length > 0 && (() => {
+        // Überblick: Bildungswege und angegebene Fächer (nur was Nutzer freiwillig eingetragen haben).
+        const byPath = new Map<string, number>();
+        const subjects = new Map<string, number>();
+        for (const u of users) {
+          const p = u.study?.path ?? '';
+          byPath.set(p, (byPath.get(p) ?? 0) + 1);
+          const subj = u.study?.subject?.trim();
+          if (subj) subjects.set(subj, (subjects.get(subj) ?? 0) + 1);
+        }
+        const pathLine = [...byPath].sort((a, b) => b[1] - a[1])
+          .map(([p, n]) => `${p && PATH_KEYS[p] ? t(PATH_KEYS[p]) : t('admin.study.noPath')} ${n}`).join(' · ');
+        const subjectLine = [...subjects].sort((a, b) => b[1] - a[1]).map(([s, n]) => (n > 1 ? `${s} (${n})` : s)).join(', ');
+        return (
+          <div className="p-4 rounded-2xl space-y-1 text-[13px]" style={{ border: '1px solid var(--border-color)' }}>
+            <p className="text-[11px] font-semibold uppercase tracking-[0.08em] text-slate-400">{t('admin.study.title')}</p>
+            <p className="dark:text-white">{pathLine}</p>
+            <p className="text-slate-500 dark:text-slate-400">{subjectLine ? t('admin.study.subjects', { v: subjectLine }) : t('admin.study.noSubjects')}</p>
+          </div>
+        );
+      })()}
+
       {users && users.length > 0 && (
         <div className="overflow-x-auto rounded-2xl" style={{ border: '1px solid var(--border-color)' }}>
-          <table className="w-full text-left border-collapse min-w-[1180px]">
+          <table className="w-full text-left border-collapse min-w-[1440px]">
             <thead>
               <tr className="text-[11px] font-black uppercase tracking-widest text-slate-400" style={{ background: 'color-mix(in srgb, var(--border-color) 30%, var(--bg-main))' }}>
                 <th className="px-4 py-3">{t('admin.col.user')}</th>
+                <th className="px-4 py-3">{t('admin.col.study')}</th>
                 <th className="px-4 py-3">{t('admin.col.plan')}</th>
                 <th className="px-4 py-3">{t('admin.col.created')}</th>
                 <th className="px-4 py-3">{t('admin.col.lastLogin')}</th>
@@ -145,6 +199,7 @@ export const AdminDashboard: React.FC = () => {
                       </span>
                     )}
                   </td>
+                  <td className="px-4 py-3"><StudyCell study={u.study} /></td>
                   <td className="px-4 py-3">
                     <span className={`text-[11px] font-black uppercase px-2 py-1 rounded-full ${
                       u.plan === 'pro'

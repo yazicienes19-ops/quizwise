@@ -2,6 +2,7 @@ const express = require('express');
 const { supabaseAdmin } = require('../middleware/auth');
 const { ADMIN_IDS } = require('../middleware/requireAdmin');
 const { hasActiveStripeSubscription } = require('../admin/expireProGrants');
+const { studyInfo } = require('../admin/studyInfo');
 const { EUR_PER_USD, currentMonth, getSettings, invalidateSettings, isSetupMissing } = require('../budget/aiBudget');
 const router = express.Router();
 
@@ -31,12 +32,13 @@ const isBanned = (authUser) => {
 
 // GET /api/admin/users
 // Übersicht aller Accounts für den Admin: Plan, Registrierung, letzter Login,
-// letzte Aktivität in der App, Lernzeit (gesamt + letzte 7 Tage), Sperrstatus.
+// letzte Aktivität in der App, Lernzeit (gesamt + letzte 7 Tage), Sperrstatus,
+// freiwillige Angaben aus dem Onboarding (Bildungsweg, Fach, Semester, …).
 router.get('/users', async (req, res, next) => {
   try {
     const [authUsers, profilesRes, activityRes, costRes] = await Promise.all([
       listAllAuthUsers(),
-      supabaseAdmin.from('profiles').select('id, full_name, plan, created_at, last_active_at, admin_pro_until'),
+      supabaseAdmin.from('profiles').select('id, full_name, plan, created_at, last_active_at, admin_pro_until, onboarding:preferences->onboarding'),
       supabaseAdmin.from('daily_activity').select('user_id, activity_date, active_seconds'),
       supabaseAdmin.from('ai_usage_monthly').select('user_id, cost_usd').eq('month', currentMonth()),
     ]);
@@ -74,6 +76,7 @@ router.get('/users', async (req, res, next) => {
         totalActiveSeconds: totalSecondsByUser.get(u.id) || 0,
         last7DaysActiveSeconds: last7SecondsByUser.get(u.id) || 0,
         monthCostEur: costRes.error ? null : (costByUser.get(u.id) || 0),
+        study: studyInfo(profile?.onboarding),
       };
     });
 
