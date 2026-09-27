@@ -10,7 +10,11 @@ import { supabase } from './supabaseClient';
  */
 export const DAILY_GOAL_KEY = 'studearc_daily_goal_min';
 export const DAILY_GOAL_OPTIONS = [15, 30, 45, 60, 90] as const;
+/** Eigenes Tagesziel (Nutzerwunsch 27.09.2026: nicht nur bis 90 Min.). */
+export const DAILY_GOAL_MIN = 5;
+export const DAILY_GOAL_MAX = 600;
 const DEFAULT_GOAL = 30;
+const isValidGoal = (v: number): boolean => Number.isInteger(v) && v >= DAILY_GOAL_MIN && v <= DAILY_GOAL_MAX;
 
 /** Feuert nach jedem gesendeten Heartbeat, damit Anzeigen nachladen. */
 export const STUDY_TIME_EVENT = 'studearc:study-time';
@@ -24,17 +28,20 @@ export interface StudyDay {
 export const getDailyGoal = (): number => {
   try {
     const v = parseInt(localStorage.getItem(DAILY_GOAL_KEY) || '', 10);
-    return (DAILY_GOAL_OPTIONS as readonly number[]).includes(v) ? v : DEFAULT_GOAL;
+    return isValidGoal(v) ? v : DEFAULT_GOAL;
   } catch {
     return DEFAULT_GOAL;
   }
 };
 
-export const setDailyGoal = (minutes: number, userId?: string | null): void => {
+/** Speichert das Tagesziel (gerundet und auf 5 bis 600 Min. begrenzt) und gibt es zurück. */
+export const setDailyGoal = (value: number, userId?: string | null): number => {
+  const minutes = Math.min(DAILY_GOAL_MAX, Math.max(DAILY_GOAL_MIN, Math.round(Number.isFinite(value) ? value : DEFAULT_GOAL)));
   try { localStorage.setItem(DAILY_GOAL_KEY, String(minutes)); } catch { /* Speicher gesperrt */ }
   if (userId) {
     import('./syncService').then(({ syncPreferences }) => syncPreferences(userId, { daily_goal_minutes: minutes })).catch(() => {});
   }
+  return minutes;
 };
 
 const utcDay = (d: Date): string => d.toISOString().slice(0, 10);

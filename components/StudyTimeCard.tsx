@@ -5,7 +5,7 @@ import {
   startFocus, FOCUS_OPTIONS, FOCUS_MIN_MINUTES, FOCUS_MAX_MINUTES, getCustomFocusMinutes, setCustomFocusMinutes,
 } from '../services/focusTimer';
 import {
-  loadRecentStudyTime, getDailyGoal, setDailyGoal, DAILY_GOAL_OPTIONS, STUDY_TIME_EVENT, type StudyDay,
+  loadRecentStudyTime, getDailyGoal, setDailyGoal, DAILY_GOAL_OPTIONS, DAILY_GOAL_MIN, DAILY_GOAL_MAX, STUDY_TIME_EVENT, type StudyDay,
 } from '../services/studyTimeService';
 
 /**
@@ -23,6 +23,13 @@ export const StudyTimeCard: React.FC<{ userId: string }> = ({ userId }) => {
   const { t } = useTranslation();
   const [days, setDays] = useState<StudyDay[] | null>(null);
   const [goal, setGoal] = useState(getDailyGoal);
+  // Eigenes Tagesziel: "Eigene…" in der Liste öffnet ein Minutenfeld.
+  const [goalEditing, setGoalEditing] = useState(false);
+  const [goalValue, setGoalValue] = useState(() => String(getDailyGoal()));
+  const saveGoal = () => { const v = setDailyGoal(Number(goalValue), userId); setGoal(v); setGoalValue(String(v)); setGoalEditing(false); };
+  const goalOptions = (DAILY_GOAL_OPTIONS as readonly number[]).includes(goal)
+    ? [...DAILY_GOAL_OPTIONS]
+    : [...DAILY_GOAL_OPTIONS, goal].sort((a, b) => a - b);
   // Eigene Fokus-Dauer (Nutzerwunsch 26.09.2026): Feld öffnet sich neben den Schnellwahlen.
   const [customOpen, setCustomOpen] = useState(false);
   const [customValue, setCustomValue] = useState(() => String(getCustomFocusMinutes()));
@@ -126,18 +133,49 @@ export const StudyTimeCard: React.FC<{ userId: string }> = ({ userId }) => {
                 </button>
               )}
             </span>
-            <label className="inline-flex items-center gap-1.5">
-              {t('home.time.goal')}
-              <select
-                id="daily-goal"
-                value={goal}
-                onChange={e => { const v = Number(e.target.value); setGoal(v); setDailyGoal(v, userId); }}
-                className="bg-transparent font-semibold outline-none cursor-pointer"
-                style={{ color: INK }}
-              >
-                {DAILY_GOAL_OPTIONS.map(o => <option key={o} value={o}>{t('home.time.m', { m: o })}</option>)}
-              </select>
-            </label>
+            {goalEditing ? (
+              <span className="inline-flex items-center gap-1.5">
+                {t('home.time.goal')}
+                <input
+                  type="number"
+                  inputMode="numeric"
+                  autoFocus
+                  min={DAILY_GOAL_MIN}
+                  max={DAILY_GOAL_MAX}
+                  value={goalValue}
+                  onChange={e => setGoalValue(e.target.value)}
+                  onKeyDown={e => { if (e.key === 'Enter') saveGoal(); if (e.key === 'Escape') setGoalEditing(false); }}
+                  aria-label={t('home.time.goalLabel', { min: DAILY_GOAL_MIN, max: DAILY_GOAL_MAX })}
+                  className="w-16 px-1.5 py-0.5 rounded-md font-semibold text-center bg-transparent outline-none"
+                  style={{ color: INK, border: `1px solid ${LINE}` }}
+                />
+                <span>{t('focus.minShort')}</span>
+                <button
+                  onClick={saveGoal}
+                  className="px-2 py-0.5 rounded-md font-semibold transition-opacity hover:opacity-90"
+                  style={{ background: 'var(--primary)', color: 'var(--primary-text)' }}
+                >
+                  {t('home.time.goalSave')}
+                </button>
+              </span>
+            ) : (
+              <label className="inline-flex items-center gap-1.5">
+                {t('home.time.goal')}
+                <select
+                  id="daily-goal"
+                  value={goal}
+                  onChange={e => {
+                    if (e.target.value === 'custom') { setGoalValue(String(goal)); setGoalEditing(true); return; }
+                    const v = setDailyGoal(Number(e.target.value), userId); setGoal(v);
+                  }}
+                  className="bg-transparent font-semibold outline-none cursor-pointer"
+                  style={{ color: INK }}
+                >
+                  {goalOptions.map(o => <option key={o} value={o}>{t('home.time.m', { m: o })}</option>)}
+                  <option value="custom">{t('home.time.goalCustom')}</option>
+                </select>
+              </label>
+            )}
           </div>
         </div>
         {/* Verlauf der letzten 7 Tage; die gestrichelte Linie ist das Tagesziel. */}
