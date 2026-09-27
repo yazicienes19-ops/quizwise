@@ -361,42 +361,44 @@ export const Layout: React.FC<LayoutProps> = ({
           <div className="mt-6 space-y-2">
             {user ? (
               <>
+                {/* Name bekommt die volle Breite (vorher teilten sich Name, Pro, E-Mail
+                    und zwei Knöpfe eine Zeile, übrig blieb "En…"). E-Mail nur als Tooltip. */}
                 <div
-                  className="flex items-center gap-3 px-4 py-3 rounded-2xl"
+                  className="px-4 py-3 rounded-2xl space-y-2"
                   style={{ background: SIDEBAR.chipBg }}
+                  title={user.email ?? ''}
                 >
-                  <div
-                    className="w-8 h-8 rounded-xl flex items-center justify-center text-[11px] font-semibold shrink-0"
-                    style={{ color: SIDEBAR.bg, background: SIDEBAR.gold }}
-                  >{userInitial}</div>
-                  <div className="flex-1 min-w-0">
-                    <p className="text-[11px] font-semibold break-words flex items-center gap-1.5" style={{ color: SIDEBAR.text }}>
-                      <span className="truncate">{user.user_metadata?.full_name || t('layout.user')}</span>
-                      {userPlan === 'pro' && (
-                        <span
-                          className="text-[11px] font-semibold uppercase tracking-[0.08em] rounded-full px-1.5 py-0.5 shrink-0"
-                          style={{ background: SIDEBAR.gold, color: SIDEBAR.bg }}
-                        >Pro</span>
-                      )}
-                    </p>
-                    {/* Immer eine Zeile — kein Umbruch, volle Adresse per Tooltip */}
-                    <p className="text-[11px] flex items-center gap-1.5 min-w-0" style={{ color: SIDEBAR.textMuted }} title={user.email ?? ''}>
-                      {userPlan !== 'pro' && (
-                        <button
-                          onClick={onUpgradeClick}
-                          className="sidebar-upgrade-chip text-[13px] font-semibold rounded-full px-1.5 py-0.5 shrink-0"
-                          style={{ border: `1px solid ${SIDEBAR.gold}`, color: SIDEBAR.gold }}
-                        >Pro</button>
-                      )}
-                      <span className="truncate">{user.email}</span>
+                  <div className="flex items-center gap-3 min-w-0">
+                    <div
+                      className="w-8 h-8 rounded-xl flex items-center justify-center text-[11px] font-semibold shrink-0"
+                      style={{ color: SIDEBAR.bg, background: SIDEBAR.gold }}
+                    >{userInitial}</div>
+                    <p className="text-[13px] font-semibold leading-snug break-words line-clamp-2 min-w-0" style={{ color: SIDEBAR.text }}>
+                      {user.user_metadata?.full_name || t('layout.user')}
                     </p>
                   </div>
-                  <button onClick={onSettingsClick} aria-label={t('layout.settings')} title={t('layout.settings')} className="transition-colors shrink-0 hover:opacity-80" style={{ color: SIDEBAR.textMuted }}>
-                    <Settings className="w-[18px] h-[18px]" strokeWidth={1.75} />
-                  </button>
-                  <button onClick={onLogout} aria-label={t('layout.logoutTitle', { email: user.email ?? '' })} title={t('layout.logout')} className="transition-colors shrink-0 hover:opacity-80" style={{ color: SIDEBAR.textMuted }}>
-                    <LogOut className="w-[18px] h-[18px]" strokeWidth={1.75} />
-                  </button>
+                  <div className="flex items-center gap-2">
+                    {userPlan === 'pro' ? (
+                      <span
+                        className="text-[11px] font-semibold uppercase tracking-[0.08em] rounded-full px-2 py-0.5"
+                        style={{ background: SIDEBAR.gold, color: SIDEBAR.bg }}
+                      >Pro</span>
+                    ) : (
+                      // Nur bei wenig Fensterhöhe sichtbar, dann fehlt der große Upgrade-Knopf (app.css).
+                      <button
+                        onClick={onUpgradeClick}
+                        className="sidebar-upgrade-chip text-[13px] font-semibold rounded-full px-2 py-0.5"
+                        style={{ border: `1px solid ${SIDEBAR.gold}`, color: SIDEBAR.gold }}
+                      >Pro</button>
+                    )}
+                    <span className="flex-1" />
+                    <button onClick={onSettingsClick} aria-label={t('layout.settings')} title={t('layout.settings')} className="transition-colors shrink-0 hover:opacity-80" style={{ color: SIDEBAR.textMuted }}>
+                      <Settings className="w-[18px] h-[18px]" strokeWidth={1.75} />
+                    </button>
+                    <button onClick={onLogout} aria-label={t('layout.logoutTitle', { email: user.email ?? '' })} title={t('layout.logout')} className="transition-colors shrink-0 hover:opacity-80" style={{ color: SIDEBAR.textMuted }}>
+                      <LogOut className="w-[18px] h-[18px]" strokeWidth={1.75} />
+                    </button>
+                  </div>
                 </div>
                 {userPlan !== 'pro' && (
                   <button
