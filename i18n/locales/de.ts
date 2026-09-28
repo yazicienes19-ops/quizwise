@@ -2216,6 +2216,7 @@ export const de = {
   'sp2.deleteExamConfirm': 'Klausurtermin „{title}" löschen? Das kann nicht rückgängig gemacht werden.',
   'sp2.daysN': '{n} Tag|{n} Tage',
   'sp2.smartPlanFailed': 'Der Lernplan konnte nicht erstellt werden.',
+  'sp2.planNoSlots': 'In den nächsten 7 Tagen ist zwischen 8 und 20 Uhr kein freier Platz für einen Lernblock.',
   'sp2.subtitle': 'Klausurtermine, Lernsessions und automatisch geplante Wiederholungen.',
   'sp2.planning': 'Plant...',
   'sp2.smartPlan': '✦ Lernplan erstellen',

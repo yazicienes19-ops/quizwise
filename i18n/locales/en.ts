@@ -2215,6 +2215,7 @@ export const en: Translations = {
   'sp2.deleteExamConfirm': 'Delete exam date "{title}"? This cannot be undone.',
   'sp2.daysN': '{n} day|{n} days',
   'sp2.smartPlanFailed': 'The study plan could not be created.',
+  'sp2.planNoSlots': 'There is no free slot for a study block between 8 am and 8 pm in the next 7 days.',
   'sp2.subtitle': 'Exam dates, study sessions, and automatically scheduled reviews.',
   'sp2.planning': 'Planning...',
   'sp2.smartPlan': '✦ Create study plan',

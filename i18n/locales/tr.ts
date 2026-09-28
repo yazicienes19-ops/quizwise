@@ -2208,6 +2208,7 @@ export const tr: Translations = {
   'sp2.deleteExamConfirm': '„{title}" sınav tarihi silinsin mi? Bu işlem geri alınamaz.',
   'sp2.daysN': '{n} gün',
   'sp2.smartPlanFailed': 'Çalışma planı oluşturulamadı.',
+  'sp2.planNoSlots': 'Önümüzdeki 7 günde 08:00 ile 20:00 arasında çalışma bloğu için boş yer yok.',
   'sp2.subtitle': 'Sınav tarihleri, çalışma seansları ve otomatik planlanan tekrarlar.',
   'sp2.planning': 'Planlanıyor...',
   'sp2.smartPlan': '✦ Çalışma planı oluştur',

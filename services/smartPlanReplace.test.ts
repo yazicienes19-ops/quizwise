@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { mapSmartPlanToCalendarSessions, replaceSmartPlanSessions } from './calendarSessions';
+import { mapSmartPlanToCalendarSessions, replaceSmartPlanSessions, buildPlanAvailability } from './calendarSessions';
 import type { CalendarStudySession } from '../types';
 
 const session = (id: string, date: string, fromSmartPlan?: boolean): CalendarStudySession => ({
@@ -11,7 +11,7 @@ describe('Smart-Plan: ersetzen statt verdoppeln', () => {
     let n = 0;
     const mapped = mapSmartPlanToCalendarSessions(
       [{ day: 'Montag', subject: 'Psychologie', topic: 'Lernen', startTime: '10:00', endTime: '11:00' } as any],
-      new Date(2026, 8, 12), [], [], () => `id${n++}`,
+      buildPlanAvailability(new Date(2026, 8, 12, 6, 0), [], [], []), [], () => `id${n++}`,
     );
     expect(mapped).toHaveLength(1);
     expect(mapped[0].fromSmartPlan).toBe(true);

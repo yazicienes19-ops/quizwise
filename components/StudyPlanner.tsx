@@ -8,7 +8,7 @@ import { countDueCards, migrateLegacyCard } from '../services/spacedRepetition';
 import { getMistakeQueue } from '../services/mistakeReviewService';
 import { getAllResults } from '../services/quizHistoryService';
 import { getSpacedSettings, saveSpacedSettings, buildSpacedPlan, applySpacedPlan, buildDueForecast } from '../services/spacedPlanningService';
-import { sessionsForDate, applySessionSave, SessionFormInput, fixedWeekdaysFromRecurring, mapSmartPlanToCalendarSessions, replaceSmartPlanSessions, migrateStudyEntriesToRecurring, daysUntilDate } from '../services/calendarSessions';
+import { sessionsForDate, applySessionSave, SessionFormInput, buildPlanAvailability, availabilityForPrompt, mapSmartPlanToCalendarSessions, replaceSmartPlanSessions, migrateStudyEntriesToRecurring, daysUntilDate } from '../services/calendarSessions';
 import { toast } from '../services/toast';
 import { getCalendarFeedUrl } from '../services/userService';
 import { useTranslation } from '../i18n/I18nProvider';
@@ -321,11 +321,19 @@ export const StudyPlanner: React.FC<StudyPlannerProps> = ({ metrics, decks, exam
   const handleSmartPlan = async () => {
     setIsGenerating(true);
     try {
-      const fixedSchedule = fixedWeekdaysFromRecurring(recurringSessions, collections);
-      const plan = await generateSmartStudyPlan(metrics, decks, examTerms, buildDueForecast(decks, getMistakeQueue(), 7), fixedSchedule);
+      const now = new Date();
+      const nowStr = toDateStr(now);
+      const availability = buildPlanAvailability(now, recurringSessions, calendarSessions, collections);
+      if (!availability.some(a => a.free.length > 0)) { toast.error(t('sp2.planNoSlots')); return; }
+      const upcomingExams = examTerms.filter(e => e.date >= nowStr);
+      const plan = await generateSmartStudyPlan(
+        metrics, decks, upcomingExams, buildDueForecast(decks, getMistakeQueue(), 7),
+        availabilityForPrompt(availability), collections.map(c => c.name),
+      );
       const genId = () => Math.random().toString(36).substr(2, 9);
-      const mapped = mapSmartPlanToCalendarSessions(plan, today, collections, recurringSessions, genId);
-      const { sessions, replaced } = replaceSmartPlanSessions(calendarSessions, mapped, todayStr);
+      const mapped = mapSmartPlanToCalendarSessions(plan, availability, collections, genId);
+      if (mapped.length === 0) { toast.error(t('sp2.planNoSlots')); return; }
+      const { sessions, replaced } = replaceSmartPlanSessions(calendarSessions, mapped, nowStr);
       saveCalendarSessions(sessions);
       const days = new Set(mapped.map(s => s.date)).size;
       const created = t('sp2.planCreated', { entries: mapped.length, days: tp('sp2.daysN', days) });
