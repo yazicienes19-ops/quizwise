@@ -1371,6 +1371,9 @@ export type TutorChatMode = TutorMode;
  *  Nachricht muss unter dem Backend-Limit von 20 Parts bleiben. */
 const TUTOR_MAX_HISTORY_TURNS = 14;
 const TUTOR_TURN_CHAR_LIMIT = 1600;
+/** Schalter "Nachdenken": festes Denk-Budget statt dynamisch (-1), damit Kosten
+ *  und Wartezeit pro Nachricht gedeckelt bleiben (~1,5 Cent bei 3.8 Flash). */
+export const TUTOR_THINKING_BUDGET = 4096;
 
 const TUTOR_MODE_RULES: Record<TutorChatMode, string> = {
   explain: `MODUS ERKLÄREN — Beantworte jede Nachricht direkt und so, dass der Nutzer sie wirklich versteht.
@@ -1403,7 +1406,7 @@ export const chatWithTutor = async (
   source: GenerationSource | null,
   history: TutorTurn[],
   userMessage: string,
-  options: { mode: TutorChatMode; useExternalKnowledge: boolean; includeSourceQuote: boolean; conceptLock?: string },
+  options: { mode: TutorChatMode; useExternalKnowledge: boolean; includeSourceQuote: boolean; conceptLock?: string; deepThinking?: boolean },
   /** Zwischenstände fürs Streaming; ohne bleibt es ein normaler Aufruf. */
   onPartial?: (fullSoFar: string) => void,
 ): Promise<string> => {
@@ -1464,7 +1467,7 @@ Antworte jetzt auf die aktuelle Nachricht. Regeln:
   const payload = {
     complexity: 'heavy' as const,
     parts,
-    config: { temperature: 0.5, thinkingConfig: { thinkingBudget: 0 } },
+    config: { temperature: 0.5, thinkingConfig: { thinkingBudget: options.deepThinking ? TUTOR_THINKING_BUDGET : 0 } },
   };
   return onPartial ? callBackendStream(payload, onPartial) : callBackend(payload);
 };

@@ -1,6 +1,6 @@
 
 import React, { useState, useEffect, useMemo, useRef, useCallback } from 'react';
-import { MessageCircle, Lightbulb, ClipboardList, BookOpen, Search, ChevronRight, Mic, Send, Volume2, Square, Copy, BookmarkPlus, Trash2, ArrowLeft, GraduationCap, X } from 'lucide-react';
+import { MessageCircle, Lightbulb, ClipboardList, BookOpen, Search, ChevronRight, Mic, Send, Volume2, Square, Copy, BookmarkPlus, Trash2, ArrowLeft, GraduationCap, X, Brain, Globe } from 'lucide-react';
 import { ProcessedDocument, Collection, TopicMetric, FlashcardDeck, Flashcard } from '../types';
 import type { GenerationSource } from '../services/geminiService';
 import { chatWithTutor } from '../services/geminiService';
@@ -104,6 +104,33 @@ const QUICK_ACTIONS: Record<TutorMode, { labelKey: TKey; msgKey: TKey }[]> = {
 };
 
 const THINKING_KEYS: TKey[] = ['tut.thinking.1', 'tut.thinking.2', 'tut.thinking.3'];
+const DEEP_THINKING_KEYS: TKey[] = ['tut.deep.1', 'tut.deep.2', 'tut.deep.3'];
+/** Schalter "Nachdenken" bleibt über Sitzungen hinweg gemerkt (reine Vorliebe). */
+const DEEP_THINKING_KEY = 'studearc_tutor_deep_thinking';
+/** System-Pillen für den Allgemeinwissen-Schalter mitten im Gespräch; alle
+ *  anderen System-Pillen tragen einen Modus-Schlüssel. */
+const EXT_PILL_ON = 'ext:on';
+const EXT_PILL_OFF = 'ext:off';
+
+/** Kleiner An/Aus-Schalter für den Composer (Nachdenken, Allgemeinwissen). */
+const ComposerToggle: React.FC<{
+  on: boolean; onToggle: () => void; icon: typeof Brain; label: string; title?: string; disabled?: boolean;
+}> = ({ on, onToggle, icon: Icon, label, title, disabled }) => (
+  <button
+    type="button"
+    onClick={onToggle}
+    disabled={disabled}
+    aria-pressed={on}
+    title={title}
+    className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[11px] font-semibold whitespace-nowrap shrink-0 transition-colors disabled:cursor-not-allowed disabled:opacity-60"
+    style={on
+      ? { background: 'color-mix(in srgb, var(--primary) 16%, transparent)', border: '1px solid color-mix(in srgb, var(--primary) 45%, transparent)', color: 'color-mix(in srgb, var(--primary) 75%, black)' }
+      : { background: 'transparent', border: '1px solid var(--border-color)', color: 'var(--text-secondary)' }}
+  >
+    <Icon size={13} strokeWidth={2} />
+    {label}
+  </button>
+);
 
 // ─── Hauptkomponente ──────────────────────────────────────────────────────────
 
@@ -119,6 +146,16 @@ export const ExplainerSystem: React.FC<ExplainerSystemProps> = ({
   const [activeSourceName, setActiveSourceName] = useState('');
   const [sourceRef, setSourceRef] = useState<TutorSourceRef>(null);
   const [useExternal, setUseExternal] = useState(false);
+  const [deepThinking, setDeepThinking] = useState<boolean>(() => {
+    try { return localStorage.getItem(DEEP_THINKING_KEY) === '1'; } catch { return false; }
+  });
+  const toggleDeepThinking = () => {
+    setDeepThinking(v => {
+      const next = !v;
+      try { localStorage.setItem(DEEP_THINKING_KEY, next ? '1' : '0'); } catch {}
+      return next;
+    });
+  };
   const [messages, setMessages] = useState<ChatMessage[]>([]);
   // Sitzungs-Id bewusst als Ref: send() ruft persistSession zweimal in einem
   // Rendervorgang (User- + Tutor-Nachricht) — ein State-Update wäre dort noch
@@ -206,9 +243,9 @@ export const ExplainerSystem: React.FC<ExplainerSystemProps> = ({
   // Rotierende Status-Zeilen während der Tutor antwortet
   useEffect(() => {
     if (!isTyping) { setThinkingIdx(0); return; }
-    const iv = setInterval(() => setThinkingIdx(i => (i + 1) % THINKING_KEYS.length), 2600);
+    const iv = setInterval(() => setThinkingIdx(i => (i + 1) % THINKING_KEYS.length), deepThinking ? 4000 : 2600);
     return () => clearInterval(iv);
-  }, [isTyping]);
+  }, [isTyping, deepThinking]);
 
   // Bug-Fix 2026-09-10: Material-Auswahl (SourceSelector) und der Dokument-
   // öffnen-Picker respektierten das in der Sidebar gewählte Fach nicht — bei
@@ -236,12 +273,12 @@ export const ExplainerSystem: React.FC<ExplainerSystemProps> = ({
   // modeOverride: setMode() ist async (nächster Render) — ein Aufrufer, der
   // Modus UND Nachrichten im selben Tick ändert (changeMode), würde sonst den
   // noch alten mode-Wert aus der Closure persistieren.
-  const persistSession = (msgs: ChatMessage[], modeOverride?: TutorMode) => {
+  const persistSession = (msgs: ChatMessage[], modeOverride?: TutorMode, externalOverride?: boolean) => {
     if (!msgs.length) return;
     if (!sessionIdRef.current) { sessionIdRef.current = uid(); sessionCreatedRef.current = Date.now(); }
     try { sessionStorage.setItem(OPEN_SESSION_KEY, sessionIdRef.current); } catch {}
     setSessions(saveTutorSession({
-      id: sessionIdRef.current, mode: modeOverride ?? mode, sourceName: activeSourceName, sourceRef, useExternal,
+      id: sessionIdRef.current, mode: modeOverride ?? mode, sourceName: activeSourceName, sourceRef, useExternal: externalOverride ?? useExternal,
       messages: msgs.map(m => ({ id: m.id, role: m.role, content: m.content, followUps: m.followUps, quote: m.quote, ts: m.ts })),
       createdAt: sessionCreatedRef.current, updatedAt: Date.now(),
     }));
@@ -314,7 +351,7 @@ export const ExplainerSystem: React.FC<ExplainerSystemProps> = ({
       // fertige Antwort unten sauber geparst wird; gleiche id = kein Flackern.
       const placeholderId = uid();
       const raw = await chatWithTutor(activeSource, history, trimmed, {
-        mode, useExternalKnowledge: external, includeSourceQuote: !!activeSource,
+        mode, useExternalKnowledge: external, includeSourceQuote: !!activeSource, deepThinking,
       }, partial => {
         const lastBreak = partial.lastIndexOf('\n');
         const tail = partial.slice(lastBreak + 1).trimStart();
@@ -387,6 +424,20 @@ export const ExplainerSystem: React.FC<ExplainerSystemProps> = ({
       const withPill = [...messages, { id: uid(), role: 'system' as const, content: next, ts: Date.now() }];
       setMessages(withPill);
       persistSession(withPill, next);
+    }
+  };
+
+  /** Allgemeinwissen mitten im Gespräch an/aus: wie beim Moduswechsel gilt es
+   *  ab der nächsten Antwort und wird als Pille im Verlauf sichtbar. Ohne
+   *  Quelle bleibt es an, sonst hätte der Tutor nichts zum Antworten. */
+  const toggleExternal = () => {
+    if (!activeSource) return;
+    const next = !useExternal;
+    setUseExternal(next);
+    if (messages.length > 0) {
+      const withPill = [...messages, { id: uid(), role: 'system' as const, content: next ? EXT_PILL_ON : EXT_PILL_OFF, ts: Date.now() }];
+      setMessages(withPill);
+      persistSession(withPill, undefined, next);
     }
   };
 
@@ -573,6 +624,12 @@ export const ExplainerSystem: React.FC<ExplainerSystemProps> = ({
                 <span className={`absolute top-0.5 w-[13px] h-[13px] rounded-full bg-white transition-all ${useExternal ? 'left-[15px]' : 'left-0.5'}`} />
               </span>
               <span className="text-[11px] font-medium whitespace-nowrap" style={{ color: 'var(--text-secondary)' }}>{t('ex.supplementGeneral')}</span>
+            </button>
+            <button onClick={toggleDeepThinking} aria-pressed={deepThinking} title={t('tut.deepThinking.hint')} className="flex items-center gap-1.5">
+              <span className="w-[30px] h-[17px] rounded-full relative transition-colors shrink-0" style={{ background: deepThinking ? 'var(--primary)' : 'color-mix(in srgb, var(--ink) 16%, transparent)' }}>
+                <span className={`absolute top-0.5 w-[13px] h-[13px] rounded-full bg-white transition-all ${deepThinking ? 'left-[15px]' : 'left-0.5'}`} />
+              </span>
+              <span className="text-[11px] font-medium whitespace-nowrap" style={{ color: 'var(--text-secondary)' }}>{t('tut.deepThinking')}</span>
             </button>
             <button
               onClick={() => startChat(input.trim() || undefined)}
@@ -872,7 +929,9 @@ export const ExplainerSystem: React.FC<ExplainerSystemProps> = ({
                   className="text-[11px] font-semibold uppercase px-2.5 py-1 rounded-full"
                   style={{ background: 'color-mix(in srgb, var(--ink) 6%, transparent)', color: 'color-mix(in srgb, var(--ink) 70%, transparent)', letterSpacing: '0.08em' }}
                 >
-                  {t('tut.modeChanged')} · {t(MODE_TITLE_KEY[m.content as TutorMode])}
+                  {m.content === EXT_PILL_ON ? t('tut.externalOn')
+                    : m.content === EXT_PILL_OFF ? t('tut.externalOff')
+                    : <>{t('tut.modeChanged')} · {t(MODE_TITLE_KEY[m.content as TutorMode])}</>}
                 </span>
               </div>
             );
@@ -1003,7 +1062,7 @@ export const ExplainerSystem: React.FC<ExplainerSystemProps> = ({
                 <span className="w-2 h-2 rounded-full animate-bounce" style={{ background: 'var(--primary)', animationDelay: '150ms' }} />
                 <span className="w-2 h-2 rounded-full animate-bounce" style={{ background: 'var(--primary)', animationDelay: '300ms' }} />
               </div>
-              <p className="text-xs font-semibold text-slate-400">{t(THINKING_KEYS[thinkingIdx])}</p>
+              <p className="text-xs font-semibold text-slate-400">{t((deepThinking ? DEEP_THINKING_KEYS : THINKING_KEYS)[thinkingIdx])}</p>
             </div>
           </div>
         )}
@@ -1037,6 +1096,25 @@ export const ExplainerSystem: React.FC<ExplainerSystemProps> = ({
             ))}
           </div>
         )}
+
+        {/* Schalter mitten im Gespräch: gelten ab der nächsten Antwort. */}
+        <div className="flex flex-wrap gap-1.5 pb-2">
+          <ComposerToggle
+            on={deepThinking}
+            onToggle={toggleDeepThinking}
+            icon={Brain}
+            label={t('tut.deepThinking')}
+            title={t('tut.deepThinking.hint')}
+          />
+          <ComposerToggle
+            on={useExternal || !activeSource}
+            onToggle={toggleExternal}
+            icon={Globe}
+            label={t('tut.general')}
+            title={activeSource ? t(useExternal ? 'ex.supplementOn' : 'ex.supplementOff') : t('tut.externalNoSource')}
+            disabled={!activeSource}
+          />
+        </div>
 
         <div className="flex items-end gap-2">
           {/* Auch ohne Speech-Support sichtbar (deaktiviert) — Firefox-Nutzer
