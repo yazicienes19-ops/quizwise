@@ -49,6 +49,39 @@ export function stripFollowUpLine(markdown: string): string {
 }
 
 /**
+ * "**Denkweg:** schritt1 | schritt2 | schritt3" — hängt chatWithTutor nur mit dem
+ * Schalter "Nachdenken" an. Bewusst eine selbst formulierte Zeile statt Geminis
+ * eingebauter Gedanken (includeThoughts): die kommen immer auf Englisch und reden
+ * über den Prompt selbst ("the 3-sentence constraint"), getestet 2026-09-28.
+ */
+const REASONING_LINE_RE = /^\*{0,2}(?:Denkweg|Reasoning|Düşünce yolu)\*{0,2}:\*{0,2}\s*(.+)$/i;
+
+export function extractReasoning(markdown: string): string[] | null {
+  const lines = markdown.split('\n').map(l => l.trim()).filter(Boolean);
+  for (let i = lines.length - 1; i >= 0; i--) {
+    const match = lines[i].match(REASONING_LINE_RE);
+    if (!match) continue;
+    const steps = match[1]
+      .split('|')
+      .map(q => q.replace(/^[-*\d.\s]+/, '').replace(/\*+$/, '').trim())
+      .filter(q => q.length > 0)
+      .slice(0, 5);
+    return steps.length > 0 ? steps : null;
+  }
+  return null;
+}
+
+export function stripReasoningLine(markdown: string): string {
+  if (!markdown.split('\n').some(line => REASONING_LINE_RE.test(line.trim()))) return markdown;
+  return markdown
+    .split('\n')
+    .filter(line => !REASONING_LINE_RE.test(line.trim()))
+    .join('\n')
+    .replace(/\n{3,}/g, '\n\n')
+    .trim();
+}
+
+/**
  * Nachbearbeitung einer rohen Tutor-Antwort: entfernt defensiv zuerst eine eventuell
  * vorhandene Quelle-Zeile (unabhängig davon, ob der Aufrufer includeSourceQuote gesetzt
  * hatte — das Modell hängt sie manchmal auch ungefragt an, s. GraphLearningOverlay-Bug
@@ -60,9 +93,12 @@ export function stripFollowUpLine(markdown: string): string {
 export function parseTutorResponse(markdown: string): {
   content: string;
   followUps: string[] | null;
+  reasoning: string[] | null;
 } {
   const withoutQuote = stripSourceQuoteLine(markdown);
-  const followUps = extractFollowUps(withoutQuote);
-  const content = stripFollowUpLine(withoutQuote).trim();
-  return { content, followUps };
+  const reasoning = extractReasoning(withoutQuote);
+  const withoutReasoning = stripReasoningLine(withoutQuote);
+  const followUps = extractFollowUps(withoutReasoning);
+  const content = stripFollowUpLine(withoutReasoning).trim();
+  return { content, followUps, reasoning };
 }

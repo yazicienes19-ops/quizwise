@@ -16,6 +16,8 @@ export interface StoredTutorMessage {
   role: 'user' | 'tutor' | 'system';
   content: string;
   followUps?: string[];
+  /** Denkweg-Stichpunkte, nur bei Antworten mit Schalter "Nachdenken". */
+  reasoning?: string[];
   quote?: string | null;
   ts: number;
 }

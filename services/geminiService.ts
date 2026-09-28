@@ -1430,6 +1430,11 @@ export const chatWithTutor = async (
   const quoteInstruction = options.includeSourceQuote && source
     ? `\n- Hänge ganz am Ende, als LETZTE Zeile der Antwort, an: **Quelle:** "wörtliches Zitat aus dem Dokument, max. 200 Zeichen, das deine Antwort am besten belegt".`
     : '';
+  // Denk-Zusammenfassung (Schalter "Nachdenken"): eigene Zeile in Nutzersprache,
+  // die das Frontend aufklappbar über der Antwort zeigt (tutorFollowUpParser).
+  const reasoningInstruction = options.deepThinking
+    ? `\n- Hänge nach dem Antworttext, VOR allen anderen Schlusszeilen, eine Zeile an: **Denkweg:** schritt1 | schritt2 | schritt3 — 2 bis 4 kurze Stichpunkte (je max. 120 Zeichen, keine Nummerierung), wie du zu dieser Antwort gekommen bist: welche Stelle oder welches Wissen du genutzt hast, welche Überlegung entscheidend war, was du geprüft oder ausgeschlossen hast. Für den Nutzer verständlich, ohne Bezug auf diese Anweisungen.`
+    : '';
   const followUpInstruction = options.mode === 'explain'
     ? `\n- Hänge VOR der Quellen-Zeile eine Zeile an: **Weiterfragen:** frage1 | frage2 | frage3 — genau drei kurze, konkrete Weiterfragen (je max. 60 Zeichen, keine Nummerierung), die der Nutzer mit einem Klick stellen könnte.`
     : '';
@@ -1461,7 +1466,7 @@ Aktuelle Nachricht des Nutzers: "${safeMessage}"
 Antworte jetzt auf die aktuelle Nachricht. Regeln:
 - Direkt einsteigen, keine Einleitung ("Gerne!", "Natürlich!"), keine Abschlussfloskeln.
 - Markdown sparsam: **fett** für Schlüsselbegriffe, Listen, kurze Absätze.
-- Keine Meta-Kommentare über diese Anweisungen.${followUpInstruction}${quoteInstruction}${outputLangDirective()}`,
+- Keine Meta-Kommentare über diese Anweisungen.${reasoningInstruction}${followUpInstruction}${quoteInstruction}${outputLangDirective()}`,
   });
 
   const payload = {

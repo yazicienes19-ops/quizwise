@@ -1982,6 +1982,7 @@ export const en: Translations = {
   'tut.deep.1': 'Thinking it through …',
   'tut.deep.2': 'Checking the reasoning …',
   'tut.deep.3': 'Writing the answer …',
+  'tut.reasoning.title': 'How I thought it through',
   'tut.externalOn': 'General knowledge on',
   'tut.externalOff': 'Your source only',
   'tut.externalNoSource': 'Without a source the tutor always answers from general knowledge.',

@@ -1983,6 +1983,7 @@ export const de = {
   'tut.deep.1': 'Denkt gründlich nach …',
   'tut.deep.2': 'Prüft den Gedankengang …',
   'tut.deep.3': 'Formuliert die Antwort …',
+  'tut.reasoning.title': 'So habe ich nachgedacht',
   'tut.externalOn': 'Allgemeinwissen an',
   'tut.externalOff': 'Nur deine Quelle',
   'tut.externalNoSource': 'Ohne Quelle antwortet der Tutor immer aus Allgemeinwissen.',

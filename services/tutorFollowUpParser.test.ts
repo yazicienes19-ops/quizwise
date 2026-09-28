@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { extractFollowUps, stripFollowUpLine, parseTutorResponse } from './tutorFollowUpParser';
+import { extractFollowUps, stripFollowUpLine, parseTutorResponse, extractReasoning } from './tutorFollowUpParser';
 
 describe('extractFollowUps', () => {
   it('extrahiert bis zu drei Fragen aus der Marker-Zeile', () => {
@@ -97,5 +97,26 @@ describe('parseTutorResponse', () => {
     const { content, followUps } = parseTutorResponse('  Nur Text.  ');
     expect(content).toBe('Nur Text.');
     expect(followUps).toBeNull();
+  });
+});
+
+describe('Denkweg-Zeile (Schalter Nachdenken)', () => {
+  it('trennt Denkweg, Weiterfragen und Quelle vom Fließtext', () => {
+    const md = 'Die Antwort.\n\n**Denkweg:** Quelle Absatz 2 gelesen | Behauptung geprüft | Beispiel gewählt\n**Weiterfragen:** a? | b? | c?\n**Quelle:** "Zitat."';
+    const r = parseTutorResponse(md);
+    expect(r.content).toBe('Die Antwort.');
+    expect(r.reasoning).toEqual(['Quelle Absatz 2 gelesen', 'Behauptung geprüft', 'Beispiel gewählt']);
+    expect(r.followUps).toEqual(['a?', 'b?', 'c?']);
+  });
+
+  it('liefert null ohne Denkweg-Zeile und lässt den Text unverändert', () => {
+    const r = parseTutorResponse('Nur Text.');
+    expect(r.reasoning).toBeNull();
+    expect(r.content).toBe('Nur Text.');
+  });
+
+  it('akzeptiert übersetzte Marker und entfernt schließende Sternchen', () => {
+    expect(extractReasoning('x\nReasoning: step one | step two**')).toEqual(['step one', 'step two']);
+    expect(extractReasoning('x\n**Düşünce yolu:** bir | iki')).toEqual(['bir', 'iki']);
   });
 });

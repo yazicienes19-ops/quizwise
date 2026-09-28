@@ -38,6 +38,8 @@ interface ChatMessage {
   role: 'user' | 'tutor' | 'system';
   content: string;
   followUps?: string[];
+  /** Denkweg-Stichpunkte (Schalter "Nachdenken"), aufklappbar über der Antwort. */
+  reasoning?: string[];
   quote?: string | null;
   ts: number;
 }
@@ -279,7 +281,7 @@ export const ExplainerSystem: React.FC<ExplainerSystemProps> = ({
     try { sessionStorage.setItem(OPEN_SESSION_KEY, sessionIdRef.current); } catch {}
     setSessions(saveTutorSession({
       id: sessionIdRef.current, mode: modeOverride ?? mode, sourceName: activeSourceName, sourceRef, useExternal: externalOverride ?? useExternal,
-      messages: msgs.map(m => ({ id: m.id, role: m.role, content: m.content, followUps: m.followUps, quote: m.quote, ts: m.ts })),
+      messages: msgs.map(m => ({ id: m.id, role: m.role, content: m.content, followUps: m.followUps, reasoning: m.reasoning, quote: m.quote, ts: m.ts })),
       createdAt: sessionCreatedRef.current, updatedAt: Date.now(),
     }));
   };
@@ -362,11 +364,12 @@ export const ExplainerSystem: React.FC<ExplainerSystemProps> = ({
       });
       const quote = activeSource ? extractSourceQuote(raw) : null;
       const withoutQuote = activeSource ? stripSourceQuoteLine(raw) : raw;
-      const { content, followUps } = parseTutorResponse(withoutQuote);
+      const { content, followUps, reasoning } = parseTutorResponse(withoutQuote);
       const tutorMsg: ChatMessage = {
         id: placeholderId, role: 'tutor',
         content: (content || raw).trim(),
         followUps: followUps ?? undefined,
+        reasoning: reasoning ?? undefined,
         quote, ts: Date.now(),
       };
       const finalMessages = [...withUser, tutorMsg];
@@ -956,6 +959,18 @@ export const ExplainerSystem: React.FC<ExplainerSystemProps> = ({
                 </div>
               ) : (
                 <div className="space-y-3">
+                  {m.reasoning && m.reasoning.length > 0 && (
+                    <details className="group rounded-[10px]" style={{ border: '1px solid var(--border-color)', background: 'color-mix(in srgb, var(--ink) 3%, transparent)' }}>
+                      <summary className="flex items-center gap-1.5 px-3 py-2 cursor-pointer select-none list-none [&::-webkit-details-marker]:hidden text-[12px] font-semibold" style={{ color: 'var(--text-secondary)' }}>
+                        <Brain size={13} strokeWidth={2} />
+                        {t('tut.reasoning.title')}
+                        <ChevronRight size={13} strokeWidth={2} className="ml-auto transition-transform group-open:rotate-90" />
+                      </summary>
+                      <ol className="px-3 pb-3 pt-0.5 space-y-1.5 text-[13px] leading-snug list-decimal pl-8" style={{ color: 'color-mix(in srgb, var(--ink) 80%, transparent)' }}>
+                        {m.reasoning.map((step, i) => <li key={i}>{parseInline(step, `${m.id}-r${i}`)}</li>)}
+                      </ol>
+                    </details>
+                  )}
                   <div className="text-[15px] leading-relaxed break-words [&_p]:mb-2 [&_p:last-child]:mb-0" style={{ color: 'var(--ink)' }}>
                     {renderMarkdown(m.content)}
                   </div>

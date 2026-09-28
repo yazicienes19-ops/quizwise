@@ -1975,6 +1975,7 @@ export const tr: Translations = {
   'tut.deep.1': 'Derinlemesine düşünüyor …',
   'tut.deep.2': 'Düşünce adımlarını kontrol ediyor …',
   'tut.deep.3': 'Yanıtı yazıyor …',
+  'tut.reasoning.title': 'Nasıl düşündüm',
   'tut.externalOn': 'Genel bilgi açık',
   'tut.externalOff': 'Yalnızca kaynağın',
   'tut.externalNoSource': 'Kaynak olmadan eğitmen her zaman genel bilgiden yanıt verir.',
