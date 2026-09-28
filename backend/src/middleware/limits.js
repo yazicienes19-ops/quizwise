@@ -1,5 +1,7 @@
 const checkUsageLimit = async (req, res, next) => {
-  const sb = req.supabase;
+  // Service-Key: die RPC ist seit migration_security_2026_09_28.sql nicht mehr
+  // für anon/authenticated ausführbar.
+  const sb = req.supabaseAdmin;
   const userId = req.user.id;
   const today  = new Date().toISOString().split('T')[0];
 

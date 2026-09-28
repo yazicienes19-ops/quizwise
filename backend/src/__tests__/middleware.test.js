@@ -16,7 +16,7 @@ const mockRes = () => {
 
 describe('checkUsageLimit', () => {
   // supabase rpc löst zu { data, error } auf — Mocks brauchen diese Hülle.
-  const baseReq = (rpc) => ({ user: { id: 'u1' }, supabase: { rpc } });
+  const baseReq = (rpc) => ({ user: { id: 'u1' }, supabaseAdmin: { rpc } });
 
   it('ruft next mit usage-Daten auf, wenn das Limit erlaubt', async () => {
     const rpc = vi.fn().mockResolvedValue({ data: { allowed: true, plan: 'free', limit: 20, used: 5 }, error: null });

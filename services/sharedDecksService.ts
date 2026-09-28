@@ -1,9 +1,9 @@
 import { supabase } from './supabaseClient';
 import { Flashcard } from '../types';
+import { isMissingRpc } from './sharedLinkRpc';
 
 export interface SharedDeck {
   id: string;
-  owner_id: string;
   owner_name: string | null;
   name: string;
   cards: Flashcard[];
@@ -36,11 +36,17 @@ export const shareDeck = async (
 };
 
 export const getSharedDeck = async (id: string): Promise<SharedDeck | null> => {
-  const { data, error } = await supabase
+  // Genau ein Deck per Link-ID (migration_security_2026_09_28.sql). Die
+  // Tabelle selbst ist nur noch für den Besitzer lesbar.
+  const { data, error } = await supabase.rpc('get_shared_deck', { p_id: id }).maybeSingle();
+  if (!error) return (data as SharedDeck | null) ?? null;
+  if (!isMissingRpc(error)) return null;
+  // Übergang, solange die Migration noch nicht ausgeführt ist.
+  const legacy = await supabase
     .from('shared_decks')
-    .select('id, owner_id, owner_name, name, cards, created_at')
+    .select('id, owner_name, name, cards, created_at')
     .eq('id', id)
     .maybeSingle();
-  if (error || !data) return null;
-  return data as SharedDeck;
+  if (legacy.error || !legacy.data) return null;
+  return legacy.data as SharedDeck;
 };

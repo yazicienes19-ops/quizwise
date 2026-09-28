@@ -1,5 +1,6 @@
 import { supabase } from './supabaseClient';
 import { ProcessedDocument } from '../types';
+import { isMissingRpc } from './sharedLinkRpc';
 
 /**
  * Abgespeckte Dokument-Kopie für einen geteilten Fach-Link — analog zu
@@ -21,7 +22,6 @@ export interface SharedDocSnapshot {
 
 export interface SharedLibrary {
   id: string;
-  owner_id: string;
   owner_name: string | null;
   name: string;
   emoji: string;
@@ -61,11 +61,17 @@ export const shareCollection = async (
 };
 
 export const getSharedLibrary = async (id: string): Promise<SharedLibrary | null> => {
-  const { data, error } = await supabase
+  // Genau ein Fach per Link-ID (migration_security_2026_09_28.sql). Die
+  // Tabelle selbst ist nur noch für den Besitzer lesbar.
+  const { data, error } = await supabase.rpc('get_shared_collection', { p_id: id }).maybeSingle();
+  if (!error) return (data as SharedLibrary | null) ?? null;
+  if (!isMissingRpc(error)) return null;
+  // Übergang, solange die Migration noch nicht ausgeführt ist.
+  const legacy = await supabase
     .from('shared_collections')
-    .select('id, owner_id, owner_name, name, emoji, color, documents, created_at')
+    .select('id, owner_name, name, emoji, color, documents, created_at')
     .eq('id', id)
     .maybeSingle();
-  if (error || !data) return null;
-  return data as SharedLibrary;
+  if (legacy.error || !legacy.data) return null;
+  return legacy.data as SharedLibrary;
 };

@@ -11,6 +11,10 @@ import { initErrorReporter } from './services/errorReporter';
 // So früh wie möglich: ab hier werden unbehandelte Fehler gemeldet
 initErrorReporter();
 
+// Altes, nie genutztes Feld für einen eigenen Gemini-Schlüssel: gespeicherte
+// Schlüssel nicht im Browser liegen lassen.
+try { localStorage.removeItem('gemini_api_key'); } catch { /* ignore */ }
+
 // SW-Updates früh anstoßen. Die Leerseiten-Selbstheilung lebt in index.html
 // (mit Einmal-Bremse pro Sitzung) — der frühere ungebremste 4s-Reload hier
 // erzeugte bei Startup-Crashes eine Endlos-Schleife.

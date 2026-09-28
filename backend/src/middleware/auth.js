@@ -27,6 +27,9 @@ const requireAuth = async (req, res, next) => {
 
   req.user = user;
   req.supabase = createUserClient(token);
+  // Service-Client für RPCs, die nur das Backend ausführen darf
+  // (migration_security_2026_09_28.sql).
+  req.supabaseAdmin = supabaseAdmin;
   next();
 };
 

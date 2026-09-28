@@ -28,7 +28,7 @@ const markerUser = (marker: string | null): string | null => (marker ? marker.sp
 /** Geräteeinstellungen: bleiben beim Kontowechsel erhalten. */
 const KEEP_KEYS = new Set<string>([
   LOCAL_OWNER_KEY,
-  'theme', 'accent_color', 'font_choice', 'line_height', 'cookie_consent', 'gemini_api_key',
+  'theme', 'accent_color', 'font_choice', 'line_height', 'cookie_consent',
   'studearc_language', 'studearc_sidebar_collapsed', 'studearc_accent_reset_v1', 'studearc_accent_reset_v2',
   'studearc_analytics_events', 'studearc_analytics_first_seen', 'studearc_analytics_once',
   'studearc_sw_reload_at', 'studearc_feynman_audience', 'studearc_feynman_intro_done', 'studearc_feynman_intro_v1',

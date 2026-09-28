@@ -2,7 +2,7 @@ import { MfaSettings } from './MfaSettings';
 import React, { useState, useEffect } from 'react';
 import { createPortal } from 'react-dom';
 import {
-  X, User, CreditCard, Palette, Key, Check, Loader2, Moon, Sun,
+  X, User, CreditCard, Palette, Check, Loader2, Moon, Sun,
   Zap, LogOut, AlertTriangle, Download, Trash2, Lock, Mail, ExternalLink, Shield, Bell, Compass
 } from 'lucide-react';
 import type { User as SupabaseUser } from '@supabase/supabase-js';
@@ -63,7 +63,7 @@ function applyLineHeight(lh: string, userId?: string | null) {
   if (userId) import('../services/syncService').then(({ syncPreferences }) => syncPreferences(userId, { line_height: lh })).catch(() => {});
 }
 
-type Tab = 'profil' | 'abo' | 'design' | 'benachrichtigungen' | 'datenschutz' | 'api';
+type Tab = 'profil' | 'abo' | 'design' | 'benachrichtigungen' | 'datenschutz';
 
 interface Props {
   user: SupabaseUser | null;
@@ -111,8 +111,6 @@ export const SettingsModal: React.FC<Props> = ({ user, isDark, onToggleTheme, on
   const [lineHeight, setLineHeight] = useState(() => localStorage.getItem('line_height') || '1.6');
 
   // API
-  const [apiKey, setApiKey] = useState(localStorage.getItem('gemini_api_key') || '');
-  const [apiKeySaved, setApiKeySaved] = useState(false);
 
   // Konto löschen
   const [deleteConfirm, setDeleteConfirm] = useState('');
@@ -210,21 +208,12 @@ export const SettingsModal: React.FC<Props> = ({ user, isDark, onToggleTheme, on
     if (user) import('../services/syncService').then(({ syncPreferences }) => syncPreferences(user.id, { accent_color: color })).catch(() => {});
   };
 
-  const handleSaveApiKey = () => {
-    const trimmed = apiKey.trim();
-    if (trimmed) localStorage.setItem('gemini_api_key', trimmed);
-    else localStorage.removeItem('gemini_api_key');
-    setApiKeySaved(true);
-    setTimeout(() => setApiKeySaved(false), 2000);
-  };
-
   const tabs: { id: Tab; label: string; icon: React.ReactNode }[] = [
     { id: 'profil',      label: t('settings.tab.profile'),      icon: <User className="w-4 h-4" strokeWidth={1.75} /> },
     { id: 'abo',         label: t('settings.tab.subscription'), icon: <CreditCard className="w-4 h-4" strokeWidth={1.75} /> },
     { id: 'design',      label: t('settings.tab.design'),       icon: <Palette className="w-4 h-4" strokeWidth={1.75} /> },
     { id: 'benachrichtigungen', label: t('settings.tab.notifications'), icon: <Bell className="w-4 h-4" strokeWidth={1.75} /> },
     { id: 'datenschutz', label: t('settings.tab.privacy'),      icon: <Shield className="w-4 h-4" strokeWidth={1.75} /> },
-    { id: 'api',         label: 'API',         icon: <Key className="w-4 h-4" strokeWidth={1.75} /> },
   ];
 
   const NotLoggedIn = () => (
@@ -635,42 +624,6 @@ export const SettingsModal: React.FC<Props> = ({ user, isDark, onToggleTheme, on
               </div>
             </div>
           ))}
-
-          {/* ── API ── */}
-          {tab === 'api' && (
-            <div className="space-y-6">
-              <div className="p-4 bg-amber-50 dark:bg-amber-950/20 rounded-2xl border border-amber-100 dark:border-amber-900/30">
-                <p className="text-[11px] font-bold text-amber-700 dark:text-amber-400 leading-relaxed">
-                  {t('settings.apiNotice')}
-                </p>
-              </div>
-              <div className="space-y-2">
-                <label className="text-[11px] font-semibold uppercase tracking-[0.08em] text-slate-400">{t('settings.apiKeyLabel')}</label>
-                <input type="password" value={apiKey} onChange={e => setApiKey(e.target.value)} placeholder="AIza..."
-                  className="w-full px-4 py-3.5 rounded-2xl text-sm font-mono dark:text-white placeholder-slate-400 outline-none focus:ring-2 focus:ring-indigo-500/50 transition-all"
-                  style={{ background: 'color-mix(in srgb, var(--border-color) 30%, var(--bg-main))', border: '1px solid var(--border-color)' }}
-                  onKeyDown={e => e.key === 'Enter' && handleSaveApiKey()} />
-                <a href="https://aistudio.google.com/app/apikey" target="_blank" rel="noopener noreferrer"
-                  className="inline-flex items-center gap-1 text-[11px] font-bold text-indigo-500 hover:underline">
-                  {t('settings.getFreeKey')}
-                </a>
-              </div>
-              <div className="flex gap-3">
-                <button onClick={handleSaveApiKey}
-                  className="flex-1 py-3.5 rounded-2xl text-[13px] font-semibold text-white transition-all hover:scale-[1.02]"
-                  style={{ background: 'var(--primary)' }}>
-                  {apiKeySaved ? <span className="flex items-center justify-center gap-2"><Check className="w-4 h-4" strokeWidth={2.5} /> {t('settings.saved')}</span> : t('common.save')}
-                </button>
-                {apiKey && (
-                  <button onClick={() => { localStorage.removeItem('gemini_api_key'); setApiKey(''); }}
-                    className="px-5 py-3.5 rounded-2xl text-[13px] font-semibold text-rose-500 transition-all"
-                    style={{ border: '1px solid var(--border-color)' }}>
-                    {t('common.delete')}
-                  </button>
-                )}
-              </div>
-            </div>
-          )}
         </div>
       </div>
     </div>,
