@@ -274,18 +274,36 @@ describe('mapSmartPlanToCalendarSessions', () => {
   it('nutzt das mitgelieferte Datum, wenn es im Planungszeitraum liegt', () => {
     const result = mapSmartPlanToCalendarSessions(
       [{ day: 'Montag', date: '2026-08-06', subject: 'x', topic: 'x', startTime: '10:00', endTime: '11:00' }],
-      free(), collections, genId
+      free(), [], genId
     );
     expect(result[0].date).toBe('2026-08-06');
   });
 
-  it('nutzt customSubject, wenn kein Modul mit passendem Namen existiert', () => {
+  it('nutzt customSubject nur, wenn es gar keine Module gibt', () => {
     const result = mapSmartPlanToCalendarSessions(
       [{ day: 'Freitag', subject: 'Unbekanntes Fach', topic: 'x', startTime: '10:00', endTime: '11:00' }],
-      free(), collections, genId
+      free(), [], genId
     );
     expect(result[0].moduleId).toBeUndefined();
     expect(result[0].customSubject).toBe('Unbekanntes Fach');
+  });
+
+  it('verwirft Fächer, die zu keinem Modul passen, wenn Module existieren', () => {
+    const result = mapSmartPlanToCalendarSessions(
+      [{ day: 'Freitag', subject: 'Erfundenes Fach', topic: 'x', startTime: '10:00', endTime: '11:00' }],
+      free(), collections, genId
+    );
+    expect(result).toEqual([]);
+  });
+
+  it('trägt nur den Modulnamen, solange das Thema keine bekannte Schwäche ist', () => {
+    const entries = [
+      { day: 'Dienstag', subject: 'Allgemeine Psychologie I', topic: 'Klassische Konditionierung', startTime: '09:00', endTime: '10:00' },
+      { day: 'Mittwoch', subject: 'Allgemeine Psychologie I', topic: 'klassische  konditionierung', startTime: '09:00', endTime: '10:00' },
+    ];
+    expect(mapSmartPlanToCalendarSessions(entries, free(), collections, genId).map(r => r.topic)).toEqual(['', '']);
+    expect(mapSmartPlanToCalendarSessions(entries, free(), collections, genId, ['Klassische Konditionierung']).map(r => r.topic))
+      .toEqual(['Klassische Konditionierung', 'Klassische Konditionierung']);
   });
 
   it('verschiebt einen Block, der in eine feste Einheit fällt, statt den Tag zu sperren', () => {
@@ -293,7 +311,7 @@ describe('mapSmartPlanToCalendarSessions', () => {
     const av = buildPlanAvailability(mondayMorning, [rule], [], collections);
     const result = mapSmartPlanToCalendarSessions(
       [{ day: 'Montag', subject: 'Statistik', topic: 'y', startTime: '16:30', endTime: '18:00' }],
-      av, collections, genId
+      av, [], genId
     );
     expect(result).toHaveLength(1);
     expect(result[0].date).toBe('2026-08-03');
@@ -304,7 +322,7 @@ describe('mapSmartPlanToCalendarSessions', () => {
     const av = buildPlanAvailability(new Date(2026, 7, 3, 15, 0), [], [], collections);
     const result = mapSmartPlanToCalendarSessions(
       [{ day: 'Montag', subject: 'x', topic: 'x', startTime: '08:00', endTime: '10:00' }],
-      av, collections, genId
+      av, [], genId
     );
     expect(result[0].date).toBe('2026-08-03');
     expect(result[0].startTime).toBe('15:30');
@@ -325,14 +343,14 @@ describe('mapSmartPlanToCalendarSessions', () => {
         { day: 'Dienstag', subject: 'a', topic: 'a', startTime: '09:00', endTime: '09:20' },
         { day: 'Dienstag', subject: 'b', topic: 'b', startTime: '09:30', endTime: '13:00' },
       ],
-      free(), collections, genId
+      free(), [], genId
     );
     expect(result.map(r => [r.startTime, r.endTime])).toEqual([['09:00', '10:00'], ['10:15', '12:15']]);
   });
 
   it('plant höchstens 3 Blöcke pro Tag und ignoriert unbekannte Tage', () => {
     const entries = ['08:00', '10:30', '13:00', '15:30'].map(t => ({ day: 'Dienstag', subject: 's', topic: 't', startTime: t, endTime: t.replace(/^(\d+)/, h => String(Number(h) + 1).padStart(2, '0')) }));
-    const result = mapSmartPlanToCalendarSessions([...entries, { day: 'Feiertag', subject: 's', topic: 't', startTime: '10:00', endTime: '11:00' }], free(), collections, genId);
+    const result = mapSmartPlanToCalendarSessions([...entries, { day: 'Feiertag', subject: 's', topic: 't', startTime: '10:00', endTime: '11:00' }], free(), [], genId);
     expect(result).toHaveLength(3);
   });
 });

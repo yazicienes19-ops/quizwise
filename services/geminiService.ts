@@ -559,7 +559,9 @@ export const generateSmartStudyPlan = async (
   4. Priorisiere Themen mit niedriger confidence (Wissenslücken).
   5. Berücksichtige die Prüfungstermine: je näher eine Prüfung, desto mehr Sessions für ihr Fach.${dueForecast ? `
   6. dueLoadNext7Days = fällige Wiederholungen pro Tag (Index 0 = heute): plane an Tagen mit hoher Last kürzere Neustoff-Sessions und explizite Wiederholungs-Sessions ein.` : ''}
-  Übernimm "date" und "day" exakt aus availability. "day" bleibt immer deutsch (Montag bis Sonntag), nur subject/topic in der Zielsprache. Als subject möglichst einen Namen aus subjects wortgleich übernehmen.
+  Übernimm "date" und "day" exakt aus availability. "day" bleibt immer deutsch (Montag bis Sonntag).
+  subject: ${subjects.length ? 'immer genau ein Name aus subjects, wortgleich. Keine anderen Fächer.' : 'Fachname in der Zielsprache.'}
+  topic: nur ein Thema aus knowledgeGaps, wortgleich und passend zum subject. Gibt es keins, leerer String "". Erfinde keine Themen.
   GIB NUR DAS JSON-ARRAY ZURÜCK.${outputLangDirective()}` }],
     config: {
       thinkingConfig: { thinkingBudget: 0 },

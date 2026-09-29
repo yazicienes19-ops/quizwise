@@ -377,13 +377,18 @@ function placeBlock(free: TimeWindow[], wantedStart: number, duration: number): 
  * Smart-Plan-Blöcke überschneiden sich nicht gegenseitig. Höchstens 3 pro Tag.
  * Tag: "date" aus der Antwort, wenn es im Planungszeitraum liegt, sonst der
  * nächste passende Wochentag.
+ * Inhalt: Gibt es Module, zählen nur Blöcke, die einem Modul zugeordnet werden
+ * können. Ein Thema bleibt nur stehen, wenn es eine bekannte Schwäche aus dem
+ * Lernfortschritt ist (weakTopics); sonst trägt der Eintrag nur den Modulnamen.
  */
 export function mapSmartPlanToCalendarSessions(
   entries: SmartPlanEntry[],
   availability: DayAvailability[],
   collections: Collection[],
-  genId: () => string
+  genId: () => string,
+  weakTopics: string[] = [],
 ): CalendarStudySession[] {
+  const weakByName = new Map(weakTopics.map(topic => [normalizeSubjectName(topic), topic]));
   const freeByDate = new Map(availability.map(a => [a.date, [...a.free]]));
   const countByDate = new Map<string, number>();
   const resolveDate = (entry: SmartPlanEntry): string | undefined => {
@@ -399,6 +404,8 @@ export function mapSmartPlanToCalendarSessions(
   const result: CalendarStudySession[] = [];
   for (const { entry, date, start, end } of prepared) {
     if ((countByDate.get(date) ?? 0) >= PLAN_MAX_PER_DAY) continue;
+    const match = matchSubjectToCollection(entry.subject ?? '', collections);
+    if (!match && collections.length > 0) continue;
     const wanted = end !== null && end > start ? end - start : PLAN_MIN_BLOCK;
     const duration = Math.min(PLAN_MAX_BLOCK, Math.max(PLAN_MIN_BLOCK, wanted));
     const free = freeByDate.get(date)!;
@@ -407,13 +414,12 @@ export function mapSmartPlanToCalendarSessions(
     freeByDate.set(date, subtractWindow(free, slot.start - PLAN_BUFFER, slot.end + PLAN_BUFFER));
     countByDate.set(date, (countByDate.get(date) ?? 0) + 1);
 
-    const match = matchSubjectToCollection(entry.subject ?? '', collections);
     result.push({
       id: genId(),
       date,
       moduleId: match?.id,
       customSubject: match ? undefined : entry.subject,
-      topic: entry.topic,
+      topic: weakByName.get(normalizeSubjectName(entry.topic ?? '')) ?? '',
       startTime: minutesToTime(slot.start),
       endTime: minutesToTime(slot.end),
       fromSmartPlan: true,

@@ -79,7 +79,9 @@ function subjectLabel(session, collectionNameById) {
 
 function eventTitle(session, collectionNameById) {
   const subject = subjectLabel(session, collectionNameById);
-  return subject ? `${subject}: ${session.topic}` : session.topic;
+  const topic = session.topic?.trim();
+  if (subject && topic) return `${subject}: ${topic}`;
+  return subject || topic || '';
 }
 
 function buildEvent(lines, { uid, dtstamp, dtstart, dtend, summary, rrule, exdates, allDay }) {
