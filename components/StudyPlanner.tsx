@@ -390,7 +390,7 @@ export const StudyPlanner: React.FC<StudyPlannerProps> = ({ metrics, decks, exam
   const dueCardsTotal = dueDecks.reduce((sum, x) => sum + x.due, 0);
 
   return (
-    <div className="max-w-6xl mx-auto space-y-10 animate-in fade-in duration-1000 pb-20 px-4">
+    <div className="max-w-7xl mx-auto space-y-10 animate-in fade-in duration-1000 pb-20 px-4">
       {/* Header */}
       <div className="space-y-4">
         <PageHeader
@@ -622,7 +622,7 @@ export const StudyPlanner: React.FC<StudyPlannerProps> = ({ metrics, decks, exam
 
       {/* ── MONAT VIEW ── */}
       {viewMode === 'monat' && (
-        <div className={selectedDate ? 'grid grid-cols-1 lg:grid-cols-[1.6fr_1fr] gap-6 items-start' : ''}>
+        <div className={selectedDate ? 'grid grid-cols-1 lg:grid-cols-[minmax(0,1fr)_340px] gap-6 items-start' : ''}>
         <div className="rounded-[24px] shadow-3d-raised overflow-hidden" style={{ background: 'var(--bg-sidebar)', border: '1px solid var(--border-color)' }}>
           {/* Calendar Nav */}
           <div className="flex items-center justify-between px-6 py-5" style={{ borderBottom: '1px solid var(--border-color)' }}>
