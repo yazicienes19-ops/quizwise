@@ -114,7 +114,8 @@ export const StudyPlanner: React.FC<StudyPlannerProps> = ({ metrics, decks, exam
   const [events, setEvents] = useState<StudyEvent[]>([]);
   const [recurringSessions, setRecurringSessions] = useState<RecurringStudySession[]>([]);
   const [calendarSessions, setCalendarSessions] = useState<CalendarStudySession[]>([]);
-  const [selectedDate, setSelectedDate] = useState<Date | null>(null);
+  // Wie im Apple-Kalender: Monat zeigt nur Punkte, das Tagesfeld ist immer offen (Start: heute).
+  const [selectedDate, setSelectedDate] = useState<Date | null>(() => new Date());
 
   const [isGenerating, setIsGenerating] = useState(false);
 
@@ -656,14 +657,14 @@ export const StudyPlanner: React.FC<StudyPlannerProps> = ({ metrics, decks, exam
             {monthCells.map((cell, idx) => {
               const isToday = toDateStr(cell.date) === todayStr;
               const isSelected = !!selectedDate && toDateStr(cell.date) === toDateStr(selectedDate);
-              const visible = cell.items.slice(0, 3);
-              const overflow = cell.items.length - visible.length;
+              const dots = cell.items.slice(0, 4);
               return (
                 <button
                   type="button"
                   key={idx}
                   onClick={() => setSelectedDate(cell.date)}
-                  className="min-h-[56px] sm:min-h-[92px] p-1.5 text-left transition-colors flex flex-col w-full min-w-0 hover:bg-[color-mix(in_srgb,var(--primary)_4%,transparent)]"
+                  aria-label={`${formatDate(cell.date, { day: 'numeric', month: 'long' })}${cell.items.length ? `, ${tp('sp2.dayPanelCountN', cell.items.length)}` : ''}`}
+                  className="min-h-[52px] sm:min-h-[68px] py-2 px-1 flex flex-col items-center gap-1.5 w-full min-w-0 transition-colors hover:bg-[color-mix(in_srgb,var(--primary)_4%,transparent)]"
                   style={{
                     borderBottom: '1px solid var(--border-color)',
                     borderRight: idx % 7 === 6 ? 'none' : '1px solid var(--border-color)',
@@ -674,7 +675,7 @@ export const StudyPlanner: React.FC<StudyPlannerProps> = ({ metrics, decks, exam
                   }}
                 >
                   <span
-                    className="inline-flex items-center justify-center w-6 h-6 text-xs font-semibold rounded-full mb-0.5 shrink-0 transition-colors"
+                    className="inline-flex items-center justify-center w-7 h-7 text-[13px] font-semibold rounded-full shrink-0 transition-colors"
                     style={isToday
                       ? { background: 'var(--primary)', color: 'var(--primary-text)' }
                       : { color: cell.isCurrentMonth ? 'var(--text-main)' : 'var(--text-muted, #94a3b8)', opacity: cell.isCurrentMonth ? 1 : 0.55 }
@@ -682,47 +683,17 @@ export const StudyPlanner: React.FC<StudyPlannerProps> = ({ metrics, decks, exam
                   >
                     {cell.date.getDate()}
                   </span>
-
-                  {/* Handy: nur farbige Punkte, Details im Tagesfeld */}
-                  {cell.items.length > 0 && (
-                    <div className="flex flex-wrap gap-1 px-0.5 sm:hidden" aria-hidden>
-                      {cell.items.slice(0, 4).map(item => (
-                        <span key={item.id} className="w-1.5 h-1.5 rounded-full" style={{ background: calendarItemAccent(item) }} />
+                  {/* Nur Farben, wer was wann: steht im Tagesfeld rechts */}
+                  {dots.length > 0 && (
+                    <span className="flex items-center justify-center gap-1" aria-hidden>
+                      {dots.map(item => (
+                        <span key={item.id} className="w-1.5 h-1.5 rounded-full" style={{ background: calendarItemAccent(item), opacity: cell.isCurrentMonth ? 1 : 0.55 }} />
                       ))}
-                    </div>
+                      {cell.items.length > dots.length && (
+                        <span className="text-[9px] font-semibold leading-none" style={{ color: 'color-mix(in srgb, var(--text-main) 55%, transparent)' }}>+</span>
+                      )}
+                    </span>
                   )}
-
-                  <div className="hidden sm:flex flex-col gap-0.5 min-w-0">
-                    {visible.map(item => {
-                      const accent = calendarItemAccent(item);
-                      return (
-                        <div
-                          key={item.id}
-                          className="rounded-md px-1.5 py-0.5 min-w-0"
-                          style={{
-                            background: `color-mix(in srgb, ${accent} 11%, transparent)`,
-                            borderLeft: `3px solid ${accent}`,
-                          }}
-                        >
-                          <p className="min-w-0 break-words hyphens-auto text-[11.5px] leading-snug" style={{ color: 'var(--text-main)' }}>
-                            {item.source === 'session' && item.recurring && <RepeatIcon size={9} className="inline mr-0.5 -mt-px" style={{ color: accent }} />}
-                            {/* Voller Name, Uhrzeit direkt dahinter statt eigener Zeile (kompaktere Tage) */}
-                            <span className="font-semibold">{item.isAuto ? `${t('sp2.auto')} · ${item.title}` : item.title}</span>
-                            {item.source === 'session' && item.startTime && (
-                              <span className="ml-1 text-[10.5px] tabular-nums whitespace-nowrap" style={{ color: 'color-mix(in srgb, var(--text-main) 60%, transparent)' }}>
-                                {item.startTime}
-                              </span>
-                            )}
-                          </p>
-                        </div>
-                      );
-                    })}
-                    {overflow > 0 && (
-                      <span className="px-1.5 text-[11px] font-semibold whitespace-nowrap" style={{ color: 'color-mix(in srgb, var(--text-main) 55%, transparent)' }}>
-                        {t('sp2.moreN', { n: overflow })}
-                      </span>
-                    )}
-                  </div>
                 </button>
               );
             })}
