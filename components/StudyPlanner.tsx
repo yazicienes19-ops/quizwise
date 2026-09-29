@@ -663,7 +663,7 @@ export const StudyPlanner: React.FC<StudyPlannerProps> = ({ metrics, decks, exam
                   type="button"
                   key={idx}
                   onClick={() => setSelectedDate(cell.date)}
-                  className="min-h-[64px] sm:min-h-[118px] p-1.5 sm:p-2 text-left transition-colors flex flex-col w-full min-w-0 hover:bg-[color-mix(in_srgb,var(--primary)_4%,transparent)]"
+                  className="min-h-[56px] sm:min-h-[92px] p-1.5 text-left transition-colors flex flex-col w-full min-w-0 hover:bg-[color-mix(in_srgb,var(--primary)_4%,transparent)]"
                   style={{
                     borderBottom: '1px solid var(--border-color)',
                     borderRight: idx % 7 === 6 ? 'none' : '1px solid var(--border-color)',
@@ -674,7 +674,7 @@ export const StudyPlanner: React.FC<StudyPlannerProps> = ({ metrics, decks, exam
                   }}
                 >
                   <span
-                    className="inline-flex items-center justify-center w-7 h-7 text-xs font-semibold rounded-full mb-1 shrink-0 transition-colors"
+                    className="inline-flex items-center justify-center w-6 h-6 text-xs font-semibold rounded-full mb-0.5 shrink-0 transition-colors"
                     style={isToday
                       ? { background: 'var(--primary)', color: 'var(--primary-text)' }
                       : { color: cell.isCurrentMonth ? 'var(--text-main)' : 'var(--text-muted, #94a3b8)', opacity: cell.isCurrentMonth ? 1 : 0.55 }
@@ -692,30 +692,28 @@ export const StudyPlanner: React.FC<StudyPlannerProps> = ({ metrics, decks, exam
                     </div>
                   )}
 
-                  <div className="hidden sm:flex flex-col gap-1 min-w-0">
+                  <div className="hidden sm:flex flex-col gap-0.5 min-w-0">
                     {visible.map(item => {
                       const accent = calendarItemAccent(item);
                       return (
                         <div
                           key={item.id}
-                          className="rounded-md pl-1.5 pr-1.5 py-1 min-w-0"
+                          className="rounded-md px-1.5 py-0.5 min-w-0"
                           style={{
                             background: `color-mix(in srgb, ${accent} 11%, transparent)`,
                             borderLeft: `3px solid ${accent}`,
                           }}
                         >
-                          <div className="flex items-start gap-1 min-w-0">
-                            {item.source === 'session' && item.recurring && <RepeatIcon size={9} className="shrink-0 mt-[3px]" style={{ color: accent }} />}
-                            {/* Voller Name statt Abschneiden: bricht um, lange Wörter mit Silbentrennung */}
-                            <span className="min-w-0 break-words hyphens-auto text-[11.5px] font-semibold leading-snug" style={{ color: 'var(--text-main)' }}>
-                              {item.isAuto ? `${t('sp2.auto')} · ${item.title}` : item.title}
-                            </span>
-                          </div>
-                          {item.source === 'session' && item.startTime && (
-                            <span className="block text-[10.5px] tabular-nums leading-tight mt-0.5" style={{ color: 'color-mix(in srgb, var(--text-main) 60%, transparent)' }}>
-                              {item.endTime ? `${item.startTime}–${item.endTime}` : item.startTime}
-                            </span>
-                          )}
+                          <p className="min-w-0 break-words hyphens-auto text-[11.5px] leading-snug" style={{ color: 'var(--text-main)' }}>
+                            {item.source === 'session' && item.recurring && <RepeatIcon size={9} className="inline mr-0.5 -mt-px" style={{ color: accent }} />}
+                            {/* Voller Name, Uhrzeit direkt dahinter statt eigener Zeile (kompaktere Tage) */}
+                            <span className="font-semibold">{item.isAuto ? `${t('sp2.auto')} · ${item.title}` : item.title}</span>
+                            {item.source === 'session' && item.startTime && (
+                              <span className="ml-1 text-[10.5px] tabular-nums whitespace-nowrap" style={{ color: 'color-mix(in srgb, var(--text-main) 60%, transparent)' }}>
+                                {item.startTime}
+                              </span>
+                            )}
+                          </p>
                         </div>
                       );
                     })}
