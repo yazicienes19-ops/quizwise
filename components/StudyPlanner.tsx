@@ -704,9 +704,10 @@ export const StudyPlanner: React.FC<StudyPlannerProps> = ({ metrics, decks, exam
                             borderLeft: `3px solid ${accent}`,
                           }}
                         >
-                          <div className="flex items-center gap-1 min-w-0">
-                            {item.source === 'session' && item.recurring && <RepeatIcon size={9} className="shrink-0" style={{ color: accent }} />}
-                            <span className="truncate text-[11.5px] font-semibold leading-tight" style={{ color: 'var(--text-main)' }}>
+                          <div className="flex items-start gap-1 min-w-0">
+                            {item.source === 'session' && item.recurring && <RepeatIcon size={9} className="shrink-0 mt-[3px]" style={{ color: accent }} />}
+                            {/* Voller Name statt Abschneiden: bricht um, lange Wörter mit Silbentrennung */}
+                            <span className="min-w-0 break-words hyphens-auto text-[11.5px] font-semibold leading-snug" style={{ color: 'var(--text-main)' }}>
                               {item.isAuto ? `${t('sp2.auto')} · ${item.title}` : item.title}
                             </span>
                           </div>
