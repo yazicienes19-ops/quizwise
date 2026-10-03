@@ -51,6 +51,16 @@ const resolveStorageRefs = async (parts, userId, sb) => {
 //         — 2026-09-04 auf 3.8 gewechselt: gleicher Preis wie 3.6, neueres
 //         Modell, akzeptiert anders als 3.6 thinkingBudget:0 ohne Fehler.)
 // HINWEIS: Modell-Strings bewusst an EINER Stelle pflegbar/exportiert für Tests.
+// Obergrenze für die Antwortlänge (inkl. Thinking-Tokens). Ohne sie lief im
+// Modellvergleich am 03.10.2026 ein Quiz-Call mit gemini-3.8-flash in eine
+// Wiederholungsschleife ("Vier-Säfte-Lehre. Vier-Säfte-Lehre. …") bis zum
+// Modell-Maximum von 65k Tokens: 141 s, ~25 ct für einen einzigen Aufruf.
+// Normale Antworten liegen bei 0,3k–10k Tokens; Klausuren (max. 20 Aufgaben,
+// examWorkflow-Flag) bekommen mehr Luft.
+const MAX_OUTPUT_TOKENS = 16384;
+const MAX_OUTPUT_TOKENS_EXAM = 32768;
+const outputTokenLimit = (examWorkflow) => (examWorkflow === true ? MAX_OUTPUT_TOKENS_EXAM : MAX_OUTPUT_TOKENS);
+
 const selectModel = (plan, complexity) => {
   if (plan === 'pro' && complexity === 'heavy') return MODEL_HEAVY;
   return MODEL_LITE;
@@ -112,7 +122,7 @@ const chunkText = (chunk) =>
 // Gemeinsame Validierung + Request-Aufbau für /generate und /stream.
 // Liefert { status, error } bei ungültiger Eingabe, sonst { request }.
 const buildGeminiRequest = async (req) => {
-  const { parts, systemInstruction, config, tools, complexity } = req.body;
+  const { parts, systemInstruction, config, tools, complexity, examWorkflow } = req.body;
   const sb = req.supabase;
   const userId = req.user.id;
 
@@ -147,6 +157,7 @@ const buildGeminiRequest = async (req) => {
 
   const generationConfig = {
     temperature: config?.temperature ?? 0.7,
+    maxOutputTokens: outputTokenLimit(examWorkflow),
   };
   if (config?.responseMimeType) generationConfig.responseMimeType = config.responseMimeType;
   if (config?.responseSchema)   generationConfig.responseSchema   = config.responseSchema;
@@ -207,6 +218,9 @@ router.post('/generate', async (req, res, next) => {
 
     const response = await generateWithRetry(built.request);
     const text = response.candidates?.[0]?.content?.parts?.[0]?.text || '';
+    if (response.candidates?.[0]?.finishReason === 'MAX_TOKENS') {
+      console.warn(`Gemini: Antwort am Token-Limit abgeschnitten (${built.request.model}, ${built.request.config.maxOutputTokens})`);
+    }
     recordUsage(req.user.id, built.request.model, response.usageMetadata, { searches: built.searches });
 
     res.json({ text, ...budgetNotice(built) });
@@ -262,6 +276,7 @@ router.post('/stream', async (req, res, next) => {
 module.exports = router;
 // Reine Logik exportiert für Unit-Tests (kein Express/Gemini nötig).
 module.exports.selectModel = selectModel;
+module.exports.outputTokenLimit = outputTokenLimit;
 module.exports.isTransient = isTransient;
 module.exports.MAX_TOTAL_STORAGE_BYTES = MAX_TOTAL_STORAGE_BYTES;
 module.exports.chunkText = chunkText;

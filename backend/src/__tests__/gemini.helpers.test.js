@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { selectModel, isTransient, MAX_TOTAL_STORAGE_BYTES } from '../routes/gemini.js';
+import { selectModel, isTransient, MAX_TOTAL_STORAGE_BYTES, outputTokenLimit } from '../routes/gemini.js';
 
 describe('selectModel (Plan-basierte Modellwahl)', () => {
   it('free-Nutzer bekommen immer das Basis-Modell', () => {
@@ -40,5 +40,16 @@ describe('isTransient (Retry-Würdigkeit von Gemini-Fehlern)', () => {
 describe('Storage-Limit', () => {
   it('liegt bei 18 MB', () => {
     expect(MAX_TOTAL_STORAGE_BYTES).toBe(18 * 1024 * 1024);
+  });
+});
+
+describe('outputTokenLimit', () => {
+  it('normale Aufrufe sind auf 16k Tokens begrenzt', () => {
+    expect(outputTokenLimit(undefined)).toBe(16384);
+    expect(outputTokenLimit(false)).toBe(16384);
+    expect(outputTokenLimit('true')).toBe(16384);
+  });
+  it('Klausur-Aufrufe bekommen 32k Tokens', () => {
+    expect(outputTokenLimit(true)).toBe(32768);
   });
 });
