@@ -734,7 +734,9 @@ ANTWORTOPTIONEN-REGELN (zwingend einhalten):
 
 Zu jeder Frage: Erklärung (explanation), Textbezug (sourceReference), Thema (topic) und Schwierigkeitsgrad (difficulty) IMMER befüllen. topic MUSS kurz sein — 2 bis 6 Wörter, ein Fachbegriff/Unterthema, KEIN ganzer Satz und keine Erklärung.${outputLangDirective()}` });
     return callBackend({
-      complexity: 'heavy',
+      // Erstellen läuft auch bei Pro über Lite: im Modellvergleich (03.10.2026) gleich gut,
+      // während 3.8 Flash beim Quiz in ~1 von 5 Fällen in eine Endlosschleife lief.
+      complexity: 'light',
       parts: batchParts,
       config: { temperature: 1.0, thinkingConfig: { thinkingBudget: 0 }, responseMimeType: 'application/json', responseSchema: quizSchema }
     });
@@ -849,7 +851,7 @@ STRENGE DIVERSITÄTS-REGELN:
 5. Vermeide Karten die dasselbe Thema nur anders formulieren${relationalInstruction}${outputLangDirective()}` });
 
   const text = await callBackend({
-    complexity: 'heavy',
+    complexity: 'light',
     parts,
     config: {
       thinkingConfig: { thinkingBudget: 0 },
@@ -964,7 +966,7 @@ REGELN:
 4. Nutze NUR die oben gegebenen Informationen, erfinde keine externen Zusatzinhalte${outputLangDirective()}` }];
 
   const text = await callBackend({
-    complexity: 'heavy',
+    complexity: 'light',
     parts,
     config: {
       thinkingConfig: { thinkingBudget: 0 },
@@ -1013,7 +1015,7 @@ REGELN:
 4. Nutze nur Inhalte aus ${context.source ? 'dem Material oben, ' : ''}der Aufgabe und der Musterlösung, erfinde nichts.${outputLangDirective()}` });
 
   const text = await callBackend({
-    complexity: 'heavy',
+    complexity: 'light',
     parts,
     config: {
       thinkingConfig: { thinkingBudget: 0 },
@@ -2129,7 +2131,8 @@ ALLGEMEINE REGELN:
 - Die category-Werte (definition, verstaendnis, transfer, beispiel, rechnung, fachbegriff) bleiben immer exakt diese Tokens, unabhängig von der Sprache${adaptiveBlock}${outputLangDirective()}` });
 
   const text = await callBackend({
-    complexity: 'heavy',
+    // Quant-Klausuren bleiben auf Flash (Rechenqualität nicht verglichen).
+    complexity: options?.quantMode?.enabled ? 'heavy' : 'light',
     examWorkflow: true,
     parts,
     config: {
