@@ -9,15 +9,18 @@ const MODEL_HEAVY = 'gemini-3.8-flash';
 
 // Listenpreise in USD pro 1 Mio. Tokens (Paid Tier, Stand 2026-09-22 laut
 // ai.google.dev/gemini-api/docs/pricing). Output schließt Thinking-Tokens ein.
+// cached = Preis für Eingabe-Tokens aus Geminis (automatischem) Kontext-Cache,
+// 10 % des Eingabepreises; ab der zweiten Anfrage mit demselben Dokument
+// kommen meist 75–90 % der Eingabe von dort (gemessen 03.10.2026).
 // 3.8 Flash verdoppelt sich zum 01.01.2027 — deshalb datumsabhängig. Beim
 // Modellwechsel hier mitpflegen, sonst rechnet das Budget (aiBudget.js) mit
 // falschen Preisen; unbekannte Modelle werden vorsichtshalber zum teuersten
 // bekannten Preis gerechnet.
 const PRICE_TABLE = {
-  [MODEL_LITE]: [{ from: null, input: 0.30, output: 2.50 }],
+  [MODEL_LITE]: [{ from: null, input: 0.30, cached: 0.03, output: 2.50 }],
   [MODEL_HEAVY]: [
-    { from: null, input: 0.75, output: 3.75 },
-    { from: '2027-01-01', input: 1.50, output: 7.50 },
+    { from: null, input: 0.75, cached: 0.075, output: 3.75 },
+    { from: '2027-01-01', input: 1.50, cached: 0.15, output: 7.50 },
   ],
 };
 // Grounding mit Google Search: 14 $ pro 1.000 Anfragen. Das Freikontingent
@@ -29,15 +32,21 @@ const priceFor = (model, date = new Date()) => {
   const pick = (rows) => rows.filter(r => !r.from || r.from <= day).pop();
   if (PRICE_TABLE[model]) return pick(PRICE_TABLE[model]);
   const all = Object.values(PRICE_TABLE).map(pick);
-  return { input: Math.max(...all.map(p => p.input)), output: Math.max(...all.map(p => p.output)) };
+  return {
+    input: Math.max(...all.map(p => p.input)),
+    cached: Math.max(...all.map(p => p.cached)),
+    output: Math.max(...all.map(p => p.output)),
+  };
 };
 
 // Kosten eines Aufrufs in USD aus Geminis usageMetadata.
 const costOfUsage = (model, usage, { searches = 0, date = new Date() } = {}) => {
   const p = priceFor(model, date);
-  const input = usage?.promptTokenCount || 0;
+  const prompt = usage?.promptTokenCount || 0;
+  // cachedContentTokenCount ist in promptTokenCount enthalten.
+  const cached = Math.min(usage?.cachedContentTokenCount || 0, prompt);
   const output = (usage?.candidatesTokenCount || 0) + (usage?.thoughtsTokenCount || 0);
-  return (input * p.input + output * p.output) / 1e6 + searches * SEARCH_PRICE_USD;
+  return ((prompt - cached) * p.input + cached * p.cached + output * p.output) / 1e6 + searches * SEARCH_PRICE_USD;
 };
 
 module.exports = { MODEL_LITE, MODEL_HEAVY, priceFor, costOfUsage, SEARCH_PRICE_USD };

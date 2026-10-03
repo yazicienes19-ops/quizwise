@@ -20,7 +20,14 @@ describe('costOfUsage (Kosten aus usageMetadata)', () => {
 
   it('unbekanntes Modell wird zum teuersten bekannten Preis gerechnet', () => {
     const date = new Date('2026-10-01T00:00:00Z');
-    expect(priceFor('gemini-9-ultra', date)).toEqual({ input: 0.75, output: 3.75 });
+    expect(priceFor('gemini-9-ultra', date)).toEqual({ input: 0.75, cached: 0.075, output: 3.75 });
+  });
+
+  it('Eingabe aus dem Kontext-Cache kostet 10 % des Eingabepreises', () => {
+    // 1 Mio. Eingabe-Tokens, davon 800k aus dem Cache: 200k voll + 800k zu 10 %
+    const usage = { promptTokenCount: 1_000_000, cachedContentTokenCount: 800_000 };
+    expect(costOfUsage(MODEL_LITE, usage)).toBeCloseTo(0.2 * 0.30 + 0.8 * 0.03, 6);
+    expect(costOfUsage(MODEL_HEAVY, usage, { date: new Date('2026-12-31T12:00:00Z') })).toBeCloseTo(0.2 * 0.75 + 0.8 * 0.075, 6);
   });
 
   it('fehlende usageMetadata kostet nichts', () => {
