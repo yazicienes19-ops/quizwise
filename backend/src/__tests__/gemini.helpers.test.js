@@ -53,3 +53,14 @@ describe('outputTokenLimit', () => {
     expect(outputTokenLimit(true)).toBe(32768);
   });
 });
+
+describe('selectModel mit grading (Korrektur)', () => {
+  it('Korrektur läuft für Free und Pro über das große Modell', () => {
+    expect(selectModel('free', 'heavy', true)).toBe('gemini-3.8-flash');
+    expect(selectModel('pro', 'heavy', true)).toBe('gemini-3.8-flash');
+  });
+  it('nur echtes true zählt, sonst bleibt es bei der Planregel', () => {
+    expect(selectModel('free', 'heavy', 'true')).toBe('gemini-3.5-flash-lite');
+    expect(selectModel('free', 'heavy')).toBe('gemini-3.5-flash-lite');
+  });
+});

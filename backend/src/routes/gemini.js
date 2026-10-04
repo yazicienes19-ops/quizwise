@@ -61,7 +61,12 @@ const MAX_OUTPUT_TOKENS = 16384;
 const MAX_OUTPUT_TOKENS_EXAM = 32768;
 const outputTokenLimit = (examWorkflow) => (examWorkflow === true ? MAX_OUTPUT_TOKENS_EXAM : MAX_OUTPUT_TOKENS);
 
-const selectModel = (plan, complexity) => {
+// grading: Klausur-Korrektur und Rechenweg-Bewertung laufen für alle Pläne über
+// MODEL_HEAVY. Im Test (04.10.2026, 10 Antworten, 3 Durchgänge) vergab Flash-Lite
+// für dieselben Antworten je Durchgang 18,5 bis 20,5 von 40 Punkten (Note kippte
+// zwischen 4,0 und 5,0), 3.8 Flash jedes Mal exakt dieselben Punkte.
+const selectModel = (plan, complexity, grading = false) => {
+  if (grading === true) return MODEL_HEAVY;
   if (plan === 'pro' && complexity === 'heavy') return MODEL_HEAVY;
   return MODEL_LITE;
 };
@@ -122,7 +127,7 @@ const chunkText = (chunk) =>
 // Gemeinsame Validierung + Request-Aufbau für /generate und /stream.
 // Liefert { status, error } bei ungültiger Eingabe, sonst { request }.
 const buildGeminiRequest = async (req) => {
-  const { parts, systemInstruction, config, tools, complexity, examWorkflow } = req.body;
+  const { parts, systemInstruction, config, tools, complexity, examWorkflow, grading } = req.body;
   const sb = req.supabase;
   const userId = req.user.id;
 
@@ -151,7 +156,7 @@ const buildGeminiRequest = async (req) => {
   // Monatsbudget (budget/aiBudget.js): ab 80 % nur noch MODEL_LITE, ab 100 % gesperrt.
   const budget = await getBudgetStatus(userId, userPlan);
   if (budget.level === 'hard') throw budgetExhaustedError(budget.scope);
-  const selectedModel = budget.level === 'soft' ? MODEL_LITE : selectModel(userPlan, complexity || 'light');
+  const selectedModel = budget.level === 'soft' ? MODEL_LITE : selectModel(userPlan, complexity || 'light', grading);
 
   const resolvedParts = await resolveStorageRefs(parts, userId, sb);
 

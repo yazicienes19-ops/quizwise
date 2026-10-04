@@ -68,6 +68,10 @@ const callBackend = async (payload: {
    *  (1 komplette Simulation/Tag auch bei erschöpftem Limit, s. Migration
    *  exam_guarantee). Nur die 3 Klausur-Funktionen setzen dieses Flag. */
   examWorkflow?: boolean;
+  /** Bewertung mit Punkten/Note (Klausur-Korrektur, Rechenweg): läuft auch für Free
+   *  über das große Modell, weil Flash-Lite dieselben Antworten im Test (04.10.2026)
+   *  je Durchgang um bis zu 2 von 40 Punkten anders bewertete, 3.8 Flash nie. */
+  grading?: boolean;
   config?: {
     responseMimeType?: string;
     responseSchema?: any;
@@ -2298,6 +2302,7 @@ const evaluateWithRubricOnce = async (
 
   const text = await callBackend({
     complexity: 'heavy',
+    grading: true,
     examWorkflow: true,
     parts: [{
       text: `Du bist ein fairer Hochschulprüfer der eine Klausur korrigiert.
@@ -2464,6 +2469,7 @@ const evaluateStepByStepOnce = async (
 
   const text = await callBackend({
     complexity: 'heavy',
+    grading: true,
     examWorkflow: true,
     parts: [{
       text: `Du bist ein fairer Hochschulprüfer, der mehrschrittige Rechenwege/Herleitungen korrigiert.
