@@ -1868,7 +1868,10 @@ ${MARKIERUNG_STRATEGY}
 Verarbeite sie primär basierend auf dem oben bereitgestellten Ausschnitt.${intentInstruction}${followUpRule}${historyBlock}${groundingRule}${outputLangDirective()}` });
 
   const text = await callBackend({
-    complexity: 'heavy',
+    // Split-Screen läuft auch bei Pro über Lite: im Vergleich (04.10.2026, 24 Fragen)
+    // erkannte Lite zuverlässiger, ob die Antwort auf der Seite steht, zitierte
+    // genauer und blieb näher am Skript; 3.8 Flash schrieb nur länger.
+    complexity: 'light',
     parts,
     config: {
       temperature: 0.4,
