@@ -21,6 +21,7 @@ import { formatDate } from '../i18n/dates';
 import type { TKey } from '../i18n';
 import { documentDisplayName } from '../services/libraryService';
 import { buildCollectionSource } from '../services/collectionSource';
+import { FolderScopeBar } from './FolderScopeBar';
 import { toast } from '../services/toast';
 import { buildWeakSpotReasons } from '../services/learningProfileService';
 import { useModuleScopedActivity } from '../hooks/useModuleScopedActivity';
@@ -595,6 +596,18 @@ export const ExplainerSystem: React.FC<ExplainerSystemProps> = ({
               + {t('tut.composer.addSource')}
             </button>
           </div>
+          {activeSource && sourceRef?.kind === 'collection' && (
+            <FolderScopeBar
+              collection={collections.find(c => c.id === sourceRef.id)}
+              documents={availableDocuments}
+              onChange={() => {
+                const col = collections.find(c => c.id === sourceRef.id);
+                const result = col ? buildCollectionSource(col, availableDocuments) : null;
+                if (result && result.includedCount > 0) { setActiveSource(result.source); setActiveSourceName(result.name); }
+              }}
+              className="justify-start"
+            />
+          )}
 
           <input
             type="text"

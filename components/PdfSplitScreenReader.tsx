@@ -6,6 +6,7 @@ import { loadPdf, getPageText, getPageTextItems, renderPageToCanvas, renderPageT
 import { buildPdfOutline, type PdfTocEntry } from '../services/pdfOutlineService';
 import { TocList } from './DocTocList';
 import { findQuoteRects, type HighlightRect } from '../services/pdfHighlightService';
+import { peekReaderJump, clearReaderJump } from '../services/readerJump';
 import { markChapterDone, getDoneChapterIndices, getLastPage, saveLastPage } from '../services/chapterProgressService';
 import { logReaderQuestion, getReaderLog } from '../services/readerLogService';
 import { saveReaderChat, getReaderChat } from '../services/readerChatService';
@@ -64,7 +65,9 @@ export const PdfSplitScreenReader: React.FC<PdfSplitScreenReaderProps> = ({ doc,
   const [loadError, setLoadError] = useState(false);
   // Beim erneuten Öffnen dort weiterlesen, wo zuletzt aufgehört wurde, statt
   // immer bei Seite 1 zu starten (s. saveLastPage-Effekt weiter unten).
-  const [pageNumber, setPageNumber] = useState(() => (getLastPage(doc.id) ?? 0) + 1);
+  // Fußnote aus dem Lernstudio (services/readerJump.ts) geht vor der zuletzt gelesenen Seite.
+  const [pageNumber, setPageNumber] = useState(() => peekReaderJump(doc.id) ?? (getLastPage(doc.id) ?? 0) + 1);
+  useEffect(() => { clearReaderJump(doc.id); }, [doc.id]);
   const [pageText, setPageText] = useState<string | null>(null);
   /** 1 = an Spaltenbreite angepasst; >1 zoomt hinein (Container scrollt). */
   const [zoom, setZoom] = useState(1);

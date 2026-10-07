@@ -33,6 +33,8 @@ interface Props {
   onRetryAnalysis?: () => void;
   /** Titel und Typ kommen in der Bibliothek mehrfach vor (Audit 23.09.2026). */
   isDuplicate?: boolean;
+  /** Auswahl des Unterordners (components/ModuleFolderSections.tsx). */
+  folderSlot?: React.ReactNode;
 }
 
 /** Digest-Badge + Retry: PDFs/Bilder ohne Status gelten als „wird analysiert" (Nachhol-Lauf läuft). */
@@ -74,7 +76,7 @@ const IconEdit = () => (
   </svg>
 );
 
-export const SourceCard: React.FC<Props> = ({ doc, meta, view, onOpen, onView, onDelete, onEdit, onRetryAnalysis, isDuplicate = false }) => {
+export const SourceCard: React.FC<Props> = ({ doc, meta, view, onOpen, onView, onDelete, onEdit, onRetryAnalysis, isDuplicate = false, folderSlot }) => {
   const { t } = useTranslation();
   const title = meta.displayTitle || doc.name.replace(/\.[^/.]+$/, '');
   const status = meta.status ?? 'ready';
@@ -102,6 +104,7 @@ export const SourceCard: React.FC<Props> = ({ doc, meta, view, onOpen, onView, o
               {lastOpened ? t('card.lastPrefix', { date: lastOpened }) : t('card.uploadedPrefix', { date: uploadedAt })}
             </span>
           </div>
+          {folderSlot && <div className="mt-2">{folderSlot}</div>}
         </div>
         <div className="flex items-center gap-2 shrink-0">
           {meta.quizCount      ? <span className="text-[11px] font-bold text-slate-400 hidden sm:block">{t('card.quizCount', { n: meta.quizCount })}</span> : null}
@@ -169,6 +172,7 @@ export const SourceCard: React.FC<Props> = ({ doc, meta, view, onOpen, onView, o
           <SourceStatusBadge status={status} />
           <DigestInfo doc={doc} onRetry={onRetryAnalysis} />
         </div>
+        {folderSlot && <div className="pt-1">{folderSlot}</div>}
       </div>
 
       {hasStats && (

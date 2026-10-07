@@ -10,6 +10,7 @@ import { useTranslation } from '../i18n/I18nProvider';
 import { getTypeLabel } from '../services/learningProfileService';
 import type { TKey } from '../i18n';
 import { buildCollectionSource } from '../services/collectionSource';
+import { FolderScopeBar } from './FolderScopeBar';
 import { buildLearningProfile, buildRealTopicMastery } from '../services/learningProfileService';
 import { getStreak } from '../services/streakService';
 import { sourceTopicsKey, getUsedTopics, getUsedExamQuestions } from '../hooks/useQuizState';
@@ -93,6 +94,13 @@ export const ExamGenerator: React.FC<ExamGeneratorProps> = ({
   );
   const [contentSource, setContentSource] = useState<GenerationSource | null>(null);
   const [contentName, setContentName] = useState('');
+  /** Quelle ist ein ganzes Fach: dessen Unterordner lassen sich für diesen Durchgang abwählen. */
+  const [contentCollectionId, setContentCollectionId] = useState<string | null>(null);
+  const rebuildCollectionSource = () => {
+    const col = collections.find(c => c.id === contentCollectionId);
+    const result = col ? buildCollectionSource(col, documents) : null;
+    if (result && result.includedCount > 0) { setContentSource(result.source); setContentName(result.name); }
+  };
 
   useEffect(() => {
     if (initialDoc) {
@@ -115,6 +123,7 @@ export const ExamGenerator: React.FC<ExamGeneratorProps> = ({
       if (result && result.includedCount > 0) {
         setContentSource(result.source);
         setContentName(result.name);
+        setContentCollectionId(col.id);
       }
     }
   }, []); // eslint-disable-line react-hooks/exhaustive-deps
@@ -205,6 +214,7 @@ export const ExamGenerator: React.FC<ExamGeneratorProps> = ({
   };
 
   const handleSelectDocument = (doc: ProcessedDocument) => {
+    setContentCollectionId(null);
     try {
       const source = getDocumentSource
         ? getDocumentSource(doc)
@@ -302,17 +312,25 @@ export const ExamGenerator: React.FC<ExamGeneratorProps> = ({
                 <div className="ml-auto flex items-center gap-2 bg-emerald-50 dark:bg-emerald-950/20 px-3 py-1.5 rounded-xl">
                   <div className="w-2 h-2 rounded-full bg-emerald-500 shrink-0" />
                   <p className="text-[11px] text-emerald-600 dark:text-emerald-400 font-semibold break-words max-w-[120px]">{contentName}</p>
-                  <button onClick={() => { setContentSource(null); setContentName(''); }} className="text-emerald-400 hover:text-rose-500 transition-colors text-xs font-semibold ml-1">✕</button>
+                  <button onClick={() => { setContentSource(null); setContentName(''); setContentCollectionId(null); }} className="text-emerald-400 hover:text-rose-500 transition-colors text-xs font-semibold ml-1">✕</button>
                 </div>
               )}
             </div>
             <div className="px-5 sm:px-7 pb-6">
+              {contentCollectionId && (
+                <FolderScopeBar
+                  collection={collections.find(c => c.id === contentCollectionId)}
+                  documents={documents}
+                  onChange={rebuildCollectionSource}
+                  className="justify-start py-3"
+                />
+              )}
               <SourceSelector
                 framed={false}
                 documents={moduleDocuments}
                 collections={collections}
                 onSelectDocument={handleSelectDocument}
-                onSelectSource={(source, name) => { setContentSource(source); setContentName(name); }}
+                onSelectSource={(source, name, meta) => { setContentSource(source); setContentName(name); setContentCollectionId(meta?.collectionId ?? null); }}
                 onSaveToLibrary={onSaveToLibrary}
                 isLoading={isLoading}
               />

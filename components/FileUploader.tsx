@@ -5,6 +5,7 @@ import type { GenerationSource } from '../services/geminiService';
 import { EmojiImage } from './EmojiImage';
 import { SourceSelector } from './SourceSelector';
 import { buildCollectionSource } from '../services/collectionSource';
+import { FolderScopeBar } from './FolderScopeBar';
 import { useTranslation } from '../i18n/I18nProvider';
 import { PageHeader } from './PageHeader';
 
@@ -45,9 +46,12 @@ export const FileUploader: React.FC<FileUploaderProps> = ({
     const id = localStorage.getItem('studearc_active_module');
     return id ? collections.find(c => c.id === id) ?? null : null;
   }, [collections]);
+  // Unterordner nur für diesen Durchgang abgewählt (FolderScopeBar): Quelle neu bauen.
+  const [scopeTick, setScopeTick] = useState(0);
   const folderResult = useMemo(
     () => activeModule ? buildCollectionSource(activeModule, documents) : null,
-    [activeModule, documents],
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [activeModule, documents, scopeTick],
   );
   const folderReady = !!folderResult && folderResult.includedCount > 0;
 
@@ -82,6 +86,7 @@ export const FileUploader: React.FC<FileUploaderProps> = ({
         >
           <p className="text-[11px] font-semibold uppercase tracking-[0.08em]" style={{ color: 'var(--primary-ink)' }}>{t('fu.activeSubject')}</p>
           <p className="text-2xl font-semibold dark:text-white">{activeModule.emoji} {activeModule.name}</p>
+          <FolderScopeBar collection={activeModule} documents={documents} onChange={() => setScopeTick(n => n + 1)} />
           <p className="text-[11px] font-medium text-slate-400">
             {tp('fu.sourcesBase', folderResult.includedCount)}
             {folderResult.pendingCount > 0 && <>{t('fu.pendingProcessing', { n: folderResult.pendingCount })}</>}

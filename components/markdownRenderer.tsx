@@ -1,4 +1,5 @@
 import React from 'react';
+import { CITATION_RE, parseCitationToken, type CitationRef } from '../services/citations';
 import katex from 'katex';
 import 'katex/dist/katex.min.css';
 import { t } from '../i18n';
@@ -54,11 +55,19 @@ export function renderMathText(text: string, baseKey = 'mt'): React.ReactNode[] 
   return out;
 }
 
-export function parseInline(text: string, baseKey: string): React.ReactNode[] {
+/** Fußnoten wie [2] oder [2:14], nur wenn renderCitation gesetzt ist (SubjectStudio). */
+export interface MarkdownOptions {
+  renderCitation?: (refs: CitationRef[], key: string) => React.ReactNode;
+}
+
+export function parseInline(text: string, baseKey: string, opts?: MarkdownOptions): React.ReactNode[] {
   const parts: React.ReactNode[] = [];
   // Math-Delimiter zuerst in der Alternation (sonst würde z.B. ein "*" in
   // "$x^2 * y$" die Kursiv-Erkennung fälschlich zünden, bevor Math greift).
-  const regex = /(\$\$[^$]+?\$\$|\\\[[^\]]+?\\\]|\\\([^)]+?\\\)|\$[^$\n]+?\$|\*\*[^*]+\*\*|\*[^*\n]+\*|`[^`]+`)/g;
+  const base = /(\$\$[^$]+?\$\$|\\\[[^\]]+?\\\]|\\\([^)]+?\\\)|\$[^$\n]+?\$|\*\*[^*]+\*\*|\*[^*\n]+\*|`[^`]+`)/;
+  const regex = opts?.renderCitation
+    ? new RegExp(`(${CITATION_RE.source}|${base.source.slice(1, -1)})`, 'g')
+    : new RegExp(base.source, 'g');
   let last = 0; let match: RegExpExecArray | null;
   while ((match = regex.exec(text)) !== null) {
     if (match.index > last) parts.push(text.slice(last, match.index));
@@ -67,7 +76,8 @@ export function parseInline(text: string, baseKey: string): React.ReactNode[] {
     // bewusst NICHT im Display-Modus rendern, das würde ein <div> in einen
     // <p>-Tag setzen. Echte Display-Formeln laufen über den Block-Zweig in
     // renderMarkdown (eigene Zeile mit $$...$$), der displayMode:true nutzt.
-    if (token.startsWith('$$'))        parts.push(renderMath(token.slice(2,-2), false, k));
+    if (opts?.renderCitation && CITATION_RE.test(token) && token.startsWith('[') && /^\[\d/.test(token)) parts.push(opts.renderCitation(parseCitationToken(token), k));
+    else if (token.startsWith('$$'))        parts.push(renderMath(token.slice(2,-2), false, k));
     else if (token.startsWith('\\['))  parts.push(renderMath(token.slice(2,-2), false, k));
     else if (token.startsWith('\\('))  parts.push(renderMath(token.slice(2,-2), false, k));
     else if (token.startsWith('$'))    parts.push(renderMath(token.slice(1,-1), false, k));
@@ -75,8 +85,8 @@ export function parseInline(text: string, baseKey: string): React.ReactNode[] {
     // sonst gewinnt z.B. bei "**$s$**" der Bold-Regex an der Startposition
     // und verschluckt die Formel als literalen String statt sie zu rendern
     // (live gefunden: alle bold-umschlossenen Formeln blieben roh sichtbar).
-    else if (token.startsWith('**'))   parts.push(<strong key={k} className="font-semibold text-slate-900 dark:text-white">{parseInline(token.slice(2,-2), k)}</strong>);
-    else if (token.startsWith('*'))    parts.push(<em key={k} className="italic text-slate-600 dark:text-slate-300">{parseInline(token.slice(1,-1), k)}</em>);
+    else if (token.startsWith('**'))   parts.push(<strong key={k} className="font-semibold text-slate-900 dark:text-white">{parseInline(token.slice(2,-2), k, opts)}</strong>);
+    else if (token.startsWith('*'))    parts.push(<em key={k} className="italic text-slate-600 dark:text-slate-300">{parseInline(token.slice(1,-1), k, opts)}</em>);
     else                               parts.push(<code key={k} className="px-1.5 py-0.5 rounded-md text-[0.85em] font-mono bg-slate-100 dark:bg-slate-800" style={{ color: 'var(--primary-ink)' }}>{token.slice(1,-1)}</code>);
     last = match.index + token.length;
   }
@@ -108,7 +118,8 @@ function collectListLines(lines: string[], start: number, itemRe: RegExp): { ite
 /** Trennlinie (---, ***, ___), Gemini setzt sie gern zwischen Abschnitte. */
 const HR_RE = /^\s*(?:-{3,}|\*{3,}|_{3,})\s*$/;
 
-export function renderMarkdown(text: string): React.ReactNode {
+export function renderMarkdown(text: string, opts?: MarkdownOptions): React.ReactNode {
+  const pi = (s: string, k: string) => parseInline(s, k, opts);
   const lines = text.split('\n');
   const blocks: React.ReactNode[] = [];
   let i = 0; let key = 0;
@@ -116,9 +127,9 @@ export function renderMarkdown(text: string): React.ReactNode {
     const line = lines[i];
     if (!line.trim()) { i++; continue; }
     if (HR_RE.test(line)) { blocks.push(<hr key={key++} className="border-0 h-px" style={{ background: 'var(--border-color)' }} />); i++; continue; }
-    if (line.startsWith('# '))   { blocks.push(<h2 key={key++} className="text-2xl lg:text-3xl font-semibold text-slate-900 dark:text-white tracking-tight mt-2">{parseInline(line.slice(2),String(key))}</h2>); i++; continue; }
-    if (line.startsWith('## '))  { blocks.push(<h3 key={key++} className="text-xl lg:text-2xl font-semibold text-slate-900 dark:text-white tracking-tight mt-1">{parseInline(line.slice(3),String(key))}</h3>); i++; continue; }
-    if (line.startsWith('### ')) { blocks.push(<h4 key={key++} className="text-base lg:text-lg font-semibold text-slate-700 dark:text-slate-200 mt-1">{parseInline(line.slice(4),String(key))}</h4>); i++; continue; }
+    if (line.startsWith('# '))   { blocks.push(<h2 key={key++} className="text-2xl lg:text-3xl font-semibold text-slate-900 dark:text-white tracking-tight mt-2">{pi(line.slice(2),String(key))}</h2>); i++; continue; }
+    if (line.startsWith('## '))  { blocks.push(<h3 key={key++} className="text-xl lg:text-2xl font-semibold text-slate-900 dark:text-white tracking-tight mt-1">{pi(line.slice(3),String(key))}</h3>); i++; continue; }
+    if (line.startsWith('### ')) { blocks.push(<h4 key={key++} className="text-base lg:text-lg font-semibold text-slate-700 dark:text-slate-200 mt-1">{pi(line.slice(4),String(key))}</h4>); i++; continue; }
     const headingMatch = line.match(HEADING_RE);
     if (headingMatch) {
       // Modell setzt nicht immer verlässlich einen Zeilenumbruch nach der
@@ -130,7 +141,7 @@ export function renderMarkdown(text: string): React.ReactNode {
       if (rest) {
         const paraLines: string[] = [rest];
         while (i < lines.length && lines[i].trim() && !lines[i].startsWith('#') && !lines[i].match(/^[-*•]\s/) && !lines[i].match(/^\d+\.\s/) && !lines[i].startsWith('Allgemeinwissen:') && !lines[i].trim().startsWith('$$') && !HEADING_RE.test(lines[i])) { paraLines.push(lines[i]); i++; }
-        blocks.push(<p key={key++} className="text-base lg:text-lg font-medium text-slate-700 dark:text-slate-300 leading-relaxed">{parseInline(paraLines.join(' '),String(key))}</p>);
+        blocks.push(<p key={key++} className="text-base lg:text-lg font-medium text-slate-700 dark:text-slate-300 leading-relaxed">{pi(paraLines.join(' '),String(key))}</p>);
       }
       continue;
     }
@@ -155,24 +166,24 @@ export function renderMarkdown(text: string): React.ReactNode {
     if (line.startsWith('Allgemeinwissen:')) {
       const content: string[] = [line.replace('Allgemeinwissen:','').trim()]; i++;
       while (i < lines.length && lines[i].trim() && !lines[i].startsWith('#') && !lines[i].match(/^[-*•]\s/) && !lines[i].match(/^\d+\.\s/)) { content.push(lines[i]); i++; }
-      blocks.push(<div key={key++} className="px-5 py-4 rounded-2xl" style={{ background:'color-mix(in srgb,var(--primary) 8%,transparent)', border:'1px solid color-mix(in srgb,var(--primary) 20%,transparent)' }}><p className="text-[11px] font-semibold uppercase tracking-[0.08em] mb-2" style={{ color: 'var(--primary-ink)' }}>{t('reader.externalKnowledge')}</p><p className="text-base font-medium text-slate-700 dark:text-slate-300 leading-relaxed">{parseInline(content.join(' '),String(key))}</p></div>);
+      blocks.push(<div key={key++} className="px-5 py-4 rounded-2xl" style={{ background:'color-mix(in srgb,var(--primary) 8%,transparent)', border:'1px solid color-mix(in srgb,var(--primary) 20%,transparent)' }}><p className="text-[11px] font-semibold uppercase tracking-[0.08em] mb-2" style={{ color: 'var(--primary-ink)' }}>{t('reader.externalKnowledge')}</p><p className="text-base font-medium text-slate-700 dark:text-slate-300 leading-relaxed">{pi(content.join(' '),String(key))}</p></div>);
       continue;
     }
     if (line.match(/^[-*•]\s/)) {
       const { items, next } = collectListLines(lines, i, /^[-*•]\s/);
       i = next;
-      blocks.push(<ul key={key++} className="space-y-2 pl-1">{items.map((item,idx) => <li key={idx} className="flex gap-2.5 items-start text-base lg:text-lg font-medium text-slate-700 dark:text-slate-300 leading-relaxed"><span className="mt-2 w-1.5 h-1.5 rounded-full shrink-0" style={{ background:'var(--primary)' }}/><span>{parseInline(item,`${key}-${idx}`)}</span></li>)}</ul>);
+      blocks.push(<ul key={key++} className="space-y-2 pl-1">{items.map((item,idx) => <li key={idx} className="flex gap-2.5 items-start text-base lg:text-lg font-medium text-slate-700 dark:text-slate-300 leading-relaxed"><span className="mt-2 w-1.5 h-1.5 rounded-full shrink-0" style={{ background:'var(--primary)' }}/><span>{pi(item,`${key}-${idx}`)}</span></li>)}</ul>);
       continue;
     }
     if (line.match(/^\d+\.\s/)) {
       const { items, next } = collectListLines(lines, i, /^\d+\.\s/);
       i = next;
-      blocks.push(<ol key={key++} className="space-y-2 pl-1">{items.map((item,idx) => <li key={idx} className="flex gap-3 items-start text-base lg:text-lg font-medium text-slate-700 dark:text-slate-300 leading-relaxed"><span className="font-semibold shrink-0 w-6 text-right" style={{ color: 'var(--primary-ink)' }}>{idx+1}.</span><span>{parseInline(item,`${key}-${idx}`)}</span></li>)}</ol>);
+      blocks.push(<ol key={key++} className="space-y-2 pl-1">{items.map((item,idx) => <li key={idx} className="flex gap-3 items-start text-base lg:text-lg font-medium text-slate-700 dark:text-slate-300 leading-relaxed"><span className="font-semibold shrink-0 w-6 text-right" style={{ color: 'var(--primary-ink)' }}>{idx+1}.</span><span>{pi(item,`${key}-${idx}`)}</span></li>)}</ol>);
       continue;
     }
     const paraLines: string[] = [line]; i++;
     while (i < lines.length && lines[i].trim() && !HR_RE.test(lines[i]) && !lines[i].startsWith('#') && !lines[i].match(/^[-*•]\s/) && !lines[i].match(/^\d+\.\s/) && !lines[i].startsWith('Allgemeinwissen:') && !lines[i].trim().startsWith('$$') && !HEADING_RE.test(lines[i])) { paraLines.push(lines[i]); i++; }
-    blocks.push(<p key={key++} className="text-base lg:text-lg font-medium text-slate-700 dark:text-slate-300 leading-relaxed">{parseInline(paraLines.join(' '),String(key))}</p>);
+    blocks.push(<p key={key++} className="text-base lg:text-lg font-medium text-slate-700 dark:text-slate-300 leading-relaxed">{pi(paraLines.join(' '),String(key))}</p>);
   }
   return <div className="space-y-5">{blocks}</div>;
 }

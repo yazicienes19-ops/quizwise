@@ -1,6 +1,7 @@
 import type { Collection, ProcessedDocument } from '../types';
 import type { GenerationSource } from './geminiService';
 import { documentDisplayName } from './libraryService';
+import { isDocInScope } from './moduleFolders';
 
 /**
  * collectionSource — macht einen ganzen Ordner (Collection) zur Wissensbasis.
@@ -34,8 +35,13 @@ const readableText = (d: ProcessedDocument): string | null => {
 /** Hat die Quelle bereits Text, aus dem sich etwas erzeugen lässt? (studyGuideService: Phase „Überblick") */
 export const isDocumentReadable = (d: ProcessedDocument): boolean => readableText(d) !== null;
 
-export const collectionDocs = (collection: Collection, documents: ProcessedDocument[]): ProcessedDocument[] =>
+/** Alle Dokumente des Fachs, auch aus abgewählten Ordnern (Bibliothek, Teilen). */
+export const allCollectionDocs = (collection: Collection, documents: ProcessedDocument[]): ProcessedDocument[] =>
   documents.filter(d => d.collectionId === collection.id);
+
+/** Wissensbasis des Fachs: ohne abgewählte Ordner (services/moduleFolders.ts). */
+export const collectionDocs = (collection: Collection, documents: ProcessedDocument[]): ProcessedDocument[] =>
+  documents.filter(d => d.collectionId === collection.id && isDocInScope(collection, d));
 
 export const buildCollectionSource = (
   collection: Collection,

@@ -16,7 +16,10 @@ import { EmojiImage } from './EmojiImage';
 import { ShareLinkModal } from './ShareLinkModal';
 import { PageHeader } from './PageHeader';
 import { confirmDialog } from '../services/confirmDialog';
-import { SubjectSummaryModal } from './SubjectSummaryModal';
+import { SubjectStudio } from './SubjectStudio';
+import { ModuleFolderSections } from './ModuleFolderSections';
+import { folderList, type FolderActions } from '../services/moduleFolders';
+import { FolderPlus } from 'lucide-react';
 
 interface LibrarySystemProps {
   documents: ProcessedDocument[];
@@ -27,7 +30,7 @@ interface LibrarySystemProps {
   userId?: string;
   /** Vorname des Teilenden — zeigt die Vorschau-Seite ("{Name} hat ein Fach geteilt"). */
   userName?: string | null;
-  onUpload: (file: File, collectionId?: string, onProgress?: (fraction: number) => void) => Promise<string | null>;
+  onUpload: (file: File, collectionId?: string, onProgress?: (fraction: number) => void, folderId?: string) => Promise<string | null>;
   onDelete: (id: string) => void;
   onRetryAnalysis?: (docId: string) => void;
   onAction: (tab: ActiveTab, doc: ProcessedDocument) => void;
@@ -40,6 +43,8 @@ interface LibrarySystemProps {
   isLoading: boolean;
   /** Aus der globalen Suche: dieses Fach direkt geöffnet zeigen. */
   initialCollectionId?: string;
+  /** Unterordner im Fach (services/moduleFolders.ts). */
+  folderActions?: FolderActions;
 }
 
 type SortKey  = 'recent' | 'name' | 'type';
@@ -84,6 +89,7 @@ export const LibrarySystem: React.FC<LibrarySystemProps> = ({
   onMergeCollections,
   isLoading,
   initialCollectionId,
+  folderActions,
 }) => {
   const { t, tp } = useTranslation();
   const duplicateCollectionGroups = useMemo(() => findDuplicateCollectionGroups(collections), [collections]);
@@ -104,6 +110,10 @@ export const LibrarySystem: React.FC<LibrarySystemProps> = ({
   const [editColId, setEditColId]           = useState<string | null>(null);
   const [editColName, setEditColName]       = useState('');
   const [editColEmoji, setEditColEmoji]     = useState('');
+  /** Ziel-Unterordner des nächsten Uploads ("Hier hochladen"). */
+  const [uploadFolderId, setUploadFolderId] = useState<string | undefined>(undefined);
+  const [isAddingFolder, setIsAddingFolder] = useState(false);
+  const [newFolderName, setNewFolderName]   = useState('');
 
   const refreshMeta = useCallback(() => setAllMeta(getAllMeta()), []);
 
@@ -167,7 +177,7 @@ export const LibrarySystem: React.FC<LibrarySystemProps> = ({
 
   const handleUpload = async (file: File, meta: Partial<SourceMeta>, onProgress?: (fraction: number) => void) => {
     const targetCol = activeColId !== 'all' && activeColId !== 'uncategorized' ? activeColId : undefined;
-    const docId = await onUpload(file, targetCol, onProgress);
+    const docId = await onUpload(file, targetCol, onProgress, targetCol ? uploadFolderId : undefined);
     if (docId) {
       saveMeta(docId, meta);
       refreshMeta();
@@ -208,10 +218,13 @@ export const LibrarySystem: React.FC<LibrarySystemProps> = ({
   const [summaryColId, setSummaryColId] = useState<string | null>(null);
   const summaryCol = summaryColId ? collections.find(c => c.id === summaryColId) : undefined;
   const summaryModal = summaryCol && (
-    <SubjectSummaryModal
-      subjectName={summaryCol.name}
-      docs={documents.filter(d => d.collectionId === summaryCol.id)}
+    <SubjectStudio
+      collection={summaryCol}
+      documents={documents}
+      userId={userId}
       onClose={() => setSummaryColId(null)}
+      onOpenDoc={doc => { setSummaryColId(null); onAction(ActiveTab.READER, doc); }}
+      onAddAsSource={(file, collectionId) => onUpload(file, collectionId)}
     />
   );
   const [shareLink, setShareLink] = useState<{ url: string; name: string } | null>(null);
@@ -268,7 +281,7 @@ export const LibrarySystem: React.FC<LibrarySystemProps> = ({
   if (viewDoc) {
     return (
       <>
-        {showUpload && <UploadSourceModal onClose={() => setShowUpload(false)} onUpload={handleUpload} />}
+        {showUpload && <UploadSourceModal onClose={() => { setShowUpload(false); setUploadFolderId(undefined); }} onUpload={handleUpload} />}
         {shareLink && <ShareLinkModal url={shareLink.url} title={t('share.title', { name: shareLink.name })} onClose={() => setShareLink(null)} />}
         {summaryModal}
         {editDoc && (
@@ -304,7 +317,7 @@ export const LibrarySystem: React.FC<LibrarySystemProps> = ({
   if (collections.length > 0 && showFolderView && !viewDocId) {
     return (
       <>
-        {showUpload && <UploadSourceModal onClose={() => setShowUpload(false)} onUpload={handleUpload} />}
+        {showUpload && <UploadSourceModal onClose={() => { setShowUpload(false); setUploadFolderId(undefined); }} onUpload={handleUpload} />}
         {shareLink && <ShareLinkModal url={shareLink.url} title={t('share.title', { name: shareLink.name })} onClose={() => setShareLink(null)} />}
         {summaryModal}
         {editDoc && (
@@ -543,6 +556,25 @@ export const LibrarySystem: React.FC<LibrarySystemProps> = ({
     );
   }
 
+  const activeCol = activeColId !== 'all' && activeColId !== 'uncategorized'
+    ? collections.find(c => c.id === activeColId) ?? null
+    : null;
+  const renderCard = (doc: ProcessedDocument, folderSlot?: React.ReactNode) => (
+    <SourceCard
+      key={doc.id}
+      doc={doc}
+      meta={allMeta[doc.id] ?? {}}
+      view={viewMode}
+      isDuplicate={duplicateKeys.has(doc.id)}
+      onOpen={() => handleOpen(doc)}
+      onView={() => setViewerDocId(doc.id)}
+      onDelete={() => handleDelete(doc)}
+      onEdit={() => setEditDocId(doc.id)}
+      onRetryAnalysis={onRetryAnalysis ? () => onRetryAnalysis(doc.id) : undefined}
+      folderSlot={folderSlot}
+    />
+  );
+
   const colBtn = (id: string | 'all' | 'uncategorized', emoji: string, label: string, count: number) => (
     <button
       onClick={() => setActiveColId(id)}
@@ -560,7 +592,7 @@ export const LibrarySystem: React.FC<LibrarySystemProps> = ({
 
   return (
     <>
-      {showUpload && <UploadSourceModal onClose={() => setShowUpload(false)} onUpload={handleUpload} />}
+      {showUpload && <UploadSourceModal onClose={() => { setShowUpload(false); setUploadFolderId(undefined); }} onUpload={handleUpload} />}
         {shareLink && <ShareLinkModal url={shareLink.url} title={t('share.title', { name: shareLink.name })} onClose={() => setShareLink(null)} />}
         {summaryModal}
       {viewerDoc && <DocumentViewerModal doc={viewerDoc} onClose={() => setViewerDocId(null)} />}
@@ -602,6 +634,37 @@ export const LibrarySystem: React.FC<LibrarySystemProps> = ({
             />
           </div>
           <div className="shrink-0 flex flex-wrap items-center gap-2">
+            {activeCol && folderActions && (
+              isAddingFolder ? (
+                <form
+                  onSubmit={e => {
+                    e.preventDefault();
+                    if (newFolderName.trim()) folderActions.addFolder(activeCol.id, newFolderName);
+                    setNewFolderName(''); setIsAddingFolder(false);
+                  }}
+                  className="flex items-center gap-2"
+                >
+                  <input
+                    autoFocus
+                    value={newFolderName}
+                    onChange={e => setNewFolderName(e.target.value)}
+                    placeholder={t('mf.namePlaceholder')}
+                    className="w-48 px-4 py-2.5 rounded-2xl text-[13px] font-semibold outline-none"
+                    style={{ background: 'var(--bg-main)', color: 'var(--text-main)', border: '2px solid var(--primary)' }}
+                  />
+                  <button type="submit" className="px-4 py-2.5 rounded-2xl text-[13px] font-semibold" style={{ background: 'var(--primary)', color: 'var(--primary-text)' }}>{t('lib.create')}</button>
+                  <button type="button" onClick={() => { setIsAddingFolder(false); setNewFolderName(''); }} className="px-2 py-2.5 text-[13px] font-semibold text-slate-400">✕</button>
+                </form>
+              ) : (
+                <button
+                  onClick={() => setIsAddingFolder(true)}
+                  className="flex items-center gap-2 px-5 py-2.5 rounded-2xl text-[13px] font-semibold transition-all hover:opacity-90"
+                  style={{ background: 'var(--bg-sidebar)', color: 'var(--text-main)', border: '1px solid var(--border-color)' }}
+                >
+                  <FolderPlus className="w-3.5 h-3.5" strokeWidth={2.5} /> {t('mf.add')}
+                </button>
+              )
+            )}
             {activeColId !== 'all' && activeColId !== 'uncategorized' && filtered.length > 0 && (
               <button
                 onClick={() => setSummaryColId(activeColId)}
@@ -791,45 +854,28 @@ export const LibrarySystem: React.FC<LibrarySystemProps> = ({
             {/* Empty states */}
             {documents.length === 0 ? (
               <EmptyLibrary onUpload={() => setShowUpload(true)} />
-            ) : filtered.length === 0 ? (
+            ) : filtered.length === 0 && !(activeCol && folderList(activeCol).length > 0 && !search && filterType === 'all' && !filterModule) ? (
               <div className="flex flex-col items-center justify-center py-24 text-center space-y-4">
                 <EmojiImage emoji="🔍" size={48} />
                 <p className="text-sm font-semibold text-slate-400">{t('lib.noResults')}</p>
                 <p className="text-xs text-slate-400">{t('lib.noResultsHint')}</p>
               </div>
+            ) : activeCol && folderActions && folderList(activeCol).length > 0 ? (
+              <ModuleFolderSections
+                collection={activeCol}
+                docs={filtered}
+                viewMode={viewMode}
+                actions={folderActions}
+                renderDoc={(doc, folderSelect) => renderCard(doc, folderSelect)}
+                onUploadInto={folderId => { setUploadFolderId(folderId); setShowUpload(true); }}
+              />
             ) : viewMode === 'grid' ? (
               <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-5">
-                {filtered.map(doc => (
-                  <SourceCard
-                    key={doc.id}
-                    doc={doc}
-                    meta={allMeta[doc.id] ?? {}}
-                    view="grid"
-                    isDuplicate={duplicateKeys.has(doc.id)}
-                    onOpen={() => handleOpen(doc)}
-                    onView={() => setViewerDocId(doc.id)}
-                    onDelete={() => handleDelete(doc)}
-                    onEdit={() => setEditDocId(doc.id)}
-                    onRetryAnalysis={onRetryAnalysis ? () => onRetryAnalysis(doc.id) : undefined}
-                  />
-                ))}
+                {filtered.map(doc => renderCard(doc))}
               </div>
             ) : (
               <div className="space-y-2">
-                {filtered.map(doc => (
-                  <SourceCard
-                    key={doc.id}
-                    doc={doc}
-                    meta={allMeta[doc.id] ?? {}}
-                    view="list"
-                    isDuplicate={duplicateKeys.has(doc.id)}
-                    onOpen={() => handleOpen(doc)}
-                    onView={() => setViewerDocId(doc.id)}
-                    onDelete={() => handleDelete(doc)}
-                    onEdit={() => setEditDocId(doc.id)}
-                    onRetryAnalysis={onRetryAnalysis ? () => onRetryAnalysis(doc.id) : undefined}
-                  />
-                ))}
+                {filtered.map(doc => renderCard(doc))}
               </div>
             )}
           </div>

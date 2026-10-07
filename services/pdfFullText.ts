@@ -141,3 +141,29 @@ export const transcribePdf = async (
     void pdf.doc.cleanup();
   }
 };
+
+const pageCache = new Map<string, string[] | null>();
+
+/**
+ * Text je Seite (Index 0 = Seite 1), für Fußnoten mit Seitenangabe
+ * (services/subjectStudio.ts). null bei Scans, Mathe-PDFs (Textebene
+ * unbrauchbar) oder sehr langen PDFs; dann zählt die Zusammenfassung.
+ */
+export const readPdfPages = async (doc: ProcessedDocument, isCancelled?: () => boolean): Promise<string[] | null> => {
+  if (pageCache.has(doc.id)) return pageCache.get(doc.id)!;
+  const pdf = await loadPdf(doc.storagePath ? await downloadPdfAsBase64(doc.storagePath) : doc.content);
+  try {
+    if (pdf.numPages > MAX_TRANSCRIBE_PAGES) { pageCache.set(doc.id, null); return null; }
+    const pages: string[] = [];
+    for (let n = 1; n <= pdf.numPages; n++) {
+      if (isCancelled?.()) return null;
+      pages.push(await getPageText(pdf, n));
+    }
+    const usable = !!joinPages(pages) && !looksMathHeavy(pages);
+    const result = usable ? pages : null;
+    pageCache.set(doc.id, result);
+    return result;
+  } finally {
+    void pdf.doc.cleanup();
+  }
+};

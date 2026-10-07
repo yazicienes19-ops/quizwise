@@ -1,5 +1,5 @@
 import { supabase } from './supabaseClient';
-import { ProcessedDocument, Collection } from '../types';
+import { ProcessedDocument, Collection, ModuleFolder } from '../types';
 import { getLocale } from '../i18n';
 
 /** Supabase Storage lehnt Objekt-Schlüssel mit Nicht-ASCII-Zeichen als "InvalidKey"
@@ -94,19 +94,30 @@ export const loadCollectionsFromSupabase = async (): Promise<Collection[]> => {
     name: row.name,
     emoji: row.emoji,
     color: row.color,
+    ...(Array.isArray(row.folders) && row.folders.length ? { folders: row.folders as ModuleFolder[] } : {}),
   }));
 };
+
+/** Spalte aus migration_module_folders.sql fehlt noch: ohne sie weiterspeichern statt zu scheitern. */
+const isMissingFolderColumn = (error: { message?: string } | null): boolean =>
+  !!error && /folder/i.test(error.message ?? '');
 
 export const saveCollectionToSupabase = async (col: Collection): Promise<void> => {
   const { data: { user } } = await supabase.auth.getUser();
   if (!user) return;
-  const { error } = await supabase.from('collections').upsert({
+  const row: Record<string, unknown> = {
     id: col.id,
     user_id: user.id,
     name: col.name,
     emoji: col.emoji,
     color: col.color,
-  });
+    folders: col.folders ?? [],
+  };
+  let { error } = await supabase.from('collections').upsert(row);
+  if (isMissingFolderColumn(error)) {
+    delete row.folders;
+    ({ error } = await supabase.from('collections').upsert(row));
+  }
   if (error) throw error;
 };
 
@@ -129,6 +140,7 @@ export const loadDocumentsFromSupabase = async (): Promise<ProcessedDocument[]> 
     type: row.file_type as 'pdf' | 'text' | 'docx' | 'image',
     mimeType: row.mime_type ?? undefined,
     collectionId: row.collection_id ?? undefined,
+    folderId: row.folder_id ?? undefined,
     uploadDate: row.upload_date,
     content: row.content_text || '',
     storagePath: row.storage_path ?? undefined,
@@ -175,6 +187,7 @@ export const saveDocumentToSupabase = async (
     file_type: doc.type,
     mime_type: doc.mimeType ?? null,
     collection_id: doc.collectionId ?? null,
+    folder_id: doc.folderId ?? null,
     storage_path: storagePath,
     content_text: contentText,
     upload_date: doc.uploadDate,
@@ -191,6 +204,10 @@ export const saveDocumentToSupabase = async (
   if (error && /mime_type/i.test(error.message)) {
     // Ältere DB ohne mime_type-Spalte: ohne das Feld erneut versuchen
     delete row.mime_type;
+    ({ error } = await supabase.from('documents').upsert(row));
+  }
+  if (isMissingFolderColumn(error)) {
+    delete row.folder_id;
     ({ error } = await supabase.from('documents').upsert(row));
   }
   if (error) {
@@ -223,10 +240,25 @@ export const updateDocumentCollectionInSupabase = async (
   docId: string,
   collectionId: string | undefined
 ): Promise<void> => {
-  const { error } = await supabase
+  // Beim Fachwechsel fällt der Ordner weg: er gehört zum alten Fach.
+  let { error } = await supabase
     .from('documents')
-    .update({ collection_id: collectionId ?? null })
+    .update({ collection_id: collectionId ?? null, folder_id: null })
     .eq('id', docId);
+  if (isMissingFolderColumn(error)) {
+    ({ error } = await supabase.from('documents').update({ collection_id: collectionId ?? null }).eq('id', docId));
+  }
+  if (error) throw error;
+};
+
+export const updateDocumentFolderInSupabase = async (docId: string, folderId: string | undefined): Promise<void> => {
+  const { error } = await supabase.from('documents').update({ folder_id: folderId ?? null }).eq('id', docId);
+  if (error) throw error;
+};
+
+/** Beim Löschen eines Ordners: seine Dokumente bleiben im Fach, nur ohne Ordner. */
+export const clearFolderInSupabase = async (folderId: string): Promise<void> => {
+  const { error } = await supabase.from('documents').update({ folder_id: null }).eq('folder_id', folderId);
   if (error) throw error;
 };
 

@@ -1,3 +1,4 @@
+import { buildSelfCheckPrompt } from './subjectStudio';
 import { textSides } from './cloze';
 import { Type } from "@google/genai";
 import { getReportedQuestionTexts } from './questionReportService';
@@ -2634,4 +2635,74 @@ Die Ziel-Tab-Werte (QUIZ, CARDS, RECALL, EXAM, EXPLAINER), die priority-Werte (h
   // füllt das defensiv mit sicheren Leerwerten auf, bevor es in den Component-
   // State gelangt (sonst crasht LearningCoach.tsx beim Rendern).
   return parseCoachInsights(text);
+};
+
+/**
+ * Lernstudio (components/SubjectStudio.tsx): ein Format aus mehreren Quellen
+ * mit Fußnoten. Der Prompt kommt fertig aus services/subjectStudio.ts.
+ * 'heavy': Pro schreibt mit 3.8 Flash (eine Synthese über ein ganzes Fach
+ * lohnt das große Modell, etwa 4 ct), Free bleibt bei Flash-Lite.
+ * Ergebnisse werden gespeichert, also nur einmal bezahlt.
+ */
+export const generateStudioOutput = async (
+  prompt: string,
+  onPartial?: (fullSoFar: string) => void,
+): Promise<string> => {
+  const payload = {
+    complexity: 'heavy' as const,
+    parts: [{ text: `${prompt}${outputLangDirective()}` }],
+    config: { temperature: 0.3, thinkingConfig: { thinkingBudget: 0 } },
+  };
+  return onPartial ? callBackendStream(payload, onPartial) : callBackend(payload);
+};
+
+export type SelfCheckVerdict = 'correct' | 'partial' | 'wrong';
+export interface SelfCheckResult {
+  verdict: SelfCheckVerdict;
+  /** 0 bis 100, wie vollständig und richtig die Antwort ist. */
+  score: number;
+  feedback: string;
+  missing: string[];
+}
+
+/**
+ * Selbsttest im Lernleitfaden (components/StudioSelfCheck.tsx): eigene Antwort
+ * auf eine Verständnisfrage gegen Musterantwort und die zitierten
+ * Quellenseiten prüfen. Formative Rückmeldung, keine Note: daher Flash-Lite.
+ */
+export const evaluateSelfCheck = async (
+  question: string,
+  reference: string,
+  excerpts: string,
+  userAnswer: string,
+): Promise<SelfCheckResult> => {
+  const safeAnswer = sanitizeUserInput(userAnswer, 3000);
+  const text = await callBackend({
+    complexity: 'light',
+    parts: [{ text: `${buildSelfCheckPrompt(question, reference, excerpts, safeAnswer)}${outputLangDirective()}` }],
+    config: {
+      temperature: 0.2,
+      thinkingConfig: { thinkingBudget: 0 },
+      responseMimeType: 'application/json',
+      responseSchema: {
+        type: Type.OBJECT,
+        properties: {
+          verdict: { type: Type.STRING, enum: ['correct', 'partial', 'wrong'] },
+          score: { type: Type.NUMBER },
+          feedback: { type: Type.STRING },
+          missing: { type: Type.ARRAY, items: { type: Type.STRING } },
+        },
+        required: ['verdict', 'score', 'feedback', 'missing'],
+      },
+    },
+  });
+  const raw = parseAiJson<{ verdict?: unknown; score?: unknown; feedback?: unknown; missing?: unknown }>(text || '{}');
+  const verdict: SelfCheckVerdict = raw.verdict === 'correct' || raw.verdict === 'partial' || raw.verdict === 'wrong' ? raw.verdict : 'partial';
+  if (typeof raw.feedback !== 'string' || !raw.feedback.trim()) throw new Error('Unvollständige Bewertung erhalten');
+  return {
+    verdict,
+    score: typeof raw.score === 'number' && !Number.isNaN(raw.score) ? Math.max(0, Math.min(100, Math.round(raw.score))) : 50,
+    feedback: raw.feedback.trim(),
+    missing: Array.isArray(raw.missing) ? raw.missing.filter((m): m is string => typeof m === 'string' && !!m.trim()).slice(0, 4) : [],
+  };
 };

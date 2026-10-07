@@ -1,3 +1,4 @@
+import type { FolderActions } from '../services/moduleFolders';
 import React from 'react';
 import type { User } from '@supabase/supabase-js';
 import { Dashboard } from './Dashboard';
@@ -59,7 +60,7 @@ interface AppContentProps {
   userPlan: 'free' | 'pro';
   documents: ProcessedDocument[];
   collections: Collection[];
-  handleFileUpload: (file: File, collectionId?: string, onProgress?: (fraction: number) => void) => Promise<string | null>;
+  handleFileUpload: (file: File, collectionId?: string, onProgress?: (fraction: number) => void, folderId?: string) => Promise<string | null>;
   retryAnalysis: (docId: string) => void;
   activeModuleId?: string | null;
   onModuleChange?: (id: string | null) => void;
@@ -68,6 +69,11 @@ interface AppContentProps {
   removeCollection: (id: string) => void;
   mergeCollections: (keepId: string, dropIds: string[]) => void;
   updateCollection: (col: Collection) => void;
+  addFolder: FolderActions['addFolder'];
+  renameFolder: FolderActions['renameFolder'];
+  setFolderExcluded: FolderActions['setFolderExcluded'];
+  removeFolder: FolderActions['removeFolder'];
+  moveDocToFolder: FolderActions['moveDocToFolder'];
   moveDoc: (docId: string, collectionId: string | undefined) => void;
   getDocumentSource: (doc: ProcessedDocument) => GenerationSource;
   questions: QuizQuestion[];
@@ -142,6 +148,7 @@ export const AppContent: React.FC<AppContentProps> = (p) => {
   const {
     activeTab, setActiveTab, isLoading, setIsLoading, user, userPlan,
     documents, collections, handleFileUpload, retryAnalysis, activeModuleId, deleteDoc, addCollection, removeCollection, mergeCollections, updateCollection, moveDoc, getDocumentSource,
+    addFolder, renameFolder, setFolderExcluded, removeFolder, moveDocToFolder,
     questions, setQuestions, answers, setAnswers, activeQuizMeta, setActiveQuizMeta,
     quizInitialAnswers, setQuizInitialAnswers, savedQuizzes, setSavedQuizzes,
     savedExams, setSavedExams, examInitialQuestions, setExamInitialQuestions,
@@ -294,6 +301,7 @@ export const AppContent: React.FC<AppContentProps> = (p) => {
         onAddCollection={addCollection} onDeleteCollection={removeCollection} onMergeCollections={mergeCollections}
         onUpdateCollection={updateCollection}
         onMoveDocument={moveDoc} isLoading={isLoading}
+        folderActions={{ addFolder, renameFolder, setFolderExcluded, removeFolder, moveDocToFolder }}
       />;
 
     case ActiveTab.QUIZ: {

@@ -1,9 +1,18 @@
 
+/** Unterordner eines Fachs, z.B. je Dozent (eine Ebene, services/moduleFolders.ts). */
+export interface ModuleFolder {
+  id: string;
+  name: string;
+  /** Dauerhaft abgewählt: zählt nicht zur Wissensbasis des Fachs. */
+  excluded?: boolean;
+}
+
 export interface Collection {
   id: string;
   name: string;
   emoji: string;
   color: string;
+  folders?: ModuleFolder[];
 }
 
 export type RecommendedActionType = 'kurze Erklärung' | '3 gezielte Übungsfragen' | 'Erstellung von Karteikarten' | 'Start einer geführten Study-Session';
@@ -234,6 +243,8 @@ export interface ProcessedDocument {
   mimeType?: string;      // nur für type='image': 'image/png', 'image/jpeg', 'image/webp'
   uploadDate: number;
   collectionId?: string;
+  /** Ordner innerhalb des Fachs (Collection.folders); fehlt = direkt im Fach. */
+  folderId?: string;
   storagePath?: string;   // gesetzt wenn Datei in Supabase Storage liegt
   digestText?: string;    // KI-generierter Lerndigest — ersetzt Originaldatei für schnelle KI-Aufrufe
   digestStatus?: 'pending' | 'ready' | 'error';

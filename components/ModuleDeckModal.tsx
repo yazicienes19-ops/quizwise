@@ -11,6 +11,8 @@ import { createSrsState } from '../services/spacedRepetition';
 import { resolveErrorMessage } from '../services/errorMessages';
 import { canReadFullText, readPdfFullText, transcribePdf } from '../services/pdfFullText';
 import { GeneratedCardsEditor, splitDraft, type DraftCard } from './GeneratedCardsEditor';
+import { collectionDocs } from '../services/collectionSource';
+import { FolderScopeBar } from './FolderScopeBar';
 
 interface Props {
   collections: Collection[];
@@ -50,7 +52,10 @@ export const ModuleDeckModal: React.FC<Props> = ({ collections, documents, examT
   const [transcribing, setTranscribing] = useState<{ doc: string; done: number; total: number } | null>(null);
 
   const col = collections.find(c => c.id === colId) ?? null;
-  const docs = useMemo(() => documents.filter(d => d.collectionId === colId), [documents, colId]);
+  // Wissensbasis ohne abgewählte Unterordner; scopeTick baut nach FolderScopeBar neu.
+  const [scopeTick, setScopeTick] = useState(0);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  const docs = useMemo(() => col ? collectionDocs(col, documents) : [], [documents, col, scopeTick]);
 
   // PDFs des Fachs vollständig lesen, damit die Karten den ganzen Inhalt abdecken
   useEffect(() => {
@@ -191,6 +196,9 @@ export const ModuleDeckModal: React.FC<Props> = ({ collections, documents, examT
         </div>
 
         <div className="px-6 sm:px-8 py-5 space-y-5">
+          {!review && !result && !running && (
+            <FolderScopeBar collection={col} documents={documents} onChange={() => setScopeTick(n => n + 1)} className="justify-start" />
+          )}
           {review ? (
             <GeneratedCardsEditor title={review.title} cards={review.cards} makeId={newId}
               onChange={next => setReview(r => (r ? { ...r, ...next } : r))} />

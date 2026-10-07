@@ -15,6 +15,7 @@ import { toast } from '../services/toast';
 import { documentDisplayName } from '../services/libraryService';
 import { buildRealTopicMastery } from '../services/learningProfileService';
 import { buildCollectionSource } from '../services/collectionSource';
+import { FolderScopeBar } from './FolderScopeBar';
 import { rankTopicsForNextChallenge, SUCCESS_THRESHOLD } from '../services/recallGaps';
 import { getCoverage, markTopicCovered } from '../services/recallCoverageService';
 import { detectChaptersForDoc, type Chapter } from '../services/chapterService';
@@ -573,7 +574,20 @@ export const ActiveRecall: React.FC<ActiveRecallProps> = ({
               </div>
               <button onClick={clearSource} aria-label={t('ex.remove')} className="shrink-0 text-slate-300 hover:text-rose-500 transition-colors font-semibold text-sm">✕</button>
             </div>
-          ) : (
+          ) : null}
+          {activeSource && sourceRef?.kind === 'collection' && (
+            <FolderScopeBar
+              collection={collections.find(c => c.id === sourceRef.id)}
+              documents={availableDocuments}
+              onChange={() => {
+                const col = collections.find(c => c.id === sourceRef.id);
+                const result = col ? buildCollectionSource(col, availableDocuments) : null;
+                if (result && result.includedCount > 0) { setActiveSource(result.source); setActiveSourceName(result.name); }
+              }}
+              className="justify-start -mt-3"
+            />
+          )}
+          {!activeSource && (
             <SourceSelector
               documents={moduleDocuments}
               collections={collections}

@@ -11,6 +11,8 @@ import {
   saveCollectionToSupabase,
   deleteCollectionFromSupabase,
   updateDocumentCollectionInSupabase,
+  updateDocumentFolderInSupabase,
+  clearFolderInSupabase,
   triggerDocumentAnalysis,
   UploadStalledError,
   UploadTimeoutError,
@@ -28,6 +30,7 @@ import { deleteResultsForDocName as deleteRecallResultsForDocName } from '../ser
 import { deleteLogForDoc } from '../services/readerLogService';
 import { removeMistakesByDocId } from '../services/mistakeReviewService';
 import { runUndoable } from '../services/undoable';
+import { withFolderAdded, withFolderRemoved, withFolderRenamed, withFolderExcluded } from '../services/moduleFolders';
 
 interface UseDocumentsParams {
   user: User | null;
@@ -177,6 +180,33 @@ export const useDocuments = ({ user, userPlan, isOffline, setIsLoading, setShowU
     if (user) saveCollectionToSupabase(updated).catch(() => {});
   };
 
+  // ── Ordner innerhalb eines Fachs (services/moduleFolders.ts) ──
+  const changeFolders = (collectionId: string, change: (c: Collection) => Collection) => {
+    const col = collections.find(c => c.id === collectionId);
+    if (col) updateCollection(change(col));
+  };
+
+  const addFolder = (collectionId: string, name: string) => {
+    if (name.trim()) changeFolders(collectionId, c => withFolderAdded(c, name));
+  };
+  const renameFolder = (collectionId: string, folderId: string, name: string) => {
+    if (name.trim()) changeFolders(collectionId, c => withFolderRenamed(c, folderId, name));
+  };
+  const setFolderExcluded = (collectionId: string, folderId: string, excluded: boolean) =>
+    changeFolders(collectionId, c => withFolderExcluded(c, folderId, excluded));
+  /** Ordner weg, Dokumente bleiben im Fach. */
+  const removeFolder = (collectionId: string, folderId: string) => {
+    changeFolders(collectionId, c => withFolderRemoved(c, folderId));
+    if (documents.some(d => d.folderId === folderId)) {
+      saveDocs(documents.map(d => d.folderId === folderId ? { ...d, folderId: undefined } : d));
+    }
+    if (user) clearFolderInSupabase(folderId).catch(() => {});
+  };
+  const moveDocToFolder = (docId: string, folderId: string | undefined) => {
+    saveDocs(documents.map(d => d.id === docId ? { ...d, folderId } : d));
+    if (user) updateDocumentFolderInSupabase(docId, folderId).catch(() => toast.error(translate('mf.saveFailed')));
+  };
+
   // Löschen mit "Rückgängig" (services/undoable.ts): sofort ausblenden, die
   // endgültige Löschung (Cloud, Datei, Lernverläufe) erst nach 8 Sekunden.
   const deleteDoc = (id: string) => {
@@ -209,7 +239,8 @@ export const useDocuments = ({ user, userPlan, isOffline, setIsLoading, setShowU
   };
 
   const moveDoc = (docId: string, collectionId: string | undefined) => {
-    const updated = documents.map(d => d.id === docId ? { ...d, collectionId } : d);
+    // Der Ordner gehört zum alten Fach und fällt beim Umzug weg.
+    const updated = documents.map(d => d.id === docId ? { ...d, collectionId, folderId: undefined } : d);
     saveDocs(updated);
     if (user) updateDocumentCollectionInSupabase(docId, collectionId).catch(() => {});
   };
@@ -234,6 +265,7 @@ export const useDocuments = ({ user, userPlan, isOffline, setIsLoading, setShowU
     fileInput: File,
     collectionId?: string,
     onProgress?: (fraction: number) => void,
+    folderId?: string,
   ): Promise<string | null> => {
     let file = fileInput;
     if (isOffline) { toast.error(translate('up.offline')); return null; }
@@ -315,6 +347,7 @@ export const useDocuments = ({ user, userPlan, isOffline, setIsLoading, setShowU
         ...(imageMimeType ? { mimeType: imageMimeType } : {}),
         uploadDate: Date.now(),
         collectionId,
+        ...(collectionId && folderId ? { folderId } : {}),
       };
 
       if (docType === 'pdf' || docType === 'image') {
@@ -376,5 +409,8 @@ export const useDocuments = ({ user, userPlan, isOffline, setIsLoading, setShowU
     setRefreshTick(t => t + 1);
   };
 
-  return { documents, collections, saveDocs, addCollection, removeCollection, updateCollection, mergeCollections, deleteDoc, moveDoc, getDocumentSource, handleFileUpload, retryAnalysis };
+  return {
+    documents, collections, saveDocs, addCollection, removeCollection, updateCollection, mergeCollections, deleteDoc, moveDoc, getDocumentSource, handleFileUpload, retryAnalysis,
+    addFolder, renameFolder, setFolderExcluded, removeFolder, moveDocToFolder,
+  };
 };
