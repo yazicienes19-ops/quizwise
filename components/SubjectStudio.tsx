@@ -2,7 +2,7 @@ import React, { useEffect, useMemo, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
 import {
   BookText, ListChecks, HelpCircle, BookA, History, Layers, NotebookPen, Copy, Download, Trash2,
-  RefreshCw, FilePlus2, Check, X, FileText, Loader2, BookmarkPlus,
+  RefreshCw, FilePlus2, Check, X, FileText, Loader2, BookmarkPlus, ChevronDown,
 } from 'lucide-react';
 import type { Collection, ProcessedDocument } from '../types';
 import { useModalA11y } from '../hooks/useModalA11y';
@@ -20,10 +20,12 @@ import { canReadFullText, readPdfPages } from '../services/pdfFullText';
 import { generateStudioOutput } from '../services/geminiService';
 import {
   STUDIO_FORMATS, buildStudioSources, buildStudioPrompt, checkCitations, toPlainExport,
-  splitGuide, groupRefs,
+  splitGuide, groupRefs, truncationNotes, type StudioChapter,
   type StudioFormat, type StudioSourceInput,
 } from '../services/subjectStudio';
 import { StudioSelfCheck, type SelfCheckState } from './StudioSelfCheck';
+import { StudioDiagram } from './StudioDiagram';
+import { splitDiagrams, hideDiagramsWhileStreaming, diagramToBlock } from '../services/studioDiagrams';
 import {
   loadStudioItems, cachedStudioItems, saveStudioItem, deleteStudioItem, newStudioId,
   type StudioItem, type StudioKind, type StudioSourceRef,
@@ -31,6 +33,8 @@ import {
 import { buildSubjectSummary, summaryFileName } from '../services/subjectSummary';
 import { getHighlights } from '../services/userHighlights';
 import { requestReaderJump } from '../services/readerJump';
+import { loadStudioChapters } from '../services/studioChapters';
+import { ensureFigureIndex, buildFigureCatalog, resolveFigureBlocks, type DocFigure } from '../services/studioFigures';
 import type { CitationRef } from '../services/citations';
 
 interface Props {
@@ -71,13 +75,26 @@ export const SubjectStudio: React.FC<Props> = ({ collection, documents, userId, 
   const [selected, setSelected] = useState<Set<string>>(
     () => new Set(docs.filter(d => isDocInScope(collection, d) && isDocumentReadable(d)).map(d => d.id)),
   );
+  // Kapitel langer PDFs (services/studioChapters.ts): geladen beim Aufklappen; chapterSel fehlt = ganzes Dokument.
+  const [chapters, setChapters] = useState<Record<string, StudioChapter[] | null | 'loading'>>({});
+  const [expanded, setExpanded] = useState<Set<string>>(new Set());
+  const [chapterSel, setChapterSel] = useState<Record<string, number[]>>({});
+  const [batch, setBatch] = useState<{ done: number; total: number; title: string } | null>(null);
   const [items, setItems] = useState<StudioItem[]>(() => cachedStudioItems(userId, collection.id));
   const [view, setView] = useState<View>({ kind: 'home' });
   const [mobileTab, setMobileTab] = useState<MobileTab>('content');
   const [format, setFormat] = useState<StudioFormat>('summary');
   const [focus, setFocus] = useState('');
+  // Abbildungen aus dem Skript: dauert beim ersten Mal spürbar länger, daher nur auf Wunsch (Feedback 07.10.2026).
+  const figuresKey = 'studearc_studio_figures';
+  const [figuresOn, setFiguresOn] = useState(() => { try { return localStorage.getItem(figuresKey) === '1'; } catch { return false; } });
+  const toggleFigures = (on: boolean) => {
+    setFiguresOn(on);
+    try { localStorage.setItem(figuresKey, on ? '1' : '0'); } catch { /* nur für diese Sitzung */ }
+  };
   const [streamText, setStreamText] = useState('');
-  const [progress, setProgress] = useState<{ done: number; total: number } | null>(null);
+  /** Vorarbeit vor und nach dem Schreiben: PDFs lesen, Abbildungen suchen, Abbildungen ausschneiden. */
+  const [progress, setProgress] = useState<{ phase: 'pdf' | 'figures' | 'crop'; done: number; total: number; name?: string } | null>(null);
   const [activeCitation, setActiveCitation] = useState<{ pages: number[]; source: StudioSourceRef } | null>(null);
   // Selbsttest-Antworten je Leitfaden und Frage, nur auf diesem Gerät (Schlüssel "<itemId>:<index>").
   const selfCheckKey = `studearc_studio_selfcheck_${userId ?? 'local'}`;
@@ -116,11 +133,66 @@ export const SubjectStudio: React.FC<Props> = ({ collection, documents, userId, 
   const openItem = items.find(i => view.kind === 'item' && i.id === view.id) ?? null;
   const generating = view.kind === 'generating';
 
-  const toggleDoc = (id: string) => setSelected(prev => {
-    const next = new Set(prev);
-    if (next.has(id)) next.delete(id); else next.add(id);
-    return next;
-  });
+  const toggleDoc = (id: string) => {
+    setSelected(prev => {
+      const next = new Set(prev);
+      if (next.has(id)) next.delete(id); else next.add(id);
+      return next;
+    });
+    setChapterSel(prev => { const { [id]: _drop, ...rest } = prev; return rest; });
+  };
+
+  const chapterLabel = (c: StudioChapter) => c.title || t('stu.ch.pages', { from: c.start, to: c.end });
+  const docChapters = (id: string): StudioChapter[] | null => {
+    const c = chapters[id];
+    return Array.isArray(c) ? c : null;
+  };
+  /** Gewählte Kapitel eines Dokuments (Indizes); alle, wenn das Dokument ganz gewählt ist. */
+  const selectedChapterIdx = (id: string): number[] => {
+    const list = docChapters(id);
+    if (!list || !selected.has(id)) return [];
+    return chapterSel[id] ?? list.map((_, i) => i);
+  };
+
+  const toggleExpand = async (doc: ProcessedDocument) => {
+    setExpanded(prev => { const next = new Set(prev); if (next.has(doc.id)) next.delete(doc.id); else next.add(doc.id); return next; });
+    if (chapters[doc.id] !== undefined) return;
+    setChapters(prev => ({ ...prev, [doc.id]: 'loading' }));
+    const list = await loadStudioChapters(doc).catch(() => null);
+    setChapters(prev => ({ ...prev, [doc.id]: list }));
+  };
+
+  const toggleChapter = (id: string, idx: number) => {
+    const list = docChapters(id);
+    if (!list) return;
+    const current = new Set(selectedChapterIdx(id));
+    if (current.has(idx)) current.delete(idx); else current.add(idx);
+    const next = [...current].sort((a, b) => a - b);
+    setSelected(prev => {
+      const s2 = new Set(prev);
+      if (next.length) s2.add(id); else s2.delete(id);
+      return s2;
+    });
+    setChapterSel(prev => {
+      const { [id]: _drop, ...rest } = prev;
+      return next.length && next.length < list.length ? { ...rest, [id]: next } : rest;
+    });
+  };
+
+  /** Seitenbereiche und Anzeigename je Dokument aus der Kapitelwahl. */
+  const scopeFor = (id: string): { ranges?: [number, number][]; label?: string } => {
+    const list = docChapters(id);
+    const sel = chapterSel[id];
+    if (!list || !sel) return {};
+    const doc = docs.find(d => d.id === id);
+    const name = doc ? documentDisplayName(doc) : '';
+    const ranges = sel.map(i => [list[i].start, list[i].end] as [number, number]);
+    return { ranges, label: sel.length === 1 ? `${name} · ${chapterLabel(list[sel[0]])}` : `${name} · ${tp('stu.ch.nChapters', sel.length)}` };
+  };
+
+  /** "Je Kapitel einzeln": jedes gewählte Kapitel aufgeklappter PDFs wird ein eigener Durchgang. */
+  const batchUnits = docs.flatMap(d => (expanded.has(d.id) ? selectedChapterIdx(d.id).map(i => ({ doc: d, chapter: docChapters(d.id)![i] })) : []));
+  const MAX_BATCH = 12;
 
   const persist = async (item: StudioItem) => {
     setItems(prev => [item, ...prev.filter(i => i.id !== item.id)]);
@@ -128,46 +200,97 @@ export const SubjectStudio: React.FC<Props> = ({ collection, documents, userId, 
   };
 
   // ── Erzeugen ──
+
+  /**
+   * Ein Durchgang: PDFs lesen, Quellen bauen, (optional) Abbildungen, schreiben,
+   * prüfen, speichern. null bei Abbruch; Fehler werden geworfen.
+   */
+  const runOnce = async (opts: {
+    fmt: StudioFormat;
+    focusText: string;
+    chosen: ProcessedDocument[];
+    scope: (id: string) => { ranges?: [number, number][]; label?: string };
+    titleExtra?: string;
+  }): Promise<StudioItem | null> => {
+    const { fmt, focusText, chosen, scope, titleExtra } = opts;
+    setStreamText('');
+    // PDFs mit Textebene seitenweise lesen, damit Fußnoten auf Seiten zeigen.
+    const pdfs = chosen.filter(canReadFullText);
+    const pagesById = new Map<string, string[] | null>();
+    setProgress(pdfs.length ? { phase: 'pdf', done: 0, total: pdfs.length } : null);
+    for (const [idx, d] of pdfs.entries()) {
+      if (cancelRef.current) return null;
+      try { pagesById.set(d.id, await readPdfPages(d, () => cancelRef.current)); } catch { pagesById.set(d.id, null); }
+      setProgress({ phase: 'pdf', done: idx + 1, total: pdfs.length });
+    }
+    setProgress(null);
+    const inputs: StudioSourceInput[] = chosen.map(doc => ({ doc, pages: pagesById.get(doc.id) ?? null, ...scope(doc.id) }));
+    const { sources, skipped } = buildStudioSources(inputs);
+    if (!sources.length) throw new Error(t('stu.noReadable'));
+    if (skipped.length) toast.info(tp('stu.skippedN', skipped.length));
+    // Zu viel Material: nicht still abschneiden, sondern sagen, was fehlt.
+    const cut = truncationNotes(sources);
+    if (cut.length) toast.info(t('stu.ch.truncated', { name: cut[0].name, from: cut[0].from, until: cut[0].until, end: cut[0].end }));
+
+    // Abbildungen aus den PDFs (nur auf Wunsch, nur Zusammenfassung und Leitfaden, nur mit Login).
+    const withFigures = (fmt === 'summary' || fmt === 'guide') && !!userId && figuresOn;
+    const figureDocs: { docId: string; n: number; figures: DocFigure[] }[] = [];
+    if (withFigures) {
+      for (const src of sources) {
+        const doc = chosen.find(d => d.id === src.docId);
+        if (!doc || !canReadFullText(doc) || cancelRef.current) continue;
+        setProgress({ phase: 'figures', done: 0, total: 0, name: src.name });
+        try {
+          const index = await ensureFigureIndex(doc, userId, (done, total) => setProgress({ phase: 'figures', done, total, name: src.name }), () => cancelRef.current);
+          // Bei gewählten Kapiteln nur Abbildungen aus deren Seiten.
+          const ranges = scope(doc.id).ranges;
+          const figs = (index?.figures ?? []).filter(f => !ranges || ranges.some(([a, b]) => f.page >= a && f.page <= b));
+          if (figs.length) figureDocs.push({ docId: doc.id, n: src.n, figures: figs });
+        } catch { /* ohne Abbildungen weiter, der Text hängt nicht daran */ }
+      }
+      setProgress(null);
+    }
+    if (cancelRef.current) return null;
+    const catalog = buildFigureCatalog(figureDocs);
+
+    const raw = await generateStudioOutput(
+      buildStudioPrompt(fmt, collection.name, sources, focusText, catalog.text),
+      text => { if (!cancelRef.current) setStreamText(text); },
+    );
+    if (cancelRef.current) return null;
+    let { markdown } = checkCitations(raw.trim(), sources);
+    if (!markdown) throw new Error(t('stu.empty'));
+    if (catalog.entries.length && userId) {
+      setProgress({ phase: 'crop', done: 0, total: 0 });
+      ({ markdown } = await resolveFigureBlocks(markdown, catalog.entries, documents, userId, (done, total) => setProgress({ phase: 'crop', done, total })));
+      setProgress(null);
+    }
+    if (cut.length) {
+      markdown = `*${cut.map(c => t('stu.ch.truncatedNote', { name: c.name, from: c.from, until: c.until, end: c.end })).join(' ')}*\n\n${markdown}`;
+    }
+    const now = Date.now();
+    const title = titleExtra
+      ? `${formatLabel(fmt)}: ${titleExtra}`
+      : focusText.trim() ? `${formatLabel(fmt)}: ${focusText.trim().slice(0, 60)}` : formatLabel(fmt);
+    const item: StudioItem = {
+      id: newStudioId(), collectionId: collection.id, kind: fmt, title: title.slice(0, 120),
+      markdown, sources: sources.map(s => ({ n: s.n, docId: s.docId, name: s.name })),
+      ...(focusText.trim() ? { focus: focusText.trim() } : {}),
+      createdAt: now, updatedAt: now,
+    };
+    await persist(item);
+    return item;
+  };
+
   const generate = async (fmt: StudioFormat, focusText = focus) => {
     const chosen = docs.filter(d => selected.has(d.id));
     if (!chosen.length) { toast.info(t('stu.pickSources')); setMobileTab('sources'); return; }
     cancelRef.current = false;
     setView({ kind: 'generating', format: fmt });
     setMobileTab('content');
-    setStreamText('');
     try {
-      // PDFs mit Textebene seitenweise lesen, damit Fußnoten auf Seiten zeigen.
-      const pdfs = chosen.filter(canReadFullText);
-      const pagesById = new Map<string, string[] | null>();
-      setProgress(pdfs.length ? { done: 0, total: pdfs.length } : null);
-      for (const [idx, d] of pdfs.entries()) {
-        if (cancelRef.current) return;
-        try { pagesById.set(d.id, await readPdfPages(d, () => cancelRef.current)); } catch { pagesById.set(d.id, null); }
-        setProgress({ done: idx + 1, total: pdfs.length });
-      }
-      setProgress(null);
-      const inputs: StudioSourceInput[] = chosen.map(doc => ({ doc, pages: pagesById.get(doc.id) ?? null }));
-      const { sources, skipped } = buildStudioSources(inputs);
-      if (!sources.length) { toast.error(t('stu.noReadable')); setView({ kind: 'home' }); return; }
-      if (skipped.length) toast.info(tp('stu.skippedN', skipped.length));
-
-      const raw = await generateStudioOutput(
-        buildStudioPrompt(fmt, collection.name, sources, focusText),
-        text => { if (!cancelRef.current) setStreamText(text); },
-      );
-      if (cancelRef.current) return;
-      const { markdown } = checkCitations(raw.trim(), sources);
-      if (!markdown) throw new Error(t('stu.empty'));
-      const now = Date.now();
-      const item: StudioItem = {
-        id: newStudioId(), collectionId: collection.id, kind: fmt,
-        title: focusText.trim() ? `${formatLabel(fmt)}: ${focusText.trim().slice(0, 60)}` : formatLabel(fmt),
-        markdown, sources: sources.map(s => ({ n: s.n, docId: s.docId, name: s.name })),
-        ...(focusText.trim() ? { focus: focusText.trim() } : {}),
-        createdAt: now, updatedAt: now,
-      };
-      await persist(item);
-      setView({ kind: 'item', id: item.id });
+      const item = await runOnce({ fmt, focusText, chosen, scope: scopeFor });
+      if (item) setView({ kind: 'item', id: item.id });
     } catch (e) {
       if (!cancelRef.current) { toast.error(resolveErrorMessage(e)); setView({ kind: 'home' }); }
     } finally {
@@ -175,7 +298,41 @@ export const SubjectStudio: React.FC<Props> = ({ collection, documents, userId, 
     }
   };
 
-  const cancelGenerate = () => { cancelRef.current = true; setView({ kind: 'home' }); setProgress(null); };
+  /** Je Kapitel ein eigenes Ergebnis, nacheinander. */
+  const generateBatch = async (fmt: StudioFormat) => {
+    const units = batchUnits.slice(0, MAX_BATCH);
+    if (units.length < 2) return;
+    cancelRef.current = false;
+    setView({ kind: 'generating', format: fmt });
+    setMobileTab('content');
+    let first: StudioItem | null = null;
+    let made = 0;
+    try {
+      for (const [i, u] of units.entries()) {
+        if (cancelRef.current) break;
+        const label = chapterLabel(u.chapter);
+        setBatch({ done: i, total: units.length, title: label });
+        try {
+          const item = await runOnce({
+            fmt, focusText: focus, chosen: [u.doc], titleExtra: label,
+            scope: () => ({ ranges: [[u.chapter.start, u.chapter.end]], label: `${documentDisplayName(u.doc)} · ${label}` }),
+          });
+          if (item) { made += 1; first = first ?? item; }
+        } catch (e) {
+          // Ein Kapitel scheitert (z. B. Budget): melden, aber das Budget-Ende beendet die Reihe.
+          toast.error(`${label}: ${resolveErrorMessage(e)}`);
+          if (/BUDGET|LIMIT/.test(String((e as Error)?.message))) break;
+        }
+      }
+      if (made) toast.success(tp('stu.ch.batchDone', made));
+      setView(first ? { kind: 'item', id: first.id } : { kind: 'home' });
+    } finally {
+      setBatch(null);
+      setProgress(null);
+    }
+  };
+
+  const cancelGenerate = () => { cancelRef.current = true; setView({ kind: 'home' }); setProgress(null); setBatch(null); };
 
   // ── Fußnoten ──
   const renderCitation = (sources: StudioSourceRef[]) => (refs: CitationRef[], key: string) => (
@@ -199,6 +356,30 @@ export const SubjectStudio: React.FC<Props> = ({ collection, documents, userId, 
       })}
     </span>
   );
+
+  /** Abbildung (erkennbar an ihrem Bildpfad) aus einem gespeicherten Ergebnis entfernen. */
+  const removeFigure = (item: StudioItem, image: string) => {
+    const markdown = splitDiagrams(item.markdown)
+      .filter(seg => !(seg.type === 'diagram' && seg.diagram.type === 'figure' && seg.diagram.image === image))
+      .map(seg => (seg.type === 'md' ? seg.text : diagramToBlock(seg.diagram)))
+      .join('\n\n');
+    void persist({ ...item, markdown, updatedAt: Date.now() });
+  };
+
+  /** Markdown mit Fußnoten und Grafiken (```diagram, services/studioDiagrams.ts). */
+  const richBody = (markdown: string, sources: StudioSourceRef[], item?: StudioItem) => {
+    const cite = renderCitation(sources);
+    return (
+      <div className="space-y-5">
+        {splitDiagrams(markdown).map((seg, i) => {
+          if (seg.type === 'md') return <div key={i}>{renderMarkdown(seg.text, { renderCitation: cite })}</div>;
+          const d = seg.diagram;
+          const onRemove = item && d.type === 'figure' && d.image ? () => removeFigure(item, d.image!) : undefined;
+          return <StudioDiagram key={i} diagram={d} renderCite={cite} onRemove={onRemove} />;
+        })}
+      </div>
+    );
+  };
 
   const openCitation = (page?: number) => {
     if (!activeCitation) return;
@@ -286,17 +467,57 @@ export const SubjectStudio: React.FC<Props> = ({ collection, documents, userId, 
           {groupDocs.map(d => {
             const readable = isDocumentReadable(d) || canReadFullText(d);
             const on = selected.has(d.id);
+            const list = chapters[d.id];
+            const open = expanded.has(d.id);
+            const partial = on && !!chapterSel[d.id];
             return (
-              <label
-                key={d.id}
-                className={`flex items-start gap-2.5 px-2 py-2 rounded-xl transition-colors ${readable ? 'cursor-pointer hover:bg-[var(--bg-main)]' : 'opacity-50'}`}
-              >
-                <input type="checkbox" checked={on} disabled={!readable} onChange={() => toggleDoc(d.id)} className="mt-0.5 w-4 h-4 shrink-0 accent-[var(--primary)]" />
-                <span className="min-w-0">
-                  <span className="block text-[13px] font-semibold break-words" style={{ color: 'var(--text-main)' }}>{documentDisplayName(d)}</span>
-                  {!readable && <span className="block text-[11.5px]" style={{ color: 'var(--text-secondary)' }}>{t('stu.notReady')}</span>}
-                </span>
-              </label>
+              <div key={d.id}>
+                <div className="flex items-start gap-1">
+                  <label className={`flex-1 min-w-0 flex items-start gap-2.5 px-2 py-2 rounded-xl transition-colors ${readable ? 'cursor-pointer hover:bg-[var(--bg-main)]' : 'opacity-50'}`}>
+                    <input
+                      type="checkbox"
+                      checked={on}
+                      ref={el => { if (el) el.indeterminate = partial; }}
+                      disabled={!readable}
+                      onChange={() => toggleDoc(d.id)}
+                      className="mt-0.5 w-4 h-4 shrink-0 accent-[var(--primary)]"
+                    />
+                    <span className="min-w-0">
+                      <span className="block text-[13px] font-semibold break-words" style={{ color: 'var(--text-main)' }}>{documentDisplayName(d)}</span>
+                      {!readable && <span className="block text-[11.5px]" style={{ color: 'var(--text-secondary)' }}>{t('stu.notReady')}</span>}
+                      {partial && <span className="block text-[11.5px]" style={{ color: 'var(--primary-ink)' }}>{tp('stu.ch.nChapters', chapterSel[d.id].length)}</span>}
+                    </span>
+                  </label>
+                  {canReadFullText(d) && (
+                    <button
+                      type="button"
+                      onClick={() => toggleExpand(d)}
+                      aria-expanded={open}
+                      className="shrink-0 mt-1 px-2 py-1 rounded-lg text-[11.5px] font-semibold flex items-center gap-0.5 transition-colors hover:bg-[var(--bg-main)]"
+                      style={{ color: 'var(--text-secondary)' }}
+                    >
+                      {t('stu.ch.toggle')} <ChevronDown className={`w-3.5 h-3.5 transition-transform ${open ? 'rotate-180' : ''}`} />
+                    </button>
+                  )}
+                </div>
+                {open && (
+                  <div className="ml-7 mb-1 pl-2 space-y-0.5" style={{ borderLeft: '2px solid var(--border-color)' }}>
+                    {list === 'loading' || list === undefined
+                      ? <p className="flex items-center gap-2 text-[12px] px-2 py-1.5" style={{ color: 'var(--text-secondary)' }}><Loader2 className="w-3.5 h-3.5 animate-spin" />{t('stu.ch.loading')}</p>
+                      : list === null
+                        ? <p className="text-[12px] px-2 py-1.5" style={{ color: 'var(--text-secondary)' }}>{t('stu.ch.none')}</p>
+                        : list.map((c, i) => (
+                          <label key={i} className="flex items-start gap-2 px-2 py-1.5 rounded-lg cursor-pointer hover:bg-[var(--bg-main)]">
+                            <input type="checkbox" checked={selectedChapterIdx(d.id).includes(i)} onChange={() => toggleChapter(d.id, i)} className="mt-0.5 w-3.5 h-3.5 shrink-0 accent-[var(--primary)]" />
+                            <span className="min-w-0 text-[12.5px] leading-snug" style={{ color: 'var(--text-main)' }}>
+                              <span className="break-words">{chapterLabel(c)}</span>
+                              <span className="block text-[11px]" style={{ color: 'var(--text-secondary)' }}>{t('stu.ch.pages', { from: c.start, to: c.end })}</span>
+                            </span>
+                          </label>
+                        ))}
+                  </div>
+                )}
+              </div>
             );
           })}
         </div>
@@ -329,7 +550,7 @@ export const SubjectStudio: React.FC<Props> = ({ collection, documents, userId, 
               <span className="min-w-0">
                 <span className="block text-[13px] font-semibold break-words" style={{ color: 'var(--text-main)' }}>{item.title}</span>
                 <span className="block text-[11.5px]" style={{ color: 'var(--text-secondary)' }}>
-                  {formatLabel(item.kind)} · {formatDate(item.createdAt, { day: '2-digit', month: 'short' })}
+                  {formatLabel(item.kind)} · {formatDate(item.createdAt, { day: '2-digit', month: 'short', hour: '2-digit', minute: '2-digit' })}
                 </span>
               </span>
             </button>
@@ -380,14 +601,29 @@ export const SubjectStudio: React.FC<Props> = ({ collection, documents, userId, 
           style={{ background: 'var(--bg-main)', color: 'var(--text-main)', border: '1px solid var(--border-color)' }}
         />
       </div>
+      {(format === 'summary' || format === 'guide') && userId && docs.some(d => selected.has(d.id) && canReadFullText(d)) && (
+        <label className="flex items-start gap-2.5 cursor-pointer select-none">
+          <input type="checkbox" checked={figuresOn} onChange={e => toggleFigures(e.target.checked)} className="mt-0.5 w-4 h-4 shrink-0 accent-[var(--primary)]" />
+          <span>
+            <span className="block text-[13.5px] font-semibold" style={{ color: 'var(--text-main)' }}>{t('stu.figuresToggle')}</span>
+            <span className="block text-[12px]" style={{ color: 'var(--text-secondary)' }}>{t('stu.figuresToggleHint')}</span>
+          </span>
+        </label>
+      )}
       <div className="flex flex-wrap gap-2">
         <button onClick={() => generate(format)} disabled={selected.size === 0} className={`${btn} flex-1 sm:flex-none`} style={primary}>
           {t('stu.create', { format: formatLabel(format) })}
         </button>
+        {batchUnits.length >= 2 && (
+          <button onClick={() => generateBatch(format)} disabled={batchUnits.length > MAX_BATCH} className={btn} style={ghost}>
+            <Layers className="w-3.5 h-3.5" strokeWidth={2.5} /> {tp('stu.ch.batch', batchUnits.length)}
+          </button>
+        )}
         <button onClick={() => setView({ kind: 'digests' })} disabled={selected.size === 0} className={btn} style={ghost}>
           <Layers className="w-3.5 h-3.5" strokeWidth={2.5} /> {t('stu.digests')}
         </button>
       </div>
+      {batchUnits.length > MAX_BATCH && <p className="text-[12px]" style={{ color: 'var(--text-secondary)' }}>{t('stu.ch.batchMax', { n: MAX_BATCH })}</p>}
       <p className="text-[12px]" style={{ color: 'var(--text-secondary)' }}>{t('stu.costHint')}</p>
     </div>
   );
@@ -419,15 +655,23 @@ export const SubjectStudio: React.FC<Props> = ({ collection, documents, userId, 
 
   const generatingView = view.kind === 'generating' && (
     <div className="space-y-4">
+      {batch && (
+        <p className="text-[12.5px] font-semibold rounded-xl px-3.5 py-2" style={{ background: 'var(--primary-soft)', color: 'var(--primary-ink)' }}>
+          {t('stu.ch.batchProgress', { n: batch.done + 1, total: batch.total, title: batch.title })}
+        </p>
+      )}
       <div className="flex items-center gap-3">
         <Loader2 className="w-4 h-4 animate-spin" style={{ color: 'var(--primary-ink)' }} />
         <p className="text-[13.5px] font-semibold flex-1" style={{ color: 'var(--text-main)' }}>
-          {progress ? t('stu.readingPdfs', { done: progress.done, total: progress.total }) : t('stu.writing', { format: formatLabel(view.format) })}
+          {!progress ? t('stu.writing', { format: formatLabel(view.format) })
+            : progress.phase === 'pdf' ? t('stu.readingPdfs', { done: progress.done, total: progress.total })
+            : progress.phase === 'figures' ? (progress.total ? t('stu.findingFiguresN', { name: progress.name ?? '', done: progress.done, total: progress.total }) : t('stu.findingFigures', { name: progress.name ?? '' }))
+            : t('stu.croppingFigures', { done: progress.done, total: progress.total })}
         </p>
         <button onClick={cancelGenerate} className={btn} style={ghost}><X className="w-3.5 h-3.5" strokeWidth={2.5} /> {t('common.cancel')}</button>
       </div>
       {streamText && (
-        <div className="text-[15px] leading-relaxed opacity-90">{renderMarkdown(streamText.replace(/\[\d+(?::\d+)?\]/g, ''))}</div>
+        <div className="text-[15px] leading-relaxed opacity-90">{renderMarkdown(hideDiagramsWhileStreaming(streamText).replace(/\[\d+(?::\d+)?\]/g, ''))}</div>
       )}
     </div>
   );
@@ -452,7 +696,7 @@ export const SubjectStudio: React.FC<Props> = ({ collection, documents, userId, 
   })();
 
   const guideBody = (item: StudioItem) => {
-    const rich = (md: string) => renderMarkdown(md, { renderCitation: renderCitation(item.sources) });
+    const rich = (md: string) => richBody(md, item.sources, item);
     const segments = splitGuide(item.markdown);
     const questions = segments.filter(s => s.type === 'question').length;
     const states = Array.from({ length: questions }, (_, i) => selfChecks[`${item.id}:${i}`]);
@@ -499,7 +743,7 @@ export const SubjectStudio: React.FC<Props> = ({ collection, documents, userId, 
       </div>
       {openItem.kind === 'guide' ? guideBody(openItem) : (
         <div className="text-[15px] leading-relaxed">
-          {renderMarkdown(openItem.markdown, { renderCitation: renderCitation(openItem.sources) })}
+          {richBody(openItem.markdown, openItem.sources, openItem)}
         </div>
       )}
       {openItem.kind !== 'note' && openItem.sources.length > 0 && (

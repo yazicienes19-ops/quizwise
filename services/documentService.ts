@@ -146,6 +146,7 @@ export const loadDocumentsFromSupabase = async (): Promise<ProcessedDocument[]> 
     storagePath: row.storage_path ?? undefined,
     digestText: row.digest_text ?? undefined,
     digestStatus: row.digest_status ?? undefined,
+    ...(row.figure_index ? { figureIndex: row.figure_index } : {}),
   }));
 };
 
@@ -308,4 +309,11 @@ export const downloadPdfAsBase64 = (storagePath: string): Promise<string> => {
     pdfDownloadCache.set(storagePath, cached);
   }
   return cached;
+};
+
+/** Abbildungsverzeichnis fürs Lernstudio speichern (migration_figure_index.sql); ohne Spalte bleibt es lokal. */
+export const saveFigureIndexToSupabase = async (docId: string, index: unknown): Promise<void> => {
+  const { error } = await supabase.from('documents').update({ figure_index: index }).eq('id', docId);
+  // Spalte fehlt noch: kein Fehler, das Verzeichnis liegt dann nur lokal.
+  if (error && !/figure_index/i.test(error.message)) throw error;
 };

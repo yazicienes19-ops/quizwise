@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { buildStudioSources, buildStudioPrompt, checkCitations, toPlainExport, STUDIO_MIN_PER_SOURCE, mergeAdjacentCitations, splitGuide, studioSize, citedPages, stripCitations } from './subjectStudio';
+import { buildStudioSources, buildStudioPrompt, checkCitations, toPlainExport, STUDIO_MIN_PER_SOURCE, mergeAdjacentCitations, splitGuide, studioSize, citedPages, stripCitations, maskPages, truncationNotes, splitPagesIntoSections, chaptersFromDetected } from './subjectStudio';
 import { parseCitationToken } from './citations';
 import type { ProcessedDocument } from '../types';
 
@@ -50,6 +50,10 @@ describe('checkCitations', () => {
     expect(res.counts).toEqual({ 1: 2, 2: 2 });
   });
 
+  it('Seitenbereiche werden aufgelöst und geprüft', () => {
+    expect(checkCitations('Überblick [1:1-2].', sources).markdown).toBe('Überblick [1:1, 1:2].');
+  });
+
   it('Seite jenseits der gelieferten Seiten wird zur reinen Quellenangabe', () => {
     expect(checkCitations('X [1:9]', sources).markdown).toBe('X [1]');
   });
@@ -74,6 +78,8 @@ describe('Prompt und Export', () => {
 
   it('parseCitationToken liest Seiten und Listen', () => {
     expect(parseCitationToken('[3:12; 4]')).toEqual([{ n: 3, page: 12 }, { n: 4 }]);
+    expect(parseCitationToken('[1:3-5]')).toEqual([{ n: 1, page: 3 }, { n: 1, page: 4 }, { n: 1, page: 5 }]);
+    expect(parseCitationToken('[1:10-90]')).toEqual([{ n: 1, page: 10 }, { n: 1, page: 90 }]);
   });
 });
 
@@ -111,5 +117,43 @@ describe('Selbsttest im Lernleitfaden', () => {
     expect(studioSize([{ text: 'x'.repeat(100_000) }])).toBe('large');
     const big = buildStudioSources([{ doc: doc('s', { type: 'text', content: 'y'.repeat(100_000) }) }]).sources;
     expect(buildStudioPrompt('guide', 'F', big)).toContain('18 bis 25');
+  });
+});
+
+describe('Kapitel und lange PDFs', () => {
+  const pages = Array.from({ length: 10 }, (_, i) => `Inhalt Seite ${i + 1}`);
+
+  it('Seitenbereiche: nur gewählte Seiten, echte Seitenzahlen, eigener Name', () => {
+    const { sources } = buildStudioSources([{ doc: doc('skript'), pages, ranges: [[4, 6]], label: 'Skript · Kapitel 2' }]);
+    const s = sources[0];
+    expect(s.name).toBe('Skript · Kapitel 2');
+    expect(s.text).toContain('[Seite 4]');
+    expect(s.text).toContain('[Seite 6]');
+    expect(s.text).not.toContain('[Seite 3]');
+    expect(s.text).not.toContain('[Seite 7]');
+    expect([s.rangeStart, s.rangeEnd, s.lastPage]).toEqual([4, 6, 6]);
+    expect(maskPages(pages, [[1, 1], [10, 10]]).filter(p => p).length).toBe(2);
+  });
+
+  it('meldet, wenn hinten Seiten fehlen', () => {
+    const big = Array.from({ length: 50 }, () => 'x'.repeat(2000));
+    const { sources } = buildStudioSources([{ doc: doc('buch'), pages: big }], 20_000);
+    expect(truncationNotes(sources)).toEqual([{ name: 'buch', from: 1, until: 9, end: 50 }]);
+    const { sources: small } = buildStudioSources([{ doc: doc('kurz'), pages }]);
+    expect(truncationNotes(small)).toEqual([]);
+  });
+
+  it('teilt lange PDFs ohne Kapitel in passende Abschnitte', () => {
+    const big = Array.from({ length: 30 }, () => 'y'.repeat(1000));
+    const sections = splitPagesIntoSections(big, 10_500);
+    expect(sections.map(s => [s.start, s.end])).toEqual([[1, 10], [11, 20], [21, 30]]);
+    expect(splitPagesIntoSections(pages)).toHaveLength(1);
+  });
+
+  it('übernimmt erkannte Kapitel nur mit Seiten', () => {
+    expect(chaptersFromDetected([
+      { title: ' Lernen ', startPage: 1, endPage: 58, charCount: 9000 },
+      { title: 'Gesamtes Dokument', charCount: 100 },
+    ])).toEqual([{ title: 'Lernen', start: 1, end: 58, chars: 9000 }]);
   });
 });

@@ -33,28 +33,36 @@ const PAD = 0.02;
 
 const clamp01 = (v: number) => Math.min(1, Math.max(0, v));
 
-export const validateFigure = (raw: FigureCardRaw, numPages: number): FigureCard | null => {
-  const front = typeof raw.front === 'string' ? raw.front.trim() : '';
-  const back = typeof raw.back === 'string' ? raw.back.trim() : '';
-  const page = typeof raw.page === 'number' ? Math.round(raw.page) : NaN;
-  const box = Array.isArray(raw.box) && raw.box.length === 4 && raw.box.every(n => typeof n === 'number' && Number.isFinite(n))
-    ? (raw.box as number[])
-    : null;
-  if (!front || !back || !box || !(page >= 1 && page <= numPages)) return null;
+export type FigureBox = FigureCard['box'];
 
+/**
+ * Bildbereich [ymin, xmin, ymax, xmax] (0 bis 1000) prüfen und mit Rand in
+ * Seitenanteile umrechnen; null bei Unsinn, Winzlingen oder ganzer Seite.
+ * Auch für Abbildungen im Lernstudio (services/studioFigures.ts).
+ */
+export const parseFigureBox = (raw: unknown): FigureBox | null => {
+  const box = Array.isArray(raw) && raw.length === 4 && raw.every(n => typeof n === 'number' && Number.isFinite(n))
+    ? (raw as number[])
+    : null;
+  if (!box) return null;
   const [ymin, xmin, ymax, xmax] = box.map(n => clamp01(n / 1000));
   if (xmax - xmin < MIN_SIDE || ymax - ymin < MIN_SIDE) return null;
   // Ganze Seite ist kein Ausschnitt, sondern meist ein Missverständnis des Modells.
   if (xmax - xmin > 0.97 && ymax - ymin > 0.97) return null;
-
   const x = clamp01(xmin - PAD);
   const y = clamp01(ymin - PAD);
+  return { x, y, w: clamp01(xmax + PAD) - x, h: clamp01(ymax + PAD) - y };
+};
+
+export const validateFigure = (raw: FigureCardRaw, numPages: number): FigureCard | null => {
+  const front = typeof raw.front === 'string' ? raw.front.trim() : '';
+  const back = typeof raw.back === 'string' ? raw.back.trim() : '';
+  const page = typeof raw.page === 'number' ? Math.round(raw.page) : NaN;
+  const box = parseFigureBox(raw.box);
+  if (!front || !back || !box || !(page >= 1 && page <= numPages)) return null;
   // Im Zweifel hinten: ein Bild auf der Rückseite verrät nie die Antwort.
   const side = raw.side === 'front' ? 'front' : 'back';
-  return {
-    front, back, page, side,
-    box: { x, y, w: clamp01(xmax + PAD) - x, h: clamp01(ymax + PAD) - y },
-  };
+  return { front, back, page, side, box };
 };
 
 /** Pixel-Ausschnitt für eine gerenderte Seite der Größe width × height. */

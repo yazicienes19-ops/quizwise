@@ -1,4 +1,5 @@
 import { buildSelfCheckPrompt } from './subjectStudio';
+import { buildFigureScanPrompt, type RawStudioFigure } from './studioFigureCatalog';
 import { textSides } from './cloze';
 import { Type } from "@google/genai";
 import { getReportedQuestionTexts } from './questionReportService';
@@ -2705,4 +2706,47 @@ export const evaluateSelfCheck = async (
     feedback: raw.feedback.trim(),
     missing: Array.isArray(raw.missing) ? raw.missing.filter((m): m is string => typeof m === 'string' && !!m.trim()).slice(0, 4) : [],
   };
+};
+
+export type { RawStudioFigure };
+
+/**
+ * Lernstudio (services/studioFigures.ts): lernrelevante Abbildungen eines PDFs
+ * finden, für das Abbildungsverzeichnis des Dokuments. Entweder das ganze PDF
+ * (source) oder Seitenbilder eines Abschnitts (pages ab firstPage), wenn das
+ * PDF für einen Aufruf zu groß ist.
+ */
+export const findStudioFigures = async (
+  input: { source: GenerationSource } | { pages: string[]; firstPage: number },
+  max: number,
+): Promise<RawStudioFigure[]> => {
+  const head = 'source' in input
+    ? [sourceTopart(input.source)]
+    : input.pages.map(data => ({ inlineData: { data, mimeType: 'image/jpeg' } }));
+  const pageRule = 'source' in input
+    ? 'page: Seitennummer im PDF, 1-basiert.'
+    : `page: Die Bilder sind die Seiten ${input.firstPage} bis ${input.firstPage + input.pages.length - 1}, in dieser Reihenfolge. Gib die echte Seitennummer an.`;
+  const text = await callBackend({
+    complexity: 'heavy',
+    parts: [...head, { text: `${buildFigureScanPrompt(pageRule, max)}${outputLangDirective()}` }],
+    config: {
+      thinkingConfig: { thinkingBudget: 0 },
+      responseMimeType: 'application/json',
+      responseSchema: {
+        type: Type.ARRAY,
+        items: {
+          type: Type.OBJECT,
+          properties: {
+            page: { type: Type.INTEGER },
+            box: { type: Type.ARRAY, items: { type: Type.NUMBER } },
+            title: { type: Type.STRING },
+            description: { type: Type.STRING },
+          },
+          required: ['page', 'box', 'title', 'description'],
+        },
+      },
+    },
+  });
+  const parsed = parseAiJson<unknown>(text || '[]', []);
+  return Array.isArray(parsed) ? (parsed as RawStudioFigure[]).slice(0, max) : [];
 };

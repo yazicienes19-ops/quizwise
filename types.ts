@@ -248,6 +248,8 @@ export interface ProcessedDocument {
   storagePath?: string;   // gesetzt wenn Datei in Supabase Storage liegt
   digestText?: string;    // KI-generierter Lerndigest — ersetzt Originaldatei für schnelle KI-Aufrufe
   digestStatus?: 'pending' | 'ready' | 'error';
+  /** Abbildungsverzeichnis fürs Lernstudio (services/studioFigures.ts), nur PDFs. */
+  figureIndex?: import('./services/studioFigureCatalog').FigureIndex;
 }
 
 export type MetricSource = 'quiz' | 'exam' | 'recall' | 'cards';
