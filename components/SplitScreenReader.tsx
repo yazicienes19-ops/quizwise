@@ -17,6 +17,7 @@ import { documentDisplayName } from '../services/libraryService';
 import { useTranslation } from '../i18n/I18nProvider';
 import { DigestStatusBadge } from './SourceStatusBadge';
 import { ReaderTutorPane } from './ReaderTutorPane';
+import { SaveNoteButton } from './SaveNoteButton';
 import { SelectionActionButton, readSelection, selectionQuestion, type ReaderSelection } from './SelectionActionButton';
 
 interface ChatEntry {
@@ -472,6 +473,12 @@ export const SplitScreenReader: React.FC<SplitScreenReaderProps> = ({ doc, userI
                     <div className="rounded-2xl p-4" style={{ background: 'var(--bg-main)', border: '1px solid var(--border-color)' }}>
                       {renderMarkdown(entry.answer)}
                     </div>
+                    <SaveNoteButton
+                      variant="text"
+                      note={{ question: entry.concept, answer: entry.answer, source: { docId: doc.id, name: documentDisplayName(doc) } }}
+                      collectionId={doc.collectionId}
+                      userId={userId}
+                    />
                     {entry.followUps && entry.followUps.length > 0 && i === lastAnsweredChatIdx && (
                       <div className="flex flex-wrap gap-2">
                         {entry.followUps.map(q => (

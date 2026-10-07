@@ -2382,7 +2382,7 @@ export const tr: Translations = {
   'edm.linkCopied': 'Bağlantı kopyalandı! Arkadaşlarınla paylaş.',
   'edm.shareFailed': 'Paylaşma başarısız. Lütfen tekrar dene.',
   'share.eyebrow': 'Paylaşım bağlantısı',
-  'sum.open': 'Özetle',
+  'sum.open': 'Çalışma stüdyosunu aç',
   'sum.eyebrow': 'Ders özeti',
   'sum.included': '{n} kaynak özetlendi|{n} kaynak özetlendi',
   'sum.missingN': '{n} henüz özetsiz|{n} henüz özetsiz',
@@ -2854,4 +2854,9 @@ export const tr: Translations = {
   'stu.sc.verdict.correct': "Doğru",
   'stu.sc.verdict.partial': "Kısmen doğru",
   'stu.sc.verdict.wrong': "Henüz doğru değil",
+  'stu.note.save': "Not olarak kaydet",
+  'stu.note.saved': "Not olarak kaydedildi",
+  'stu.note.savedIn': "{name} çalışma stüdyosuna kaydedildi",
+  'stu.note.pickSubject': "Hangi derse?",
+  'stu.note.noSubject': "Önce bir ders oluştur, sonra not kaydedebilirsin.",
 };

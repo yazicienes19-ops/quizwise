@@ -7,6 +7,7 @@ import { buildPdfOutline, type PdfTocEntry } from '../services/pdfOutlineService
 import { TocList } from './DocTocList';
 import { findQuoteRects, type HighlightRect } from '../services/pdfHighlightService';
 import { peekReaderJump, clearReaderJump } from '../services/readerJump';
+import { SaveNoteButton } from './SaveNoteButton';
 import { markChapterDone, getDoneChapterIndices, getLastPage, saveLastPage } from '../services/chapterProgressService';
 import { logReaderQuestion, getReaderLog } from '../services/readerLogService';
 import { saveReaderChat, getReaderChat } from '../services/readerChatService';
@@ -948,6 +949,18 @@ export const PdfSplitScreenReader: React.FC<PdfSplitScreenReaderProps> = ({ doc,
                         <p className="text-xs font-medium italic text-slate-600 dark:text-slate-300 break-words">„{entry.quote}"</p>
                       </div>
                     )}
+                    <SaveNoteButton
+                      variant="text"
+                      note={{
+                        question: entry.concept,
+                        answer: entry.answer,
+                        quote: entry.quote,
+                        // Antwort aus dem ganzen Dokument: Seite unbekannt, nur das Dokument als Quelle.
+                        source: { docId: doc.id, name: documentDisplayName(doc), page: entry.expandedScope ? undefined : pageNumber },
+                      }}
+                      collectionId={doc.collectionId}
+                      userId={userId}
+                    />
                     {entry.followUps && entry.followUps.length > 0 && i === lastAnsweredChatIdx && (
                       <div className="flex flex-wrap gap-2">
                         {entry.followUps.map(q => (

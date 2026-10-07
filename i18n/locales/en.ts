@@ -2389,7 +2389,7 @@ export const en: Translations = {
   'edm.linkCopied': 'Link copied! Share it with your fellow students.',
   'edm.shareFailed': 'Sharing failed. Please try again.',
   'share.eyebrow': 'Share link',
-  'sum.open': 'Summarize',
+  'sum.open': 'Open study studio',
   'sum.eyebrow': 'Subject summary',
   'sum.included': '{n} source summarized|{n} sources summarized',
   'sum.missingN': '{n} without a summary yet|{n} without a summary yet',
@@ -2861,4 +2861,9 @@ export const en: Translations = {
   'stu.sc.verdict.correct': "Correct",
   'stu.sc.verdict.partial': "Partly correct",
   'stu.sc.verdict.wrong': "Not correct yet",
+  'stu.note.save': "Save as note",
+  'stu.note.saved': "Saved as note",
+  'stu.note.savedIn': "Saved in the study studio of {name}",
+  'stu.note.pickSubject': "Which subject?",
+  'stu.note.noSubject': "Create a subject first, then you can save notes.",
 };

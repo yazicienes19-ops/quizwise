@@ -2390,7 +2390,7 @@ export const de = {
   'edm.linkCopied': 'Link kopiert! Teile ihn mit deinen Kommilitonen.',
   'edm.shareFailed': 'Teilen fehlgeschlagen. Bitte versuche es erneut.',
   'share.eyebrow': 'Teilen-Link',
-  'sum.open': 'Zusammenfassen',
+  'sum.open': 'Lernstudio öffnen',
   'sum.eyebrow': 'Zusammenfassung des Fachs',
   'sum.included': '{n} Quelle zusammengefasst|{n} Quellen zusammengefasst',
   'sum.missingN': '{n} noch ohne Zusammenfassung|{n} noch ohne Zusammenfassung',
@@ -2862,4 +2862,9 @@ export const de = {
   'stu.sc.verdict.correct': "Richtig",
   'stu.sc.verdict.partial': "Teilweise richtig",
   'stu.sc.verdict.wrong': "Noch nicht richtig",
+  'stu.note.save': "Als Notiz speichern",
+  'stu.note.saved': "Als Notiz gespeichert",
+  'stu.note.savedIn': "Im Lernstudio von {name} gespeichert",
+  'stu.note.pickSubject': "In welches Fach?",
+  'stu.note.noSubject': "Leg zuerst ein Fach an, dann kannst du Notizen speichern.",
 } as const;

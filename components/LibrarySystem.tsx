@@ -1,6 +1,6 @@
 import { findDuplicateCollectionGroups, pickCollectionToKeep } from '../services/duplicateCollections';
 import React, { useState, useMemo, useCallback } from 'react';
-import { Pencil, Trash2, Share2, BookText } from 'lucide-react';
+import { Pencil, Trash2, Share2, NotebookTabs } from 'lucide-react';
 import { ProcessedDocument, ActiveTab, Collection } from '../types';
 import { getAllMeta, saveMeta, deleteMeta, documentDisplayName } from '../services/libraryService';
 import type { SourceMeta } from '../services/libraryService';
@@ -398,7 +398,7 @@ export const LibrarySystem: React.FC<LibrarySystemProps> = ({
                           className="w-8 h-8 rounded-xl flex items-center justify-center bg-[var(--card)] dark:bg-slate-800 shadow text-slate-400 hover:text-indigo-500 transition-colors"
                           aria-label={t('sum.open')} title={t('sum.open')}
                         >
-                          <BookText className="w-3 h-3" strokeWidth={2.5} />
+                          <NotebookTabs className="w-3 h-3" strokeWidth={2.5} />
                         </button>
                       )}
                       <button
@@ -671,7 +671,7 @@ export const LibrarySystem: React.FC<LibrarySystemProps> = ({
                 className="flex items-center gap-2 px-5 py-2.5 rounded-2xl text-[13px] font-semibold transition-all hover:opacity-90"
                 style={{ background: 'var(--bg-sidebar)', color: 'var(--text-main)', border: '1px solid var(--border-color)' }}
               >
-                <BookText className="w-3.5 h-3.5" strokeWidth={2.5} /> {t('sum.open')}
+                <NotebookTabs className="w-3.5 h-3.5" strokeWidth={2.5} /> {t('sum.open')}
               </button>
             )}
             {uploadButton}

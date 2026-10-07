@@ -22,6 +22,8 @@ import type { TKey } from '../i18n';
 import { documentDisplayName } from '../services/libraryService';
 import { buildCollectionSource } from '../services/collectionSource';
 import { FolderScopeBar } from './FolderScopeBar';
+import { SaveNoteButton } from './SaveNoteButton';
+import type { AnswerNoteInput } from '../services/studioNotes';
 import { toast } from '../services/toast';
 import { buildWeakSpotReasons } from '../services/learningProfileService';
 import { useModuleScopedActivity } from '../hooks/useModuleScopedActivity';
@@ -524,6 +526,21 @@ export const ExplainerSystem: React.FC<ExplainerSystemProps> = ({
     setDecks(upsertLocalDeck(deck));
     if (userId) saveDeckToSupabase(deck, userId).catch(() => {});
     toast.success(t('tut.msg.cardSaved'));
+  };
+
+  // ── Antwort als Notiz ins Lernstudio (services/studioNotes.ts) ──
+
+  const noteSourceDoc = sourceRef?.kind === 'doc' ? availableDocuments.find(d => d.id === sourceRef.id) : undefined;
+  const noteCollectionId = sourceRef?.kind === 'collection' ? sourceRef.id : noteSourceDoc?.collectionId ?? null;
+  const noteFor = (index: number): AnswerNoteInput => {
+    const msg = messages[index];
+    const prevUser = [...messages.slice(0, index)].reverse().find(m => m.role === 'user');
+    return {
+      question: prevUser?.content ?? msg.content.slice(0, 80),
+      answer: msg.content,
+      quote: msg.quote,
+      source: noteSourceDoc ? { docId: noteSourceDoc.id, name: documentDisplayName(noteSourceDoc) } : null,
+    };
   };
 
   // ── Composer ──
@@ -1067,6 +1084,12 @@ export const ExplainerSystem: React.FC<ExplainerSystemProps> = ({
                     >
                       <BookmarkPlus size={13} strokeWidth={1.75} />
                     </button>
+                    <SaveNoteButton
+                      note={noteFor(idx)}
+                      collectionId={noteCollectionId}
+                      collections={collections}
+                      userId={userId}
+                    />
                   </div>
                 </div>
               )}
