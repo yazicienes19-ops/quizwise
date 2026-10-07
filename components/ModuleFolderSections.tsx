@@ -16,7 +16,7 @@ interface Props {
 
 /** Schalter "Beim Lernen nutzen" eines Unterordners. */
 const UseToggle: React.FC<{ on: boolean; onChange: (on: boolean) => void; label: string }> = ({ on, onChange, label }) => (
-  <label className="flex items-center gap-2 cursor-pointer select-none text-[12.5px] font-semibold" style={{ color: on ? 'var(--text-main)' : 'var(--text-secondary)' }}>
+  <label className="flex items-center gap-2 cursor-pointer select-none text-[12.5px] font-semibold whitespace-nowrap" style={{ color: on ? 'var(--text-main)' : 'var(--text-secondary)' }}>
     <button
       type="button"
       role="switch"
@@ -87,7 +87,8 @@ export const ModuleFolderSections: React.FC<Props> = ({ collection, docs, viewMo
     }
     return (
       <div className="flex flex-wrap items-center gap-x-4 gap-y-2">
-        <div className="flex items-center gap-2 min-w-0 flex-1">
+        {/* In der Kachelansicht ist die Spalte schmal: Name eigene Zeile, Schalter darunter. */}
+        <div className={`flex items-center gap-2 min-w-0 ${viewMode === 'grid' ? 'basis-full' : 'flex-1'}`}>
           <span className="w-8 h-8 rounded-xl flex items-center justify-center shrink-0" style={{ background: 'var(--primary-soft)' }}>
             <FolderOpen className="w-4 h-4" style={{ color: 'var(--primary-ink)' }} strokeWidth={2} />
           </span>
@@ -117,10 +118,22 @@ export const ModuleFolderSections: React.FC<Props> = ({ collection, docs, viewMo
     );
   };
 
+  // Kachelansicht: die Unterordner selbst stehen als Spalten nebeneinander,
+  // ihre Dokumente darin untereinander. Listenansicht: Abschnitte untereinander.
+  const isGrid = viewMode === 'grid';
   return (
-    <div className="space-y-8">
+    <div
+      className={isGrid ? 'grid gap-5 items-start' : 'space-y-8'}
+      // Spaltenzahl nach verfügbarer Breite statt nach Bildschirmbreite: die
+      // Bibliothek hat links noch die Sammlungsliste, Breakpoints passen dort nicht.
+      style={isGrid ? { gridTemplateColumns: 'repeat(auto-fill, minmax(min(100%, 300px), 1fr))' } : undefined}
+    >
       {groupDocsByFolder(collection, docs).map(({ folder, docs: groupDocs }) => (
-        <section key={folder?.id ?? 'loose'} className="space-y-3">
+        <section
+          key={folder?.id ?? 'loose'}
+          className={isGrid ? 'space-y-3 min-w-0 rounded-[24px] p-4 border border-slate-200/70 dark:border-slate-800' : 'space-y-3'}
+          style={isGrid ? { background: 'color-mix(in srgb, var(--bg-sidebar) 35%, transparent)' } : undefined}
+        >
           {header(folder, groupDocs.length)}
           {folder?.excluded && (
             <p className="text-[12.5px] px-1" style={{ color: 'var(--text-secondary)' }}>{t('mf.excludedHint')}</p>
@@ -130,7 +143,7 @@ export const ModuleFolderSections: React.FC<Props> = ({ collection, docs, viewMo
               {t('mf.emptyFolder')}
             </p>
           ) : (
-            <div className={`${viewMode === 'grid' ? 'grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-5' : 'space-y-2'} ${folder?.excluded ? 'opacity-60' : ''}`}>
+            <div className={`${isGrid ? 'grid grid-cols-1 gap-4' : 'space-y-2'} ${folder?.excluded ? 'opacity-60' : ''}`}>
               {groupDocs.map(doc => <React.Fragment key={doc.id}>{renderDoc(doc, folderSelect(doc))}</React.Fragment>)}
             </div>
           )}
