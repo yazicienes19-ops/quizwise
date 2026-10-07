@@ -1,6 +1,6 @@
 # StudeArc (vormals QuizWise) — Übergabe
 
-**Stand: 26.09.2026.** Die ausführliche, laufend gepflegte Übergabe (was gemacht ist, Deploys, Migrationen, Kosten, offene Punkte) liegt auf der privaten Übergabe-Seite: https://claude.ai/artifact/UX8xgdnckSwj12PnbVBvUR. Diese Datei hält nur das Dauerhafte fest. Frühere Sitzungsprotokolle (bis 07.08.2026) stehen in der Git-Historie dieser Datei.
+**Stand: 07.10.2026.** Die ausführliche, laufend gepflegte Übergabe (was gemacht ist, Deploys, Migrationen, Kosten, offene Punkte) liegt auf der privaten Übergabe-Seite: https://claude.ai/artifact/UX8xgdnckSwj12PnbVBvUR. Diese Datei hält nur das Dauerhafte fest. Frühere Sitzungsprotokolle (bis 07.08.2026) stehen in der Git-Historie dieser Datei.
 
 ## Projekt
 
@@ -41,6 +41,8 @@ npm run smoke                                   # Rauchtest gegen die Live-Seite
 ## Wichtige Orte im Code
 
 - Karteikarten: `services/spacedRepetition.ts` (FSRS), `services/deckMerge.ts` und `services/deckCloudSync.ts` (Abgleich mit Löschvermerken), `services/moduleDeck.ts` und `services/pdfFullText.ts` („Ganzes Fach“, Abschrift von Mathe-PDFs)
+- Fächer und Unterordner: `services/collectionSource.ts` (`collectionDocs` = Wissensbasis ohne abgewählte Unterordner), `services/moduleFolders.ts`, `components/ModuleFolderSections.tsx`, `components/FolderScopeBar.tsx`
+- Lernstudio (Zusammenfassung wie NotebookLM): `components/SubjectStudio.tsx`, Logik in `services/subjectStudio.ts` (Quellen, Prompts, Fußnoten, Kapitel), Speicher `services/studioStore.ts` (Tabelle `studio_items`), Grafiken `services/studioDiagrams.ts` + `components/StudioDiagram.tsx`, Abbildungen `services/studioFigures.ts`, Kapitel `services/studioChapters.ts`, Selbsttest `components/StudioSelfCheck.tsx`, Notizen `services/studioNotes.ts`
 - Wissensnetz: `components/GraphCanvas.tsx`, `components/GraphSystem.tsx`, `services/graph/` (Schreibgrenze für KI über `graphAiWriteBoundary.test.ts`)
 - KI-Aufrufe: `services/geminiService.ts` (Frontend), `backend/src/routes/gemini.js`, Budget in `backend/src/budget/aiBudget.js`
 - Übersetzungen: `i18n/locales/{de,en,tr}.ts`
