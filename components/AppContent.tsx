@@ -13,7 +13,7 @@ import { getSavedQuizzes } from '../services/savedQuizzesService';
 import { getSavedExams } from '../services/savedExamsService';
 import { searchScholar, searchWeb, buildDeckQuizSource } from '../services/geminiService';
 import { getAllResults } from '../services/quizHistoryService';
-import { sourceTopicsKey, type QuizMeta } from '../hooks/useQuizState';
+import { sourceTopicsKey, MISTAKE_REVIEW_DOC_ID, type QuizMeta } from '../hooks/useQuizState';
 import { countDueMistakes, addExamMistakes, removeMistake } from '../services/mistakeReviewService';
 import type { MistakeItem } from '../services/mistakeReviewService';
 import { saveRecallResult } from '../services/recallHistoryService';
@@ -362,6 +362,16 @@ export const AppContent: React.FC<AppContentProps> = (p) => {
         onGoToSource={() => { setPendingActionDoc(null); setQuizSetupSource(null); setQuestions([]); setAnswers([]); setActiveTab(ActiveTab.LIBRARY); }}
         onCreateFlashcards={pendingActionDoc ? handleCreateFlashcardsFromMistakes : undefined}
         onSaveQuiz={handleSaveQuiz}
+        featureHints={activeQuizMeta && activeQuizMeta.docId !== MISTAKE_REVIEW_DOC_ID ? {
+          completedQuizzes: getAllResults().length,
+          onCreateCards: handleCreateFlashcardsFromMistakes,
+          onStartExam: () => {
+            const doc = documents.find(d => d.id === activeQuizMeta.docId) ?? null;
+            setQuestions([]); setAnswers([]); setQuizSetupSource(null);
+            setPendingActionDoc(doc);
+            setActiveTab(ActiveTab.EXAM);
+          },
+        } : undefined}
       />;
       const dueMistakes = countDueMistakes();
       // Hinweise stehen unter der Kopfzeile, nicht darüber (Design-Tour 25.09.2026).

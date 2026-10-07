@@ -1,7 +1,8 @@
 import type { OnboardingProfile } from '../../types';
 
 const ONBOARDING_KEY = 'studearc_onboarding_done';
-const DRAFT_KEY = 'studearc_onboarding_draft';
+// v2: kürzerer Ablauf (2 Fragen, Upload, erster Lernmoment), alte Entwürfe passen nicht mehr.
+const DRAFT_KEY = 'studearc_onboarding_draft_v2';
 const PROFILE_CACHE_KEY = 'studearc_onboarding_profile';
 
 export const isOnboardingDone = () => localStorage.getItem(ONBOARDING_KEY) === 'true';

@@ -1,5 +1,7 @@
 import React, { useEffect, useMemo, useRef, useState } from 'react';
-import { ActiveTab, type EducationPath, type OnboardingChallenge, type OnboardingContext, type OnboardingGoal, type OnboardingProfile, type ProcessedDocument } from '../../types';
+import { ActiveTab, type FlashcardDeck, type OnboardingChallenge, type OnboardingProfile, type ProcessedDocument } from '../../types';
+import type { GenerationSource } from '../../services/geminiService';
+import { getFirstMomentPlan } from '../../services/onboardingFirstMoment';
 import { useTranslation } from '../../i18n/I18nProvider';
 import { getRecommendation, buildCombinedRecommendation } from '../../services/onboardingRecommendation';
 import { importFromUrl } from '../../services/urlImport';
@@ -8,39 +10,27 @@ import { isOnboardingDone, loadDraft, saveDraft } from './onboardingState';
 import { OnboardingCard } from './OnboardingCard';
 import { TourSpotlight } from './tour/TourSpotlight';
 import { TOUR_STEP_LIBRARY, getTourSequence, type TourStepId } from './tour/tourSteps';
-import { IntroStep } from './steps/IntroStep';
-import { EducationPathStep } from './steps/EducationPathStep';
-import { ContextStep } from './steps/ContextStep';
-import { GoalsStep } from './steps/GoalsStep';
-import { ChallengesStep } from './steps/ChallengesStep';
-import { RecommendationStep } from './steps/RecommendationStep';
-import { PersonalPathStep } from './steps/PersonalPathStep';
-import { TourIntroStep } from './steps/TourIntroStep';
 import { SystemOverviewStep } from './steps/SystemOverviewStep';
 import { AppOverviewStep } from './steps/AppOverviewStep';
 import { LibraryImportStep, type ImportMode } from './steps/LibraryImportStep';
-import { FirstLearningMomentStep } from './steps/FirstLearningMomentStep';
+import { StudyStep } from './steps/StudyStep';
+import { ProblemStep } from './steps/ProblemStep';
+import { FirstPracticeStep, type PracticeFooter } from './steps/FirstPracticeStep';
 import { resolveErrorMessage } from '../../services/errorMessages';
 
-type StepId = 'intro' | 'education_path' | 'context' | 'goals' | 'challenges' | 'recommendation' | 'learning_path' | 'tour_intro'
-  | TourStepId | 'system_overview' | 'app_overview' | 'library_import' | 'first_moment';
+type StepId = 'study' | 'problem' | TourStepId | 'system_overview' | 'app_overview' | 'library_import' | 'first_practice';
 const isTourStep = (id: StepId): id is TourStepId => id in TOUR_STEP_LIBRARY;
 
 /**
- * Die Tour-Reihenfolge hängt vom Hauptlernproblem ab (Onboarding-Plan Abschnitt 3) —
- * deshalb keine feste Modul-Konstante mehr, sondern pro Aufruf gebaut (Draft-
- * Wiederherstellung UND laufender State nutzen dieselbe Funktion).
- * `tourOnly` = Wiedereinstieg aus den Einstellungen ("StudeArc kennenlernen"):
- * nur Tour + Abschluss-Screens, keine erneute Personalisierung, kein Material-Import.
+ * Onboarding = zwei Fragen, Upload, erster echter Lernmoment. Bildungsweg,
+ * Ziele und Kontext werden nicht mehr vorab erfragt, und die App-Tour ist
+ * raus: Funktionen werden später per Hinweis vorgeschlagen, wenn sie passen
+ * (services/featureHints.ts). Die Tour gibt es nur noch als Wiedereinstieg
+ * aus den Einstellungen ("StudeArc kennenlernen", `tourOnly`).
  */
 const buildStepOrder = (primaryChallenge: OnboardingChallenge | undefined, tourOnly: boolean): StepId[] => {
-  const tourPart: StepId[] = [...getTourSequence(primaryChallenge), 'system_overview', 'app_overview'];
-  if (tourOnly) return tourPart;
-  return [
-    'intro', 'education_path', 'context', 'goals', 'challenges', 'recommendation', 'learning_path', 'tour_intro',
-    ...tourPart,
-    'library_import', 'first_moment',
-  ];
+  if (tourOnly) return [...getTourSequence(primaryChallenge), 'system_overview', 'app_overview'];
+  return ['study', 'problem', 'library_import', 'first_practice'];
 };
 
 interface OnboardingFlowProps {
@@ -48,43 +38,35 @@ interface OnboardingFlowProps {
   handleFileUpload: (file: File, collectionId?: string, onProgress?: (fraction: number) => void) => Promise<string | null>;
   /** = docs.documents — zum Auflösen der docId aus handleFileUpload auf das echte ProcessedDocument. */
   documents: ProcessedDocument[];
-  /** Echte App-Navigation für die Tour-Schritte (Onboarding-Plan Abschnitt 2) —
-   *  die Tour dunkelt den Bildschirm ab und hebt einzelne Bereiche hervor,
-   *  dafür muss der Tab dahinter wirklich wechseln. */
+  /** = docs.getDocumentSource — Quelle für die ersten Fragen aus dem Skript. */
+  getDocumentSource: (doc: ProcessedDocument) => GenerationSource;
+  /** Karten-Modus im ersten Lernmoment legt einen echten Stapel an. */
+  onDeckCreated: (deck: FlashcardDeck) => void;
+  /** Echte App-Navigation für die Tour-Schritte im Wiedereinstieg. */
   setActiveTab: (tab: ActiveTab) => void;
   /**
    * `startContext.docId` ist gesetzt, wenn der Nutzer im Flow tatsächlich ein
-   * Dokument hochgeladen hat (für die "erste Lernaktivität"-CTA, die das
-   * Dokument vorausgewählt öffnen soll) — fehlt, wenn der Import übersprungen
-   * wurde oder der Flow schon vor Schritt 7 verlassen wurde.
+   * Dokument hochgeladen hat — fehlt, wenn der Upload übersprungen wurde.
    */
   onComplete: (profile: Partial<OnboardingProfile>, startContext?: { docId?: string }) => void;
   /**
    * Nur gesetzt für den Wiedereinstieg (Settings → "StudeArc kennenlernen"):
-   * startet direkt bei der Tour mit dem bereits gespeicherten Profil, ohne
-   * Personalisierungsfragen und ohne Material-Import erneut abzufragen.
+   * zeigt ausschließlich die Tour mit dem bereits gespeicherten Profil.
    */
   replay?: { profile: Partial<OnboardingProfile>; onDone: () => void };
 }
 
 /**
  * Rendert GENAU EINE <OnboardingCard>-Hülle für den gesamten Flow — nur der
- * Inhalt (Kinder) wechselt zwischen Schritten. Wichtig: würde stattdessen
- * jeder Step seine eigene <OnboardingCard> mitbringen, sähe React darin bei
- * jedem Schrittwechsel eine andere Komponente an derselben Stelle und würde
- * die komplette Hülle (Backdrop + Karte) neu mounten — der animate-in-
- * Übergang liefe dann bei JEDER Frage erneut ab statt nur beim ersten Öffnen.
- * Genau das wurde bei der ersten Fassung per Screenshot sichtbar (Karte wirkte
- * bei jedem Schritt wie neu eingeblendet) und ist hier deshalb bewusst
- * zentralisiert.
+ * Inhalt (Kinder) wechselt zwischen Schritten. Würde jeder Step seine eigene
+ * <OnboardingCard> mitbringen, mountete React die komplette Hülle bei jedem
+ * Schrittwechsel neu und der animate-in-Übergang liefe jedes Mal ab.
  */
-export const OnboardingFlow: React.FC<OnboardingFlowProps> = ({ handleFileUpload, documents, setActiveTab, onComplete, replay }) => {
+export const OnboardingFlow: React.FC<OnboardingFlowProps> = ({ handleFileUpload, documents, getDocumentSource, onDeckCreated, setActiveTab, onComplete, replay }) => {
   const { t } = useTranslation();
   const [stepIndex, setStepIndex] = useState(0);
-  const [path, setPath] = useState<EducationPath | undefined>(replay?.profile.educationPath);
-  const [context, setContext] = useState<OnboardingContext>(replay?.profile.context ?? {});
-  const [goals, setGoals] = useState<OnboardingGoal[]>(replay?.profile.goals ?? []);
-  const [challenges, setChallenges] = useState<OnboardingChallenge[]>(replay?.profile.challenges ?? []);
+  const [subject, setSubject] = useState(replay?.profile.context?.subject ?? '');
+  const [problem, setProblem] = useState<OnboardingChallenge | undefined>(replay?.profile.primaryChallenge ?? replay?.profile.challenges?.[0]);
   const [importMode, setImportMode] = useState<ImportMode>('file');
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
   const [importText, setImportText] = useState('');
@@ -92,89 +74,68 @@ export const OnboardingFlow: React.FC<OnboardingFlowProps> = ({ handleFileUpload
   const [importLink, setImportLink] = useState('');
   const [isUploading, setIsUploading] = useState(false);
   const [uploadedDocId, setUploadedDocId] = useState<string | null>(null);
+  const [practiceFooter, setPracticeFooter] = useState<PracticeFooter | null>(null);
   const restored = useRef(false);
   const saveTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
 
-  // Entwurf einmalig beim Mount restaurieren (überlebt einen Reload mitten im Flow,
-  // z.B. während der Themenerkennung in Schritt 8). Upload-bezogener State (Datei-
-  // Objekte lassen sich nicht serialisieren) wird bewusst NICHT restauriert — nach
-  // einem Reload landet der Nutzer wieder auf dem Import-Schritt, nicht mittendrin.
-  // Im Wiedereinstiegs-Modus (replay) gibt es keinen Entwurf zu restaurieren.
+  // Entwurf einmalig beim Mount restaurieren (überlebt einen Reload mitten im
+  // Flow). Upload-State lässt sich nicht serialisieren: nach einem Reload landet
+  // der Nutzer höchstens wieder auf dem Upload-Schritt.
   useEffect(() => {
     if (replay || restored.current || isOnboardingDone()) return;
     restored.current = true;
     const draft = loadDraft();
     if (!draft) return;
-    const restoredOrder = buildStepOrder(draft.profile.challenges?.[0], false);
+    const restoredOrder = buildStepOrder(undefined, false);
     setStepIndex(Math.min(draft.stepIndex, restoredOrder.indexOf('library_import')));
-    if (draft.profile.educationPath) setPath(draft.profile.educationPath);
-    if (draft.profile.context) setContext(draft.profile.context);
-    if (draft.profile.goals) setGoals(draft.profile.goals);
-    if (draft.profile.challenges) setChallenges(draft.profile.challenges);
+    if (draft.profile.context?.subject) setSubject(draft.profile.context.subject);
+    if (draft.profile.challenges?.[0]) setProblem(draft.profile.challenges[0]);
   }, [replay]);
 
-  // Nur der Screen "context" ist bedingt (kein Bildungsweg gewählt → nichts zu
-  // erfragen). Die Tour-Schritte hängen zusätzlich vom Hauptlernproblem ab
-  // (buildStepOrder) — deshalb reicht ein gefilterter Index, keine echte
-  // Verzweigungs-Logik.
-  const effectiveSteps = useMemo(
-    () => buildStepOrder(challenges[0], !!replay).filter(id => id !== 'context' || path !== undefined),
-    [path, challenges, replay]
-  );
+  const effectiveSteps = useMemo(() => buildStepOrder(problem, !!replay), [problem, replay]);
   const totalSteps = effectiveSteps.length;
   const clampedIndex = Math.min(stepIndex, totalSteps - 1);
   const currentStepId = effectiveSteps[clampedIndex];
 
-  // Tour-Schritte dunkeln den Bildschirm ab und heben einen Sidebar-Bereich
-  // hervor — dafür muss die App wirklich auf den passenden Tab wechseln.
-  // Bewusst der ROHE setActiveTab-Setter (nicht Layouts onTabChange-Wrapper),
-  // damit das Tab-Hopping der Tour NICHT den "zuletzt gesehener Tab"-Eintrag
-  // in localStorage überschreibt.
+  // Tour-Schritte (nur Wiedereinstieg) heben einen Sidebar-Bereich hervor —
+  // dafür muss die App wirklich auf den passenden Tab wechseln. Bewusst der
+  // ROHE setActiveTab-Setter, damit der "zuletzt gesehene Tab" unberührt bleibt.
   useEffect(() => {
     if (isTourStep(currentStepId)) setActiveTab(TOUR_STEP_LIBRARY[currentStepId].tab);
   }, [currentStepId, setActiveTab]);
 
-  // Entwurf debounced speichern (300ms, wie das bestehende saveQuizProgress-Muster) —
-  // vermeidet einen Storage-Write pro Tastenanschlag in den Kontext-Textfeldern.
-  // Im Wiedereinstiegs-Modus (replay) wird nichts gespeichert.
+  const profileDraft = useMemo<Partial<OnboardingProfile>>(() => {
+    const s = subject.trim();
+    return {
+      educationPath: s ? 'university' : undefined,
+      context: s ? { subject: s } : {},
+      challenges: problem ? [problem] : [],
+    };
+  }, [subject, problem]);
+
+  // Entwurf debounced speichern (300ms) — kein Storage-Write pro Tastenanschlag.
   useEffect(() => {
     if (replay || isOnboardingDone()) return;
     if (saveTimer.current) clearTimeout(saveTimer.current);
-    saveTimer.current = setTimeout(() => {
-      saveDraft({
-        stepIndex: clampedIndex,
-        profile: { educationPath: path, context, goals, challenges },
-      });
-    }, 300);
+    saveTimer.current = setTimeout(() => saveDraft({ stepIndex: clampedIndex, profile: profileDraft }), 300);
     return () => { if (saveTimer.current) clearTimeout(saveTimer.current); };
-  }, [clampedIndex, path, context, goals, challenges, replay]);
+  }, [clampedIndex, profileDraft, replay]);
 
   const goNext = () => setStepIndex(i => Math.min(totalSteps - 1, i + 1));
   const goBack = () => setStepIndex(i => Math.max(0, i - 1));
   const goToIndex = (i: number) => setStepIndex(i);
-  const patchContext = (patch: Partial<OnboardingContext>) => setContext(c => ({ ...c, ...patch }));
 
   const finish = (docId?: string) => {
     onComplete(
       {
         version: 1,
-        educationPath: path,
-        context,
-        goals,
-        challenges,
-        primaryChallenge: challenges[0],
+        ...profileDraft,
+        primaryChallenge: problem,
         completedAt: Date.now(),
         completedFully: !!docId,
       },
       docId ? { docId } : undefined
     );
-  };
-
-  /** Springt direkt zum Material-Import — "Später ansehen" auf dem Tour-Einstieg
-   *  überspringt Tour UND die beiden Abschluss-Screens (Onboarding-Plan Abschnitt 20). */
-  const skipTour = () => {
-    const idx = effectiveSteps.indexOf('library_import');
-    if (idx >= 0) setStepIndex(idx);
   };
 
   const importReady = importMode === 'file' ? !!selectedFile
@@ -212,66 +173,39 @@ export const OnboardingFlow: React.FC<OnboardingFlowProps> = ({ handleFileUpload
 
   const primaryLabel = useMemo(() => {
     switch (currentStepId) {
-      case 'intro':
-        return t('onboarding.flow.intro.cta');
-      case 'tour_intro':
-        return t('onboarding.flow.tourIntro.cta');
-      case 'recommendation':
-      case 'learning_path':
-        return t('common.next');
       case 'app_overview':
         return replay ? t('onboarding.flow.tourReplay.done') : t('common.next');
       case 'library_import':
         if (isUploading) return t('common.loading');
         return t(importMode === 'file' ? 'onboarding.flow.import.ctaFile' : importMode === 'text' ? 'onboarding.flow.import.ctaText' : 'onboarding.flow.import.ctaLink');
-      case 'first_moment':
-        return t('onboarding.flow.firstMoment.cta');
       default:
         return t('common.next');
     }
   }, [currentStepId, importMode, isUploading, replay, t]);
 
-  const primaryDisabled = (currentStepId === 'challenges' && challenges.length === 0)
+  const primaryDisabled = (currentStepId === 'problem' && !problem)
     || (currentStepId === 'library_import' && (isUploading || !importReady));
 
   const onPrimary = currentStepId === 'library_import' ? submitImport
-    : currentStepId === 'first_moment' ? () => finish(uploadedDocId ?? undefined)
     : (replay && currentStepId === 'app_overview') ? replay.onDone
     : goNext;
 
+  // Upload überspringen beendet das Onboarding: ohne Skript gibt es nichts zu üben.
   const onSkip = currentStepId === 'library_import' ? () => finish()
-    : currentStepId === 'tour_intro' ? skipTour
+    : currentStepId === 'first_practice' && !practiceFooter?.hideSkip ? () => finish(uploadedDocId ?? undefined)
     : undefined;
-  const skipLabel = currentStepId === 'tour_intro' ? t('onboarding.flow.tourIntro.skip') : undefined;
-  const onBack = clampedIndex > 0 && currentStepId !== 'first_moment' ? goBack : undefined;
+  const skipLabel = currentStepId === 'library_import' ? t('onboarding.v2.import.skip') : undefined;
+  const onBack = clampedIndex > 0 && currentStepId !== 'first_practice' ? goBack : undefined;
 
   const uploadedDoc = documents.find(d => d.id === uploadedDocId) ?? null;
 
   let content: React.ReactNode;
   switch (currentStepId) {
-    case 'intro':
-      content = <IntroStep />;
+    case 'study':
+      content = <StudyStep value={subject} onChange={setSubject} onSubmit={goNext} />;
       break;
-    case 'education_path':
-      content = <EducationPathStep value={path} onChange={setPath} />;
-      break;
-    case 'context':
-      content = <ContextStep path={path} value={context} onChange={patchContext} />;
-      break;
-    case 'goals':
-      content = <GoalsStep value={goals} onChange={setGoals} />;
-      break;
-    case 'challenges':
-      content = <ChallengesStep value={challenges} onChange={setChallenges} />;
-      break;
-    case 'recommendation':
-      content = <RecommendationStep challenges={challenges} />;
-      break;
-    case 'learning_path':
-      content = <PersonalPathStep challenges={challenges} />;
-      break;
-    case 'tour_intro':
-      content = <TourIntroStep />;
+    case 'problem':
+      content = <ProblemStep value={problem} onChange={setProblem} />;
       break;
     case 'system_overview':
       content = <SystemOverviewStep />;
@@ -290,8 +224,17 @@ export const OnboardingFlow: React.FC<OnboardingFlowProps> = ({ handleFileUpload
         />
       );
       break;
-    case 'first_moment':
-      content = <FirstLearningMomentStep challenges={challenges} doc={uploadedDoc} />;
+    case 'first_practice':
+      content = (
+        <FirstPracticeStep
+          doc={uploadedDoc}
+          getDocumentSource={getDocumentSource}
+          plan={getFirstMomentPlan(problem)}
+          onDeckCreated={onDeckCreated}
+          setFooter={setPracticeFooter}
+          onFinish={() => finish(uploadedDocId ?? undefined)}
+        />
+      );
       break;
     default:
       content = null;
@@ -299,7 +242,8 @@ export const OnboardingFlow: React.FC<OnboardingFlowProps> = ({ handleFileUpload
 
   if (isTourStep(currentStepId)) {
     const tourConfig = TOUR_STEP_LIBRARY[currentStepId];
-    const tourSequence = getTourSequence(challenges[0]);
+    const challenges = problem ? [problem] : [];
+    const tourSequence = getTourSequence(problem);
     const tourIndex = tourSequence.indexOf(currentStepId);
     // Derselbe "lead" wie in RecommendationStep/PersonalPathStep (USP-Moment):
     // der ERSTE Tour-Schritt in der bereits personalisierten Reihenfolge, dessen
@@ -329,14 +273,15 @@ export const OnboardingFlow: React.FC<OnboardingFlowProps> = ({ handleFileUpload
     );
   }
 
+  const isPractice = currentStepId === 'first_practice';
   return (
     <OnboardingCard
       stepIndex={clampedIndex}
       totalSteps={totalSteps}
       onPillClick={goToIndex}
-      primaryLabel={primaryLabel}
-      onPrimary={onPrimary}
-      primaryDisabled={primaryDisabled}
+      primaryLabel={isPractice ? practiceFooter?.label ?? t('common.loading') : primaryLabel}
+      onPrimary={isPractice ? () => practiceFooter?.onClick() : onPrimary}
+      primaryDisabled={isPractice ? (!practiceFooter || !!practiceFooter.disabled) : primaryDisabled}
       onBack={onBack}
       onSkip={onSkip}
       skipLabel={skipLabel}

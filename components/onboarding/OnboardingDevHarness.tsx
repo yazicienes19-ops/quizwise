@@ -74,6 +74,8 @@ export const OnboardingDevHarness: React.FC = () => {
     <OnboardingFlow
       handleFileUpload={fakeHandleFileUpload}
       documents={documents}
+      getDocumentSource={(doc) => ({ text: doc.content })}
+      onDeckCreated={() => {}}
       setActiveTab={() => {}}
       onComplete={(profile, ctx) => { setResult(profile); setStartContext(ctx); }}
     />

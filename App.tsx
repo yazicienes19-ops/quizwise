@@ -536,6 +536,8 @@ const App: React.FC = () => {
         <OnboardingFlow
           handleFileUpload={docs.handleFileUpload}
           documents={docs.documents}
+          getDocumentSource={docs.getDocumentSource}
+          onDeckCreated={(deck) => setDecks(upsertLocalDeck(deck))}
           setActiveTab={setActiveTab}
           onComplete={(profile, startContext) => {
             markOnboardingDone();
@@ -561,6 +563,8 @@ const App: React.FC = () => {
         <OnboardingFlow
           handleFileUpload={docs.handleFileUpload}
           documents={docs.documents}
+          getDocumentSource={docs.getDocumentSource}
+          onDeckCreated={(deck) => setDecks(upsertLocalDeck(deck))}
           setActiveTab={setActiveTab}
           onComplete={() => setShowTourReplay(false)}
           replay={{ profile: cloudPreferences?.onboarding ?? getCachedOnboardingProfile() ?? {}, onDone: () => setShowTourReplay(false) }}

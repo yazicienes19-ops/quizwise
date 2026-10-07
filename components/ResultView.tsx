@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import { UserAnswer, QuizQuestion } from '../types';
 import { EmojiImage } from './EmojiImage';
 import { AnimatedBar } from './AnimatedBar';
@@ -6,6 +6,7 @@ import { CountUp } from './CountUp';
 import { computeCalibration, calibrationPct, MIN_CALIBRATED_FOR_DISPLAY } from '../services/calibration';
 import { reportQuizQuestion, isVoidingReason, type QuestionReportReason } from '../services/questionReportService';
 import { useTranslation } from '../i18n/I18nProvider';
+import { pickResultHint, markHintSeen, type FeatureHintId } from '../services/featureHints';
 
 interface ResultViewProps {
   answers: UserAnswer[];
@@ -16,11 +17,18 @@ interface ResultViewProps {
   onGoToSource?: () => void;
   onCreateFlashcards?: (wrongQuestions: QuizQuestion[]) => void;
   onSaveQuiz?: (name: string) => void;
+  /** Kontextuelle Hinweise statt App-Tour (services/featureHints.ts). Fehlt bei
+   *  Wiederholungs-Sessions, dort passt keiner der Vorschläge. */
+  featureHints?: {
+    completedQuizzes: number;
+    onCreateCards: (wrongQuestions: QuizQuestion[]) => void;
+    onStartExam: () => void;
+  };
 }
 
 export const ResultView: React.FC<ResultViewProps> = ({
   answers, questions, onRestart, docName,
-  onRetryWrong, onGoToSource, onCreateFlashcards, onSaveQuiz,
+  onRetryWrong, onGoToSource, onCreateFlashcards, onSaveQuiz, featureHints,
 }) => {
   const { t, tp } = useTranslation();
   const [expandedIdx, setExpandedIdx] = useState<number | null>(null);
@@ -77,6 +85,12 @@ export const ResultView: React.FC<ResultViewProps> = ({
     : score >= 55 ? { label: t('result.grade.good'), icon: '📈', color: 'text-indigo-600' }
     : { label: t('result.grade.roomToGrow'), icon: '🎯', color: 'text-rose-500' };
 
+  // Höchstens ein Hinweis, einmal beim Öffnen des Ergebnisses festgelegt und
+  // sofort als gesehen vermerkt: er erscheint pro Nutzer genau einmal.
+  const [hint, setHint] = useState<FeatureHintId | null>(() =>
+    featureHints ? pickResultHint(wrongQuestions.length, featureHints.completedQuizzes) : null);
+  useEffect(() => { if (hint) markHintSeen(hint); }, [hint]);
+
   // Metakognitive Kalibrierung: Selbsteinschätzung vs. tatsächliches Ergebnis (nur MC-artige Fragen, v1)
   const calibration = computeCalibration(answers);
   const pct = (n: number) => calibrationPct(n, calibration.total);
@@ -118,6 +132,44 @@ export const ResultView: React.FC<ResultViewProps> = ({
           </p>
         )}
       </div>
+
+      {hint && featureHints && (
+        <div
+          className="rounded-[24px] p-5 animate-in fade-in slide-in-from-bottom-2 duration-300"
+          style={{ background: 'color-mix(in srgb, var(--primary) 9%, var(--card))', border: '1.5px solid color-mix(in srgb, var(--primary) 35%, transparent)' }}
+        >
+          <div className="flex items-start gap-3">
+            <span className="text-2xl leading-none shrink-0">{hint === 'mistakeCards' ? '🗂️' : '📝'}</span>
+            <div className="min-w-0 flex-1">
+              <p className="text-sm font-semibold text-slate-800 dark:text-white">
+                {t(hint === 'mistakeCards' ? 'hint.mistakeCards.title' : 'hint.practiceExam.title')}
+              </p>
+              <p className="text-xs text-slate-500 dark:text-slate-400 mt-1 leading-relaxed">
+                {hint === 'mistakeCards'
+                  ? tp('hint.mistakeCards.body', wrongQuestions.length)
+                  : t('hint.practiceExam.body', { n: featureHints.completedQuizzes })}
+              </p>
+              <div className="flex flex-wrap items-center gap-2 mt-3">
+                <button
+                  type="button"
+                  onClick={() => hint === 'mistakeCards' ? featureHints.onCreateCards(wrongQuestions) : featureHints.onStartExam()}
+                  className="px-4 py-2.5 rounded-[14px] text-[13px] font-semibold shadow-sm hover:scale-[1.02] active:scale-[0.98] transition-all"
+                  style={{ background: 'var(--primary)', color: 'var(--primary-text)' }}
+                >
+                  {t(hint === 'mistakeCards' ? 'hint.mistakeCards.cta' : 'hint.practiceExam.cta')}
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setHint(null)}
+                  className="px-3 py-2.5 text-[13px] font-semibold text-slate-400 hover:text-slate-600 dark:hover:text-slate-300 transition-colors"
+                >
+                  {t('hint.dismiss')}
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* Weak / strong topics */}
       {(weakTopics.length > 0 || strongTopics.length > 0) && (
