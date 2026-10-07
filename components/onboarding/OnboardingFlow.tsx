@@ -1,9 +1,8 @@
 import React, { useEffect, useMemo, useRef, useState } from 'react';
 import { ActiveTab, type FlashcardDeck, type OnboardingChallenge, type OnboardingProfile, type ProcessedDocument } from '../../types';
 import type { GenerationSource } from '../../services/geminiService';
-import { getFirstMomentPlan } from '../../services/onboardingFirstMoment';
+import { getFirstMomentPlan, getStartTab } from '../../services/onboardingFirstMoment';
 import { useTranslation } from '../../i18n/I18nProvider';
-import { getRecommendation, buildCombinedRecommendation } from '../../services/onboardingRecommendation';
 import { importFromUrl } from '../../services/urlImport';
 import { toast } from '../../services/toast';
 import { isOnboardingDone, loadDraft, saveDraft } from './onboardingState';
@@ -16,13 +15,15 @@ import { LibraryImportStep, type ImportMode } from './steps/LibraryImportStep';
 import { StudyStep } from './steps/StudyStep';
 import { ProblemStep } from './steps/ProblemStep';
 import { FirstPracticeStep, type PracticeFooter } from './steps/FirstPracticeStep';
+import { LearningPathStep, PATH_COPY } from './steps/LearningPathStep';
+import type { OnboardingProblem } from '../../services/onboardingFirstMoment';
 import { resolveErrorMessage } from '../../services/errorMessages';
 
-type StepId = 'study' | 'problem' | TourStepId | 'system_overview' | 'app_overview' | 'library_import' | 'first_practice';
+type StepId = 'study' | 'problem' | TourStepId | 'system_overview' | 'app_overview' | 'library_import' | 'first_practice' | 'learning_path';
 const isTourStep = (id: StepId): id is TourStepId => id in TOUR_STEP_LIBRARY;
 
 /**
- * Onboarding = zwei Fragen, Upload, erster echter Lernmoment. Bildungsweg,
+ * Onboarding = zwei Fragen, Upload, erster echter Lernmoment, Lernweg. Bildungsweg,
  * Ziele und Kontext werden nicht mehr vorab erfragt, und die App-Tour ist
  * raus: Funktionen werden später per Hinweis vorgeschlagen, wenn sie passen
  * (services/featureHints.ts). Die Tour gibt es nur noch als Wiedereinstieg
@@ -30,7 +31,7 @@ const isTourStep = (id: StepId): id is TourStepId => id in TOUR_STEP_LIBRARY;
  */
 const buildStepOrder = (primaryChallenge: OnboardingChallenge | undefined, tourOnly: boolean): StepId[] => {
   if (tourOnly) return [...getTourSequence(primaryChallenge), 'system_overview', 'app_overview'];
-  return ['study', 'problem', 'library_import', 'first_practice'];
+  return ['study', 'problem', 'library_import', 'first_practice', 'learning_path'];
 };
 
 interface OnboardingFlowProps {
@@ -66,7 +67,8 @@ export const OnboardingFlow: React.FC<OnboardingFlowProps> = ({ handleFileUpload
   const { t } = useTranslation();
   const [stepIndex, setStepIndex] = useState(0);
   const [subject, setSubject] = useState(replay?.profile.context?.subject ?? '');
-  const [problem, setProblem] = useState<OnboardingChallenge | undefined>(replay?.profile.primaryChallenge ?? replay?.profile.challenges?.[0]);
+  const [problems, setProblems] = useState<OnboardingChallenge[]>(replay?.profile.challenges ?? []);
+  const problem = problems[0];
   const [importMode, setImportMode] = useState<ImportMode>('file');
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
   const [importText, setImportText] = useState('');
@@ -89,7 +91,7 @@ export const OnboardingFlow: React.FC<OnboardingFlowProps> = ({ handleFileUpload
     const restoredOrder = buildStepOrder(undefined, false);
     setStepIndex(Math.min(draft.stepIndex, restoredOrder.indexOf('library_import')));
     if (draft.profile.context?.subject) setSubject(draft.profile.context.subject);
-    if (draft.profile.challenges?.[0]) setProblem(draft.profile.challenges[0]);
+    if (draft.profile.challenges?.length) setProblems(draft.profile.challenges);
   }, [replay]);
 
   const effectiveSteps = useMemo(() => buildStepOrder(problem, !!replay), [problem, replay]);
@@ -109,9 +111,9 @@ export const OnboardingFlow: React.FC<OnboardingFlowProps> = ({ handleFileUpload
     return {
       educationPath: s ? 'university' : undefined,
       context: s ? { subject: s } : {},
-      challenges: problem ? [problem] : [],
+      challenges: problems,
     };
-  }, [subject, problem]);
+  }, [subject, problems]);
 
   // Entwurf debounced speichern (300ms) — kein Storage-Write pro Tastenanschlag.
   useEffect(() => {
@@ -178,24 +180,32 @@ export const OnboardingFlow: React.FC<OnboardingFlowProps> = ({ handleFileUpload
       case 'library_import':
         if (isUploading) return t('common.loading');
         return t(importMode === 'file' ? 'onboarding.flow.import.ctaFile' : importMode === 'text' ? 'onboarding.flow.import.ctaText' : 'onboarding.flow.import.ctaLink');
+      case 'learning_path': {
+        const lead = problem && problem in PATH_COPY ? PATH_COPY[problem as OnboardingProblem] : null;
+        return lead ? t('onboarding.v2.path.cta', { feature: t(lead.featureKey) }) : t('onboarding.v2.path.ctaFallback');
+      }
       default:
         return t('common.next');
     }
-  }, [currentStepId, importMode, isUploading, replay, t]);
+  }, [currentStepId, importMode, isUploading, replay, problem, t]);
 
-  const primaryDisabled = (currentStepId === 'problem' && !problem)
+  const primaryDisabled = (currentStepId === 'problem' && problems.length === 0)
     || (currentStepId === 'library_import' && (isUploading || !importReady));
 
   const onPrimary = currentStepId === 'library_import' ? submitImport
     : (replay && currentStepId === 'app_overview') ? replay.onDone
+    : currentStepId === 'learning_path' ? () => finish(uploadedDocId ?? undefined)
     : goNext;
 
-  // Upload überspringen beendet das Onboarding: ohne Skript gibt es nichts zu üben.
-  const onSkip = currentStepId === 'library_import' ? () => finish()
-    : currentStepId === 'first_practice' && !practiceFooter?.hideSkip ? () => finish(uploadedDocId ?? undefined)
+  // Upload oder Übung überspringen führt direkt zum Lernweg: ohne Skript gibt es
+  // nichts zu üben, aber der Nutzer soll trotzdem wissen, womit er lernt.
+  const toLearningPath = () => setStepIndex(effectiveSteps.indexOf('learning_path'));
+  const onSkip = currentStepId === 'library_import' ? toLearningPath
+    : currentStepId === 'first_practice' && !practiceFooter?.hideSkip ? toLearningPath
     : undefined;
   const skipLabel = currentStepId === 'library_import' ? t('onboarding.v2.import.skip') : undefined;
-  const onBack = clampedIndex > 0 && currentStepId !== 'first_practice' ? goBack : undefined;
+  // Kein Zurück aus Übung und Lernweg: die Übung würde sonst neu generiert.
+  const onBack = clampedIndex > 0 && currentStepId !== 'first_practice' && currentStepId !== 'learning_path' ? goBack : undefined;
 
   const uploadedDoc = documents.find(d => d.id === uploadedDocId) ?? null;
 
@@ -205,7 +215,7 @@ export const OnboardingFlow: React.FC<OnboardingFlowProps> = ({ handleFileUpload
       content = <StudyStep value={subject} onChange={setSubject} onSubmit={goNext} />;
       break;
     case 'problem':
-      content = <ProblemStep value={problem} onChange={setProblem} />;
+      content = <ProblemStep value={problems} onChange={setProblems} />;
       break;
     case 'system_overview':
       content = <SystemOverviewStep />;
@@ -232,9 +242,12 @@ export const OnboardingFlow: React.FC<OnboardingFlowProps> = ({ handleFileUpload
           plan={getFirstMomentPlan(problem)}
           onDeckCreated={onDeckCreated}
           setFooter={setPracticeFooter}
-          onFinish={() => finish(uploadedDocId ?? undefined)}
+          onFinish={toLearningPath}
         />
       );
+      break;
+    case 'learning_path':
+      content = <LearningPathStep problems={problems} />;
       break;
     default:
       content = null;
@@ -242,20 +255,13 @@ export const OnboardingFlow: React.FC<OnboardingFlowProps> = ({ handleFileUpload
 
   if (isTourStep(currentStepId)) {
     const tourConfig = TOUR_STEP_LIBRARY[currentStepId];
-    const challenges = problem ? [problem] : [];
     const tourSequence = getTourSequence(problem);
     const tourIndex = tourSequence.indexOf(currentStepId);
-    // Derselbe "lead" wie in RecommendationStep/PersonalPathStep (USP-Moment):
-    // der ERSTE Tour-Schritt in der bereits personalisierten Reihenfolge, dessen
-    // Tab zur zuvor als "Deine Lösung" gezeigten Kernfunktion passt, bekommt hier
-    // in der allgemeinen Tour nochmal ein sichtbares "Deine Empfehlung"-Badge —
-    // schließt den Kreis zwischen USP-Moment und der Feature-Tour (User-Feedback:
-    // "bei der Vorstellung aller Features sagen: das ist dein Feynman").
-    // "Erster Treffer" statt "jeder Treffer", weil mehrere Tour-Schritte denselben
-    // Tab teilen können (z. B. Analyse+Coach beide RADAR) — nur einer soll markiert sein.
-    const lead = challenges.length >= 2 ? buildCombinedRecommendation(challenges).lead : getRecommendation(challenges[0] ?? 'unsure');
-    const primaryTourStepId = tourSequence.find(id => TOUR_STEP_LIBRARY[id].tab === lead.primaryTab);
-    const isPrimaryRecommendation = challenges.length > 0 && currentStepId === primaryTourStepId;
+    // Der erste Tour-Schritt, dessen Tab dem Startpunkt aus dem Lernweg entspricht,
+    // bekommt das "Deine Empfehlung"-Badge (nur einer, auch wenn Tabs sich wiederholen).
+    const startTab = getStartTab(problems);
+    const primaryTourStepId = tourSequence.find(id => TOUR_STEP_LIBRARY[id].tab === startTab);
+    const isPrimaryRecommendation = problems.length > 0 && currentStepId === primaryTourStepId;
     return (
       <TourSpotlight
         targetSelector={`[data-tour="nav-${tourConfig.tab}"]`}

@@ -1,6 +1,7 @@
 import { describe, it, expect, beforeEach } from 'vitest';
 import { pickResultHint, markHintSeen, isHintSeen } from './featureHints';
-import { getFirstMomentPlan } from './onboardingFirstMoment';
+import { getFirstMomentPlan, buildLearningPath, getStartTab } from './onboardingFirstMoment';
+import { ActiveTab } from '../types';
 
 describe('pickResultHint', () => {
   beforeEach(() => localStorage.clear());
@@ -36,5 +37,18 @@ describe('getFirstMomentPlan', () => {
     expect(getFirstMomentPlan('retention')).toEqual({ mode: 'cards', count: 5 });
     expect(getFirstMomentPlan('understanding')).toEqual({ mode: 'quiz', count: 3 });
     expect(getFirstMomentPlan(undefined)).toEqual({ mode: 'quiz', count: 3 });
+  });
+});
+
+describe('buildLearningPath', () => {
+  it('behält die gewählte Reihenfolge, die erste Wahl ist der Startpunkt', () => {
+    const path = buildLearningPath(['retention', 'exam_confidence', 'understanding']);
+    expect(path.map(p => p.tab)).toEqual([ActiveTab.CARDS, ActiveTab.EXAM, ActiveTab.RECALL]);
+    expect(getStartTab(['retention', 'exam_confidence'])).toBe(ActiveTab.CARDS);
+  });
+
+  it('ignoriert alte Probleme ohne Lernweg und fällt auf Quiz zurück', () => {
+    expect(buildLearningPath(['effectiveness'])).toEqual([]);
+    expect(getStartTab([])).toBe(ActiveTab.QUIZ);
   });
 });

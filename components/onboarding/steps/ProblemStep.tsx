@@ -3,9 +3,9 @@ import type { OnboardingChallenge } from '../../../types';
 import type { TKey } from '../../../i18n';
 import { useTranslation } from '../../../i18n/I18nProvider';
 import { SelectCard } from '../SelectCard';
-import { ONBOARDING_PROBLEMS } from '../../../services/onboardingFirstMoment';
+import { ONBOARDING_PROBLEMS, MAX_PROBLEMS, type OnboardingProblem } from '../../../services/onboardingFirstMoment';
 
-const PROBLEM_META: Record<string, { icon: string; labelKey: TKey; descKey: TKey }> = {
+export const PROBLEM_META: Record<OnboardingProblem, { icon: string; labelKey: TKey; descKey: TKey }> = {
   exam_confidence: { icon: '😰', labelKey: 'onboarding.v2.problem.exam_confidence.label', descKey: 'onboarding.v2.problem.exam_confidence.desc' },
   retention: { icon: '🔄', labelKey: 'onboarding.v2.problem.retention.label', descKey: 'onboarding.v2.problem.retention.desc' },
   understanding: { icon: '🧠', labelKey: 'onboarding.v2.problem.understanding.label', descKey: 'onboarding.v2.problem.understanding.desc' },
@@ -15,13 +15,23 @@ const PROBLEM_META: Record<string, { icon: string; labelKey: TKey; descKey: TKey
 };
 
 interface ProblemStepProps {
-  value: OnboardingChallenge | undefined;
-  onChange: (c: OnboardingChallenge) => void;
+  value: OnboardingChallenge[];
+  onChange: (problems: OnboardingChallenge[]) => void;
 }
 
-/** Frage 2 von 2: "Was ist dein größtes Problem?" Genau eine Antwort. */
+/**
+ * Frage 2 von 2: Was bremst dich beim Lernen? Bis zu MAX_PROBLEMS Antworten,
+ * die zuerst gewählte zählt am meisten (bestimmt den ersten Lernmoment).
+ */
 export const ProblemStep: React.FC<ProblemStepProps> = ({ value, onChange }) => {
   const { t } = useTranslation();
+
+  const toggle = (c: OnboardingChallenge) => {
+    if (value.includes(c)) onChange(value.filter(x => x !== c));
+    else if (value.length < MAX_PROBLEMS) onChange([...value, c]);
+    // Am Maximum weicht die zuletzt gewählte (niedrigste Priorität), die wichtigste bleibt.
+    else onChange([...value.slice(0, MAX_PROBLEMS - 1), c]);
+  };
 
   return (
     <>
@@ -32,15 +42,17 @@ export const ProblemStep: React.FC<ProblemStepProps> = ({ value, onChange }) => 
       <div className="space-y-2.5">
         {ONBOARDING_PROBLEMS.map(c => {
           const meta = PROBLEM_META[c];
+          const idx = value.indexOf(c);
           return (
             <SelectCard
               key={c}
               layout="list"
-              selected={value === c}
-              onClick={() => onChange(c)}
+              selected={idx !== -1}
+              onClick={() => toggle(c)}
               icon={meta.icon}
               label={t(meta.labelKey)}
               description={t(meta.descKey)}
+              priority={value.length > 1 && idx !== -1 ? idx + 1 : undefined}
             />
           );
         })}

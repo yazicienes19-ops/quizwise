@@ -11,7 +11,7 @@ import { MfaGate } from './components/MfaGate';
 import { needsSecondFactor } from './services/mfaService';
 import { OnboardingFlow } from './components/onboarding/OnboardingFlow';
 import { isOnboardingDone, markOnboardingDone, cacheOnboardingProfile, getCachedOnboardingProfile } from './components/onboarding/onboardingState';
-import { getRecommendation, buildCombinedRecommendation } from './services/onboardingRecommendation';
+import { getStartTab } from './services/onboardingFirstMoment';
 import { SharedDeckPage } from './components/SharedDeckPage';
 import { SharedLibraryPage } from './components/SharedLibraryPage';
 import { ResetPasswordPage } from './components/ResetPasswordPage';
@@ -547,12 +547,13 @@ const App: React.FC = () => {
             setShowOnboarding(false);
             if (auth.user) syncPreferences(auth.user.id, { onboarding_done: true, onboarding: profile as OnboardingProfile });
 
-            if (startContext?.docId) {
-              const challenges = profile.challenges ?? [];
-              const tab = challenges.length >= 2
-                ? buildCombinedRecommendation(challenges).steps[0].tab
-                : getRecommendation(challenges[0] ?? 'unsure').primaryTab;
-              setPendingActionDoc(docs.documents.find(d => d.id === startContext.docId) ?? null);
+            // Der Lernweg-Schritt verspricht "Mit X starten": dorthin, auch ohne Upload.
+            // Karteikarten bekommen kein Skript mit: der Stapel entstand schon im
+            // Onboarding, und mit Skript würde die Seite sofort einen zweiten erzeugen.
+            if (profile.challenges?.length) {
+              const tab = getStartTab(profile.challenges);
+              const doc = startContext?.docId && tab !== ActiveTab.CARDS ? docs.documents.find(d => d.id === startContext.docId) ?? null : null;
+              setPendingActionDoc(doc);
               setPendingTopic(null);
               setActiveTab(tab);
             }
