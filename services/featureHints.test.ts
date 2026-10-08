@@ -52,3 +52,13 @@ describe('buildLearningPath', () => {
     expect(getStartTab([])).toBe(ActiveTab.QUIZ);
   });
 });
+
+describe('isRecentAccount (Onboarding pro Konto)', () => {
+  it('neue Konten ja, alte und unbekannte nein', async () => {
+    const { isRecentAccount } = await import('../hooks/useAuth');
+    const now = Date.parse('2026-10-08T12:00:00Z');
+    expect(isRecentAccount('2026-10-08T10:00:00Z', now)).toBe(true);
+    expect(isRecentAccount('2026-08-01T10:00:00Z', now)).toBe(false);
+    expect(isRecentAccount(undefined, now)).toBe(false);
+  });
+});

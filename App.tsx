@@ -132,12 +132,17 @@ const App: React.FC = () => {
   const [showTourReplay, setShowTourReplay] = useState(false);
   const [cloudPreferences, setCloudPreferences] = useState<CloudPreferences | null>(null);
 
-  // Cloud sagt „Onboarding längst erledigt" (kommt asynchron nach dem Login,
-  // z.B. nach gelöschten Website-Daten): Overlay sofort wieder schließen.
+  // Cloud-Abgleich nach dem Login (hooks/useAuth.ts): „längst erledigt“ schließt
+  // das Overlay (z.B. nach gelöschten Website-Daten), „noch offen“ bei einem
+  // neuen Konto öffnet es, auch wenn ein anderes Konto hier das Flag gesetzt hat.
   useEffect(() => {
-    const close = () => setShowOnboarding(!isOnboardingDone());
-    window.addEventListener('studearc-onboarding-done', close);
-    return () => window.removeEventListener('studearc-onboarding-done', close);
+    const sync = () => setShowOnboarding(!isOnboardingDone());
+    window.addEventListener('studearc-onboarding-done', sync);
+    window.addEventListener('studearc-onboarding-needed', sync);
+    return () => {
+      window.removeEventListener('studearc-onboarding-done', sync);
+      window.removeEventListener('studearc-onboarding-needed', sync);
+    };
   }, []);
   const [decks, setDecks] = useState<FlashcardDeck[]>([]);
   // Deck-Kopie der App immer auf dem Speicherstand halten (deckStore): sonst

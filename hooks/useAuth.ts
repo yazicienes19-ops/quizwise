@@ -7,6 +7,14 @@ import { setFunctionalPref } from '../services/cookieConsent';
 import { claimLocalUserData, watchOwnerChange } from '../services/localAccountGuard';
 import { applyTypography } from '../services/appFonts';
 
+/** Konten bis zu diesem Alter bekommen das Onboarding, solange die Cloud es nicht als erledigt kennt. */
+const ONBOARDING_ACCOUNT_MAX_AGE_MS = 30 * 24 * 60 * 60 * 1000;
+
+export const isRecentAccount = (createdAt: string | undefined, now = Date.now()): boolean => {
+  const t = createdAt ? Date.parse(createdAt) : NaN;
+  return Number.isFinite(t) && now - t < ONBOARDING_ACCOUNT_MAX_AGE_MS;
+};
+
 export const useAuth = () => {
   const [user, setUser] = useState<User | null>(null);
   const [authChecked, setAuthChecked] = useState(false);
@@ -87,6 +95,14 @@ export const useAuth = () => {
           }
           if (pr.feynman_intro_done) localStorage.setItem('studearc_feynman_intro_v1', 'true');
           if (pr.recall_intro_done) localStorage.setItem('studearc_feynman_intro_done', '1');
+        }
+        // Das lokale "erledigt"-Flag gilt pro Browser, nicht pro Konto: hat vorher
+        // ein anderes Konto hier das Onboarding gemacht, sähe ein neues Konto es nie.
+        // Deshalb entscheidet für neue Konten die Cloud. Ältere Konten bleiben
+        // unberührt, sie haben das Onboarding teils vor dem Cloud-Abgleich gemacht.
+        if (!p.preferences?.onboarding_done && isRecentAccount(user.created_at)) {
+          localStorage.removeItem('studearc_onboarding_done');
+          window.dispatchEvent(new Event('studearc-onboarding-needed'));
         }
       })
       .catch(() => {});
