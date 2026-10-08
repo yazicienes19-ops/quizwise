@@ -16,6 +16,13 @@ const KNOWN_TYPES: ExamQuestion['type'][] = ['mc', 'open', 'matching', 'truefals
 const isStrArr = (v: unknown, min: number): v is string[] =>
   Array.isArray(v) && v.length >= min && v.every(x => typeof x === 'string' && x.trim().length > 0);
 
+/** Gemini füllt nicht benutzte Felder gelegentlich mit Platzhaltern ("Option A", "placeholder 1"). */
+const PLACEHOLDER_OPTION = /^(option|antwort|answer|auswahl|aussage)\s*[a-d1-5][).:]?$|placeholder|platzhalter/i;
+
+/** Echte Antwortoptionen: mind. 2 nicht-leere, verschiedene Texte ohne Platzhalter. */
+export const isRealOptions = (v: unknown): v is string[] =>
+  isStrArr(v, 2) && !v.some(o => PLACEHOLDER_OPTION.test(o.trim())) && new Set(v.map(o => o.trim().toLowerCase())).size === v.length;
+
 const isIdx = (n: unknown, len: number): n is number =>
   Number.isInteger(n) && (n as number) >= 0 && (n as number) < len;
 
@@ -32,6 +39,16 @@ const cleanDistractorErrorTypes = (v: unknown, optionsLength: number): (Distract
     const trimmed = x.trim();
     return (DISTRACTOR_ERROR_TYPES as string[]).includes(trimmed) ? trimmed as DistractorErrorType : null;
   });
+};
+
+/** MC-Aufgabe, die normalizeExamQuestions verwerfen würde, weil Optionen oder die richtigen
+ *  Indizes fehlen (und sich nicht aus den Wahr/Falsch-Feldern zurückholen lassen): Kandidat für
+ *  den Reparatur-Aufruf in geminiService. Benchmark 08.10.2026: Flash-Lite lässt correctIndices
+ *  bei ~2/3 aller MC-Aufgaben weg, die richtige Antwort steht dann nur in solution. */
+export const mcNeedsRepair = (q: any): boolean => {
+  if (!q || q.type !== 'mc' || typeof q.question !== 'string') return false;
+  if (!isRealOptions(q.options)) return !(isRealOptions(q.tfReasonOptions) && q.tfReasonOptions.length >= 3 && isIdx(q.tfCorrectReasonIndex, q.tfReasonOptions.length));
+  return !(Array.isArray(q.correctIndices) && q.correctIndices.some((n: unknown) => isIdx(n, q.options.length)));
 };
 
 export function normalizeExamQuestions(raw: unknown): ExamQuestion[] {
@@ -55,15 +72,24 @@ export function normalizeExamQuestions(raw: unknown): ExamQuestion[] {
 
     switch (base.type) {
       case 'mc': {
-        if (!isStrArr(q.options, 2)) return;
-        const ci = Array.isArray(q.correctIndices)
-          ? [...new Set(q.correctIndices.filter((n: unknown) => isIdx(n, q.options.length)))] as number[]
+        // Gemini legt die Antwortoptionen einer MC-Aufgabe gelegentlich in die
+        // Wahr/Falsch-Begründungsfelder statt in options (Benchmark 08.10.2026:
+        // 3.8 Flash bei ~20 % aller MC-Aufgaben). Inhaltlich sind es vollständige
+        // Optionen samt richtigem Index, also zurückholen statt die Aufgabe zu verwerfen.
+        const fromTfFields = !isRealOptions(q.options) && isRealOptions(q.tfReasonOptions) && q.tfReasonOptions.length >= 3 && isIdx(q.tfCorrectReasonIndex, q.tfReasonOptions.length);
+        const options: unknown = fromTfFields ? q.tfReasonOptions : q.options;
+        if (!isRealOptions(options)) return;
+        const rawIndices: unknown = fromTfFields ? [q.tfCorrectReasonIndex] : q.correctIndices;
+        const ci = Array.isArray(rawIndices)
+          ? [...new Set(rawIndices.filter((n: unknown) => isIdx(n, options.length)))] as number[]
           : [];
         if (ci.length === 0) return;
+        const { tfCorrect: _tf, tfReasonOptions: _tr, tfCorrectReasonIndex: _ti, ...mcBase } = base;
         const candidate: ExamQuestion = {
-          ...base,
+          ...(fromTfFields ? mcBase : base),
+          options,
           correctIndices: ci,
-          distractorErrorTypes: cleanDistractorErrorTypes(q.distractorErrorTypes, q.options.length),
+          distractorErrorTypes: cleanDistractorErrorTypes(q.distractorErrorTypes, options.length),
         };
         // CAS-Selbstcheck NUR für Rechnungs-MC (category "rechnung", s. mathValidation.ts) —
         // reguläre MC-Fragen sind von der Single-Choice-Pflicht/Äquivalenzprüfung nicht betroffen.

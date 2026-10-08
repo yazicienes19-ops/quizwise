@@ -38,6 +38,7 @@ import {
 // ─── Backend-Verbindung ──────────────────────────────────────────────────────
 import { supabase } from './supabaseClient';
 import { parseQuizQuestions } from './quizNormalize';
+import { mcNeedsRepair, isRealOptions } from './examNormalize';
 import { parseCoachInsights } from './coachInsightsNormalize';
 import { BLOOM_LEVELS, buildBloomTargetLine, mergeBloomLevels } from './bloomPresets';
 import { buildTypeInstruction } from './quizTypeInstruction';
@@ -276,8 +277,10 @@ Liefere:
 - expectedKeywords: Die 6-10 zentralen Begriffe aus dem Dokument die in einer vollständigen Antwort vorkommen sollten
 - conceptContext: 4-6 Sätze was eine vollständige Antwort laut Dokument enthalten muss — Kernaussagen, Zusammenhänge, Beispiele aus dem Material${outputLangDirective()}` });
 
+  // Lite für alle Pläne: im Benchmark (08.10.2026, 30 Fälle × 3) gleich gut wie 3.8 Flash
+  // (93,4 vs. 93,4 Punkte), dabei 2,7× schneller und weniger als halb so teuer.
   const text = await callBackend({
-    complexity: 'heavy',
+    complexity: 'light',
     parts,
     config: {
       temperature: 0.5,
@@ -354,8 +357,11 @@ usedExample: true, wenn die Antwort ein eigenes Beispiel oder eine Analogie enth
 coveredKeywords: die Kernbegriffe aus der Liste oben (exakt so geschrieben wie dort), die inhaltlich in der Antwort vorkommen, auch wenn der Nutzer ein Synonym oder eine Umschreibung benutzt, außer die INHALT-Regel oben verlangt den Fachbegriff.
 probeQuestion: EINE kurze Nachfrage (höchstens 120 Zeichen), die jemand aus der Zielgruppe an der schwächsten oder unklarsten Stelle der Erklärung stellen würde. Leerer String, wenn die Erklärung lückenlos und klar ist.` });
 
+  // grading: läuft auch für Free über 3.8 Flash. Im Benchmark (08.10.2026, 30 Fälle × 3) erkannte
+  // Flash-Lite eingebaute Fehler deutlich schlechter (83 vs. 94 Punkte, kritische Fehler 48 % vs. 10 %).
   const text = await callBackend({
     complexity: 'heavy',
+    grading: true,
     parts,
     config: {
       temperature: 0.3,
@@ -2203,7 +2209,65 @@ ALLGEMEINE REGELN:
       }
     }
   });
-  return parseAiJson<any[]>(text || '[]');
+  return repairExamMcOptions(parseAiJson<any[]>(text || '[]'));
+};
+
+/**
+ * Gemini liefert MC-Aufgaben oft unvollständig (Benchmark 08.10.2026, 90 Klausuren je Modell):
+ * Flash-Lite lässt bei ~2/3 aller MC-Aufgaben correctIndices weg (die richtige Antwort steht nur
+ * in solution), 3.8 Flash lässt bei ~40 % die Optionen ganz weg. normalizeExamQuestions würde
+ * diese Aufgaben verwerfen, und ExamSystem müsste eine ganze zweite Klausur nachgenerieren.
+ * Stattdessen EIN kleiner Aufruf: vorhandene Optionen bleiben wörtlich, bestimmt werden nur die
+ * richtigen Indizes; fehlen Optionen, werden 4 passend zur Musterlösung ergänzt. Scheitert der
+ * Aufruf, bleibt die Liste unverändert (der bisherige Weg greift dann wie vorher).
+ */
+const repairExamMcOptions = async (raw: any[]): Promise<any[]> => {
+  if (!Array.isArray(raw)) return raw;
+  const broken = raw.filter(mcNeedsRepair);
+  if (broken.length === 0) return raw;
+  const hasOptions = (q: any) => isRealOptions(q.options);
+  try {
+    const text = await callBackend({
+      complexity: 'light',
+      examWorkflow: true,
+      parts: [{
+        text: `Bei diesen Multiple-Choice-Klausuraufgaben fehlt die Angabe der richtigen Antwort, teils auch die Antwortoptionen.
+- Hat eine Aufgabe bereits options: übernimm sie wörtlich in derselben Reihenfolge und bestimme nur correctIndices (die Option(en), die laut solution richtig sind).
+- Fehlen options: ergänze genau 4 Antwortoptionen. Die richtige(n) entsprechen inhaltlich genau der solution und fügen nichts hinzu, die übrigen sind plausible, aber eindeutig falsche Distraktoren. Verweist die solution auf Aussagen, die nicht vorliegen (z. B. "Aussage 1 ist korrekt"), gib options: [] zurück statt Platzhalter.
+Maßstab für richtig ist ausschließlich die angegebene solution. Frage und Lösung nicht verändern, id unverändert zurückgeben.
+
+Aufgaben: ${JSON.stringify(broken.map(q => ({ id: q.id, question: q.question, scenarioText: q.scenarioText || undefined, solution: q.solution, options: hasOptions(q) ? q.options : undefined })))}${outputLangDirective()}`,
+      }],
+      config: {
+        temperature: 0,
+        thinkingConfig: { thinkingBudget: 0 },
+        responseMimeType: 'application/json',
+        responseSchema: {
+          type: Type.ARRAY,
+          items: {
+            type: Type.OBJECT,
+            properties: {
+              id:             { type: Type.STRING },
+              options:        { type: Type.ARRAY, items: { type: Type.STRING } },
+              correctIndices: { type: Type.ARRAY, items: { type: Type.NUMBER } },
+            },
+            required: ['id', 'options', 'correctIndices'],
+          },
+        },
+      },
+    });
+    const fixes = parseAiJson<any[]>(text || '[]', []);
+    return raw.map(q => {
+      if (!mcNeedsRepair(q)) return q;
+      const fix = fixes.find(f => f?.id === q.id);
+      if (!fix) return q;
+      // Vorhandene Optionen nie durch die des Reparatur-Aufrufs ersetzen; neue nur, wenn es echte sind.
+      if (hasOptions(q)) return { ...q, correctIndices: fix.correctIndices };
+      return isRealOptions(fix.options) ? { ...q, options: fix.options, correctIndices: fix.correctIndices } : q;
+    });
+  } catch {
+    return raw;
+  }
 };
 
 // ─── Bloom-Taxonomie-Klassifikation (zweistufig, s. Phase 2) ─────────────────

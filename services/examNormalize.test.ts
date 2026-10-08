@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { normalizeExamQuestions } from './examNormalize';
+import { normalizeExamQuestions, mcNeedsRepair } from './examNormalize';
 
 const mc = (over: object = {}) => ({
   id: 'q1', question: 'Was ist X?', type: 'mc', solution: 'A', points: 3,
@@ -22,6 +22,43 @@ describe('normalizeExamQuestions', () => {
     const out = normalizeExamQuestions([mc({ correctIndices: [0, 9] })]);
     expect(out[0].correctIndices).toEqual([0]);
     expect(normalizeExamQuestions([mc({ correctIndices: [9] })])).toHaveLength(0);
+  });
+
+  it('MC mit Optionen in den Wahr/Falsch-Feldern wird zurückgeholt statt verworfen', () => {
+    const out = normalizeExamQuestions([mc({
+      options: undefined, correctIndices: undefined, tfCorrect: false,
+      tfReasonOptions: ['richtig', 'falsch 1', 'falsch 2'], tfCorrectReasonIndex: 0,
+    })]);
+    expect(out).toHaveLength(1);
+    expect(out[0].options).toEqual(['richtig', 'falsch 1', 'falsch 2']);
+    expect(out[0].correctIndices).toEqual([0]);
+    expect(out[0].tfReasonOptions).toBeUndefined();
+    expect(out[0].tfCorrect).toBeUndefined();
+  });
+
+  it('Platzhalter-Optionen ("Option A", "placeholder 1") gelten nicht als Optionen', () => {
+    expect(normalizeExamQuestions([mc({ options: ['Option A', 'Option B', 'Option C', 'Option D'] })])).toHaveLength(0);
+    expect(normalizeExamQuestions([mc({
+      options: undefined, tfReasonOptions: ['placeholder 1', 'placeholder 2', 'placeholder 3'], tfCorrectReasonIndex: 0,
+    })])).toHaveLength(0);
+    expect(normalizeExamQuestions([mc({ options: ['Wundt', 'Wundt', 'Freud', 'James'] })])).toHaveLength(0);
+    expect(normalizeExamQuestions([mc({ options: ['Wundt', 'Freud', 'James', 'Fechner'] })])).toHaveLength(1);
+    // Kurze echte Optionen (Buchstaben, Zahlen) sind keine Platzhalter
+    expect(normalizeExamQuestions([mc({ options: ['1', '2', '3', '4'] })])).toHaveLength(1);
+  });
+
+  it('MC ohne Optionen und ohne brauchbare W/F-Felder fliegt weiter raus', () => {
+    expect(normalizeExamQuestions([mc({ options: undefined, tfCorrect: false })])).toHaveLength(0);
+    expect(normalizeExamQuestions([mc({ options: [], tfReasonOptions: ['a', 'b', 'c'], tfCorrectReasonIndex: 5 })])).toHaveLength(0);
+  });
+
+  it('mcNeedsRepair: fehlende Optionen oder fehlende richtige Indizes, nicht zurückholbare Fälle', () => {
+    expect(mcNeedsRepair(mc())).toBe(false);
+    expect(mcNeedsRepair(mc({ options: undefined }))).toBe(true);
+    expect(mcNeedsRepair(mc({ correctIndices: undefined }))).toBe(true);
+    expect(mcNeedsRepair(mc({ correctIndices: [7] }))).toBe(true);
+    expect(mcNeedsRepair(mc({ options: undefined, tfReasonOptions: ['a', 'b', 'c'], tfCorrectReasonIndex: 1 }))).toBe(false);
+    expect(mcNeedsRepair({ type: 'open', question: 'x' })).toBe(false);
   });
 
   it('unbekannter Typ und kaputte Einträge fliegen raus', () => {
