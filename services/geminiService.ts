@@ -1987,10 +1987,13 @@ const EXAM_TYPE_WEIGHTS: Record<string, number> = {
 // JEDE Klausur unabhängig vom Fach plötzlich Term-Eingabe-/Rechenweg-Fragen bekommen.
 const EXAM_ALL_TYPES = Object.keys(EXAM_TYPE_WEIGHTS);
 const EXPRESSION_TYPE_WEIGHT_DEFAULT = 0.05;
+// "transfer" ist kein eigener Aufgabentyp, sondern eine offene Aufgabe (type "open", category
+// "transfer") mit neuem Fallbeispiel. Nur aktiv, wenn explizit gewählt (Klausur-Setup).
+const TRANSFER_TYPE_WEIGHT_DEFAULT = 0.25;
 const STEP_BY_STEP_TYPE_WEIGHT_DEFAULT = 0.05;
-const EXAM_VALID_TYPES = [...EXAM_ALL_TYPES, 'expression', 'step_by_step'];
+const EXAM_VALID_TYPES = [...EXAM_ALL_TYPES, 'expression', 'step_by_step', 'transfer'];
 // Reihenfolge, in der Rundungs-Rest zugeschlagen wird (bevorzugt "open", da am flexibelsten)
-const EXAM_REMAINDER_ORDER = ['open', 'mc', 'matching', 'truefalse', 'fillblank', 'ranking', 'numeric', 'expression', 'step_by_step'];
+const EXAM_REMAINDER_ORDER = ['open', 'mc', 'transfer', 'matching', 'truefalse', 'fillblank', 'ranking', 'numeric', 'expression', 'step_by_step'];
 
 const EXAM_TYPE_BULLETS: Record<string, (n: number) => string> = {
   mc: n => `- ${n} MC (type "mc"): Klassische Faktenabfrage ODER — NUR wenn das Material Fälle/Kasuistiken/Szenarien enthält — Fallbeispiel im Feld scenarioText (2-4 Sätze), danach Frage. options[]: genau 4 Antworten. correctIndices[]: Indizes der richtigen (1-3 korrekte). solution: kurze Begründung. Punkte: 2-4.`,
@@ -2001,6 +2004,7 @@ const EXAM_TYPE_BULLETS: Record<string, (n: number) => string> = {
   numeric: n => `- ${n} Numerisch (type "numeric"): numericAnswer: korrekte Zahl (als reine Zahl, kein Bruch-String). numericTolerance: akzeptabler Spielraum (0 wenn exakt). options[]: leer. solution: Rechenweg/Erklärung. Punkte: 2-3. NUR wenn das Material konkrete Zahlen/Formeln/Statistiken enthält. Wenn nicht: als "open" ersetzen.`,
   expression: n => `- ${n} Term/Ausdruck (type "expression"): Ergebnis ist ein mathematischer Term (z.B. Ableitung, vereinfachter Ausdruck, Gleichungslösung mit einer Variable). expressionAnswer: korrekter Term als einfacher, per Taschenrechner-Syntax auswertbarer String (implizite Multiplikation wie "4x" erlaubt, Exponent mit "^", z.B. "3x^2+4x-5"). expressionVariables[]: optional, nur wenn nicht eindeutig aus dem Term ableitbar. options[]: leer. solution: Lösungsweg. Punkte: 3-5. NUR im Quantitativen Modus verwenden.`,
   step_by_step: n => `- ${n} Rechenweg/Herleitung (type "step_by_step"): eine mehrschrittige Rechnung/Ableitung/Gleichungslösung, bei der der VOLLSTÄNDIGE Lösungsweg gefragt ist, nicht nur das Endergebnis (z.B. "Löse x²-5x+6=0 durch Faktorisieren, zeige jeden Schritt"). expectedSteps[]: die korrekte Herleitung als Array, EIN eigenständiger, in sich verständlicher Rechen-/Umformungsschritt pro Array-Element, in der richtigen Reihenfolge, letzter Eintrag = Endergebnis. options[]: leer. solution: kurze Zusammenfassung des Lösungswegs (zusätzlich zu expectedSteps, nicht redundant nacherzählt). Punkte: 4-8 (mehr als "numeric"/"expression", da mehrere Teilschritte bewertet werden). NUR im Quantitativen Modus verwenden.`,
+  transfer: n => `- ${n} Transferaufgabe (type "open", category "transfer"): Beginne die Frage (question) mit einem NEUEN, kurzen Fallbeispiel aus Alltag, Studium oder Beruf (2-4 Sätze), das so nicht im Material steht. Die Aufgabe verlangt, ein Konzept aus dem Material auf diesen Fall anzuwenden und die Anwendung zu begründen. options[]: leer. solution: Musterlösung, die das Konzept aus dem Material korrekt auf den Fall anwendet. rubricCriteria[]: wie bei Freitext, 2-4 Kriterien, Summe der maxPoints = points. Punkte: 6-10.`,
   open: n => `- ${n} Freitext/Kurzantwort (type "open"): Transfer oder 2-3-Satz-Erklärung unter Zeitdruck. options[]: leer. solution: Musterantwort mit Kernbegriffen. rubricCriteria[]: 2-4 Bewertungskriterien als Erwartungshorizont — je {name: prüfbares Teilkriterium aus der Musterlösung, maxPoints: Teilpunkte, sourceReference: PFLICHTFELD, fülle es IMMER mit dem Satz oder der Textstelle aus dem Material, die dieses Kriterium stützt (Paraphrase reicht, kein wörtliches Zitat nötig) — NUR wenn das Kriterium wirklich rein abstrakt ohne jeden Bezug im Material ist (seltener Ausnahmefall), Feld weglassen statt zu erfinden}; die Summe aller maxPoints ergibt exakt points. Punkte: 5-10.`,
 };
 
@@ -2086,7 +2090,7 @@ export const generateFullExam = async (
   // Fragetypen (weiche Prompt-/Gewichtungssteuerung analog zu bloomPresets.ts, KEIN
   // Retry-Loop — die Verteilung wird wie bei allen Fragetypen hier über Ziel-
   // STÜCKZAHLEN gesteuert, nicht über eine nachträgliche Validierungsschleife).
-  const typeWeights: Record<string, number> = { ...EXAM_TYPE_WEIGHTS, expression: EXPRESSION_TYPE_WEIGHT_DEFAULT, step_by_step: STEP_BY_STEP_TYPE_WEIGHT_DEFAULT };
+  const typeWeights: Record<string, number> = { ...EXAM_TYPE_WEIGHTS, expression: EXPRESSION_TYPE_WEIGHT_DEFAULT, step_by_step: STEP_BY_STEP_TYPE_WEIGHT_DEFAULT, transfer: TRANSFER_TYPE_WEIGHT_DEFAULT };
   if (options?.quantMode?.enabled && options.quantMode.typeDistribution) {
     const qd = options.quantMode.typeDistribution;
     (['mc', 'numeric', 'expression', 'truefalse', 'step_by_step'] as const).forEach(k => {
@@ -2230,7 +2234,8 @@ ALLGEMEINE REGELN:
             // Sichtbar geworden im Quantitativ-Modus bei 100% MC: das Modell
             // erzeugte trotzdem truefalse/open, weil nichts es strukturell daran
             // hinderte. Mit dem Enum ist "type" jetzt Teil des harten JSON-Schemas.
-            type:                 { type: Type.STRING, format: 'enum', enum: activeTypes },
+            // "transfer" wird als type "open" geliefert (category "transfer").
+            type:                 { type: Type.STRING, format: 'enum', enum: [...new Set(activeTypes.map(t => (t === 'transfer' ? 'open' : t)))] },
             options:              { type: Type.ARRAY, items: { type: Type.STRING } },
             correctIndices:       { type: Type.ARRAY, items: { type: Type.NUMBER } },
             scenarioText:         { type: Type.STRING },

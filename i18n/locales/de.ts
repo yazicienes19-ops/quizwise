@@ -1605,6 +1605,7 @@ export const de = {
   'lp.type.expression': 'Term/Ausdruck',
   'lp.type.stepByStep': 'Rechenweg',
   'lp.type.open': 'Freitext',
+  'lp.type.transfer': 'Transferaufgabe',
   'lp.type.scenario': 'Fallbeispiel',
   // Notenlabels (deutsche Skala; Werte identisch lassen für den Test)
   'lp.grade.sehrGut': 'Sehr Gut',

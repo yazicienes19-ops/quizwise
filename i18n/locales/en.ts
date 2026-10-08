@@ -1604,6 +1604,7 @@ export const en: Translations = {
   'lp.type.expression': 'Expression/Term',
   'lp.type.stepByStep': 'Worked solution',
   'lp.type.open': 'Free text',
+  'lp.type.transfer': 'Transfer task',
   'lp.type.scenario': 'Scenario',
   // Notenlabels (deutsche Skala; Werte identisch lassen für den Test)
   'lp.grade.sehrGut': 'Very Good',

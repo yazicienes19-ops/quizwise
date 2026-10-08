@@ -48,3 +48,23 @@ describe('generateFullExam — Aufgabentyp-Verteilung', () => {
     expect(Object.keys(counts)).toHaveLength(7);
   });
 });
+
+describe('generateFullExam — Transferaufgaben (08.10.2026)', () => {
+  beforeEach(() => {
+    global.fetch = vi.fn().mockResolvedValue(respondEmpty());
+  });
+
+  it('MC, Transfer und Freitext: Transfer erscheint als eigener Block, Schema kennt nur echte Typen', async () => {
+    await generateFullExam({ text: 'Material' }, undefined, { count: 10, difficulty: 'mittel', types: ['mc', 'transfer', 'open'] });
+    const body = JSON.parse((global.fetch as any).mock.calls[0][1].body);
+    const prompt: string = body.parts.map((p: any) => p.text ?? '').join('\n');
+    const block = prompt.split('FRAGETYPEN-VERTEILUNG')[1].split('ALLGEMEINE REGELN')[0];
+    const transfer = Number(block.match(/^- (\d+) Transferaufgabe/m)?.[1]);
+    const mc = Number(block.match(/^- (\d+) MC/m)?.[1]);
+    const open = Number(block.match(/^- (\d+) Freitext/m)?.[1]);
+    expect(transfer).toBeGreaterThanOrEqual(2);
+    expect(mc + transfer + open).toBe(10);
+    expect(block).not.toMatch(/Zuordnung|Lückentext|Sortierung|Wahr\/Falsch|Numerisch/);
+    expect(body.config.responseSchema.items.properties.type.enum.sort()).toEqual(['mc', 'open']);
+  });
+});

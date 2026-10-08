@@ -28,7 +28,7 @@ const TYPE_KEYS: Record<string, TKey> = {
   mc: 'lp.type.mc', single: 'lp.type.mc', truefalse: 'lp.type.truefalse', matching: 'lp.type.matching',
   cloze: 'lp.type.cloze', fillblank: 'lp.type.cloze', ranking: 'lp.type.ranking', numeric: 'lp.type.numeric',
   expression: 'lp.type.expression', open: 'lp.type.open', scenario: 'lp.type.scenario',
-  step_by_step: 'lp.type.stepByStep',
+  step_by_step: 'lp.type.stepByStep', transfer: 'lp.type.transfer',
 };
 
 /** Fehlertyp eines quantitativen MC-Distraktors (Phase 1 generiert, Phase 2 verdrahtet,

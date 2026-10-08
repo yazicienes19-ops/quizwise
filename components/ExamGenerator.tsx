@@ -72,7 +72,11 @@ interface ExamGeneratorProps {
   activeModuleId?: string | null;
 }
 
-const EXAM_TYPE_IDS: ExamQuestion['type'][] = ['mc', 'matching', 'truefalse', 'fillblank', 'ranking', 'numeric', 'open'];
+// Normale Klausuren: nur Multiple Choice, Transferaufgaben und Freitext (Entscheidung 08.10.2026:
+// Zuordnung, Lückentext, Sortieren, Wahr/Falsch und Zahlenaufgaben entsprechen kaum echten
+// Psychologie-Klausuren und fielen im Benchmark öfter aus). "transfer" erzeugt eine offene Aufgabe
+// mit neuem Fallbeispiel (geminiService). Der Quantitativ-Modus hat eigene Typen (QUANT_TYPE_IDS).
+const EXAM_TYPE_IDS = ['mc', 'transfer', 'open'];
 
 export const ExamGenerator: React.FC<ExamGeneratorProps> = ({
   onGenerate,
@@ -139,7 +143,7 @@ export const ExamGenerator: React.FC<ExamGeneratorProps> = ({
   const [difficulty, setDifficulty] = useState<'leicht' | 'mittel' | 'schwer'>('mittel');
   const [scoringMode, setScoringMode] = useState<ScoringMode>('standard');
   const [emphases, setEmphases] = useState<ScoringProfile['emphases']>([]);
-  const [selectedTypes, setSelectedTypes] = useState<ExamQuestion['type'][]>([...EXAM_TYPE_IDS]);
+  const [selectedTypes, setSelectedTypes] = useState<string[]>([...EXAM_TYPE_IDS]);
   const [customMinutes, setCustomMinutes] = useState<number | null>(null);
   const [adaptiveEnabled, setAdaptiveEnabled] = useState(false);
   const [examTypePreset, setExamTypePreset] = useState<ExamTypePreset>('universitaetsklausur');
@@ -285,7 +289,7 @@ export const ExamGenerator: React.FC<ExamGeneratorProps> = ({
     }
   };
 
-  const toggleType = (type: ExamQuestion['type']) => {
+  const toggleType = (type: string) => {
     setSelectedTypes(prev => {
       if (prev.includes(type)) {
         // Mindestens ein Typ muss aktiv bleiben

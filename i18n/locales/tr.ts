@@ -1603,6 +1603,7 @@ export const tr: Translations = {
   'lp.type.expression': 'Terim/İfade',
   'lp.type.stepByStep': 'Çözüm yolu',
   'lp.type.open': 'Açık uçlu',
+  'lp.type.transfer': 'Transfer sorusu',
   'lp.type.scenario': 'Örnek olay',
   'lp.grade.sehrGut': 'Pekiyi',
   'lp.grade.gut': 'İyi',
