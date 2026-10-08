@@ -41,3 +41,8 @@ quizwise-graph-dialog/
 
 # Lokale Daten-Sicherungen (persönliche Nutzerdaten, nie committen)
 backups/
+
+# Benchmark: Testdaten (Vorlesungsmaterial) und Ergebnisse nur lokal
+benchmark/datasets/
+benchmark/results/
+benchmark/human/

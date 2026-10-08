@@ -11,7 +11,11 @@
     "test": "vitest run",
     "test:watch": "vitest",
     "smoke": "node --env-file-if-exists=.env.test.local scripts/smoke-prod.mjs",
-    "verify:profiles-rls": "node --env-file-if-exists=.env.test.local scripts/verify-profiles-plan-rls.mjs"
+    "verify:profiles-rls": "node --env-file-if-exists=.env.test.local scripts/verify-profiles-plan-rls.mjs",
+    "benchmark": "node benchmark/cli.ts",
+    "benchmark:capture": "BENCHMARK_CAPTURE=1 vitest run benchmark/runners/capture.test.ts",
+    "benchmark:judge": "node benchmark/cli.ts judge",
+    "benchmark:report": "node benchmark/cli.ts evaluate && node benchmark/cli.ts report"
   },
   "dependencies": {
     "@capacitor/core": "^8.4.1",
