@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { normalizeQuizQuestions, parseQuizQuestions } from './quizNormalize';
+import { normalizeQuizQuestions, parseQuizQuestions, quizMcNeedsRepair } from './quizNormalize';
 
 describe('normalizeQuizQuestions', () => {
   it('füllt fehlende correctAnswerIndices statt zu crashen (der heutige Bug)', () => {
@@ -122,5 +122,42 @@ describe('parseQuizQuestions', () => {
   it('gibt bei kaputtem JSON ein leeres Array zurück statt zu werfen', () => {
     expect(parseQuizQuestions('{nicht: valide')).toEqual([]);
     expect(parseQuizQuestions('')).toEqual([]);
+  });
+});
+
+describe('normalizeQuizQuestions — Benchmark-Befunde 08.10.2026', () => {
+  const mc = (over: object = {}) => ({ question: 'Was misst das EEG?', questionType: 'mc', options: ['Hirnaktivität', 'Puls', 'Muskeltonus', 'Augenbewegung'], correctAnswerIndices: [0], explanation: 'Hirnaktivität', ...over });
+
+  it('erfundene Typnamen werden auf echte abgebildet', () => {
+    const [single] = normalizeQuizQuestions([mc({ questionType: 'single-choice' })]);
+    expect(single.questionType).toBe('mc');
+    expect(single.isMultipleChoice).toBe(false);
+    const [multi] = normalizeQuizQuestions([mc({ questionType: 'multiple-choice', correctAnswerIndices: [0, 1] })]);
+    expect(multi.questionType).toBe('mc');
+    expect(multi.isMultipleChoice).toBe(true);
+  });
+
+  it('unbekannte Typen fliegen raus statt kaputt angezeigt zu werden', () => {
+    expect(normalizeQuizQuestions([mc({ questionType: 'essay' })])).toHaveLength(0);
+  });
+
+  it('Lückentext: ohne Lücke raus, Lücke aus der Frage wird übernommen', () => {
+    expect(normalizeQuizQuestions([{ question: 'Ergänze den Satz.', questionType: 'cloze', clozeAnswers: ['Wundt'] }])).toHaveLength(0);
+    const [ok] = normalizeQuizQuestions([{ question: '__LÜCKE__ gründete 1879 das Labor.', questionType: 'cloze', clozeAnswers: ['Wundt'] }]);
+    expect(ok.clozeText).toBe('__LÜCKE__ gründete 1879 das Labor.');
+    expect(normalizeQuizQuestions([{ question: 'x', questionType: 'cloze', clozeText: '__LÜCKE__ und __LÜCKE__', clozeAnswers: ['a'] }])).toHaveLength(0);
+  });
+
+  it('Platzhalter-Optionen gelten nicht, Wahr/Falsch bleibt erlaubt', () => {
+    expect(normalizeQuizQuestions([mc({ options: ['Option A', 'Option B', 'Option C', 'Option D'] })])).toHaveLength(0);
+    expect(normalizeQuizQuestions([mc({ questionType: 'truefalse', options: ['Wahr', 'Falsch'], correctAnswerIndices: [0] })])).toHaveLength(1);
+  });
+
+  it('quizMcNeedsRepair: fehlende Lösung oder Optionen, nicht bei anderen Typen', () => {
+    expect(quizMcNeedsRepair(mc())).toBe(false);
+    expect(quizMcNeedsRepair(mc({ correctAnswerIndices: [] }))).toBe(true);
+    expect(quizMcNeedsRepair(mc({ questionType: 'single-choice', correctAnswerIndices: undefined }))).toBe(true);
+    expect(quizMcNeedsRepair(mc({ options: [] }))).toBe(true);
+    expect(quizMcNeedsRepair({ question: 'x', questionType: 'open' })).toBe(false);
   });
 });

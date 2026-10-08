@@ -37,7 +37,7 @@ import {
 
 // ─── Backend-Verbindung ──────────────────────────────────────────────────────
 import { supabase } from './supabaseClient';
-import { parseQuizQuestions } from './quizNormalize';
+import { normalizeQuizQuestions, quizMcNeedsRepair, canonicalizeQuizQuestion } from './quizNormalize';
 import { mcNeedsRepair, isRealOptions } from './examNormalize';
 import { parseCoachInsights } from './coachInsightsNormalize';
 import { BLOOM_LEVELS, buildBloomTargetLine, mergeBloomLevels } from './bloomPresets';
@@ -595,6 +595,68 @@ export const generateSmartStudyPlan = async (
   return parseAiJson<SmartPlanEntry[]>(text || '[]');
 };
 
+/**
+ * Quiz-Pendant zu repairExamMcOptions: Flash-Lite lässt bei MC-Fragen oft correctAnswerIndices
+ * (seltener die Optionen) weg, normalizeQuizQuestions würde sie verwerfen (Benchmark 08.10.2026:
+ * 98 von 774 Fragen). EIN kleiner Aufruf nur bei Bedarf; vorhandene Optionen bleiben wörtlich,
+ * Maßstab für richtig ist die Erklärung. Scheitert er, gilt der bisherige Weg (Nachlieferung).
+ */
+const repairQuizMc = async (raw: unknown): Promise<unknown> => {
+  if (!Array.isArray(raw)) return raw;
+  const broken = raw.map(canonicalizeQuizQuestion).filter(q => q && quizMcNeedsRepair(q)) as Record<string, any>[];
+  if (broken.length === 0) return raw;
+  const hasOptions = (q: Record<string, any>) => isRealOptions(q.options);
+  const ids = new Map(broken.map((q, i) => [q, `r${i + 1}`]));
+  try {
+    const text = await callBackend({
+      complexity: 'light',
+      parts: [{
+        text: `Bei diesen Multiple-Choice-Quizfragen fehlt die Angabe der richtigen Antwort, teils auch die Antwortoptionen.
+- Hat eine Frage bereits options: übernimm sie wörtlich in derselben Reihenfolge und bestimme nur correctAnswerIndices (die Option(en), die laut explanation richtig sind).
+- Fehlen options: ergänze genau 4 Antwortoptionen. Die richtige(n) entsprechen inhaltlich genau der explanation und fügen nichts hinzu, die übrigen sind plausible, aber eindeutig falsche Distraktoren. Lässt sich aus der explanation keine Antwort ableiten, gib options: [] zurück statt Platzhalter.
+Maßstab für richtig ist ausschließlich die angegebene explanation. id unverändert zurückgeben.
+
+Fragen: ${JSON.stringify(broken.map(q => ({ id: ids.get(q), question: q.question, scenarioText: q.scenarioText || undefined, explanation: q.explanation, options: hasOptions(q) ? q.options : undefined })))}${outputLangDirective()}`,
+      }],
+      config: {
+        temperature: 0,
+        thinkingConfig: { thinkingBudget: 0 },
+        responseMimeType: 'application/json',
+        responseSchema: {
+          type: Type.ARRAY,
+          items: {
+            type: Type.OBJECT,
+            properties: {
+              id:                   { type: Type.STRING },
+              options:              { type: Type.ARRAY, items: { type: Type.STRING } },
+              correctAnswerIndices: { type: Type.ARRAY, items: { type: Type.NUMBER } },
+            },
+            required: ['id', 'options', 'correctAnswerIndices'],
+          },
+        },
+      },
+    });
+    const fixes = parseAiJson<any[]>(text || '[]', []);
+    return raw.map(item => {
+      const q = canonicalizeQuizQuestion(item);
+      const id = q && [...ids.entries()].find(([b]) => b.question === q.question)?.[1];
+      const fix = id && fixes.find(f => f?.id === id);
+      if (!q || !fix) return item;
+      if (hasOptions(q)) return { ...q, correctAnswerIndices: fix.correctAnswerIndices };
+      return isRealOptions(fix.options) ? { ...q, options: fix.options, correctAnswerIndices: fix.correctAnswerIndices } : item;
+    });
+  } catch {
+    return raw;
+  }
+};
+
+/** Wie parseQuizQuestions, aber unvollständige MC-Fragen werden vorher repariert statt verworfen. */
+const parseQuizWithRepair = async (text: string) => {
+  let raw: unknown;
+  try { raw = JSON.parse(text || '[]'); } catch { return []; }
+  return normalizeQuizQuestions(await repairQuizMc(raw));
+};
+
 export const generateQuizFromDocument = async (
   source: GenerationSource,
   quizType: QuizType = QuizType.FAST,
@@ -762,9 +824,10 @@ Zu jeder Frage: Erklärung (explanation), Textbezug (sourceReference), Thema (to
       buildRequest(9, newSeed(), 'Fokus: erste Hälfte und Grundlagen des Materials.'),
       buildRequest(8, newSeed(), 'Fokus: zweite Hälfte und Vertiefungsthemen des Materials.'),
     ]);
-    questions = [...parseQuizQuestions(text1), ...parseQuizQuestions(text2)];
+    const [q1, q2] = await Promise.all([parseQuizWithRepair(text1), parseQuizWithRepair(text2)]);
+    questions = [...q1, ...q2];
   } else {
-    questions = parseQuizQuestions(await buildRequest(count, newSeed(), ''));
+    questions = await parseQuizWithRepair(await buildRequest(count, newSeed(), ''));
   }
 
   // Nachlieferung: bei kleinem Material geht "genau N Fragen" mit bis zu 40
@@ -780,7 +843,7 @@ Zu jeder Frage: Erklärung (explanation), Textbezug (sourceReference), Thema (to
     const existingNorm = new Set(existing.map(normalizeText));
     const topUpHint = `NACHLIEFERUNG: Dieses Quiz braucht noch ${missing} weitere Frage(n). Diese Fragen gibt es bereits, stelle KEINE davon erneut und keine Umformulierung:\n${existing.map(q => `- ${sanitizeUserInput(q, 200)}`).join('\n')}\nDie Themen dieser Fragen dürfen erneut vorkommen, solange deine Frage einen anderen Aspekt prüft (anderes Detail, Beispiel oder Zusammenhang).\n`;
     try {
-      const extra = parseQuizQuestions(await buildRequest(missing, newSeed(), topUpHint))
+      const extra = (await parseQuizWithRepair(await buildRequest(missing, newSeed(), topUpHint)))
         .filter(q => !existingNorm.has(normalizeText(q.question)));
       questions = [...questions, ...extra];
     } catch { /* Teil-Quiz bleibt nutzbar, der Aufrufer weist auf die Lücke hin */ }
