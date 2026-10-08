@@ -2733,7 +2733,8 @@ export interface SelfCheckResult {
 /**
  * Selbsttest im Lernleitfaden (components/StudioSelfCheck.tsx): eigene Antwort
  * auf eine Verständnisfrage gegen Musterantwort und die zitierten
- * Quellenseiten prüfen. Formative Rückmeldung, keine Note: daher Flash-Lite.
+ * Quellenseiten prüfen. Pro bekommt 3.8 Flash (heavy): im Benchmark (08.10.2026) messbar besser
+ * als Flash-Lite (+1,5 Punkte, 95 %-KI 0,1 bis 3,6); Free bleibt bei Flash-Lite.
  */
 export const evaluateSelfCheck = async (
   question: string,
@@ -2743,7 +2744,7 @@ export const evaluateSelfCheck = async (
 ): Promise<SelfCheckResult> => {
   const safeAnswer = sanitizeUserInput(userAnswer, 3000);
   const text = await callBackend({
-    complexity: 'light',
+    complexity: 'heavy',
     parts: [{ text: `${buildSelfCheckPrompt(question, reference, excerpts, safeAnswer)}${outputLangDirective()}` }],
     config: {
       temperature: 0.2,
