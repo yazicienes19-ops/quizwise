@@ -19,7 +19,8 @@ import { confirmDialog } from '../services/confirmDialog';
 import { SubjectStudio } from './SubjectStudio';
 import { ModuleFolderSections } from './ModuleFolderSections';
 import { folderList, type FolderActions } from '../services/moduleFolders';
-import { FolderPlus } from 'lucide-react';
+import { FolderPlus, Combine } from 'lucide-react';
+import { MergeDocumentsModal } from './MergeDocumentsModal';
 
 interface LibrarySystemProps {
   documents: ProcessedDocument[];
@@ -114,6 +115,7 @@ export const LibrarySystem: React.FC<LibrarySystemProps> = ({
   const [uploadFolderId, setUploadFolderId] = useState<string | undefined>(undefined);
   const [isAddingFolder, setIsAddingFolder] = useState(false);
   const [newFolderName, setNewFolderName]   = useState('');
+  const [showMerge, setShowMerge]           = useState(false);
 
   const refreshMeta = useCallback(() => setAllMeta(getAllMeta()), []);
 
@@ -595,6 +597,15 @@ export const LibrarySystem: React.FC<LibrarySystemProps> = ({
       {showUpload && <UploadSourceModal onClose={() => { setShowUpload(false); setUploadFolderId(undefined); }} onUpload={handleUpload} />}
         {shareLink && <ShareLinkModal url={shareLink.url} title={t('share.title', { name: shareLink.name })} onClose={() => setShareLink(null)} />}
         {summaryModal}
+      {showMerge && activeCol && (
+        <MergeDocumentsModal
+          collection={activeCol}
+          documents={documents.filter(d => d.collectionId === activeCol.id)}
+          onUpload={onUpload}
+          onDeleteDoc={handleDelete}
+          onClose={() => setShowMerge(false)}
+        />
+      )}
       {viewerDoc && <DocumentViewerModal doc={viewerDoc} onClose={() => setViewerDocId(null)} />}
       {editDoc && (
         <EditSourceModal
@@ -664,6 +675,15 @@ export const LibrarySystem: React.FC<LibrarySystemProps> = ({
                   <FolderPlus className="w-3.5 h-3.5" strokeWidth={2.5} /> {t('mf.add')}
                 </button>
               )
+            )}
+            {activeCol && documents.filter(d => d.collectionId === activeCol.id).length >= 2 && (
+              <button
+                onClick={() => setShowMerge(true)}
+                className="flex items-center gap-2 px-5 py-2.5 rounded-2xl text-[13px] font-semibold transition-all hover:opacity-90"
+                style={{ background: 'var(--bg-sidebar)', color: 'var(--text-main)', border: '1px solid var(--border-color)' }}
+              >
+                <Combine className="w-3.5 h-3.5" strokeWidth={2.5} /> {t('merge.open')}
+              </button>
             )}
             {activeColId !== 'all' && activeColId !== 'uncategorized' && filtered.length > 0 && (
               <button
