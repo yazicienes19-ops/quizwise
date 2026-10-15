@@ -2954,6 +2954,8 @@ export const en: Translations = {
   'stu.dg.imageLoading': "Loading figure",
   'stu.figuresToggle': "Include figures from your slides",
   'stu.figuresToggleHint': "Searches your PDFs for images. Takes up to a minute longer per PDF the first time.",
+  'stu.argonToggle': "Create with Gemini 4 Argon (admin only)",
+  'stu.argonToggleHint': "For comparison with the standard model. Costs about 15 to 30 ct per full subject.",
   'stu.ch.toggle': "Chapters",
   'stu.ch.loading': "Finding chapters",
   'stu.ch.none': "No chapters found. The document fits into one run.",

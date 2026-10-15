@@ -20,7 +20,8 @@ describe('costOfUsage (Kosten aus usageMetadata)', () => {
 
   it('unbekanntes Modell wird zum teuersten bekannten Preis gerechnet', () => {
     const date = new Date('2026-10-01T00:00:00Z');
-    expect(priceFor('gemini-9-ultra', date)).toEqual({ input: 0.75, cached: 0.075, output: 3.75 });
+    expect(priceFor('gemini-9-ultra', date)).toEqual({ input: 2.00, cached: 0.10, output: 10.00 }); // Argon (Einführungspreis)
+    expect(priceFor('gemini-9-ultra', new Date('2026-12-15T00:00:00Z'))).toEqual({ input: 4.00, cached: 0.20, output: 20.00 });
   });
 
   it('Eingabe aus dem Kontext-Cache kostet 10 % des Eingabepreises', () => {

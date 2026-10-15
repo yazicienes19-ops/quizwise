@@ -18,6 +18,7 @@ import { isDocInScope, groupDocsByFolder } from '../services/moduleFolders';
 import { isDocumentReadable } from '../services/collectionSource';
 import { canReadFullText, readPdfPages } from '../services/pdfFullText';
 import { generateStudioOutput } from '../services/geminiService';
+import { isAdmin } from '../config/admin';
 import {
   STUDIO_FORMATS, buildStudioSources, buildStudioPrompt, checkCitations, toPlainExport,
   splitGuide, groupRefs, truncationNotes, type StudioChapter,
@@ -92,6 +93,15 @@ export const SubjectStudio: React.FC<Props> = ({ collection, documents, userId, 
     setFiguresOn(on);
     try { localStorage.setItem(figuresKey, on ? '1' : '0'); } catch { /* nur für diese Sitzung */ }
   };
+  // Nur Admins: Gemini 4 Argon statt 3.8 Flash, zum Vergleich (14.10.2026). Der Server prüft selbst.
+  const argonAllowed = isAdmin(userId);
+  const argonKey = 'studearc_studio_argon';
+  const [argonOn, setArgonOn] = useState(() => { try { return localStorage.getItem(argonKey) === '1'; } catch { return false; } });
+  const toggleArgon = (on: boolean) => {
+    setArgonOn(on);
+    try { localStorage.setItem(argonKey, on ? '1' : '0'); } catch { /* nur für diese Sitzung */ }
+  };
+  const argonActive = argonAllowed && argonOn;
   const [streamText, setStreamText] = useState('');
   /** Vorarbeit vor und nach dem Schreiben: PDFs lesen, Abbildungen suchen, Abbildungen ausschneiden. */
   const [progress, setProgress] = useState<{ phase: 'pdf' | 'figures' | 'crop'; done: number; total: number; name?: string } | null>(null);
@@ -256,6 +266,7 @@ export const SubjectStudio: React.FC<Props> = ({ collection, documents, userId, 
     const raw = await generateStudioOutput(
       buildStudioPrompt(fmt, collection.name, sources, focusText, catalog.text),
       text => { if (!cancelRef.current) setStreamText(text); },
+      argonActive,
     );
     if (cancelRef.current) return null;
     let { markdown } = checkCitations(raw.trim(), sources);
@@ -269,9 +280,10 @@ export const SubjectStudio: React.FC<Props> = ({ collection, documents, userId, 
       markdown = `*${cut.map(c => t('stu.ch.truncatedNote', { name: c.name, from: c.from, until: c.until, end: c.end })).join(' ')}*\n\n${markdown}`;
     }
     const now = Date.now();
-    const title = titleExtra
+    const baseTitle = titleExtra
       ? `${formatLabel(fmt)}: ${titleExtra}`
       : focusText.trim() ? `${formatLabel(fmt)}: ${focusText.trim().slice(0, 60)}` : formatLabel(fmt);
+    const title = argonActive ? `${baseTitle} (Argon)` : baseTitle;
     const item: StudioItem = {
       id: newStudioId(), collectionId: collection.id, kind: fmt, title: title.slice(0, 120),
       markdown, sources: sources.map(s => ({ n: s.n, docId: s.docId, name: s.name })),
@@ -607,6 +619,15 @@ export const SubjectStudio: React.FC<Props> = ({ collection, documents, userId, 
           <span>
             <span className="block text-[13.5px] font-semibold" style={{ color: 'var(--text-main)' }}>{t('stu.figuresToggle')}</span>
             <span className="block text-[12px]" style={{ color: 'var(--text-secondary)' }}>{t('stu.figuresToggleHint')}</span>
+          </span>
+        </label>
+      )}
+      {argonAllowed && (
+        <label className="flex items-start gap-2.5 cursor-pointer select-none">
+          <input type="checkbox" checked={argonOn} onChange={e => toggleArgon(e.target.checked)} className="mt-0.5 w-4 h-4 shrink-0 accent-[var(--primary)]" />
+          <span>
+            <span className="block text-[13.5px] font-semibold" style={{ color: 'var(--text-main)' }}>{t('stu.argonToggle')}</span>
+            <span className="block text-[12px]" style={{ color: 'var(--text-secondary)' }}>{t('stu.argonToggleHint')}</span>
           </span>
         </label>
       )}

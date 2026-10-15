@@ -37,6 +37,13 @@ export const MODELS: ModelConfig[] = [
     prices: [{ inputPricePerMillion: 0.75, outputPricePerMillion: 3.75 }],
   },
   {
+    // Nutzerfreigabe 14.10.2026: Vergleich mit 3.8 Flash bei Korrektur und Rechenweg.
+    id: 'gemini-argon', label: 'Gemini 4 Argon', provider: 'gemini', apiModel: 'gemini-4-argon',
+    reasoningMode: 'app-default', enabled: false,
+    // Einführungspreis bis 30.11.2026, danach 4 / 20.
+    prices: [{ inputPricePerMillion: 2.00, outputPricePerMillion: 10.00 }],
+  },
+  {
     id: 'claude-haiku-no-thinking', label: 'Claude Haiku 5.5 (ohne Denken)', provider: 'anthropic', apiModel: 'claude-haiku-5-5',
     reasoningMode: 'off', enabled: true,
     prices: [
@@ -75,7 +82,7 @@ export const JUDGES: ModelConfig[] = [
 ];
 
 /** Nur diese API-Modelle sind erlaubt (Nutzervorgabe). Jeder andere Modellname bricht ab. */
-export const ALLOWED_API_MODELS = ['gemini-3.5-flash-lite', 'gemini-3.8-flash', 'claude-haiku-5-5'];
+export const ALLOWED_API_MODELS = ['gemini-3.5-flash-lite', 'gemini-3.8-flash', 'gemini-4-argon', 'claude-haiku-5-5'];
 
 export const RUN = {
   /** Wiederholungen je Testfall und Modell. */

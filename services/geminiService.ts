@@ -75,6 +75,8 @@ const callBackend = async (payload: {
    *  über das große Modell, weil Flash-Lite dieselben Antworten im Test (04.10.2026)
    *  je Durchgang um bis zu 2 von 40 Punkten anders bewertete, 3.8 Flash nie. */
   grading?: boolean;
+  /** Lernstudio-Schalter "Argon": Server nimmt gemini-4-argon, aber nur für Admins. */
+  argon?: boolean;
   config?: {
     responseMimeType?: string;
     responseSchema?: any;
@@ -2780,9 +2782,11 @@ Die Ziel-Tab-Werte (QUIZ, CARDS, RECALL, EXAM, EXPLAINER), die priority-Werte (h
 export const generateStudioOutput = async (
   prompt: string,
   onPartial?: (fullSoFar: string) => void,
+  argon = false,
 ): Promise<string> => {
   const payload = {
     complexity: 'heavy' as const,
+    ...(argon ? { argon: true } : {}),
     parts: [{ text: `${prompt}${outputLangDirective()}` }],
     config: { temperature: 0.3, thinkingConfig: { thinkingBudget: 0 } },
   };

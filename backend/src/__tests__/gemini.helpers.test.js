@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { selectModel, isTransient, MAX_TOTAL_STORAGE_BYTES, outputTokenLimit } from '../routes/gemini.js';
+import { selectModel, wantsArgon, isTransient, MAX_TOTAL_STORAGE_BYTES, outputTokenLimit } from '../routes/gemini.js';
 
 describe('selectModel (Plan-basierte Modellwahl)', () => {
   it('free-Nutzer bekommen immer das Basis-Modell', () => {
@@ -15,6 +15,18 @@ describe('selectModel (Plan-basierte Modellwahl)', () => {
   it('unbekannter Plan fällt auf das Basis-Modell zurück', () => {
     expect(selectModel(undefined, 'heavy')).toBe('gemini-3.5-flash-lite');
     expect(selectModel('free', undefined)).toBe('gemini-3.5-flash-lite');
+  });
+});
+
+describe('wantsArgon (Lernstudio-Schalter nur für Admins)', () => {
+  const ADMIN = 'efb1b348-9d63-41db-848d-5b87836dd0a1';
+  it('Admin mit Schalter bekommt Argon', () => {
+    expect(wantsArgon(true, ADMIN)).toBe(true);
+  });
+  it('alle anderen nie, auch mit gesetztem Flag', () => {
+    expect(wantsArgon(true, 'fremde-id')).toBe(false);
+    expect(wantsArgon('true', ADMIN)).toBe(false);
+    expect(wantsArgon(undefined, ADMIN)).toBe(false);
   });
 });
 

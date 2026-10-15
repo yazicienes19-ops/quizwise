@@ -6,6 +6,10 @@
 // diese Konstante zu nutzen).
 const MODEL_LITE = 'gemini-3.5-flash-lite';
 const MODEL_HEAVY = 'gemini-3.8-flash';
+// Nur für Admins im Lernstudio (Schalter "Argon", Vergleich mit 3.8 Flash).
+// Laut API-Modellliste (14.10.2026): max. 32.768 Output-Tokens, Thinking an,
+// thinkingBudget:0 wird akzeptiert.
+const MODEL_ARGON = 'gemini-4-argon';
 
 // Listenpreise in USD pro 1 Mio. Tokens (Paid Tier, Stand 2026-09-22 laut
 // ai.google.dev/gemini-api/docs/pricing). Output schließt Thinking-Tokens ein.
@@ -21,6 +25,13 @@ const PRICE_TABLE = {
   [MODEL_HEAVY]: [
     { from: null, input: 0.75, cached: 0.075, output: 3.75 },
     { from: '2027-01-01', input: 1.50, cached: 0.15, output: 7.50 },
+  ],
+  // Einführungspreis bis 30.11.2026 laut Presseberichten (13.10.2026), danach
+  // Listenpreis. Cached = 5 % des Eingabepreises (95 % Rabatt). Auf der
+  // offiziellen Preisseite nachprüfen, sobald sie Argon führt.
+  [MODEL_ARGON]: [
+    { from: null, input: 2.00, cached: 0.10, output: 10.00 },
+    { from: '2026-12-01', input: 4.00, cached: 0.20, output: 20.00 },
   ],
 };
 // Grounding mit Google Search: 14 $ pro 1.000 Anfragen. Das Freikontingent
@@ -49,4 +60,4 @@ const costOfUsage = (model, usage, { searches = 0, date = new Date() } = {}) => 
   return ((prompt - cached) * p.input + cached * p.cached + output * p.output) / 1e6 + searches * SEARCH_PRICE_USD;
 };
 
-module.exports = { MODEL_LITE, MODEL_HEAVY, priceFor, costOfUsage, SEARCH_PRICE_USD };
+module.exports = { MODEL_LITE, MODEL_HEAVY, MODEL_ARGON, priceFor, costOfUsage, SEARCH_PRICE_USD };

@@ -1,6 +1,7 @@
 const express = require('express');
 const { GoogleGenAI } = require('@google/genai');
-const { MODEL_LITE, MODEL_HEAVY } = require('../config/geminiModels');
+const { MODEL_LITE, MODEL_HEAVY, MODEL_ARGON } = require('../config/geminiModels');
+const { ADMIN_IDS } = require('../middleware/requireAdmin');
 const { getBudgetStatus, recordUsage, budgetExhaustedError } = require('../budget/aiBudget');
 
 const router = express.Router();
@@ -59,12 +60,17 @@ const resolveStorageRefs = async (parts, userId, sb) => {
 // examWorkflow-Flag) bekommen mehr Luft.
 const MAX_OUTPUT_TOKENS = 16384;
 const MAX_OUTPUT_TOKENS_EXAM = 32768;
+const MAX_OUTPUT_TOKENS_ARGON = 32768; // Modell-Maximum von gemini-4-argon
 const outputTokenLimit = (examWorkflow) => (examWorkflow === true ? MAX_OUTPUT_TOKENS_EXAM : MAX_OUTPUT_TOKENS);
 
 // grading: Klausur-Korrektur und Rechenweg-Bewertung laufen für alle Pläne über
 // MODEL_HEAVY. Im Test (04.10.2026, 10 Antworten, 3 Durchgänge) vergab Flash-Lite
 // für dieselben Antworten je Durchgang 18,5 bis 20,5 von 40 Punkten (Note kippte
 // zwischen 4,0 und 5,0), 3.8 Flash jedes Mal exakt dieselben Punkte.
+// argon: Lernstudio-Schalter, nur für ADMIN_IDS (Test, ob sich Argon lohnt).
+// Für alle anderen wird das Flag still ignoriert, nie ein Fehler.
+const wantsArgon = (argon, userId) => argon === true && ADMIN_IDS.includes(userId);
+
 const selectModel = (plan, complexity, grading = false) => {
   if (grading === true) return MODEL_HEAVY;
   if (plan === 'pro' && complexity === 'heavy') return MODEL_HEAVY;
@@ -127,7 +133,7 @@ const chunkText = (chunk) =>
 // Gemeinsame Validierung + Request-Aufbau für /generate und /stream.
 // Liefert { status, error } bei ungültiger Eingabe, sonst { request }.
 const buildGeminiRequest = async (req) => {
-  const { parts, systemInstruction, config, tools, complexity, examWorkflow, grading } = req.body;
+  const { parts, systemInstruction, config, tools, complexity, examWorkflow, grading, argon } = req.body;
   const sb = req.supabase;
   const userId = req.user.id;
 
@@ -156,13 +162,15 @@ const buildGeminiRequest = async (req) => {
   // Monatsbudget (budget/aiBudget.js): ab 80 % nur noch MODEL_LITE, ab 100 % gesperrt.
   const budget = await getBudgetStatus(userId, userPlan);
   if (budget.level === 'hard') throw budgetExhaustedError(budget.scope);
-  const selectedModel = budget.level === 'soft' ? MODEL_LITE : selectModel(userPlan, complexity || 'light', grading);
+  const selectedModel = budget.level === 'soft' ? MODEL_LITE
+    : wantsArgon(argon, userId) ? MODEL_ARGON
+    : selectModel(userPlan, complexity || 'light', grading);
 
   const resolvedParts = await resolveStorageRefs(parts, userId, sb);
 
   const generationConfig = {
     temperature: config?.temperature ?? 0.7,
-    maxOutputTokens: outputTokenLimit(examWorkflow),
+    maxOutputTokens: selectedModel === MODEL_ARGON ? MAX_OUTPUT_TOKENS_ARGON : outputTokenLimit(examWorkflow),
   };
   if (config?.responseMimeType) generationConfig.responseMimeType = config.responseMimeType;
   if (config?.responseSchema)   generationConfig.responseSchema   = config.responseSchema;
@@ -281,6 +289,7 @@ router.post('/stream', async (req, res, next) => {
 module.exports = router;
 // Reine Logik exportiert für Unit-Tests (kein Express/Gemini nötig).
 module.exports.selectModel = selectModel;
+module.exports.wantsArgon = wantsArgon;
 module.exports.outputTokenLimit = outputTokenLimit;
 module.exports.isTransient = isTransient;
 module.exports.MAX_TOTAL_STORAGE_BYTES = MAX_TOTAL_STORAGE_BYTES;

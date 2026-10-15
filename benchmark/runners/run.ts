@@ -94,7 +94,8 @@ export const runBenchmark = async (opts: { features?: string[]; models?: string[
   if (!existsSync(reqFile)) throw new Error(`${reqFile} fehlt: zuerst npm run benchmark:capture`);
   const requests = readFileSync(reqFile, 'utf8').trim().split('\n').map(l => JSON.parse(l) as { caseId: string; feature: string; request: AppRequest })
     .filter(r => !opts.features?.length || opts.features.includes(r.feature));
-  const models = MODELS.filter(m => m.enabled && (!opts.models?.length || opts.models.some(x => m.id === x || m.id.startsWith(x))));
+  // Abgeschaltete Modelle (enabled: false) laufen nur, wenn ihre volle id in --model steht.
+  const models = MODELS.filter(m => (m.enabled || opts.models?.includes(m.id)) && (!opts.models?.length || opts.models.some(x => m.id === x || m.id.startsWith(x))));
   if (!models.length) throw new Error('Kein Modell ausgewählt/aktiv.');
   const repeat = opts.repeat ?? RUN.repeat;
 

@@ -2955,6 +2955,8 @@ export const de = {
   'stu.dg.imageLoading': "Lade Abbildung",
   'stu.figuresToggle': "Abbildungen aus dem Skript einbauen",
   'stu.figuresToggleHint': "Sucht Bilder in deinen PDFs. Dauert beim ersten Mal je PDF bis zu einer Minute länger.",
+  'stu.argonToggle': "Mit Gemini 4 Argon erstellen (nur Admin)",
+  'stu.argonToggleHint': "Zum Vergleich mit dem Standardmodell. Kostet etwa 15 bis 30 ct je volles Fach.",
   'stu.ch.toggle': "Kapitel",
   'stu.ch.loading': "Suche Kapitel",
   'stu.ch.none': "Keine Kapitel gefunden. Das Dokument passt am Stück in einen Durchgang.",

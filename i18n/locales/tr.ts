@@ -2947,6 +2947,8 @@ export const tr: Translations = {
   'stu.dg.imageLoading': "Şekil yükleniyor",
   'stu.figuresToggle': "Slaytlardaki şekilleri ekle",
   'stu.figuresToggleHint': "PDF'lerinde görsel arar. İlk seferde PDF başına bir dakikaya kadar daha uzun sürer.",
+  'stu.argonToggle': "Gemini 4 Argon ile oluştur (sadece yönetici)",
+  'stu.argonToggleHint': "Standart modelle karşılaştırma için. Tam ders başına yaklaşık 15 ila 30 sent.",
   'stu.ch.toggle': "Bölümler",
   'stu.ch.loading': "Bölümler aranıyor",
   'stu.ch.none': "Bölüm bulunamadı. Belge tek seferde sığıyor.",
