@@ -6,6 +6,7 @@ import { setLocale } from '../i18n';
 import { setFunctionalPref } from '../services/cookieConsent';
 import { claimLocalUserData, watchOwnerChange } from '../services/localAccountGuard';
 import { applyTypography } from '../services/appFonts';
+import { isAdmin } from '../config/admin';
 
 /** Konten bis zu diesem Alter bekommen das Onboarding, solange die Cloud es nicht als erledigt kennt. */
 const ONBOARDING_ACCOUNT_MAX_AGE_MS = 30 * 24 * 60 * 60 * 1000;
@@ -61,9 +62,12 @@ export const useAuth = () => {
 
   useEffect(() => {
     if (!user) { setUserPlan('free'); return; }
+    // Admins gelten immer als Pro, auch wenn profiles.plan (z. B. nach abgelaufener Vergabe) auf free steht.
+    if (isAdmin(user.id)) setUserPlan('pro');
     fetchUserProfile()
       .then(p => {
-        setUserPlan(p.plan === 'pro' ? 'pro' : 'free');
+        if (!p) return;
+        setUserPlan(p.plan === 'pro' || isAdmin(user.id) ? 'pro' : 'free');
         if (p.preferences) {
           const pr = p.preferences;
           if (pr.theme) { const dark = pr.theme === 'dark'; setIsDark(dark); document.documentElement.classList.toggle('dark', dark); setFunctionalPref('theme', pr.theme); }
