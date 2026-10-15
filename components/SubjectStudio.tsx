@@ -472,8 +472,8 @@ export const SubjectStudio: React.FC<Props> = ({ collection, documents, userId, 
             const partial = on && !!chapterSel[d.id];
             return (
               <div key={d.id}>
-                <div className="flex items-start gap-1">
-                  <label className={`flex-1 min-w-0 flex items-start gap-2.5 px-2 py-2 rounded-xl transition-colors ${readable ? 'cursor-pointer hover:bg-[var(--bg-main)]' : 'opacity-50'}`}>
+                <div>
+                  <label className={`min-w-0 flex items-start gap-2.5 px-2 py-2 rounded-xl transition-colors ${readable ? 'cursor-pointer hover:bg-[var(--bg-main)]' : 'opacity-50'}`}>
                     <input
                       type="checkbox"
                       checked={on}
@@ -493,7 +493,7 @@ export const SubjectStudio: React.FC<Props> = ({ collection, documents, userId, 
                       type="button"
                       onClick={() => toggleExpand(d)}
                       aria-expanded={open}
-                      className="shrink-0 mt-1 px-2 py-1 rounded-lg text-[11.5px] font-semibold flex items-center gap-0.5 transition-colors hover:bg-[var(--bg-main)]"
+                      className="ml-7 -mt-1.5 mb-0.5 px-2 py-0.5 rounded-lg text-[11.5px] font-semibold flex items-center gap-0.5 transition-colors hover:bg-[var(--bg-main)]"
                       style={{ color: 'var(--text-secondary)' }}
                     >
                       {t('stu.ch.toggle')} <ChevronDown className={`w-3.5 h-3.5 transition-transform ${open ? 'rotate-180' : ''}`} />

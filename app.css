@@ -121,6 +121,12 @@ body {
     /* Auf dunklem Grund ist das helle Gold selbst gut lesbar (~8:1). */
     --primary-ink:  var(--primary);
     --nav-inactive: #94A3B8;
+    /* Der :root-Block darüber setzt die hellen Tagmodus-Werte und steht nach dem
+       ersten .dark-Block, deshalb hier erneut (sonst cremeweiße Flächen mit heller Schrift). */
+    --primary-soft: color-mix(in srgb, var(--primary) 18%, transparent);
+    --primary-soft-text: color-mix(in srgb, var(--primary) 60%, white);
+    /* Native Checkboxen, Datumsfelder usw. im Nachtmodus dunkel statt weiß. */
+    color-scheme: dark;
 }
 
 /* ── Schrift auf dem Primärton ──
