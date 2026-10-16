@@ -1,7 +1,7 @@
 import type { ProcessedDocument } from '../../types';
 import { documentDisplayName } from '../libraryService';
-import { canReadFullText, readPdfPagesLayout } from '../pdfFullText';
-import { renderPageJpegAtWidth } from '../pdfPageService';
+import { canReadFullText, readPdfPages } from '../pdfFullText';
+import { renderStudioPage } from '../pdfPageService';
 import { streamStudioStep } from '../geminiService';
 import { ensureFigureIndex, ensureFigureImage, buildFigureCatalog, openPdf, type DocFigure } from '../studioFigures';
 import { getMergedPdfParts } from '../pdfOutlineService';
@@ -34,15 +34,23 @@ const plainText = (d: ProcessedDocument): string | undefined => {
 export const makeAppStudioLlm = (onEvent?: (e: LlmEvent) => void): StudioLlm =>
   guardedLlm((req, onText, signal) => streamStudioStep(req, onText, signal), { onEvent });
 
-/** Seitenbild je Dokument und Seite, im Speicher gehalten (Extraktion und Prüfung brauchen es mehrfach). */
-const imageCache = new Map<string, Promise<string | null>>();
-const pageImages = (d: ProcessedDocument) => (page: number): Promise<string | null> => {
-  const key = `${d.id}:${page}`;
-  if (!imageCache.has(key)) {
-    const p = openPdf(d).then(pdf => renderPageJpegAtWidth(pdf, page)).catch(() => null);
-    imageCache.set(key, p);
+/** Seitenbilder des laufenden Durchgangs (je Dokument und Seite), danach wieder freigegeben. */
+const imageCache = new Map<string, string>();
+const pageImages = (d: ProcessedDocument) => async (page: number): Promise<string | null> => imageCache.get(`${d.id}:${page}`) ?? null;
+
+/** Seiten lesen und rendern; null bei Scans, Mathe-PDFs oder sehr langen PDFs (wie readPdfPages). */
+const readStudioPages = async (d: ProcessedDocument, isCancelled: () => boolean, onPage: (done: number, total: number) => void): Promise<string[] | null> => {
+  if (!(await readPdfPages(d, isCancelled))) return null;
+  const pdf = await openPdf(d);
+  const pages: string[] = [];
+  for (let n = 1; n <= pdf.numPages; n++) {
+    if (isCancelled()) return null;
+    const { text, jpeg } = await renderStudioPage(pdf, n);
+    pages.push(text);
+    imageCache.set(`${d.id}:${n}`, jpeg);
+    onPage(n, pdf.numPages);
   }
-  return imageCache.get(key)!;
+  return pages;
 };
 
 export const runSummaryForDocs = async (opts: {
@@ -66,8 +74,9 @@ export const runSummaryForDocs = async (opts: {
   for (const [i, d] of pdfs.entries()) {
     if (isCancelled()) return null;
     onProgress({ step: 'pdf', done: i, total: pdfs.length });
-    // Text nach Position: Zahlen in nebeneinanderliegenden Spalten bleiben ihrer Spalte zugeordnet.
-    try { pagesById.set(d.id, await readPdfPagesLayout(d, isCancelled)); } catch { pagesById.set(d.id, null); }
+    // Je Seite ein Render-Durchgang: Text nach Position (Spalten bleiben getrennt), verborgener Text
+    // gesondert markiert (Pixeltest), dazu das Seitenbild für Extraktion und Prüfung von Folienfehlern.
+    try { pagesById.set(d.id, await readStudioPages(d, isCancelled, (done, total) => onProgress({ step: 'pdf', done, total }))); } catch { pagesById.set(d.id, null); }
     // Zusammengefügte PDF: Vorlesungen aus der Gliederung (Abdeckung je Vorlesung, Fußnote mit Folie).
     try { const parts = await getMergedPdfParts(await openPdf(d)); if (parts) partsById.set(d.id, parts); } catch { /* ohne */ }
   }

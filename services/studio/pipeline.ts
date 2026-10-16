@@ -1,6 +1,6 @@
 import type { Block, ChapterDiagnostic, Issue, LernstudioResult, PipelineProgress, PipelineSource, SourcePart, Unit } from './types';
 import { findDuplicatePages, sourceWordCount, withoutDuplicates } from './dedupe';
-import { assignUnitIds, extractUnits, scanSourceErrors, verifySourceErrors } from './extract';
+import { assignUnitIds, extractUnits, filterHiddenText, scanSourceErrors, verifySourceErrors } from './extract';
 import { buildOutline, SEPARATE_TYPES, type Chapter, type Lecture } from './outline';
 import { chapterHeading, writeChapterBody, type WriteInput } from './write';
 import { buildExtraBlocks, buildTimeline, timelineCandidates } from './extras';
@@ -92,7 +92,15 @@ export const runSummaryPipeline = async (input: PipelineInput): Promise<Lernstud
   const order = input.sources.map(s => s.docId);
 
   // ── A: Duplikate erkennen, dann nur benötigte Seiten extrahieren ──
-  const scoped = input.sources.map(s => masked(s, input.ranges?.get(s.docId)));
+  // Verborgenen Text zuerst sichten: was nicht zur sichtbaren Folie passt, sieht kein späterer Schritt.
+  onProgress?.({ step: 'read', done: 0, total: 1 });
+  const preWanted = new Map(input.sources.filter(s => s.pages).map(s => {
+    const m = masked(s, input.ranges?.get(s.docId));
+    return [s.docId, new Set(m.pages!.map((p, i) => (p.trim() ? i + 1 : 0)).filter(Boolean))] as const;
+  }));
+  const sources = await filterHiddenText(input.sources, preWanted, llm, input.cache ?? null, cancelled);
+  bail();
+  const scoped = sources.map(s => masked(s, input.ranges?.get(s.docId)));
   const dup = findDuplicatePages(scoped);
   const deduped = scoped.map(s => withoutDuplicates(s, dup));
   const wanted = new Map<string, Set<number>>();
@@ -103,9 +111,9 @@ export const runSummaryPipeline = async (input: PipelineInput): Promise<Lernstud
   const sourceWords = sourceWordCount(deduped);
   onProgress?.({ step: 'read', done: 0, total: 1 });
   const [stored, scanned] = await Promise.all([
-    extractUnits(input.sources, wanted, llm, input.cache ?? null, (done, total) => onProgress?.({ step: 'read', done, total }), cancelled),
+    extractUnits(sources, wanted, llm, input.cache ?? null, (done, total) => onProgress?.({ step: 'read', done, total }), cancelled),
     // Folienfehler im Rohtext (die Extraktion glättet sie sonst weg); ohne Ergebnis geht es ohne weiter.
-    scanSourceErrors(input.sources, wanted, llm, input.cache ?? null, cancelled).catch(() => []),
+    scanSourceErrors(sources, wanted, llm, input.cache ?? null, cancelled).catch(() => []),
   ]);
   bail();
   // Vermutete Folienfehler (Suche + Extraktion) nur mit Bestätigung am Seitenbild; je Seite einer.

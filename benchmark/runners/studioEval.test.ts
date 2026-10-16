@@ -19,7 +19,7 @@ import { resultToMarkdown } from '../../services/studio/toMarkdown';
 import { blockTexts, INLINE_CITE_RE, looksTruncated } from '../../services/studio/text';
 import { checkEmptyHeadings, checkRepetition, checkTables } from '../../services/studio/validate';
 import { partsFromOutline } from '../../services/pdfOutlineService';
-import { layoutPageText } from '../../services/pdfPageService';
+import { hiddenItemFlags, layoutPageTextWithHidden } from '../../services/pdfPageService';
 import type { Block, Cite, PipelineSource, SourcePart } from '../../services/studio/types';
 import { guardedLlm, type LlmEvent, type StudioLlm, type StudioTransport } from '../../services/studio/llm';
 import { createRequire } from 'node:module';
@@ -66,9 +66,12 @@ interface Expectations {
 const pdfPages = async (file: string): Promise<{ pages: string[]; parts: SourcePart[] | null; renderPage: (p: number) => Promise<string | null> }> => {
   const pdfjs = await import('pdfjs-dist/legacy/build/pdf.mjs');
   const pdf = await pdfjs.getDocument({ data: new Uint8Array(readFileSync(file)) }).promise;
+  // Wie die App (renderStudioPage): je Seite ein Render-Durchgang, Text nach Position, verborgener Text
+  // per Pixeltest gesondert markiert, Seitenbild 1000 px breit als JPEG (über @napi-rs/canvas).
+  const { createCanvas } = await import('@napi-rs/canvas');
   const pages: string[] = [];
+  const images = new Map<number, string>();
   for (let n = 1; n <= pdf.numPages; n++) {
-    // Wie die App (readPdfPagesLayout): Text nach Position, Spalten mit " | ".
     const page = await pdf.getPage(n);
     const vp = page.getViewport({ scale: 1 });
     const content = await page.getTextContent();
@@ -77,22 +80,16 @@ const pdfPages = async (file: string): Promise<{ pages: string[]; parts: SourceP
       const h = it.height || Math.abs(it.transform[3]) || 10;
       return { str: it.str, x: it.transform[4], y: vp.height - it.transform[5] - h, w: it.width, h };
     });
-    pages.push(layoutPageText(items));
+    const scale = 1000 / vp.width;
+    const rvp = page.getViewport({ scale });
+    const canvas = createCanvas(Math.round(rvp.width), Math.round(rvp.height));
+    const ctx = canvas.getContext('2d');
+    await page.render({ canvasContext: ctx as never, viewport: rvp, canvas: canvas as never }).promise;
+    const rgba = ctx.getImageData(0, 0, canvas.width, canvas.height).data;
+    pages.push(layoutPageTextWithHidden(items, hiddenItemFlags(items, rgba as unknown as Uint8ClampedArray, canvas.width, canvas.height, scale)));
+    images.set(n, (await canvas.encode('jpeg', 70)).toString('base64'));
   }
-  // Seitenbilder wie in der App (1000 px breit, JPEG), über @napi-rs/canvas.
-  const { createCanvas } = await import('@napi-rs/canvas');
-  const images = new Map<number, Promise<string | null>>();
-  const renderPage = (p: number) => {
-    if (!images.has(p)) images.set(p, (async () => {
-      const page = await pdf.getPage(p);
-      const base = page.getViewport({ scale: 1 });
-      const vp = page.getViewport({ scale: 1000 / base.width });
-      const canvas = createCanvas(Math.round(vp.width), Math.round(vp.height));
-      await page.render({ canvasContext: canvas.getContext('2d') as never, viewport: vp, canvas: canvas as never }).promise;
-      return (await canvas.encode('jpeg', 70)).toString('base64');
-    })().catch(() => null));
-    return images.get(p)!;
-  };
+  const renderPage = async (p: number) => images.get(p) ?? null;
   // Zusammengefügte PDF: Vorlesungen aus der Gliederung, wie in der App (getMergedPdfParts).
   const outline = (await pdf.getOutline().catch(() => null)) ?? [];
   const entries = await Promise.all(outline.map(async node => {
@@ -304,6 +301,7 @@ run('Lernstudio-Eval (live)', () => {
       `Kapitel (Einheiten → Blöcke, verworfen, Versuche, Abdeckung):`,
       ...diag.map(d => `  ${d.title}: ${d.units} → ${d.blocks}, verworfen ${d.dropped.length}${d.dropped.length ? ` [${d.dropped.map(x => `${x.type}: ${x.reason}`).join('; ')}]` : ''}, ${d.attempts} Versuch(e)${d.split ? ', abschnittsweise' : ''}${d.aborts.length ? `, Abbrüche: ${d.aborts.join('; ')}` : ''}, ${Math.round(d.coverage * 100)} %`),
       `Länge: ${r.stats.outputWords} / ${r.stats.sourceWords} Wörter`,
+      `Übungsfragen: ${r.blocks.filter(b => b.id.startsWith('x-quiz-')).length}, Lückentext zum Handy-Beispiel: ${r.blocks.some(b => b.id.startsWith('x-quiz-') && /Handy/.test(blockTexts(b).join(' '))) ? 'ja' : 'nein'}`,
       `Warnungen: ${r.warnings.length}${r.warnings.length ? `\n  - ${r.warnings.join('\n  - ')}` : ''}`,
       `Ausgelassen: ${r.omittedSources.map(o => `${o.part?.title ?? o.sourceId} (${o.reason})`).join('; ') || 'keine'}`,
       ...report.map(([n, ok, d]) => `${ok ? '✓' : '✗'} ${n}${d ? `  ${d}` : ''}`),

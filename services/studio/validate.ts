@@ -127,8 +127,10 @@ export const checkAuthorYears = (blocks: Block[], ctx: ValidationContext): Issue
       : b.type === 'timeline' ? b.items.map(i => `${i.who} (${i.year})`) : blockTexts(b);
     for (const c of texts.flatMap(t => citationsIn(t))) {
       const exact = known.has(`${normAuthor(c.authors)}|${c.year}`);
-      // Kurzform ("Simons (1999)" für "Simons & Chabris (1999)") gilt, wenn Erstautor und Jahr passen.
-      if (!exact && !firstYears.has(`${c.first.toLowerCase()}|${c.year}`)) {
+      // Kurzform ("Simons (1999)" für "Simons & Chabris (1999)") gilt, wenn Erstautor und Jahr passen;
+      // ebenso "Rosenthal-Effekt (1968)" für "Rosenthal & Jacobson, 1968".
+      const firstName = c.first.split('-')[0].toLowerCase();
+      if (!exact && !firstYears.has(`${c.first.toLowerCase()}|${c.year}`) && !firstYears.has(`${firstName}|${c.year}`)) {
         issues.push({ rule: 'author_year', blockId: b.id, message: `„${c.authors} (${c.year})“ steht so in keiner Quelle.` });
       }
     }

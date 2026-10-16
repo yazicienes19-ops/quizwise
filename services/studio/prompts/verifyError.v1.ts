@@ -1,6 +1,6 @@
 /** Folienfehler am Seitenbild bestätigen (Schritt A3). Ein falscher Vorwurf ist schlimmer als ein verpasster Hinweis. */
 // v2 (16.10.2026): reine Tippfehler verwerfen.
-export const VERIFY_ERROR_PROMPT_VERSION = 'verify_error.v2';
+export const VERIFY_ERROR_PROMPT_VERSION = 'verify_error.v3';
 
 export const VERIFY_ERROR_PROMPT = `Eine erste Prüfung vermutet einen Fehler auf einer Vorlesungsfolie. Du prüfst das unabhängig
 am BILD der Folie (erstes Bild) und, falls beigelegt, am Bild der Folie davor (zweites Bild).
@@ -13,13 +13,13 @@ Typische Fehlmeldungen, die du verwerfen musst:
   scheinbar unpassender Wert.
 - Pfeile, Symbole oder Beschriftungen, die nur Gestaltung sind.
 - Ausgedachte Beispielwerte zur Illustration.
-- Reine Tippfehler oder Buchstabendreher („Treismen“, „Aufmerksmakeit“): kein inhaltlicher Fehler.
+- Reine Tippfehler oder Buchstabendreher in Wörtern oder Namen: kein inhaltlicher Fehler.
+- Text, der im Bild nicht zu sehen ist (verdeckt, ausgeblendet): nie ein Folienfehler.
 
 Antwort:
 - "confirmed": true nur bei eindeutigem Fehler.
 - "text": wenn bestätigt, EIN Satz für Studierende, was vermutlich versehentlich auf der Folie steht,
-  ohne Foliennummer (die setzt der Code davor), z. B. „Beim Handy-Beispiel steht vermutlich versehentlich
-  die Hypothese aus dem Beispiel zum Lernen mit Musik.“ Sonst leer.`;
+  ohne Foliennummer (die setzt der Code davor), z. B. „Unten steht vermutlich versehentlich die Frage aus dem vorherigen Beispiel.“ Sonst leer.`;
 
 export const verifyErrorSchema = {
   type: 'OBJECT',

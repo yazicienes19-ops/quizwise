@@ -1,5 +1,6 @@
 /** Folienfehler suchen (Schritt A2, über den Rohtext der Seiten). */
-export const SOURCE_ERRORS_PROMPT_VERSION = 'source_errors.v1';
+// v2: neutrales Beispiel (nicht aus den Testfolien), nur sichtbarer Text.
+export const SOURCE_ERRORS_PROMPT_VERSION = 'source_errors.v2';
 
 export const SOURCE_ERRORS_PROMPT = `Du prüfst Vorlesungsfolien auf offensichtliche Fehler der Folie selbst. Du bekommst den
 Rohtext der Seiten mit Seitennummer.
@@ -14,8 +15,7 @@ Nicht melden: Stil, Tippfehler und Buchstabendreher, Kürzel, unvollständige St
 an Theorien, Inhalte, die nur auf einer anderen Folie stehen.
 
 Je Fehler: "page" (Nummer aus der Marke [Seite p]) und "text": ein vollständiger Satz für Studierende,
-z. B. „Auf Folie 12 steht vermutlich versehentlich die Hypothese aus dem Beispiel zum Lernen mit Musik
-statt der Hypothese zum Handy-Beispiel.“ Leere Liste, wenn es keine gibt.`;
+z. B. „Auf Folie 12 steht vermutlich versehentlich die Hypothese aus einem anderen Beispiel statt der zum Folientitel passenden.“ Leere Liste, wenn es keine gibt.`;
 
 export const sourceErrorsSchema = {
   type: 'OBJECT',

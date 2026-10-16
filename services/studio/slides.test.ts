@@ -4,7 +4,8 @@ import { existsSync, readFileSync } from 'node:fs';
 import { join } from 'node:path';
 import type { Block, PipelineSource, Unit } from './types';
 import type { StudioLlm, StudioLlmRequest } from './llm';
-import { layoutPageText, type PositionedTextItem } from '../pdfPageService';
+import { hiddenItemFlags, layoutPageText, layoutPageTextWithHidden, visiblePart, HIDDEN_TEXT_MARK, type PositionedTextItem } from '../pdfPageService';
+import { filterHiddenText, scanSourceErrors } from './extract';
 import { extractUnits, verifySourceErrors } from './extract';
 import { checkNumbers, checkTables } from './validate';
 import { normalizeBlocks } from './blocks';
@@ -35,9 +36,70 @@ describe('Text nach Position', () => {
   });
 });
 
+describe('Verborgener Text (Pixeltest)', () => {
+  // Bild 100 x 40 (Maßstab 1): links ein "Wort" mit dunklen Pixeln, rechts eine weiße Fläche über Text.
+  const w = 100, h = 40;
+  const rgba = new Uint8ClampedArray(w * h * 4).fill(255);
+  for (let y = 10; y < 20; y++) for (let x = 10; x < 40; x += 3) { const i = (y * w + x) * 4; rgba[i] = rgba[i + 1] = rgba[i + 2] = 0; }
+  const items = [item('Hypothese:', 10, 10, 30, 10), item('Musik hören, erinnern weniger', 60, 10, 35, 10)];
+  it('verdeckter Text wird erkannt und getrennt markiert', () => {
+    const flags = hiddenItemFlags(items, rgba, w, h, 1);
+    expect(flags).toEqual([false, true]);
+    const text = layoutPageTextWithHidden(items, flags);
+    expect(text).toBe(`Hypothese:\n${HIDDEN_TEXT_MARK}\nMusik hören, erinnern weniger`);
+    expect(visiblePart(text)).toBe('Hypothese:');
+  });
+  it('die Suche nach Folienfehlern sieht verborgenen Text nie', async () => {
+    const prompts: string[] = [];
+    const pages = [`Hypothese:\n${HIDDEN_TEXT_MARK}\nMusik hören, erinnern weniger`];
+    await scanSourceErrors([{ docId: 'g', name: 'G', pageCount: 1, pages }], new Map([['g', new Set([1])]]), async req => { prompts.push(req.prompt); return { errors: [] }; }, null);
+    expect(prompts[0]).toContain('Hypothese:');
+    expect(prompts[0]).not.toContain('Musik');
+  });
+});
+
+describe('Verborgenen Text sichten', () => {
+  const page = `Beispiel 2: Handys\nHypothese:\n${HIDDEN_TEXT_MARK}\nDas Handy verschlechtert die Konzentration.\nMusik beim Lernen verschlechtert das Erinnern.\nEine Gruppe mit Handy, eine ohne.`;
+  const src = (renderPage?: (p: number) => Promise<string | null>): PipelineSource => ({ docId: 'g', name: 'G', pageCount: 1, pages: [page], ...(renderPage ? { renderPage } : {}) });
+  it('unpassende verborgene Zeilen werden entfernt, passende bleiben', async () => {
+    const reqs: StudioLlmRequest[] = [];
+    const llm: StudioLlm = async req => { reqs.push(req); return { reason: 'Zeile 2 gehört zum Musik-Beispiel', keep: ['1', '3'] }; };
+    const [out] = await filterHiddenText([src(async () => 'img')], new Map([['g', new Set([1])]]), llm, null);
+    expect(out.pages![0]).toBe(`Beispiel 2: Handys\nHypothese:\n${HIDDEN_TEXT_MARK}\nDas Handy verschlechtert die Konzentration.\nEine Gruppe mit Handy, eine ohne.`);
+    expect(reqs[0].images).toEqual(['img']);
+  });
+  it('ohne Bild oder bei Fehler bleibt nur der sichtbare Text', async () => {
+    const [noImg] = await filterHiddenText([src()], new Map([['g', new Set([1])]]), async () => ({ keep: ['1'] }), null);
+    expect(noImg.pages![0]).toBe('Beispiel 2: Handys\nHypothese:');
+    const [err] = await filterHiddenText([src(async () => 'img')], new Map([['g', new Set([1])]]), async () => { throw new Error('x'); }, null);
+    expect(err.pages![0]).toBe('Beispiel 2: Handys\nHypothese:');
+  });
+});
+
 // Echte Folie 26 (nur lokal, gitignored): Mit Handy = 90, Ohne Handy = 30, Falsifikation.
 const PDF = join(__dirname, '..', '..', 'benchmark', 'datasets', 'lernstudio', 'Allgemeine Psychologie 1 (gesamt).pdf');
 (existsSync(PDF) ? describe : describe.skip)('Folie 26 (echt, lokal)', () => {
+  it('Folie 24: die Musik-Hypothese steht nur verdeckt in der Datei', async () => {
+    const pdfjs = await import('pdfjs-dist/legacy/build/pdf.mjs');
+    const { createCanvas } = await import('@napi-rs/canvas');
+    const pdf = await pdfjs.getDocument({ data: new Uint8Array(readFileSync(PDF)) }).promise;
+    const page = await pdf.getPage(24);
+    const vp = page.getViewport({ scale: 1 });
+    const items = (await page.getTextContent()).items.filter(i => 'str' in i && i.str).map(i => {
+      const it = i as { str: string; transform: number[]; width: number; height: number };
+      const h = it.height || Math.abs(it.transform[3]) || 10;
+      return { str: it.str, x: it.transform[4], y: vp.height - it.transform[5] - h, w: it.width, h };
+    });
+    const scale = 1000 / vp.width;
+    const rvp = page.getViewport({ scale });
+    const canvas = createCanvas(Math.round(rvp.width), Math.round(rvp.height));
+    const ctx = canvas.getContext('2d');
+    await page.render({ canvasContext: ctx as never, viewport: rvp, canvas: canvas as never }).promise;
+    const text = layoutPageTextWithHidden(items, hiddenItemFlags(items, ctx.getImageData(0, 0, canvas.width, canvas.height).data as unknown as Uint8ClampedArray, canvas.width, canvas.height, scale));
+    expect(visiblePart(text)).toContain('Hypothese');
+    expect(visiblePart(text)).not.toContain('Musik');
+    expect(text.split(HIDDEN_TEXT_MARK)[1]).toContain('Musik');
+  });
   it('Text nach Position: 90 links (mit Handy), 30 rechts (ohne Handy)', async () => {
     const pdfjs = await import('pdfjs-dist/legacy/build/pdf.mjs');
     const pdf = await pdfjs.getDocument({ data: new Uint8Array(readFileSync(PDF)) }).promise;

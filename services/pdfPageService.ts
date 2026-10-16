@@ -241,24 +241,6 @@ export const renderPageToCanvas = async (
  * Rendert eine Seite als JPEG-Base64 (ohne data:-Präfix) — Fallback für
  * Scan-Seiten ohne Textebene: das Bild geht dann direkt an die Analyse.
  */
-/**
- * Seitenbild in fester Breite (Lernstudio: Extraktion und Prüfung von
- * Folienfehlern am Bild). Kleiner als renderPageToJpegBase64, damit 15 Seiten
- * in eine Anfrage passen.
- */
-export const renderPageJpegAtWidth = async (pdf: PdfHandle, pageNumber: number, width = 1000, quality = 0.7): Promise<string> => {
-  const page = await pdf.doc.getPage(pageNumber);
-  const base = page.getViewport({ scale: 1 });
-  const viewport = page.getViewport({ scale: width / base.width });
-  const canvas = document.createElement('canvas');
-  canvas.width = Math.round(viewport.width);
-  canvas.height = Math.round(viewport.height);
-  const ctx = canvas.getContext('2d');
-  if (!ctx) throw new Error('Canvas-Kontext nicht verfügbar.');
-  await page.render({ canvas, canvasContext: ctx, viewport }).promise;
-  return canvas.toDataURL('image/jpeg', quality).replace(/^data:image\/jpeg;base64,/, '');
-};
-
 export const renderPageToJpegBase64 = async (pdf: PdfHandle, pageNumber: number): Promise<string> => {
   const page = await pdf.doc.getPage(pageNumber);
   const viewport = page.getViewport({ scale: 1.5 });
@@ -282,6 +264,51 @@ const columnGap = (h: number) => Math.max(30, h * 2.5);
  * (linke Spalte, mit Handy); die Extraktion las die Werte dadurch vertauscht
  * (Abnahme Lernstudio, 16.10.2026).
  */
+/** Überschrift des Abschnitts mit verborgenem Text (layoutPageText); Prompts und Prüfungen erkennen ihn daran. */
+export const HIDDEN_TEXT_MARK = '[Verborgener Text, auf der Folie nicht sichtbar]';
+
+/** Anteil kontrastreicher Pixel, ab dem ein Textstück als sichtbar gilt (gemessen: verdeckt 0,000, sichtbar ab 0,19). */
+const MIN_INK = 0.02;
+
+/**
+ * Welche Textstücke sind auf dem gerenderten Bild nicht zu sehen? Je
+ * Rechteck der Anteil Pixel, die sich deutlich (Helligkeit > 60) vom Median
+ * abheben. Verdeckter oder weißer Text ergibt eine gleichmäßige Fläche.
+ * Beispiel (16.10.2026): auf einer Folie stand die Lösung unter einer weißen
+ * Fläche, die Textebene enthielt sie trotzdem. rgba: Pixel des Bilds in
+ * Breite width, scale: Bildbreite / Seitenbreite.
+ */
+export function hiddenItemFlags(items: PositionedTextItem[], rgba: Uint8ClampedArray, width: number, height: number, scale: number): boolean[] {
+  return items.map(it => {
+    if (!it.str.trim()) return false;
+    const x0 = Math.max(0, Math.floor(it.x * scale)), y0 = Math.max(0, Math.floor(it.y * scale));
+    const x1 = Math.min(width, Math.ceil((it.x + it.w) * scale)), y1 = Math.min(height, Math.ceil((it.y + it.h) * scale));
+    if (x1 <= x0 || y1 <= y0) return false;
+    const lum: number[] = [];
+    for (let y = y0; y < y1; y++) for (let x = x0; x < x1; x++) {
+      const i = (y * width + x) * 4;
+      lum.push(0.299 * rgba[i] + 0.587 * rgba[i + 1] + 0.114 * rgba[i + 2]);
+    }
+    const sorted = [...lum].sort((a, b) => a - b);
+    const med = sorted[Math.floor(sorted.length / 2)];
+    return lum.filter(v => Math.abs(v - med) > 60).length / lum.length < MIN_INK;
+  });
+}
+
+/**
+ * Wie layoutPageText, verborgener Text (hidden[i]) steht aber getrennt am Ende
+ * unter HIDDEN_TEXT_MARK: er zählt als Inhalt (oft die Lösungen der Vorlesung),
+ * ist aber nie ein Folienfehler und wird verworfen, wenn er nicht zur Folie passt.
+ */
+export function layoutPageTextWithHidden(items: PositionedTextItem[], hidden: boolean[]): string {
+  const visible = layoutPageText(items.filter((_, i) => !hidden[i]));
+  const covered = layoutPageText(items.filter((_, i) => hidden[i]));
+  return covered ? `${visible}\n${HIDDEN_TEXT_MARK}\n${covered}` : visible;
+}
+
+/** Sichtbarer Teil eines Seitentexts (ohne den Abschnitt mit verborgenem Text). */
+export const visiblePart = (pageText: string): string => pageText.split(`\n${HIDDEN_TEXT_MARK}\n`)[0];
+
 export function layoutPageText(items: PositionedTextItem[]): string {
   const withText = items.filter(it => it.str.trim());
   const sortedByY = [...withText].sort((a, b) => a.y - b.y);
@@ -308,5 +335,25 @@ export function layoutPageText(items: PositionedTextItem[]): string {
   }).filter(Boolean).join('\n');
 }
 
-export const getPageLayoutText = async (pdf: PdfHandle, pageNumber: number): Promise<string> =>
-  layoutPageText((await getPageTextItems(pdf, pageNumber)).items);
+/**
+ * Für das Lernstudio in einem Durchgang: Seitenbild (JPEG, feste Breite) und
+ * Text nach Position mit verborgenem Text getrennt (Pixeltest am Bild).
+ */
+export const renderStudioPage = async (pdf: PdfHandle, pageNumber: number, width = 1000, quality = 0.7): Promise<{ text: string; jpeg: string }> => {
+  const { items, width: pageWidth } = await getPageTextItems(pdf, pageNumber);
+  const page = await pdf.doc.getPage(pageNumber);
+  const scale = width / pageWidth;
+  const viewport = page.getViewport({ scale });
+  const canvas = document.createElement('canvas');
+  canvas.width = Math.round(viewport.width);
+  canvas.height = Math.round(viewport.height);
+  const ctx = canvas.getContext('2d', { willReadFrequently: true });
+  if (!ctx) throw new Error('Canvas-Kontext nicht verfügbar.');
+  await page.render({ canvas, canvasContext: ctx, viewport }).promise;
+  const rgba = ctx.getImageData(0, 0, canvas.width, canvas.height).data;
+  const hidden = hiddenItemFlags(items, rgba, canvas.width, canvas.height, scale);
+  return {
+    text: layoutPageTextWithHidden(items, hidden),
+    jpeg: canvas.toDataURL('image/jpeg', quality).replace(/^data:image\/jpeg;base64,/, ''),
+  };
+};

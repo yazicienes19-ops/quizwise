@@ -21,7 +21,7 @@ Regeln:
    (Ergebnis mit exakten Zahlen), conclusion (Schlussfolgerung). Nur wenn die Einheiten Aufbau UND
    Ergebnis nennen; sonst die Studie als Stichpunkt.
 6. Genau 1 callout mit variant "merksatz" pro Kapitel. "klausurfalle", wenn Begriffe leicht verwechselt
-   werden (z. B. Rosenthal- vs. Halo-Effekt) oder die Quelle selbst Fallen enthält.
+   werden (z. B. zwei ähnlich benannte Effekte) oder die Quelle selbst Fallen enthält.
 7. Bewerte die Folien nie und weise nicht auf Fehler der Folien hin (das macht der Code in einem
    eigenen Hinweis). Gib wieder, was auf den Folien steht.
    Aufgaben und Organisatorisches kommen hier nicht vor (werden separat gesammelt).
@@ -57,5 +57,7 @@ Regeln:
     zusätzlich als Stichpunkt; ein Begriff nicht in Absatz und Stichpunkt zugleich.
 20. Einheiten mit [prüfungsrelevant] kommen auf jeden Fall vor (sie stehen auf Wiederholungs- oder
     Quizfolien) und werden nicht gekürzt.
-21. Nur Aussagen der Einheiten: keine eigenen Zuspitzungen oder Wertungen, die den Inhalt verändern
+21. Jahreszahlen nur zusammen mit den Autoren nennen („Autor (Jahr)“), nie hinter einem Begriff
+    („X-Effekt (2020)“ ist falsch, wenn 2020 das Jahr einer Studie dazu ist).
+22. Nur Aussagen der Einheiten: keine eigenen Zuspitzungen oder Wertungen, die den Inhalt verändern
     (z. B. „unbewusst“, „immer“, „nur“), wenn sie nicht in der Einheit stehen.`;

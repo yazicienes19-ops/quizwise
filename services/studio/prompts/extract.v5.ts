@@ -4,7 +4,9 @@
 // Autor getrennt, schärfere Aufgaben-Definition, Folienfehler nie stillschweigend korrigieren.
 // v4 (16.10.2026): Seitenbilder dazu; Text nach Position (Spalten mit " | "). Auf einer Folie standen
 // Werte in zwei Spalten, die Textebene lieferte sie vertauscht; Diagramm-Folien hatten fast keinen Text.
-export const EXTRACT_PROMPT_VERSION = 'extract.v4';
+// v5 (16.10.2026): verborgener Text (auf der Folie nicht sichtbar) getrennt markiert: Inhalt, wenn er passt,
+// sonst verwerfen, nie ein Folienfehler; Lückentext-Folien als Übungsfrage.
+export const EXTRACT_PROMPT_VERSION = 'extract.v5';
 
 export const EXTRACT_PROMPT = `Du extrahierst Lernstoff aus einer Vorlesungsquelle. Du bekommst Seiten mit Seitennummer
 (Text und ggf. Bildbeschreibung). Gib pro Seite alle inhaltlichen Einheiten zurück.
@@ -13,10 +15,11 @@ Typen:
 - definition | concept | study | finding | example | list | comparison
 - task        Arbeitsauftrag an die Studierenden, den sie selbst erledigen sollen (Übung, Selbststudium,
               Recherche, Gruppenarbeit, Folie hochladen). KEINE Aufgabe: Anweisungen für eine Demo im
-              Hörsaal ("Zählen Sie, wie oft …" beim Video), die Beschreibung eines Experiments oder
+              Hörsaal, die sich auf ein gerade gezeigtes Video, Bild oder Experiment beziehen (zählen, beobachten,
+              achten auf …), die Beschreibung eines Experiments oder
               einer Versuchsaufgabe aus einer Studie (das ist study).
-- practice_question  Frage zum Selbsttest von einer Quiz- oder Wiederholungsfolie ("Was sind die Ziele
-              der Psychologie?", "Welcher Effekt trifft hier zu?"). Frage in "text", die Antwort in
+- practice_question  Frage zum Selbsttest von einer Quiz- oder Wiederholungsfolie ("Was versteht man
+              unter …?", "Welcher Begriff passt hier?"). Frage in "text", die Antwort in
               "answer", wenn sie auf der Folie steht. Nie als exam_info.
 - exam_info   Klausurformat, Bewertung, Learning Outcomes, Aufgabentypen der Prüfung
 - organizational (Termine, Räume, Vorstellungsrunde, Literaturlisten; wird später verworfen)
@@ -30,6 +33,16 @@ oder Schema zeigt (z. B. die Schritte eines Kreislaufs), welche Pfeile wohin zei
 " | " nebeneinanderliegende Spalten derselben Zeile (links nach rechts). Steht etwas nur im Bild
 (Diagramm, Schema, Beschriftung), extrahiere es trotzdem.
 
+Verborgener Text: Unter "[Verborgener Text, auf der Folie nicht sichtbar]" steht Text, der in der Datei
+steht, auf der Folie aber verdeckt ist (oft die Lösungen, die in der Vorlesung eingeblendet werden).
+- Passt er zum Thema der Folie (z. B. die Lösung zu leeren Feldern), ist er Inhalt wie jeder andere.
+- Passt er NICHT zur Folie (z. B. eine Hypothese zu einem anderen Beispiel), verwirf ihn ganz: keine
+  Einheit daraus und auch kein source_error. Studierende sehen ihn nicht.
+- Zu verborgenem Text gibt es nie ein source_error.
+- Lückentext: Hat die Folie sichtbar leere Felder (z. B. "Theorie:", "Hypothese:" ohne Inhalt) und füllt
+  der verborgene Text sie passend, lege zusätzlich eine practice_question an ("Ergänze … für …") mit dem
+  passenden verborgenen Text als "answer".
+
 Regeln:
 - Nur was auf der Seite steht. Nichts ergänzen, nichts aus Allgemeinwissen.
 - Folienfehler NIE stillschweigend korrigieren oder weglassen: den Inhalt so übernehmen, wie er dasteht,
@@ -38,14 +51,16 @@ Regeln:
 - Ausgedachte Werte (Szenarien, Rechenbeispiele, "angenommen …", Illustrationen einer Methode wie
   "M = 40 vs. M = 55" zur Erklärung einer Methode) sind type "example" mit "illustrative": true,
   nie finding und nie das Ergebnis einer Studie. finding nur für echte, berichtete Befunde.
+  Zeigen mehrere Folien zum selben Beispiel verschiedene angenommene Ergebnisse (eine Hypothese wird
+  bestätigt, eine andere Zahlenkombination falsifiziert sie), sind das Szenarien: illustrative.
 - Studien: authors, year (vier Ziffern als Text, z. B. "1999"), design, result, conclusion, soweit auf der
   Seite vorhanden. Nennt eine Einheit mehrere Studien, gehört in authors/year nur die Hauptstudie.
-- Ordnet die Folie verschiedenen Autoren je eine eigene Definition zu (z. B. "… (Myers, 2008)",
-  "… (Zimbardo, 1988)"), dann je Autor eine eigene definition mit authors und year. Nie verschmelzen.
+- Ordnet die Folie verschiedenen Autoren je eine eigene Definition zu (z. B. "… (Autor A, 2008)",
+  "… (Autor B, 1988)"), dann je Autor eine eigene definition mit authors und year. Nie verschmelzen.
 - Seiten ohne Inhalt (Titel, Literaturliste, leere Folie) liefern keine Einheiten.
 - Text knapp, aber vollständig; nie mitten im Satz abbrechen.
 - "page" ist immer die Nummer aus der Marke [Seite p] der Seite, von der die Einheit stammt.
-- "title": kurzes Stichwort (höchstens 8 Wörter), z. B. der Begriff oder "Simons & Chabris (1999)".`;
+- "title": kurzes Stichwort (höchstens 8 Wörter), z. B. der Begriff oder "Autor & Autor (1999)".`;
 
 const S = { type: 'STRING' } as const;
 

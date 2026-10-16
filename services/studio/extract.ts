@@ -1,10 +1,12 @@
 import type { PipelineSource, Unit, UnitType } from './types';
 import { UNIT_TYPES } from './types';
-import { EXTRACT_PROMPT, EXTRACT_PROMPT_VERSION, extractSchema } from './prompts/extract.v4';
+import { EXTRACT_PROMPT, EXTRACT_PROMPT_VERSION, extractSchema } from './prompts/extract.v5';
 import { SOURCE_ERRORS_PROMPT, SOURCE_ERRORS_PROMPT_VERSION, sourceErrorsSchema } from './prompts/sourceErrors.v1';
 import { VERIFY_ERROR_PROMPT, VERIFY_ERROR_PROMPT_VERSION, verifyErrorSchema } from './prompts/verifyError.v1';
 import { mapLimit, sha256, STUDIO_TEMPERATURE, type ExtractionCache, type StudioLlm } from './llm';
 import { parseYear } from './blocks';
+import { HIDDEN_TEXT_MARK, visiblePart } from '../pdfPageService';
+import { HIDDEN_FIT_PROMPT, HIDDEN_FIT_PROMPT_VERSION, hiddenFitSchema } from './prompts/hiddenFit.v1';
 
 /**
  * Schritt A: Einheiten je Quelle. Feste Fenster zu 15 Seiten; im Fenstertext
@@ -201,7 +203,8 @@ export const scanSourceErrors = async (
     if (!src.pages) continue;
     for (let from = 1; from <= src.pages.length; from += SCAN_PAGES) {
       const to = Math.min(src.pages.length, from + SCAN_PAGES - 1);
-      const text = windowText({ ...src, figures: [] }, from, to, wanted.get(src.docId));
+      // Nur Sichtbares: zu verborgenem Text gibt es nie einen Folienfehler-Hinweis.
+      const text = windowText({ ...src, figures: [], pages: src.pages.map(visiblePart) }, from, to, wanted.get(src.docId));
       if (text) jobs.push({ src, text, from, to });
     }
   }
@@ -245,7 +248,7 @@ export const verifySourceErrors = async (
     if (isCancelled?.()) return [];
     const src = sources.find(s => s.docId === c.sourceId);
     if (!src?.renderPage || !src.pages || c.page < 1) return [];
-    const pageText = src.pages[c.page - 1] ?? '';
+    const pageText = visiblePart(src.pages[c.page - 1] ?? '');
     const hash = await sha256(`${VERIFY_ERROR_PROMPT_VERSION}\n${c.page}\n${c.text}\n${pageText}`);
     const cached = cache ? await cache.get(hash).catch(() => null) : null;
     if (cached) return (cached as StoredUnit[]).map(u => ({ ...u, sourceId: c.sourceId }));
@@ -264,3 +267,48 @@ export const verifySourceErrors = async (
   });
   return results.flat();
 };
+
+/**
+ * Schritt A0: verborgenen Text sichten, bevor ein anderer Schritt ihn sieht.
+ * Passt eine verborgene Zeile nicht zur sichtbaren Folie (Abnahme 16.10.2026:
+ * die Hypothese eines anderen Beispiels lag verdeckt auf der Handy-Folie und
+ * landete als Lösung einer Übungsfrage), wird sie entfernt. Ohne Seitenbild
+ * oder bei Fehlern bleibt nur der sichtbare Text. Liefert die Quellen mit
+ * bereinigten Seiten.
+ */
+export const filterHiddenText = async (
+  sources: PipelineSource[],
+  wanted: Map<string, Set<number>>,
+  llm: StudioLlm,
+  cache: ExtractionCache | null,
+  isCancelled?: () => boolean,
+): Promise<PipelineSource[]> => Promise.all(sources.map(async src => {
+  if (!src.pages || !src.pages.some(p => p.includes(HIDDEN_TEXT_MARK))) return src;
+  const need = wanted.get(src.docId);
+  const pages = await mapLimit(src.pages, PARALLEL, async (text, i): Promise<string> => {
+    const [visible, hidden] = text.split(`\n${HIDDEN_TEXT_MARK}\n`);
+    if (hidden === undefined || (need && !need.has(i + 1)) || isCancelled?.()) return hidden === undefined ? text : visible;
+    const lines = hidden.split('\n').filter(l => l.trim());
+    const hash = await sha256(`${HIDDEN_FIT_PROMPT_VERSION}\n${text}`);
+    const cached = cache ? await cache.get(hash).catch(() => null) : null;
+    let keep: number[] | null = cached ? (cached as { keep: number[] }[])[0]?.keep ?? [] : null;
+    if (!keep) {
+      const image = src.renderPage ? await src.renderPage(i + 1).catch(() => null) : null;
+      if (!image) return visible;
+      try {
+        const raw = await llm({
+          step: 'verify', heavy: true, thinkingBudget: 512, temperature: STUDIO_TEMPERATURE.verify, maxOutputTokens: 2000,
+          prompt: `${HIDDEN_FIT_PROMPT}\n\nSICHTBARER TEXT:\n${visible}\n\nVERBORGENE ZEILEN:\n${lines.map((l, k) => `${k + 1}: ${l}`).join('\n')}`,
+          schema: hiddenFitSchema, images: [image],
+        }) as { keep?: unknown };
+        keep = (Array.isArray(raw?.keep) ? raw.keep : []).map(Number).filter(n => Number.isInteger(n) && n >= 1 && n <= lines.length);
+      } catch {
+        return visible;
+      }
+      if (cache) await cache.set(hash, src.docId, src.pageCount, [{ keep }]).catch(() => {});
+    }
+    const kept = lines.filter((_, k) => keep!.includes(k + 1));
+    return kept.length ? `${visible}\n${HIDDEN_TEXT_MARK}\n${kept.join('\n')}` : visible;
+  });
+  return { ...src, pages };
+}));
