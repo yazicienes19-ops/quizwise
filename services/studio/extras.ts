@@ -8,13 +8,22 @@ import type { Block, Cite, Unit } from './types';
 
 const cite = (u: Unit): Cite => ({ sourceId: u.sourceId, page: u.page });
 
-const firstSentence = (t: string, max = 160): string => {
+/** Abkürzungen mit Punkt, die kein Satzende sind ("z.B.", "d. h.", "et al."). */
+const ABBREV = /\b(?:z\.\s?B|d\.\s?h|u\.\s?a|u\.\s?U|v\.\s?a|o\.\s?Ä|bzw|vs|ca|ggf|evtl|inkl|bspw|sog|vgl|Nr|Abb|Kap|S|al|Dr|Prof)\.$/u;
+
+/**
+ * Erster vollständiger Satz, nie gekürzt (Phase 1.1: die alte Fassung schnitt
+ * bei 160 Zeichen ab und hängte einen Punkt an, das sah wie ein ganzer Satz aus).
+ */
+export const firstSentence = (t: string): string => {
   const s = t.replace(/\s+/g, ' ').trim();
-  const m = s.match(/^.+?[.!?](?=\s|$)/);
-  const first = m ? m[0] : s;
-  if (first.length <= max) return first;
-  // Am Wortende kürzen, ohne Auslassungspunkte mitten im Wort.
-  return first.slice(0, max).replace(/\s+\S*$/, '').replace(/[,;:]$/, '') + '.';
+  const re = /[.!?](?=\s|$)/g;
+  for (let m = re.exec(s); m; m = re.exec(s)) {
+    const head = s.slice(0, m.index + 1);
+    if (m[0] === '.' && ABBREV.test(head)) continue;
+    return head;
+  }
+  return s;
 };
 
 /** Datierte Studien/Theorien, je Autor und Jahr einmal, chronologisch. */

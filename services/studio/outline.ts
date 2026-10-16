@@ -1,6 +1,6 @@
 import type { Unit } from './types';
 import { OUTLINE_PROMPT, outlineSchema } from './prompts/outline.v1';
-import type { StudioLlm } from './llm';
+import { STUDIO_TEMPERATURE, type StudioLlm } from './llm';
 import { countWords } from './text';
 
 /**
@@ -99,7 +99,9 @@ export const buildOutline = async (
 ): Promise<Chapter[]> => {
   const content = units.filter(u => !SEPARATE_TYPES.has(u.type));
   if (!content.length) return [];
-  const raw = await llm({ step: 'outline', prompt: buildOutlinePrompt(content, sourceNames, focus), schema: outlineSchema, heavy: true, temperature: 0.2 });
+  const raw = await llm({ step: 'outline', prompt: buildOutlinePrompt(content, sourceNames, focus), schema: outlineSchema, heavy: true,
+    temperature: STUDIO_TEMPERATURE.outline, maxOutputTokens: 12_000,
+  });
   const chapters = completeOutline(parseOutline(raw, content), content);
   return assignBudgets(chapters, content, summaryCorridor(sourceWords).target);
 };

@@ -2,7 +2,7 @@ import { describe, it, expect } from 'vitest';
 import type { Unit, PipelineSource } from './types';
 import { findDuplicatePages, withoutDuplicates, jaccard } from './dedupe';
 import { parseOutline, completeOutline, assignBudgets, summaryCorridor } from './outline';
-import { normalizeBlocks } from './blocks';
+import { normalizeBlocks, parseYear, writerSchema } from './blocks';
 import { buildExtraBlocks, timelineItems } from './extras';
 import { extractionJobs, parseUnits, WINDOW_PAGES } from './extract';
 import { resultToMarkdown } from './toMarkdown';
@@ -68,22 +68,59 @@ describe('Gliederung', () => {
 describe('Blöcke normalisieren', () => {
   const byId = new Map([U('u1', 'a', 3), U('u2', 'a', 3), U('u3', 'b', 1)].map(u => [u.id, u]));
   it('Belege aus Einheiten-IDs, je Seite einmal, unbekannte fallen weg', () => {
-    const [b] = normalizeBlocks([{ type: 'paragraph', origin: 'quelle', units: ['u1', 'u2', 'u3', 'zz'], text: 'Text' }], byId, 'c1-');
+    const { blocks: [b] } = normalizeBlocks([{ type: 'paragraph', origin: 'quelle', paragraph: { text: 'Text', units: ['u1', 'u2', 'u3', 'zz'] } }], byId, 'c1-');
     expect(b.cites).toEqual([{ sourceId: 'a', page: 3 }, { sourceId: 'b', page: 1 }]);
+    expect(b.unitIds).toEqual(['u1', 'u2', 'u3']);
     expect(b.id).toBe('c1-1');
   });
-  it('Tabellen auffüllen, ungültige Blöcke verwerfen, Einordnung immer KI', () => {
-    const out = normalizeBlocks([
-      { type: 'table', origin: 'quelle', headers: ['Theorie', 'Ort'], rows: [{ cells: ['Filter'] }, { cells: [] }] },
-      { type: 'table', origin: 'quelle', headers: ['nur eine'], rows: [{ cells: ['x'] }] },
-      { type: 'paragraph', origin: 'quelle', text: '  ' },
-      { type: 'callout', origin: 'quelle', variant: 'einordnung', text: 'Eigene Sicht', units: ['u1'] },
-      { type: 'figure', origin: 'quelle', figureRef: 'A9', caption: 'gibt es nicht' },
-      { type: 'study', origin: 'quelle', authors: 'Simons & Levin', year: 1998, design: 'D', result: '7 von 15', conclusion: 'C', units: ['u1'] },
+  it('Tabellen auffüllen, ungültige Blöcke verwerfen (mit Grund), Einordnung immer KI', () => {
+    const { blocks: out, dropped } = normalizeBlocks([
+      { type: 'table', origin: 'quelle', table: { headers: ['Theorie', 'Ort'], rows: [{ cells: ['Filter'], units: ['u1'] }, { cells: [] }] } },
+      { type: 'table', origin: 'quelle', table: { headers: ['nur eine'], rows: [{ cells: ['x'] }] } },
+      { type: 'paragraph', origin: 'quelle', paragraph: { text: '  ' } },
+      { type: 'callout', origin: 'quelle', callout: { variant: 'einordnung', text: 'Eigene Sicht', units: ['u1'] } },
+      { type: 'figure', origin: 'quelle', figure: { figureRef: 'A9', caption: 'gibt es nicht' } },
+      { type: 'study', origin: 'quelle', study: { authors: 'Simons & Levin', year: '1998', design: 'D', result: '7 von 15', conclusion: 'C', units: ['u1'] } },
     ], byId, 'c1-');
     expect(out.map(b => b.type)).toEqual(['table', 'callout', 'study']);
     expect(out[0].type === 'table' && out[0].rows).toEqual([['Filter', '']]);
+    expect(out[0].type === 'table' && out[0].rowCites).toEqual([[{ sourceId: 'a', page: 3 }]]);
+    expect(out[0].cites).toEqual([{ sourceId: 'a', page: 3 }]);
     expect(out[1]).toMatchObject({ origin: 'ki', cites: [] });
+    expect(out[2]).toMatchObject({ year: 1998 });
+    expect(dropped.map(d => d.reason)).toEqual(['weniger als 2 Spalten', 'ohne Text', 'unbekannte Abbildung']);
+  });
+  it('Testlauf 16.10.: Merksatz als {variant, year} ohne Text und Ziffernschleife im Jahr', () => {
+    const { blocks, dropped } = normalizeBlocks([
+      { type: 'callout', origin: 'quelle', callout: { variant: 'merksatz' }, year: 2025 },
+      { type: 'study', origin: 'quelle', study: { authors: 'Moray', year: '1959591959', units: ['u1'] } },
+      { type: 'study', origin: 'quelle', study: { authors: 'Moray', year: 1959591959 } },
+      { type: 'callout', origin: 'quelle', variant: 'merksatz', text: 'altes flaches Format' },
+    ], byId, 'c1-');
+    expect(dropped).toEqual([
+      { type: 'callout:merksatz', reason: 'ohne Text' },
+      { type: 'callout', reason: 'Unterobjekt fehlt' },
+    ]);
+    // Studien bleiben, aber nie mit unmöglichem Jahr.
+    expect(blocks.map(b => (b.type === 'study' ? b.year : 'x'))).toEqual([undefined, undefined]);
+  });
+  it('Jahre nur mit vier Ziffern zwischen 1850 und 2100', () => {
+    expect([parseYear('1999'), parseYear(1959), parseYear('1849'), parseYear('2101'), parseYear('19595'), parseYear('ca. 1990'), parseYear('')])
+      .toEqual([1999, 1959, undefined, undefined, undefined, undefined, undefined]);
+  });
+  it('Texte über 1.500 Zeichen gelten als Schleife und fallen weg', () => {
+    const { blocks, dropped } = normalizeBlocks([{ type: 'paragraph', origin: 'quelle', paragraph: { text: 'Wort '.repeat(400) } }], byId, 'c1-');
+    expect(blocks).toEqual([]);
+    expect(dropped).toEqual([{ type: 'paragraph', reason: 'Text zu lang' }]);
+  });
+  it('Schema: je Typ ein Unterobjekt mit Pflichtfeldern und fester Reihenfolge, keine Zahlenfelder', () => {
+    const schema = writerSchema(['heading', 'callout', 'study']);
+    const item = (schema.properties.blocks as { items: unknown }).items as { properties: Record<string, { required: string[]; propertyOrdering: string[]; properties: Record<string, { type: string }> }>; propertyOrdering: string[] };
+    expect(item.propertyOrdering).toEqual(['type', 'origin', 'heading', 'callout', 'study']);
+    expect(item.properties.callout.required).toEqual(['variant', 'text', 'units']);
+    expect(item.properties.study.required).toEqual(expect.arrayContaining(['authors', 'design', 'result']));
+    expect(item.properties.study.propertyOrdering.slice(0, 2)).toEqual(['authors', 'year']);
+    expect(JSON.stringify(schema)).not.toMatch(/INTEGER|NUMBER/);
   });
 });
 

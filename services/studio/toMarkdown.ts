@@ -1,4 +1,6 @@
 import type { Block, Cite, LernstudioResult } from './types';
+import type { StudioSourceRef } from '../studioStore';
+import { partOf, slideIn } from './parts';
 
 /**
  * Blöcke → Markdown für Kopieren, Download, "Als Quelle hinzufügen" und die
@@ -10,17 +12,20 @@ const CALLOUT_LABEL: Record<string, string> = {
   merksatz: 'Merksatz', klausurfalle: 'Klausurfalle', hinweis: 'Hinweis', beispiel: 'Beispiel', einordnung: 'Einordnung (Erklärhilfe)',
 };
 
-export const citeTokens = (cites: Cite[], numberOf: (sourceId: string) => number | undefined): string =>
+export const citeTokens = (cites: Cite[], numberOf: (sourceId: string) => number | undefined, refs: StudioSourceRef[] = []): string =>
   cites.map(c => {
     const n = numberOf(c.sourceId);
     if (!n) return '';
+    // Zusammengefügte PDF: Vorlesung und Folie dazu, damit man die Stelle im einzelnen PDF findet.
+    const part = c.page ? partOf(refs.find(r => r.docId === c.sourceId)?.parts, c.page) : undefined;
+    if (part) return `[${n}, ${part.title}, Folie ${slideIn(part, c.page)} (gesamt S. ${c.page})]`;
     return c.page ? `[${n}:${c.page}]` : `[${n}]`;
   }).join('');
 
 const cell = (t: string) => t.replace(/\|/g, '\\|');
 
-export const blockToMarkdown = (b: Block, numberOf: (sourceId: string) => number | undefined): string => {
-  const c = (cites: Cite[]) => { const t = citeTokens(cites, numberOf); return t ? ` ${t}` : ''; };
+export const blockToMarkdown = (b: Block, numberOf: (sourceId: string) => number | undefined, refs: StudioSourceRef[] = []): string => {
+  const c = (cites: Cite[]) => { const t = citeTokens(cites, numberOf, refs); return t ? ` ${t}` : ''; };
   const ki = b.origin === 'ki' ? ' *(Erklärhilfe)*' : '';
   switch (b.type) {
     case 'heading': return `${'#'.repeat(b.level + 1)} ${b.text}`;
@@ -34,7 +39,7 @@ export const blockToMarkdown = (b: Block, numberOf: (sourceId: string) => number
     ].join('\n');
     case 'callout': return `> **${CALLOUT_LABEL[b.variant] ?? 'Hinweis'}:** ${b.text}${c(b.cites)}`;
     case 'study': return [
-      `**${b.authors} (${b.year})**${c(b.cites)}`,
+      `**${b.authors}${b.year ? ` (${b.year})` : ''}**${c(b.cites)}`,
       ...(b.design ? [`- Aufbau: ${b.design}`] : []),
       ...(b.result ? [`- Ergebnis: ${b.result}`] : []),
       ...(b.conclusion ? [`- Schluss: ${b.conclusion}`] : []),
@@ -45,8 +50,8 @@ export const blockToMarkdown = (b: Block, numberOf: (sourceId: string) => number
   }
 };
 
-export const resultToMarkdown = (r: LernstudioResult, numberOf: (sourceId: string) => number | undefined): string => {
-  const body = r.blocks.map(b => blockToMarkdown(b, numberOf)).join('\n\n');
+export const resultToMarkdown = (r: LernstudioResult, numberOf: (sourceId: string) => number | undefined, refs: StudioSourceRef[] = []): string => {
+  const body = r.blocks.map(b => blockToMarkdown(b, numberOf, refs)).join('\n\n');
   const warn = r.warnings.length ? `\n\n---\n**Hinweise zur Prüfung:**\n${r.warnings.map(w => `- ${w}`).join('\n')}` : '';
   return body + warn;
 };

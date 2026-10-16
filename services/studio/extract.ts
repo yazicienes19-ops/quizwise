@@ -1,7 +1,8 @@
 import type { PipelineSource, Unit, UnitType } from './types';
 import { UNIT_TYPES } from './types';
-import { EXTRACT_PROMPT, EXTRACT_PROMPT_VERSION, extractSchema } from './prompts/extract.v1';
-import { mapLimit, sha256, type ExtractionCache, type StudioLlm } from './llm';
+import { EXTRACT_PROMPT, EXTRACT_PROMPT_VERSION, extractSchema } from './prompts/extract.v2';
+import { mapLimit, sha256, STUDIO_TEMPERATURE, type ExtractionCache, type StudioLlm } from './llm';
+import { parseYear } from './blocks';
 
 /**
  * Schritt A: Einheiten je Quelle. Feste Fenster zu 15 Seiten; im Fenstertext
@@ -14,6 +15,8 @@ import { mapLimit, sha256, type ExtractionCache, type StudioLlm } from './llm';
 export const WINDOW_PAGES = 15;
 const PLAIN_CHUNK = 12_000;
 const PARALLEL = 4;
+/** Ein Fenster liefert im Test höchstens ~5.000 Tokens; mehr ist eine Schleife. */
+const EXTRACT_MAX_TOKENS = 10_000;
 
 /** Einheit, wie sie im Cache liegt (ohne Lauf-ID). */
 export type StoredUnit = Omit<Unit, 'id'>;
@@ -66,10 +69,10 @@ export const parseUnits = (raw: unknown, job: Job): StoredUnit[] => {
     if (job.pages) {
       if (!(page >= job.pages[0] && page <= job.pages[1])) continue;
     } else page = 0;
-    const year = Math.round(Number(u.year));
+    const year = parseYear(u.year);
     const study = type === 'study' || u.authors ? {
       ...(str(u.authors) ? { authors: str(u.authors, 200) } : {}),
-      ...(year >= 1800 && year <= 2100 ? { year } : {}),
+      ...(year ? { year } : {}),
       ...(str(u.design) ? { design: str(u.design) } : {}),
       ...(str(u.result) ? { result: str(u.result) } : {}),
       ...(str(u.conclusion) ? { conclusion: str(u.conclusion) } : {}),
@@ -106,7 +109,10 @@ export const extractUnits = async (
     if (cached) {
       units = (cached as StoredUnit[]).map(u => ({ ...u, sourceId: job.docId }));
     } else {
-      const raw = await llm({ step: 'extract', prompt: buildExtractPrompt(name, job.text), schema: extractSchema, heavy: false, temperature: 0.1 });
+      const raw = await llm({
+        step: 'extract', prompt: buildExtractPrompt(name, job.text), schema: extractSchema, heavy: false,
+        temperature: STUDIO_TEMPERATURE.extract, maxOutputTokens: EXTRACT_MAX_TOKENS,
+      });
       units = parseUnits(raw, job);
       if (cache) await cache.set(hash, job.docId, job.pageCount, units).catch(() => {});
     }

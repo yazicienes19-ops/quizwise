@@ -2,7 +2,7 @@ import React, { useEffect, useMemo, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
 import {
   BookText, ListChecks, HelpCircle, BookA, History, Layers, NotebookPen, Copy, Download, Trash2,
-  RefreshCw, FilePlus2, Check, X, FileText, Loader2, BookmarkPlus, ChevronDown,
+  RefreshCw, FilePlus2, Check, X, FileText, Loader2, BookmarkPlus, ChevronDown, AlertTriangle,
 } from 'lucide-react';
 import type { Collection, ProcessedDocument } from '../types';
 import { useModalA11y } from '../hooks/useModalA11y';
@@ -43,6 +43,8 @@ import { PipelineCancelled } from '../services/studio/pipeline';
 import { studioIdempotencyKey } from '../services/studio/idempotency';
 import { findStudioItemByKey } from '../services/studioStore';
 import { createRunGuard } from '../services/studio/runGuard';
+import { isIncompleteResult } from '../services/studio/incomplete';
+import { groupByPart, partOf, slideIn } from '../services/studio/parts';
 
 interface Props {
   collection: Collection;
@@ -393,23 +395,30 @@ export const SubjectStudio: React.FC<Props> = ({ collection, documents, userId, 
 
   // ── Fußnoten ──
   const renderCitation = (sources: StudioSourceRef[]) => (refs: CitationRef[], key: string) => (
-    <span key={key} className="inline-flex gap-0.5 align-super">
-      {groupRefs(refs).map(({ n, pages }) => {
+    <span key={key} className="inline-flex flex-wrap gap-0.5 align-super">
+      {groupRefs(refs).flatMap(({ n, pages }) => {
         const source = sources.find(s => s.n === n);
-        if (!source) return null;
-        const label = pages.length ? `${n} · ${t('stu.pagesShort', { pages: pages.join(', ') })}` : String(n);
-        return (
-          <button
-            key={n}
-            type="button"
-            onClick={() => setActiveCitation({ pages, source })}
-            title={source.name}
-            className="px-1.5 rounded-md text-[11px] font-semibold leading-[1.6] transition-colors hover:opacity-80 whitespace-nowrap"
-            style={{ background: 'var(--primary-soft)', color: 'var(--primary-ink)' }}
-          >
-            {label}
-          </button>
-        );
+        if (!source) return [];
+        // Zusammengefügte PDF: je Vorlesung ein Chip mit Folie, im Tooltip auch die Gesamtseite.
+        const groups = source.parts?.length && pages.length ? groupByPart(source.parts, pages) : [{ part: undefined, pages }];
+        return groups.map(({ part, pages: pg }, gi) => {
+          const label = part
+            ? `${n} · ${t('stu2.slideChip', { part: part.title, slides: pg.map(p => slideIn(part, p)).join(', ') })}`
+            : pg.length ? `${n} · ${t('stu.pagesShort', { pages: pg.join(', ') })}` : String(n);
+          const title = part ? pg.map(p => t('stu2.slide', { part: part.title, slide: slideIn(part, p), page: p })).join('; ') : source.name;
+          return (
+            <button
+              key={`${n}-${gi}`}
+              type="button"
+              onClick={() => setActiveCitation({ pages: pg, source })}
+              title={title}
+              className="px-1.5 rounded-md text-[11px] font-semibold leading-[1.6] transition-colors hover:opacity-80 whitespace-nowrap"
+              style={{ background: 'var(--primary-soft)', color: 'var(--primary-ink)' }}
+            >
+              {label}
+            </button>
+          );
+        });
       })}
     </span>
   );
@@ -609,6 +618,11 @@ export const SubjectStudio: React.FC<Props> = ({ collection, documents, userId, 
                 <span className="block text-[11.5px]" style={{ color: 'var(--text-secondary)' }}>
                   {formatLabel(item.kind)} · {formatDate(item.createdAt, { day: '2-digit', month: 'short', hour: '2-digit', minute: '2-digit' })}
                 </span>
+                {item.formatVersion === 2 && isIncompleteResult(item.content) && (
+                  <span className="mt-1 inline-flex items-center gap-1 text-[11px] font-semibold" style={{ color: '#ea580c' }}>
+                    <AlertTriangle className="w-3 h-3" strokeWidth={2.5} /> {t('stu2.incomplete')}
+                  </span>
+                )}
               </span>
             </button>
           );
@@ -836,6 +850,15 @@ export const SubjectStudio: React.FC<Props> = ({ collection, documents, userId, 
           <button onClick={() => remove(openItem)} className={btn} style={{ ...ghost, color: '#e11d48' }} aria-label={t('lib.delete')}><Trash2 className="w-3.5 h-3.5" strokeWidth={2.5} /></button>
         </div>
       </div>
+      {openItem.formatVersion === 2 && isIncompleteResult(openItem.content) && (
+        <div className="rounded-xl px-4 py-3 flex flex-wrap items-center gap-3" style={{ border: '1px solid #ea580c', background: 'color-mix(in srgb, #ea580c 8%, transparent)' }}>
+          <AlertTriangle className="w-4 h-4 shrink-0" style={{ color: '#ea580c' }} strokeWidth={2.25} />
+          <p className="text-[13px] flex-1 min-w-[180px]" style={{ color: 'var(--text-main)' }}>{t('stu2.incompleteBanner')}</p>
+          <button onClick={() => { setFormat(openItem.kind as StudioFormat); setFocus(openItem.focus ?? ''); generate(openItem.kind as StudioFormat, openItem.focus ?? ''); }} className={btn} style={primary}>
+            <RefreshCw className="w-3.5 h-3.5" strokeWidth={2.5} /> {t('stu.regenerate')}
+          </button>
+        </div>
+      )}
       {openItem.formatVersion === 2 && openItem.content ? (
         <StudioBlocks result={openItem.content} sources={openItem.sources} renderCite={renderCitation(openItem.sources)} />
       ) : openItem.kind === 'guide' ? guideBody(openItem) : (
@@ -918,11 +941,13 @@ export const SubjectStudio: React.FC<Props> = ({ collection, documents, userId, 
                 <FileText className="w-4 h-4 shrink-0" style={{ color: 'var(--primary-ink)' }} strokeWidth={2} />
                 <p className="text-[13px] flex-1 min-w-[160px] break-words" style={{ color: 'var(--text-main)' }}>
                   <span className="font-semibold">{activeCitation.source.name}</span>
+                  {(() => { const part = activeCitation.pages.length ? partOf(activeCitation.source.parts, activeCitation.pages[0]) : undefined; return part ? <span> · {part.title}</span> : null; })()}
                 </p>
                 {activeCitation.pages.length
-                  ? activeCitation.pages.slice(0, 8).map(p => (
-                      <button key={p} onClick={() => openCitation(p)} className={btn} style={primary}>{t('hl.page', { n: p })}</button>
-                    ))
+                  ? activeCitation.pages.slice(0, 8).map(p => {
+                      const part = partOf(activeCitation.source.parts, p);
+                      return <button key={p} onClick={() => openCitation(p)} className={btn} style={primary}>{part ? t('stu2.slideBtn', { slide: slideIn(part, p), page: p }) : t('hl.page', { n: p })}</button>;
+                    })
                   : <button onClick={() => openCitation()} className={btn} style={primary}>{t('stu.openSource')}</button>}
                 <button onClick={() => setActiveCitation(null)} className="p-2" style={{ color: 'var(--text-secondary)' }} aria-label={t('common.close')}><X className="w-4 h-4" /></button>
               </>

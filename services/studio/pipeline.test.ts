@@ -65,9 +65,9 @@ const makeLlm = (opts: Opts = {}) => {
     const bad = opts.badFirstWrite && (!repair || opts.stayBad);
     return {
       blocks: [
-        { type: 'heading', origin: 'quelle', level: 3, text: 'Abschnitt' },
-        { type: 'bullets', origin: 'quelle', items: ids.map(id => ({ text: bad ? `Befund mit 50 % [1, S. 3] zu ${id}` : `Befund zu ${id}`, units: [id] })) },
-        { type: 'callout', origin: 'quelle', variant: 'merksatz', text: 'Merk dir das.', units: ids.slice(0, 1) },
+        { type: 'heading', origin: 'quelle', heading: { text: 'Abschnitt' } },
+        { type: 'bullets', origin: 'quelle', bullets: { items: ids.map(id => ({ text: bad ? `Befund mit 50 % [1, S. 3] zu ${id}` : `Befund zu ${id}`, units: [id] })) } },
+        { type: 'callout', origin: 'quelle', callout: { variant: 'merksatz', text: 'Merk dir das.', units: ids.slice(0, 1) } },
       ],
     };
   };

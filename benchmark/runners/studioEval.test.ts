@@ -8,7 +8,7 @@
 // Ergebnis: benchmark/results/lernstudio/<Zeit>.json und .md
 // Optional: STUDIO_EVAL_WRITER=gemini-4-argon (Schreibmodell), STUDIO_EVAL_FOCUS="…"
 import { describe, it, expect } from 'vitest';
-import { existsSync, mkdirSync, readdirSync, readFileSync, writeFileSync } from 'node:fs';
+import { appendFileSync, existsSync, mkdirSync, readdirSync, readFileSync, writeFileSync } from 'node:fs';
 import { join } from 'node:path';
 import '../env.ts';
 import { GoogleGenAI } from '@google/genai';
@@ -16,8 +16,11 @@ import { runSummaryPipeline } from '../../services/studio/pipeline';
 import { findDuplicatePages } from '../../services/studio/dedupe';
 import { resultToMarkdown } from '../../services/studio/toMarkdown';
 import { blockTexts, INLINE_CITE_RE, looksTruncated } from '../../services/studio/text';
-import type { Block, Cite, PipelineSource } from '../../services/studio/types';
-import type { StudioLlm } from '../../services/studio/llm';
+import { checkEmptyHeadings } from '../../services/studio/validate';
+import { partsFromOutline } from '../../services/pdfOutlineService';
+import type { Block, Cite, PipelineSource, SourcePart } from '../../services/studio/types';
+import { guardedLlm, type LlmEvent, type StudioLlm, type StudioTransport } from '../../services/studio/llm';
+import { createRequire } from 'node:module';
 
 const run = process.env.STUDIO_EVAL === '1' ? describe : describe.skip;
 const DIR = join(__dirname, '..', 'datasets', 'lernstudio');
@@ -39,7 +42,7 @@ interface Expectations {
   hints?: string[];
 }
 
-const pdfPages = async (file: string): Promise<string[]> => {
+const pdfPages = async (file: string): Promise<{ pages: string[]; parts: SourcePart[] | null }> => {
   const pdfjs = await import('pdfjs-dist/legacy/build/pdf.mjs');
   const pdf = await pdfjs.getDocument({ data: new Uint8Array(readFileSync(file)) }).promise;
   const pages: string[] = [];
@@ -47,36 +50,88 @@ const pdfPages = async (file: string): Promise<string[]> => {
     const content = await (await pdf.getPage(n)).getTextContent();
     pages.push(content.items.map(i => ('str' in i ? i.str : '')).join(' ').replace(/\s+/g, ' ').trim());
   }
-  return pages;
+  // Zusammengefügte PDF: Vorlesungen aus der Gliederung, wie in der App (getMergedPdfParts).
+  const outline = (await pdf.getOutline().catch(() => null)) ?? [];
+  const entries = await Promise.all(outline.map(async node => {
+    let page: number | null = null;
+    try {
+      const dest = typeof node.dest === 'string' ? await pdf.getDestination(node.dest) : node.dest;
+      if (Array.isArray(dest) && dest[0]) page = (await pdf.getPageIndex(dest[0])) + 1;
+    } catch { /* ohne Seite */ }
+    return { title: node.title?.trim() ?? '', page, hasChildren: !!node.items?.length };
+  }));
+  return { pages, parts: partsFromOutline(entries, pdf.numPages) };
 };
 
 const MODEL_LITE = 'gemini-3.5-flash-lite';
 const MODEL_HEAVY = 'gemini-3.8-flash';
 
-const makeLlm = (usage: { calls: number; inTok: number; outTok: number; byStep: Record<string, number> }): StudioLlm => {
+// Preise wie das Backend (backend/src/config/geminiModels.js), damit die Kosten je Lauf vergleichbar sind.
+const { costOfUsage } = createRequire(import.meta.url)('../../backend/src/config/geminiModels.js') as {
+  costOfUsage: (model: string, usage: unknown) => number;
+};
+
+/** "default" = Standardtemperatur des Modells (Google rät bei Gemini 3.x dazu), sonst die der Pipeline. */
+const TEMP_DEFAULT = process.env.STUDIO_EVAL_TEMP === 'default';
+
+interface Usage { calls: number; usd: number; estimated: number; byStep: Record<string, number>; events: LlmEvent[] }
+
+/**
+ * Wie in der App: gestreamt, mit Kostenbremse (guardedLlm bricht bei
+ * Schleifen ab und versucht es direkt neu). Abgebrochene Antworten liefern
+ * keine Token-Zählung; ihre Kosten werden aus der Textlänge geschätzt.
+ */
+const makeLlm = (usage: Usage, rawDir?: string): StudioLlm => {
   const ai = new GoogleGenAI({ apiKey: process.env.GEMINI_API_KEY! });
-  return async req => {
+  let n = 0;
+  // Rohantworten je Aufruf (Fehlersuche: was das Modell lieferte, bevor der Code filtert).
+  const dump = (step: string, prompt: string, text: string, finish?: string) => {
+    if (!rawDir) return;
+    mkdirSync(rawDir, { recursive: true });
+    writeFileSync(join(rawDir, `${String(++n).padStart(3, '0')}-${step}.json`), JSON.stringify({ finish, prompt, text }, null, 1));
+  };
+  const transport: StudioTransport = async (req, onText, signal) => {
     const model = req.step === 'write' && process.env.STUDIO_EVAL_WRITER ? process.env.STUDIO_EVAL_WRITER : req.heavy ? MODEL_HEAVY : MODEL_LITE;
+    const limit = model.includes('argon') ? 32768 : 16384;
     const config: Record<string, unknown> = {
-      temperature: req.temperature ?? 0.2, maxOutputTokens: 16384,
-      responseMimeType: 'application/json', responseSchema: req.schema,
+      maxOutputTokens: Math.min(limit, req.maxOutputTokens ?? limit),
+      responseMimeType: 'application/json', responseSchema: req.schema, abortSignal: signal,
     };
+    if (!TEMP_DEFAULT && req.temperature !== undefined) config.temperature = req.temperature;
     // Wie das Backend: Lite lehnt thinkingBudget 0 ab.
     if (!(model === MODEL_LITE && (req.thinkingBudget ?? 0) === 0)) config.thinkingConfig = { thinkingBudget: req.thinkingBudget ?? 0 };
     for (let attempt = 0; ; attempt++) {
+      let text = '';
+      let finish: string | undefined;
+      let meta: unknown;
       try {
-        const res = await ai.models.generateContent({ model, contents: [{ role: 'user', parts: [{ text: req.prompt }] }], config: config as never });
+        const stream = await ai.models.generateContentStream({ model, contents: [{ role: 'user', parts: [{ text: req.prompt }] }], config: config as never });
+        for await (const chunk of stream) {
+          if (chunk.usageMetadata) meta = chunk.usageMetadata;
+          if (chunk.candidates?.[0]?.finishReason) finish = chunk.candidates[0].finishReason;
+          text += chunk.text ?? '';
+          onText(text);
+          if (signal.aborted) break;
+        }
+        if (signal.aborted) throw new DOMException('aborted', 'AbortError');
+        return { text, finish };
+      } catch (e) {
+        if (!signal.aborted && attempt < 2 && /429|RESOURCE_EXHAUSTED|UNAVAILABLE|overloaded|50\d/i.test(String(e))) {
+          await new Promise(r => setTimeout(r, 4000 * (attempt + 1)));
+          continue;
+        }
+        throw e;
+      } finally {
         usage.calls += 1;
         usage.byStep[req.step] = (usage.byStep[req.step] ?? 0) + 1;
-        usage.inTok += res.usageMetadata?.promptTokenCount ?? 0;
-        usage.outTok += (res.usageMetadata?.candidatesTokenCount ?? 0) + (res.usageMetadata?.thoughtsTokenCount ?? 0);
-        return JSON.parse(res.text ?? '{}');
-      } catch (e) {
-        if (attempt >= 2 || !/429|RESOURCE_EXHAUSTED|UNAVAILABLE|overloaded|50\d/i.test(String(e))) throw e;
-        await new Promise(r => setTimeout(r, 4000 * (attempt + 1)));
+        const full = meta && finish ? meta : { promptTokenCount: Math.round(req.prompt.length / 4), candidatesTokenCount: Math.round(text.length / 3.5) };
+        if (!(meta && finish)) usage.estimated += 1;
+        usage.usd += costOfUsage(model, full);
+        dump(req.step, req.prompt, text, finish ?? (signal.aborted ? 'ABORTED' : undefined));
       }
     }
   };
+  return guardedLlm(transport, { onEvent: e => { usage.events.push(e); process.stdout.write(`\n  ! ${e.step} ${e.kind}: ${e.detail}\n`); } });
 };
 
 const fileCache = () => {
@@ -95,21 +150,22 @@ run('Lernstudio-Eval (live)', () => {
     expect(files.length, `Keine PDFs in ${DIR}`).toBeGreaterThan(0);
     const sources: PipelineSource[] = [];
     for (const f of files) {
-      const pages = await pdfPages(join(DIR, f));
-      sources.push({ docId: f, name: f.replace(/\.pdf$/i, ''), pages, pageCount: pages.length });
+      const { pages, parts } = await pdfPages(join(DIR, f));
+      sources.push({ docId: f, name: f.replace(/\.pdf$/i, ''), pages, pageCount: pages.length, ...(parts ? { parts } : {}) });
     }
     const exp: Expectations = existsSync(join(DIR, 'expectations.json')) ? JSON.parse(readFileSync(join(DIR, 'expectations.json'), 'utf8')) : {};
 
-    const usage = { calls: 0, inTok: 0, outTok: 0, byStep: {} as Record<string, number> };
+    const usage: Usage = { calls: 0, usd: 0, estimated: 0, byStep: {}, events: [] };
     const started = Date.now();
+    const stamp = new Date().toISOString().replace(/[:.]/g, '-');
     const r = await runSummaryPipeline({
-      sources, llm: makeLlm(usage), cache: fileCache(), focus: process.env.STUDIO_EVAL_FOCUS,
+      sources, llm: makeLlm(usage, join(OUT, `${stamp}-raw`)), cache: fileCache(), focus: process.env.STUDIO_EVAL_FOCUS,
+      argon: !!process.env.STUDIO_EVAL_WRITER,
       onProgress: p => process.stdout.write(`\r${p.step} ${p.done}/${p.total}      `),
     });
     const seconds = Math.round((Date.now() - started) / 1000);
 
     mkdirSync(OUT, { recursive: true });
-    const stamp = new Date().toISOString().replace(/[:.]/g, '-');
     const numberOf = (id: string) => sources.findIndex(s => s.docId === id) + 1 || undefined;
     writeFileSync(join(OUT, `${stamp}.json`), JSON.stringify(r, null, 2));
     writeFileSync(join(OUT, `${stamp}.md`), `${sources.map((s, i) => `[${i + 1}] ${s.name}`).join('\n')}\n\n${resultToMarkdown(r, numberOf)}`);
@@ -149,17 +205,34 @@ run('Lernstudio-Eval (live)', () => {
     check('Keine abgeschnittenen Texte', !texts.some(looksTruncated));
     check('Keine „[1, S. x]“ im Text', !texts.some(t => INLINE_CITE_RE.test(t)));
 
-    const costUsd = usage.inTok / 1e6 * 0.75 + usage.outTok / 1e6 * 3.75;
+    const diag = r.diagnostics ?? [];
+    const loops = usage.events.filter(e => e.kind === 'loop').length;
+    check('Keine Schleife', loops === 0, `${loops} abgebrochen`);
+    check('Kein leeres oder unvollständiges Kapitel', !(r.incompleteChapters?.length), (r.incompleteChapters ?? []).join(', '));
+    check('Keine leere Überschrift', checkEmptyHeadings(r.blocks).length === 0);
+    const writer = process.env.STUDIO_EVAL_WRITER ?? MODEL_HEAVY;
     const summary = [
       '',
-      `Quellen: ${sources.length}, Aufrufe: ${usage.calls} (${Object.entries(usage.byStep).map(([k, v]) => `${k} ${v}`).join(', ')}), ${seconds} s`,
-      `Tokens: ${usage.inTok} ein / ${usage.outTok} aus, grob ${costUsd.toFixed(3)} $ (zum 3.8-Flash-Preis gerechnet, Lite ist billiger)`,
+      `Schreibmodell: ${writer}, Temperatur: ${TEMP_DEFAULT ? 'Standard des Modells' : 'Pipeline (0,1 bis 0,3)'}`,
+      `Quellen: ${sources.length}${sources.some(s => s.parts) ? ` (Vorlesungen: ${sources.flatMap(s => s.parts ?? []).map(p => p.title).join(', ')})` : ''}, Aufrufe: ${usage.calls} (${Object.entries(usage.byStep).map(([k, v]) => `${k} ${v}`).join(', ')}), ${seconds} s`,
+      `Kosten: ${usage.usd.toFixed(3)} $${usage.estimated ? ` (${usage.estimated} abgebrochene Aufrufe geschätzt)` : ''}`,
+      `Abbrüche: ${usage.events.length ? usage.events.map(e => `${e.step} ${e.kind} (${e.detail})`).join('; ') : 'keine'}`,
+      `Kapitel (Einheiten → Blöcke, verworfen, Versuche, Abdeckung):`,
+      ...diag.map(d => `  ${d.title}: ${d.units} → ${d.blocks}, verworfen ${d.dropped.length}${d.dropped.length ? ` [${d.dropped.map(x => `${x.type}: ${x.reason}`).join('; ')}]` : ''}, ${d.attempts} Versuch(e)${d.split ? ', abschnittsweise' : ''}${d.aborts.length ? `, Abbrüche: ${d.aborts.join('; ')}` : ''}, ${Math.round(d.coverage * 100)} %`),
+      `Länge: ${r.stats.outputWords} / ${r.stats.sourceWords} Wörter`,
       `Warnungen: ${r.warnings.length}${r.warnings.length ? `\n  - ${r.warnings.join('\n  - ')}` : ''}`,
-      `Ausgelassen: ${r.omittedSources.map(o => `${o.sourceId} (${o.reason})`).join('; ') || 'keine'}`,
+      `Ausgelassen: ${r.omittedSources.map(o => `${o.part?.title ?? o.sourceId} (${o.reason})`).join('; ') || 'keine'}`,
       ...report.map(([n, ok, d]) => `${ok ? '✓' : '✗'} ${n}${d ? `  ${d}` : ''}`),
       `Ergebnis: ${join(OUT, `${stamp}.md`)}`,
     ].join('\n');
     console.log(summary);
+    // Eine Zeile je Lauf für den Vergleich über mehrere Läufe (Abnahme: 3 je Modell).
+    appendFileSync(join(OUT, 'runs.jsonl'), `${JSON.stringify({
+      stamp, writer, temperature: TEMP_DEFAULT ? 'default' : 'pipeline', usd: Math.round(usage.usd * 1000) / 1000, seconds,
+      chapters: diag.length, dropped: diag.reduce((a, d) => a + d.dropped.length, 0), loops, aborts: usage.events.length,
+      split: diag.filter(d => d.split).length, incomplete: r.incompleteChapters ?? [], emptyHeadings: checkEmptyHeadings(r.blocks).length,
+      words: r.stats.outputWords, warnings: r.warnings.length, failed: report.filter(([, ok]) => !ok).map(([n]) => n),
+    })}\n`);
     writeFileSync(join(OUT, `${stamp}.report.txt`), summary);
   }, 30 * 60_000);
 });

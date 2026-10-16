@@ -1,6 +1,6 @@
 import type { Block, Cite, Issue, Unit } from './types';
 import { CHECKER_PROMPT, checkerSchema } from './prompts/checker.v1';
-import type { StudioLlm } from './llm';
+import { STUDIO_TEMPERATURE, type StudioLlm } from './llm';
 import { blockTexts } from './text';
 
 /** Schritt D2: Prüfdurchlauf durch das Modell (Belege, Zahlen, Chronologie, KI-Fakten). */
@@ -58,7 +58,9 @@ export const checkWithModel = async (chapters: Block[][], units: Unit[], llm: St
   }
   if (current.length) packs.push(current);
   const results = await Promise.all(packs.map(async blocks => {
-    const raw = await llm({ step: 'check', prompt: buildCheckPrompt(blocks, units), schema: checkerSchema, heavy: true, thinkingBudget: 1024, temperature: 0 });
+    const raw = await llm({ step: 'check', prompt: buildCheckPrompt(blocks, units), schema: checkerSchema, heavy: true, thinkingBudget: 1024,
+      temperature: STUDIO_TEMPERATURE.check, maxOutputTokens: 8000,
+    });
     return parseCheckIssues(raw, new Set(blocks.map(b => b.id)));
   }));
   return results.flat();

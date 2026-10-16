@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { selectModel, wantsArgon, isTransient, MAX_TOTAL_STORAGE_BYTES, outputTokenLimit } from '../routes/gemini.js';
+import { selectModel, wantsArgon, isTransient, MAX_TOTAL_STORAGE_BYTES, outputTokenLimit, capOutputTokens } from '../routes/gemini.js';
 
 describe('selectModel (Plan-basierte Modellwahl)', () => {
   it('free-Nutzer bekommen immer das Basis-Modell', () => {
@@ -63,6 +63,20 @@ describe('outputTokenLimit', () => {
   });
   it('Klausur-Aufrufe bekommen 32k Tokens', () => {
     expect(outputTokenLimit(true)).toBe(32768);
+  });
+});
+
+describe('capOutputTokens (Client-Wunsch, nur senken)', () => {
+  it('ein kleinerer Wunsch gilt', () => {
+    expect(capOutputTokens(16384, 3000)).toBe(3000);
+  });
+  it('ein größerer Wunsch wird auf das Limit gekappt', () => {
+    expect(capOutputTokens(16384, 100000)).toBe(16384);
+  });
+  it('ohne, ungültig oder winzig bleibt das Limit', () => {
+    expect(capOutputTokens(16384, undefined)).toBe(16384);
+    expect(capOutputTokens(16384, 'viel')).toBe(16384);
+    expect(capOutputTokens(16384, 10)).toBe(16384);
   });
 });
 

@@ -427,3 +427,38 @@ export async function getPdfChaptersOrWhole(pdf: PdfHandle, concurrency = 10): P
   if (!text) return [];
   return [{ index: 0, title: 'Gesamtes Dokument', content: text, charCount: text.length }];
 }
+
+export interface MergedPart { title: string; from: number; to: number }
+
+/**
+ * Vorlesungen einer zusammengefügten PDF ("Zusammenfügen" in der Bibliothek,
+ * services/documentMerge.ts): flache Gliederung, je Vorlesung ein Eintrag ohne
+ * Unterpunkte, der erste auf Seite 1, aufsteigend. Andere Gliederungen
+ * (Lehrbücher mit Unterkapiteln, Foliennummern) liefern null.
+ */
+export function partsFromOutline(
+  entries: { title: string; page: number | null; hasChildren: boolean }[],
+  numPages: number,
+): MergedPart[] | null {
+  if (entries.length < 2 || numPages < 2) return null;
+  if (entries.some(e => e.hasChildren || e.page === null || !e.title || PLACEHOLDER_OUTLINE_TITLE.test(e.title))) return null;
+  const pages = entries.map(e => e.page as number);
+  if (pages[0] !== 1 || pages.some((p, i) => i > 0 && p <= pages[i - 1]) || pages[pages.length - 1] > numPages) return null;
+  return entries.map((e, i) => ({ title: e.title, from: pages[i], to: i < entries.length - 1 ? pages[i + 1] - 1 : numPages }));
+}
+
+export async function getMergedPdfParts(pdf: PdfHandle): Promise<MergedPart[] | null> {
+  let outline: OutlineNode[] | null;
+  try {
+    outline = await pdf.doc.getOutline();
+  } catch {
+    return null;
+  }
+  if (!outline || outline.length < 2) return null;
+  const entries = await Promise.all(outline.map(async node => ({
+    title: node.title?.trim() ?? '',
+    page: await resolveOutlineDestPage(pdf, node.dest),
+    hasChildren: !!node.items?.length,
+  })));
+  return partsFromOutline(entries, pdf.numPages);
+}

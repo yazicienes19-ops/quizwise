@@ -1,6 +1,6 @@
 import { supabase } from './supabaseClient';
 import type { StudioFormat } from './subjectStudio';
-import type { LernstudioResult } from './studio/types';
+import type { LernstudioResult, SourcePart } from './studio/types';
 
 /**
  * Gespeicherte Lernstudio-Ergebnisse und Notizen je Fach
@@ -11,7 +11,8 @@ import type { LernstudioResult } from './studio/types';
 
 export type StudioKind = StudioFormat | 'note';
 
-export interface StudioSourceRef { n: number; docId: string; name: string }
+/** parts: Vorlesungen einer zusammengefügten PDF (Fußnote mit Folie innerhalb der Vorlesung). */
+export interface StudioSourceRef { n: number; docId: string; name: string; parts?: SourcePart[] }
 
 export interface StudioItem {
   id: string;

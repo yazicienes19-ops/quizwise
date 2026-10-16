@@ -1,14 +1,15 @@
 import type { ProcessedDocument } from '../../types';
 import { documentDisplayName } from '../libraryService';
 import { canReadFullText, readPdfPages } from '../pdfFullText';
-import { callStudioStep } from '../geminiService';
-import { ensureFigureIndex, ensureFigureImage, buildFigureCatalog, type DocFigure } from '../studioFigures';
+import { streamStudioStep } from '../geminiService';
+import { ensureFigureIndex, ensureFigureImage, buildFigureCatalog, openPdf, type DocFigure } from '../studioFigures';
+import { getMergedPdfParts } from '../pdfOutlineService';
 import type { StudioSourceRef } from '../studioStore';
 import { runSummaryPipeline } from './pipeline';
 import { extractionCache } from './cache';
 import { resultToMarkdown } from './toMarkdown';
-import type { LernstudioResult, PipelineProgress, PipelineSource } from './types';
-import type { StudioLlm } from './llm';
+import type { LernstudioResult, PipelineProgress, PipelineSource, SourcePart } from './types';
+import { guardedLlm, type LlmEvent, type StudioLlm } from './llm';
 
 /**
  * Verbindung der Pipeline mit der App: PDFs seitenweise lesen, Abbildungen
@@ -28,7 +29,9 @@ const plainText = (d: ProcessedDocument): string | undefined => {
   return undefined;
 };
 
-export const appStudioLlm: StudioLlm = req => callStudioStep(req);
+/** Modell über das Backend, gestreamt und mit Kostenbremse gegen Schleifen. */
+export const makeAppStudioLlm = (onEvent?: (e: LlmEvent) => void): StudioLlm =>
+  guardedLlm((req, onText, signal) => streamStudioStep(req, onText, signal), { onEvent });
 
 export const runSummaryForDocs = async (opts: {
   chosen: ProcessedDocument[];
@@ -47,10 +50,13 @@ export const runSummaryForDocs = async (opts: {
   // Seiten lesen (vollständig; die Kapitelwahl wendet die Pipeline an).
   const pdfs = chosen.filter(canReadFullText);
   const pagesById = new Map<string, string[] | null>();
+  const partsById = new Map<string, SourcePart[]>();
   for (const [i, d] of pdfs.entries()) {
     if (isCancelled()) return null;
     onProgress({ step: 'pdf', done: i, total: pdfs.length });
     try { pagesById.set(d.id, await readPdfPages(d, isCancelled)); } catch { pagesById.set(d.id, null); }
+    // Zusammengefügte PDF: Vorlesungen aus der Gliederung (Abdeckung je Vorlesung, Fußnote mit Folie).
+    try { const parts = await getMergedPdfParts(await openPdf(d)); if (parts) partsById.set(d.id, parts); } catch { /* ohne */ }
   }
 
   // Abbildungsverzeichnis (nur auf Wunsch und mit Login).
@@ -77,6 +83,7 @@ export const runSummaryForDocs = async (opts: {
       pages,
       ...(pages ? {} : { plain: plainText(d) }),
       pageCount: pages?.length ?? 0,
+      ...(partsById.has(d.id) ? { parts: partsById.get(d.id) } : {}),
       figures: catalog.entries.filter(e => e.docId === d.id)
         .map(e => ({ ref: e.ref, page: e.figure.page, title: e.figure.title, description: e.figure.description })),
     };
@@ -86,7 +93,7 @@ export const runSummaryForDocs = async (opts: {
 
   const result = await runSummaryPipeline({
     sources, ranges, focus: opts.focus, argon: opts.argon,
-    llm: opts.llm ?? appStudioLlm, cache: extractionCache(userId),
+    llm: opts.llm ?? makeAppStudioLlm(), cache: extractionCache(userId),
     onProgress, isCancelled,
   });
 
@@ -108,7 +115,7 @@ export const runSummaryForDocs = async (opts: {
     result.blocks = result.blocks.filter(b => b.type !== 'figure' || keep.has(b.id));
   }
 
-  const refs: StudioSourceRef[] = sources.map((s, i) => ({ n: i + 1, docId: s.docId, name: s.name }));
+  const refs: StudioSourceRef[] = sources.map((s, i) => ({ n: i + 1, docId: s.docId, name: s.name, ...(s.parts ? { parts: s.parts } : {}) }));
   const numberOf = (id: string) => refs.find(r => r.docId === id)?.n;
-  return { result, markdown: resultToMarkdown(result, numberOf), sources: refs };
+  return { result, markdown: resultToMarkdown(result, numberOf, refs), sources: refs };
 };

@@ -1,6 +1,6 @@
 import { supabase } from '../supabaseClient';
 import type { ExtractionCache } from './llm';
-import { EXTRACT_PROMPT_VERSION } from './prompts/extract.v1';
+import { EXTRACT_PROMPT_VERSION } from './prompts/extract.v2';
 
 /**
  * Extraktions-Cache je Konto: im Speicher für die Sitzung, dauerhaft in

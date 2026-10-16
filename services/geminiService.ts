@@ -116,12 +116,14 @@ const callBackend = async (payload: {
 const callBackendStream = async (
   payload: Parameters<typeof callBackend>[0],
   onText: (fullSoFar: string) => void,
+  opts: { signal?: AbortSignal; onFinish?: (reason: string) => void } = {},
 ): Promise<string> => {
   const authHeader = await getAuthHeader();
   const res = await fetch(`${BACKEND_URL}/api/gemini/stream`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json', ...authHeader },
     body: JSON.stringify(payload),
+    signal: opts.signal,
   });
 
   if (res.status === 404 || (res.ok && !res.body)) return callBackend(payload);
@@ -138,10 +140,11 @@ const callBackendStream = async (
   let full = '';
   const handleLine = (line: string) => {
     if (!line.trim()) return;
-    let msg: { t?: unknown; error?: unknown; budget?: unknown };
+    let msg: { t?: unknown; error?: unknown; budget?: unknown; finish?: unknown };
     try { msg = JSON.parse(line); } catch { return; }
     if (typeof msg.error === 'string') throw new Error(msg.error);
     if (msg.budget === 'soft') notifyBudgetSoft();
+    if (typeof msg.finish === 'string') opts.onFinish?.(msg.finish);
     if (typeof msg.t === 'string' && msg.t) {
       full += msg.t;
       onText(full);
@@ -2784,21 +2787,34 @@ Die Ziel-Tab-Werte (QUIZ, CARDS, RECALL, EXAM, EXPLAINER), die priority-Werte (h
  * heavy=false → Flash-Lite (Extraktion), heavy=true → 3.8 Flash; argon nur beim
  * Schreiben und nur für Admins (der Server prüft selbst).
  */
-export const callStudioStep = async (req: {
-  prompt: string; schema: unknown; heavy: boolean; argon?: boolean; thinkingBudget?: number; temperature?: number;
-}): Promise<unknown> => {
-  const text = await callBackend({
+/**
+ * Ein Lernstudio-Schritt als Stream (services/studio/llm.ts guardedLlm prüft
+ * die Zwischenstände auf Schleifen und bricht über signal ab; das Backend
+ * beendet dann auch die Anfrage bei Gemini). maxOutputTokens kann das
+ * Server-Limit nur senken.
+ */
+export const streamStudioStep = async (
+  req: {
+    prompt: string; schema: unknown; heavy: boolean; argon?: boolean;
+    thinkingBudget?: number; temperature?: number; maxOutputTokens?: number;
+  },
+  onText: (fullSoFar: string) => void,
+  signal: AbortSignal,
+): Promise<{ text: string; finish?: string }> => {
+  let finish: string | undefined;
+  const text = await callBackendStream({
     complexity: req.heavy ? 'heavy' : 'light',
     ...(req.argon ? { argon: true } : {}),
     parts: [{ text: req.prompt }],
     config: {
       responseMimeType: 'application/json',
       responseSchema: req.schema,
-      temperature: req.temperature ?? 0.2,
+      ...(req.temperature !== undefined ? { temperature: req.temperature } : {}),
+      ...(req.maxOutputTokens ? { maxOutputTokens: req.maxOutputTokens } : {}),
       thinkingConfig: { thinkingBudget: req.thinkingBudget ?? 0 },
     },
-  });
-  return parseAiJson<unknown>(text || '{}');
+  }, onText, { signal, onFinish: r => { finish = r; } });
+  return { text, finish };
 };
 
 export const generateStudioOutput = async (

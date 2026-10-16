@@ -11,13 +11,14 @@ export type Origin = 'quelle' | 'ki';
 
 export type CalloutVariant = 'merksatz' | 'klausurfalle' | 'hinweis' | 'beispiel' | 'einordnung';
 
-export type Block = { id: string; origin: Origin; cites: Cite[] } & (
+/** unitIds: Einheiten, aus denen der Block stammt (für die Abdeckung je Abschnitt; nicht angezeigt). */
+export type Block = { id: string; origin: Origin; cites: Cite[]; unitIds?: string[] } & (
   | { type: 'heading'; level: 1 | 2 | 3; text: string }
   | { type: 'paragraph'; text: string }
   | { type: 'bullets'; items: { text: string; cites: Cite[] }[] }
-  | { type: 'table'; caption?: string; headers: string[]; rows: string[][] }
+  | { type: 'table'; caption?: string; headers: string[]; rows: string[][]; rowCites?: Cite[][] }
   | { type: 'callout'; variant: CalloutVariant; text: string }
-  | { type: 'study'; authors: string; year: number; design: string; result: string; conclusion: string }
+  | { type: 'study'; authors: string; year?: number; design: string; result: string; conclusion: string }
   | { type: 'figure'; sourceId: string; page: number; imageRef: string; caption: string; title?: string }
   | { type: 'timeline'; items: { year: number; who: string; what: string; cites: Cite[] }[] }
   | { type: 'tasks'; items: { text: string; cites: Cite[] }[] }
@@ -30,10 +31,32 @@ export interface LernstudioResult {
   formatVersion: 2;
   format: 'zusammenfassung' | 'skript' | string;
   blocks: Block[];
-  omittedSources: { sourceId: string; reason: string }[];
+  /** part: ausgelassene Vorlesung innerhalb einer zusammengefügten PDF. */
+  omittedSources: { sourceId: string; reason: string; part?: SourcePart }[];
   warnings: string[];
   stats: { sourceWords: number; outputWords: number };
+  /** Kapitel, die trotz neuer Versuche unvollständig blieben (Titel). Fehlt bei Ergebnissen vor Phase 1.1. */
+  incompleteChapters?: string[];
+  /** Protokoll je Kapitel: Einheiten → Blöcke → verworfen → Versuche (Fehlersuche, Eval). */
+  diagnostics?: ChapterDiagnostic[];
 }
+
+export interface ChapterDiagnostic {
+  title: string;
+  units: number;
+  blocks: number;
+  dropped: { type: string; reason: string }[];
+  attempts: number;
+  /** Abgebrochene Antworten (Schleife erkannt, ungültiges JSON, Token-Limit). */
+  aborts: string[];
+  /** Neu geschrieben, Abschnitt für Abschnitt. */
+  split: boolean;
+  /** Abdeckung der inhaltlichen Einheiten (0 bis 1). */
+  coverage: number;
+}
+
+/** Vorlesung in einer zusammengefügten PDF (Gliederungseintrag), Seiten 1-basiert. */
+export interface SourcePart { title: string; from: number; to: number }
 
 export type UnitType =
   | 'definition' | 'concept' | 'study' | 'finding' | 'example' | 'list' | 'comparison'
@@ -68,13 +91,18 @@ export interface PipelineSource {
   pageCount: number;
   /** Bildbeschreibungen aus dem Abbildungsverzeichnis, je Seite. */
   figures?: { ref: string; page: number; title: string; description: string }[];
+  /** Zusammengefügte PDF: die einzelnen Vorlesungen (Abdeckung je Vorlesung, Fußnote mit Folie). */
+  parts?: SourcePart[];
 }
 
 export interface Issue {
   rule: 'cites' | 'coverage' | 'length' | 'numbers' | 'author_year' | 'truncated' | 'cite_density' | 'ki_facts'
+    | 'empty_heading' | 'section_coverage' | 'study_incomplete'
     | 'nicht_belegt' | 'falsch' | 'chronologie' | 'zitat_falsch' | 'ki_fakt';
   blockId?: string;
   sourceId?: string;
+  /** Abdeckung einer Vorlesung in einer zusammengefügten PDF: ihr Seitenbereich. */
+  part?: SourcePart;
   message: string;
   fix?: string;
 }

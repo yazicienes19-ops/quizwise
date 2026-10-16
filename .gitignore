@@ -46,3 +46,6 @@ backups/
 benchmark/datasets/
 benchmark/results/
 benchmark/human/
+
+# Lernstudio-Aufträge und Testläufe mit echten Vorlesungsinhalten (Repo ist öffentlich)
+docs/lernstudio/

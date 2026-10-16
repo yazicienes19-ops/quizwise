@@ -1,71 +1,71 @@
 import type { Block, CalloutVariant, Cite, Origin, Unit } from './types';
 
 /**
- * Was das Modell beim Schreiben liefert: flache Blöcke (Gemini kennt keine
- * echten Unions), Belege als Einheiten-IDs statt Seitenzahlen. So kann eine
- * Fußnote nur auf eine Seite zeigen, aus der wirklich eine Einheit stammt
- * (Problem 3 der Ist-Analyse: alle Fußnoten auf Quelle 1).
+ * Was das Modell beim Schreiben liefert und wie der Code es prüft.
+ *
+ * Schema (Phase 1.1): je Blocktyp ein eigenes Unterobjekt mit festen
+ * Pflichtfeldern und fester Reihenfolge (Text zuerst). Das alte flache Schema
+ * mit allen Feldern für alle Typen und einem Zahlenfeld "year" ließ Argon und
+ * 3.8 Flash im Live-Test (16.10.2026) Merksätze als {variant, year} ohne Text
+ * und Studien ohne Aufbau/Ergebnis liefern; im Zahlenfeld liefen sie in
+ * Ziffernschleifen (bis 32.000 Ziffern), danach fehlte der Rest des Kapitels.
+ * Deshalb gibt es im Schema keine Zahlenfelder mehr: Jahre sind Text und der
+ * Code akzeptiert nur 1850 bis 2100.
+ *
+ * Belege kommen als Einheiten-IDs statt Seitenzahlen. So kann eine Fußnote
+ * nur auf eine Seite zeigen, aus der wirklich eine Einheit stammt.
  */
-export interface RawBlock {
-  type?: string;
-  origin?: string;
-  units?: string[];
-  level?: number;
-  text?: string;
-  items?: { text?: string; units?: string[] }[];
-  caption?: string;
-  headers?: string[];
-  rows?: { cells?: string[] }[];
-  variant?: string;
-  authors?: string;
-  year?: number;
-  design?: string;
-  result?: string;
-  conclusion?: string;
-  figureRef?: string;
-  question?: string;
-  answer?: string;
-}
 
 const S = { type: 'STRING' } as const;
 const STRS = { type: 'ARRAY', items: S } as const;
+const UNITS = { type: 'ARRAY', items: S, description: 'IDs der Einheiten, aus denen der Inhalt stammt (höchstens 3)' } as const;
 
-/** responseSchema für einen Schreib-Aufruf (Typen als Strings, wie @google/genai Type). */
-export const writerSchema = (blockTypes: string[]) => ({
-  type: 'OBJECT',
-  properties: {
-    blocks: {
-      type: 'ARRAY',
-      items: {
-        type: 'OBJECT',
-        properties: {
-          type: { type: 'STRING', enum: blockTypes },
-          origin: { type: 'STRING', enum: ['quelle', 'ki'] },
-          units: STRS,
-          level: { type: 'INTEGER' },
-          text: S,
-          items: { type: 'ARRAY', items: { type: 'OBJECT', properties: { text: S, units: STRS }, required: ['text'] } },
-          caption: S,
-          headers: STRS,
-          rows: { type: 'ARRAY', items: { type: 'OBJECT', properties: { cells: STRS }, required: ['cells'] } },
-          variant: { type: 'STRING', enum: ['merksatz', 'klausurfalle', 'hinweis', 'beispiel', 'einordnung'] },
-          authors: S,
-          year: { type: 'INTEGER' },
-          design: S,
-          result: S,
-          conclusion: S,
-          figureRef: S,
-          question: S,
-          answer: S,
-        },
-        required: ['type', 'origin'],
-      },
-    },
-  },
-  required: ['blocks'],
+const obj = (properties: Record<string, unknown>, required: string[]) => ({
+  type: 'OBJECT', properties, required, propertyOrdering: Object.keys(properties),
 });
 
-const VARIANTS: CalloutVariant[] = ['merksatz', 'klausurfalle', 'hinweis', 'beispiel', 'einordnung'];
+export const CALLOUT_VARIANTS: CalloutVariant[] = ['merksatz', 'klausurfalle', 'hinweis', 'beispiel', 'einordnung'];
+
+const BLOCK_SCHEMAS: Record<string, unknown> = {
+  heading: obj({ text: S }, ['text']),
+  paragraph: obj({ text: S, units: UNITS }, ['text', 'units']),
+  bullets: obj({ items: { type: 'ARRAY', items: obj({ text: S, units: UNITS }, ['text', 'units']) } }, ['items']),
+  table: obj({
+    caption: S,
+    headers: STRS,
+    rows: { type: 'ARRAY', items: obj({ cells: STRS, units: UNITS }, ['cells', 'units']) },
+  }, ['headers', 'rows']),
+  callout: obj({ variant: { type: 'STRING', enum: CALLOUT_VARIANTS }, text: S, units: UNITS }, ['variant', 'text', 'units']),
+  study: obj({
+    authors: S,
+    year: { type: 'STRING', description: 'Jahr mit vier Ziffern, z. B. "1999"; leer lassen, wenn die Einheit keins nennt' },
+    design: S, result: S, conclusion: S, units: UNITS,
+  }, ['authors', 'design', 'result', 'units']),
+  figure: obj({ figureRef: S, caption: S }, ['figureRef', 'caption']),
+  check: obj({ question: S, answer: S }, ['question', 'answer']),
+};
+
+/** responseSchema für einen Schreib-Aufruf (Typen als Strings, wie @google/genai Type). */
+export const writerSchema = (blockTypes: string[]) => {
+  const sub = Object.fromEntries(blockTypes.filter(t => BLOCK_SCHEMAS[t]).map(t => [t, BLOCK_SCHEMAS[t]]));
+  return obj({
+    blocks: {
+      type: 'ARRAY',
+      items: obj({ type: { type: 'STRING', enum: blockTypes }, origin: { type: 'STRING', enum: ['quelle', 'ki'] }, ...sub }, ['type', 'origin']),
+    },
+  }, ['blocks']);
+};
+
+/** Längster erlaubter Text eines Feldes; alles darüber gilt als Schleife (wie der Stream-Wächter). */
+export const MAX_FIELD_CHARS = 1500;
+
+/** Jahr aus Text oder Zahl: genau vier Ziffern, 1850 bis 2100, sonst undefined. */
+export const parseYear = (v: unknown): number | undefined => {
+  const s = typeof v === 'number' ? String(v) : typeof v === 'string' ? v.trim() : '';
+  if (!/^\d{4}$/.test(s)) return undefined;
+  const y = Number(s);
+  return y >= 1850 && y <= 2100 ? y : undefined;
+};
 
 const clean = (v: unknown): string => (typeof v === 'string' ? v.replace(/\s+/g, ' ').trim() : '');
 
@@ -84,91 +84,129 @@ export const citesFromUnits = (ids: unknown, byId: Map<string, Unit>): Cite[] =>
   return out;
 };
 
+const knownIds = (ids: unknown, byId: Map<string, Unit>): string[] =>
+  (Array.isArray(ids) ? ids : []).filter((id): id is string => typeof id === 'string' && byId.has(id.trim())).map(id => id.trim());
+
 export interface FigureRef { ref: string; sourceId: string; page: number; title: string }
 
+/** Verworfener Rohblock mit Grund (Protokoll je Kapitel). */
+export interface DroppedBlock { type: string; reason: string }
+
+type Raw = Record<string, unknown>;
+const sub = (r: Raw, key: string): Raw => (r[key] && typeof r[key] === 'object' ? r[key] as Raw : {});
+const arr = (v: unknown): Raw[] => (Array.isArray(v) ? v.filter((x): x is Raw => !!x && typeof x === 'object') : []);
+
 /**
- * Rohblöcke prüfen und in Block-Typen überführen. Ungültige Blöcke fallen weg
- * (leerer Text, Tabelle ohne Zeilen, unbekannte Abbildung). IDs vergibt der Code.
+ * Rohblöcke prüfen und in Block-Typen überführen. Was nicht passt, fällt weg,
+ * aber nie still: jeder verworfene Block steht mit Grund in `dropped`.
+ * IDs vergibt der Code.
  */
 export const normalizeBlocks = (
   raw: unknown,
   byId: Map<string, Unit>,
   idPrefix: string,
   figures: FigureRef[] = [],
-): Block[] => {
-  const list = Array.isArray(raw) ? raw as RawBlock[] : [];
+): { blocks: Block[]; dropped: DroppedBlock[] } => {
+  const list = arr(raw);
   const out: Block[] = [];
+  const dropped: DroppedBlock[] = [];
   const usedFigures = new Set<string>();
-  list.forEach(r => {
-    if (!r || typeof r !== 'object') return;
+  const drop = (type: string, reason: string) => { dropped.push({ type, reason }); };
+  const tooLong = (...texts: string[]) => texts.some(t => t.length > MAX_FIELD_CHARS);
+
+  for (const r of list) {
+    const type = typeof r.type === 'string' ? r.type : '?';
+    const d = sub(r, type);
     const origin: Origin = r.origin === 'ki' ? 'ki' : 'quelle';
-    const base = { id: `${idPrefix}${out.length + 1}`, origin, cites: origin === 'ki' ? [] : citesFromUnits(r.units, byId) };
-    const text = clean(r.text);
-    switch (r.type) {
-      case 'heading': {
-        if (!text) return;
-        const level = r.level === 1 || r.level === 2 ? r.level : 3;
-        out.push({ ...base, cites: [], type: 'heading', level, text });
-        return;
-      }
+    const ids = knownIds(d.units, byId);
+    const base = { id: `${idPrefix}${out.length + 1}`, origin, cites: origin === 'ki' ? [] : citesFromUnits(ids, byId), ...(ids.length ? { unitIds: ids } : {}) };
+    const text = clean(d.text);
+    if (!Object.keys(d).length) { drop(type, 'Unterobjekt fehlt'); continue; }
+    switch (type) {
+      case 'heading':
+        if (!text) { drop(type, 'ohne Text'); break; }
+        out.push({ ...base, cites: [], type: 'heading', level: 3, text });
+        break;
       case 'paragraph':
-        if (text) out.push({ ...base, type: 'paragraph', text });
-        return;
-      case 'bullets': case 'tasks': {
-        const items = (r.items ?? [])
-          .map(i => ({ text: clean(i?.text), cites: origin === 'ki' ? [] : citesFromUnits(i?.units, byId) }))
-          .filter(i => i.text);
-        if (items.length) out.push({ ...base, type: r.type, items });
-        return;
+        if (!text) { drop(type, 'ohne Text'); break; }
+        if (tooLong(text)) { drop(type, 'Text zu lang'); break; }
+        out.push({ ...base, type: 'paragraph', text });
+        break;
+      case 'bullets': {
+        const rawItems = arr(d.items);
+        const items = rawItems
+          .map(i => ({ text: clean(i.text), ids: knownIds(i.units, byId) }))
+          .filter(i => i.text && !tooLong(i.text));
+        if (!items.length) { drop(type, rawItems.length ? 'Stichpunkte ohne Text' : 'ohne Stichpunkte'); break; }
+        const all = [...new Set(items.flatMap(i => i.ids))];
+        out.push({
+          ...base, ...(all.length ? { unitIds: all } : {}), type: 'bullets',
+          items: items.map(i => ({ text: i.text, cites: origin === 'ki' ? [] : citesFromUnits(i.ids, byId) })),
+        });
+        break;
       }
       case 'table': {
-        const headers = (r.headers ?? []).map(clean);
-        const rows = (r.rows ?? []).map(row => (row?.cells ?? []).map(clean)).filter(row => row.some(Boolean));
-        if (headers.length < 2 || !rows.length) return;
+        const headers = (Array.isArray(d.headers) ? d.headers : []).map(clean);
+        const rawRows = arr(d.rows).map(row => ({ cells: (Array.isArray(row.cells) ? row.cells : []).map(clean), ids: knownIds(row.units, byId) }))
+          .filter(row => row.cells.some(Boolean));
+        if (headers.length < 2) { drop(type, 'weniger als 2 Spalten'); break; }
+        if (!rawRows.length) { drop(type, 'ohne Zeilen'); break; }
+        if (tooLong(...rawRows.flatMap(row => row.cells))) { drop(type, 'Zelle zu lang'); break; }
         const width = headers.length;
+        const rowCites = rawRows.map(row => (origin === 'ki' ? [] : citesFromUnits(row.ids, byId)));
+        const all = [...new Set([...ids, ...rawRows.flatMap(row => row.ids)])];
+        const caption = clean(d.caption);
         out.push({
-          ...base, type: 'table', headers,
-          rows: rows.map(row => Array.from({ length: width }, (_, i) => row[i] ?? '')),
-          ...(clean(r.caption) ? { caption: clean(r.caption) } : {}),
+          ...base, ...(all.length ? { unitIds: all } : {}),
+          // Ohne eigene Belege der Tabelle: alle Zeilenbelege (die Tabelle hat dann trotzdem eine Fußnote).
+          cites: base.cites.length || origin === 'ki' ? base.cites : citesFromUnits(all, byId),
+          type: 'table', headers,
+          rows: rawRows.map(row => Array.from({ length: width }, (_, i) => row.cells[i] ?? '')),
+          ...(rowCites.some(c => c.length) ? { rowCites } : {}),
+          ...(caption ? { caption } : {}),
         });
-        return;
+        break;
       }
       case 'callout': {
-        const variant = VARIANTS.includes(r.variant as CalloutVariant) ? r.variant as CalloutVariant : 'hinweis';
+        const variant = CALLOUT_VARIANTS.includes(d.variant as CalloutVariant) ? d.variant as CalloutVariant : 'hinweis';
+        if (!text) { drop(`callout:${variant}`, 'ohne Text'); break; }
+        if (tooLong(text)) { drop(`callout:${variant}`, 'Text zu lang'); break; }
         // Beispiel und Einordnung ohne Beleg sind eigene Erklärhilfe, nie Vorlesungsinhalt.
         const kiOrigin = variant === 'einordnung' || (variant === 'beispiel' && !base.cites.length);
-        if (text) out.push({ ...base, ...(kiOrigin ? { origin: 'ki', cites: [] } : {}), type: 'callout', variant, text });
-        return;
+        out.push({ ...base, ...(kiOrigin ? { origin: 'ki' as const, cites: [] } : {}), type: 'callout', variant, text });
+        break;
       }
       case 'study': {
-        const authors = clean(r.authors);
-        const year = Number(r.year);
-        if (!authors || !Number.isFinite(year)) return;
-        out.push({
-          ...base, type: 'study', authors, year: Math.round(year),
-          design: clean(r.design), result: clean(r.result), conclusion: clean(r.conclusion),
-        });
-        return;
+        const authors = clean(d.authors);
+        const fields = { design: clean(d.design), result: clean(d.result), conclusion: clean(d.conclusion) };
+        if (!authors) { drop(type, 'ohne Autor'); break; }
+        if (authors.length > 200 || tooLong(...Object.values(fields))) { drop(type, 'Text zu lang'); break; }
+        const year = parseYear(d.year);
+        out.push({ ...base, type: 'study', authors, ...(year ? { year } : {}), ...fields });
+        break;
       }
       case 'figure': {
-        const fig = figures.find(f => f.ref === clean(r.figureRef));
-        if (!fig || usedFigures.has(fig.ref)) return;
+        const fig = figures.find(f => f.ref === clean(d.figureRef));
+        if (!fig) { drop(type, 'unbekannte Abbildung'); break; }
+        if (usedFigures.has(fig.ref)) { drop(type, 'Abbildung doppelt'); break; }
         usedFigures.add(fig.ref);
         out.push({
           ...base, cites: [{ sourceId: fig.sourceId, page: fig.page }], type: 'figure',
           sourceId: fig.sourceId, page: fig.page, imageRef: fig.ref, title: fig.title,
-          caption: clean(r.caption) || clean(r.text) || fig.title,
+          caption: clean(d.caption) || fig.title,
         });
-        return;
+        break;
       }
       case 'check': {
-        const question = clean(r.question);
-        const answer = clean(r.answer);
-        if (question && answer) out.push({ ...base, type: 'check', question, answer });
-        return;
+        const question = clean(d.question);
+        const answer = clean(d.answer);
+        if (!question || !answer) { drop(type, 'Frage oder Antwort fehlt'); break; }
+        out.push({ ...base, type: 'check', question, answer });
+        break;
       }
       default:
+        drop(type, 'unbekannter Typ');
     }
-  });
-  return out;
+  }
+  return { blocks: out, dropped };
 };

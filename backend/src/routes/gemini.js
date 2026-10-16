@@ -62,6 +62,14 @@ const MAX_OUTPUT_TOKENS = 16384;
 const MAX_OUTPUT_TOKENS_EXAM = 32768;
 const MAX_OUTPUT_TOKENS_ARGON = 32768; // Modell-Maximum von gemini-4-argon
 const outputTokenLimit = (examWorkflow) => (examWorkflow === true ? MAX_OUTPUT_TOKENS_EXAM : MAX_OUTPUT_TOKENS);
+// Der Client darf das Limit nur senken, nie anheben (Lernstudio koppelt es an
+// das Wortbudget eines Kapitels: ein Fehllauf in einer Wiederholungsschleife
+// endet dann früh, statt bis zum Modell-Limit Geld zu kosten).
+const MIN_OUTPUT_TOKENS = 256;
+const capOutputTokens = (limit, requested) => {
+  const n = Math.round(Number(requested));
+  return Number.isFinite(n) && n >= MIN_OUTPUT_TOKENS ? Math.min(limit, n) : limit;
+};
 
 // grading: Klausur-Korrektur und Rechenweg-Bewertung laufen für alle Pläne über
 // MODEL_HEAVY. Im Test (04.10.2026, 10 Antworten, 3 Durchgänge) vergab Flash-Lite
@@ -170,7 +178,10 @@ const buildGeminiRequest = async (req) => {
 
   const generationConfig = {
     temperature: config?.temperature ?? 0.7,
-    maxOutputTokens: selectedModel === MODEL_ARGON ? MAX_OUTPUT_TOKENS_ARGON : outputTokenLimit(examWorkflow),
+    maxOutputTokens: capOutputTokens(
+      selectedModel === MODEL_ARGON ? MAX_OUTPUT_TOKENS_ARGON : outputTokenLimit(examWorkflow),
+      config?.maxOutputTokens,
+    ),
   };
   if (config?.responseMimeType) generationConfig.responseMimeType = config.responseMimeType;
   if (config?.responseSchema)   generationConfig.responseSchema   = config.responseSchema;
@@ -256,6 +267,13 @@ router.post('/stream', async (req, res, next) => {
     built = await buildGeminiRequest(req);
     if (built.error) return res.status(built.status).json({ error: built.error });
 
+    // Bricht der Client ab (z. B. Lernstudio erkennt eine Wiederholungsschleife),
+    // endet auch die Anfrage bei Gemini: keine weiteren Tokens, keine weiteren Kosten.
+    const controller = new AbortController();
+    let finished = false;
+    res.on('close', () => { if (!finished) controller.abort(); });
+    built.request.config.abortSignal = controller.signal;
+
     const { first, iterator } = await streamWithRetry(built.request);
 
     res.status(200);
@@ -268,16 +286,29 @@ router.post('/stream', async (req, res, next) => {
     // usageMetadata steht in den Chunks (vollständig im letzten), daher den
     // zuletzt gesehenen Stand verbuchen (bei Abbruch mitten im Stream im catch).
     let step = first;
+    let finish = null;
     while (!step.done) {
       if (step.value?.usageMetadata) usage = step.value.usageMetadata;
+      if (step.value?.candidates?.[0]?.finishReason) finish = step.value.candidates[0].finishReason;
+      if (controller.signal.aborted) {
+        await iterator.return?.().catch(() => {});
+        break;
+      }
       const t = chunkText(step.value);
       if (t) res.write(JSON.stringify({ t }) + '\n');
       step = await iterator.next();
     }
     recordUsage(req.user.id, built.request.model, usage, { searches: built.searches });
-    res.end(JSON.stringify({ done: true, ...budgetNotice(built) }) + '\n');
+    finished = true;
+    if (controller.signal.aborted) return;
+    // finish (z. B. MAX_TOKENS): das Lernstudio erkennt so abgeschnittene JSON-Antworten.
+    res.end(JSON.stringify({ done: true, ...(finish ? { finish } : {}), ...budgetNotice(built) }) + '\n');
 
   } catch (err) {
+    if (err?.name === 'AbortError' || /aborted/i.test(String(err?.message))) {
+      if (built) recordUsage(req.user.id, built.request.model, usage, { searches: built.searches });
+      return;
+    }
     console.error('Gemini-Stream Fehler:', err.message);
     const mapped = mapGeminiError(err);
     if (!started) return next(mapped);
@@ -291,6 +322,7 @@ module.exports = router;
 module.exports.selectModel = selectModel;
 module.exports.wantsArgon = wantsArgon;
 module.exports.outputTokenLimit = outputTokenLimit;
+module.exports.capOutputTokens = capOutputTokens;
 module.exports.isTransient = isTransient;
 module.exports.MAX_TOTAL_STORAGE_BYTES = MAX_TOTAL_STORAGE_BYTES;
 module.exports.chunkText = chunkText;

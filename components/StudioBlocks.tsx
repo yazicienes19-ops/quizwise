@@ -108,7 +108,7 @@ export const StudioBlocks: React.FC<Props> = ({ result, sources, renderCite }) =
       case 'study':
         return (
           <div className="rounded-2xl px-4 py-3 space-y-1" style={{ border: '1px solid var(--border-color)', background: 'var(--bg-main)' }}>
-            <p className="font-semibold" style={{ color: 'var(--text-main)' }}>{b.authors} ({b.year}){cite(b.cites, `${b.id}-c`)}</p>
+            <p className="font-semibold" style={{ color: 'var(--text-main)' }}>{b.authors}{b.year ? ` (${b.year})` : ''}{cite(b.cites, `${b.id}-c`)}</p>
             {b.design && <p className="text-[14px]"><span className="font-semibold">{t('stu2.study.design')}:</span> {inl(b.design, `${b.id}-d`)}</p>}
             {b.result && <p className="text-[14px]"><span className="font-semibold">{t('stu2.study.result')}:</span> {inl(b.result, `${b.id}-r`)}</p>}
             {b.conclusion && <p className="text-[14px]"><span className="font-semibold">{t('stu2.study.conclusion')}:</span> {inl(b.conclusion, `${b.id}-s`)}</p>}
@@ -154,7 +154,7 @@ export const StudioBlocks: React.FC<Props> = ({ result, sources, renderCite }) =
             <AlertTriangle className="w-4 h-4" /> {t('stu2.warnings', { n: result.warnings.length + result.omittedSources.length })}
           </summary>
           <ul className="list-disc pl-5 mt-2 space-y-1 text-[13px]" style={{ color: 'var(--text-secondary)' }}>
-            {result.omittedSources.map((o, i) => <li key={`o${i}`}>{t('stu2.omitted', { name: sources.find(s => s.docId === o.sourceId)?.name ?? '?', reason: o.reason })}</li>)}
+            {result.omittedSources.map((o, i) => <li key={`o${i}`}>{t('stu2.omitted', { name: o.part?.title ?? sources.find(s => s.docId === o.sourceId)?.name ?? '?', reason: o.reason })}</li>)}
             {result.warnings.map((w, i) => <li key={`w${i}`}>{w}</li>)}
           </ul>
         </details>
