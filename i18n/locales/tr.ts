@@ -567,6 +567,7 @@ export const tr: Translations = {
 
   // errors
   'errors.limitReached': 'Günlük sınıra ulaşıldı (20 istek). Yarın devam edebilirsin. Ya da sınırsız öğrenme için Pro al.',
+  'errors.rateLimited': "Aynı anda çok fazla istek var. Lütfen bir dakika bekleyip tekrar dene.",
   'errors.notAuthenticated': 'Bu özelliği kullanmak için lütfen giriş yap.',
   'errors.docUnavailable': 'Belge artık mevcut değil. Lütfen tekrar yükle.',
   'errors.quota': 'StudeArc şu anda çok yoğun. Lütfen bir dakika sonra tekrar dene.',

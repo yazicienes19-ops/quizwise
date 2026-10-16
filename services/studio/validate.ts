@@ -67,9 +67,15 @@ export const checkCoverage = (blocks: Block[], ctx: ValidationContext): Issue[] 
   return issues;
 };
 
-/** 3. Länge im Zielkorridor (±10 % Toleranz). */
+/** Haupttext: die Kapitel (Blöcke c…), ohne Zeitleiste, Aufgaben, Übungsfragen und Klausurinfos. */
+export const mainTextWords = (blocks: Block[]): number => resultWords(blocks.filter(b => b.id.startsWith('c')));
+
+/**
+ * 3. Länge im Zielkorridor (±10 % Toleranz), gemessen am Haupttext. Die
+ * Abschnitte vom Code zählen nicht mit (Entscheidung 16.10.2026).
+ */
 export const checkLength = (blocks: Block[], ctx: ValidationContext): Issue[] => {
-  const words = resultWords(blocks);
+  const words = mainTextWords(blocks);
   const { min, max } = summaryCorridor(ctx.sourceWords);
   if (words > max * 1.1) return [{ rule: 'length', message: `Zu lang: ${words} Wörter, Ziel höchstens ${max}.` }];
   if (words < min * 0.9) return [{ rule: 'length', message: `Zu kurz: ${words} Wörter, Ziel mindestens ${min}.` }];

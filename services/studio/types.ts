@@ -34,7 +34,8 @@ export interface LernstudioResult {
   /** part: ausgelassene Vorlesung innerhalb einer zusammengefügten PDF. */
   omittedSources: { sourceId: string; reason: string; part?: SourcePart }[];
   warnings: string[];
-  stats: { sourceWords: number; outputWords: number };
+  /** outputWords: alles; mainWords: nur der Haupttext (Kapitel), daran misst sich die Länge (Entscheidung 16.10.2026). */
+  stats: { sourceWords: number; outputWords: number; mainWords?: number };
   /** Kapitel, die trotz neuer Versuche unvollständig blieben (Titel). Fehlt bei Ergebnissen vor Phase 1.1. */
   incompleteChapters?: string[];
   /** Protokoll je Kapitel: Einheiten → Blöcke → verworfen → Versuche (Fehlersuche, Eval). */

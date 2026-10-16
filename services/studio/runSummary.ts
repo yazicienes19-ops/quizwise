@@ -2,7 +2,7 @@ import type { ProcessedDocument } from '../../types';
 import { documentDisplayName } from '../libraryService';
 import { canReadFullText, readPdfPages } from '../pdfFullText';
 import { renderStudioPage } from '../pdfPageService';
-import { streamStudioStep } from '../geminiService';
+import { RateLimitedError, streamStudioStep } from '../geminiService';
 import { ensureFigureIndex, ensureFigureImage, buildFigureCatalog, openPdf, type DocFigure } from '../studioFigures';
 import { getMergedPdfParts } from '../pdfOutlineService';
 import type { StudioSourceRef } from '../studioStore';
@@ -32,7 +32,19 @@ const plainText = (d: ProcessedDocument): string | undefined => {
 
 /** Modell über das Backend, gestreamt und mit Kostenbremse gegen Schleifen. */
 export const makeAppStudioLlm = (onEvent?: (e: LlmEvent) => void): StudioLlm =>
-  guardedLlm((req, onText, signal) => streamStudioStep(req, onText, signal), { onEvent });
+  guardedLlm(async (req, onText, signal) => {
+    // Minutengrenze des Servers: warten und neu versuchen (der erste Lauf schickt mehr als 30 Anfragen je Minute).
+    for (let attempt = 0; ; attempt++) {
+      try {
+        return await streamStudioStep(req, onText, signal);
+      } catch (err) {
+        if (!(err instanceof RateLimitedError) || attempt >= RATE_LIMIT_RETRIES || signal.aborted) throw err;
+        await new Promise(r => setTimeout(r, err.retryAfterMs + Math.random() * 2000));
+      }
+    }
+  }, { onEvent });
+
+const RATE_LIMIT_RETRIES = 8;
 
 /** Seitenbilder des laufenden Durchgangs (je Dokument und Seite), danach wieder freigegeben. */
 const imageCache = new Map<string, string>();

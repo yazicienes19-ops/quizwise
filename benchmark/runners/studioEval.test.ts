@@ -222,9 +222,11 @@ run('Lernstudio-Eval (live)', () => {
     const report: [string, boolean, string][] = [];
     const check = (name: string, ok: boolean, detail = '') => { report.push([name, ok, detail]); expect.soft(ok, `${name} ${detail}`).toBe(true); };
 
-    const ratio = r.stats.outputWords / Math.max(1, r.stats.sourceWords);
+    // Länge am Haupttext (Entscheidung 16.10.: Zeitleiste, Aufgaben, Übungsfragen, Klausurinfos zählen nicht).
+    const mainWords = r.stats.mainWords ?? r.stats.outputWords;
+    const ratio = mainWords / Math.max(1, r.stats.sourceWords);
     // Entscheidung 16.10.: 40 % mit 10 % Toleranz (höchstens 44 %), wie der Validator.
-    check('≤ 40 % (+10 % Toleranz) der Quellwörter', ratio <= 0.44 || r.stats.outputWords <= 600, `${r.stats.outputWords}/${r.stats.sourceWords} = ${Math.round(ratio * 100)} %`);
+    check('Haupttext ≤ 40 % (+10 % Toleranz) der Quellwörter', ratio <= 0.44 || mainWords <= 600, `${mainWords}/${r.stats.sourceWords} = ${Math.round(ratio * 100)} %`);
     const cited = new Set(r.blocks.flatMap(cites).map(c => c.sourceId));
     const omitted = new Set(r.omittedSources.map(o => o.sourceId));
     check('Jede Quelle zitiert oder begründet ausgelassen', sources.every(s => cited.has(s.docId) || omitted.has(s.docId)),
@@ -300,7 +302,7 @@ run('Lernstudio-Eval (live)', () => {
       `Abbrüche: ${usage.events.length ? usage.events.map(e => `${e.step} ${e.kind} (${e.detail})`).join('; ') : 'keine'}`,
       `Kapitel (Einheiten → Blöcke, verworfen, Versuche, Abdeckung):`,
       ...diag.map(d => `  ${d.title}: ${d.units} → ${d.blocks}, verworfen ${d.dropped.length}${d.dropped.length ? ` [${d.dropped.map(x => `${x.type}: ${x.reason}`).join('; ')}]` : ''}, ${d.attempts} Versuch(e)${d.split ? ', abschnittsweise' : ''}${d.aborts.length ? `, Abbrüche: ${d.aborts.join('; ')}` : ''}, ${Math.round(d.coverage * 100)} %`),
-      `Länge: ${r.stats.outputWords} / ${r.stats.sourceWords} Wörter`,
+      `Länge: Haupttext ${mainWords}, gesamt ${r.stats.outputWords} / ${r.stats.sourceWords} Wörter`,
       `Übungsfragen: ${r.blocks.filter(b => b.id.startsWith('x-quiz-')).length}, Lückentext zum Handy-Beispiel: ${r.blocks.some(b => b.id.startsWith('x-quiz-') && /Handy/.test(blockTexts(b).join(' '))) ? 'ja' : 'nein'}`,
       `Warnungen: ${r.warnings.length}${r.warnings.length ? `\n  - ${r.warnings.join('\n  - ')}` : ''}`,
       `Ausgelassen: ${r.omittedSources.map(o => `${o.part?.title ?? o.sourceId} (${o.reason})`).join('; ') || 'keine'}`,
@@ -313,7 +315,7 @@ run('Lernstudio-Eval (live)', () => {
       stamp, writer, temperature: TEMP_DEFAULT ? 'default' : 'pipeline', usd: Math.round(usage.usd * 1000) / 1000, seconds,
       chapters: diag.length, dropped: diag.reduce((a, d) => a + d.dropped.length, 0), loops, aborts: usage.events.length,
       split: diag.filter(d => d.split).length, incomplete: r.incompleteChapters ?? [], emptyHeadings: checkEmptyHeadings(r.blocks).length,
-      words: r.stats.outputWords, warnings: r.warnings.length, failed: report.filter(([, ok]) => !ok).map(([n]) => n),
+      words: r.stats.outputWords, mainWords, warnings: r.warnings.length, failed: report.filter(([, ok]) => !ok).map(([n]) => n),
     })}\n`);
     writeFileSync(join(OUT, `${stamp}.report.txt`), summary);
   }, 30 * 60_000);

@@ -60,11 +60,13 @@ describe('2. Abdeckung', () => {
 
 describe('3. Länge', () => {
   it('meldet zu lang und zu kurz gegenüber 25 bis 40 %', () => {
-    const long = [p('b1', 'wort '.repeat(1000))];
+    const long = [p('c1-1', 'wort '.repeat(1000))];
     expect(checkLength(long, ctx())[0].message).toMatch(/Zu lang/);
-    const short = [p('b1', 'wort '.repeat(100))];
+    const short = [p('c1-1', 'wort '.repeat(100))];
     expect(checkLength(short, ctx())[0].message).toMatch(/Zu kurz/);
-    expect(checkLength([p('b1', 'wort '.repeat(650))], ctx())).toEqual([]);
+    expect(checkLength([p('c1-1', 'wort '.repeat(650))], ctx())).toEqual([]);
+    // Nur der Haupttext zählt: Aufgaben, Übungsfragen, Zeitleiste, Klausurinfos (x-…) nicht.
+    expect(checkLength([p('c1-1', 'wort '.repeat(650)), p('x-tasks', 'wort '.repeat(800))], ctx())).toEqual([]);
   });
 });
 

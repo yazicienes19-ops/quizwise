@@ -87,6 +87,8 @@ local('Testlauf 16.10. (echt, lokal)', () => {
   const blocks = parseTestlauf(md);
   const units: Unit[] = readdirSync(CACHE).filter(f => f.endsWith('.json'))
     .flatMap(f => JSON.parse(readFileSync(join(CACHE, f), 'utf8')) as Omit<Unit, 'id'>[])
+    // Der Cache enthält auch andere Schritte (z. B. Sichtung verborgenen Texts): nur Einheiten mit Text.
+    .filter(u => typeof u?.text === 'string')
     .map((u, i) => ({ ...u, id: `u${i}` }));
 
   it('erkennt die leeren Kapitel', () => {

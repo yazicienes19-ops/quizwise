@@ -6,7 +6,7 @@ import { chapterHeading, writeChapterBody, type WriteInput } from './write';
 import { buildExtraBlocks, buildTimeline, timelineCandidates } from './extras';
 import { markPriority } from './priority';
 import { partOf, slideIn } from './parts';
-import { checkEmptyHeadings, checkMerksatz, checkPriority, checkRepetition, checkSectionCoverage, checkStudies, unitCoverage, validateResult, type ValidationContext } from './validate';
+import { checkEmptyHeadings, checkMerksatz, checkPriority, checkRepetition, checkSectionCoverage, checkStudies, unitCoverage, validateResult, mainTextWords, type ValidationContext } from './validate';
 import { checkWithModel } from './check';
 import { mapLimit, StudioLlmError, type ExtractionCache, type StudioLlm } from './llm';
 import type { FigureRef } from './blocks';
@@ -362,7 +362,7 @@ export const runSummaryPipeline = async (input: PipelineInput): Promise<Lernstud
     blocks,
     omittedSources,
     warnings,
-    stats: { sourceWords, outputWords: resultWords(blocks) },
+    stats: { sourceWords, outputWords: resultWords(blocks), mainWords: mainTextWords(blocks) },
     incompleteChapters,
     diagnostics,
   };

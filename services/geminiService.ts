@@ -62,6 +62,22 @@ const getAuthHeader = async (): Promise<Record<string, string>> => {
   return { 'Authorization': `Bearer ${session.access_token}` };
 };
 
+/**
+ * Minutengrenze des Servers (30 KI-Anfragen je Minute): kein Tageslimit, nach
+ * retryAfterMs geht es weiter. Das Lernstudio schickt beim ersten Lauf mehr
+ * als 30 Anfragen in der ersten Minute und wartet dann (runSummary.ts).
+ */
+export class RateLimitedError extends Error {
+  constructor(public readonly retryAfterMs: number) { super('RATE_LIMITED'); }
+}
+
+const limitError = (res: Response, message?: string): Error => {
+  if (!/Zu viele/i.test(message ?? '')) return new Error('LIMIT_REACHED');
+  // RateLimit-Reset (Sekunden bis zum neuen Fenster) bzw. Retry-After; sonst eine halbe Minute.
+  const secs = Number(res.headers.get('RateLimit-Reset') ?? res.headers.get('Retry-After'));
+  return new RateLimitedError((Number.isFinite(secs) && secs > 0 ? secs : 30) * 1000);
+};
+
 const callBackend = async (payload: {
   model?: string;
   parts: any[];
@@ -95,8 +111,8 @@ const callBackend = async (payload: {
 
   if (!res.ok) {
     const err = await res.json().catch(() => ({ error: 'Unbekannter Server-Fehler' }));
-    // Spezieller Fehler wenn Tageslimit erreicht
-    if (res.status === 429) throw new Error('LIMIT_REACHED');
+    // 429: Minutengrenze des Servers (express-rate-limit) oder Tageslimit (Free).
+    if (res.status === 429) throw limitError(res, err.error);
     if (isBudgetExhausted(err.error)) throw new Error('BUDGET_EXHAUSTED');
     throw new Error(err.error || `Server-Fehler: ${res.status}`);
   }
@@ -129,7 +145,7 @@ const callBackendStream = async (
   if (res.status === 404 || (res.ok && !res.body)) return callBackend(payload);
   if (!res.ok) {
     const err = await res.json().catch(() => ({ error: 'Unbekannter Server-Fehler' }));
-    if (res.status === 429) throw new Error('LIMIT_REACHED');
+    if (res.status === 429) throw limitError(res, err.error);
     if (isBudgetExhausted(err.error)) throw new Error('BUDGET_EXHAUSTED');
     throw new Error(err.error || `Server-Fehler: ${res.status}`);
   }

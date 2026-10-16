@@ -67,6 +67,8 @@ const words = (t: string) => t.match(WORD_RE) ?? [];
  * übernimmt, ist nicht betroffen: dort folgt in der Einheit ein Satzende.
  */
 export const isTruncatedPrefix = (text: string, unitTexts: string[]): boolean => {
+  // Eine Frage ist vollständig, auch wenn die Einheit danach weitergeht (Übungsfragen aus einem Beispiel).
+  if (/[?!]["“”»]?\s*$/.test(text.trim())) return false;
   const out = words(prefixNorm(text));
   if (out.length < 8) return false;
   const tail = out.slice(-4);

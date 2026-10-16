@@ -568,6 +568,7 @@ export const en: Translations = {
 
   // errors
   'errors.limitReached': 'Daily limit reached (20 requests). Continue tomorrow, or get Pro for unlimited learning.',
+  'errors.rateLimited': "Too many requests at once. Please wait a minute and try again.",
   'errors.notAuthenticated': 'Please log in to use this feature.',
   'errors.docUnavailable': 'Document no longer available. Please upload it again.',
   'errors.quota': 'StudeArc is currently under heavy load. Please try again in a minute.',

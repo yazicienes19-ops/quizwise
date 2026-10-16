@@ -164,12 +164,13 @@ describe('Zusammengefügte PDF', () => {
 describe('Prüfregeln aus dem Testlauf', () => {
   const unit = (id: string, text: string): Unit => ({ id, sourceId: 's', page: 1, type: 'concept', text });
   it('abgeschnittene Texte: Satzanfang einer Einheit, offene Klammer', () => {
-    const units = [unit('u1', 'Wird der eigene Name genannt, zieht dies automatisch die Aufmerksamkeit auf sich.'), unit('u2', 'Gestaltgesetze. Sie gelten für alle.')];
+    const units = [unit('u1', 'Wird der eigene Name genannt, zieht dies automatisch die Aufmerksamkeit auf sich.'), unit('u2', 'Gestaltgesetze. Sie gelten für alle.'), unit('u3', 'Welche Bedürfnisse oder Ziele spielen eine Rolle beim Aufschieben? Und welche Konsequenzen verstärken es?')];
     const blocks: Block[] = [
       { id: 'x-b1', origin: 'quelle', cites: [], type: 'paragraph', text: 'Wird der eigene Name genannt, zieht dies automatisch.' },
       { id: 'b2', origin: 'quelle', cites: [], type: 'paragraph', text: 'Probleme der Filtertheorie: Eindringen von unbeachtetem Input (z.B.' },
       { id: 'x-b3', origin: 'quelle', cites: [], type: 'paragraph', text: 'Gestaltgesetze.' },
       { id: 'b6', origin: 'quelle', cites: [], type: 'paragraph', text: 'Wird der eigene Name genannt, zieht dies automatisch.' },
+      { id: 'x-q', origin: 'quelle', cites: [], type: 'paragraph', text: 'Welche Bedürfnisse oder Ziele spielen eine Rolle beim Aufschieben?' },
       { id: 'b4', origin: 'quelle', cites: [], type: 'paragraph', text: 'Szenarien: a) Schule b) Arbeit.' },
       { id: 'b5', origin: 'quelle', cites: [], type: 'paragraph', text: 'Einfluss der Variable (UV) auf (AV) bei N = 50 (je Gruppe n = 25), r = 1) als Beispiel.' },
     ];

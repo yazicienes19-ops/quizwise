@@ -569,6 +569,7 @@ export const de = {
 
   // errors
   'errors.limitReached': 'Tageslimit erreicht (20 Anfragen). Morgen geht es weiter. Oder hol dir Pro für unbegrenztes Lernen.',
+  'errors.rateLimited': "Gerade sehr viele Anfragen auf einmal. Bitte warte eine Minute und versuch es dann noch einmal.",
   'errors.notAuthenticated': 'Bitte melde dich an, um diese Funktion zu nutzen.',
   'errors.docUnavailable': 'Dokument nicht mehr verfügbar. Bitte lade es erneut hoch.',
   'errors.quota': 'StudeArc ist gerade stark ausgelastet. Bitte versuche es in einer Minute erneut.',

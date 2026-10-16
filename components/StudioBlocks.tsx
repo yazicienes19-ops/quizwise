@@ -150,11 +150,13 @@ export const StudioBlocks: React.FC<Props> = ({ result, sources, renderCite }) =
     }
   };
 
-  const ratio = result.stats.sourceWords ? Math.round((result.stats.outputWords / result.stats.sourceWords) * 100) : null;
+  // Länge am Haupttext (ohne Zeitleiste, Aufgaben, Übungsfragen, Klausurinfos); ältere Ergebnisse ohne mainWords: alles.
+  const shown = result.stats.mainWords ?? result.stats.outputWords;
+  const ratio = result.stats.sourceWords ? Math.round((shown / result.stats.sourceWords) * 100) : null;
   return (
     <div className="space-y-4 text-[15px] leading-relaxed" style={{ color: 'var(--text-main)' }}>
       <p className="text-[12.5px]" style={{ color: 'var(--text-secondary)' }}>
-        {t('stu2.stats', { words: result.stats.outputWords, source: result.stats.sourceWords })}{ratio !== null ? ` (${ratio} %)` : ''}
+        {t('stu2.stats', { words: shown, source: result.stats.sourceWords })}{ratio !== null ? ` (${ratio} %)` : ''}
         {' · '}{t('stu2.sourcesUsed', { n: sources.length })}
       </p>
       {(result.warnings.length > 0 || result.omittedSources.length > 0) && (

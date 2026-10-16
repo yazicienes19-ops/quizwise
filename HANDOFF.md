@@ -1,6 +1,6 @@
 # StudeArc (vormals QuizWise) — Übergabe
 
-**Stand: 07.10.2026.** Die ausführliche, laufend gepflegte Übergabe (was gemacht ist, Deploys, Migrationen, Kosten, offene Punkte) liegt auf der privaten Übergabe-Seite: https://claude.ai/artifact/UX8xgdnckSwj12PnbVBvUR. Diese Datei hält nur das Dauerhafte fest. Frühere Sitzungsprotokolle (bis 07.08.2026) stehen in der Git-Historie dieser Datei.
+**Stand: 16.10.2026.** Die ausführliche, laufend gepflegte Übergabe (was gemacht ist, Deploys, Migrationen, Kosten, offene Punkte) liegt auf der privaten Übergabe-Seite: https://claude.ai/artifact/UX8xgdnckSwj12PnbVBvUR. Diese Datei hält nur das Dauerhafte fest. Frühere Sitzungsprotokolle (bis 07.08.2026) stehen in der Git-Historie dieser Datei.
 
 ## Projekt
 
@@ -32,6 +32,7 @@ KI-Lern-App für Studierende im DACH-Raum: Bibliothek (PDFs, Notizen), Quiz, Kar
 ```bash
 npm install && npm run dev                      # Frontend auf :3000
 cd backend && npm install && PORT=4000 npm start  # Backend auf :4000 (braucht backend/.env)
+# Zweites Backend nur zum Testen ohne Push-Scheduler: VAPID_PUBLIC_KEY= VAPID_PRIVATE_KEY= PORT=4001 node src/index.js
 npx vitest run                                  # Tests
 npm run smoke                                   # Rauchtest gegen die Live-Seite (.env.test.local)
 ```
@@ -43,6 +44,10 @@ npm run smoke                                   # Rauchtest gegen die Live-Seite
 - Karteikarten: `services/spacedRepetition.ts` (FSRS), `services/deckMerge.ts` und `services/deckCloudSync.ts` (Abgleich mit Löschvermerken), `services/moduleDeck.ts` und `services/pdfFullText.ts` („Ganzes Fach“, Abschrift von Mathe-PDFs)
 - Fächer und Unterordner: `services/collectionSource.ts` (`collectionDocs` = Wissensbasis ohne abgewählte Unterordner), `services/moduleFolders.ts`, `components/ModuleFolderSections.tsx`, `components/FolderScopeBar.tsx`
 - Lernstudio (Zusammenfassung wie NotebookLM): `components/SubjectStudio.tsx`, Logik in `services/subjectStudio.ts` (Quellen, Prompts, Fußnoten, Kapitel), Speicher `services/studioStore.ts` (Tabelle `studio_items`), Grafiken `services/studioDiagrams.ts` + `components/StudioDiagram.tsx`, Abbildungen `services/studioFigures.ts`, Kapitel `services/studioChapters.ts`, Selbsttest `components/StudioSelfCheck.tsx`, Notizen `services/studioNotes.ts`
+- Lernstudio v2 (Zusammenfassung für Pro, seit 16.10.2026): mehrstufige Pipeline in `services/studio/` (`pipeline.ts` steuert: Seiten nach Position lesen und als Bild rendern, verborgenen Text sichten, Extraktion mit Seitenbildern, Folienfehler suchen und am Bild bestätigen, Gliederung je Vorlesung, Schreiben je Kapitel, Prüfregeln in `validate.ts`, eine Reparatur). Prompts versioniert in `services/studio/prompts/`. Ergebnis als Blöcke (`studio_items.content`, `format_version` 2), Renderer `components/StudioBlocks.tsx`. Kostenbremse gegen Schleifen in `llm.ts` (`guardedLlm`, gestreamt). Migration `backend/migration_studio_v2.sql` ist ausgeführt.
+  - Tests: `services/studio/*.test.ts`. Live-Eval: `npm run eval:studio` (Daten nur lokal in `benchmark/datasets/lernstudio/`, gitignored). App-Test: `scripts/e2e-lernstudio.mjs` (Wegwerf-Konto, Screenshots).
+  - Der erste Lauf schickt mehr als 30 KI-Anfragen je Minute; das Backend begrenzt auf 30 je Minute und IP. `runSummary.ts` wartet dann (`RateLimitedError`), statt abzubrechen.
+  - Auftrag, Status und Abnahmen liegen lokal in `docs/lernstudio/` (gitignored, enthält Vorlesungsinhalte).
 - Wissensnetz: `components/GraphCanvas.tsx`, `components/GraphSystem.tsx`, `services/graph/` (Schreibgrenze für KI über `graphAiWriteBoundary.test.ts`)
 - KI-Aufrufe: `services/geminiService.ts` (Frontend), `backend/src/routes/gemini.js`, Budget in `backend/src/budget/aiBudget.js`
 - Übersetzungen: `i18n/locales/{de,en,tr}.ts`
