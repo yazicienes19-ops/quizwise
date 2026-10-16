@@ -29,6 +29,8 @@ export const extractFacts = (text: string): string[] => {
   const t = text.replace(/ | /g, ' ');
   for (const m of t.matchAll(/(\d+(?:[.,]\d+)?)\s*(?:%|Prozent\b)/g)) out.add(`${m[1].replace(',', '.')}%`);
   for (const m of t.matchAll(/(\d+)\s+von\s+(\d+)/g)) out.add(`${m[1]}/${m[2]}`);
+  // Kennwerte wie "M = 75", "n = 25", "r = 1" (Rechenbeispiele sollen nicht als Befund durchrutschen).
+  for (const m of t.matchAll(/\b([MNnr])\s*=\s*(\d+(?:[.,]\d+)?)/g)) out.add(`${m[1]}=${m[2].replace(',', '.')}`);
   for (const m of t.matchAll(/(?<![\d.,])(1[89]\d\d|20\d\d)(?![\d.,]|\s*%)/g)) out.add(m[1]);
   return [...out];
 };
@@ -90,6 +92,21 @@ export const looksTruncated = (text: string): boolean => /\p{L}(?:…|\.\.\.)\s*
 
 /** Quellenangaben als Klartext, die nicht in den Text gehören ("[1, S. 94]", "[2:14]", "(S. 12)"). */
 export const INLINE_CITE_RE = /\[\s*\d+\s*(?:[,:;]\s*(?:S\.\s*)?\d+[^\]]*)?\]|\(\s*S\.\s*\d+[^)]*\)|\[\s*Quelle\s*\d+[^\]]*\]/;
+
+/**
+ * Vollständige Quellenangaben im Text: "Simons & Levin (1998)", "Li et al., 2011",
+ * "(Moray, 1959)". authors = Angabe wie geschrieben, first = erster Nachname.
+ */
+export const citationsIn = (text: string): { authors: string; first: string; year: number }[] => {
+  const out: { authors: string; first: string; year: number }[] = [];
+  const re = /(\p{Lu}[\p{L}'’-]+(?:\s+(?:&|und)\s+\p{Lu}[\p{L}'’-]+)?(?:\s+et\s+al\.?)?)\s*(?:\(\s*|,\s*)((?:1[89]|20)\d\d)\b/gu;
+  for (const m of text.matchAll(re)) {
+    const year = Number(m[2]);
+    if (year < 1850 || year > 2100) continue;
+    out.push({ authors: m[1].replace(/\s+/g, ' ').trim(), first: m[1].match(/\p{Lu}[\p{L}'’-]+/u)![0], year });
+  }
+  return out;
+};
 
 /** Autor-Jahr-Angaben im Text: "Treisman (1964)", "Simons & Levin (1998)", "Li et al., 2011". */
 export const authorYears = (text: string): { author: string; year: number }[] => {

@@ -6,6 +6,7 @@ import type { CitationRef } from '../services/citations';
 import { parseInline } from './markdownRenderer';
 import { StudioDiagram } from './StudioDiagram';
 import { useTranslation } from '../i18n/I18nProvider';
+import { figureText } from '../services/studio/toMarkdown';
 
 /**
  * Lernstudio v2: Ergebnis aus strukturierten Blöcken (formatVersion 2).
@@ -73,10 +74,11 @@ export const StudioBlocks: React.FC<Props> = ({ result, sources, renderCite }) =
             {b.items.map((it, i) => <li key={i}>{inl(it.text, `${b.id}-${i}`)}{cite(it.cites, `${b.id}-${i}-c`)}</li>)}
           </ol>
         );
-      case 'table':
+      case 'table': {
+        const rowCited = !!b.rowCites?.some(rc => rc.length);
         return (
           <figure className="space-y-2">
-            {b.caption && <figcaption className="text-[13px] font-semibold" style={{ color: 'var(--text-secondary)' }}>{b.caption}{cite(b.cites, `${b.id}-c`)}</figcaption>}
+            {b.caption && <figcaption className="text-[13px] font-semibold" style={{ color: 'var(--text-secondary)' }}>{b.caption}{!rowCited && cite(b.cites, `${b.id}-c`)}</figcaption>}
             <div className="overflow-x-auto rounded-xl" style={{ border: '1px solid var(--border-color)' }}>
               <table className="min-w-full text-[13.5px] border-collapse">
                 <thead>
@@ -87,15 +89,22 @@ export const StudioBlocks: React.FC<Props> = ({ result, sources, renderCite }) =
                 <tbody>
                   {b.rows.map((r, ri) => (
                     <tr key={ri} style={{ borderTop: '1px solid var(--border-color)' }}>
-                      {r.map((c, ci) => <td key={ci} className={`align-top px-3 py-2 ${ci === 0 ? 'sticky left-0 font-semibold' : ''}`} style={ci === 0 ? { background: 'var(--bg-sidebar)' } : undefined}>{inl(c, `${b.id}-${ri}-${ci}`)}</td>)}
+                      {r.map((c, ci) => (
+                        <td key={ci} className={`align-top px-3 py-2 ${ci === 0 ? 'sticky left-0 font-semibold' : ''}`} style={ci === 0 ? { background: 'var(--bg-sidebar)' } : undefined}>
+                          {inl(c, `${b.id}-${ri}-${ci}`)}
+                          {/* Beleg je Zeile in der letzten Zelle. */}
+                          {ci === r.length - 1 && rowCited && cite(b.rowCites![ri] ?? [], `${b.id}-${ri}-c`)}
+                        </td>
+                      ))}
                     </tr>
                   ))}
                 </tbody>
               </table>
             </div>
-            {!b.caption && cite(b.cites, `${b.id}-c`)}
+            {!b.caption && !rowCited && cite(b.cites, `${b.id}-c`)}
           </figure>
         );
+      }
       case 'callout': {
         const st = CALLOUT_STYLE[b.variant] ?? CALLOUT_STYLE.hinweis;
         return (
@@ -120,7 +129,7 @@ export const StudioBlocks: React.FC<Props> = ({ result, sources, renderCite }) =
         const image = /^A\d+$/.test(b.imageRef) ? undefined : b.imageRef;
         return (
           <StudioDiagram
-            diagram={{ type: 'figure', image, docId: b.sourceId, page: b.page, title: b.title, caption: b.caption, ...(n ? { cite: [{ n, page: b.page }] } : {}) }}
+            diagram={{ type: 'figure', image, docId: b.sourceId, page: b.page, title: figureText(b.title, b.caption) === b.caption ? undefined : b.title, caption: b.caption, ...(n ? { cite: [{ n, page: b.page }] } : {}) }}
             renderCite={renderCite}
           />
         );

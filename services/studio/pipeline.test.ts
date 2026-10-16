@@ -59,6 +59,9 @@ const makeLlm = (opts: Opts = {}) => {
       return { chapters: [{ title: 'Aufmerksamkeit', sections: [{ title: 'Phänomene', unitIds: ids.slice(0, -1) }] }] };
     }
     if (req.step === 'check') return { issues: [] };
+    if (req.step === 'scan') return { errors: [] };
+    // Zeitleiste: alle Kandidaten übernehmen, je mit einem kurzen Satz.
+    if (req.step === 'timeline') return { topic: 'Aufmerksamkeit', items: [...req.prompt.matchAll(/^(t\d+) \|/gm)].map(m => ({ id: m[1], what: 'Ein kurzer Beitrag zum Strang.' })) };
     // write: Einheiten-IDs aus dem Prompt zitieren, je Einheit ein Stichpunkt.
     const ids = [...req.prompt.matchAll(/^- (u\d+) /gm)].map(m => m[1]);
     const repair = req.prompt.includes('=== ÜBERARBEITUNG ===');

@@ -1,6 +1,6 @@
 import type { Block, Cite, LernstudioResult } from './types';
 import type { StudioSourceRef } from '../studioStore';
-import { partOf, slideIn } from './parts';
+import { groupByPart, slideIn } from './parts';
 
 /**
  * Blöcke → Markdown für Kopieren, Download, "Als Quelle hinzufügen" und die
@@ -12,17 +12,42 @@ const CALLOUT_LABEL: Record<string, string> = {
   merksatz: 'Merksatz', klausurfalle: 'Klausurfalle', hinweis: 'Hinweis', beispiel: 'Beispiel', einordnung: 'Einordnung (Erklärhilfe)',
 };
 
-export const citeTokens = (cites: Cite[], numberOf: (sourceId: string) => number | undefined, refs: StudioSourceRef[] = []): string =>
-  cites.map(c => {
-    const n = numberOf(c.sourceId);
-    if (!n) return '';
-    // Zusammengefügte PDF: Vorlesung und Folie dazu, damit man die Stelle im einzelnen PDF findet.
-    const part = c.page ? partOf(refs.find(r => r.docId === c.sourceId)?.parts, c.page) : undefined;
-    if (part) return `[${n}, ${part.title}, Folie ${slideIn(part, c.page)} (gesamt S. ${c.page})]`;
-    return c.page ? `[${n}:${c.page}]` : `[${n}]`;
+/**
+ * Fußnoten gruppiert je Quelle: "[1, S. 14, 16, 46]" statt drei Klammern; bei
+ * einer zusammengefügten PDF je Vorlesung mit Folie
+ * ("[1, Aufmerksamkeit_1, Folie 12, 14 (gesamt S. 94, 96)]").
+ */
+export const citeTokens = (cites: Cite[], numberOf: (sourceId: string) => number | undefined, refs: StudioSourceRef[] = []): string => {
+  const bySource = new Map<string, number[]>();
+  for (const c of cites) {
+    if (!numberOf(c.sourceId)) continue;
+    const pages = bySource.get(c.sourceId) ?? [];
+    if (!pages.includes(c.page)) pages.push(c.page);
+    bySource.set(c.sourceId, pages);
+  }
+  return [...bySource.entries()].map(([sourceId, list]) => {
+    const n = numberOf(sourceId)!;
+    const pages = list.filter(p => p > 0).sort((a, b) => a - b);
+    if (!pages.length) return `[${n}]`;
+    const parts = refs.find(r => r.docId === sourceId)?.parts;
+    if (parts?.length) {
+      return groupByPart(parts, pages).map(g => (g.part
+        ? `[${n}, ${g.part.title}, Folie ${g.pages.map(p => slideIn(g.part!, p)).join(', ')} (gesamt S. ${g.pages.join(', ')})]`
+        : `[${n}, S. ${g.pages.join(', ')}]`)).join('');
+    }
+    return `[${n}, S. ${pages.join(', ')}]`;
   }).join('');
+};
 
 const cell = (t: string) => t.replace(/\|/g, '\\|');
+
+/** Titel und Bildunterschrift ohne Doppelung ("Interaktion von Person …. Interaktion von Person …"). */
+export const figureText = (title: string | undefined, caption: string): string => {
+  const norm = (t: string) => t.toLowerCase().replace(/[^\p{L}\p{N}]+/gu, ' ').trim();
+  if (!title || norm(caption).startsWith(norm(title))) return caption;
+  if (norm(title).startsWith(norm(caption))) return title;
+  return `${title}. ${caption}`;
+};
 
 export const blockToMarkdown = (b: Block, numberOf: (sourceId: string) => number | undefined, refs: StudioSourceRef[] = []): string => {
   const c = (cites: Cite[]) => { const t = citeTokens(cites, numberOf, refs); return t ? ` ${t}` : ''; };
@@ -31,12 +56,17 @@ export const blockToMarkdown = (b: Block, numberOf: (sourceId: string) => number
     case 'heading': return `${'#'.repeat(b.level + 1)} ${b.text}`;
     case 'paragraph': return `${b.text}${c(b.cites)}${ki}`;
     case 'bullets': case 'tasks': return b.items.map(i => `- ${i.text}${c(i.cites.length ? i.cites : b.cites)}`).join('\n');
-    case 'table': return [
-      ...(b.caption ? [`**${b.caption}**${c(b.cites)}`, ''] : []),
-      `| ${b.headers.map(cell).join(' | ')} |`,
-      `|${b.headers.map(() => ' --- ').join('|')}|`,
-      ...b.rows.map(r => `| ${r.map(cell).join(' | ')} |`),
-    ].join('\n');
+    case 'table': {
+      // Belege je Zeile in der letzten Zelle; ohne Zeilenbelege die der ganzen Tabelle unter der Tabelle.
+      const rowCites = b.rowCites?.some(r => r.length) ? b.rowCites : undefined;
+      return [
+        ...(b.caption ? [`**${b.caption}**`, ''] : []),
+        `| ${b.headers.map(cell).join(' | ')} |`,
+        `|${b.headers.map(() => ' --- ').join('|')}|`,
+        ...b.rows.map((r, i) => `| ${r.map((x, k) => cell(k === r.length - 1 && rowCites ? `${x}${c(rowCites[i] ?? [])}` : x)).join(' | ')} |`),
+        ...(!rowCites && b.cites.length ? ['', c(b.cites).trim()] : []),
+      ].join('\n');
+    }
     case 'callout': return `> **${CALLOUT_LABEL[b.variant] ?? 'Hinweis'}:** ${b.text}${c(b.cites)}`;
     case 'study': return [
       `**${b.authors}${b.year ? ` (${b.year})` : ''}**${c(b.cites)}`,
@@ -44,7 +74,7 @@ export const blockToMarkdown = (b: Block, numberOf: (sourceId: string) => number
       ...(b.result ? [`- Ergebnis: ${b.result}`] : []),
       ...(b.conclusion ? [`- Schluss: ${b.conclusion}`] : []),
     ].join('\n');
-    case 'figure': return `*Abbildung${b.title ? `: ${b.title}` : ''}. ${b.caption}*${c(b.cites)}`;
+    case 'figure': return `*Abbildung: ${figureText(b.title, b.caption)}*${c(b.cites)}`;
     case 'timeline': return b.items.map(i => `- **${i.year}** ${i.who}: ${i.what}${c(i.cites)}`).join('\n');
     case 'check': return `**${b.question}**\n${b.answer}`;
   }

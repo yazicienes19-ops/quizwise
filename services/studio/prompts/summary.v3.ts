@@ -1,6 +1,8 @@
 /** Zusammenfassung je Kapitel (Schritt C und Reparatur E). */
 // v2 (16.10.2026): je Blocktyp ein Unterobjekt (siehe blocks.ts), Abdeckung je Abschnitt, Studien nur vollständig.
-export const SUMMARY_PROMPT_VERSION = 'summary.v2';
+// v3 (16.10.2026): Rechenbeispiele nie als Studienergebnis, Definitionen je Autor als Tabelle, keine
+// Wiederholungen, prüfungsrelevante Einheiten Pflicht.
+export const SUMMARY_PROMPT_VERSION = 'summary.v3';
 
 export const SUMMARY_BLOCK_TYPES = ['heading', 'paragraph', 'bullets', 'table', 'callout', 'study', 'figure'];
 
@@ -32,12 +34,26 @@ Regeln:
     Übersetzung in Klammern.
 12. Gliederung: Für jeden Abschnitt ein heading mit dessen Titel, danach sein Inhalt. Nie eine
     Überschrift ohne Inhalt. Kein heading für das Kapitel selbst (das setzt der Code).
-15. Vollständigkeit: Jede Einheit vom Typ definition, concept, study, finding oder comparison muss
+13. Vollständigkeit: Jede Einheit vom Typ definition, concept, study, finding, comparison oder example muss
     in "units" mindestens eines Blocks vorkommen. Kürzen heißt knapper formulieren, nicht weglassen.
-16. Format: Jeder Block hat "type" und füllt NUR das Unterobjekt mit demselben Namen
+    Konkrete Ergebnisse echter Studien (Prozentwerte, „x von y“, Mittelwerte) bleiben immer erhalten.
+14. Format: Jeder Block hat "type" und füllt NUR das Unterobjekt mit demselben Namen
     (z. B. type "callout" → callout.variant und callout.text; type "study" → study.authors …).
     Jeder Text ist ein vollständiger Satz oder Stichpunkt, höchstens 600 Zeichen.
-13. Abbildungen (falls unter ABBILDUNGEN aufgeführt) nur, wenn sie Information tragen, die nicht im
+15. Abbildungen (falls unter ABBILDUNGEN aufgeführt) nur, wenn sie Information tragen, die nicht im
     Text steht (Diagramme, Modelle): Block type "figure" mit figureRef und einer vollständigen
     Bildunterschrift in "caption" (ein ganzer Satz, nie abgekürzt).
-14. Fett mit **…** ist erlaubt, sonst kein Markdown.`;
+16. Fett mit **…** ist erlaubt, sonst kein Markdown.
+17. Rechenbeispiele: Einheiten mit [Rechenbeispiel, ausgedachte Werte] sind Illustrationen einer Methode.
+    Ihre Werte sind NIE das Ergebnis einer Studie und stehen nie neben Autor und Jahr einer Studie.
+    Kennzeichne sie als Beispiel („Rechenbeispiel: …“) oder stelle mehrere Szenarien als table dar
+    (z. B. Szenario | Werte | Folgerung). study.result nur aus finding- oder study-Einheiten derselben Studie;
+    nennt die Quelle kein echtes Ergebnis, bleibt result leer und die Studie wird ein Stichpunkt.
+18. Definitionen verschiedener Autoren (z. B. „… (Autor A, 2008)“, „… (Autor B, 1988)“) nie zu einer
+    verschmelzen: table mit den Spalten Autor | Definition, je Autor eine Zeile.
+19. Keine Wiederholung: jeder Inhalt genau einmal im Kapitel. Steht eine Studie als study-Block, nicht
+    zusätzlich als Stichpunkt; ein Begriff nicht in Absatz und Stichpunkt zugleich.
+20. Einheiten mit [prüfungsrelevant] kommen auf jeden Fall vor (sie stehen auf Wiederholungs- oder
+    Quizfolien) und werden nicht gekürzt.
+21. Nur Aussagen der Einheiten: keine eigenen Zuspitzungen oder Wertungen, die den Inhalt verändern
+    (z. B. „unbewusst“, „immer“, „nur“), wenn sie nicht in der Einheit stehen.`;

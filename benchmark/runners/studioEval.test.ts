@@ -16,7 +16,7 @@ import { runSummaryPipeline } from '../../services/studio/pipeline';
 import { findDuplicatePages } from '../../services/studio/dedupe';
 import { resultToMarkdown } from '../../services/studio/toMarkdown';
 import { blockTexts, INLINE_CITE_RE, looksTruncated } from '../../services/studio/text';
-import { checkEmptyHeadings } from '../../services/studio/validate';
+import { checkEmptyHeadings, checkRepetition } from '../../services/studio/validate';
 import { partsFromOutline } from '../../services/pdfOutlineService';
 import type { Block, Cite, PipelineSource, SourcePart } from '../../services/studio/types';
 import { guardedLlm, type LlmEvent, type StudioLlm, type StudioTransport } from '../../services/studio/llm';
@@ -40,6 +40,18 @@ interface Expectations {
   tasks?: string[];
   /** Teilstring, der in einem Hinweis-Callout stehen muss (Folienfehler). */
   hints?: string[];
+  /** Teilstrings, die NICHT unter "Aufgaben aus der Vorlesung" stehen dürfen (Demos, Studien). */
+  notInTasks?: string[];
+  /** Einträge, die in der Zeitleiste stehen müssen (Autor, Jahr). */
+  timeline?: { who: string; year: number }[];
+  /** Autoren, die nicht in die Zeitleiste gehören (anderer Themenstrang). */
+  timelineForbidden?: string[];
+  /** Teilstrings, die in keiner Warnung stehen dürfen (Fehlwarnungen). */
+  warningsForbidden?: string[];
+  /** Begriffsgruppen (ohne Groß-/Kleinschreibung), die gemeinsam in einem Block stehen müssen. */
+  together?: string[][];
+  /** Überschriften, die vorkommen müssen. */
+  headings?: string[];
 }
 
 const pdfPages = async (file: string): Promise<{ pages: string[]; parts: SourcePart[] | null }> => {
@@ -202,7 +214,32 @@ run('Lernstudio-Eval (live)', () => {
     const taskBlock = r.blocks.find(b => b.type === 'tasks');
     for (const tsk of exp.tasks ?? []) check(`Aufgabe: ${tsk}`, !!taskBlock && blockTexts(taskBlock).some(t => t.includes(tsk)));
     const hints = r.blocks.filter(b => b.type === 'callout' && b.variant === 'hinweis').flatMap(blockTexts).join(' ');
-    for (const h of exp.hints ?? []) check(`Hinweis: ${h}`, hints.toLowerCase().includes(h.toLowerCase()));
+    // "page:24" = ein Hinweis zitiert Seite 24; sonst Teilstring im Text.
+    const hintBlocks = r.blocks.filter(b => b.type === 'callout' && b.variant === 'hinweis');
+    for (const h of exp.hints ?? []) {
+      const page = h.match(/^page:(\d+)$/)?.[1];
+      check(`Hinweis: ${h}`, page ? hintBlocks.some(b => b.cites.some(c => c.page === Number(page))) : hints.toLowerCase().includes(h.toLowerCase()));
+    }
+    for (const n of exp.notInTasks ?? []) check(`Keine Aufgabe: ${n}`, !taskBlock || !blockTexts(taskBlock).some(t => t.includes(n)));
+    const tlItems = tl?.type === 'timeline' ? tl.items : [];
+    for (const t of exp.timeline ?? []) check(`Zeitleiste: ${t.who} ${t.year}`, tlItems.some(i => i.who.includes(t.who) && i.year === t.year), tlItems.filter(i => i.who.includes(t.who)).map(i => `${i.who} ${i.year}`).join(', '));
+    for (const w of exp.timelineForbidden ?? []) check(`Nicht in der Zeitleiste: ${w}`, !tlItems.some(i => i.who.includes(w)));
+    for (const w of exp.warningsForbidden ?? []) check(`Keine Warnung zu ${w}`, !r.warnings.some(x => x.includes(w)), r.warnings.filter(x => x.includes(w)).join(' | '));
+    for (const g of exp.together ?? []) check(`Zusammen: ${g.join(' / ')}`, r.blocks.some(b => { const t = blockTexts(b).join(' ').toLowerCase(); return g.every(x => t.includes(x.toLowerCase())); }));
+    const headingTexts = r.blocks.filter(b => b.type === 'heading').map(b => (b.type === 'heading' ? b.text : ''));
+    for (const h of exp.headings ?? []) check(`Abschnitt: ${h}`, headingTexts.includes(h));
+    // Je Kapitel (Überschrift Ebene 2 aus dem Schreiben, nicht die Extras): genau ein Merksatz, keine Wiederholung.
+    const chapterRuns: Block[][] = [];
+    for (const b of r.blocks) {
+      if (b.type === 'heading' && b.level === 2) { chapterRuns.push(b.id.startsWith('c') ? [] : (null as unknown as Block[])); continue; }
+      const cur = chapterRuns[chapterRuns.length - 1];
+      if (cur) cur.push(b);
+    }
+    const chaptersOnly = chapterRuns.filter(Boolean);
+    const merk = chaptersOnly.map(c => c.filter(b => b.type === 'callout' && b.variant === 'merksatz').length);
+    check('Genau ein Merksatz je Kapitel', merk.every(n => n === 1), merk.join(', '));
+    const reps = chaptersOnly.flatMap(c => checkRepetition(c));
+    check('Keine Wiederholung im Kapitel', reps.length === 0, reps.map(x => x.message.slice(0, 80)).join(' | '));
     check('Keine abgeschnittenen Texte', !texts.some(looksTruncated));
     check('Keine „[1, S. x]“ im Text', !texts.some(t => INLINE_CITE_RE.test(t)));
 

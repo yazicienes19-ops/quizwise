@@ -73,7 +73,7 @@ const parseTestlauf = (md: string): Block[] => {
       return;
     }
     const tl = inTimeline && line.match(/^- \*\*(\d+)\*\* ([^:]+): (.+)$/);
-    if (tl) { blocks.push({ id, origin: 'quelle', cites: [], type: 'timeline', items: [{ year: Number(tl[1]), who: tl[2], what: strip(tl[3]), cites: [] }] }); return; }
+    if (tl) { blocks.push({ id: `x-${id}`, origin: 'quelle', cites: [], type: 'timeline', items: [{ year: Number(tl[1]), who: tl[2], what: strip(tl[3]), cites: [] }] }); return; }
     const st = line.match(/^\*\*(.+) \((\d+)\)\*\*$/);
     if (st) { blocks.push({ id, origin: 'quelle', cites: [], type: 'study', authors: st[1], year: Number(st[2]), design: '', result: '', conclusion: '' }); return; }
     if (line.startsWith('- ')) { blocks.push({ id, origin: 'quelle', cites: [], type: 'bullets', items: [{ text: strip(line.slice(2)), cites: [] }] }); return; }

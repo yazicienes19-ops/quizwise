@@ -1,7 +1,8 @@
 import type { Block, Cite, Issue, Unit } from './types';
-import { CHECKER_PROMPT, checkerSchema } from './prompts/checker.v1';
+import { CHECKER_PROMPT, checkerSchema } from './prompts/checker.v2';
 import { STUDIO_TEMPERATURE, type StudioLlm } from './llm';
 import { blockTexts } from './text';
+import { unitFlags } from './outline';
 
 /** Schritt D2: Prüfdurchlauf durch das Modell (Belege, Zahlen, Chronologie, KI-Fakten). */
 
@@ -13,17 +14,22 @@ const blockLine = (b: Block): string => {
   const cites = [...new Set([
     ...b.cites.map(citeKey),
     ...(b.type === 'bullets' || b.type === 'tasks' || b.type === 'timeline' ? b.items.flatMap(i => i.cites.map(citeKey)) : []),
+    ...(b.type === 'table' ? (b.rowCites ?? []).flat().map(citeKey) : []),
   ])];
-  return `[${b.id}] (${b.type}, origin ${b.origin}${cites.length ? `, Belege ${cites.join(' ')}` : ''}) ${blockTexts(b).join(' | ')}`;
+  const body = b.type === 'table'
+    ? `${b.caption ? `${b.caption} ` : ''}Spalten: ${b.headers.join(' | ')}${b.rows.map((r, i) => `\n    Zeile ${i + 1}: ${r.join(' | ')}`).join('')}`
+    : blockTexts(b).join(' | ');
+  return `[${b.id}] (${b.type}, origin ${b.origin}${cites.length ? `, Belege ${cites.join(' ')}` : ''}) ${body}`;
 };
 
 export const buildCheckPrompt = (blocks: Block[], units: Unit[]): string => {
   const cited = new Set(blocks.flatMap(b => [
     ...b.cites, ...(b.type === 'bullets' || b.type === 'tasks' || b.type === 'timeline' ? b.items.flatMap(i => i.cites) : []),
+    ...(b.type === 'table' ? (b.rowCites ?? []).flat() : []),
   ]).map(citeKey));
   const evidence = units
     .filter(u => cited.has(`${u.sourceId}:${u.page}`))
-    .map(u => `${u.sourceId}:${u.page} | ${u.type} | ${[u.title, u.text, u.study && JSON.stringify(u.study)].filter(Boolean).join(' ')}`);
+    .map(u => `${u.sourceId}:${u.page} | ${u.type}${unitFlags(u)} | ${[u.title, u.text, u.study && JSON.stringify(u.study)].filter(Boolean).join(' ')}`);
   return `${CHECKER_PROMPT}
 
 === BLÖCKE ===

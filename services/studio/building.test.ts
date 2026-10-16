@@ -3,7 +3,8 @@ import type { Unit, PipelineSource } from './types';
 import { findDuplicatePages, withoutDuplicates, jaccard } from './dedupe';
 import { parseOutline, completeOutline, assignBudgets, summaryCorridor } from './outline';
 import { normalizeBlocks, parseYear, writerSchema } from './blocks';
-import { buildExtraBlocks, timelineItems } from './extras';
+import { buildExtraBlocks, buildTimeline, mergeNearDuplicates, timelineCandidates } from './extras';
+import type { StudioLlm } from './llm';
 import { extractionJobs, parseUnits, WINDOW_PAGES } from './extract';
 import { resultToMarkdown } from './toMarkdown';
 import { studioIdempotencyKey } from './idempotency';
@@ -133,14 +134,42 @@ describe('Abschnitte vom Code', () => {
     { ...U('u5', 'a', 9), type: 'task', text: 'Recherchiere die Flanker-Aufgabe.' },
     { ...U('u6', 'a', 1), type: 'exam_info', text: 'Klausur 120 Minuten.' },
   ];
-  it('Zeitleiste sortiert und ohne Doppelte', () => {
-    const tl = timelineItems(units);
-    expect(tl.map(i => i.year)).toEqual([1958, 1964, 1999]);
-    expect(tl[2].cites).toHaveLength(2);
+  it('Zeitleiste: je Autor und Jahr ein Kandidat, auch mehrere in einer Einheit, ohne Rechenbeispiele', () => {
+    const cands = timelineCandidates([
+      ...units,
+      { ...U('u7', 'a', 12), type: 'study', text: 'Probleme der Filtertheorie: Eindringen von Input (z.B. Moray, 1959) und Verarbeitung (Li et al., 2011).', study: { authors: 'Moray; Li et al.', year: 2011 } },
+      { ...U('u8', 'a', 13), type: 'example', illustrative: true, text: 'Rechenbeispiel nach Muster (Beispiel, 2023): M = 40.' },
+    ]);
+    expect(cands.map(c => `${c.who} ${c.year}`)).toEqual(['Simons & Chabris 1999', 'Broadbent 1958', 'Treisman 1964', 'Li et al. 2011', 'Moray 1959']);
   });
-  it('Aufgaben und Klausurinfos als eigene Abschnitte', () => {
-    const blocks = buildExtraBlocks(units);
-    expect(blocks.filter(b => b.type === 'heading').map(b => b.type === 'heading' && b.text)).toEqual(['Zeitleiste', 'Aufgaben aus der Vorlesung', 'Klausurinfos']);
+  it('Zeitleiste: Modell wählt und formuliert, der Code sortiert, prüft und lässt Leeres weg', async () => {
+    const llm: StudioLlm = async () => ({ topic: 'Aufmerksamkeit', items: [
+      { id: 't1', what: 'Gorilla im Video wird oft übersehen.' },
+      { id: 't3', what: 'Treisman: abgeschwächte Weiterleitung statt Blockade' },
+      { id: 't2', what: 'Broadbent, 1958: Filter nach physikalischen Merkmalen.' },
+      { id: 't9', what: 'gibt es nicht' },
+      { id: 't1', what: 'doppelt doppelt doppelt' },
+    ] });
+    const tl = await buildTimeline(units, llm);
+    expect(tl.map(i => `${i.year} ${i.who}: ${i.what}`)).toEqual([
+      '1958 Broadbent: Filter nach physikalischen Merkmalen.',
+      '1964 Treisman: abgeschwächte Weiterleitung statt Blockade.',
+      '1999 Simons & Chabris: Gorilla im Video wird oft übersehen.',
+    ]);
+    expect(await buildTimeline(units, async () => { throw new Error('x'); })).toEqual([]);
+  });
+  it('Aufgaben ohne Duplikate, Übungsfragen und Klausurinfos als eigene Abschnitte', () => {
+    const more: Unit[] = [
+      ...units,
+      { ...U('u10', 'a', 48), type: 'task', text: 'Recherchiere die Flanker-Aufgabe.' },
+      { ...U('u11', 'a', 46), type: 'practice_question', text: 'Was sind die Ziele der Psychologie?', answer: 'Beschreiben, erklären, vorhersagen, verändern.' },
+    ];
+    const blocks = buildExtraBlocks(more, [{ year: 1958, who: 'Broadbent', what: 'Filter.', cites: [] }, { year: 1964, who: 'Treisman', what: 'Dämpfung.', cites: [] }, { year: 1999, who: 'Simons', what: 'Gorilla.', cites: [] }]);
+    expect(blocks.filter(b => b.type === 'heading').map(b => b.type === 'heading' && b.text)).toEqual(['Zeitleiste', 'Aufgaben aus der Vorlesung', 'Übungsfragen aus der Vorlesung', 'Klausurinfos']);
+    const tasks = blocks.find(b => b.type === 'tasks');
+    expect(tasks?.type === 'tasks' && tasks.items).toEqual([{ text: 'Recherchiere die Flanker-Aufgabe.', cites: [{ sourceId: 'a', page: 9 }, { sourceId: 'a', page: 48 }] }]);
+    expect(blocks.find(b => b.type === 'check')).toMatchObject({ question: 'Was sind die Ziele der Psychologie?' });
+    expect(mergeNearDuplicates([{ ...U('x', 'a', 1), text: 'Bitte erstellen Sie einen Kreislauf mit der Hilfe eines Themas.' }, { ...U('y', 'a', 2), text: 'Bitte erstellen Sie einen Kreislauf mit der Hilfe eines Themas!' }])).toHaveLength(1);
   });
   it('Folienfehler ohne Hinweis bekommt einen Hinweis', () => {
     const err: Unit = { ...U('u9', 'a', 24), type: 'source_error', text: 'Auf Folie 24 steht beim Handy-Beispiel die Musik-Hypothese.' };
@@ -184,9 +213,22 @@ describe('Markdown-Fassung und Schlüssel', () => {
       ],
     }, id => (id === 'a' ? 1 : undefined));
     expect(md).toContain('### Aufmerksamkeit');
-    expect(md).toContain('- Filter [1:4]');
+    expect(md).toContain('- Filter [1, S. 4]');
     expect(md).toContain('| A | B |');
     expect(md).toContain('- Bitte prüfen');
+  });
+  it('Fußnoten gruppiert, Tabellen mit Belegen je Zeile, Bildunterschrift nicht doppelt', () => {
+    const md = resultToMarkdown({
+      formatVersion: 2, format: 'zusammenfassung', omittedSources: [], warnings: [], stats: { sourceWords: 1, outputWords: 1 },
+      blocks: [
+        { id: 'p', origin: 'quelle', cites: [{ sourceId: 'a', page: 16 }, { sourceId: 'a', page: 14 }, { sourceId: 'a', page: 46 }], type: 'paragraph', text: 'Ursprung' },
+        { id: 't', origin: 'quelle', cites: [], type: 'table', headers: ['Autor', 'Definition'], rows: [['Myers', 'D1'], ['Zimbardo', 'D2']], rowCites: [[{ sourceId: 'a', page: 16 }], [{ sourceId: 'a', page: 17 }]] },
+        { id: 'f', origin: 'quelle', cites: [{ sourceId: 'a', page: 17 }], type: 'figure', sourceId: 'a', page: 17, imageRef: 'A1', title: 'Interaktion von Person, Umwelt und Anderen', caption: 'Interaktion von Person, Umwelt und Anderen' },
+      ],
+    }, id => (id === 'a' ? 1 : undefined));
+    expect(md).toContain('Ursprung [1, S. 14, 16, 46]');
+    expect(md).toContain('| Myers | D1 [1, S. 16] |');
+    expect(md).toContain('*Abbildung: Interaktion von Person, Umwelt und Anderen* [1, S. 17]');
   });
   it('Idempotenz-Schlüssel unabhängig von der Reihenfolge, abhängig von Optionen', async () => {
     const base = { collectionId: 'c', format: 'summary', focus: ' Gedächtnis ', figures: false, argon: false };

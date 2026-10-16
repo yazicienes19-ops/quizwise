@@ -60,11 +60,11 @@ export interface SourcePart { title: string; from: number; to: number }
 
 export type UnitType =
   | 'definition' | 'concept' | 'study' | 'finding' | 'example' | 'list' | 'comparison'
-  | 'task' | 'exam_info' | 'organizational' | 'figure' | 'source_error';
+  | 'task' | 'practice_question' | 'exam_info' | 'organizational' | 'figure' | 'source_error';
 
 export const UNIT_TYPES: UnitType[] = [
   'definition', 'concept', 'study', 'finding', 'example', 'list', 'comparison',
-  'task', 'exam_info', 'organizational', 'figure', 'source_error',
+  'task', 'practice_question', 'exam_info', 'organizational', 'figure', 'source_error',
 ];
 
 /** Inhaltliche Einheit einer Seite (Ergebnis der Extraktion). */
@@ -77,6 +77,12 @@ export interface Unit {
   title?: string;
   text: string;
   study?: { authors?: string; year?: number; design?: string; result?: string; conclusion?: string };
+  /** Beispiel mit ausgedachten Werten (Szenario, Rechenbeispiel, Illustration): nie ein Studienergebnis. */
+  illustrative?: boolean;
+  /** Übungsfrage: die Antwort, falls sie auf der Folie steht. */
+  answer?: string;
+  /** Prüfungsrelevant: Inhalt taucht auf einer Wiederholungs- oder Quizfolie wieder auf (setzt der Code). */
+  priority?: boolean;
 }
 
 /** Eine ausgewählte Quelle, wie die Pipeline sie bekommt. */
@@ -98,6 +104,7 @@ export interface PipelineSource {
 export interface Issue {
   rule: 'cites' | 'coverage' | 'length' | 'numbers' | 'author_year' | 'truncated' | 'cite_density' | 'ki_facts'
     | 'empty_heading' | 'section_coverage' | 'study_incomplete'
+    | 'merksatz' | 'source_error_hint' | 'illustrative_result' | 'repetition' | 'priority_missing'
     | 'nicht_belegt' | 'falsch' | 'chronologie' | 'zitat_falsch' | 'ki_fakt';
   blockId?: string;
   sourceId?: string;

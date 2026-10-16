@@ -1,5 +1,5 @@
 import type { Block, Cite, Issue, SourcePart, Unit } from './types';
-import { authorYears, blockTexts, extractFacts, hasFact, INLINE_CITE_RE, isTruncatedPrefix, looksTruncated, resultWords, unbalanced } from './text';
+import { authorYears, blockTexts, citationsIn, extractFacts, hasFact, INLINE_CITE_RE, isTruncatedPrefix, looksTruncated, resultWords, unbalanced } from './text';
 import { summaryCorridor } from './outline';
 
 /**
@@ -21,6 +21,7 @@ export interface ValidationContext {
 const allCites = (b: Block): Cite[] => [
   ...b.cites,
   ...(b.type === 'bullets' || b.type === 'tasks' || b.type === 'timeline' ? b.items.flatMap(i => i.cites) : []),
+  ...(b.type === 'table' ? (b.rowCites ?? []).flat() : []),
 ];
 
 /** 1. Zitate gültig: Quelle gewählt, Seite im Dokument. */
@@ -100,39 +101,38 @@ export const checkNumbers = (blocks: Block[], ctx: ValidationContext): Issue[] =
   return issues;
 };
 
-/** 5. Autor–Jahr: ein Autor hat überall dasselbe Jahr wie in den Quellen; Zeitleiste sortiert. */
+const normAuthor = (a: string) => a.toLowerCase().replace(/\bund\b/g, '&').replace(/\s+/g, ' ').replace(/\.$/, '').trim();
+
+/**
+ * 5. Autor–Jahr: jede Quellenangabe im Text (vollständige Autorenangabe +
+ * Jahr) muss so in einer Einheit vorkommen. Derselbe Autor mit verschiedenen
+ * Jahren ist erlaubt (Levin & Simons 1997 und Levin et al. 2000 sind zwei
+ * Studien); gewarnt wird nur, wenn das Paar nirgends in den Quellen steht.
+ * Dazu: Zeitleiste sortiert.
+ */
 export const checkAuthorYears = (blocks: Block[], ctx: ValidationContext): Issue[] => {
+  const known = new Set<string>();
+  const firstYears = new Set<string>();
+  for (const u of ctx.units) {
+    const pairs = [...citationsIn(unitText(u)), ...(u.study?.authors && u.study.year ? citationsIn(`${u.study.authors} (${u.study.year})`) : [])];
+    for (const c of pairs) { known.add(`${normAuthor(c.authors)}|${c.year}`); firstYears.add(`${c.first.toLowerCase()}|${c.year}`); }
+  }
   const issues: Issue[] = [];
-  const known = new Map<string, Set<number>>();
-  for (const u of ctx.units) for (const ay of authorYears(unitText(u))) {
-    if (!known.has(ay.author)) known.set(ay.author, new Set());
-    known.get(ay.author)!.add(ay.year);
-  }
-  for (const u of ctx.units) if (u.study?.authors && u.study.year) {
-    const first = u.study.authors.match(/\p{Lu}[\p{L}'’-]+/u)?.[0];
-    if (first) { if (!known.has(first)) known.set(first, new Set()); known.get(first)!.add(u.study.year); }
-  }
-  const seenInOutput = new Map<string, Set<number>>();
   for (const b of blocks) {
-    const pairs = b.type === 'study'
-      ? [...authorYears(`${b.authors} (${b.year})`), ...blockTexts(b).slice(1).flatMap(authorYears)]
-      : blockTexts(b).flatMap(authorYears);
-    for (const { author, year } of pairs) {
-      const years = known.get(author);
-      if (years && !years.has(year)) {
-        issues.push({ rule: 'author_year', blockId: b.id, message: `${author} (${year}) passt nicht zur Quelle (${[...years].join(', ')}).` });
+    const texts = b.type === 'study' ? [`${b.authors}${b.year ? ` (${b.year})` : ''}`, ...blockTexts(b).slice(1)]
+      : b.type === 'timeline' ? b.items.map(i => `${i.who} (${i.year})`) : blockTexts(b);
+    for (const c of texts.flatMap(citationsIn)) {
+      const exact = known.has(`${normAuthor(c.authors)}|${c.year}`);
+      // Kurzform ("Simons (1999)" für "Simons & Chabris (1999)") gilt, wenn Erstautor und Jahr passen.
+      if (!exact && !firstYears.has(`${c.first.toLowerCase()}|${c.year}`)) {
+        issues.push({ rule: 'author_year', blockId: b.id, message: `„${c.authors} (${c.year})“ steht so in keiner Quelle.` });
       }
-      if (!seenInOutput.has(author)) seenInOutput.set(author, new Set());
-      seenInOutput.get(author)!.add(year);
     }
     if (b.type === 'timeline') {
       for (let i = 1; i < b.items.length; i++) {
         if (b.items[i].year < b.items[i - 1].year) { issues.push({ rule: 'author_year', blockId: b.id, message: 'Zeitleiste ist nicht chronologisch sortiert.' }); break; }
       }
     }
-  }
-  for (const [author, years] of seenInOutput) {
-    if (years.size > 1 && known.has(author)) issues.push({ rule: 'author_year', message: `${author} steht mit verschiedenen Jahren im Text (${[...years].join(', ')}).` });
   }
   return issues;
 };
@@ -148,7 +148,9 @@ export const checkTruncated = (blocks: Block[], units: Unit[] = []): Issue[] => 
   return blocks.flatMap(b => (b.type === 'timeline' ? b.items.map(i => i.what) : blockTexts(b)).filter(Boolean).flatMap(t => {
     const why = looksTruncated(t) ? 'bricht mitten im Wort ab'
       : unbalanced(t) ? 'hat eine offene Klammer oder ein offenes Anführungszeichen'
-      : isTruncatedPrefix(t, unitTexts) ? 'endet mitten im Satz der Quelle'
+      // Nur Texte, die der Code aus Einheiten übernimmt (Zeitleiste, Aufgaben …): das Schreibmodell
+      // formuliert um und schreibt Tabellenzellen als Stichworte, dort schlug die Regel fälschlich an.
+      : b.id.startsWith('x-') && isTruncatedPrefix(t, unitTexts) ? 'endet mitten im Satz der Quelle'
       : null;
     return why ? [{ rule: 'truncated' as const, blockId: b.id, message: `Text ${why}: „${t.slice(-50)}“.` }] : [];
   }));
@@ -171,7 +173,8 @@ export const checkEmptyHeadings = (blocks: Block[]): Issue[] => {
 };
 
 /** Inhaltliche Einheiten, die in einem Abschnitt vorkommen müssen. */
-export const CONTENT_TYPES = new Set(['definition', 'concept', 'study', 'finding', 'comparison']);
+// example zählt mit (Abnahme 16.10.: ohne fiel das H0/H1-Beispiel weg); 70 % lassen Raum zum Kürzen.
+export const CONTENT_TYPES = new Set(['definition', 'concept', 'study', 'finding', 'comparison', 'example']);
 export const SECTION_COVERAGE_MIN = 0.7;
 
 /** Anteil der inhaltlichen Einheiten, die die Blöcke über unitIds aufnehmen (1, wenn es keine gibt). */
@@ -248,6 +251,101 @@ export const checkKiFacts = (blocks: Block[], ctx: ValidationContext): Issue[] =
   return issues;
 };
 
+/** Genau ein Merksatz je Kapitel (Kapitel = Blöcke nach einer Überschrift der Ebene 2). */
+export const checkMerksatz = (chapterBlocks: Block[], chapterBlockId: string, title: string): Issue[] => {
+  const n = chapterBlocks.filter(b => b.type === 'callout' && b.variant === 'merksatz').length;
+  if (n === 1) return [];
+  return [{ rule: 'merksatz', blockId: chapterBlockId, message: n === 0 ? `Kapitel „${title}“ hat keinen Merksatz. Ergänze genau einen.` : `Kapitel „${title}“ hat ${n} Merksätze. Behalte genau einen.` }];
+};
+
+/** Jede Einheit source_error (Folienfehler) braucht einen Hinweis mit Beleg auf ihre Seite. */
+export const checkSourceErrorHints = (blocks: Block[], units: Unit[]): Issue[] =>
+  units.filter(u => u.type === 'source_error')
+    .filter(u => !blocks.some(b => b.type === 'callout' && b.variant === 'hinweis' && b.cites.some(c => c.sourceId === u.sourceId && c.page === u.page)))
+    .map(u => ({ rule: 'source_error_hint' as const, sourceId: u.sourceId, message: `Folienfehler ohne Hinweis (S. ${u.page}): ${u.text}` }));
+
+/**
+ * Rechenbeispiel als Studienergebnis: Werte, die nur in Einheiten mit
+ * ausgedachten Werten stehen (illustrative), dürfen nicht als Ergebnis einer
+ * Studie erscheinen, also weder in study.result noch in einem Text mit
+ * Autor und Jahr (Abnahme 16.10.: "M = 75/90" als Ergebnis von Skowronek et al.).
+ */
+export const checkIllustrative = (blocks: Block[], units: Unit[]): Issue[] => {
+  const illustrative = units.filter(u => u.illustrative).map(unitText).join(' ');
+  if (!illustrative) return [];
+  const real = units.filter(u => !u.illustrative).map(unitText).join(' ');
+  const onlyIllustrative = (t: string) => extractFacts(t).filter(f => !/^(1[89]|20)\d\d$/.test(f) && hasFact(f, illustrative) && !hasFact(f, real));
+  const issues: Issue[] = [];
+  for (const b of blocks) {
+    const texts = b.type === 'study' ? [b.result, b.conclusion] : b.type === 'table' ? [] : blockTexts(b).filter(t => citationsIn(t).length);
+    const facts = texts.flatMap(onlyIllustrative);
+    if (facts.length) {
+      issues.push({ rule: 'illustrative_result', blockId: b.id, message: `Werte aus einem Rechenbeispiel stehen als Studienergebnis da (${[...new Set(facts)].join(', ')}). Als Rechenbeispiel kennzeichnen oder als Szenarien-Tabelle zeigen.` });
+    }
+  }
+  return issues;
+};
+
+const shingles3 = (t: string): Set<string> => {
+  const w = (t.toLowerCase().replace(/\*\*/g, '').match(/[\p{L}\p{N}]+/gu) ?? []);
+  const out = new Set<string>();
+  for (let i = 0; i + 3 <= w.length; i++) out.add(w.slice(i, i + 3).join(' '));
+  return out;
+};
+const overlap = (a: Set<string>, b: Set<string>) => {
+  if (!a.size || !b.size) return 0;
+  let n = 0;
+  for (const x of a) if (b.has(x)) n += 1;
+  return n / Math.min(a.size, b.size);
+};
+export const REPETITION_MIN = 0.6;
+
+/**
+ * Keine Wiederholung im Kapitel: zwei Texte aus verschiedenen Blöcken, die
+ * großteils dasselbe sagen (Anteil gemeinsamer Wortdreier am kürzeren Text),
+ * oder eine Studie als Block und zusätzlich als Stichpunkt mit Autor und Jahr.
+ */
+export const checkRepetition = (chapterBlocks: Block[]): Issue[] => {
+  const entries = chapterBlocks.filter(b => b.type !== 'heading' && b.type !== 'table').flatMap(b =>
+    (b.type === 'bullets' || b.type === 'tasks' ? b.items.map(i => i.text) : [blockTexts(b).join(' ')])
+      .map(text => ({ b, text, sh: shingles3(text) })))
+    .filter(e => e.sh.size >= 4);
+  const issues: Issue[] = [];
+  const seen = new Set<string>();
+  for (let i = 0; i < entries.length; i++) for (let j = i + 1; j < entries.length; j++) {
+    const a = entries[i], c = entries[j];
+    if (a.b.id === c.b.id || seen.has(`${a.b.id}|${c.b.id}`)) continue;
+    if (overlap(a.sh, c.sh) >= REPETITION_MIN) {
+      seen.add(`${a.b.id}|${c.b.id}`);
+      issues.push({ rule: 'repetition', blockId: c.b.id, message: `Wiederholung: „${c.text.slice(0, 60)}“ sagt dasselbe wie ein früherer Block. Nur einmal aufnehmen.` });
+    }
+  }
+  const studies = chapterBlocks.filter((b): b is Extract<Block, { type: 'study' }> => b.type === 'study' && !!b.year);
+  const key = (c: { sourceId: string; page: number }) => `${c.sourceId}:${c.page}`;
+  for (const b of chapterBlocks) {
+    if (b.type !== 'bullets' && b.type !== 'paragraph') continue;
+    const entries = b.type === 'bullets' ? b.items.map(i => ({ text: i.text, cites: i.cites.length ? i.cites : b.cites })) : [{ text: b.text, cites: b.cites }];
+    for (const { text: t, cites } of entries) for (const c of citationsIn(t)) {
+      // Nur echte Doppelung: dieselbe Studie UND dieselben Folien. Weitere Experimente derselben
+      // Autoren auf anderen Folien (z. B. Helligkeit und Ähnlichkeit bei Most et al.) sind neuer Stoff.
+      const st = studies.find(s => s.year === c.year && s.authors.toLowerCase().includes(c.first.toLowerCase())
+        && cites.length > 0 && cites.every(x => s.cites.some(y => key(y) === key(x))));
+      if (st && !seen.has(`${st.id}|${b.id}`)) {
+        seen.add(`${st.id}|${b.id}`);
+        issues.push({ rule: 'repetition', blockId: b.id, message: `Wiederholung: ${c.authors} (${c.year}) steht schon als Studie im Kapitel. Den Stichpunkt streichen.` });
+      }
+    }
+  }
+  return issues;
+};
+
+/** Prüfungsrelevante Einheiten (Wiederholungs-/Quizfolien) müssen vorkommen. */
+export const checkPriority = (unitIds: string[], blocks: Block[], units: Map<string, Unit>, chapterBlockId: string): Issue[] => {
+  const used = new Set(blocks.flatMap(b => b.unitIds ?? []));
+  const missing = unitIds.filter(id => units.get(id)?.priority && !used.has(id));
+  return missing.length ? [{ rule: 'priority_missing', blockId: chapterBlockId, message: `Prüfungsrelevanter Stoff fehlt (steht auf Wiederholungs- oder Quizfolien). Nimm diese Einheiten auf: ${missing.join(', ')}.` }] : [];
+};
+
 export const validateResult = (blocks: Block[], ctx: ValidationContext): Issue[] => [
   ...checkCites(blocks, ctx),
   ...checkCoverage(blocks, ctx),
@@ -257,6 +355,8 @@ export const validateResult = (blocks: Block[], ctx: ValidationContext): Issue[]
   ...checkTruncated(blocks, ctx.units),
   ...checkEmptyHeadings(blocks),
   ...checkStudies(blocks),
+  ...checkSourceErrorHints(blocks, ctx.units),
+  ...checkIllustrative(blocks, ctx.units),
   ...checkCiteDensity(blocks),
   ...checkKiFacts(blocks, ctx),
 ];

@@ -1,8 +1,9 @@
 import type { Block, Cite, Unit } from './types';
 import type { Chapter } from './outline';
 import { normalizeBlocks, writerSchema, type DroppedBlock, type FigureRef } from './blocks';
-import { SUMMARY_BLOCK_TYPES, SUMMARY_PROMPT } from './prompts/summary.v2';
+import { SUMMARY_BLOCK_TYPES, SUMMARY_PROMPT } from './prompts/summary.v3';
 import { STUDIO_TEMPERATURE, type StudioLlm } from './llm';
+import { unitFlags } from './outline';
 import { blockTexts } from './text';
 
 /** Schritt C: ein Kapitel (oder ein einzelner Abschnitt) schreiben, auch Reparatur E mit Beanstandungen. */
@@ -12,8 +13,20 @@ const unitLine = (u: Unit, sourceNames: Map<string, string>) => {
   const study = u.study
     ? ` [Studie: ${[u.study.authors, u.study.year, u.study.design, u.study.result, u.study.conclusion].filter(Boolean).join(' | ')}]`
     : '';
-  return `- ${u.id} (${u.type}, ${where})${u.title ? ` ${u.title}:` : ''} ${u.text}${study}`;
+  const answer = u.answer ? ` [Antwort: ${u.answer}]` : '';
+  return `- ${u.id} (${u.type}, ${where})${unitFlags(u)}${u.title ? ` ${u.title}:` : ''} ${u.text}${study}${answer}`;
 };
+
+/**
+ * Das Schreibmodell überzog sein Budget in der Abnahme (16.10.2026) um etwa
+ * 30 %; es bekommt deshalb ein kleineres genannt. Geprüft wird gegen das
+ * echte Budget (pipeline.ts, Kürzung über die Reparatur).
+ */
+export const WRITER_BUDGET_FACTOR = 0.75;
+/** Argon überzog in der Abnahme stärker (bis 20 % über dem Budget trotz 0,75). */
+export const WRITER_BUDGET_FACTOR_ARGON = 0.65;
+export const writerBudget = (budget: number, argon = false): number =>
+  Math.max(40, Math.round(budget * (argon ? WRITER_BUDGET_FACTOR_ARGON : WRITER_BUDGET_FACTOR)));
 
 export interface WriteInput {
   chapter: Chapter;
@@ -27,16 +40,20 @@ export interface WriteInput {
   focus?: string;
   /** Reparatur: Beanstandungen und vorherige Fassung. */
   repair?: { issues: string[]; previous: Block[] };
+  /** Schreiben mit Argon (anderes Budget, siehe writerBudget). */
+  argon?: boolean;
 }
 
 export interface WriteResult { blocks: Block[]; dropped: DroppedBlock[] }
 
 /**
- * Antwortgrenze je Kapitel: etwa 3 Tokens je Budgetwort plus Puffer für das
- * JSON. Eine Schleife endet so nach wenigen tausend Tokens statt am
- * Modell-Limit (16k bzw. 32k bei Argon).
+ * Antwortgrenze je Kapitel, an das Wortbudget gekoppelt. Gemessen (Abnahme
+ * 16.10.2026): mit JSON-Struktur, Einheiten-IDs und Tabellen braucht ein
+ * Budgetwort 4 bis 5 Tokens; mit 3 je Wort plus 1.500 lief das größte Kapitel
+ * in 4 von 6 Läufen ans Limit. Schleifen fängt ohnehin der Stream-Wächter
+ * (guardedLlm) nach wenigen hundert Tokens ab; die Grenze ist die zweite Bremse.
  */
-export const chapterTokenCap = (budget: number): number => Math.min(16_000, Math.max(2_500, Math.round(budget * 3 + 1_500)));
+export const chapterTokenCap = (budget: number): number => Math.min(16_000, Math.max(3_000, Math.round(budget * 5 + 2_000)));
 
 /** Vorherige Fassung kompakt für den Reparatur-Prompt (Typ, Text, Einheiten). */
 const previousLine = (b: Block): string => {
@@ -66,7 +83,7 @@ export const buildWritePrompt = (input: WriteInput): string => {
   return `${SUMMARY_PROMPT}
 ${focus}${exam}${figs}${repair}${part}
 === KAPITEL: ${input.chapter.title} ===
-WORTBUDGET: ${input.chapter.budget} Wörter
+WORTBUDGET: ${writerBudget(input.chapter.budget, input.argon)} Wörter (Obergrenze, nicht überschreiten)
 
 ${sections}`;
 };

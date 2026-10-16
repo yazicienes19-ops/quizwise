@@ -1,6 +1,7 @@
 import type { PipelineSource, Unit, UnitType } from './types';
 import { UNIT_TYPES } from './types';
-import { EXTRACT_PROMPT, EXTRACT_PROMPT_VERSION, extractSchema } from './prompts/extract.v2';
+import { EXTRACT_PROMPT, EXTRACT_PROMPT_VERSION, extractSchema } from './prompts/extract.v3';
+import { SOURCE_ERRORS_PROMPT, SOURCE_ERRORS_PROMPT_VERSION, sourceErrorsSchema } from './prompts/sourceErrors.v1';
 import { mapLimit, sha256, STUDIO_TEMPERATURE, type ExtractionCache, type StudioLlm } from './llm';
 import { parseYear } from './blocks';
 
@@ -77,10 +78,14 @@ export const parseUnits = (raw: unknown, job: Job): StoredUnit[] => {
       ...(str(u.result) ? { result: str(u.result) } : {}),
       ...(str(u.conclusion) ? { conclusion: str(u.conclusion) } : {}),
     } : undefined;
+    // Ausgedachte Werte sind nie ein Befund, auch wenn das Modell sie so einordnet.
+    const illustrative = u.illustrative === true;
     out.push({
-      sourceId: job.docId, page, type, text,
+      sourceId: job.docId, page, type: illustrative && (type === 'finding' || type === 'study') ? 'example' : type, text,
       ...(str(u.title) ? { title: str(u.title, 120) } : {}),
-      ...(study && Object.keys(study).length ? { study } : {}),
+      ...(study && Object.keys(study).length && !illustrative ? { study } : {}),
+      ...(illustrative ? { illustrative: true } : {}),
+      ...(type === 'practice_question' && str(u.answer) ? { answer: str(u.answer) } : {}),
     });
   }
   return out;
@@ -128,3 +133,49 @@ export const assignUnitIds = (units: StoredUnit[], sourceOrder: string[]): Unit[
   [...units]
     .sort((a, b) => sourceOrder.indexOf(a.sourceId) - sourceOrder.indexOf(b.sourceId) || a.page - b.page)
     .map((u, i) => ({ ...u, id: `u${i + 1}` }));
+
+const SCAN_PAGES = 50;
+
+/**
+ * Schritt A2: Folienfehler im Rohtext suchen (3.8 Flash). Die Extraktion mit
+ * Flash-Lite fand im Test (16.10.2026) keinen einzigen und "korrigierte" eine
+ * falsch kopierte Hypothese stillschweigend; aus den Einheiten allein ist der
+ * Fehler dann nicht mehr zu sehen. Gecacht wie die Extraktion.
+ */
+export const scanSourceErrors = async (
+  sources: PipelineSource[],
+  wanted: Map<string, Set<number>>,
+  llm: StudioLlm,
+  cache: ExtractionCache | null,
+  isCancelled?: () => boolean,
+): Promise<StoredUnit[]> => {
+  const jobs: { src: PipelineSource; text: string; from: number; to: number }[] = [];
+  for (const src of sources) {
+    if (!src.pages) continue;
+    for (let from = 1; from <= src.pages.length; from += SCAN_PAGES) {
+      const to = Math.min(src.pages.length, from + SCAN_PAGES - 1);
+      const text = windowText({ ...src, figures: [] }, from, to, wanted.get(src.docId));
+      if (text) jobs.push({ src, text, from, to });
+    }
+  }
+  const results = await mapLimit(jobs, PARALLEL, async ({ src, text, from, to }) => {
+    if (isCancelled?.()) return [];
+    const hash = await sha256(`${SOURCE_ERRORS_PROMPT_VERSION}\n${text}`);
+    const cached = cache ? await cache.get(hash).catch(() => null) : null;
+    if (cached) return (cached as StoredUnit[]).map(u => ({ ...u, sourceId: src.docId }));
+    const raw = await llm({
+      step: 'scan', prompt: `${SOURCE_ERRORS_PROMPT}\n\n=== QUELLE: ${src.name} ===\n${text}`, schema: sourceErrorsSchema,
+      heavy: true, thinkingBudget: 1024, temperature: STUDIO_TEMPERATURE.scan, maxOutputTokens: 4000,
+    });
+    const list = raw && typeof raw === 'object' && Array.isArray((raw as { errors?: unknown }).errors)
+      ? (raw as { errors: Record<string, unknown>[] }).errors : [];
+    const need = wanted.get(src.docId);
+    const units: StoredUnit[] = list
+      .map(e => ({ page: Math.round(Number(e.page)), text: str(e.text, 600) }))
+      .filter(e => e.text && e.page >= from && e.page <= to && (!need || need.has(e.page)))
+      .map(e => ({ sourceId: src.docId, page: e.page, type: 'source_error' as const, text: e.text }));
+    if (cache) await cache.set(hash, src.docId, src.pageCount, units).catch(() => {});
+    return units;
+  });
+  return results.flat();
+};

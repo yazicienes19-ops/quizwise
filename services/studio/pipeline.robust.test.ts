@@ -57,7 +57,8 @@ const makeLlm = (write: (req: StudioLlmRequest, n: number) => unknown) => {
     calls.push(req);
     if (req.step === 'extract') return fakeExtract(req.prompt);
     if (req.step === 'outline') return outline(req.prompt);
-    if (req.step === 'check') return { issues: [] };
+    if (req.step === 'check' || req.step === 'scan') return { issues: [], errors: [] };
+    if (req.step === 'timeline') return { topic: 'x', items: [] };
     return write(req, ++writes);
   };
   return { llm, calls };
@@ -107,8 +108,8 @@ describe('Kapitel gehen nie still verloren', () => {
     await runSummaryPipeline({ sources: [merged()], llm });
     const w = calls.filter(c => c.step === 'write');
     expect(w.every(c => c.maxOutputTokens && c.maxOutputTokens <= 16_000)).toBe(true);
-    expect(chapterTokenCap(600)).toBe(3300);
-    expect(chapterTokenCap(10)).toBe(2500);
+    expect(chapterTokenCap(600)).toBe(5000);
+    expect(chapterTokenCap(10)).toBe(3000);
     expect(chapterTokenCap(9000)).toBe(16000);
     expect(calls.filter(c => c.step === 'extract').every(c => (c.maxOutputTokens ?? 0) > 0)).toBe(true);
   });
@@ -156,7 +157,7 @@ describe('Zusammengefügte PDF', () => {
   it('Fußnote nennt Vorlesung, Folie und Gesamtseite', () => {
     const refs = [{ n: 1, docId: 'g', name: 'Allgemeine Psychologie 1 (gesamt)', parts: [{ title: 'Heißner', from: 1, to: 82 }, { title: 'Aufmerksamkeit_1', from: 83, to: 107 }] }];
     expect(citeTokens([{ sourceId: 'g', page: 94 }], () => 1, refs)).toBe('[1, Aufmerksamkeit_1, Folie 12 (gesamt S. 94)]');
-    expect(citeTokens([{ sourceId: 'g', page: 94 }], () => 1)).toBe('[1:94]');
+    expect(citeTokens([{ sourceId: 'g', page: 94 }], () => 1)).toBe('[1, S. 94]');
   });
 });
 
@@ -165,13 +166,15 @@ describe('Prüfregeln aus dem Testlauf', () => {
   it('abgeschnittene Texte: Satzanfang einer Einheit, offene Klammer', () => {
     const units = [unit('u1', 'Wird der eigene Name genannt, zieht dies automatisch die Aufmerksamkeit auf sich.'), unit('u2', 'Gestaltgesetze. Sie gelten für alle.')];
     const blocks: Block[] = [
-      { id: 'b1', origin: 'quelle', cites: [], type: 'paragraph', text: 'Wird der eigene Name genannt, zieht dies automatisch.' },
+      { id: 'x-b1', origin: 'quelle', cites: [], type: 'paragraph', text: 'Wird der eigene Name genannt, zieht dies automatisch.' },
       { id: 'b2', origin: 'quelle', cites: [], type: 'paragraph', text: 'Probleme der Filtertheorie: Eindringen von unbeachtetem Input (z.B.' },
-      { id: 'b3', origin: 'quelle', cites: [], type: 'paragraph', text: 'Gestaltgesetze.' },
+      { id: 'x-b3', origin: 'quelle', cites: [], type: 'paragraph', text: 'Gestaltgesetze.' },
+      { id: 'b6', origin: 'quelle', cites: [], type: 'paragraph', text: 'Wird der eigene Name genannt, zieht dies automatisch.' },
       { id: 'b4', origin: 'quelle', cites: [], type: 'paragraph', text: 'Szenarien: a) Schule b) Arbeit.' },
       { id: 'b5', origin: 'quelle', cites: [], type: 'paragraph', text: 'Einfluss der Variable (UV) auf (AV) bei N = 50 (je Gruppe n = 25), r = 1) als Beispiel.' },
     ];
-    expect(checkTruncated(blocks, units).map(i => i.blockId)).toEqual(['b1', 'b2']);
+    // Satzanfang nur bei Texten, die der Code übernimmt (x-); das Schreibmodell formuliert um.
+    expect(checkTruncated(blocks, units).map(i => i.blockId)).toEqual(['x-b1', 'b2']);
   });
   it('erster Satz nie gekürzt, "z.B." ist kein Satzende', () => {
     expect(firstSentence('Probleme der Filtertheorie: Eindringen von Input (z.B. Moray, 1959). Weiter.')).toBe('Probleme der Filtertheorie: Eindringen von Input (z.B. Moray, 1959).');
