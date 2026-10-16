@@ -168,7 +168,8 @@ run('Lernstudio-Eval (live)', () => {
     mkdirSync(OUT, { recursive: true });
     const numberOf = (id: string) => sources.findIndex(s => s.docId === id) + 1 || undefined;
     writeFileSync(join(OUT, `${stamp}.json`), JSON.stringify(r, null, 2));
-    writeFileSync(join(OUT, `${stamp}.md`), `${sources.map((s, i) => `[${i + 1}] ${s.name}`).join('\n')}\n\n${resultToMarkdown(r, numberOf)}`);
+    const refs = sources.map((s, i) => ({ n: i + 1, docId: s.docId, name: s.name, ...(s.parts ? { parts: s.parts } : {}) }));
+    writeFileSync(join(OUT, `${stamp}.md`), `${sources.map((s, i) => `[${i + 1}] ${s.name}`).join('\n')}\n\n${resultToMarkdown(r, numberOf, refs)}`);
 
     const texts = r.blocks.flatMap(blockTexts);
     const all = texts.join('\n');
@@ -210,7 +211,7 @@ run('Lernstudio-Eval (live)', () => {
     check('Keine Schleife', loops === 0, `${loops} abgebrochen`);
     check('Kein leeres oder unvollständiges Kapitel', !(r.incompleteChapters?.length), (r.incompleteChapters ?? []).join(', '));
     check('Keine leere Überschrift', checkEmptyHeadings(r.blocks).length === 0);
-    const writer = process.env.STUDIO_EVAL_WRITER ?? MODEL_HEAVY;
+    const writer = process.env.STUDIO_EVAL_WRITER || MODEL_HEAVY;
     const summary = [
       '',
       `Schreibmodell: ${writer}, Temperatur: ${TEMP_DEFAULT ? 'Standard des Modells' : 'Pipeline (0,1 bis 0,3)'}`,
