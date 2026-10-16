@@ -287,6 +287,7 @@ export const AppContent: React.FC<AppContentProps> = (p) => {
         documents={documents} collections={collections}
         isAdminUser={isAdmin(user?.id)}
         userId={user?.id}
+        userPlan={userPlan}
         userName={userName}
         onUpload={handleFileUpload} onDelete={deleteDoc}
         onRetryAnalysis={retryAnalysis}

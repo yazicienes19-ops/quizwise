@@ -56,10 +56,26 @@ const POINT_MAX = 140;
 /** Vollständiger Codeblock; unvollständige (beim Schreiben) zählen nicht. */
 const BLOCK_RE = /```diagram\s*\n([\s\S]*?)\n?```/g;
 
+/** Zu lange Texte am Wortende kürzen, nie mitten im Wort ("…fehlinterp…", Lernstudio-Audit 16.10.2026). */
 const str = (v: unknown, max: number): string | undefined => {
   if (typeof v !== 'string') return undefined;
   const t = v.replace(/\s+/g, ' ').trim();
-  return t ? (t.length > max ? `${t.slice(0, max - 1).trimEnd()}…` : t) : undefined;
+  if (!t) return undefined;
+  if (t.length <= max) return t;
+  const cut = t.slice(0, max - 2);
+  const atWord = cut.replace(/\s+\S*$/, '').replace(/[,;:.\-–]+$/, '');
+  return `${(atWord.length >= max * 0.5 ? atWord : cut).trimEnd()} …`;
+};
+
+/** Bildunterschriften bleiben vollständig (nur gegen Ausreißer gedeckelt, dann am Satzende). */
+const CAPTION_MAX = 600;
+const caption = (v: unknown): string | undefined => {
+  if (typeof v !== 'string') return undefined;
+  const t = v.replace(/\s+/g, ' ').trim();
+  if (!t) return undefined;
+  if (t.length <= CAPTION_MAX) return t;
+  const sentences = t.slice(0, CAPTION_MAX).match(/^.*[.!?](?=\s|$)/);
+  return sentences ? sentences[0] : str(t, CAPTION_MAX);
 };
 
 /** "1:261" oder "1" oder ["1:3", "2"] → Fußnoten; Prüfung der Quelle über validate. */
@@ -152,13 +168,13 @@ export const parseDiagram = (json: string, validate: CiteValidator = acceptAll):
     const ref = typeof o.ref === 'string' && /^A\d+$/.test(o.ref.trim()) ? o.ref.trim() : undefined;
     const image = typeof o.image === 'string' && o.image.trim() ? o.image.trim() : undefined;
     if (!ref && !image) return null;
-    const caption = str(o.caption, DETAIL_MAX);
+    const figCaption = caption(o.caption);
     const page = typeof o.page === 'number' && o.page >= 1 ? Math.round(o.page) : undefined;
     const docId = typeof o.docId === 'string' ? o.docId : undefined;
     const cite = parseCite(o.cite, validate);
     return withTitle({
       type: 'figure', ...(ref ? { ref } : {}), ...(image ? { image } : {}), ...(docId ? { docId } : {}),
-      ...(page ? { page } : {}), ...(caption ? { caption } : {}), ...(cite ? { cite } : {}),
+      ...(page ? { page } : {}), ...(figCaption ? { caption: figCaption } : {}), ...(cite ? { cite } : {}),
     });
   }
   if (o.type === 'flow' && Array.isArray(o.steps)) {

@@ -1,5 +1,6 @@
 import { supabase } from './supabaseClient';
 import type { StudioFormat } from './subjectStudio';
+import type { LernstudioResult } from './studio/types';
 
 /**
  * Gespeicherte Lernstudio-Ergebnisse und Notizen je Fach
@@ -22,6 +23,11 @@ export interface StudioItem {
   focus?: string;
   createdAt: number;
   updatedAt: number;
+  /** Lernstudio v2: Ergebnis als Blöcke (markdown ist dann nur die Textfassung für Export und alte Apps). */
+  content?: LernstudioResult;
+  formatVersion?: 1 | 2;
+  /** Quellen + Format + Optionen: gleicher Schlüssel = ein Eintrag (migration_studio_v2.sql). */
+  idempotencyKey?: string;
 }
 
 const cacheKey = (userId: string | undefined) => `studearc_studio_items_${userId ?? 'local'}`;
@@ -41,12 +47,15 @@ const writeCache = (userId: string | undefined, items: StudioItem[]) => {
 interface StudioRow {
   id: string; collection_id: string; kind: StudioKind; title: string; markdown: string;
   sources: StudioSourceRef[] | null; focus: string | null; created_at: string; updated_at: string;
+  content?: LernstudioResult | null; format_version?: number | null; idempotency_key?: string | null;
 }
 
 const fromRow = (r: StudioRow): StudioItem => ({
   id: r.id, collectionId: r.collection_id, kind: r.kind, title: r.title, markdown: r.markdown,
   sources: r.sources ?? [], ...(r.focus ? { focus: r.focus } : {}),
   createdAt: Date.parse(r.created_at), updatedAt: Date.parse(r.updated_at),
+  ...(r.content && r.format_version === 2 ? { content: r.content, formatVersion: 2 as const } : {}),
+  ...(r.idempotency_key ? { idempotencyKey: r.idempotency_key } : {}),
 });
 
 export const newStudioId = (): string => `st_${Date.now().toString(36)}${Math.random().toString(36).slice(2, 7)}`;
@@ -75,12 +84,32 @@ export const cachedStudioItems = (userId: string | undefined, collectionId: stri
   readCache(userId).filter(i => i.collectionId === collectionId).sort((a, b) => b.createdAt - a.createdAt);
 
 const pushItem = async (userId: string, item: StudioItem): Promise<boolean> => {
-  const { error } = await supabase.from('studio_items').upsert({
+  const row = {
     id: item.id, user_id: userId, collection_id: item.collectionId, kind: item.kind,
     title: item.title, markdown: item.markdown, sources: item.sources, focus: item.focus ?? null,
     created_at: new Date(item.createdAt).toISOString(), updated_at: new Date(item.updatedAt).toISOString(),
-  });
+  };
+  const v2 = item.formatVersion === 2 || item.idempotencyKey
+    ? { content: item.content ?? null, format_version: item.formatVersion ?? 1, idempotency_key: item.idempotencyKey ?? null }
+    : {};
+  const { error } = await supabase.from('studio_items').upsert({ ...row, ...v2 });
+  // Migration v2 noch nicht ausgeführt: ohne die neuen Spalten speichern (Textfassung bleibt erhalten).
+  if (error && Object.keys(v2).length && /column|schema cache/i.test(error.message)) {
+    return !(await supabase.from('studio_items').upsert(row)).error;
+  }
   return !error;
+};
+
+/**
+ * Vorhandenen Eintrag mit demselben Idempotenz-Schlüssel finden (lokal, dann
+ * Cloud): dessen ID wird wiederverwendet, das neue Ergebnis ersetzt das alte.
+ */
+export const findStudioItemByKey = async (userId: string | undefined, key: string): Promise<StudioItem | null> => {
+  const local = readCache(userId).find(i => i.idempotencyKey === key);
+  if (local || !userId) return local ?? null;
+  const { data, error } = await supabase.from('studio_items').select('*').eq('idempotency_key', key).limit(1);
+  if (error || !data?.length) return null;
+  return fromRow(data[0] as StudioRow);
 };
 
 export const saveStudioItem = async (userId: string | undefined, item: StudioItem): Promise<void> => {

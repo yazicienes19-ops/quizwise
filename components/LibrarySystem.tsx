@@ -31,6 +31,8 @@ interface LibrarySystemProps {
   userId?: string;
   /** Vorname des Teilenden — zeigt die Vorschau-Seite ("{Name} hat ein Fach geteilt"). */
   userName?: string | null;
+  /** Lernstudio: neue Zusammenfassungs-Pipeline nur für Pro. */
+  userPlan?: 'free' | 'pro';
   onUpload: (file: File, collectionId?: string, onProgress?: (fraction: number) => void, folderId?: string) => Promise<string | null>;
   onDelete: (id: string) => void;
   onRetryAnalysis?: (docId: string) => void;
@@ -79,6 +81,7 @@ export const LibrarySystem: React.FC<LibrarySystemProps> = ({
   isAdminUser = false,
   userId,
   userName,
+  userPlan = 'free',
   onUpload,
   onDelete,
   onRetryAnalysis,
@@ -224,6 +227,7 @@ export const LibrarySystem: React.FC<LibrarySystemProps> = ({
       collection={summaryCol}
       documents={documents}
       userId={userId}
+      userPlan={userPlan}
       onClose={() => setSummaryColId(null)}
       onOpenDoc={doc => { setSummaryColId(null); onAction(ActiveTab.READER, doc); }}
       onAddAsSource={(file, collectionId) => onUpload(file, collectionId)}

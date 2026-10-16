@@ -37,11 +37,18 @@ import { requestReaderJump } from '../services/readerJump';
 import { loadStudioChapters } from '../services/studioChapters';
 import { ensureFigureIndex, buildFigureCatalog, resolveFigureBlocks, type DocFigure } from '../services/studioFigures';
 import type { CitationRef } from '../services/citations';
+import { StudioBlocks } from './StudioBlocks';
+import { runSummaryForDocs, type SummaryProgress } from '../services/studio/runSummary';
+import { PipelineCancelled } from '../services/studio/pipeline';
+import { studioIdempotencyKey } from '../services/studio/idempotency';
+import { findStudioItemByKey } from '../services/studioStore';
+import { createRunGuard } from '../services/studio/runGuard';
 
 interface Props {
   collection: Collection;
   documents: ProcessedDocument[];
   userId?: string;
+  userPlan?: 'free' | 'pro';
   onClose: () => void;
   /** Quelle im Reader öffnen (Fußnote angeklickt). */
   onOpenDoc: (doc: ProcessedDocument) => void;
@@ -66,7 +73,7 @@ type MobileTab = 'sources' | 'content' | 'saved';
  * Format wählen, Text mit Fußnoten erzeugen, Ergebnisse und Notizen speichern.
  * Logik: services/subjectStudio.ts, Speicherung: services/studioStore.ts.
  */
-export const SubjectStudio: React.FC<Props> = ({ collection, documents, userId, onClose, onOpenDoc, onAddAsSource }) => {
+export const SubjectStudio: React.FC<Props> = ({ collection, documents, userId, userPlan = 'free', onClose, onOpenDoc, onAddAsSource }) => {
   const { t, tp } = useTranslation();
   const { titleId, dialogProps } = useModalA11y(onClose);
 
@@ -119,6 +126,10 @@ export const SubjectStudio: React.FC<Props> = ({ collection, documents, userId, 
   const [noteDraft, setNoteDraft] = useState<{ title: string; markdown: string } | null>(null);
   const [selectionText, setSelectionText] = useState('');
   const cancelRef = useRef(false);
+  /** Höchstens eine Generierung gleichzeitig: Doppelklick erzeugt nicht zwei Einträge. */
+  const runGuard = useRef(createRunGuard()).current;
+  /** Fortschritt der neuen Zusammenfassungs-Pipeline (nur Pro). */
+  const [pipeProgress, setPipeProgress] = useState<SummaryProgress | null>(null);
   const contentRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
@@ -294,24 +305,58 @@ export const SubjectStudio: React.FC<Props> = ({ collection, documents, userId, 
     return item;
   };
 
-  const generate = async (fmt: StudioFormat, focusText = focus) => {
+  /** Neue Zusammenfassung (Lernstudio v2, Pro): Pipeline, strukturierte Blöcke, ein Eintrag je Auswahl. */
+  const runSummaryV2 = async (focusText: string, chosen: ProcessedDocument[]): Promise<StudioItem | null> => {
+    const withFigures = !!userId && figuresOn;
+    const key = await studioIdempotencyKey({
+      collectionId: collection.id, format: 'summary',
+      sources: chosen.map(d => ({ docId: d.id, ranges: scopeFor(d.id).ranges })),
+      focus: focusText, figures: withFigures, argon: argonActive,
+    });
+    const out = await runSummaryForDocs({
+      chosen, allDocuments: documents, scope: scopeFor, userId, focus: focusText, withFigures, argon: argonActive,
+      onProgress: p => { if (!cancelRef.current) setPipeProgress(p); },
+      isCancelled: () => cancelRef.current,
+    });
+    if (!out || cancelRef.current) return null;
+    if (!out.result.blocks.length) throw new Error(t('stu.empty'));
+    // Gleiche Auswahl schon einmal erstellt: das neue Ergebnis ersetzt das alte.
+    const previous = await findStudioItemByKey(userId, key).catch(() => null);
+    const now = Date.now();
+    const baseTitle = focusText.trim() ? `${formatLabel('summary')}: ${focusText.trim().slice(0, 60)}` : formatLabel('summary');
+    const item: StudioItem = {
+      id: previous?.id ?? newStudioId(), collectionId: collection.id, kind: 'summary',
+      title: (argonActive ? `${baseTitle} (Argon)` : baseTitle).slice(0, 120),
+      markdown: out.markdown, sources: out.sources,
+      ...(focusText.trim() ? { focus: focusText.trim() } : {}),
+      createdAt: now, updatedAt: now,
+      content: out.result, formatVersion: 2, idempotencyKey: key,
+    };
+    await persist(item);
+    return item;
+  };
+
+  const generate = (fmt: StudioFormat, focusText = focus) => runGuard.run(async () => {
     const chosen = docs.filter(d => selected.has(d.id));
     if (!chosen.length) { toast.info(t('stu.pickSources')); setMobileTab('sources'); return; }
     cancelRef.current = false;
     setView({ kind: 'generating', format: fmt });
     setMobileTab('content');
     try {
-      const item = await runOnce({ fmt, focusText, chosen, scope: scopeFor });
+      const item = fmt === 'summary' && userPlan === 'pro'
+        ? await runSummaryV2(focusText, chosen)
+        : await runOnce({ fmt, focusText, chosen, scope: scopeFor });
       if (item) setView({ kind: 'item', id: item.id });
     } catch (e) {
-      if (!cancelRef.current) { toast.error(resolveErrorMessage(e)); setView({ kind: 'home' }); }
+      if (!cancelRef.current && !(e instanceof PipelineCancelled)) { toast.error(resolveErrorMessage(e)); setView({ kind: 'home' }); }
     } finally {
       setProgress(null);
+      setPipeProgress(null);
     }
-  };
+  });
 
   /** Je Kapitel ein eigenes Ergebnis, nacheinander. */
-  const generateBatch = async (fmt: StudioFormat) => {
+  const generateBatch = (fmt: StudioFormat) => runGuard.run(async () => {
     const units = batchUnits.slice(0, MAX_BATCH);
     if (units.length < 2) return;
     cancelRef.current = false;
@@ -342,9 +387,9 @@ export const SubjectStudio: React.FC<Props> = ({ collection, documents, userId, 
       setBatch(null);
       setProgress(null);
     }
-  };
+  });
 
-  const cancelGenerate = () => { cancelRef.current = true; setView({ kind: 'home' }); setProgress(null); setBatch(null); };
+  const cancelGenerate = () => { cancelRef.current = true; setView({ kind: 'home' }); setProgress(null); setPipeProgress(null); setBatch(null); };
 
   // ── Fußnoten ──
   const renderCitation = (sources: StudioSourceRef[]) => (refs: CitationRef[], key: string) => (
@@ -632,7 +677,7 @@ export const SubjectStudio: React.FC<Props> = ({ collection, documents, userId, 
         </label>
       )}
       <div className="flex flex-wrap gap-2">
-        <button onClick={() => generate(format)} disabled={selected.size === 0} className={`${btn} flex-1 sm:flex-none`} style={primary}>
+        <button onClick={() => generate(format)} disabled={selected.size === 0 || generating} className={`${btn} flex-1 sm:flex-none`} style={primary}>
           {t('stu.create', { format: formatLabel(format) })}
         </button>
         {batchUnits.length >= 2 && (
@@ -674,6 +719,16 @@ export const SubjectStudio: React.FC<Props> = ({ collection, documents, userId, 
     </div>
   );
 
+  const PIPE_STEPS = ['read', 'outline', 'write', 'check'] as const;
+  const pipelineLabel = (p: SummaryProgress): string => {
+    if (p.step === 'pdf') return t('stu.readingPdfs', { done: p.done, total: p.total });
+    if (p.step === 'figures') return p.total ? t('stu.findingFiguresN', { name: p.name ?? '', done: p.done, total: p.total }) : t('stu.findingFigures', { name: p.name ?? '' });
+    if (p.step === 'crop') return t('stu.croppingFigures', { done: p.done, total: p.total });
+    return t(`stu2.step.${p.step}`, { done: p.done, total: p.total });
+  };
+  const pipeStepIndex = pipeProgress && (PIPE_STEPS as readonly string[]).includes(pipeProgress.step)
+    ? (PIPE_STEPS as readonly string[]).indexOf(pipeProgress.step) : pipeProgress ? 0 : -1;
+
   const generatingView = view.kind === 'generating' && (
     <div className="space-y-4">
       {batch && (
@@ -684,13 +739,32 @@ export const SubjectStudio: React.FC<Props> = ({ collection, documents, userId, 
       <div className="flex items-center gap-3">
         <Loader2 className="w-4 h-4 animate-spin" style={{ color: 'var(--primary-ink)' }} />
         <p className="text-[13.5px] font-semibold flex-1" style={{ color: 'var(--text-main)' }}>
-          {!progress ? t('stu.writing', { format: formatLabel(view.format) })
+          {pipeProgress ? pipelineLabel(pipeProgress)
+            : !progress ? t('stu.writing', { format: formatLabel(view.format) })
             : progress.phase === 'pdf' ? t('stu.readingPdfs', { done: progress.done, total: progress.total })
             : progress.phase === 'figures' ? (progress.total ? t('stu.findingFiguresN', { name: progress.name ?? '', done: progress.done, total: progress.total }) : t('stu.findingFigures', { name: progress.name ?? '' }))
             : t('stu.croppingFigures', { done: progress.done, total: progress.total })}
         </p>
         <button onClick={cancelGenerate} className={btn} style={ghost}><X className="w-3.5 h-3.5" strokeWidth={2.5} /> {t('common.cancel')}</button>
       </div>
+      {pipeStepIndex >= 0 && (
+        <ol className="flex flex-wrap gap-2" aria-label={t('stu2.stepsLabel')}>
+          {PIPE_STEPS.map((s, i) => (
+            <li
+              key={s}
+              className="text-[12px] font-semibold px-3 py-1.5 rounded-xl"
+              style={i < pipeStepIndex
+                ? { background: 'var(--primary-soft)', color: 'var(--primary-ink)' }
+                : i === pipeStepIndex
+                  ? { background: 'var(--primary)', color: 'var(--primary-text)' }
+                  : { background: 'var(--bg-main)', color: 'var(--text-secondary)', border: '1px solid var(--border-color)' }}
+              aria-current={i === pipeStepIndex ? 'step' : undefined}
+            >
+              {t(`stu2.stepName.${s}`)}
+            </li>
+          ))}
+        </ol>
+      )}
       {streamText && (
         <div className="text-[15px] leading-relaxed opacity-90">{renderMarkdown(hideDiagramsWhileStreaming(streamText).replace(/\[\d+(?::\d+)?\]/g, ''))}</div>
       )}
@@ -762,7 +836,9 @@ export const SubjectStudio: React.FC<Props> = ({ collection, documents, userId, 
           <button onClick={() => remove(openItem)} className={btn} style={{ ...ghost, color: '#e11d48' }} aria-label={t('lib.delete')}><Trash2 className="w-3.5 h-3.5" strokeWidth={2.5} /></button>
         </div>
       </div>
-      {openItem.kind === 'guide' ? guideBody(openItem) : (
+      {openItem.formatVersion === 2 && openItem.content ? (
+        <StudioBlocks result={openItem.content} sources={openItem.sources} renderCite={renderCitation(openItem.sources)} />
+      ) : openItem.kind === 'guide' ? guideBody(openItem) : (
         <div className="text-[15px] leading-relaxed">
           {richBody(openItem.markdown, openItem.sources, openItem)}
         </div>

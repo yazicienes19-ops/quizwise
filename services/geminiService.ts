@@ -2779,6 +2779,28 @@ Die Ziel-Tab-Werte (QUIZ, CARDS, RECALL, EXAM, EXPLAINER), die priority-Werte (h
  * lohnt das große Modell, etwa 4 ct), Free bleibt bei Flash-Lite.
  * Ergebnisse werden gespeichert, also nur einmal bezahlt.
  */
+/**
+ * Lernstudio v2 (services/studio/pipeline.ts): ein JSON-Schritt der Pipeline.
+ * heavy=false → Flash-Lite (Extraktion), heavy=true → 3.8 Flash; argon nur beim
+ * Schreiben und nur für Admins (der Server prüft selbst).
+ */
+export const callStudioStep = async (req: {
+  prompt: string; schema: unknown; heavy: boolean; argon?: boolean; thinkingBudget?: number; temperature?: number;
+}): Promise<unknown> => {
+  const text = await callBackend({
+    complexity: req.heavy ? 'heavy' : 'light',
+    ...(req.argon ? { argon: true } : {}),
+    parts: [{ text: req.prompt }],
+    config: {
+      responseMimeType: 'application/json',
+      responseSchema: req.schema,
+      temperature: req.temperature ?? 0.2,
+      thinkingConfig: { thinkingBudget: req.thinkingBudget ?? 0 },
+    },
+  });
+  return parseAiJson<unknown>(text || '{}');
+};
+
 export const generateStudioOutput = async (
   prompt: string,
   onPartial?: (fullSoFar: string) => void,
