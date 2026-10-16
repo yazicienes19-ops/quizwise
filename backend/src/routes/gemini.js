@@ -263,13 +263,14 @@ router.post('/stream', async (req, res, next) => {
   let started = false;
   let built = null;
   let usage = null;
+  let controller = null;
   try {
     built = await buildGeminiRequest(req);
     if (built.error) return res.status(built.status).json({ error: built.error });
 
     // Bricht der Client ab (z. B. Lernstudio erkennt eine Wiederholungsschleife),
     // endet auch die Anfrage bei Gemini: keine weiteren Tokens, keine weiteren Kosten.
-    const controller = new AbortController();
+    controller = new AbortController();
     let finished = false;
     res.on('close', () => { if (!finished) controller.abort(); });
     built.request.config.abortSignal = controller.signal;
@@ -305,7 +306,9 @@ router.post('/stream', async (req, res, next) => {
     res.end(JSON.stringify({ done: true, ...(finish ? { finish } : {}), ...budgetNotice(built) }) + '\n');
 
   } catch (err) {
-    if (err?.name === 'AbortError' || /aborted/i.test(String(err?.message))) {
+    // Nur ein Abbruch durch den Client endet still (er hört nicht mehr zu); jeder
+    // andere Fehler, auch einer mit "aborted" im Text, geht normal an den Client.
+    if (controller?.signal.aborted) {
       if (built) recordUsage(req.user.id, built.request.model, usage, { searches: built.searches });
       return;
     }
