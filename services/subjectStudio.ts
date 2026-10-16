@@ -14,8 +14,9 @@ import { figurePromptBlock } from './studioFigureCatalog';
  * in geminiService.generateStudioOutput, die Speicherung in studioStore.ts.
  */
 
-export type StudioFormat = 'summary' | 'guide' | 'faq' | 'glossary' | 'timeline';
-export const STUDIO_FORMATS: StudioFormat[] = ['summary', 'guide', 'faq', 'glossary', 'timeline'];
+/** script: Skript (Phase 2, nur Pro, nur über die Pipeline in services/studio/). */
+export type StudioFormat = 'summary' | 'guide' | 'faq' | 'glossary' | 'timeline' | 'script';
+export const STUDIO_FORMATS: StudioFormat[] = ['summary', 'guide', 'faq', 'glossary', 'timeline', 'script'];
 
 /** Obergrenze für alle Quellen zusammen (etwa 30.000 Tokens Eingabe). */
 export const STUDIO_CHAR_BUDGET = 120_000;
@@ -150,6 +151,8 @@ const formatInstructions = (format: StudioFormat, size: StudioSize): string => {
     case 'glossary': return `FORMAT: GLOSSAR
 - Alle wichtigen Fachbegriffe alphabetisch, als Aufzählung "- **Begriff:** Erklärung in 1 bis 2 Sätzen".
 - Nur Begriffe, die im Material vorkommen. Synonyme beim Hauptbegriff nennen.`;
+    // Skript läuft nur über die Pipeline (Pro); hier nur, damit der alte Weg nie ohne Anweisung bleibt.
+    case 'script': return formatInstructions('summary', size);
     case 'timeline': return `FORMAT: ZEITLEISTE
 - "## Zeitleiste": chronologisch sortierte Aufzählung "- **<Jahr oder Zeitraum>:** Ereignis, Theorie, Studie oder Entwicklung".
 - "## Personen": Aufzählung "- **<Name>:** Rolle und Beitrag in einem Satz".

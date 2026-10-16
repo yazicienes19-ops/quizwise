@@ -1,6 +1,6 @@
-import type { Block, Cite, Issue, SourcePart, Unit } from './types';
+import type { Block, Cite, Issue, SourcePart, StudioOutputFormat, Unit } from './types';
 import { authorYears, blockTexts, citationsIn, extractFacts, hasFact, INLINE_CITE_RE, isTruncatedPrefix, looksTruncated, resultWords, unbalanced } from './text';
-import { summaryCorridor } from './outline';
+import { corridorFor } from './outline';
 
 /**
  * Schritt D1: Prüfregeln als reiner Code (Abschnitt 1.4 des Auftrags).
@@ -17,6 +17,8 @@ export interface ValidationContext {
   wantedPages?: Map<string, Set<number>>;
   /** Rohtext einer Seite (mit Folientitel) als zusätzlicher Beleg für Zahlen und Quellenangaben. */
   pageText?: (sourceId: string, page: number) => string;
+  /** Zusammenfassung (Standard) oder Skript: bestimmt den Längenkorridor. */
+  format?: StudioOutputFormat;
   sourceWords: number;
 }
 
@@ -76,7 +78,7 @@ export const mainTextWords = (blocks: Block[]): number => resultWords(blocks.fil
  */
 export const checkLength = (blocks: Block[], ctx: ValidationContext): Issue[] => {
   const words = mainTextWords(blocks);
-  const { min, max } = summaryCorridor(ctx.sourceWords);
+  const { min, max } = corridorFor(ctx.format ?? 'zusammenfassung', ctx.sourceWords);
   if (words > max * 1.1) return [{ rule: 'length', message: `Zu lang: ${words} Wörter, Ziel höchstens ${max}.` }];
   if (words < min * 0.9) return [{ rule: 'length', message: `Zu kurz: ${words} Wörter, Ziel mindestens ${min}.` }];
   return [];
@@ -241,7 +243,9 @@ export const checkCiteDensity = (blocks: Block[]): Issue[] => {
       if (INLINE_CITE_RE.test(t)) issues.push({ rule: 'cite_density', blockId: b.id, message: `Quellenangabe als Text: „${t.match(INLINE_CITE_RE)![0]}“.` });
     }
     const groups = b.type === 'bullets' || b.type === 'tasks' ? b.items.map(i => i.cites) : [b.cites];
-    if (b.type !== 'table' && groups.some(g => g.length > 3)) issues.push({ rule: 'cite_density', blockId: b.id, message: 'Zu viele Fußnoten an einer Stelle (höchstens 3).' });
+    // Eine Studie über mehrere Folien (Aufbau, Bedingungen, Ergebnis) darf bis zu 5 Folien belegen.
+    const limit = b.type === 'study' ? 5 : 3;
+    if (b.type !== 'table' && groups.some(g => g.length > limit)) issues.push({ rule: 'cite_density', blockId: b.id, message: `Zu viele Fußnoten an einer Stelle (höchstens ${limit}).` });
   }
   return issues;
 };
@@ -254,10 +258,10 @@ export const checkKiFacts = (blocks: Block[], ctx: ValidationContext): Issue[] =
     if (b.origin !== 'ki') continue;
     for (const t of blockTexts(b)) {
       for (const fact of extractFacts(t)) {
-        if (!hasFact(fact, evidence)) issues.push({ rule: 'ki_facts', blockId: b.id, message: `KI-Erklärung bringt eine neue Angabe ein: „${fact}“.` });
+        if (!hasFact(fact, evidence)) issues.push({ rule: 'ki_facts', blockId: b.id, message: `Eine Erklärhilfe bringt eine neue Angabe ein: „${fact}“.` });
       }
       for (const { author, year } of authorYears(t)) {
-        issues.push({ rule: 'ki_facts', blockId: b.id, message: `KI-Erklärung nennt eine Quelle: „${author} (${year})“.` });
+        issues.push({ rule: 'ki_facts', blockId: b.id, message: `Eine Erklärhilfe nennt eine Quelle: „${author} (${year})“.` });
       }
     }
   }
@@ -381,6 +385,30 @@ export const checkTables = (blocks: Block[]): Issue[] => blocks.flatMap((b): Iss
   }));
   return out;
 });
+
+/**
+ * Skript (Phase 2): jeder Abschnitt (Überschrift Ebene 3) beginnt mit einer
+ * Leitfrage, hat mindestens einen „Kurz gecheckt“-Block (check) und endet
+ * mit einer Überleitung.
+ */
+export const checkScriptSections = (chapterBlocks: Block[], chapterBlockId: string): Issue[] => {
+  const issues: Issue[] = [];
+  const sections: { head: Extract<Block, { type: 'heading' }>; body: Block[] }[] = [];
+  for (const b of chapterBlocks) {
+    if (b.type === 'heading' && b.level >= 3) sections.push({ head: b, body: [] });
+    else sections[sections.length - 1]?.body.push(b);
+  }
+  if (!sections.length) return [{ rule: 'script_structure', blockId: chapterBlockId, message: 'Das Kapitel hat keine Abschnitte.' }];
+  for (const { head, body } of sections) {
+    const missing = [
+      ...(body[0]?.type === 'callout' && body[0].variant === 'leitfrage' ? [] : ['eine Leitfrage am Anfang']),
+      ...(body.some(b => b.type === 'check') ? [] : ['eine Frage „Kurz gecheckt“']),
+      ...(body.some(b => b.type === 'callout' && b.variant === 'bruecke') ? [] : ['eine Überleitung am Ende']),
+    ];
+    if (missing.length) issues.push({ rule: 'script_structure', blockId: head.id, message: `Abschnitt „${head.text}“: es fehlt ${missing.join(', ')}.` });
+  }
+  return issues;
+};
 
 /** Prüfungsrelevante Einheiten (Wiederholungs-/Quizfolien) müssen vorkommen. */
 export const checkPriority = (unitIds: string[], blocks: Block[], units: Map<string, Unit>, chapterBlockId: string): Issue[] => {

@@ -9,7 +9,7 @@ import { groupByPart, slideIn } from './parts';
  */
 
 const CALLOUT_LABEL: Record<string, string> = {
-  merksatz: 'Merksatz', klausurfalle: 'Klausurfalle', hinweis: 'Hinweis', beispiel: 'Beispiel', einordnung: 'Einordnung (Erklärhilfe)',
+  merksatz: 'Merksatz', klausurfalle: 'Klausurfalle', hinweis: 'Hinweis', beispiel: 'Beispiel', einordnung: 'Einordnung (Erklärhilfe)', leitfrage: 'Leitfrage', bruecke: 'Überleitung',
 };
 
 /**

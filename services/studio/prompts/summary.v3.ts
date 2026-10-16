@@ -30,7 +30,7 @@ Regeln:
 9. Eigene Einordnung höchstens 1× als callout "einordnung" mit origin "ki", nie als
    Vorlesungsinhalt formuliert. Alles andere hat origin "quelle".
 10. Jeder Block, jeder Stichpunkt und jede Tabellenzeile bekommt in "units" genau die IDs der Einheiten,
-    aus denen er stammt (höchstens 3). Keine Quellenangaben, Seitenzahlen oder Klammern wie [1, S. 4] im Text.
+    aus denen er stammt (höchstens 3; ein study-Block über mehrere Folien bis zu 5). Keine Quellenangaben, Seitenzahlen oder Klammern wie [1, S. 4] im Text.
 11. Deutsch, präzise. Englische Fachbegriffe beibehalten, beim ersten Mal die deutsche
     Übersetzung in Klammern.
 12. Gliederung: Für jeden Abschnitt ein heading mit dessen Titel, danach sein Inhalt. Nie eine

@@ -17,7 +17,7 @@ import { extractUnits, pageNeedsImage } from '../../services/studio/extract';
 import { findDuplicatePages } from '../../services/studio/dedupe';
 import { resultToMarkdown } from '../../services/studio/toMarkdown';
 import { blockTexts, INLINE_CITE_RE, looksTruncated } from '../../services/studio/text';
-import { checkEmptyHeadings, checkRepetition, checkTables } from '../../services/studio/validate';
+import { checkEmptyHeadings, checkRepetition, checkScriptSections, checkTables } from '../../services/studio/validate';
 import { partsFromOutline } from '../../services/pdfOutlineService';
 import { hiddenItemFlags, layoutPageTextWithHidden } from '../../services/pdfPageService';
 import type { Block, Cite, PipelineSource, SourcePart } from '../../services/studio/types';
@@ -25,6 +25,9 @@ import { guardedLlm, type LlmEvent, type StudioLlm, type StudioTransport } from 
 import { createRequire } from 'node:module';
 
 const MODE = process.env.STUDIO_EVAL_MODE ?? 'full';
+/** Format: zusammenfassung (Standard) oder skript (Phase 2): STUDIO_EVAL_FORMAT=skript */
+const FORMAT = (process.env.STUDIO_EVAL_FORMAT === 'skript' ? 'skript' : 'zusammenfassung') as 'zusammenfassung' | 'skript';
+const SCRIPT = FORMAT === 'skript';
 const run = process.env.STUDIO_EVAL === '1' && MODE === 'full' ? describe : describe.skip;
 // Nur Extraktion messen, ohne Cache: STUDIO_EVAL_MODE=extract STUDIO_EVAL_IMAGES=all|selective|none
 const runExtract = process.env.STUDIO_EVAL === '1' && MODE === 'extract' ? describe : describe.skip;
@@ -205,6 +208,7 @@ run('Lernstudio-Eval (live)', () => {
     const started = Date.now();
     const stamp = new Date().toISOString().replace(/[:.]/g, '-');
     const r = await runSummaryPipeline({
+      format: FORMAT,
       sources, llm: makeLlm(usage, join(OUT, `${stamp}-raw`)), cache: fileCache(), focus: process.env.STUDIO_EVAL_FOCUS,
       argon: !!process.env.STUDIO_EVAL_WRITER,
       onProgress: p => process.stdout.write(`\r${p.step} ${p.done}/${p.total}      `),
@@ -226,7 +230,8 @@ run('Lernstudio-Eval (live)', () => {
     const mainWords = r.stats.mainWords ?? r.stats.outputWords;
     const ratio = mainWords / Math.max(1, r.stats.sourceWords);
     // Entscheidung 16.10.: 40 % mit 10 % Toleranz (höchstens 44 %), wie der Validator.
-    check('Haupttext ≤ 40 % (+10 % Toleranz) der Quellwörter', ratio <= 0.44 || mainWords <= 600, `${mainWords}/${r.stats.sourceWords} = ${Math.round(ratio * 100)} %`);
+    if (SCRIPT) check('Skript: Haupttext 80 bis 150 % (±10 %) der Quellwörter', ratio >= 0.72 && ratio <= 1.65, `${mainWords}/${r.stats.sourceWords} = ${Math.round(ratio * 100)} %`);
+    else check('Haupttext ≤ 40 % (+10 % Toleranz) der Quellwörter', ratio <= 0.44 || mainWords <= 600, `${mainWords}/${r.stats.sourceWords} = ${Math.round(ratio * 100)} %`);
     const cited = new Set(r.blocks.flatMap(cites).map(c => c.sourceId));
     const omitted = new Set(r.omittedSources.map(o => o.sourceId));
     check('Jede Quelle zitiert oder begründet ausgelassen', sources.every(s => cited.has(s.docId) || omitted.has(s.docId)),
@@ -259,8 +264,8 @@ run('Lernstudio-Eval (live)', () => {
     }
     for (const n of exp.notInTasks ?? []) check(`Keine Aufgabe: ${n}`, !taskBlock || !blockTexts(taskBlock).some(t => t.includes(n)));
     const tlItems = tl?.type === 'timeline' ? tl.items : [];
-    for (const t of exp.timeline ?? []) check(`Zeitleiste: ${t.who} ${t.year}`, tlItems.some(i => i.who.includes(t.who) && i.year === t.year), tlItems.filter(i => i.who.includes(t.who)).map(i => `${i.who} ${i.year}`).join(', '));
-    for (const w of exp.timelineForbidden ?? []) check(`Nicht in der Zeitleiste: ${w}`, !tlItems.some(i => i.who.includes(w)));
+    for (const t of SCRIPT ? [] : exp.timeline ?? []) check(`Zeitleiste: ${t.who} ${t.year}`, tlItems.some(i => i.who.includes(t.who) && i.year === t.year), tlItems.filter(i => i.who.includes(t.who)).map(i => `${i.who} ${i.year}`).join(', '));
+    for (const w of SCRIPT ? [] : exp.timelineForbidden ?? []) check(`Nicht in der Zeitleiste: ${w}`, !tlItems.some(i => i.who.includes(w)));
     for (const w of exp.warningsForbidden ?? []) check(`Keine Warnung zu ${w}`, !r.warnings.some(x => x.includes(w)), r.warnings.filter(x => x.includes(w)).join(' | '));
     for (const g of exp.together ?? []) check(`Zusammen: ${g.join(' / ')}`, r.blocks.some(b => { const t = blockTexts(b).join(' ').toLowerCase(); return g.every(x => t.includes(x.toLowerCase())); }));
     const headingTexts = r.blocks.filter(b => b.type === 'heading').map(b => (b.type === 'heading' ? b.text : ''));
@@ -282,7 +287,17 @@ run('Lernstudio-Eval (live)', () => {
     }
     const chaptersOnly = chapterRuns.filter(Boolean);
     const merk = chaptersOnly.map(c => c.filter(b => b.type === 'callout' && b.variant === 'merksatz').length);
-    check('Genau ein Merksatz je Kapitel', merk.every(n => n === 1), merk.join(', '));
+    if (!SCRIPT) check('Genau ein Merksatz je Kapitel', merk.every(n => n === 1), merk.join(', '));
+    else {
+      const structure = chaptersOnly.flatMap(c => checkScriptSections(c, 'c'));
+      check('Skript: jeder Abschnitt mit Leitfrage, Kurz gecheckt, Überleitung', structure.length === 0, structure.map(x => x.message.slice(0, 90)).join(' | '));
+      const sections = r.blocks.filter(b => b.type === 'heading' && b.level === 3 && b.id.startsWith('c')).length;
+      const checks = r.blocks.filter(b => b.type === 'check').length;
+      const ki = r.blocks.filter(b => b.origin === 'ki').length;
+      check('Skript: Erklärhilfen vorhanden und markiert', ki > 0, `${ki} Blöcke mit origin ki`);
+      check('Skript: Erklärhilfen ohne neue Fakten', !r.warnings.some(w => /Erklärhilfe (bringt|nennt)/.test(w)), r.warnings.filter(w => /Erklärhilfe (bringt|nennt)/.test(w)).join(' | '));
+      console.log(`Skript: ${sections} Abschnitte, ${checks} Fragen „Kurz gecheckt“, ${ki} Erklärhilfen`);
+    }
     const reps = chaptersOnly.flatMap(c => checkRepetition(c));
     check('Keine Wiederholung im Kapitel', reps.length === 0, reps.map(x => x.message.slice(0, 80)).join(' | '));
     check('Keine abgeschnittenen Texte', !texts.some(looksTruncated));
@@ -312,7 +327,7 @@ run('Lernstudio-Eval (live)', () => {
     console.log(summary);
     // Eine Zeile je Lauf für den Vergleich über mehrere Läufe (Abnahme: 3 je Modell).
     appendFileSync(join(OUT, 'runs.jsonl'), `${JSON.stringify({
-      stamp, writer, temperature: TEMP_DEFAULT ? 'default' : 'pipeline', usd: Math.round(usage.usd * 1000) / 1000, seconds,
+      stamp, format: FORMAT, writer, temperature: TEMP_DEFAULT ? 'default' : 'pipeline', usd: Math.round(usage.usd * 1000) / 1000, seconds,
       chapters: diag.length, dropped: diag.reduce((a, d) => a + d.dropped.length, 0), loops, aborts: usage.events.length,
       split: diag.filter(d => d.split).length, incomplete: r.incompleteChapters ?? [], emptyHeadings: checkEmptyHeadings(r.blocks).length,
       words: r.stats.outputWords, mainWords, warnings: r.warnings.length, failed: report.filter(([, ok]) => !ok).map(([n]) => n),

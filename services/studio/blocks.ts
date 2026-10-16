@@ -18,13 +18,13 @@ import type { Block, CalloutVariant, Cite, Origin, Unit } from './types';
 
 const S = { type: 'STRING' } as const;
 const STRS = { type: 'ARRAY', items: S } as const;
-const UNITS = { type: 'ARRAY', items: S, description: 'IDs der Einheiten, aus denen der Inhalt stammt (höchstens 3)' } as const;
+const UNITS = { type: 'ARRAY', items: S, description: 'IDs der Einheiten, aus denen der Inhalt stammt (höchstens 3, bei study bis 5)' } as const;
 
 const obj = (properties: Record<string, unknown>, required: string[]) => ({
   type: 'OBJECT', properties, required, propertyOrdering: Object.keys(properties),
 });
 
-export const CALLOUT_VARIANTS: CalloutVariant[] = ['merksatz', 'klausurfalle', 'hinweis', 'beispiel', 'einordnung'];
+export const CALLOUT_VARIANTS: CalloutVariant[] = ['merksatz', 'klausurfalle', 'hinweis', 'beispiel', 'einordnung', 'leitfrage', 'bruecke'];
 
 const BLOCK_SCHEMAS: Record<string, unknown> = {
   heading: obj({ text: S }, ['text']),
@@ -42,7 +42,7 @@ const BLOCK_SCHEMAS: Record<string, unknown> = {
     design: S, result: S, conclusion: S, units: UNITS,
   }, ['authors', 'design', 'result', 'units']),
   figure: obj({ figureRef: S, caption: S }, ['figureRef', 'caption']),
-  check: obj({ question: S, answer: S }, ['question', 'answer']),
+  check: obj({ question: S, answer: S, units: UNITS }, ['question', 'answer']),
 };
 
 /** responseSchema für einen Schreib-Aufruf (Typen als Strings, wie @google/genai Type). */
@@ -174,8 +174,13 @@ export const normalizeBlocks = (
         const variant = CALLOUT_VARIANTS.includes(d.variant as CalloutVariant) ? d.variant as CalloutVariant : 'hinweis';
         if (!text) { drop(`callout:${variant}`, 'ohne Text'); break; }
         if (tooLong(text)) { drop(`callout:${variant}`, 'Text zu lang'); break; }
-        // Beispiel und Einordnung ohne Beleg sind eigene Erklärhilfe, nie Vorlesungsinhalt.
+        // Beispiel und Einordnung ohne Beleg sind eigene Erklärhilfe, nie Vorlesungsinhalt;
+        // Leitfrage und Überleitung (Skript) sind Gliederungshilfe ohne Fußnote.
         const kiOrigin = variant === 'einordnung' || (variant === 'beispiel' && !base.cites.length);
+        if (variant === 'leitfrage' || variant === 'bruecke') {
+          out.push({ ...base, origin: 'quelle', cites: [], type: 'callout', variant, text });
+          break;
+        }
         out.push({ ...base, ...(kiOrigin ? { origin: 'ki' as const, cites: [] } : {}), type: 'callout', variant, text });
         break;
       }

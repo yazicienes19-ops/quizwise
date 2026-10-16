@@ -27,6 +27,9 @@ const CALLOUT_STYLE: Record<string, { border: string; bg: string }> = {
   hinweis: { border: '#2563eb', bg: 'color-mix(in srgb, #2563eb 10%, transparent)' },
   beispiel: { border: '#9333ea', bg: 'color-mix(in srgb, #9333ea 10%, transparent)' },
   einordnung: { border: '#9333ea', bg: 'color-mix(in srgb, #9333ea 10%, transparent)' },
+  // Skript: Leitfrage in der Primärfarbe, Überleitung zurückhaltend.
+  leitfrage: { border: 'var(--primary)', bg: 'var(--primary-soft)' },
+  bruecke: { border: 'var(--border-color)', bg: 'transparent' },
 };
 
 const Check: React.FC<{ question: string; answer: string; label: string }> = ({ question, answer, label }) => {
@@ -170,7 +173,15 @@ export const StudioBlocks: React.FC<Props> = ({ result, sources, renderCite }) =
           </ul>
         </details>
       )}
-      {result.blocks.map(b => <div key={b.id}>{render(b)}</div>)}
+      {result.blocks.map((b, i) => (
+        <div key={b.id}>
+          {/* Skript: „Kurz gecheckt“ über der ersten Frage eines Abschnitts. */}
+          {b.type === 'check' && result.blocks[i - 1]?.type !== 'check' && (
+            <p className="text-[11px] font-semibold uppercase tracking-[0.08em] mb-2" style={{ color: 'var(--primary-ink)' }}>{t('stu2.checkTitle')}</p>
+          )}
+          {render(b)}
+        </div>
+      ))}
     </div>
   );
 };

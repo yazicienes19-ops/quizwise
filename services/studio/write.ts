@@ -1,7 +1,8 @@
-import type { Block, Cite, Unit } from './types';
+import type { Block, Cite, StudioOutputFormat, Unit } from './types';
 import type { Chapter } from './outline';
 import { normalizeBlocks, writerSchema, type DroppedBlock, type FigureRef } from './blocks';
 import { SUMMARY_BLOCK_TYPES, SUMMARY_PROMPT } from './prompts/summary.v3';
+import { SCRIPT_BLOCK_TYPES, SCRIPT_PROMPT } from './prompts/script.v1';
 import { STUDIO_TEMPERATURE, type StudioLlm } from './llm';
 import { unitFlags } from './outline';
 import { blockTexts } from './text';
@@ -25,8 +26,10 @@ const unitLine = (u: Unit, sourceNames: Map<string, string>) => {
 export const WRITER_BUDGET_FACTOR = 0.75;
 /** Argon überzog in der Abnahme stärker (bis 20 % über dem Budget trotz 0,75). */
 export const WRITER_BUDGET_FACTOR_ARGON = 0.65;
-export const writerBudget = (budget: number, argon = false): number =>
-  Math.max(40, Math.round(budget * (argon ? WRITER_BUDGET_FACTOR_ARGON : WRITER_BUDGET_FACTOR)));
+export const writerBudget = (budget: number, argon = false, format: StudioOutputFormat = 'zusammenfassung'): number =>
+  Math.max(40, Math.round(budget * (format === 'skript' ? WRITER_BUDGET_FACTOR_SCRIPT : argon ? WRITER_BUDGET_FACTOR_ARGON : WRITER_BUDGET_FACTOR)));
+/** Skript: das Budget ist eine Größenordnung (80 bis 150 %), kein hartes Limit; etwas weniger nennen. */
+export const WRITER_BUDGET_FACTOR_SCRIPT = 0.85;
 
 export interface WriteInput {
   chapter: Chapter;
@@ -42,6 +45,10 @@ export interface WriteInput {
   repair?: { issues: string[]; previous: Block[] };
   /** Schreiben mit Argon (anderes Budget, siehe writerBudget). */
   argon?: boolean;
+  /** Zusammenfassung (Standard) oder Skript (Phase 2: je Abschnitt, zum Verstehen). */
+  format?: StudioOutputFormat;
+  /** Skript: Titel der Nachbarabschnitte (für Leitfrage und Überleitung). */
+  neighbors?: { prev?: string; next?: string };
 }
 
 export interface WriteResult { blocks: Block[]; dropped: DroppedBlock[] }
@@ -75,15 +82,19 @@ export const buildWritePrompt = (input: WriteInput): string => {
     : '';
   const focus = input.focus?.trim() ? `\nSCHWERPUNKT: "${input.focus.trim().slice(0, 300)}"\n` : '';
   const repair = input.repair
-    ? `\n=== ÜBERARBEITUNG ===\nDeine vorherige Fassung hatte diese Probleme. Schreib das Kapitel neu, behebe sie alle und behalte alles Richtige:\n${input.repair.issues.map(i => `- ${i}`).join('\n')}\n\nVorherige Fassung:\n${input.repair.previous.filter(b => !b.id.endsWith('-h')).map(previousLine).join('\n')}\n`
+    ? `\n=== ÜBERARBEITUNG ===\nDeine vorherige Fassung hatte diese Probleme. Schreib ${input.format === 'skript' ? 'den Abschnitt' : 'das Kapitel'} neu, behebe sie alle und behalte alles Richtige:\n${input.repair.issues.map(i => `- ${i}`).join('\n')}\n\nVorherige Fassung:\n${input.repair.previous.filter(b => !b.id.endsWith('-h')).map(previousLine).join('\n')}\n`
     : '';
-  const part = input.sectionIndex !== undefined
+  const script = input.format === 'skript';
+  const part = input.sectionIndex !== undefined && !script
     ? `\nDu schreibst nur EINEN Abschnitt dieses Kapitels: ein heading mit seinem Titel, danach sein Inhalt.\n`
     : '';
-  return `${SUMMARY_PROMPT}
-${focus}${exam}${figs}${repair}${part}
+  const neighbors = script
+    ? `\nVORHERIGER ABSCHNITT: ${input.neighbors?.prev ?? '(keiner, dies ist der Anfang)'}\nNÄCHSTER ABSCHNITT: ${input.neighbors?.next ?? '(keiner, dies ist der letzte Abschnitt)'}\n`
+    : '';
+  return `${script ? SCRIPT_PROMPT : SUMMARY_PROMPT}
+${focus}${exam}${figs}${repair}${part}${neighbors}
 === KAPITEL: ${input.chapter.title} ===
-WORTBUDGET: ${writerBudget(input.chapter.budget, input.argon)} Wörter (Obergrenze, nicht überschreiten)
+WORTBUDGET: ${writerBudget(input.chapter.budget, input.argon, input.format)} Wörter${script ? ' (ungefähr)' : ' (Obergrenze, nicht überschreiten)'}
 
 ${sections}`;
 };
@@ -100,7 +111,8 @@ export const writeChapterBody = async (input: WriteInput, llm: StudioLlm, argon:
   const byId = new Map(input.units.map(u => [u.id, u]));
   const raw = await llm({
     // Typ "figure" nur, wenn es Abbildungen zum Einfügen gibt (sonst hielt das Modell figure-Einheiten für Bilder).
-    step: 'write', prompt: buildWritePrompt(input), schema: writerSchema(input.figures.length ? SUMMARY_BLOCK_TYPES : SUMMARY_BLOCK_TYPES.filter(t => t !== 'figure')),
+    step: 'write', prompt: buildWritePrompt(input),
+    schema: writerSchema((input.format === 'skript' ? SCRIPT_BLOCK_TYPES : SUMMARY_BLOCK_TYPES).filter(t => t !== 'figure' || input.figures.length)),
     heavy: true, argon, temperature: STUDIO_TEMPERATURE.write, maxOutputTokens: chapterTokenCap(input.chapter.budget),
   });
   const prefix = chapterPrefix(input);

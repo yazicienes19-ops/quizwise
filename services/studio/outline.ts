@@ -1,4 +1,4 @@
-import type { Unit } from './types';
+import type { StudioOutputFormat, Unit } from './types';
 import { OUTLINE_PROMPT, OUTLINE_SKELETON_PROMPT, outlineSchema } from './prompts/outline.v2';
 import { STUDIO_TEMPERATURE, type StudioLlm } from './llm';
 import { countWords } from './text';
@@ -87,6 +87,17 @@ export const completeOutline = (chapters: Chapter[], units: Unit[], fallbackTitl
   return out;
 };
 
+/** Zielkorridor des Skripts (Wörter): 80 bis 150 % der Quelle, mindestens 1.500, höchstens 30.000 (Phase 2). */
+export const scriptCorridor = (sourceWords: number): { min: number; max: number; target: number } => {
+  const clamp = (n: number) => Math.round(Math.min(30_000, Math.max(1_500, n)));
+  const min = clamp(sourceWords * 0.8);
+  const max = clamp(sourceWords * 1.5);
+  return { min, max, target: Math.round((min + max) / 2) };
+};
+
+export const corridorFor = (format: StudioOutputFormat, sourceWords: number) =>
+  format === 'skript' ? scriptCorridor(sourceWords) : summaryCorridor(sourceWords);
+
 /** Zielkorridor der Zusammenfassung (Wörter): 25 bis 40 % der Quelle, mindestens 600, höchstens 6.000. */
 export const summaryCorridor = (sourceWords: number): { min: number; max: number; target: number } => {
   const clamp = (n: number) => Math.round(Math.min(6000, Math.max(600, n)));
@@ -136,7 +147,9 @@ const CONTENT_FOR_BUDGET = new Set(['definition', 'concept', 'study', 'finding',
 /** Anteil der Obergrenze für die Kapitel: Luft für die Untergrenze je Einheit und das Überziehen des Schreibmodells. */
 export const CHAPTER_SHARE = 0.85;
 
-export const chapterWordTotal = (sourceWords: number, reservedWords: number): number => {
+export const chapterWordTotal = (sourceWords: number, reservedWords: number, format: StudioOutputFormat = 'zusammenfassung'): number => {
+  // Skript: Mitte des Korridors; die angehängten Abschnitte fallen bei 80 bis 150 % kaum ins Gewicht.
+  if (format === 'skript') return scriptCorridor(sourceWords).target;
   const { min, max } = summaryCorridor(sourceWords);
   return Math.max(Math.round(min * 0.8), Math.round(max * CHAPTER_SHARE) - reservedWords);
 };
@@ -171,8 +184,13 @@ export const buildOutline = async (
   lectures: Lecture[] = [],
   /** Wörter je Folie (Stoffmenge für das Budget) und Wörter der angehängten Abschnitte. */
   budgetInfo: { pageWords?: (sourceId: string, page: number) => number; reservedWords?: number } = {},
+  format: StudioOutputFormat = 'zusammenfassung',
 ): Promise<Chapter[]> => {
-  const total = chapterWordTotal(sourceWords, budgetInfo.reservedWords ?? 0);
+  const total = chapterWordTotal(sourceWords, budgetInfo.reservedWords ?? 0, format);
+  // Skript: Abschnitte didaktisch ordnen (Voraussetzungen zuerst), Fußnoten führen trotzdem zur Folie.
+  const order = format === 'skript'
+    ? '\nREIHENFOLGE: didaktisch. Voraussetzungen zuerst (Begriffe, auf die andere aufbauen), auch wenn die Folien anders ordnen.\n'
+    : '';
   const content = units.filter(u => !SEPARATE_TYPES.has(u.type));
   if (!content.length) return [];
   const groups = lectures
@@ -183,12 +201,12 @@ export const buildOutline = async (
     const focusLine = focus?.trim()
       ? `\nSCHWERPUNKT des Nutzers: "${focus.trim().slice(0, 300)}". Fasse Passendes ausführlicher, den Rest knapper, lass aber keine Einheit weg.\n`
       : '';
-    const prompt = `${OUTLINE_SKELETON_PROMPT}\n${focusLine}\n${groups.map((g, i) =>
+    const prompt = `${OUTLINE_SKELETON_PROMPT}\n${order}${focusLine}\n${groups.map((g, i) =>
       `=== KAPITEL ${i + 1} (Vorlesung: ${g.lecture.title}) ===\n${g.units.map(u => outlineLine(u, sourceNames)).join('\n')}`).join('\n\n')}`;
     const raw = await llm({ step: 'outline', prompt, schema: outlineSchema, heavy: true, temperature: STUDIO_TEMPERATURE.outline, maxOutputTokens: 12_000 });
     return assignBudgets(skeletonOutline(raw, groups), content, total, budgetInfo.pageWords);
   }
-  const raw = await llm({ step: 'outline', prompt: buildOutlinePrompt(content, sourceNames, focus), schema: outlineSchema, heavy: true,
+  const raw = await llm({ step: 'outline', prompt: `${buildOutlinePrompt(content, sourceNames, focus)}${order}`, schema: outlineSchema, heavy: true,
     temperature: STUDIO_TEMPERATURE.outline, maxOutputTokens: 12_000,
   });
   const chapters = completeOutline(parseOutline(raw, content), content);

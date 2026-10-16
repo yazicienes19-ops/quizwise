@@ -2,7 +2,7 @@ import React, { useEffect, useMemo, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
 import {
   BookText, ListChecks, HelpCircle, BookA, History, Layers, NotebookPen, Copy, Download, Trash2,
-  RefreshCw, FilePlus2, Check, X, FileText, Loader2, BookmarkPlus, ChevronDown, AlertTriangle,
+  RefreshCw, FilePlus2, Check, X, FileText, Loader2, BookmarkPlus, ChevronDown, AlertTriangle, BookOpen,
 } from 'lucide-react';
 import type { Collection, ProcessedDocument } from '../types';
 import { useModalA11y } from '../hooks/useModalA11y';
@@ -59,7 +59,7 @@ interface Props {
 }
 
 const KIND_ICON: Record<StudioKind | 'digests', React.ComponentType<{ className?: string; strokeWidth?: number }>> = {
-  summary: BookText, guide: ListChecks, faq: HelpCircle, glossary: BookA, timeline: History, note: NotebookPen, digests: Layers,
+  summary: BookText, guide: ListChecks, faq: HelpCircle, glossary: BookA, timeline: History, script: BookOpen, note: NotebookPen, digests: Layers,
 };
 
 type View =
@@ -307,16 +307,17 @@ export const SubjectStudio: React.FC<Props> = ({ collection, documents, userId, 
     return item;
   };
 
-  /** Neue Zusammenfassung (Lernstudio v2, Pro): Pipeline, strukturierte Blöcke, ein Eintrag je Auswahl. */
-  const runSummaryV2 = async (focusText: string, chosen: ProcessedDocument[]): Promise<StudioItem | null> => {
+  /** Zusammenfassung oder Skript (Lernstudio v2, Pro): Pipeline, strukturierte Blöcke, ein Eintrag je Auswahl. */
+  const runSummaryV2 = async (focusText: string, chosen: ProcessedDocument[], fmt: 'summary' | 'script' = 'summary'): Promise<StudioItem | null> => {
     const withFigures = !!userId && figuresOn;
     const key = await studioIdempotencyKey({
-      collectionId: collection.id, format: 'summary',
+      collectionId: collection.id, format: fmt,
       sources: chosen.map(d => ({ docId: d.id, ranges: scopeFor(d.id).ranges })),
       focus: focusText, figures: withFigures, argon: argonActive,
     });
     const out = await runSummaryForDocs({
       chosen, allDocuments: documents, scope: scopeFor, userId, focus: focusText, withFigures, argon: argonActive,
+      format: fmt === 'script' ? 'skript' : 'zusammenfassung',
       onProgress: p => { if (!cancelRef.current) setPipeProgress(p); },
       isCancelled: () => cancelRef.current,
     });
@@ -325,9 +326,9 @@ export const SubjectStudio: React.FC<Props> = ({ collection, documents, userId, 
     // Gleiche Auswahl schon einmal erstellt: das neue Ergebnis ersetzt das alte.
     const previous = await findStudioItemByKey(userId, key).catch(() => null);
     const now = Date.now();
-    const baseTitle = focusText.trim() ? `${formatLabel('summary')}: ${focusText.trim().slice(0, 60)}` : formatLabel('summary');
+    const baseTitle = focusText.trim() ? `${formatLabel(fmt)}: ${focusText.trim().slice(0, 60)}` : formatLabel(fmt);
     const item: StudioItem = {
-      id: previous?.id ?? newStudioId(), collectionId: collection.id, kind: 'summary',
+      id: previous?.id ?? newStudioId(), collectionId: collection.id, kind: fmt,
       title: (argonActive ? `${baseTitle} (Argon)` : baseTitle).slice(0, 120),
       markdown: out.markdown, sources: out.sources,
       ...(focusText.trim() ? { focus: focusText.trim() } : {}),
@@ -341,12 +342,14 @@ export const SubjectStudio: React.FC<Props> = ({ collection, documents, userId, 
   const generate = (fmt: StudioFormat, focusText = focus) => runGuard.run(async () => {
     const chosen = docs.filter(d => selected.has(d.id));
     if (!chosen.length) { toast.info(t('stu.pickSources')); setMobileTab('sources'); return; }
+    // Skript nur mit Pro (es gibt keinen alten Weg dafür).
+    if (fmt === 'script' && userPlan !== 'pro') { toast.info(t('stu.scriptProHint')); return; }
     cancelRef.current = false;
     setView({ kind: 'generating', format: fmt });
     setMobileTab('content');
     try {
-      const item = fmt === 'summary' && userPlan === 'pro'
-        ? await runSummaryV2(focusText, chosen)
+      const item = (fmt === 'summary' || fmt === 'script') && userPlan === 'pro'
+        ? await runSummaryV2(focusText, chosen, fmt)
         : await runOnce({ fmt, focusText, chosen, scope: scopeFor });
       if (item) setView({ kind: 'item', id: item.id });
     } catch (e) {
@@ -653,7 +656,12 @@ export const SubjectStudio: React.FC<Props> = ({ collection, documents, userId, 
             >
               <Icon className="w-5 h-5 mt-0.5 shrink-0" strokeWidth={2} />
               <span>
-                <span className="block text-[14px] font-semibold" style={{ color: 'var(--text-main)' }}>{formatLabel(f)}</span>
+                <span className="flex items-center gap-2 text-[14px] font-semibold" style={{ color: 'var(--text-main)' }}>
+                  {formatLabel(f)}
+                  {f === 'script' && userPlan !== 'pro' && (
+                    <span className="text-[11px] font-semibold px-1.5 py-0.5 rounded-md" style={{ background: 'var(--primary-soft)', color: 'var(--primary-ink)' }}>{t('stu.scriptPro')}</span>
+                  )}
+                </span>
                 <span className="block text-[12.5px] mt-0.5 leading-snug" style={{ color: 'var(--text-secondary)' }}>{t(`stu.fmtDesc.${f}`)}</span>
               </span>
             </button>
@@ -672,7 +680,7 @@ export const SubjectStudio: React.FC<Props> = ({ collection, documents, userId, 
           style={{ background: 'var(--bg-main)', color: 'var(--text-main)', border: '1px solid var(--border-color)' }}
         />
       </div>
-      {(format === 'summary' || format === 'guide') && userId && docs.some(d => selected.has(d.id) && canReadFullText(d)) && (
+      {(format === 'summary' || format === 'guide' || format === 'script') && userId && docs.some(d => selected.has(d.id) && canReadFullText(d)) && (
         <label className="flex items-start gap-2.5 cursor-pointer select-none">
           <input type="checkbox" checked={figuresOn} onChange={e => toggleFigures(e.target.checked)} className="mt-0.5 w-4 h-4 shrink-0 accent-[var(--primary)]" />
           <span>
@@ -690,11 +698,14 @@ export const SubjectStudio: React.FC<Props> = ({ collection, documents, userId, 
           </span>
         </label>
       )}
+      {format === 'script' && userPlan !== 'pro' && (
+        <p className="text-[12.5px]" style={{ color: 'var(--text-secondary)' }}>{t('stu.scriptProHint')}</p>
+      )}
       <div className="flex flex-wrap gap-2">
-        <button onClick={() => generate(format)} disabled={selected.size === 0 || generating} className={`${btn} flex-1 sm:flex-none`} style={primary}>
+        <button onClick={() => generate(format)} disabled={selected.size === 0 || generating || (format === 'script' && userPlan !== 'pro')} className={`${btn} flex-1 sm:flex-none`} style={primary}>
           {t('stu.create', { format: formatLabel(format) })}
         </button>
-        {batchUnits.length >= 2 && (
+        {batchUnits.length >= 2 && format !== 'script' && (
           <button onClick={() => generateBatch(format)} disabled={batchUnits.length > MAX_BATCH} className={btn} style={ghost}>
             <Layers className="w-3.5 h-3.5" strokeWidth={2.5} /> {tp('stu.ch.batch', batchUnits.length)}
           </button>

@@ -9,7 +9,7 @@ import type { StudioSourceRef } from '../studioStore';
 import { runSummaryPipeline } from './pipeline';
 import { extractionCache } from './cache';
 import { resultToMarkdown } from './toMarkdown';
-import type { LernstudioResult, PipelineProgress, PipelineSource, SourcePart } from './types';
+import type { LernstudioResult, PipelineProgress, PipelineSource, SourcePart, StudioOutputFormat } from './types';
 import { guardedLlm, type LlmEvent, type StudioLlm } from './llm';
 
 /**
@@ -76,6 +76,8 @@ export const runSummaryForDocs = async (opts: {
   onProgress: (p: SummaryProgress) => void;
   isCancelled: () => boolean;
   llm?: StudioLlm;
+  /** Zusammenfassung (Standard) oder Skript. */
+  format?: StudioOutputFormat;
 }): Promise<{ result: LernstudioResult; markdown: string; sources: StudioSourceRef[] } | null> => {
   const { chosen, scope, userId, onProgress, isCancelled } = opts;
 
@@ -130,7 +132,7 @@ export const runSummaryForDocs = async (opts: {
   let result: LernstudioResult;
   try {
     result = await runSummaryPipeline({
-      sources, ranges, focus: opts.focus, argon: opts.argon,
+      sources, ranges, focus: opts.focus, argon: opts.argon, format: opts.format,
       llm: opts.llm ?? makeAppStudioLlm(), cache: extractionCache(userId),
       onProgress, isCancelled,
     });

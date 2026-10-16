@@ -9,7 +9,11 @@
 export type Cite = { sourceId: string; page: number };
 export type Origin = 'quelle' | 'ki';
 
-export type CalloutVariant = 'merksatz' | 'klausurfalle' | 'hinweis' | 'beispiel' | 'einordnung';
+/** leitfrage, bruecke: nur im Skript (Phase 2). */
+export type CalloutVariant = 'merksatz' | 'klausurfalle' | 'hinweis' | 'beispiel' | 'einordnung' | 'leitfrage' | 'bruecke';
+
+/** Format des Ergebnisses: Zusammenfassung (wiederholen) oder Skript (verstehen). */
+export type StudioOutputFormat = 'zusammenfassung' | 'skript';
 
 /** unitIds: Einheiten, aus denen der Block stammt (für die Abdeckung je Abschnitt; nicht angezeigt). */
 export type Block = { id: string; origin: Origin; cites: Cite[]; unitIds?: string[] } & (
@@ -110,6 +114,7 @@ export interface Issue {
   rule: 'cites' | 'coverage' | 'length' | 'numbers' | 'author_year' | 'truncated' | 'cite_density' | 'ki_facts'
     | 'empty_heading' | 'section_coverage' | 'study_incomplete'
     | 'merksatz' | 'source_error_hint' | 'illustrative_result' | 'repetition' | 'priority_missing' | 'table_shape'
+    | 'script_structure'
     | 'nicht_belegt' | 'falsch' | 'chronologie' | 'zitat_falsch' | 'ki_fakt';
   blockId?: string;
   sourceId?: string;
