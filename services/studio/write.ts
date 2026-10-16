@@ -99,7 +99,8 @@ export const chapterHeading = (title: string, chapterIndex: number): Block =>
 export const writeChapterBody = async (input: WriteInput, llm: StudioLlm, argon: boolean): Promise<WriteResult> => {
   const byId = new Map(input.units.map(u => [u.id, u]));
   const raw = await llm({
-    step: 'write', prompt: buildWritePrompt(input), schema: writerSchema(SUMMARY_BLOCK_TYPES),
+    // Typ "figure" nur, wenn es Abbildungen zum Einfügen gibt (sonst hielt das Modell figure-Einheiten für Bilder).
+    step: 'write', prompt: buildWritePrompt(input), schema: writerSchema(input.figures.length ? SUMMARY_BLOCK_TYPES : SUMMARY_BLOCK_TYPES.filter(t => t !== 'figure')),
     heavy: true, argon, temperature: STUDIO_TEMPERATURE.write, maxOutputTokens: chapterTokenCap(input.chapter.budget),
   });
   const prefix = chapterPrefix(input);

@@ -13,7 +13,8 @@ export interface Section { title: string; unitIds: string[] }
 export interface Chapter { title: string; sections: Section[]; budget: number }
 
 /** Diese Typen schreibt der Code selbst (Aufgaben, Klausurinfos) oder lässt sie weg. */
-export const SEPARATE_TYPES = new Set(['task', 'practice_question', 'exam_info', 'organizational']);
+/** Folienfehler schreibt der Code als Hinweis (nie das Modell, damit sie den Inhalt nicht verändern). */
+export const SEPARATE_TYPES = new Set(['task', 'practice_question', 'exam_info', 'organizational', 'source_error']);
 
 const short = (u: Unit) => (u.title ? `${u.title}: ${u.text}` : u.text).replace(/\s+/g, ' ').slice(0, 140);
 

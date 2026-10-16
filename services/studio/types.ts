@@ -16,7 +16,7 @@ export type Block = { id: string; origin: Origin; cites: Cite[]; unitIds?: strin
   | { type: 'heading'; level: 1 | 2 | 3; text: string }
   | { type: 'paragraph'; text: string }
   | { type: 'bullets'; items: { text: string; cites: Cite[] }[] }
-  | { type: 'table'; caption?: string; headers: string[]; rows: string[][]; rowCites?: Cite[][] }
+  | { type: 'table'; caption?: string; headers: string[]; rows: string[][]; rowCites?: Cite[][]; /** Zeilen mit falscher Zellenzahl (vom Modell), vor dem Auffüllen. */ shapeError?: string }
   | { type: 'callout'; variant: CalloutVariant; text: string }
   | { type: 'study'; authors: string; year?: number; design: string; result: string; conclusion: string }
   | { type: 'figure'; sourceId: string; page: number; imageRef: string; caption: string; title?: string }
@@ -99,12 +99,16 @@ export interface PipelineSource {
   figures?: { ref: string; page: number; title: string; description: string }[];
   /** Zusammengefügte PDF: die einzelnen Vorlesungen (Abdeckung je Vorlesung, Fußnote mit Folie). */
   parts?: SourcePart[];
+  /** Seitenbild als JPEG (base64), für Extraktion und Prüfung von Folienfehlern am Bild. */
+  renderPage?: (page: number) => Promise<string | null>;
+  /** all: jede Seite mit Bild; selective: nur Seiten, bei denen der Text nicht reicht (extract.pageNeedsImage). */
+  imagePolicy?: 'all' | 'selective';
 }
 
 export interface Issue {
   rule: 'cites' | 'coverage' | 'length' | 'numbers' | 'author_year' | 'truncated' | 'cite_density' | 'ki_facts'
     | 'empty_heading' | 'section_coverage' | 'study_incomplete'
-    | 'merksatz' | 'source_error_hint' | 'illustrative_result' | 'repetition' | 'priority_missing'
+    | 'merksatz' | 'source_error_hint' | 'illustrative_result' | 'repetition' | 'priority_missing' | 'table_shape'
     | 'nicht_belegt' | 'falsch' | 'chronologie' | 'zitat_falsch' | 'ki_fakt';
   blockId?: string;
   sourceId?: string;

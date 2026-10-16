@@ -1,7 +1,8 @@
 import type { PipelineSource, Unit, UnitType } from './types';
 import { UNIT_TYPES } from './types';
-import { EXTRACT_PROMPT, EXTRACT_PROMPT_VERSION, extractSchema } from './prompts/extract.v3';
+import { EXTRACT_PROMPT, EXTRACT_PROMPT_VERSION, extractSchema } from './prompts/extract.v4';
 import { SOURCE_ERRORS_PROMPT, SOURCE_ERRORS_PROMPT_VERSION, sourceErrorsSchema } from './prompts/sourceErrors.v1';
+import { VERIFY_ERROR_PROMPT, VERIFY_ERROR_PROMPT_VERSION, verifyErrorSchema } from './prompts/verifyError.v1';
 import { mapLimit, sha256, STUDIO_TEMPERATURE, type ExtractionCache, type StudioLlm } from './llm';
 import { parseYear } from './blocks';
 
@@ -91,6 +92,48 @@ export const parseUnits = (raw: unknown, job: Job): StoredUnit[] => {
   return out;
 };
 
+/** Seiten im Fenstertext (Marken [Seite p]), in Reihenfolge. */
+export const pagesInText = (text: string): number[] => [...text.matchAll(/^\[Seite (\d+)\]$/gm)].map(m => Number(m[1]));
+
+/**
+ * Reicht der Text allein für die Seite? Nein bei kaum Text (Diagramm, Schema,
+ * Bild), Spalten (" | " aus dem Text nach Position), Tabellen oder mehreren
+ * Kennwerten. Nur diese Seiten bekommen bei imagePolicy "selective" ein Bild.
+ */
+export const pageNeedsImage = (pageText: string): boolean => {
+  const body = pageText.replace(/^\[Seite \d+\]\s*/, '');
+  const words = (body.match(/[\p{L}\p{N}]+/gu) ?? []).length;
+  if (words < 30) return true;
+  if (/ \| /.test(body)) return true;
+  const numbers = (body.match(/\b\d+(?:[.,]\d+)?\s*%|\b[MNnr]\s*=\s*\d|\b\d+\s+von\s+\d+/g) ?? []).length;
+  return numbers >= 2;
+};
+
+/** Text je Seite im Fenstertext (Marke [Seite p] bis zur nächsten). */
+const pageChunks = (text: string): Map<number, string> => {
+  const out = new Map<number, string>();
+  const parts = text.split(/^(?=\[Seite \d+\]$)/m);
+  for (const part of parts) {
+    const m = part.match(/^\[Seite (\d+)\]/);
+    if (m) out.set(Number(m[1]), part);
+  }
+  return out;
+};
+
+/** Bilder der Seiten eines Fensters (alle oder nur die, bei denen der Text nicht reicht), mit Seitennummern. */
+const windowImages = async (src: PipelineSource, text: string): Promise<{ pages: number[]; images: string[] }> => {
+  if (!src.renderPage) return { pages: [], images: [] };
+  const chunks = pageChunks(text);
+  const pages = pagesInText(text).filter(p => src.imagePolicy !== 'selective' || pageNeedsImage(chunks.get(p) ?? ''));
+  const images: string[] = [];
+  const used: number[] = [];
+  for (const p of pages) {
+    const img = await src.renderPage(p).catch(() => null);
+    if (img) { images.push(img); used.push(p); }
+  }
+  return { pages: used, images };
+};
+
 const buildExtractPrompt = (name: string, text: string) =>
   `${EXTRACT_PROMPT}\n\n=== QUELLE: ${name} ===\n${text}`;
 
@@ -104,19 +147,23 @@ export const extractUnits = async (
   onJobDone?: (done: number, total: number) => void,
   isCancelled?: () => boolean,
 ): Promise<StoredUnit[]> => {
-  const jobs = sources.flatMap(src => extractionJobs(src, wanted.get(src.docId)).map(job => ({ job, name: src.name })));
+  const jobs = sources.flatMap(src => extractionJobs(src, wanted.get(src.docId)).map(job => ({ job, name: src.name, src })));
   let done = 0;
-  const results = await mapLimit(jobs, PARALLEL, async ({ job, name }) => {
+  const results = await mapLimit(jobs, PARALLEL, async ({ job, name, src }) => {
     if (isCancelled?.()) return [];
-    const hash = await sha256(`${EXTRACT_PROMPT_VERSION}\n${job.text}`);
+    // Mit Bildern andere Antwort als ohne: eigener Cache-Eintrag.
+    const hash = await sha256(`${EXTRACT_PROMPT_VERSION}${src.renderPage && job.pages ? `+img:${src.imagePolicy ?? 'all'}` : ''}\n${job.text}`);
     const cached = cache ? await cache.get(hash).catch(() => null) : null;
     let units: StoredUnit[];
     if (cached) {
       units = (cached as StoredUnit[]).map(u => ({ ...u, sourceId: job.docId }));
     } else {
+      const { pages: imagePages, images } = await windowImages(src, job.text);
+      const imageNote = images.length ? `\n\nSEITENBILDER beigelegt für die Seiten ${imagePages.join(', ')} (in dieser Reihenfolge).` : '';
       const raw = await llm({
-        step: 'extract', prompt: buildExtractPrompt(name, job.text), schema: extractSchema, heavy: false,
+        step: 'extract', prompt: `${buildExtractPrompt(name, job.text)}${imageNote}`, schema: extractSchema, heavy: false,
         temperature: STUDIO_TEMPERATURE.extract, maxOutputTokens: EXTRACT_MAX_TOKENS,
+        ...(images.length ? { images } : {}),
       });
       units = parseUnits(raw, job);
       if (cache) await cache.set(hash, job.docId, job.pageCount, units).catch(() => {});
@@ -175,6 +222,44 @@ export const scanSourceErrors = async (
       .filter(e => e.text && e.page >= from && e.page <= to && (!need || need.has(e.page)))
       .map(e => ({ sourceId: src.docId, page: e.page, type: 'source_error' as const, text: e.text }));
     if (cache) await cache.set(hash, src.docId, src.pageCount, units).catch(() => {});
+    return units;
+  });
+  return results.flat();
+};
+
+/**
+ * Schritt A3: vermutete Folienfehler (aus Suche und Extraktion) am Seitenbild
+ * bestätigen. Nur Bestätigte bleiben, mit neu formuliertem Text ohne
+ * Foliennummer. Ohne Seitenbild keine Bestätigung, also kein Hinweis: ein
+ * falscher Vorwurf ist schlimmer als ein verpasster (Abnahme 16.10.2026:
+ * Folie 26 und 81 wurden fälschlich als Fehler gemeldet).
+ */
+export const verifySourceErrors = async (
+  candidates: StoredUnit[],
+  sources: PipelineSource[],
+  llm: StudioLlm,
+  cache: ExtractionCache | null,
+  isCancelled?: () => boolean,
+): Promise<StoredUnit[]> => {
+  const results = await mapLimit(candidates, PARALLEL, async (c): Promise<StoredUnit[]> => {
+    if (isCancelled?.()) return [];
+    const src = sources.find(s => s.docId === c.sourceId);
+    if (!src?.renderPage || !src.pages || c.page < 1) return [];
+    const pageText = src.pages[c.page - 1] ?? '';
+    const hash = await sha256(`${VERIFY_ERROR_PROMPT_VERSION}\n${c.page}\n${c.text}\n${pageText}`);
+    const cached = cache ? await cache.get(hash).catch(() => null) : null;
+    if (cached) return (cached as StoredUnit[]).map(u => ({ ...u, sourceId: c.sourceId }));
+    const own = await src.renderPage(c.page).catch(() => null);
+    if (!own) return [];
+    const prev = c.page > 1 ? await src.renderPage(c.page - 1).catch(() => null) : null;
+    const raw = await llm({
+      step: 'verify', heavy: true, thinkingBudget: 1024, temperature: STUDIO_TEMPERATURE.verify, maxOutputTokens: 3000,
+      prompt: `${VERIFY_ERROR_PROMPT}\n\nVERMUTETER FEHLER (Folie ${c.page}): ${c.text}\n\nTEXT DER FOLIE (Spalten mit " | "):\n${pageText}`,
+      schema: verifyErrorSchema, images: prev ? [own, prev] : [own],
+    }) as { confirmed?: unknown; text?: unknown };
+    const text = str(raw?.text, 600);
+    const units: StoredUnit[] = raw?.confirmed === true && text ? [{ sourceId: c.sourceId, page: c.page, type: 'source_error', text }] : [];
+    if (cache) await cache.set(hash, c.sourceId, src.pageCount, units).catch(() => {});
     return units;
   });
   return results.flat();

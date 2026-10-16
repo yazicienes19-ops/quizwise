@@ -2796,7 +2796,7 @@ Die Ziel-Tab-Werte (QUIZ, CARDS, RECALL, EXAM, EXPLAINER), die priority-Werte (h
 export const streamStudioStep = async (
   req: {
     prompt: string; schema: unknown; heavy: boolean; argon?: boolean;
-    thinkingBudget?: number; temperature?: number; maxOutputTokens?: number;
+    thinkingBudget?: number; temperature?: number; maxOutputTokens?: number; images?: string[];
   },
   onText: (fullSoFar: string) => void,
   signal: AbortSignal,
@@ -2805,7 +2805,8 @@ export const streamStudioStep = async (
   const text = await callBackendStream({
     complexity: req.heavy ? 'heavy' : 'light',
     ...(req.argon ? { argon: true } : {}),
-    parts: [{ text: req.prompt }],
+    // Backend erlaubt höchstens 20 Parts; die Pipeline schickt je Aufruf höchstens 15 Seitenbilder.
+    parts: [{ text: req.prompt }, ...(req.images ?? []).slice(0, 19).map(data => ({ inlineData: { data, mimeType: 'image/jpeg' } }))],
     config: {
       responseMimeType: 'application/json',
       responseSchema: req.schema,

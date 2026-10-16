@@ -2,7 +2,9 @@
 // v2 (16.10.2026): year als Text statt Zahl (Ziffernschleifen im Zahlenfeld), feste Feldreihenfolge.
 // v3 (16.10.2026): practice_question, illustrative (Rechenbeispiele sind keine Befunde), Definitionen je
 // Autor getrennt, schärfere Aufgaben-Definition, Folienfehler nie stillschweigend korrigieren.
-export const EXTRACT_PROMPT_VERSION = 'extract.v3';
+// v4 (16.10.2026): Seitenbilder dazu; Text nach Position (Spalten mit " | "). Auf einer Folie standen
+// Werte in zwei Spalten, die Textebene lieferte sie vertauscht; Diagramm-Folien hatten fast keinen Text.
+export const EXTRACT_PROMPT_VERSION = 'extract.v4';
 
 export const EXTRACT_PROMPT = `Du extrahierst Lernstoff aus einer Vorlesungsquelle. Du bekommst Seiten mit Seitennummer
 (Text und ggf. Bildbeschreibung). Gib pro Seite alle inhaltlichen Einheiten zurück.
@@ -21,6 +23,12 @@ Typen:
 - figure      (Diagramm/Modell: was es zeigt; Werte nur, wenn eindeutig beschriftet)
 - source_error offensichtlicher Fehler auf der Folie, z. B. ein Satz, der zu einem anderen Beispiel
               gehört als der Folientitel (kopierte Hypothese), oder ein Widerspruch auf derselben Folie.
+
+Seitenbilder: Liegen Bilder von Seiten bei (welche, steht am Ende unter SEITENBILDER), gilt
+das Bild für die Anordnung: welche Zahl zu welcher Spalte, Gruppe oder Achse gehört, was ein Diagramm
+oder Schema zeigt (z. B. die Schritte eines Kreislaufs), welche Pfeile wohin zeigen. Im Text trennt
+" | " nebeneinanderliegende Spalten derselben Zeile (links nach rechts). Steht etwas nur im Bild
+(Diagramm, Schema, Beschriftung), extrahiere es trotzdem.
 
 Regeln:
 - Nur was auf der Seite steht. Nichts ergänzen, nichts aus Allgemeinwissen.

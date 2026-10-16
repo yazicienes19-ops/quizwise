@@ -153,6 +153,8 @@ export const normalizeBlocks = (
         if (!rawRows.length) { drop(type, 'ohne Zeilen'); break; }
         if (tooLong(...rawRows.flatMap(row => row.cells))) { drop(type, 'Zelle zu lang'); break; }
         const width = headers.length;
+        // Zeilen mit anderer Zellenzahl als Spalten: aufgefüllt/gekürzt, aber gemeldet (Prüfregel table_shape).
+        const badRows = rawRows.map((row, i) => (row.cells.length !== width ? `Zeile ${i + 1} hat ${row.cells.length} statt ${width} Zellen` : '')).filter(Boolean);
         const rowCites = rawRows.map(row => (origin === 'ki' ? [] : citesFromUnits(row.ids, byId)));
         const all = [...new Set([...ids, ...rawRows.flatMap(row => row.ids)])];
         const caption = clean(d.caption);
@@ -164,6 +166,7 @@ export const normalizeBlocks = (
           rows: rawRows.map(row => Array.from({ length: width }, (_, i) => row.cells[i] ?? '')),
           ...(rowCites.some(c => c.length) ? { rowCites } : {}),
           ...(caption ? { caption } : {}),
+          ...(badRows.length ? { shapeError: badRows.join('; ') } : {}),
         });
         break;
       }

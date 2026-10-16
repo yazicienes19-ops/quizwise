@@ -241,6 +241,24 @@ export const renderPageToCanvas = async (
  * Rendert eine Seite als JPEG-Base64 (ohne data:-Präfix) — Fallback für
  * Scan-Seiten ohne Textebene: das Bild geht dann direkt an die Analyse.
  */
+/**
+ * Seitenbild in fester Breite (Lernstudio: Extraktion und Prüfung von
+ * Folienfehlern am Bild). Kleiner als renderPageToJpegBase64, damit 15 Seiten
+ * in eine Anfrage passen.
+ */
+export const renderPageJpegAtWidth = async (pdf: PdfHandle, pageNumber: number, width = 1000, quality = 0.7): Promise<string> => {
+  const page = await pdf.doc.getPage(pageNumber);
+  const base = page.getViewport({ scale: 1 });
+  const viewport = page.getViewport({ scale: width / base.width });
+  const canvas = document.createElement('canvas');
+  canvas.width = Math.round(viewport.width);
+  canvas.height = Math.round(viewport.height);
+  const ctx = canvas.getContext('2d');
+  if (!ctx) throw new Error('Canvas-Kontext nicht verfügbar.');
+  await page.render({ canvas, canvasContext: ctx, viewport }).promise;
+  return canvas.toDataURL('image/jpeg', quality).replace(/^data:image\/jpeg;base64,/, '');
+};
+
 export const renderPageToJpegBase64 = async (pdf: PdfHandle, pageNumber: number): Promise<string> => {
   const page = await pdf.doc.getPage(pageNumber);
   const viewport = page.getViewport({ scale: 1.5 });
@@ -252,3 +270,43 @@ export const renderPageToJpegBase64 = async (pdf: PdfHandle, pageNumber: number)
   await page.render({ canvas, canvasContext: ctx, viewport }).promise;
   return canvas.toDataURL('image/jpeg', 0.8).replace(/^data:image\/jpeg;base64,/, '');
 };
+
+/** Abstand zwischen zwei Fragmenten einer Zeile, ab dem sie als getrennte Spalten gelten. */
+const columnGap = (h: number) => Math.max(30, h * 2.5);
+
+/**
+ * Seitentext in Lesereihenfolge nach Position statt nach Reihenfolge im
+ * PDF-Strom: Zeilen von oben nach unten, in der Zeile von links nach rechts,
+ * weit auseinanderliegende Fragmente mit " | " getrennt (Spalten). Im Strom
+ * stand auf einer Folie "M = 30" (rechte Spalte, ohne Handy) vor "M = 90"
+ * (linke Spalte, mit Handy); die Extraktion las die Werte dadurch vertauscht
+ * (Abnahme Lernstudio, 16.10.2026).
+ */
+export function layoutPageText(items: PositionedTextItem[]): string {
+  const withText = items.filter(it => it.str.trim());
+  const sortedByY = [...withText].sort((a, b) => a.y - b.y);
+  const lines: PositionedTextItem[][] = [];
+  for (const it of sortedByY) {
+    const line = lines[lines.length - 1];
+    const ref = line?.[0];
+    // 70 % der Zeichenhöhe: Folienzeilen liegen oft ein paar Punkte schief (Überschriften zweier
+    // Spalten), echte Zeilen liegen mindestens ~120 % auseinander.
+    if (ref && Math.abs(it.y - ref.y) < Math.max(it.h, ref.h) * 0.7) line.push(it);
+    else lines.push([it]);
+  }
+  return lines.map(line => {
+    const sorted = [...line].sort((a, b) => a.x - b.x);
+    let text = '';
+    let end = -Infinity;
+    for (const it of sorted) {
+      const gap = it.x - end;
+      if (text) text += gap > columnGap(it.h) ? ' | ' : (text.endsWith(' ') || it.str.startsWith(' ') ? '' : ' ');
+      text += it.str;
+      end = Math.max(end, it.x + it.w);
+    }
+    return text.replace(/\s+/g, ' ').trim();
+  }).filter(Boolean).join('\n');
+}
+
+export const getPageLayoutText = async (pdf: PdfHandle, pageNumber: number): Promise<string> =>
+  layoutPageText((await getPageTextItems(pdf, pageNumber)).items);

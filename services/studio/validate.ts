@@ -15,6 +15,8 @@ export interface ValidationContext {
   omittedSources: { sourceId: string; reason: string; part?: SourcePart }[];
   /** Seiten je Quelle, die in die Zusammenfassung gehören (gewählt, nicht doppelt); fehlt = alle. */
   wantedPages?: Map<string, Set<number>>;
+  /** Rohtext einer Seite (mit Folientitel) als zusätzlicher Beleg für Zahlen und Quellenangaben. */
+  pageText?: (sourceId: string, page: number) => string;
   sourceWords: number;
 }
 
@@ -92,7 +94,7 @@ export const checkNumbers = (blocks: Block[], ctx: ValidationContext): Issue[] =
     if (b.origin !== 'quelle' || b.type === 'heading') continue;
     for (const { text, cites } of textsWithCites(b)) {
       if (!cites.length) continue;
-      const evidence = unitsOn(ctx.units, cites).map(unitText).join(' ');
+      const evidence = [...unitsOn(ctx.units, cites).map(unitText), ...cites.map(c => ctx.pageText?.(c.sourceId, c.page) ?? '')].join(' ');
       for (const fact of extractFacts(text)) {
         if (!hasFact(fact, evidence)) issues.push({ rule: 'numbers', blockId: b.id, message: `„${fact}“ steht nicht auf den zitierten Seiten.` });
       }
@@ -113,15 +115,17 @@ const normAuthor = (a: string) => a.toLowerCase().replace(/\bund\b/g, '&').repla
 export const checkAuthorYears = (blocks: Block[], ctx: ValidationContext): Issue[] => {
   const known = new Set<string>();
   const firstYears = new Set<string>();
+  const pageTexts = ctx.pageText ? [...new Set(ctx.units.map(u => `${u.sourceId}\u0000${u.page}`))].map(k => { const [s, p] = k.split('\u0000'); return ctx.pageText!(s, Number(p)); }) : [];
+  for (const t of pageTexts) for (const c of citationsIn(t, { loose: true })) { known.add(`${normAuthor(c.authors)}|${c.year}`); firstYears.add(`${c.first.toLowerCase()}|${c.year}`); }
   for (const u of ctx.units) {
-    const pairs = [...citationsIn(unitText(u)), ...(u.study?.authors && u.study.year ? citationsIn(`${u.study.authors} (${u.study.year})`) : [])];
+    const pairs = [...citationsIn(unitText(u), { loose: true }), ...(u.study?.authors && u.study.year ? citationsIn(`${u.study.authors} (${u.study.year})`) : [])];
     for (const c of pairs) { known.add(`${normAuthor(c.authors)}|${c.year}`); firstYears.add(`${c.first.toLowerCase()}|${c.year}`); }
   }
   const issues: Issue[] = [];
   for (const b of blocks) {
     const texts = b.type === 'study' ? [`${b.authors}${b.year ? ` (${b.year})` : ''}`, ...blockTexts(b).slice(1)]
       : b.type === 'timeline' ? b.items.map(i => `${i.who} (${i.year})`) : blockTexts(b);
-    for (const c of texts.flatMap(citationsIn)) {
+    for (const c of texts.flatMap(t => citationsIn(t))) {
       const exact = known.has(`${normAuthor(c.authors)}|${c.year}`);
       // Kurzform ("Simons (1999)" für "Simons & Chabris (1999)") gilt, wenn Erstautor und Jahr passen.
       if (!exact && !firstYears.has(`${c.first.toLowerCase()}|${c.year}`)) {
@@ -174,7 +178,8 @@ export const checkEmptyHeadings = (blocks: Block[]): Issue[] => {
 
 /** Inhaltliche Einheiten, die in einem Abschnitt vorkommen müssen. */
 // example zählt mit (Abnahme 16.10.: ohne fiel das H0/H1-Beispiel weg); 70 % lassen Raum zum Kürzen.
-export const CONTENT_TYPES = new Set(['definition', 'concept', 'study', 'finding', 'comparison', 'example']);
+// figure: Schemata wie der Forschungskreislauf stehen nur im Bild (Abnahme 16.10.: fehlte sonst).
+export const CONTENT_TYPES = new Set(['definition', 'concept', 'study', 'finding', 'comparison', 'example', 'figure']);
 export const SECTION_COVERAGE_MIN = 0.7;
 
 /** Anteil der inhaltlichen Einheiten, die die Blöcke über unitIds aufnehmen (1, wenn es keine gibt). */
@@ -339,6 +344,36 @@ export const checkRepetition = (chapterBlocks: Block[]): Issue[] => {
   return issues;
 };
 
+/** Bezeichner, die einen eigenen Datensatz einleiten ("Szenario 2", "Gruppe 1", "Bedingung B"). */
+const RECORD_LABEL = /\b(?:Szenario|Beispiel|Fall|Gruppe|Bedingung|Studie|Experiment|Variante)\s+(?:\d+|[A-H])\b/gi;
+
+/**
+ * Tabellen: jede Zeile hat so viele Zellen wie Spalten, und eine Zelle
+ * enthält nicht zwei Datensätze (Abnahme 16.10.: "Szenario 2 … / M = 60 vs.
+ * M = 60 …" in einer Zelle). Zwei Datensätze = zwei Bezeichner wie
+ * "Szenario 2" und "Szenario 3", oder Kennwerte in einer Spalte, die sonst
+ * keine hat. (Erwähnt eine Zelle nur den Namen einer anderen Zeile, etwa
+ * "zeitgleich mit Psychoanalyse", ist das kein zweiter Datensatz.)
+ */
+export const checkTables = (blocks: Block[]): Issue[] => blocks.flatMap((b): Issue[] => {
+  if (b.type !== 'table') return [];
+  const out: Issue[] = [];
+  if (b.shapeError) out.push({ rule: 'table_shape', blockId: b.id, message: `Tabelle „${b.caption ?? b.headers.join(' | ')}“: ${b.shapeError}. Jede Zeile braucht genau ${b.headers.length} Zellen.` });
+  const kennwerte = (t: string) => extractFacts(t).filter(f => !/^(1[89]|20)\d\d$/.test(f)).length;
+  b.rows.forEach((r, i) => r.forEach((cell, k) => {
+    const labels = new Set((cell.match(RECORD_LABEL) ?? []).map(x => x.toLowerCase().replace(/\s+/g, ' ')));
+    // Werte in einer Spalte, die sonst keine hat, während die Zeile ihre Werte schon in einer anderen
+    // Spalte trägt: der nächste Datensatz ist in die Zelle gerutscht.
+    const column = b.rows.filter((_, j) => j !== i).map(row => row[k] ?? '');
+    const leaked = kennwerte(cell) > 0 && column.length >= 1 && column.every(c => kennwerte(c) === 0)
+      && r.some((c, j) => j !== k && kennwerte(c) > 0);
+    if (labels.size >= 2 || leaked) {
+      out.push({ rule: 'table_shape', blockId: b.id, message: `Tabelle „${b.caption ?? b.headers.join(' | ')}“, Zeile ${i + 1}: eine Zelle enthält zwei Datensätze. Je Datensatz eine eigene Zeile.` });
+    }
+  }));
+  return out;
+});
+
 /** Prüfungsrelevante Einheiten (Wiederholungs-/Quizfolien) müssen vorkommen. */
 export const checkPriority = (unitIds: string[], blocks: Block[], units: Map<string, Unit>, chapterBlockId: string): Issue[] => {
   const used = new Set(blocks.flatMap(b => b.unitIds ?? []));
@@ -356,6 +391,7 @@ export const validateResult = (blocks: Block[], ctx: ValidationContext): Issue[]
   ...checkEmptyHeadings(blocks),
   ...checkStudies(blocks),
   ...checkSourceErrorHints(blocks, ctx.units),
+  ...checkTables(blocks),
   ...checkIllustrative(blocks, ctx.units),
   ...checkCiteDensity(blocks),
   ...checkKiFacts(blocks, ctx),

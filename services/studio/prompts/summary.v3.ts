@@ -22,7 +22,8 @@ Regeln:
    Ergebnis nennen; sonst die Studie als Stichpunkt.
 6. Genau 1 callout mit variant "merksatz" pro Kapitel. "klausurfalle", wenn Begriffe leicht verwechselt
    werden (z. B. Rosenthal- vs. Halo-Effekt) oder die Quelle selbst Fallen enthält.
-7. Einheiten vom Typ source_error → callout "hinweis" („Auf Folie X steht vermutlich versehentlich …“).
+7. Bewerte die Folien nie und weise nicht auf Fehler der Folien hin (das macht der Code in einem
+   eigenen Hinweis). Gib wieder, was auf den Folien steht.
    Aufgaben und Organisatorisches kommen hier nicht vor (werden separat gesammelt).
 8. Zeitliche oder kausale Verknüpfungen („führte zu“, „daraufhin“, „als Reaktion auf“)
    nur, wenn die Quelle sie macht UND die Jahreszahlen passen.
@@ -34,8 +35,9 @@ Regeln:
     Übersetzung in Klammern.
 12. Gliederung: Für jeden Abschnitt ein heading mit dessen Titel, danach sein Inhalt. Nie eine
     Überschrift ohne Inhalt. Kein heading für das Kapitel selbst (das setzt der Code).
-13. Vollständigkeit: Jede Einheit vom Typ definition, concept, study, finding, comparison oder example muss
-    in "units" mindestens eines Blocks vorkommen. Kürzen heißt knapper formulieren, nicht weglassen.
+13. Vollständigkeit: Jede Einheit vom Typ definition, concept, study, finding, comparison, example oder figure muss
+    in "units" mindestens eines Blocks vorkommen (figure-Einheiten beschreiben Schemata wie einen
+    Kreislauf: deren Inhalt als Text, z. B. die Schritte als Stichpunkte). Kürzen heißt knapper formulieren, nicht weglassen.
     Konkrete Ergebnisse echter Studien (Prozentwerte, „x von y“, Mittelwerte) bleiben immer erhalten.
 14. Format: Jeder Block hat "type" und füllt NUR das Unterobjekt mit demselben Namen
     (z. B. type "callout" → callout.variant und callout.text; type "study" → study.authors …).

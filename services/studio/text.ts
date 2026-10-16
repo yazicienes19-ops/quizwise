@@ -97,9 +97,13 @@ export const INLINE_CITE_RE = /\[\s*\d+\s*(?:[,:;]\s*(?:S\.\s*)?\d+[^\]]*)?\]|\(
  * Vollständige Quellenangaben im Text: "Simons & Levin (1998)", "Li et al., 2011",
  * "(Moray, 1959)". authors = Angabe wie geschrieben, first = erster Nachname.
  */
-export const citationsIn = (text: string): { authors: string; first: string; year: number }[] => {
+export const citationsIn = (text: string, opts: { loose?: boolean } = {}): { authors: string; first: string; year: number }[] => {
   const out: { authors: string; first: string; year: number }[] = [];
-  const re = /(\p{Lu}[\p{L}'’-]+(?:\s+(?:&|und)\s+\p{Lu}[\p{L}'’-]+)?(?:\s+et\s+al\.?)?)\s*(?:\(\s*|,\s*)((?:1[89]|20)\d\d)\b/gu;
+  // loose: auch ohne Klammer oder Komma ("Allport 1987", "Johnston und Heinz 1978"), wie Folien oft
+  // zitieren. Nur für Quellentexte: im Ausgabetext wäre "Jahr 2011" sonst eine Quellenangabe.
+  const re = opts.loose
+    ? /(\p{Lu}[\p{L}'’-]+(?:\s+(?:&|und)\s+\p{Lu}[\p{L}'’-]+)?(?:\s+et\s+al\.?)?)\s*(?:\(\s*|,\s*|\s)((?:1[89]|20)\d\d)\b/gu
+    : /(\p{Lu}[\p{L}'’-]+(?:\s+(?:&|und)\s+\p{Lu}[\p{L}'’-]+)?(?:\s+et\s+al\.?)?)\s*(?:\(\s*|,\s*)((?:1[89]|20)\d\d)\b/gu;
   for (const m of text.matchAll(re)) {
     const year = Number(m[2]);
     if (year < 1850 || year > 2100) continue;

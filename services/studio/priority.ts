@@ -2,7 +2,7 @@ import type { Unit } from './types';
 
 /**
  * Wichtigkeits-Signal: Inhalte, die auf Wiederholungs- oder Quizfolien
- * (practice_question) wieder auftauchen, gelten als prüfungsrelevant und
+ * (practice_question) wieder auftauchen oder auf die sich eine Aufgabe bezieht, gelten als prüfungsrelevant und
  * dürfen beim Kürzen nicht wegfallen. Erkannt über gemeinsame Fachwörter;
  * Wörter, die in vielen Einheiten stehen ("Psychologie"), zählen nicht.
  */
@@ -14,10 +14,12 @@ const stems = (t: string): Set<string> => new Set(
 );
 
 export const PRIORITY_MIN_SHARED = 3;
-const CONTENT = new Set(['definition', 'concept', 'study', 'finding', 'example', 'list', 'comparison']);
+const CONTENT = new Set(['definition', 'concept', 'study', 'finding', 'example', 'list', 'comparison', 'figure']);
 
 export const markPriority = (units: Unit[]): Unit[] => {
-  const questions = units.filter(u => u.type === 'practice_question');
+  // Quiz-/Wiederholungsfragen und Aufgaben: worauf sich eine Aufgabe bezieht ("Kreislauf … anhand der
+  // Logik der Forschung"), muss in der Zusammenfassung stehen.
+  const questions = units.filter(u => u.type === 'practice_question' || u.type === 'task');
   if (!questions.length) return units;
   const content = units.filter(u => CONTENT.has(u.type));
   const df = new Map<string, number>();

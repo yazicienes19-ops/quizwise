@@ -13,16 +13,21 @@ import { join } from 'node:path';
 import '../env.ts';
 import { GoogleGenAI } from '@google/genai';
 import { runSummaryPipeline } from '../../services/studio/pipeline';
+import { extractUnits, pageNeedsImage } from '../../services/studio/extract';
 import { findDuplicatePages } from '../../services/studio/dedupe';
 import { resultToMarkdown } from '../../services/studio/toMarkdown';
 import { blockTexts, INLINE_CITE_RE, looksTruncated } from '../../services/studio/text';
-import { checkEmptyHeadings, checkRepetition } from '../../services/studio/validate';
+import { checkEmptyHeadings, checkRepetition, checkTables } from '../../services/studio/validate';
 import { partsFromOutline } from '../../services/pdfOutlineService';
+import { layoutPageText } from '../../services/pdfPageService';
 import type { Block, Cite, PipelineSource, SourcePart } from '../../services/studio/types';
 import { guardedLlm, type LlmEvent, type StudioLlm, type StudioTransport } from '../../services/studio/llm';
 import { createRequire } from 'node:module';
 
-const run = process.env.STUDIO_EVAL === '1' ? describe : describe.skip;
+const MODE = process.env.STUDIO_EVAL_MODE ?? 'full';
+const run = process.env.STUDIO_EVAL === '1' && MODE === 'full' ? describe : describe.skip;
+// Nur Extraktion messen, ohne Cache: STUDIO_EVAL_MODE=extract STUDIO_EVAL_IMAGES=all|selective|none
+const runExtract = process.env.STUDIO_EVAL === '1' && MODE === 'extract' ? describe : describe.skip;
 const DIR = join(__dirname, '..', 'datasets', 'lernstudio');
 const CACHE = join(DIR, 'cache');
 const OUT = join(__dirname, '..', 'results', 'lernstudio');
@@ -52,16 +57,42 @@ interface Expectations {
   together?: string[][];
   /** Überschriften, die vorkommen müssen. */
   headings?: string[];
+  /** Seiten, auf die KEIN Folienfehler-Hinweis zeigen darf ("page:26" = Fehlmeldung). */
+  hintsForbidden?: string[];
+  /** Teilstrings, die in den Kapiteln (nicht nur in Aufgaben) vorkommen müssen. */
+  contentContains?: string[];
 }
 
-const pdfPages = async (file: string): Promise<{ pages: string[]; parts: SourcePart[] | null }> => {
+const pdfPages = async (file: string): Promise<{ pages: string[]; parts: SourcePart[] | null; renderPage: (p: number) => Promise<string | null> }> => {
   const pdfjs = await import('pdfjs-dist/legacy/build/pdf.mjs');
   const pdf = await pdfjs.getDocument({ data: new Uint8Array(readFileSync(file)) }).promise;
   const pages: string[] = [];
   for (let n = 1; n <= pdf.numPages; n++) {
-    const content = await (await pdf.getPage(n)).getTextContent();
-    pages.push(content.items.map(i => ('str' in i ? i.str : '')).join(' ').replace(/\s+/g, ' ').trim());
+    // Wie die App (readPdfPagesLayout): Text nach Position, Spalten mit " | ".
+    const page = await pdf.getPage(n);
+    const vp = page.getViewport({ scale: 1 });
+    const content = await page.getTextContent();
+    const items = content.items.filter(i => 'str' in i && i.str).map(i => {
+      const it = i as { str: string; transform: number[]; width: number; height: number };
+      const h = it.height || Math.abs(it.transform[3]) || 10;
+      return { str: it.str, x: it.transform[4], y: vp.height - it.transform[5] - h, w: it.width, h };
+    });
+    pages.push(layoutPageText(items));
   }
+  // Seitenbilder wie in der App (1000 px breit, JPEG), über @napi-rs/canvas.
+  const { createCanvas } = await import('@napi-rs/canvas');
+  const images = new Map<number, Promise<string | null>>();
+  const renderPage = (p: number) => {
+    if (!images.has(p)) images.set(p, (async () => {
+      const page = await pdf.getPage(p);
+      const base = page.getViewport({ scale: 1 });
+      const vp = page.getViewport({ scale: 1000 / base.width });
+      const canvas = createCanvas(Math.round(vp.width), Math.round(vp.height));
+      await page.render({ canvasContext: canvas.getContext('2d') as never, viewport: vp, canvas: canvas as never }).promise;
+      return (await canvas.encode('jpeg', 70)).toString('base64');
+    })().catch(() => null));
+    return images.get(p)!;
+  };
   // Zusammengefügte PDF: Vorlesungen aus der Gliederung, wie in der App (getMergedPdfParts).
   const outline = (await pdf.getOutline().catch(() => null)) ?? [];
   const entries = await Promise.all(outline.map(async node => {
@@ -72,7 +103,7 @@ const pdfPages = async (file: string): Promise<{ pages: string[]; parts: SourceP
     } catch { /* ohne Seite */ }
     return { title: node.title?.trim() ?? '', page, hasChildren: !!node.items?.length };
   }));
-  return { pages, parts: partsFromOutline(entries, pdf.numPages) };
+  return { pages, parts: partsFromOutline(entries, pdf.numPages), renderPage };
 };
 
 const MODEL_LITE = 'gemini-3.5-flash-lite';
@@ -86,7 +117,7 @@ const { costOfUsage } = createRequire(import.meta.url)('../../backend/src/config
 /** "default" = Standardtemperatur des Modells (Google rät bei Gemini 3.x dazu), sonst die der Pipeline. */
 const TEMP_DEFAULT = process.env.STUDIO_EVAL_TEMP === 'default';
 
-interface Usage { calls: number; usd: number; estimated: number; byStep: Record<string, number>; events: LlmEvent[] }
+interface Usage { calls: number; usd: number; estimated: number; byStep: Record<string, number>; events: LlmEvent[]; stepUsd?: Record<string, number>; stepMs?: Record<string, number>; images?: number }
 
 /**
  * Wie in der App: gestreamt, mit Kostenbremse (guardedLlm bricht bei
@@ -112,12 +143,14 @@ const makeLlm = (usage: Usage, rawDir?: string): StudioLlm => {
     if (!TEMP_DEFAULT && req.temperature !== undefined) config.temperature = req.temperature;
     // Wie das Backend: Lite lehnt thinkingBudget 0 ab.
     if (!(model === MODEL_LITE && (req.thinkingBudget ?? 0) === 0)) config.thinkingConfig = { thinkingBudget: req.thinkingBudget ?? 0 };
+    const t0 = Date.now();
     for (let attempt = 0; ; attempt++) {
       let text = '';
       let finish: string | undefined;
       let meta: unknown;
       try {
-        const stream = await ai.models.generateContentStream({ model, contents: [{ role: 'user', parts: [{ text: req.prompt }] }], config: config as never });
+        const parts = [{ text: req.prompt }, ...(req.images ?? []).map(data => ({ inlineData: { data, mimeType: 'image/jpeg' } }))];
+        const stream = await ai.models.generateContentStream({ model, contents: [{ role: 'user', parts }], config: config as never });
         for await (const chunk of stream) {
           if (chunk.usageMetadata) meta = chunk.usageMetadata;
           if (chunk.candidates?.[0]?.finishReason) finish = chunk.candidates[0].finishReason;
@@ -138,7 +171,11 @@ const makeLlm = (usage: Usage, rawDir?: string): StudioLlm => {
         usage.byStep[req.step] = (usage.byStep[req.step] ?? 0) + 1;
         const full = meta && finish ? meta : { promptTokenCount: Math.round(req.prompt.length / 4), candidatesTokenCount: Math.round(text.length / 3.5) };
         if (!(meta && finish)) usage.estimated += 1;
-        usage.usd += costOfUsage(model, full);
+        const cost = costOfUsage(model, full);
+        usage.usd += cost;
+        usage.stepUsd = { ...usage.stepUsd, [req.step]: (usage.stepUsd?.[req.step] ?? 0) + cost };
+        usage.stepMs = { ...usage.stepMs, [req.step]: (usage.stepMs?.[req.step] ?? 0) + (Date.now() - t0) };
+        usage.images = (usage.images ?? 0) + (req.images?.length ?? 0);
         dump(req.step, req.prompt, text, finish ?? (signal.aborted ? 'ABORTED' : undefined));
       }
     }
@@ -162,8 +199,8 @@ run('Lernstudio-Eval (live)', () => {
     expect(files.length, `Keine PDFs in ${DIR}`).toBeGreaterThan(0);
     const sources: PipelineSource[] = [];
     for (const f of files) {
-      const { pages, parts } = await pdfPages(join(DIR, f));
-      sources.push({ docId: f, name: f.replace(/\.pdf$/i, ''), pages, pageCount: pages.length, ...(parts ? { parts } : {}) });
+      const { pages, parts, renderPage } = await pdfPages(join(DIR, f));
+      sources.push({ docId: f, name: f.replace(/\.pdf$/i, ''), pages, pageCount: pages.length, renderPage, ...(parts ? { parts } : {}) });
     }
     const exp: Expectations = existsSync(join(DIR, 'expectations.json')) ? JSON.parse(readFileSync(join(DIR, 'expectations.json'), 'utf8')) : {};
 
@@ -189,7 +226,8 @@ run('Lernstudio-Eval (live)', () => {
     const check = (name: string, ok: boolean, detail = '') => { report.push([name, ok, detail]); expect.soft(ok, `${name} ${detail}`).toBe(true); };
 
     const ratio = r.stats.outputWords / Math.max(1, r.stats.sourceWords);
-    check('≤ 40 % der Quellwörter', ratio <= 0.4 || r.stats.outputWords <= 600, `${r.stats.outputWords}/${r.stats.sourceWords} = ${Math.round(ratio * 100)} %`);
+    // Entscheidung 16.10.: 40 % mit 10 % Toleranz (höchstens 44 %), wie der Validator.
+    check('≤ 40 % (+10 % Toleranz) der Quellwörter', ratio <= 0.44 || r.stats.outputWords <= 600, `${r.stats.outputWords}/${r.stats.sourceWords} = ${Math.round(ratio * 100)} %`);
     const cited = new Set(r.blocks.flatMap(cites).map(c => c.sourceId));
     const omitted = new Set(r.omittedSources.map(o => o.sourceId));
     check('Jede Quelle zitiert oder begründet ausgelassen', sources.every(s => cited.has(s.docId) || omitted.has(s.docId)),
@@ -228,6 +266,14 @@ run('Lernstudio-Eval (live)', () => {
     for (const g of exp.together ?? []) check(`Zusammen: ${g.join(' / ')}`, r.blocks.some(b => { const t = blockTexts(b).join(' ').toLowerCase(); return g.every(x => t.includes(x.toLowerCase())); }));
     const headingTexts = r.blocks.filter(b => b.type === 'heading').map(b => (b.type === 'heading' ? b.text : ''));
     for (const h of exp.headings ?? []) check(`Abschnitt: ${h}`, headingTexts.includes(h));
+    for (const h of exp.hintsForbidden ?? []) {
+      const page = Number(h.replace('page:', ''));
+      check(`Kein Hinweis auf S. ${page}`, !hintBlocks.some(b => b.cites.some(c => c.page === page)));
+    }
+    const chapterText = r.blocks.filter(b => b.id.startsWith('c')).flatMap(blockTexts).join(' ').toLowerCase();
+    for (const c of exp.contentContains ?? []) check(`Im Kapiteltext: ${c}`, chapterText.includes(c.toLowerCase()));
+    const tableIssues = checkTables(r.blocks);
+    check('Tabellen: Zellen = Spalten, ein Datensatz je Zelle', tableIssues.length === 0, tableIssues.map(i => i.message.slice(0, 90)).join(' | '));
     // Je Kapitel (Überschrift Ebene 2 aus dem Schreiben, nicht die Extras): genau ein Merksatz, keine Wiederholung.
     const chapterRuns: Block[][] = [];
     for (const b of r.blocks) {
@@ -272,5 +318,42 @@ run('Lernstudio-Eval (live)', () => {
       words: r.stats.outputWords, warnings: r.warnings.length, failed: report.filter(([, ok]) => !ok).map(([n]) => n),
     })}\n`);
     writeFileSync(join(OUT, `${stamp}.report.txt`), summary);
+  }, 30 * 60_000);
+});
+
+runExtract('Lernstudio-Eval: Extraktion messen (live, ohne Cache)', () => {
+  it('Kosten, Dauer, Folie 26, Forschungskreislauf', async () => {
+    const policy = (process.env.STUDIO_EVAL_IMAGES ?? 'all') as 'all' | 'selective' | 'none';
+    const files = readdirSync(DIR).filter(f => f.toLowerCase().endsWith('.pdf'));
+    const sources: PipelineSource[] = [];
+    for (const f of files) {
+      const { pages, renderPage } = await pdfPages(join(DIR, f));
+      sources.push({ docId: f, name: f.replace(/\.pdf$/i, ''), pages, pageCount: pages.length,
+        ...(policy !== 'none' ? { renderPage, imagePolicy: policy === 'selective' ? 'selective' as const : 'all' as const } : {}) });
+    }
+    const wanted = new Map(sources.map(s => [s.docId, new Set(s.pages!.map((p, i) => (p.trim() ? i + 1 : 0)).filter(Boolean))]));
+    const usage: Usage = { calls: 0, usd: 0, estimated: 0, byStep: {}, events: [] };
+    const t0 = Date.now();
+    const units = await extractUnits(sources, wanted, makeLlm(usage), null);
+    const seconds = Math.round((Date.now() - t0) / 1000);
+    const pages = [...wanted.values()].reduce((a, s) => a + s.size, 0);
+    const needImage = sources.flatMap(s => s.pages!.map(p => p)).filter(p => p.trim() && pageNeedsImage(p)).length;
+    const p26 = units.filter(u => u.page === 26).map(u => `${u.type}${u.illustrative ? ' (illustrativ)' : ''}: ${u.text}`);
+    const kreis = units.filter(u => /kreislauf/i.test(`${u.title ?? ''} ${u.text}`) && u.type !== 'task').map(u => `S. ${u.page} ${u.type}: ${u.text.slice(0, 160)}`);
+    const right26 = units.some(u => u.page === 26 && /mit Handy\W{0,12}(M\s*=\s*)?90|90\s*\(mit Handy|M\s*=\s*90[^.]{0,25}mit Handy/i.test(u.text))
+      && !units.some(u => u.page === 26 && /mit Handy\W{0,12}(M\s*=\s*)?30|30\s*\(mit Handy/i.test(u.text));
+    const summary = [
+      `Bilder: ${policy}, Seiten: ${pages}, davon mit Bild: ${usage.images ?? 0} (Heuristik "Text reicht nicht": ${needImage})`,
+      `Kosten: ${usage.usd.toFixed(4)} $ (${(usage.usd / pages * 1000).toFixed(3)} $ je 1.000 Seiten → ${(usage.usd / pages * 300).toFixed(3)} $ für 300 Seiten)`,
+      `Dauer: ${seconds} s (${(seconds / pages).toFixed(2)} s je Seite, 4 parallel → 300 Seiten etwa ${Math.round(seconds / pages * 300)} s)`,
+      `Aufrufe: ${usage.calls}, Einheiten: ${units.length}`,
+      `Folie 26 richtig (Mit Handy 90, Ohne Handy 30): ${right26 ? 'ja' : 'NEIN'}`,
+      ...p26.map(t => `  ${t.slice(0, 220)}`),
+      `Forschungskreislauf (ohne Aufgaben): ${kreis.length ? 'ja' : 'NEIN'}`,
+      ...kreis.map(t => `  ${t}`),
+    ].join('\n');
+    console.log(summary);
+    mkdirSync(OUT, { recursive: true });
+    writeFileSync(join(OUT, `extract-${policy}-${new Date().toISOString().replace(/[:.]/g, '-')}.txt`), summary);
   }, 30 * 60_000);
 });

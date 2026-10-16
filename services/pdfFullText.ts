@@ -1,7 +1,7 @@
 import type { ProcessedDocument } from '../types';
 import type { FullText } from './moduleDeck';
 import { downloadPdfAsBase64 } from './documentService';
-import { loadPdf, getPageText, isScannedPage, renderPageToJpegBase64 } from './pdfPageService';
+import { loadPdf, getPageText, getPageLayoutText, isScannedPage, renderPageToJpegBase64 } from './pdfPageService';
 import { transcribePdfPages } from './geminiService';
 
 /**
@@ -163,6 +163,31 @@ export const readPdfPages = async (doc: ProcessedDocument, isCancelled?: () => b
     const result = usable ? pages : null;
     pageCache.set(doc.id, result);
     return result;
+  } finally {
+    void pdf.doc.cleanup();
+  }
+};
+
+const layoutCache = new Map<string, string[] | null>();
+
+/**
+ * Wie readPdfPages, aber Text nach Position (Spalten mit " | "), für das
+ * Lernstudio: Zahlen in nebeneinanderliegenden Spalten bleiben ihrer Spalte
+ * zugeordnet (pdfPageService.layoutPageText).
+ */
+export const readPdfPagesLayout = async (doc: ProcessedDocument, isCancelled?: () => boolean): Promise<string[] | null> => {
+  if (layoutCache.has(doc.id)) return layoutCache.get(doc.id)!;
+  const plain = await readPdfPages(doc, isCancelled);
+  if (!plain) return null;
+  const pdf = await loadPdf(doc.storagePath ? await downloadPdfAsBase64(doc.storagePath) : doc.content);
+  try {
+    const pages: string[] = [];
+    for (let n = 1; n <= pdf.numPages; n++) {
+      if (isCancelled?.()) return null;
+      pages.push(await getPageLayoutText(pdf, n).catch(() => plain[n - 1] ?? ''));
+    }
+    layoutCache.set(doc.id, pages);
+    return pages;
   } finally {
     void pdf.doc.cleanup();
   }

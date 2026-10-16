@@ -1,10 +1,11 @@
 import type { Block, ChapterDiagnostic, Issue, LernstudioResult, PipelineProgress, PipelineSource, SourcePart, Unit } from './types';
 import { findDuplicatePages, sourceWordCount, withoutDuplicates } from './dedupe';
-import { assignUnitIds, extractUnits, scanSourceErrors } from './extract';
+import { assignUnitIds, extractUnits, scanSourceErrors, verifySourceErrors } from './extract';
 import { buildOutline, SEPARATE_TYPES, type Chapter, type Lecture } from './outline';
 import { chapterHeading, writeChapterBody, type WriteInput } from './write';
 import { buildExtraBlocks, buildTimeline, timelineCandidates } from './extras';
 import { markPriority } from './priority';
+import { partOf, slideIn } from './parts';
 import { checkEmptyHeadings, checkMerksatz, checkPriority, checkRepetition, checkSectionCoverage, checkStudies, unitCoverage, validateResult, type ValidationContext } from './validate';
 import { checkWithModel } from './check';
 import { mapLimit, StudioLlmError, type ExtractionCache, type StudioLlm } from './llm';
@@ -107,8 +108,12 @@ export const runSummaryPipeline = async (input: PipelineInput): Promise<Lernstud
     scanSourceErrors(input.sources, wanted, llm, input.cache ?? null, cancelled).catch(() => []),
   ]);
   bail();
-  const knownErrorPages = new Set(stored.filter(u => u.type === 'source_error').map(u => `${u.sourceId}:${u.page}`));
-  const units = markPriority(assignUnitIds([...stored, ...scanned.filter(u => !knownErrorPages.has(`${u.sourceId}:${u.page}`))], order));
+  // Vermutete Folienfehler (Suche + Extraktion) nur mit Bestätigung am Seitenbild; je Seite einer.
+  const candidates = [...scanned, ...stored.filter(u => u.type === 'source_error')]
+    .filter((u, i, all) => all.findIndex(x => x.sourceId === u.sourceId && x.page === u.page) === i);
+  const confirmed = await verifySourceErrors(candidates, scoped, llm, input.cache ?? null, cancelled).catch(() => []);
+  bail();
+  const units = markPriority(assignUnitIds([...stored.filter(u => u.type !== 'source_error'), ...confirmed], order));
   const byId = new Map(units.map(u => [u.id, u]));
 
   // Quellen (und Vorlesungen einer zusammengefügten PDF) ohne verwertbare Einheiten begründet auslassen.
@@ -211,10 +216,13 @@ export const runSummaryPipeline = async (input: PipelineInput): Promise<Lernstud
   bail();
   const extras = buildExtraBlocks(units, await timelinePromise);
 
+
   // ── D: prüfen ──
   const ctx: ValidationContext = {
     sources: input.sources.map(s => ({ docId: s.docId, name: s.name, pageCount: s.pageCount, ...(s.parts?.length ? { parts: s.parts } : {}) })),
     units, omittedSources, sourceWords, wantedPages: wanted,
+    // Folientext als Beleg für Zahlen und Quellenangaben (Titel wie "(Skowronek et al., 2023)" fehlen oft in den Einheiten).
+    pageText: (sourceId, page) => scoped.find(s => s.docId === sourceId)?.pages?.[page - 1] ?? '',
   };
   const all = () => [...chapters.flatMap((ch, i) => [chapterHeading(ch.title, i), ...chapterBlocks[i]]), ...extras];
   onProgress?.({ step: 'check', done: 0, total: 2 });
@@ -288,6 +296,28 @@ export const runSummaryPipeline = async (input: PipelineInput): Promise<Lernstud
     });
     bail();
   }
+
+  const placeHints = () => {
+    // Folienfehler: den Hinweis setzt der Code ins Kapitel mit der nächstgelegenen Folie derselben Quelle.
+    // Das Schreibmodell sieht vermutete Fehler nie, sie können den Inhalt also nicht verändern.
+    for (const err of units.filter(u => u.type === 'source_error')) {
+      let best = -1;
+      let dist = Infinity;
+      chapters.forEach((ch, i) => chapterUnitIds(ch).forEach(id => {
+        const u = byId.get(id);
+        if (u?.sourceId === err.sourceId && Math.abs(u.page - err.page) < dist) { dist = Math.abs(u.page - err.page); best = i; }
+      }));
+      if (best < 0) continue;
+      const part = partOf(input.sources.find(s => s.docId === err.sourceId)?.parts, err.page);
+      const where = part ? `Auf Folie ${slideIn(part, err.page)} („${part.title}“)` : `Auf Folie ${err.page}`;
+      chapterBlocks[best] = [...chapterBlocks[best].filter(b => !(b.type === 'callout' && b.variant === 'hinweis' && b.cites.some(c => c.sourceId === err.sourceId && c.page === err.page))), {
+        id: `c${best + 1}-se${err.page}`, origin: 'quelle', cites: [{ sourceId: err.sourceId, page: err.page }], unitIds: [err.id],
+        type: 'callout', variant: 'hinweis', text: `${where}: ${err.text.replace(/^Auf (?:der )?Folie \d+[^:]*:\s*/i, '')}`,
+      }];
+    }
+  };
+  // Erst nach der Reparatur einsetzen: sie schreibt Kapitel neu und hätte die Hinweise sonst gelöscht.
+  placeHints();
 
   // Nach der Reparatur: Code-Regeln über alles, Modellprüfung nur über reparierte Kapitel.
   const incompleteChapters: string[] = [];

@@ -1,6 +1,7 @@
 import type { ProcessedDocument } from '../../types';
 import { documentDisplayName } from '../libraryService';
-import { canReadFullText, readPdfPages } from '../pdfFullText';
+import { canReadFullText, readPdfPagesLayout } from '../pdfFullText';
+import { renderPageJpegAtWidth } from '../pdfPageService';
 import { streamStudioStep } from '../geminiService';
 import { ensureFigureIndex, ensureFigureImage, buildFigureCatalog, openPdf, type DocFigure } from '../studioFigures';
 import { getMergedPdfParts } from '../pdfOutlineService';
@@ -33,6 +34,17 @@ const plainText = (d: ProcessedDocument): string | undefined => {
 export const makeAppStudioLlm = (onEvent?: (e: LlmEvent) => void): StudioLlm =>
   guardedLlm((req, onText, signal) => streamStudioStep(req, onText, signal), { onEvent });
 
+/** Seitenbild je Dokument und Seite, im Speicher gehalten (Extraktion und Prüfung brauchen es mehrfach). */
+const imageCache = new Map<string, Promise<string | null>>();
+const pageImages = (d: ProcessedDocument) => (page: number): Promise<string | null> => {
+  const key = `${d.id}:${page}`;
+  if (!imageCache.has(key)) {
+    const p = openPdf(d).then(pdf => renderPageJpegAtWidth(pdf, page)).catch(() => null);
+    imageCache.set(key, p);
+  }
+  return imageCache.get(key)!;
+};
+
 export const runSummaryForDocs = async (opts: {
   chosen: ProcessedDocument[];
   allDocuments: ProcessedDocument[];
@@ -54,7 +66,8 @@ export const runSummaryForDocs = async (opts: {
   for (const [i, d] of pdfs.entries()) {
     if (isCancelled()) return null;
     onProgress({ step: 'pdf', done: i, total: pdfs.length });
-    try { pagesById.set(d.id, await readPdfPages(d, isCancelled)); } catch { pagesById.set(d.id, null); }
+    // Text nach Position: Zahlen in nebeneinanderliegenden Spalten bleiben ihrer Spalte zugeordnet.
+    try { pagesById.set(d.id, await readPdfPagesLayout(d, isCancelled)); } catch { pagesById.set(d.id, null); }
     // Zusammengefügte PDF: Vorlesungen aus der Gliederung (Abdeckung je Vorlesung, Fußnote mit Folie).
     try { const parts = await getMergedPdfParts(await openPdf(d)); if (parts) partsById.set(d.id, parts); } catch { /* ohne */ }
   }
@@ -84,6 +97,8 @@ export const runSummaryForDocs = async (opts: {
       ...(pages ? {} : { plain: plainText(d) }),
       pageCount: pages?.length ?? 0,
       ...(partsById.has(d.id) ? { parts: partsById.get(d.id) } : {}),
+      // Seitenbilder für Extraktion (Diagramme, Spalten) und die Prüfung von Folienfehlern am Bild.
+      ...(pages ? { renderPage: pageImages(d) } : {}),
       figures: catalog.entries.filter(e => e.docId === d.id)
         .map(e => ({ ref: e.ref, page: e.figure.page, title: e.figure.title, description: e.figure.description })),
     };
@@ -91,11 +106,17 @@ export const runSummaryForDocs = async (opts: {
   const ranges = new Map<string, [number, number][]>();
   for (const d of chosen) { const r = scope(d.id).ranges; if (r?.length) ranges.set(d.id, r); }
 
-  const result = await runSummaryPipeline({
-    sources, ranges, focus: opts.focus, argon: opts.argon,
-    llm: opts.llm ?? makeAppStudioLlm(), cache: extractionCache(userId),
-    onProgress, isCancelled,
-  });
+  let result: LernstudioResult;
+  try {
+    result = await runSummaryPipeline({
+      sources, ranges, focus: opts.focus, argon: opts.argon,
+      llm: opts.llm ?? makeAppStudioLlm(), cache: extractionCache(userId),
+      onProgress, isCancelled,
+    });
+  } finally {
+    // Seitenbilder (je ~100 KB) nicht über den Lauf hinaus im Speicher halten.
+    for (const d of chosen) for (const key of [...imageCache.keys()]) if (key.startsWith(`${d.id}:`)) imageCache.delete(key);
+  }
 
   // Abbildungen ausschneiden: Katalogverweis (A3) → Pfad im Bild-Speicher; was scheitert, fällt weg.
   const figureBlocks = result.blocks.filter(b => b.type === 'figure');

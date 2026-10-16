@@ -10,7 +10,7 @@ Melde nur:
 - einen Widerspruch innerhalb derselben Folie,
 - einen offensichtlichen Fehler bei Zahl, Name oder Jahr, der der Folie selbst widerspricht.
 
-Nicht melden: Stil, Tippfehler ohne Bedeutung, Kürzel, unvollständige Stichpunkte, inhaltliche Kritik
+Nicht melden: Stil, Tippfehler und Buchstabendreher, Kürzel, unvollständige Stichpunkte, inhaltliche Kritik
 an Theorien, Inhalte, die nur auf einer anderen Folie stehen.
 
 Je Fehler: "page" (Nummer aus der Marke [Seite p]) und "text": ein vollständiger Satz für Studierende,

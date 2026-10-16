@@ -58,6 +58,11 @@ describe('Autor und Jahr: Paare statt "verschiedene Jahre"', () => {
       text: 'Levin & Simons (1997), Simons & Levin (1998), Simons & Chabris (1999), Levin et al. (2000), Moray (1959).' }];
     expect(checkAuthorYears(blocks, ctx(units))).toEqual([]);
   });
+  it('Quellenangaben ohne Komma auf der Folie ("Allport 1987", "Johnston und Heinz 1978") gelten', () => {
+    const src = [U('a', 136, 'concept', 'Selection for action (Allport 1987).'), U('b', 140, 'concept', 'Ressourcen (z. B. Allport 1989), flexible Selektion (Johnston und Heinz 1978).')];
+    const blocks: Block[] = [{ id: 'b', origin: 'quelle', cites: [], type: 'paragraph', text: 'Allport (1987), Allport (1989) und Johnston & Heinz (1978).' }];
+    expect(checkAuthorYears(blocks, ctx(src))).toEqual([]);
+  });
   it('Warnung nur für ein Paar, das in keiner Quelle steht', () => {
     const blocks: Block[] = [{ id: 'b', origin: 'quelle', cites: [], type: 'paragraph', text: 'Moray (2011) zeigte den Effekt.' }];
     expect(checkAuthorYears(blocks, ctx(units)).map(i => i.message)).toEqual(['„Moray (2011)“ steht so in keiner Quelle.']);
