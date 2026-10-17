@@ -67,7 +67,9 @@ export const parseYear = (v: unknown): number | undefined => {
   return y >= 1850 && y <= 2100 ? y : undefined;
 };
 
-const clean = (v: unknown): string => (typeof v === 'string' ? v.replace(/\s+/g, ' ').trim() : '');
+// Interne Einheiten-IDs wie „(u30)“ oder „(u3, u4)“ gehören nie in den Text.
+const UNIT_REF = /\s*\((?:u\d+(?:,\s*)?)+\)/g;
+const clean = (v: unknown): string => (typeof v === 'string' ? v.replace(UNIT_REF, '').replace(/\s+/g, ' ').trim() : '');
 
 /** Einheiten-IDs → Fußnoten (je Quelle und Seite einmal, in Reihenfolge). */
 export const citesFromUnits = (ids: unknown, byId: Map<string, Unit>): Cite[] => {

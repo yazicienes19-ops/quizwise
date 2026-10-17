@@ -67,7 +67,7 @@ export const blockToMarkdown = (b: Block, numberOf: (sourceId: string) => number
         ...(!rowCites && b.cites.length ? ['', c(b.cites).trim()] : []),
       ].join('\n');
     }
-    case 'callout': return `> **${CALLOUT_LABEL[b.variant] ?? 'Hinweis'}:** ${b.text}${c(b.cites)}`;
+    case 'callout': return `> **${CALLOUT_LABEL[b.variant] ?? 'Hinweis'}:** ${b.text}${c(b.cites)}${b.variant === 'einordnung' ? '' : ki}`;
     case 'study': return [
       `**${b.authors}${b.year ? ` (${b.year})` : ''}**${c(b.cites)}`,
       ...(b.design ? [`- Aufbau: ${b.design}`] : []),
@@ -76,7 +76,7 @@ export const blockToMarkdown = (b: Block, numberOf: (sourceId: string) => number
     ].join('\n');
     case 'figure': return `*Abbildung: ${figureText(b.title, b.caption)}*${c(b.cites)}`;
     case 'timeline': return b.items.map(i => `- **${i.year}** ${i.who}: ${i.what}${c(i.cites)}`).join('\n');
-    case 'check': return `**${b.question}**\n${b.answer}`;
+    case 'check': return `**${b.question}**${ki}\n${b.answer}`;
   }
 };
 

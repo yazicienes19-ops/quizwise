@@ -67,6 +67,11 @@ describe('Gliederung', () => {
 });
 
 describe('Blöcke normalisieren', () => {
+  it('interne Einheiten-IDs wie „(u30)“ verschwinden aus dem Text', () => {
+    const byId = new Map([['u1', { id: 'u1', sourceId: 'a', page: 1, type: 'concept', text: 'x' }]]) as Parameters<typeof normalizeBlocks>[1];
+    const { blocks: [b] } = normalizeBlocks([{ type: 'paragraph', origin: 'quelle', paragraph: { text: 'Beobachtung (u30). Hypothese (u31, u32) folgt (in Studie u5).', units: ['u1'] } }], byId, 'c1-');
+    expect(b.type === 'paragraph' && b.text).toBe('Beobachtung. Hypothese folgt (in Studie u5).');
+  });
   const byId = new Map([U('u1', 'a', 3), U('u2', 'a', 3), U('u3', 'b', 1)].map(u => [u.id, u]));
   it('Belege aus Einheiten-IDs, je Seite einmal, unbekannte fallen weg', () => {
     const { blocks: [b] } = normalizeBlocks([{ type: 'paragraph', origin: 'quelle', paragraph: { text: 'Text', units: ['u1', 'u2', 'u3', 'zz'] } }], byId, 'c1-');
@@ -216,6 +221,20 @@ describe('Markdown-Fassung und Schlüssel', () => {
     expect(md).toContain('- Filter [1, S. 4]');
     expect(md).toContain('| A | B |');
     expect(md).toContain('- Bitte prüfen');
+  });
+  it('Erklärhilfen sind in jedem Blocktyp erkennbar, auch in Kästen und Fragen', () => {
+    const md = resultToMarkdown({
+      formatVersion: 2, format: 'skript', omittedSources: [], warnings: [], stats: { sourceWords: 1, outputWords: 1 },
+      blocks: [
+        { id: 'k', origin: 'ki', cites: [], type: 'callout', variant: 'beispiel', text: 'Stell dir vor' },
+        { id: 'q', origin: 'ki', cites: [], type: 'check', question: 'Welcher Effekt?', answer: 'Halo' },
+        { id: 's', origin: 'quelle', cites: [{ sourceId: 'a', page: 2 }], type: 'callout', variant: 'beispiel', text: 'Von der Folie' },
+      ],
+    }, id => (id === 'a' ? 1 : undefined));
+    expect(md).toContain('> **Beispiel:** Stell dir vor *(Erklärhilfe)*');
+    expect(md).toContain('**Welcher Effekt?** *(Erklärhilfe)*');
+    expect(md).toContain('> **Beispiel:** Von der Folie [1, S. 2]');
+    expect(md).not.toContain('Von der Folie [1, S. 2] *(Erklärhilfe)*');
   });
   it('Fußnoten gruppiert, Tabellen mit Belegen je Zeile, Bildunterschrift nicht doppelt', () => {
     const md = resultToMarkdown({
