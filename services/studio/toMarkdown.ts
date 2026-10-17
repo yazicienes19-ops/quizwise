@@ -76,7 +76,7 @@ export const blockToMarkdown = (b: Block, numberOf: (sourceId: string) => number
     ].join('\n');
     case 'figure': return `*Abbildung: ${figureText(b.title, b.caption)}*${c(b.cites)}`;
     case 'timeline': return b.items.map(i => `- **${i.year}** ${i.who}: ${i.what}${c(i.cites)}`).join('\n');
-    case 'check': return `**${b.question}**${ki}\n${b.answer}`;
+    case 'check': return `**${b.question}**${ki}\n${b.answer}${b.answerOrigin === 'ki' && !ki ? ' *(Erklärhilfe)*' : ''}`;
   }
 };
 

@@ -32,7 +32,7 @@ const CALLOUT_STYLE: Record<string, { border: string; bg: string }> = {
   bruecke: { border: 'var(--border-color)', bg: 'transparent' },
 };
 
-const Check: React.FC<{ question: string; answer: string; label: string }> = ({ question, answer, label }) => {
+const Check: React.FC<{ question: string; answer: string; label: string; aid?: React.ReactNode }> = ({ question, answer, label, aid }) => {
   const [open, setOpen] = useState(false);
   return (
     <div className="rounded-2xl" style={{ border: '1px solid var(--border-color)', background: 'var(--bg-main)' }}>
@@ -40,7 +40,7 @@ const Check: React.FC<{ question: string; answer: string; label: string }> = ({ 
         <span className="flex-1">{parseInline(question, 'q')}</span>
         <ChevronDown className={`w-4 h-4 mt-0.5 shrink-0 transition-transform ${open ? 'rotate-180' : ''}`} />
       </button>
-      {open && <div className="px-4 pb-3 text-[14px]" style={{ color: 'var(--text-secondary)' }}><span className="sr-only">{label}: </span>{parseInline(answer, 'a')}</div>}
+      {open && <div className="px-4 pb-3 text-[14px]" style={{ color: 'var(--text-secondary)' }}><span className="sr-only">{label}: </span>{parseInline(answer, 'a')}{aid}</div>}
     </div>
   );
 };
@@ -149,7 +149,8 @@ export const StudioBlocks: React.FC<Props> = ({ result, sources, renderCite }) =
           </ol>
         );
       case 'check':
-        return <Check question={b.question} answer={b.answer} label={t('stu2.answer')} />;
+        // Antwort vom Modell (Folie ohne Lösung) oder ganze Frage als Erklärhilfe: Marke an der Antwort.
+        return <Check question={b.question} answer={b.answer} label={t('stu2.answer')} aid={b.answerOrigin === 'ki' || b.origin === 'ki' ? ki({ ...b, origin: 'ki' }) : undefined} />;
     }
   };
 

@@ -1,5 +1,5 @@
 /** Skript je Abschnitt (Phase 2, Schritt C und Reparatur E). Zweck: VERSTEHEN statt wiederholen. */
-export const SCRIPT_PROMPT_VERSION = 'script.v1'; // 17.10.: Studien bis 5 Einheiten
+export const SCRIPT_PROMPT_VERSION = 'script.v2'; // 17.10.: Studien bis 5 Einheiten; v2: Klausurfallen nur aus Folien, Rechenbeispiel-Wort, keine Meta-Sätze
 
 export const SCRIPT_BLOCK_TYPES = ['heading', 'paragraph', 'bullets', 'table', 'callout', 'study', 'figure', 'check'];
 
@@ -19,7 +19,9 @@ Aufbau des Abschnitts, in dieser Reihenfolge:
 5. Studien erzählt, als study-Block: design = Was wollten die Forschenden wissen und wie gingen sie vor,
    result = was kam heraus (exakte Zahlen), conclusion = was bedeutet das. Nur, wenn die Einheiten Aufbau
    UND Ergebnis nennen.
-6. callout "klausurfalle" für ein typisches Missverständnis, wenn es eins gibt.
+6. callout "klausurfalle" für ein Missverständnis, das die Einheiten selbst nahelegen (zwei ähnliche Begriffe,
+   eine ausdrückliche Abgrenzung auf der Folie). Immer origin "quelle" mit units; jede Aussage darin steht in den
+   Einheiten. Keine eigenen Einschränkungen oder Gegenthesen. Gibt es keine solche Falle, entfällt der Kasten.
 7. „Kurz gecheckt“: 1 bis 2 check-Blöcke (question + answer), mindestens eine Anwendungsfrage (ein neuer
    Fall, auf den man den Stoff anwendet). Die Antwort stützt sich auf die Einheiten.
 8. callout "bruecke": EIN Satz, der zum nächsten Abschnitt überleitet (beim letzten Abschnitt: kurzer
@@ -36,6 +38,11 @@ Regeln:
   "units" mindestens eines Blocks vor; Einheiten mit [prüfungsrelevant] immer.
 - Rechenbeispiele: Einheiten mit [Rechenbeispiel, ausgedachte Werte] sind Illustrationen einer Methode;
   ihre Werte sind nie das Ergebnis einer Studie. Erkläre sie als Beispiel.
+- Die Wörter Rechenbeispiel, Illustrationsbeispiel oder ausgedachte Werte nur für Einheiten mit dieser
+  Markierung. Eine Studie mit Autor und Jahr ohne die Markierung ist ein empirischer Befund.
+- Eigene Erklärhilfen (origin "ki") sind Beispiele, Analogien und Erklärungen, nie Klausurfallen.
+- Keine Meta-Sätze über Vorlesung, Selbststudium, Aufgaben oder Folien („Das wird später vertieft …“).
+  Jeder Satz sagt etwas über den Stoff.
 - Definitionen verschiedener Autoren nie verschmelzen: table mit Autor | Definition.
 - Jahreszahlen nur zusammen mit den Autoren („Autor (Jahr)“), nie hinter einem Begriff.
 - Zeitliche oder kausale Verknüpfungen nur, wenn die Quelle sie macht und die Jahreszahlen passen.

@@ -2,7 +2,8 @@
 // v2 (16.10.2026): je Blocktyp ein Unterobjekt (siehe blocks.ts), Abdeckung je Abschnitt, Studien nur vollständig.
 // v3 (16.10.2026): Rechenbeispiele nie als Studienergebnis, Definitionen je Autor als Tabelle, keine
 // Wiederholungen, prüfungsrelevante Einheiten Pflicht.
-export const SUMMARY_PROMPT_VERSION = 'summary.v3';
+// v4 (17.10.2026): Klausurfallen nur aus Folien, Rechenbeispiel-Wort nur bei markierten Einheiten, keine Meta-Sätze.
+export const SUMMARY_PROMPT_VERSION = 'summary.v4';
 
 export const SUMMARY_BLOCK_TYPES = ['heading', 'paragraph', 'bullets', 'table', 'callout', 'study', 'figure'];
 
@@ -60,4 +61,9 @@ Regeln:
 21. Jahreszahlen nur zusammen mit den Autoren nennen („Autor (Jahr)“), nie hinter einem Begriff
     („X-Effekt (2020)“ ist falsch, wenn 2020 das Jahr einer Studie dazu ist).
 22. Nur Aussagen der Einheiten: keine eigenen Zuspitzungen oder Wertungen, die den Inhalt verändern
-    (z. B. „unbewusst“, „immer“, „nur“), wenn sie nicht in der Einheit stehen.`;
+    (z. B. „unbewusst“, „immer“, „nur“), wenn sie nicht in der Einheit stehen.
+23. Klausurfallen nur aus den Einheiten (origin "quelle" mit units), nie als eigene Einschätzung.
+24. Die Wörter Rechenbeispiel, Illustrationsbeispiel oder ausgedachte Werte nur für Einheiten mit
+    [Rechenbeispiel, ausgedachte Werte]. Eine Studie mit Autor und Jahr ohne diese Markierung ist ein
+    empirischer Befund.
+25. Keine Meta-Sätze über Vorlesung, Selbststudium, Aufgaben oder Folien; jeder Satz sagt etwas über den Stoff.`;

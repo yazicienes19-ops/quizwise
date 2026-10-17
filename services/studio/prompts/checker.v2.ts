@@ -1,6 +1,7 @@
 /** Prüfer (Schritt D). */
 // v2 (16.10.2026): Tabellenzellen, Zuspitzungen ohne Beleg, Rechenbeispiele als Studienergebnis.
-export const CHECKER_PROMPT_VERSION = 'checker.v2';
+// v3 (17.10.2026): unmarkierte Aussagen ohne Beleg, auch Einschränkungen und Klausurfallen.
+export const CHECKER_PROMPT_VERSION = 'checker.v3';
 
 export const CHECKER_PROMPT = `Du prüfst einen generierten Lerntext (Blöcke) gegen die Einheiten. Melde NUR echte
 Probleme als Liste {blockId, typ, problem, korrektur}.
@@ -18,6 +19,9 @@ Prüfe:
    (z. B. „unbewusst“, „immer“, „nur“, „automatisch“, „beweist“), melden als nicht_belegt.
 7. Rechenbeispiele: Einheiten mit [Rechenbeispiel] enthalten ausgedachte Werte. Stehen solche Werte als
    Ergebnis einer Studie (neben Autor und Jahr, in study.result), melde falsch.
+8. Unmarkierte Aussagen ohne Beleg: Ein Block mit origin "quelle" (auch Klausurfallen und Beispiele) enthält
+   eine Aussage, Einschränkung oder Gegenthese, die in keiner zitierten Einheit steht (z. B. „nicht zwingend“,
+   „nicht unbedingt“, „entgegen der verbreiteten Annahme“): melde nicht_belegt und zitiere die Aussage.
 Keine Stilkritik. Leere Liste, wenn alles stimmt.`;
 
 export const checkerSchema = {

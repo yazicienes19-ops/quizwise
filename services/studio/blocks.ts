@@ -178,6 +178,8 @@ export const normalizeBlocks = (
         if (tooLong(text)) { drop(`callout:${variant}`, 'Text zu lang'); break; }
         // Beispiel und Einordnung ohne Beleg sind eigene Erklärhilfe, nie Vorlesungsinhalt;
         // Leitfrage und Überleitung (Skript) sind Gliederungshilfe ohne Fußnote.
+        // Klausurfallen nur aus Folieninhalt: eine Falle ohne Beleg wäre eine erfundene Prüfungsaussage.
+        if (variant === 'klausurfalle' && (base.origin === 'ki' || !base.cites.length)) { drop('callout:klausurfalle', 'ohne Folienbeleg'); break; }
         const kiOrigin = variant === 'einordnung' || (variant === 'beispiel' && !base.cites.length);
         if (variant === 'leitfrage' || variant === 'bruecke') {
           out.push({ ...base, origin: 'quelle', cites: [], type: 'callout', variant, text });

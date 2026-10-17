@@ -1,9 +1,9 @@
 import type { Block, ChapterDiagnostic, Issue, LernstudioResult, PipelineProgress, PipelineSource, SourcePart, StudioOutputFormat, Unit } from './types';
 import { findDuplicatePages, sourceWordCount, withoutDuplicates } from './dedupe';
-import { assignUnitIds, extractUnits, filterHiddenText, scanSourceErrors, verifySourceErrors } from './extract';
+import { assignUnitIds, extractUnits, filterHiddenText, hasScenarioValues, scanSourceErrors, verifySourceErrors } from './extract';
 import { buildOutline, SEPARATE_TYPES, type Chapter, type Lecture } from './outline';
 import { chapterHeading, writeChapterBody, type WriteInput } from './write';
-import { buildExtraBlocks, buildTimeline, timelineCandidates } from './extras';
+import { buildExtraBlocks, buildPracticeQuestions, buildTimeline, timelineCandidates } from './extras';
 import { markPriority } from './priority';
 import { partOf, slideIn } from './parts';
 import { checkEmptyHeadings, checkMerksatz, checkPriority, checkScriptSections, checkRepetition, checkSectionCoverage, checkStudies, unitCoverage, validateResult, mainTextWords, type ValidationContext } from './validate';
@@ -128,7 +128,10 @@ export const runSummaryPipeline = async (input: PipelineInput): Promise<Lernstud
     .filter((u, i, all) => all.findIndex(x => x.sourceId === u.sourceId && x.page === u.page) === i);
   const confirmed = await verifySourceErrors(candidates, scoped, llm, input.cache ?? null, cancelled).catch(() => []);
   bail();
-  const units = markPriority(assignUnitIds([...stored.filter(u => u.type !== 'source_error'), ...confirmed], order));
+  // Auch für gespeicherte Extraktionen: ohne Werte kein Rechenbeispiel.
+  const checked = stored.filter(u => u.type !== 'source_error')
+    .map(u => (u.illustrative && !hasScenarioValues(u.text) ? (({ illustrative: _, ...rest }) => rest)(u) : u));
+  const units = markPriority(assignUnitIds([...checked, ...confirmed], order));
   const byId = new Map(units.map(u => [u.id, u]));
 
   // Quellen (und Vorlesungen einer zusammengefügten PDF) ohne verwertbare Einheiten begründet auslassen.
@@ -232,6 +235,7 @@ export const runSummaryPipeline = async (input: PipelineInput): Promise<Lernstud
   onProgress?.({ step: 'write', done: 0, total: chapters.length });
   // Zeitleiste nur in der Zusammenfassung; das Skript erzählt die Studien im Text.
   const timelinePromise = script ? Promise.resolve([]) : buildTimeline(units, llm);
+  const practicePromise = buildPracticeQuestions(units, llm).catch(() => null);
   const chapterBlocks: Block[][] = await mapLimit(chapters, PARALLEL_WRITE, async (ch, i) => {
     if (cancelled()) return [];
     const blocks = await writeRobust(ch, i);
@@ -239,7 +243,7 @@ export const runSummaryPipeline = async (input: PipelineInput): Promise<Lernstud
     return blocks;
   });
   bail();
-  const extras = buildExtraBlocks(units, await timelinePromise);
+  const extras = buildExtraBlocks(units, await timelinePromise, await practicePromise);
 
 
   // ── D: prüfen ──

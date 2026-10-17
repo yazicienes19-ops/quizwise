@@ -81,8 +81,8 @@ export const parseUnits = (raw: unknown, job: Job): StoredUnit[] => {
       ...(str(u.result) ? { result: str(u.result) } : {}),
       ...(str(u.conclusion) ? { conclusion: str(u.conclusion) } : {}),
     } : undefined;
-    // Ausgedachte Werte sind nie ein Befund, auch wenn das Modell sie so einordnet.
-    const illustrative = u.illustrative === true;
+    // Ausgedachte Werte sind nie ein Befund, auch wenn das Modell sie so einordnet; ohne Werte ist es kein Rechenbeispiel.
+    const illustrative = u.illustrative === true && hasScenarioValues(`${text} ${str(u.result)}`);
     out.push({
       sourceId: job.docId, page, type: illustrative && (type === 'finding' || type === 'study') ? 'example' : type, text,
       ...(str(u.title) ? { title: str(u.title, 120) } : {}),
@@ -93,6 +93,17 @@ export const parseUnits = (raw: unknown, job: Job): StoredUnit[] => {
   }
   return out;
 };
+
+/**
+ * Rechenbeispiel heißt nur, was Werte als Szenario zeigt (Mittelwerte, Prozente,
+ * Zahlen). Jahreszahlen, Nummern wie „Beispiel 1“ und H0/H1 zählen nicht: Eine
+ * Studie mit Autor und Jahr ohne Werte ist ein Befund, keine Illustration.
+ */
+export const hasScenarioValues = (t: string): boolean =>
+  /\d/.test(t
+    .replace(/\b(1[89]|20)\d\d\b/g, '')
+    .replace(/\b(Beispiel|Folie|Seite|Gruppe|Experiment|Studie|Bedingung|Schritt|Kapitel|Teil|Frage)\s*\d+/gi, '')
+    .replace(/\bH[01]\b/g, ''));
 
 /** Seiten im Fenstertext (Marken [Seite p]), in Reihenfolge. */
 export const pagesInText = (text: string): number[] => [...text.matchAll(/^\[Seite (\d+)\]$/gm)].map(m => Number(m[1]));

@@ -1,6 +1,7 @@
 import type { Block, Cite, Unit } from './types';
 import { citationsIn, countWords } from './text';
 import { TIMELINE_PROMPT, timelineSchema } from './prompts/timeline.v1';
+import { PRACTICE_PROMPT, practiceSchema } from './prompts/practice.v1';
 import { STUDIO_TEMPERATURE, type StudioLlm } from './llm';
 
 /**
@@ -110,7 +111,86 @@ export const mergeNearDuplicates = (units: Unit[], threshold = 0.8): { text: str
   return out.map(({ text, cites, unit }) => ({ text, cites, unit }));
 };
 
-export const buildExtraBlocks = (units: Unit[], timeline: { year: number; who: string; what: string; cites: Cite[] }[] = []): Block[] => {
+export interface PracticeItem { question: string; answer: string; answerFromSlide: boolean; unitIds: string[] }
+
+const words = (t: string) => new Set(t.toLowerCase().match(/[\p{L}\p{N}]+/gu) ?? []);
+/** Antwort sagt nur die Frage nach (oder ein Teil von ihr), statt sie zu beantworten. */
+export const answerRepeatsQuestion = (question: string, answer: string): boolean => {
+  const a = words(answer);
+  if (!a.size) return true;
+  const q = words(question);
+  let shared = 0;
+  for (const w of a) if (q.has(w)) shared += 1;
+  return shared / a.size >= 0.8;
+};
+/** Bloße Ja/Nein-Antwort ohne Begründung. */
+const bareYesNo = (answer: string) => /^(ja|nein|richtig|falsch|stimmt|stimmt nicht)([\s,./]+(ja|nein|richtig|falsch))*[.!]?$/i.test(answer.trim());
+
+export const practiceProblems = (items: PracticeItem[]): string[] => items.flatMap((it, i) => {
+  if (!it.answer.trim()) return [`Eintrag ${i + 1}: keine Antwort.`];
+  if (answerRepeatsQuestion(it.question, it.answer)) return [`Eintrag ${i + 1}: die Antwort wiederholt nur die Frage.`];
+  if (bareYesNo(it.answer)) return [`Eintrag ${i + 1}: „${it.answer}“ ohne Begründung.`];
+  return [];
+});
+
+/**
+ * Übungsfragen aus der Vorlesung aufbereiten: Teilfragen bündeln, jede Frage
+ * mit Antwort (fehlt sie auf der Folie, schreibt sie das Modell aus dem Stoff
+ * und sie wird als Erklärhilfe markiert), Lückentexte beschriftet, Textteile
+ * aus bestätigten Folienfehlern raus, rhetorische Einstiegsfragen weg.
+ * null = kein brauchbares Ergebnis (dann der einfache Weg aus den Einheiten).
+ */
+export const buildPracticeQuestions = async (units: Unit[], llm: StudioLlm): Promise<PracticeItem[] | null> => {
+  const questions = units.filter(u => u.type === 'practice_question');
+  if (!questions.length) return [];
+  const near = (u: Unit, q: Unit) => u.sourceId === q.sourceId && u.page >= q.page - 1 && u.page <= q.page + 3;
+  const context = units.filter(u => !['practice_question', 'organizational', 'source_error', 'exam_info'].includes(u.type) && questions.some(q => near(u, q)));
+  const errors = units.filter(u => u.type === 'source_error' && questions.some(q => q.sourceId === u.sourceId && q.page === u.page));
+  const flat = (t: string, n: number) => t.replace(/\s+/g, ' ').trim().slice(0, n);
+  const prompt = `${PRACTICE_PROMPT}
+
+=== ÜBUNGSFRAGEN ===
+${questions.map(q => `${q.id} | S. ${q.page} | ${flat(q.text, 600)}${q.answer ? ` | Antwort: ${flat(q.answer, 600)}` : ''}`).join('\n')}
+
+=== STOFF RUND UM DIE FRAGEN ===
+${context.map(u => `S. ${u.page} | ${u.type}${u.illustrative ? ' [Rechenbeispiel]' : ''} | ${flat([u.title, u.text].filter(Boolean).join(': '), 400)}`).join('\n') || '(keiner)'}
+
+=== BESTÄTIGTE FOLIENFEHLER ===
+${errors.map(e => `S. ${e.page} | ${flat(e.text, 400)}`).join('\n') || '(keine)'}`;
+  const ids = new Set(questions.map(q => q.id));
+  const parse = (raw: unknown): PracticeItem[] => {
+    const list = raw && typeof raw === 'object' && Array.isArray((raw as { items?: unknown }).items) ? (raw as { items: Record<string, unknown>[] }).items : [];
+    return list.map(it => ({
+      question: typeof it.question === 'string' ? it.question.replace(/\s+/g, ' ').trim() : '',
+      answer: typeof it.answer === 'string' ? it.answer.trim() : '',
+      answerFromSlide: it.answerFromSlide === true,
+      unitIds: (Array.isArray(it.units) ? it.units : []).filter((id): id is string => typeof id === 'string' && ids.has(id.trim())).map(id => id.trim()),
+    })).filter(it => it.question && it.unitIds.length);
+  };
+  let items: PracticeItem[] = [];
+  let note = '';
+  for (let attempt = 0; attempt < 2; attempt++) {
+    try {
+      items = parse(await llm({
+        step: 'practice', prompt: note ? `${prompt}\n\n=== ÜBERARBEITUNG ===\nBehebe in deiner Liste:\n${note}` : prompt,
+        schema: practiceSchema, heavy: true, temperature: STUDIO_TEMPERATURE.practice, maxOutputTokens: 6000,
+      }));
+    } catch {
+      return null;
+    }
+    const problems = practiceProblems(items);
+    if (!problems.length) break;
+    note = problems.join('\n');
+  }
+  const good = items.filter(it => !practiceProblems([it]).length);
+  return good.length ? good : null;
+};
+
+export const buildExtraBlocks = (
+  units: Unit[],
+  timeline: { year: number; who: string; what: string; cites: Cite[] }[] = [],
+  practice: PracticeItem[] | null = null,
+): Block[] => {
   const blocks: Block[] = [];
   if (timeline.length >= 3) {
     blocks.push({ id: 'x-tl-h', origin: 'quelle', cites: [], type: 'heading', level: 2, text: 'Zeitleiste' });
@@ -121,14 +201,28 @@ export const buildExtraBlocks = (units: Unit[], timeline: { year: number; who: s
     blocks.push({ id: 'x-tasks-h', origin: 'quelle', cites: [], type: 'heading', level: 2, text: 'Aufgaben aus der Vorlesung' });
     blocks.push({ id: 'x-tasks', origin: 'quelle', cites: [], type: 'tasks', items: tasks.map(t => ({ text: t.text, cites: t.cites })) });
   }
-  const questions = mergeNearDuplicates(units.filter(u => u.type === 'practice_question'));
-  if (questions.length) {
+  const byId = new Map(units.map(u => [u.id, u]));
+  if (practice?.length) {
     blocks.push({ id: 'x-quiz-h', origin: 'quelle', cites: [], type: 'heading', level: 2, text: 'Übungsfragen aus der Vorlesung' });
-    questions.forEach((q, i) => {
-      blocks.push(q.unit.answer
-        ? { id: `x-quiz-${i + 1}`, origin: 'quelle', cites: q.cites, unitIds: [q.unit.id], type: 'check', question: q.text, answer: q.unit.answer }
-        : { id: `x-quiz-${i + 1}`, origin: 'quelle', cites: [], unitIds: [q.unit.id], type: 'tasks', items: [{ text: q.text, cites: q.cites }] });
+    practice.forEach((p, i) => {
+      const cites = [...new Map(p.unitIds.map(id => byId.get(id)).filter((u): u is Unit => !!u).map(u => [`${u.sourceId}:${u.page}`, cite(u)])).values()];
+      blocks.push({
+        id: `x-quiz-${i + 1}`, origin: 'quelle', cites, unitIds: p.unitIds, type: 'check', question: p.question, answer: p.answer,
+        ...(p.answerFromSlide ? {} : { answerOrigin: 'ki' as const }),
+      });
     });
+  } else {
+    // Ohne aufbereitete Liste: Fragen wie auf der Folie; eine Antwort, die nur die Frage wiederholt, zählt nicht.
+    const questions = mergeNearDuplicates(units.filter(u => u.type === 'practice_question'));
+    if (questions.length) {
+      blocks.push({ id: 'x-quiz-h', origin: 'quelle', cites: [], type: 'heading', level: 2, text: 'Übungsfragen aus der Vorlesung' });
+      questions.forEach((q, i) => {
+        const answer = q.unit.answer && !answerRepeatsQuestion(q.text, q.unit.answer) ? q.unit.answer : '';
+        blocks.push(answer
+          ? { id: `x-quiz-${i + 1}`, origin: 'quelle', cites: q.cites, unitIds: [q.unit.id], type: 'check', question: q.text, answer }
+          : { id: `x-quiz-${i + 1}`, origin: 'quelle', cites: [], unitIds: [q.unit.id], type: 'tasks', items: [{ text: q.text, cites: q.cites }] });
+      });
+    }
   }
   const exam = units.filter(u => u.type === 'exam_info');
   if (exam.length) {

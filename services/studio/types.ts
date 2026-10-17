@@ -26,7 +26,8 @@ export type Block = { id: string; origin: Origin; cites: Cite[]; unitIds?: strin
   | { type: 'figure'; sourceId: string; page: number; imageRef: string; caption: string; title?: string }
   | { type: 'timeline'; items: { year: number; who: string; what: string; cites: Cite[] }[] }
   | { type: 'tasks'; items: { text: string; cites: Cite[] }[] }
-  | { type: 'check'; question: string; answer: string }
+  // answerOrigin 'ki': Antwort vom Modell geschrieben (Folie ohne Lösung), als Erklärhilfe markiert.
+  | { type: 'check'; question: string; answer: string; answerOrigin?: 'ki' }
 );
 
 export type BlockType = Block['type'];
@@ -113,7 +114,7 @@ export interface PipelineSource {
 export interface Issue {
   rule: 'cites' | 'coverage' | 'length' | 'numbers' | 'author_year' | 'truncated' | 'cite_density' | 'ki_facts'
     | 'empty_heading' | 'section_coverage' | 'study_incomplete'
-    | 'merksatz' | 'source_error_hint' | 'illustrative_result' | 'repetition' | 'priority_missing' | 'table_shape'
+    | 'merksatz' | 'source_error_hint' | 'illustrative_result' | 'repetition' | 'priority_missing' | 'table_shape' | 'illustrative_label' | 'meta'
     | 'script_structure'
     | 'nicht_belegt' | 'falsch' | 'chronologie' | 'zitat_falsch' | 'ki_fakt';
   blockId?: string;

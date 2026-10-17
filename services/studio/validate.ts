@@ -294,7 +294,8 @@ export const checkIllustrative = (blocks: Block[], units: Unit[]): Issue[] => {
   const onlyIllustrative = (t: string) => extractFacts(t).filter(f => !/^(1[89]|20)\d\d$/.test(f) && hasFact(f, illustrative) && !hasFact(f, real));
   const issues: Issue[] = [];
   for (const b of blocks) {
-    const texts = b.type === 'study' ? [b.result, b.conclusion] : b.type === 'table' ? [] : blockTexts(b).filter(t => citationsIn(t).length);
+    // Ein Text, der die Werte ausdrücklich als Rechenbeispiel ausweist, tut, was die Regel verlangt.
+    const texts = b.type === 'study' ? [b.result, b.conclusion] : b.type === 'table' ? [] : blockTexts(b).filter(t => citationsIn(t).length && !ILLUSTRATIVE_WORDS.test(t));
     const facts = texts.flatMap(onlyIllustrative);
     if (facts.length) {
       issues.push({ rule: 'illustrative_result', blockId: b.id, message: `Werte aus einem Rechenbeispiel stehen als Studienergebnis da (${[...new Set(facts)].join(', ')}). Als Rechenbeispiel kennzeichnen oder als Szenarien-Tabelle zeigen.` });
@@ -302,6 +303,31 @@ export const checkIllustrative = (blocks: Block[], units: Unit[]): Issue[] => {
   }
   return issues;
 };
+
+/**
+ * „Rechenbeispiel“, „Illustrationsbeispiel“, „ausgedachte Werte“ nur, wenn der Block
+ * auch auf einer Einheit mit ausgedachten Werten beruht. Eine Studie mit Autor
+ * und Jahr ohne diese Markierung ist ein empirischer Befund.
+ */
+const ILLUSTRATIVE_WORDS = /\b(Rechenbeispiel\w*|Illustrationsbeispiel\w*|Zahlenbeispiel\w*|ausgedacht\w*|fiktiv\w*)/i;
+export const checkIllustrativeLabel = (blocks: Block[], units: Unit[]): Issue[] => {
+  const byId = new Map(units.map(u => [u.id, u]));
+  return blocks.flatMap((b): Issue[] => {
+    if (b.origin !== 'quelle' || !b.unitIds?.length) return [];
+    const hit = blockTexts(b).map(t => t.match(ILLUSTRATIVE_WORDS)?.[0]).find(Boolean);
+    if (!hit || b.unitIds.some(id => byId.get(id)?.illustrative)) return [];
+    return [{ rule: 'illustrative_label', blockId: b.id, message: `„${hit}“ steht bei Inhalt, der auf der Folie kein Rechenbeispiel ist. Studien mit Autor und Jahr sind empirische Befunde; nur Werte, die die Folie als Szenario zeigt, heißen Rechenbeispiel.` }];
+  });
+};
+
+/** Meta-Sätze ohne Inhalt: Sätze über Lehrveranstaltung, Selbststudium oder Folien statt über den Stoff. */
+const META_RE = /\b(Selbststudium\w*|Lehrveranstaltung\w*|Vorlesung\w*|Seminar\w*|(?:auf|in) den Folien|die Folien?\b)/i;
+export const checkMeta = (blocks: Block[]): Issue[] => blocks.flatMap((b): Issue[] => {
+  // Nur Haupttext; Hinweise (Folienfehler) und die angehängten Abschnitte dürfen über die Vorlesung sprechen.
+  if (!b.id.startsWith('c') || b.type === 'heading' || b.type === 'check' || (b.type === 'callout' && b.variant === 'hinweis')) return [];
+  const sentence = blockTexts(b).flatMap(t => t.split(/(?<=[.!?])\s+/)).find(t => META_RE.test(t));
+  return sentence ? [{ rule: 'meta', blockId: b.id, message: `Satz ohne fachlichen Inhalt: „${sentence.slice(0, 160)}“. Streichen oder durch den Stoff selbst ersetzen.` }] : [];
+});
 
 const shingles3 = (t: string): Set<string> => {
   const w = (t.toLowerCase().replace(/\*\*/g, '').match(/[\p{L}\p{N}]+/gu) ?? []);
@@ -429,6 +455,8 @@ export const validateResult = (blocks: Block[], ctx: ValidationContext): Issue[]
   ...checkSourceErrorHints(blocks, ctx.units),
   ...checkTables(blocks),
   ...checkIllustrative(blocks, ctx.units),
+  ...checkIllustrativeLabel(blocks, ctx.units),
+  ...checkMeta(blocks),
   ...checkCiteDensity(blocks),
   ...checkKiFacts(blocks, ctx),
 ];
