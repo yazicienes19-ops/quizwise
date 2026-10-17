@@ -17,7 +17,7 @@ import { extractUnits, pageNeedsImage } from '../../services/studio/extract';
 import { findDuplicatePages } from '../../services/studio/dedupe';
 import { resultToMarkdown } from '../../services/studio/toMarkdown';
 import { blockTexts, INLINE_CITE_RE, looksTruncated } from '../../services/studio/text';
-import { checkEmptyHeadings, checkRepetition, checkScriptSections, checkTables } from '../../services/studio/validate';
+import { checkEmptyHeadings, checkGuideStructure, checkRepetition, checkScriptSections, checkTables } from '../../services/studio/validate';
 import { partsFromOutline } from '../../services/pdfOutlineService';
 import { hiddenItemFlags, layoutPageTextWithHidden } from '../../services/pdfPageService';
 import type { Block, Cite, PipelineSource, SourcePart } from '../../services/studio/types';
@@ -25,9 +25,10 @@ import { guardedLlm, type LlmEvent, type StudioLlm, type StudioTransport } from 
 import { createRequire } from 'node:module';
 
 const MODE = process.env.STUDIO_EVAL_MODE ?? 'full';
-/** Format: zusammenfassung (Standard) oder skript (Phase 2): STUDIO_EVAL_FORMAT=skript */
-const FORMAT = (process.env.STUDIO_EVAL_FORMAT === 'skript' ? 'skript' : 'zusammenfassung') as 'zusammenfassung' | 'skript';
+/** Format: zusammenfassung (Standard), skript (Phase 2) oder leitfaden (Phase A): STUDIO_EVAL_FORMAT=… */
+const FORMAT = (['skript', 'leitfaden'].includes(process.env.STUDIO_EVAL_FORMAT ?? '') ? process.env.STUDIO_EVAL_FORMAT : 'zusammenfassung') as 'zusammenfassung' | 'skript' | 'leitfaden';
 const SCRIPT = FORMAT === 'skript';
+const GUIDE = FORMAT === 'leitfaden';
 const run = process.env.STUDIO_EVAL === '1' && MODE === 'full' ? describe : describe.skip;
 // Nur Extraktion messen, ohne Cache: STUDIO_EVAL_MODE=extract STUDIO_EVAL_IMAGES=all|selective|none
 const runExtract = process.env.STUDIO_EVAL === '1' && MODE === 'extract' ? describe : describe.skip;
@@ -233,6 +234,7 @@ run('Lernstudio-Eval (live)', () => {
     const ratio = mainWords / Math.max(1, r.stats.sourceWords);
     // Entscheidung 16.10.: 40 % mit 10 % Toleranz (höchstens 44 %), wie der Validator.
     if (SCRIPT) check('Skript: Haupttext 80 bis 150 % (±10 %) der Quellwörter', ratio >= 0.72 && ratio <= 1.65, `${mainWords}/${r.stats.sourceWords} = ${Math.round(ratio * 100)} %`);
+    else if (GUIDE) check('Leitfaden: Haupttext 30 bis 60 % (±10 %) der Quellwörter', ratio >= 0.27 && ratio <= 0.66, `${mainWords}/${r.stats.sourceWords} = ${Math.round(ratio * 100)} %`);
     else check('Haupttext ≤ 40 % (+10 % Toleranz) der Quellwörter', ratio <= 0.44 || mainWords <= 600, `${mainWords}/${r.stats.sourceWords} = ${Math.round(ratio * 100)} %`);
     const cited = new Set(r.blocks.flatMap(cites).map(c => c.sourceId));
     const omitted = new Set(r.omittedSources.map(o => o.sourceId));
@@ -266,8 +268,8 @@ run('Lernstudio-Eval (live)', () => {
     }
     for (const n of exp.notInTasks ?? []) check(`Keine Aufgabe: ${n}`, !taskBlock || !blockTexts(taskBlock).some(t => t.includes(n)));
     const tlItems = tl?.type === 'timeline' ? tl.items : [];
-    for (const t of SCRIPT ? [] : exp.timeline ?? []) check(`Zeitleiste: ${t.who} ${t.year}`, tlItems.some(i => i.who.includes(t.who) && i.year === t.year), tlItems.filter(i => i.who.includes(t.who)).map(i => `${i.who} ${i.year}`).join(', '));
-    for (const w of SCRIPT ? [] : exp.timelineForbidden ?? []) check(`Nicht in der Zeitleiste: ${w}`, !tlItems.some(i => i.who.includes(w)));
+    for (const t of SCRIPT || GUIDE ? [] : exp.timeline ?? []) check(`Zeitleiste: ${t.who} ${t.year}`, tlItems.some(i => i.who.includes(t.who) && i.year === t.year), tlItems.filter(i => i.who.includes(t.who)).map(i => `${i.who} ${i.year}`).join(', '));
+    for (const w of SCRIPT || GUIDE ? [] : exp.timelineForbidden ?? []) check(`Nicht in der Zeitleiste: ${w}`, !tlItems.some(i => i.who.includes(w)));
     for (const w of exp.warningsForbidden ?? []) check(`Keine Warnung zu ${w}`, !r.warnings.some(x => x.includes(w)), r.warnings.filter(x => x.includes(w)).join(' | '));
     for (const g of exp.together ?? []) check(`Zusammen: ${g.join(' / ')}`, r.blocks.some(b => { const t = blockTexts(b).join(' ').toLowerCase(); return g.every(x => t.includes(x.toLowerCase())); }));
     const headingTexts = r.blocks.filter(b => b.type === 'heading').map(b => (b.type === 'heading' ? b.text : ''));
@@ -289,7 +291,17 @@ run('Lernstudio-Eval (live)', () => {
     }
     const chaptersOnly = chapterRuns.filter(Boolean);
     const merk = chaptersOnly.map(c => c.filter(b => b.type === 'callout' && b.variant === 'merksatz').length);
-    if (!SCRIPT) check('Genau ein Merksatz je Kapitel', merk.every(n => n === 1), merk.join(', '));
+    if (GUIDE) {
+      const structure = chaptersOnly.flatMap(c => checkGuideStructure(c, 'c'));
+      check('Leitfaden: je Kapitel Kernbegriffe, Verständnisfragen, Klausurfragen; jede Frage belegt und beantwortet', structure.length === 0, structure.map(x => x.message.slice(0, 90)).join(' | '));
+      const termRows = r.blocks.filter(b => b.type === 'table' && b.id.startsWith('c')).reduce((a, b) => a + (b.type === 'table' ? b.rows.length : 0), 0);
+      const qs = r.blocks.filter(b => b.type === 'check' && b.id.startsWith('c')).length;
+      const ki = r.blocks.filter(b => b.origin === 'ki' && b.id.startsWith('c')).length;
+      check('Leitfaden: keine Erklärhilfen (nur Folieninhalt)', ki === 0, `${ki} Blöcke mit origin ki`);
+      const defs = r.blocks.filter(b => b.type === 'table' && b.id.startsWith('c')).flatMap(blockTexts).join(' ');
+      for (const g of exp.tables ?? []) check(`Leitfaden: Begriffe/Autoren ${g.join(' / ')} in den Tabellen`, g.every(x => defs.includes(x)));
+      console.log(`Leitfaden: ${termRows} Tabellenzeilen, ${qs} Fragen`);
+    } else if (!SCRIPT) check('Genau ein Merksatz je Kapitel', merk.every(n => n === 1), merk.join(', '));
     else {
       const structure = chaptersOnly.flatMap(c => checkScriptSections(c, 'c'));
       check('Skript: jeder Abschnitt mit Leitfrage, Kurz gecheckt, Überleitung', structure.length === 0, structure.map(x => x.message.slice(0, 90)).join(' | '));

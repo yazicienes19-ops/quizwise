@@ -96,7 +96,18 @@ export const scriptCorridor = (sourceWords: number): { min: number; max: number;
 };
 
 export const corridorFor = (format: StudioOutputFormat, sourceWords: number) =>
-  format === 'skript' ? scriptCorridor(sourceWords) : summaryCorridor(sourceWords);
+  format === 'skript' ? scriptCorridor(sourceWords) : format === 'leitfaden' ? guideCorridor(sourceWords) : summaryCorridor(sourceWords);
+
+/**
+ * Zielkorridor des Lernleitfadens (Wörter): 30 bis 60 % der Quelle, mindestens 800, höchstens 12.000.
+ * Mehr als die Zusammenfassung, weil Fragen mit Musterantworten dazukommen.
+ */
+export const guideCorridor = (sourceWords: number): { min: number; max: number; target: number } => {
+  const clamp = (n: number) => Math.round(Math.min(12_000, Math.max(800, n)));
+  const min = clamp(sourceWords * 0.3);
+  const max = clamp(sourceWords * 0.6);
+  return { min, max, target: Math.round((min + max) / 2) };
+};
 
 /** Zielkorridor der Zusammenfassung (Wörter): 25 bis 40 % der Quelle, mindestens 600, höchstens 6.000. */
 export const summaryCorridor = (sourceWords: number): { min: number; max: number; target: number } => {
@@ -150,7 +161,7 @@ export const CHAPTER_SHARE = 0.85;
 export const chapterWordTotal = (sourceWords: number, reservedWords: number, format: StudioOutputFormat = 'zusammenfassung'): number => {
   // Skript: Mitte des Korridors; die angehängten Abschnitte fallen bei 80 bis 150 % kaum ins Gewicht.
   if (format === 'skript') return scriptCorridor(sourceWords).target;
-  const { min, max } = summaryCorridor(sourceWords);
+  const { min, max } = corridorFor(format, sourceWords);
   return Math.max(Math.round(min * 0.8), Math.round(max * CHAPTER_SHARE) - reservedWords);
 };
 

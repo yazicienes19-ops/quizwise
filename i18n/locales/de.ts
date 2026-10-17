@@ -3002,7 +3002,7 @@ export const de = {
   'stu2.answer': "Antwort",
   'stu2.stats': "{words} Wörter bei {source} Wörtern Quelltext",
   'stu2.sourcesUsed': "1 Quelle|{n} Quellen",
-  'stu2.warnings': "{n} Hinweise zur Prüfung",
+  'stu2.warnings': "1 Hinweis zur Prüfung|{n} Hinweise zur Prüfung",
   'stu2.omitted': "{name} ausgelassen: {reason}",
   'stu.fmt.script': "Skript",
   'stu.fmtDesc.script': "Erklärt den Stoff Schritt für Schritt wie ein Lehrbuch, zum Verstehen statt Wiederholen.",

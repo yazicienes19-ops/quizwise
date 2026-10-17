@@ -1,6 +1,8 @@
 import type { Block, Cite, Issue, SourcePart, StudioOutputFormat, Unit } from './types';
 import { authorYears, blockTexts, citationsIn, extractFacts, hasFact, INLINE_CITE_RE, isTruncatedPrefix, looksTruncated, resultWords, unbalanced } from './text';
 import { corridorFor } from './outline';
+import { answerRepeatsQuestion } from './extras';
+import { GUIDE_PARTS } from './prompts/guide.v1';
 
 /**
  * Schritt D1: Prüfregeln als reiner Code (Abschnitt 1.4 des Auftrags).
@@ -417,6 +419,52 @@ export const checkTables = (blocks: Block[]): Issue[] => blocks.flatMap((b): Iss
  * Leitfrage, hat mindestens einen „Kurz gecheckt“-Block (check) und endet
  * mit einer Überleitung.
  */
+/**
+ * Lernleitfaden: je Kapitel Kernbegriffe (Tabelle), Verständnisfragen (mindestens 3)
+ * und Typische Klausurfragen (mindestens 2), jede Frage mit Beleg und einer Antwort,
+ * die nicht nur die Frage wiederholt.
+ */
+export const checkGuideStructure = (chapterBlocks: Block[], chapterBlockId: string): Issue[] => {
+  const parts = new Map<string, Block[]>();
+  let current = '';
+  for (const b of chapterBlocks) {
+    if (b.type === 'heading') { current = b.text.trim(); parts.set(current, []); continue; }
+    parts.get(current)?.push(b);
+  }
+  const part = (title: string) => [...parts.entries()].find(([k]) => k.toLowerCase() === title.toLowerCase())?.[1];
+  const missing: string[] = [];
+  const terms = part(GUIDE_PARTS.terms);
+  if (!terms?.some(b => b.type === 'table')) missing.push(`„${GUIDE_PARTS.terms}“ mit einer Tabelle Begriff | Erklärung`);
+  const checks = (title: string) => (part(title) ?? []).filter((b): b is Extract<Block, { type: 'check' }> => b.type === 'check');
+  if (checks(GUIDE_PARTS.questions).length < 3) missing.push(`„${GUIDE_PARTS.questions}“ mit mindestens 3 Fragen`);
+  if (checks(GUIDE_PARTS.exam).length < 2) missing.push(`„${GUIDE_PARTS.exam}“ mit mindestens 2 Fragen`);
+  const issues: Issue[] = missing.length
+    ? [{ rule: 'guide_structure', blockId: chapterBlockId, message: `Im Kapitel fehlt ${missing.join(', ')}.` }]
+    : [];
+  for (const b of chapterBlocks) {
+    if (b.type !== 'check') continue;
+    if (!b.cites.length) issues.push({ rule: 'guide_structure', blockId: b.id, message: `Frage „${b.question.slice(0, 80)}“ ohne Beleg: in "units" die Einheiten der Antwort angeben.` });
+    else if (answerRepeatsQuestion(b.question, b.answer)) issues.push({ rule: 'guide_structure', blockId: b.id, message: `Die Antwort auf „${b.question.slice(0, 80)}“ wiederholt nur die Frage. Beantworte sie aus den Einheiten.` });
+  }
+  return issues;
+};
+
+/**
+ * Ergebniszahlen echter Studien (Prozente, „x von y“) aus den Einheiten eines
+ * Kapitels müssen im Kapitel stehen. Leitfaden-Abnahme 17.10.: in einem von
+ * drei Läufen fehlten 46 % und 78 % ganz, obwohl der Prompt es verlangt.
+ */
+export const checkResultNumbers = (chapterUnits: Unit[], chapterBlocks: Block[], chapterBlockId: string): Issue[] => {
+  const text = chapterBlocks.flatMap(blockTexts).join(' ');
+  const missing = chapterUnits
+    .filter(u => !u.illustrative && (u.type === 'study' || u.type === 'finding'))
+    .map(u => ({ u, facts: extractFacts(unitText(u)).filter(f => /%|\//.test(f) && !hasFact(f, text)) }))
+    .filter(x => x.facts.length);
+  return missing.length
+    ? [{ rule: 'numbers', blockId: chapterBlockId, message: `Ergebnisse fehlen: ${missing.map(x => `${x.facts.join(', ')} (${x.u.id})`).join('; ')}. Nimm jeden Wert einzeln und exakt auf.` }]
+    : [];
+};
+
 export const checkScriptSections = (chapterBlocks: Block[], chapterBlockId: string): Issue[] => {
   const issues: Issue[] = [];
   const sections: { head: Extract<Block, { type: 'heading' }>; body: Block[] }[] = [];

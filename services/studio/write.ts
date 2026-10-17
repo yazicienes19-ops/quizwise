@@ -3,6 +3,7 @@ import type { Chapter } from './outline';
 import { normalizeBlocks, writerSchema, type DroppedBlock, type FigureRef } from './blocks';
 import { SUMMARY_BLOCK_TYPES, SUMMARY_PROMPT } from './prompts/summary.v3';
 import { SCRIPT_BLOCK_TYPES, SCRIPT_PROMPT } from './prompts/script.v1';
+import { GUIDE_BLOCK_TYPES, GUIDE_PROMPT } from './prompts/guide.v1';
 import { STUDIO_TEMPERATURE, type StudioLlm } from './llm';
 import { unitFlags } from './outline';
 import { blockTexts } from './text';
@@ -45,7 +46,7 @@ export interface WriteInput {
   repair?: { issues: string[]; previous: Block[] };
   /** Schreiben mit Argon (anderes Budget, siehe writerBudget). */
   argon?: boolean;
-  /** Zusammenfassung (Standard) oder Skript (Phase 2: je Abschnitt, zum Verstehen). */
+  /** Zusammenfassung (Standard), Skript (Phase 2: je Abschnitt, zum Verstehen) oder Lernleitfaden (je Kapitel, Fragen mit Antworten). */
   format?: StudioOutputFormat;
   /** Skript: Titel der Nachbarabschnitte (für Leitfrage und Überleitung). */
   neighbors?: { prev?: string; next?: string };
@@ -91,7 +92,7 @@ export const buildWritePrompt = (input: WriteInput): string => {
   const neighbors = script
     ? `\nVORHERIGER ABSCHNITT: ${input.neighbors?.prev ?? '(keiner, dies ist der Anfang)'}\nNÄCHSTER ABSCHNITT: ${input.neighbors?.next ?? '(keiner, dies ist der letzte Abschnitt)'}\n`
     : '';
-  return `${script ? SCRIPT_PROMPT : SUMMARY_PROMPT}
+  return `${script ? SCRIPT_PROMPT : input.format === 'leitfaden' ? GUIDE_PROMPT : SUMMARY_PROMPT}
 ${focus}${exam}${figs}${repair}${part}${neighbors}
 === KAPITEL: ${input.chapter.title} ===
 WORTBUDGET: ${writerBudget(input.chapter.budget, input.argon, input.format)} Wörter${script ? ' (ungefähr)' : ' (Obergrenze, nicht überschreiten)'}
@@ -112,7 +113,7 @@ export const writeChapterBody = async (input: WriteInput, llm: StudioLlm, argon:
   const raw = await llm({
     // Typ "figure" nur, wenn es Abbildungen zum Einfügen gibt (sonst hielt das Modell figure-Einheiten für Bilder).
     step: 'write', prompt: buildWritePrompt(input),
-    schema: writerSchema((input.format === 'skript' ? SCRIPT_BLOCK_TYPES : SUMMARY_BLOCK_TYPES).filter(t => t !== 'figure' || input.figures.length)),
+    schema: writerSchema((input.format === 'skript' ? SCRIPT_BLOCK_TYPES : input.format === 'leitfaden' ? GUIDE_BLOCK_TYPES : SUMMARY_BLOCK_TYPES).filter(t => t !== 'figure' || input.figures.length)),
     heavy: true, argon, temperature: STUDIO_TEMPERATURE.write, maxOutputTokens: chapterTokenCap(input.chapter.budget),
   });
   const prefix = chapterPrefix(input);

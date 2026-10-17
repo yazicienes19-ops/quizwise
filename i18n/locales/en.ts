@@ -3001,7 +3001,7 @@ export const en: Translations = {
   'stu2.answer': "Answer",
   'stu2.stats': "{words} words from {source} words of source text",
   'stu2.sourcesUsed': "1 source|{n} sources",
-  'stu2.warnings': "{n} notes from the check",
+  'stu2.warnings': "1 note from the check|{n} notes from the check",
   'stu2.omitted': "{name} left out: {reason}",
   'stu.fmt.script': "Study script",
   'stu.fmtDesc.script': "Explains the material step by step like a textbook, to understand rather than review.",

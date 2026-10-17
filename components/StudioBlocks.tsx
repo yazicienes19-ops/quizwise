@@ -23,6 +23,8 @@ interface Props {
   /** Fußnote angeklickt: Quelle, ihre Seiten und die Nummer. Ohne: Chips wie bei Markdown-Ergebnissen. */
   onCite?: (source: StudioSourceRef, pages: number[], footnote: number) => void;
   activeFootnote?: number | null;
+  /** Lernleitfaden: Frage als Selbsttest statt nur aufklappbar (reference = Musterantwort mit Fußnoten [n:Seite]). */
+  renderCheck?: (b: Extract<Block, { type: 'check' }>, reference: string) => React.ReactNode;
 }
 
 const CALLOUT_ICON: Record<string, React.ComponentType<{ className?: string; strokeWidth?: number }>> = {
@@ -53,7 +55,7 @@ const Check: React.FC<{ question: string; answer: string; label: string; aid?: R
   );
 };
 
-export const StudioBlocks: React.FC<Props> = ({ result, sources, renderCite, onCite, activeFootnote }) => {
+export const StudioBlocks: React.FC<Props> = ({ result, sources, renderCite, onCite, activeFootnote, renderCheck }) => {
   const { t, tp } = useTranslation();
   const numberOf = (id: string) => sources.find(s => s.docId === id)?.n;
   // Fußnoten fortlaufend in Leserichtung; die Blöcke werden der Reihe nach gerendert.
@@ -207,6 +209,10 @@ export const StudioBlocks: React.FC<Props> = ({ result, sources, renderCite, onC
           </ol>
         );
       case 'check':
+        if (renderCheck && b.id.startsWith('c')) {
+          const refs = b.cites.map(c => ({ n: numberOf(c.sourceId), page: c.page })).filter(r => r.n);
+          return renderCheck(b, `${b.answer}${refs.length ? ` [${refs.map(r => (r.page ? `${r.n}:${r.page}` : String(r.n))).join(', ')}]` : ''}`);
+        }
         // Antwort vom Modell (Folie ohne Lösung) oder ganze Frage als Erklärhilfe: Marke an der Antwort.
         return <Check question={b.question} answer={b.answer} label={t('stu2.answer')} aid={b.answerOrigin === 'ki' || b.origin === 'ki' ? ki({ ...b, origin: 'ki' }) : undefined} />;
     }
@@ -227,7 +233,7 @@ export const StudioBlocks: React.FC<Props> = ({ result, sources, renderCite, onC
       {(result.warnings.length > 0 || result.omittedSources.length > 0) && (
         <details className="rounded-xl px-4 py-3" style={{ border: '1px solid #ea580c', background: 'color-mix(in srgb, #ea580c 8%, transparent)' }}>
           <summary className="cursor-pointer text-[13px] font-semibold flex items-center gap-2" style={{ color: '#ea580c' }}>
-            <AlertTriangle className="w-4 h-4" /> {t('stu2.warnings', { n: result.warnings.length + result.omittedSources.length })}
+            <AlertTriangle className="w-4 h-4" /> {tp('stu2.warnings', result.warnings.length + result.omittedSources.length)}
           </summary>
           <ul className="list-disc pl-5 mt-2 space-y-1 text-[13px]" style={{ color: 'var(--text-secondary)' }}>
             {result.omittedSources.map((o, i) => <li key={`o${i}`}>{t('stu2.omitted', { name: o.part?.title ?? sources.find(s => s.docId === o.sourceId)?.name ?? '?', reason: o.reason })}</li>)}
@@ -253,7 +259,7 @@ export const StudioBlocks: React.FC<Props> = ({ result, sources, renderCite, onC
       {result.blocks.map((b, i) => (
         <div key={b.id}>
           {/* Skript: „Kurz gecheckt“ über der ersten Frage eines Abschnitts (nicht bei den Übungsfragen am Ende). */}
-          {b.type === 'check' && b.id.startsWith('c') && result.blocks[i - 1]?.type !== 'check' && (
+          {b.type === 'check' && result.format === 'skript' && b.id.startsWith('c') && result.blocks[i - 1]?.type !== 'check' && (
             <p className="text-[11px] font-semibold uppercase tracking-[0.08em] mb-2" style={{ color: 'var(--primary-ink)' }}>{t('stu2.checkTitle')}</p>
           )}
           {render(b)}

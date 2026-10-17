@@ -6,7 +6,7 @@ import { chapterHeading, writeChapterBody, type WriteInput } from './write';
 import { buildExtraBlocks, buildPracticeQuestions, buildTimeline, timelineCandidates } from './extras';
 import { markPriority } from './priority';
 import { partOf, slideIn } from './parts';
-import { checkEmptyHeadings, checkMerksatz, checkPriority, checkScriptSections, checkRepetition, checkSectionCoverage, checkStudies, unitCoverage, validateResult, mainTextWords, type ValidationContext } from './validate';
+import { checkEmptyHeadings, checkGuideStructure, checkMerksatz, checkResultNumbers, checkPriority, checkScriptSections, checkRepetition, checkSectionCoverage, checkStudies, unitCoverage, validateResult, mainTextWords, type ValidationContext } from './validate';
 import { checkWithModel } from './check';
 import { mapLimit, StudioLlmError, type ExtractionCache, type StudioLlm } from './llm';
 import type { FigureRef } from './blocks';
@@ -47,6 +47,8 @@ const PARALLEL_WRITE = 4;
 const LENGTH_TOLERANCE = 1.15;
 /** Skript: Budget ist die Mitte von 80 bis 150 % der Quelle; ein Kapitel darf etwa diesen Korridor ausschöpfen. */
 const SCRIPT_LENGTH_MAX = 1.3;
+/** Leitfaden: Fragen mit Musterantworten überziehen das Kapitelbudget (Abnahme 17.10.: 1,3 bis 1,4), das Ganze lag trotzdem mitten im Korridor. */
+const GUIDE_LENGTH_MAX = 1.5;
 const SCRIPT_LENGTH_MIN = 0.7;
 
 const masked = (src: PipelineSource, ranges?: [number, number][]): PipelineSource =>
@@ -93,6 +95,7 @@ export const runSummaryPipeline = async (input: PipelineInput): Promise<Lernstud
   const { llm, onProgress } = input;
   const format: StudioOutputFormat = input.format ?? 'zusammenfassung';
   const script = format === 'skript';
+  const guide = format === 'leitfaden';
   const cancelled = () => input.isCancelled?.() ?? false;
   const bail = () => { if (cancelled()) throw new PipelineCancelled(); };
   const names = new Map(input.sources.map(s => [s.docId, s.name]));
@@ -216,6 +219,8 @@ export const runSummaryPipeline = async (input: PipelineInput): Promise<Lernstud
     const diag = diagnostics[i];
     if (script) return (await mapLimit(ch.sections, 3, async (_, k) => (cancelled() ? [] : (await writeSection(ch, i, k)) ?? []))).flat();
     const whole = await attempt(writeInput(ch, i), diag);
+    // Leitfaden: Aufbau gilt je Kapitel (Kernbegriffe, Fragen …), abschnittsweise ergäbe er sich mehrfach; ein zweiter Versuch statt Aufteilen.
+    if (guide) return whole ?? (cancelled() ? [] : (await attempt(writeInput(ch, i), diag)) ?? []);
     if (whole && !structuralIssues(ch, i, whole, byId).length) return whole;
     if (cancelled()) return whole ?? [];
     diag.split = true;
@@ -233,8 +238,8 @@ export const runSummaryPipeline = async (input: PipelineInput): Promise<Lernstud
 
   let written = 0;
   onProgress?.({ step: 'write', done: 0, total: chapters.length });
-  // Zeitleiste nur in der Zusammenfassung; das Skript erzählt die Studien im Text.
-  const timelinePromise = script ? Promise.resolve([]) : buildTimeline(units, llm);
+  // Zeitleiste nur in der Zusammenfassung; das Skript erzählt die Studien im Text, der Leitfaden hat „Wichtige Studien“.
+  const timelinePromise = script || guide ? Promise.resolve([]) : buildTimeline(units, llm);
   const practicePromise = buildPracticeQuestions(units, llm).catch(() => null);
   const chapterBlocks: Block[][] = await mapLimit(chapters, PARALLEL_WRITE, async (ch, i) => {
     if (cancelled()) return [];
@@ -262,12 +267,13 @@ export const runSummaryPipeline = async (input: PipelineInput): Promise<Lernstud
     const words = resultWords(chapterBlocks[i]);
     return [
       ...checkSectionCoverage(ch.sections, chapterBlocks[i], byId, head),
-      ...(script ? checkScriptSections(chapterBlocks[i], head) : checkMerksatz(chapterBlocks[i], head, ch.title)),
+      ...(script ? checkScriptSections(chapterBlocks[i], head) : guide ? checkGuideStructure(chapterBlocks[i], head) : checkMerksatz(chapterBlocks[i], head, ch.title)),
+      ...(guide ? checkResultNumbers(chapterUnitIds(ch).map(id => byId.get(id)).filter((u): u is Unit => !!u), chapterBlocks[i], head) : []),
       ...checkRepetition(chapterBlocks[i]),
       ...checkPriority(chapterUnitIds(ch), chapterBlocks[i], byId, head),
       // Länge je Kapitel durchsetzen (nicht nur warnen): zu lange Kapitel werden gekürzt neu geschrieben.
-      ...(words > ch.budget * (script ? SCRIPT_LENGTH_MAX : LENGTH_TOLERANCE)
-        ? [{ rule: 'length' as const, blockId: head, message: `Zu lang: ${words} Wörter, höchstens ${Math.round(ch.budget * (script ? SCRIPT_LENGTH_MAX : 1))}. Kürze, ohne Einheiten wegzulassen.` }]
+      ...(words > ch.budget * (script ? SCRIPT_LENGTH_MAX : guide ? GUIDE_LENGTH_MAX : LENGTH_TOLERANCE)
+        ? [{ rule: 'length' as const, blockId: head, message: `Zu lang: ${words} Wörter, höchstens ${Math.round(ch.budget * (script ? SCRIPT_LENGTH_MAX : guide ? GUIDE_LENGTH_MAX : 1))}. Kürze, ohne Einheiten wegzulassen.` }]
         : []),
       // Skript: zu knapp heißt zu wenig erklärt.
       ...(script && words < ch.budget * SCRIPT_LENGTH_MIN

@@ -307,8 +307,8 @@ export const SubjectStudio: React.FC<Props> = ({ collection, documents, userId, 
     return item;
   };
 
-  /** Zusammenfassung oder Skript (Lernstudio v2, Pro): Pipeline, strukturierte Blöcke, ein Eintrag je Auswahl. */
-  const runSummaryV2 = async (focusText: string, chosen: ProcessedDocument[], fmt: 'summary' | 'script' = 'summary'): Promise<StudioItem | null> => {
+  /** Zusammenfassung, Skript oder Lernleitfaden (Lernstudio v2, Pro): Pipeline, strukturierte Blöcke, ein Eintrag je Auswahl. */
+  const runSummaryV2 = async (focusText: string, chosen: ProcessedDocument[], fmt: 'summary' | 'script' | 'guide' = 'summary'): Promise<StudioItem | null> => {
     const withFigures = !!userId && figuresOn;
     const key = await studioIdempotencyKey({
       collectionId: collection.id, format: fmt,
@@ -317,7 +317,7 @@ export const SubjectStudio: React.FC<Props> = ({ collection, documents, userId, 
     });
     const out = await runSummaryForDocs({
       chosen, allDocuments: documents, scope: scopeFor, userId, focus: focusText, withFigures, argon: argonActive,
-      format: fmt === 'script' ? 'skript' : 'zusammenfassung',
+      format: fmt === 'script' ? 'skript' : fmt === 'guide' ? 'leitfaden' : 'zusammenfassung',
       onProgress: p => { if (!cancelRef.current) setPipeProgress(p); },
       isCancelled: () => cancelRef.current,
     });
@@ -348,7 +348,7 @@ export const SubjectStudio: React.FC<Props> = ({ collection, documents, userId, 
     setView({ kind: 'generating', format: fmt });
     setMobileTab('content');
     try {
-      const item = (fmt === 'summary' || fmt === 'script') && userPlan === 'pro'
+      const item = (fmt === 'summary' || fmt === 'script' || fmt === 'guide') && userPlan === 'pro'
         ? await runSummaryV2(focusText, chosen, fmt)
         : await runOnce({ fmt, focusText, chosen, scope: scopeFor });
       if (item) setView({ kind: 'item', id: item.id });
@@ -871,7 +871,38 @@ export const SubjectStudio: React.FC<Props> = ({ collection, documents, userId, 
         </div>
       )}
       {openItem.formatVersion === 2 && openItem.content ? (
-        <StudioBlocks result={openItem.content} sources={openItem.sources} renderCite={renderCitation(openItem.sources)} onCite={(source, pages, footnote) => setActiveCitation({ source, pages, footnote })} activeFootnote={activeCitation?.footnote ?? null} />
+        <>
+          {openItem.content.format === 'leitfaden' && (() => {
+            // Selbsttest wie im bisherigen Leitfaden: Stand über alle Fragen des Ergebnisses.
+            const ids = openItem.content.blocks.filter(b => b.type === 'check' && b.id.startsWith('c')).map(b => b.id);
+            const states = ids.map(id => selfChecks[`${openItem.id}:${id}`]);
+            const answered = states.filter(st => st?.result).length;
+            const correct = states.filter(st => st?.result?.verdict === 'correct').length;
+            return ids.length ? (
+              <p className="text-[13px] font-semibold rounded-xl px-3.5 py-2.5" style={{ background: 'var(--primary-soft)', color: 'var(--primary-ink)' }}>
+                {answered === 0 ? tp('stu.sc.intro', ids.length) : t('stu.sc.progress', { answered, total: ids.length, correct })}
+              </p>
+            ) : null;
+          })()}
+          <StudioBlocks
+            result={openItem.content}
+            sources={openItem.sources}
+            renderCite={renderCitation(openItem.sources)}
+            onCite={(source, pages, footnote) => setActiveCitation({ source, pages, footnote })}
+            activeFootnote={activeCitation?.footnote ?? null}
+            renderCheck={openItem.content.format === 'leitfaden' ? (b, reference) => (
+              <StudioSelfCheck
+                question={b.question}
+                reference={reference}
+                sources={openItem.sources}
+                documents={documents}
+                state={selfChecks[`${openItem.id}:${b.id}`]}
+                onChange={next => updateSelfCheck(`${openItem.id}:${b.id}`, next)}
+                renderRich={md => richBody(md, openItem.sources, openItem)}
+              />
+            ) : undefined}
+          />
+        </>
       ) : openItem.kind === 'guide' ? guideBody(openItem) : (
         <div className="text-[15px] leading-relaxed">
           {richBody(openItem.markdown, openItem.sources, openItem)}

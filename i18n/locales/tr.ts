@@ -2994,7 +2994,7 @@ export const tr: Translations = {
   'stu2.answer': "Cevap",
   'stu2.stats': "{source} kelimelik kaynaktan {words} kelime",
   'stu2.sourcesUsed': "{n} kaynak|{n} kaynak",
-  'stu2.warnings': "Kontrolden {n} not",
+  'stu2.warnings': "Kontrolden {n} not|Kontrolden {n} not",
   'stu2.omitted': "{name} dahil edilmedi: {reason}",
   'stu.fmt.script': "Konu anlatımı",
   'stu.fmtDesc.script': "Konuyu ders kitabı gibi adım adım anlatır, tekrar için değil anlamak için.",
