@@ -308,7 +308,7 @@ export const SubjectStudio: React.FC<Props> = ({ collection, documents, userId, 
   };
 
   /** Zusammenfassung, Skript oder Lernleitfaden (Lernstudio v2, Pro): Pipeline, strukturierte Blöcke, ein Eintrag je Auswahl. */
-  const runSummaryV2 = async (focusText: string, chosen: ProcessedDocument[], fmt: 'summary' | 'script' | 'guide' = 'summary'): Promise<StudioItem | null> => {
+  const runSummaryV2 = async (focusText: string, chosen: ProcessedDocument[], fmt: 'summary' | 'script' | 'guide' | 'glossary' = 'summary'): Promise<StudioItem | null> => {
     const withFigures = !!userId && figuresOn;
     const key = await studioIdempotencyKey({
       collectionId: collection.id, format: fmt,
@@ -317,7 +317,7 @@ export const SubjectStudio: React.FC<Props> = ({ collection, documents, userId, 
     });
     const out = await runSummaryForDocs({
       chosen, allDocuments: documents, scope: scopeFor, userId, focus: focusText, withFigures, argon: argonActive,
-      format: fmt === 'script' ? 'skript' : fmt === 'guide' ? 'leitfaden' : 'zusammenfassung',
+      format: fmt === 'script' ? 'skript' : fmt === 'guide' ? 'leitfaden' : fmt === 'glossary' ? 'glossar' : 'zusammenfassung',
       onProgress: p => { if (!cancelRef.current) setPipeProgress(p); },
       isCancelled: () => cancelRef.current,
     });
@@ -348,7 +348,7 @@ export const SubjectStudio: React.FC<Props> = ({ collection, documents, userId, 
     setView({ kind: 'generating', format: fmt });
     setMobileTab('content');
     try {
-      const item = (fmt === 'summary' || fmt === 'script' || fmt === 'guide') && userPlan === 'pro'
+      const item = (fmt === 'summary' || fmt === 'script' || fmt === 'guide' || fmt === 'glossary') && userPlan === 'pro'
         ? await runSummaryV2(focusText, chosen, fmt)
         : await runOnce({ fmt, focusText, chosen, scope: scopeFor });
       if (item) setView({ kind: 'item', id: item.id });

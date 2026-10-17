@@ -96,7 +96,16 @@ export const scriptCorridor = (sourceWords: number): { min: number; max: number;
 };
 
 export const corridorFor = (format: StudioOutputFormat, sourceWords: number) =>
-  format === 'skript' ? scriptCorridor(sourceWords) : format === 'leitfaden' ? guideCorridor(sourceWords) : summaryCorridor(sourceWords);
+  format === 'skript' ? scriptCorridor(sourceWords) : format === 'leitfaden' ? guideCorridor(sourceWords)
+    : format === 'glossar' ? glossaryCorridor(sourceWords) : summaryCorridor(sourceWords);
+
+/** Zielkorridor des Glossars (Wörter): 10 bis 35 % der Quelle, mindestens 300, höchstens 6.000. */
+export const glossaryCorridor = (sourceWords: number): { min: number; max: number; target: number } => {
+  const clamp = (n: number) => Math.round(Math.min(6000, Math.max(300, n)));
+  const min = clamp(sourceWords * 0.1);
+  const max = clamp(sourceWords * 0.35);
+  return { min, max, target: Math.round((min + max) / 2) };
+};
 
 /**
  * Zielkorridor des Lernleitfadens (Wörter): 30 bis 60 % der Quelle, mindestens 800, höchstens 12.000.

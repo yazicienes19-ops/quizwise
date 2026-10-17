@@ -3,10 +3,11 @@ import { findDuplicatePages, sourceWordCount, withoutDuplicates } from './dedupe
 import { assignUnitIds, extractUnits, filterHiddenText, hasScenarioValues, isContentless, scanSourceErrors, verifySourceErrors } from './extract';
 import { buildOutline, corridorFor, SEPARATE_TYPES, type Chapter, type Lecture } from './outline';
 import { chapterHeading, writeChapterBody, type WriteInput } from './write';
+import { mergeGlossary } from './glossary';
 import { buildExtraBlocks, buildPracticeQuestions, buildTimeline, timelineCandidates } from './extras';
 import { markPriority } from './priority';
 import { partOf, slideIn } from './parts';
-import { checkEmptyHeadings, checkGuideStructure, checkGuideTerms, checkMerksatz, checkResultNumbers, checkPriority, checkScriptSections, checkRepetition, checkSectionCoverage, checkStudies, unitCoverage, validateResult, mainTextWords, type ValidationContext } from './validate';
+import { checkEmptyHeadings, checkGlossaryChapter, checkGuideStructure, checkGuideTerms, checkMerksatz, glossaryTermCoverage, checkResultNumbers, checkPriority, checkScriptSections, checkRepetition, checkSectionCoverage, checkStudies, unitCoverage, validateResult, mainTextWords, type ValidationContext } from './validate';
 import { checkWithModel } from './check';
 import { mapLimit, StudioLlmError, type ExtractionCache, type StudioLlm } from './llm';
 import type { FigureRef } from './blocks';
@@ -70,10 +71,17 @@ const issueLine = (i: Issue, blocks: Block[]): string => {
 };
 
 /** Warnung für den Nutzer (ohne interne IDs). */
-const warningText = (i: Issue): string => {
-  const plain = i.message.replace(/ Nimm diese Einheiten auf:.*$/, '');
+export const warningText = (i: Issue): string => {
+  // Einheiten-IDs braucht nur die Reparatur; Nutzer sehen eine Anzahl (Glossar-Test 17.10.: „… : u124.“).
+  const plain = i.message.replace(/ Nimm diese Einheiten auf:.*$/, '')
+    .replace(/\s*\(u\d+\)/g, '')
+    .replace(/^Begriffe fehlen[^:]*:\s*((?:u\d+(?:,\s*)?)+)\.?$/, (_, list: string) => {
+      const n = list.split(',').length;
+      return `${n === 1 ? 'Ein Fachbegriff' : `${n} Fachbegriffe`} der Folien ${n === 1 ? 'fehlt' : 'fehlen'} als eigene Zeile.`;
+    });
   switch (i.rule) {
     case 'numbers': return `Eine Zahl ließ sich in der Quelle nicht finden: ${plain}`;
+    case 'result_missing': return `Ergebniszahlen der Folien fehlen im Text: ${plain.replace(/^Ergebnisse fehlen:\s*/, '').replace(/\.?\s*Nimm jeden Wert.*$/, '')}.`;
     case 'author_year': case 'chronologie': return `Bitte Jahreszahl prüfen: ${plain}`;
     case 'cites': case 'zitat_falsch': return `Eine Fußnote ist vermutlich falsch: ${plain}`;
     case 'nicht_belegt': case 'falsch': return `Bitte prüfen: ${plain}`;
@@ -98,6 +106,7 @@ export const runSummaryPipeline = async (input: PipelineInput): Promise<Lernstud
   const format: StudioOutputFormat = input.format ?? 'zusammenfassung';
   const script = format === 'skript';
   const guide = format === 'leitfaden';
+  const glossary = format === 'glossar';
   const cancelled = () => input.isCancelled?.() ?? false;
   const bail = () => { if (cancelled()) throw new PipelineCancelled(); };
   const names = new Map(input.sources.map(s => [s.docId, s.name]));
@@ -175,7 +184,8 @@ export const runSummaryPipeline = async (input: PipelineInput): Promise<Lernstud
   // Budget: Stoffmenge aus den Folien; die angehängten Abschnitte (Aufgaben, Übungsfragen, Klausurinfos,
   // Zeitleiste mit höchstens ~15 Einträgen zu je ~12 Wörtern) vorab abziehen.
   const pageWords = (sourceId: string, page: number) => countWords(deduped.find(s => s.docId === sourceId)?.pages?.[page - 1] ?? '');
-  const reservedWords = units.filter(u => u.type === 'task' || u.type === 'practice_question' || u.type === 'exam_info')
+  // Glossar: keine angehängten Abschnitte.
+  const reservedWords = glossary ? 0 : units.filter(u => u.type === 'task' || u.type === 'practice_question' || u.type === 'exam_info')
     .reduce((a, u) => a + countWords(`${u.text} ${u.answer ?? ''}`), 0) + Math.min(15, timelineCandidates(units).length) * 12;
   const chapters: Chapter[] = await buildOutline(units, names, llm, sourceWords, input.focus, lectures, { pageWords, reservedWords }, format);
   bail();
@@ -224,7 +234,7 @@ export const runSummaryPipeline = async (input: PipelineInput): Promise<Lernstud
     if (script) return (await mapLimit(ch.sections, 3, async (_, k) => (cancelled() ? [] : (await writeSection(ch, i, k)) ?? []))).flat();
     const whole = await attempt(writeInput(ch, i), diag);
     // Leitfaden: Aufbau gilt je Kapitel (Kernbegriffe, Fragen …), abschnittsweise ergäbe er sich mehrfach; ein zweiter Versuch statt Aufteilen.
-    if (guide) return whole ?? (cancelled() ? [] : (await attempt(writeInput(ch, i), diag)) ?? []);
+    if (guide || glossary) return whole ?? (cancelled() ? [] : (await attempt(writeInput(ch, i), diag)) ?? []);
     if (whole && !structuralIssues(ch, i, whole, byId).length) return whole;
     if (cancelled()) return whole ?? [];
     diag.split = true;
@@ -243,8 +253,9 @@ export const runSummaryPipeline = async (input: PipelineInput): Promise<Lernstud
   let written = 0;
   onProgress?.({ step: 'write', done: 0, total: chapters.length });
   // Zeitleiste nur in der Zusammenfassung; das Skript erzählt die Studien im Text, der Leitfaden hat „Wichtige Studien“.
-  const timelinePromise = script || guide ? Promise.resolve([]) : buildTimeline(units, llm);
-  const practicePromise = buildPracticeQuestions(units, llm).catch(() => null);
+  const timelinePromise = script || guide || glossary ? Promise.resolve([]) : buildTimeline(units, llm);
+  // Glossar: nur Begriffe, keine Übungsfragen, Aufgaben oder Klausurinfos.
+  const practicePromise = glossary ? Promise.resolve(null) : buildPracticeQuestions(units, llm).catch(() => null);
   const chapterBlocks: Block[][] = await mapLimit(chapters, PARALLEL_WRITE, async (ch, i) => {
     if (cancelled()) return [];
     const blocks = await writeRobust(ch, i);
@@ -252,7 +263,7 @@ export const runSummaryPipeline = async (input: PipelineInput): Promise<Lernstud
     return blocks;
   });
   bail();
-  const extras = buildExtraBlocks(units, await timelinePromise, await practicePromise);
+  const extras = glossary ? [] : buildExtraBlocks(units, await timelinePromise, await practicePromise);
 
 
   // ── D: prüfen ──
@@ -269,6 +280,8 @@ export const runSummaryPipeline = async (input: PipelineInput): Promise<Lernstud
     const ch = chapters[i];
     const head = chapterHeading(ch.title, i).id;
     const words = resultWords(chapterBlocks[i]);
+    // Glossar: nur Begriffe, keine Abdeckung aller Einheiten (Studien, Beispiele gehören nicht hinein).
+    if (glossary) return checkGlossaryChapter(chapterUnitIds(ch).map(id => byId.get(id)).filter((u): u is Unit => !!u), chapterBlocks[i], head);
     return [
       ...checkSectionCoverage(ch.sections, chapterBlocks[i], byId, head),
       ...(script ? checkScriptSections(chapterBlocks[i], head) : guide ? checkGuideStructure(chapterBlocks[i], head) : checkMerksatz(chapterBlocks[i], head, ch.title)),
@@ -403,7 +416,8 @@ export const runSummaryPipeline = async (input: PipelineInput): Promise<Lernstud
     d.coverage = Math.round(unitCoverage(chapterUnitIds(ch), chapterBlocks[i], byId).ratio * 100) / 100;
     if (!chapterBlocks[i].length || checkEmptyHeadings([chapterHeading(ch.title, i), ...chapterBlocks[i]]).length
       // Leitfaden ordnet nach Art (Begriffe, Studien, Fragen), nicht nach Abschnitten: dort zählt das ganze Kapitel.
-      || (guide ? d.coverage < GUIDE_COVERAGE_MIN : checkSectionCoverage(ch.sections, chapterBlocks[i], byId, '').length)) incompleteChapters.push(ch.title);
+      || (glossary ? glossaryTermCoverage(chapterUnitIds(ch).map(id => byId.get(id)).filter((u): u is Unit => !!u), chapterBlocks[i]) < GUIDE_COVERAGE_MIN
+        : guide ? d.coverage < GUIDE_COVERAGE_MIN : checkSectionCoverage(ch.sections, chapterBlocks[i], byId, '').length)) incompleteChapters.push(ch.title);
   });
   const finalCode = [
     ...validateResult(all(), ctx).filter(i => i.rule !== 'length'),
@@ -423,8 +437,8 @@ export const runSummaryPipeline = async (input: PipelineInput): Promise<Lernstud
     ...incompleteChapters.map(t => `Kapitel „${t}“ ist unvollständig. Bitte neu erstellen.`),
     ...[...finalCode, ...recheck, ...untouchedModel].map(warningText),
   ])];
-  // Leere Kapitel ohne jeden Inhalt nicht als nackte Überschrift zeigen.
-  const blocks = all().filter((b, idx, arr) => !(b.type === 'heading' && b.level === 2 && b.id.startsWith('c')
+  // Leere Kapitel ohne jeden Inhalt nicht als nackte Überschrift zeigen. Glossar: alle Kapitel alphabetisch zusammengeführt.
+  const blocks = glossary ? mergeGlossary(all()) : all().filter((b, idx, arr) => !(b.type === 'heading' && b.level === 2 && b.id.startsWith('c')
     && (idx === arr.length - 1 || (arr[idx + 1].type === 'heading' && (arr[idx + 1] as { level: number }).level <= 2))));
   return {
     formatVersion: 2,

@@ -26,9 +26,11 @@ import { createRequire } from 'node:module';
 
 const MODE = process.env.STUDIO_EVAL_MODE ?? 'full';
 /** Format: zusammenfassung (Standard), skript (Phase 2) oder leitfaden (Phase A): STUDIO_EVAL_FORMAT=… */
-const FORMAT = (['skript', 'leitfaden'].includes(process.env.STUDIO_EVAL_FORMAT ?? '') ? process.env.STUDIO_EVAL_FORMAT : 'zusammenfassung') as 'zusammenfassung' | 'skript' | 'leitfaden';
+const FORMAT = (['skript', 'leitfaden', 'glossar'].includes(process.env.STUDIO_EVAL_FORMAT ?? '') ? process.env.STUDIO_EVAL_FORMAT : 'zusammenfassung') as 'zusammenfassung' | 'skript' | 'leitfaden' | 'glossar';
 const SCRIPT = FORMAT === 'skript';
 const GUIDE = FORMAT === 'leitfaden';
+/** Glossar: nur Begriffe; Zahlen, Vergleichstabellen, Aufgaben und Abschnitte der Zusammenfassung gelten nicht. */
+const GLOSSARY = FORMAT === 'glossar';
 const run = process.env.STUDIO_EVAL === '1' && MODE === 'full' ? describe : describe.skip;
 // Nur Extraktion messen, ohne Cache: STUDIO_EVAL_MODE=extract STUDIO_EVAL_IMAGES=all|selective|none
 const runExtract = process.env.STUDIO_EVAL === '1' && MODE === 'extract' ? describe : describe.skip;
@@ -236,6 +238,7 @@ run('Lernstudio-Eval (live)', () => {
     const ratio = mainWords / Math.max(1, r.stats.sourceWords);
     // Entscheidung 16.10.: 40 % mit 10 % Toleranz (höchstens 44 %), wie der Validator.
     if (SCRIPT) check('Skript: Haupttext 80 bis 150 % (±10 %) der Quellwörter', ratio >= 0.72 && ratio <= 1.65, `${mainWords}/${r.stats.sourceWords} = ${Math.round(ratio * 100)} %`);
+    else if (GLOSSARY) check('Glossar: Haupttext 10 bis 35 % (±10 %) der Quellwörter', ratio >= 0.09 && ratio <= 0.39, `${mainWords}/${r.stats.sourceWords} = ${Math.round(ratio * 100)} %`);
     else if (GUIDE) check('Leitfaden: Haupttext 30 bis 60 % (±10 %) der Quellwörter', ratio >= 0.27 && ratio <= 0.66, `${mainWords}/${r.stats.sourceWords} = ${Math.round(ratio * 100)} %`);
     else check('Haupttext ≤ 40 % (+10 % Toleranz) der Quellwörter', ratio <= 0.44 || mainWords <= 600, `${mainWords}/${r.stats.sourceWords} = ${Math.round(ratio * 100)} %`);
     const cited = new Set(r.blocks.flatMap(cites).map(c => c.sourceId));
@@ -250,9 +253,9 @@ run('Lernstudio-Eval (live)', () => {
     const onDup = r.blocks.flatMap(cites).filter(c => dup.dropped.get(c.sourceId)?.has(c.page));
     check('Einzel-PDF vor Sammeldatei', onDup.length === 0, `${onDup.length} Zitate auf doppelte Seiten`);
     const norm = (t: string) => t.replace(/ | /g, ' ').replace(/\s*%/g, ' %');
-    for (const n of exp.numbers ?? []) check(`Zahl ${n}`, norm(all).includes(norm(n)));
+    for (const n of GLOSSARY ? [] : exp.numbers ?? []) check(`Zahl ${n}`, norm(all).includes(norm(n)));
     const tables = r.blocks.filter((b): b is Extract<Block, { type: 'table' }> => b.type === 'table').map(b => blockTexts(b).join(' '));
-    for (const group of exp.tables ?? []) check(`Tabelle: ${group.join(' / ')}`, tables.some(t => group.every(g => t.includes(g))));
+    for (const group of GLOSSARY ? [] : exp.tables ?? []) check(`Tabelle: ${group.join(' / ')}`, tables.some(t => group.every(g => t.includes(g))));
     for (const f of exp.forbidden ?? []) {
       const hit = texts.find(t => new RegExp(f, 'i').test(t));
       check(`Nicht: /${f}/`, !hit, hit ? `„${hit.slice(0, 120)}“` : '');
@@ -260,7 +263,7 @@ run('Lernstudio-Eval (live)', () => {
     const tl = r.blocks.find(b => b.type === 'timeline');
     check('Zeitleiste sortiert', !tl || (tl.type === 'timeline' && tl.items.every((it, i) => i === 0 || tl.items[i - 1].year <= it.year)));
     const taskBlock = r.blocks.find(b => b.type === 'tasks');
-    for (const tsk of exp.tasks ?? []) check(`Aufgabe: ${tsk}`, !!taskBlock && blockTexts(taskBlock).some(t => t.includes(tsk)));
+    for (const tsk of GLOSSARY ? [] : exp.tasks ?? []) check(`Aufgabe: ${tsk}`, !!taskBlock && blockTexts(taskBlock).some(t => t.includes(tsk)));
     const hints = r.blocks.filter(b => b.type === 'callout' && b.variant === 'hinweis').flatMap(blockTexts).join(' ');
     // "page:24" = ein Hinweis zitiert Seite 24; sonst Teilstring im Text.
     const hintBlocks = r.blocks.filter(b => b.type === 'callout' && b.variant === 'hinweis');
@@ -270,18 +273,18 @@ run('Lernstudio-Eval (live)', () => {
     }
     for (const n of exp.notInTasks ?? []) check(`Keine Aufgabe: ${n}`, !taskBlock || !blockTexts(taskBlock).some(t => t.includes(n)));
     const tlItems = tl?.type === 'timeline' ? tl.items : [];
-    for (const t of SCRIPT || GUIDE ? [] : exp.timeline ?? []) check(`Zeitleiste: ${t.who} ${t.year}`, tlItems.some(i => i.who.includes(t.who) && i.year === t.year), tlItems.filter(i => i.who.includes(t.who)).map(i => `${i.who} ${i.year}`).join(', '));
-    for (const w of SCRIPT || GUIDE ? [] : exp.timelineForbidden ?? []) check(`Nicht in der Zeitleiste: ${w}`, !tlItems.some(i => i.who.includes(w)));
+    for (const t of SCRIPT || GUIDE || GLOSSARY ? [] : exp.timeline ?? []) check(`Zeitleiste: ${t.who} ${t.year}`, tlItems.some(i => i.who.includes(t.who) && i.year === t.year), tlItems.filter(i => i.who.includes(t.who)).map(i => `${i.who} ${i.year}`).join(', '));
+    for (const w of SCRIPT || GUIDE || GLOSSARY ? [] : exp.timelineForbidden ?? []) check(`Nicht in der Zeitleiste: ${w}`, !tlItems.some(i => i.who.includes(w)));
     for (const w of exp.warningsForbidden ?? []) check(`Keine Warnung zu ${w}`, !r.warnings.some(x => x.includes(w)), r.warnings.filter(x => x.includes(w)).join(' | '));
-    for (const g of exp.together ?? []) check(`Zusammen: ${g.join(' / ')}`, r.blocks.some(b => { const t = blockTexts(b).join(' ').toLowerCase(); return g.every(x => t.includes(x.toLowerCase())); }));
+    for (const g of GLOSSARY ? [] : exp.together ?? []) check(`Zusammen: ${g.join(' / ')}`, r.blocks.some(b => { const t = blockTexts(b).join(' ').toLowerCase(); return g.every(x => t.includes(x.toLowerCase())); }));
     const headingTexts = r.blocks.filter(b => b.type === 'heading').map(b => (b.type === 'heading' ? b.text : ''));
-    for (const h of exp.headings ?? []) check(`Abschnitt: ${h}`, headingTexts.includes(h));
+    for (const h of GLOSSARY ? [] : exp.headings ?? []) check(`Abschnitt: ${h}`, headingTexts.includes(h));
     for (const h of exp.hintsForbidden ?? []) {
       const page = Number(h.replace('page:', ''));
       check(`Kein Hinweis auf S. ${page}`, !hintBlocks.some(b => b.cites.some(c => c.page === page)));
     }
     const chapterText = r.blocks.filter(b => b.id.startsWith('c')).flatMap(blockTexts).join(' ').toLowerCase();
-    for (const c of exp.contentContains ?? []) check(`Im Kapiteltext: ${c}`, chapterText.includes(c.toLowerCase()));
+    for (const c of GLOSSARY ? [] : exp.contentContains ?? []) check(`Im Kapiteltext: ${c}`, chapterText.includes(c.toLowerCase()));
     const tableIssues = checkTables(r.blocks);
     check('Tabellen: Zellen = Spalten, ein Datensatz je Zelle', tableIssues.length === 0, tableIssues.map(i => i.message.slice(0, 90)).join(' | '));
     // Je Kapitel (Überschrift Ebene 2 aus dem Schreiben, nicht die Extras): genau ein Merksatz, keine Wiederholung.
@@ -308,6 +311,25 @@ run('Lernstudio-Eval (live)', () => {
       const norm = (t: string) => t.toLowerCase().replace(/\s*\(.*$/, '').replace(/[-\s]+/g, ' ').trim();
       for (const term of exp.guideTerms ?? []) check(`Leitfaden: Kernbegriff ${term}`, firstCol.some(c => norm(c) === norm(term)));
       console.log(`Leitfaden: ${termRows} Tabellenzeilen, ${qs} Fragen`);
+    } else if (GLOSSARY) {
+      const tbls = r.blocks.filter((b): b is Extract<Block, { type: 'table' }> => b.type === 'table' && b.id.startsWith('c'));
+      const rowsAll = tbls.flatMap(b => b.rows.map((row, i) => ({ term: row[0], text: row.slice(1).join(' '), cites: b.rowCites?.[i] ?? [] })));
+      const key = (t: string) => t.toLowerCase().replace(/\s*\(.*$/, '').replace(/[-\s]+/g, ' ').trim();
+      const sortedOk = rowsAll.every((x, i) => i === 0 || key(rowsAll[i - 1].term).localeCompare(key(x.term), 'de') <= 0);
+      check('Glossar: alphabetisch sortiert', sortedOk);
+      const keys = rowsAll.map(x => x.term.toLowerCase().replace(/[-\s]+/g, ' ').trim());
+      const dups = keys.filter((k, i) => keys.indexOf(k) !== i);
+      check('Glossar: kein Begriff doppelt', dups.length === 0, dups.join(', '));
+      const uncited = rowsAll.filter(x => !x.cites.length).map(x => x.term);
+      check('Glossar: jede Zeile mit Fußnote', uncited.length === 0, uncited.slice(0, 5).join(', '));
+      const long = rowsAll.filter(x => (x.text.match(/\S+/g) ?? []).length > 45).map(x => x.term);
+      check('Glossar: Erklärung höchstens 45 Wörter', long.length === 0, long.slice(0, 5).join(', '));
+      const firstCol = rowsAll.map(x => x.term);
+      for (const term of exp.guideTerms ?? []) check(`Glossar: Begriff ${term}`, firstCol.some(c => key(c) === key(term)));
+      for (const g of exp.tables ?? []) check(`Glossar: ${g.join(' / ')} vorhanden`, g.every(x => rowsAll.some(r => `${r.term} ${r.text}`.includes(x))));
+      const ki = r.blocks.filter(b => b.origin === 'ki').length;
+      check('Glossar: keine Erklärhilfen', ki === 0, `${ki}`);
+      console.log(`Glossar: ${rowsAll.length} Begriffe`);
     } else if (!SCRIPT) check('Genau ein Merksatz je Kapitel', merk.every(n => n === 1), merk.join(', '));
     else {
       const structure = chaptersOnly.flatMap(c => checkScriptSections(c, 'c'));

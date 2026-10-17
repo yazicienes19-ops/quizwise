@@ -488,7 +488,7 @@ export const checkResultNumbers = (chapterUnits: Unit[], chapterBlocks: Block[],
     .map(u => ({ u, facts: extractFacts(unitText(u)).filter(f => /%|\//.test(f) && !hasFact(f, text)) }))
     .filter(x => x.facts.length);
   return missing.length
-    ? [{ rule: 'numbers', blockId: chapterBlockId, message: `Ergebnisse fehlen: ${missing.map(x => `${x.facts.join(', ')} (${x.u.id})`).join('; ')}. Nimm jeden Wert einzeln und exakt auf.` }]
+    ? [{ rule: 'result_missing', blockId: chapterBlockId, message: `Ergebnisse fehlen: ${missing.map(x => `${x.facts.join(', ')} (${x.u.id})`).join('; ')}. Nimm jeden Wert einzeln und exakt auf.` }]
     : [];
 };
 
@@ -505,6 +505,39 @@ export const checkGuideTerms = (chapterUnits: Unit[], chapterBlocks: Block[], ch
   return missing.length
     ? [{ rule: 'guide_structure', blockId: chapterBlockId, message: `Begriffe fehlen in „${GUIDE_PARTS.terms}“ (eigene Zeile) oder „${GUIDE_PARTS.models}“: ${missing.map(u => u.id).join(', ')}.` }]
     : [];
+};
+
+/**
+ * Glossar je Kapitel: nur eine Tabelle Begriff | Erklärung, jede Zeile belegt, Erklärung höchstens
+ * 45 Wörter, jede Einheit vom Typ definition oder concept in einer Zeile, kein Begriff doppelt.
+ */
+export const GLOSSARY_MAX_WORDS = 45;
+export const checkGlossaryChapter = (chapterUnits: Unit[], chapterBlocks: Block[], chapterBlockId: string): Issue[] => {
+  const tables = chapterBlocks.filter((b): b is Extract<Block, { type: 'table' }> => b.type === 'table');
+  const issues: Issue[] = [];
+  if (!tables.length) return [{ rule: 'guide_structure', blockId: chapterBlockId, message: 'Das Kapitel hat keine Tabelle Begriff | Erklärung.' }];
+  const seen = new Set<string>();
+  for (const t of tables) t.rows.forEach((r, i) => {
+    const term = r[0] ?? '';
+    const words = (r.slice(1).join(' ').match(/\S+/g) ?? []).length;
+    if (!(t.rowCites?.[i]?.length || t.cites.length)) issues.push({ rule: 'guide_structure', blockId: t.id, message: `„${term}“ ohne Beleg: in "units" die Einheiten angeben.` });
+    if (words > GLOSSARY_MAX_WORDS) issues.push({ rule: 'length', blockId: t.id, message: `Erklärung zu „${term}“ hat ${words} Wörter, höchstens ${GLOSSARY_MAX_WORDS}. Kürzer fassen.` });
+    const k = term.toLowerCase().replace(/[-\s]+/g, ' ').trim();
+    if (seen.has(k)) issues.push({ rule: 'repetition', blockId: t.id, message: `„${term}“ steht doppelt. Eine Zeile je Begriff.` });
+    seen.add(k);
+  });
+  const inTables = new Set(tables.flatMap(b => b.unitIds ?? []));
+  const missing = chapterUnits.filter(u => (u.type === 'definition' || u.type === 'concept') && !inTables.has(u.id));
+  if (missing.length) issues.push({ rule: 'guide_structure', blockId: chapterBlockId, message: `Begriffe fehlen (je eine Zeile): ${missing.map(u => u.id).join(', ')}.` });
+  return issues;
+};
+
+/** Anteil der Einheiten definition/concept eines Kapitels, die in einer Glossarzeile stehen. */
+export const glossaryTermCoverage = (chapterUnits: Unit[], chapterBlocks: Block[]): number => {
+  const terms = chapterUnits.filter(u => u.type === 'definition' || u.type === 'concept');
+  if (!terms.length) return 1;
+  const inTables = new Set(chapterBlocks.filter(b => b.type === 'table').flatMap(b => b.unitIds ?? []));
+  return terms.filter(u => inTables.has(u.id)).length / terms.length;
 };
 
 export const checkScriptSections = (chapterBlocks: Block[], chapterBlockId: string): Issue[] => {
