@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { ChevronDown, AlertTriangle } from 'lucide-react';
+import { ChevronDown, AlertTriangle, Lightbulb, Info, Sparkles, HelpCircle, ArrowRight, Compass } from 'lucide-react';
 import type { Block, Cite, LernstudioResult } from '../services/studio/types';
 import type { StudioSourceRef } from '../services/studioStore';
 import type { CitationRef } from '../services/citations';
@@ -7,21 +7,29 @@ import { parseInline } from './markdownRenderer';
 import { StudioDiagram } from './StudioDiagram';
 import { useTranslation } from '../i18n/I18nProvider';
 import { figureText } from '../services/studio/toMarkdown';
+import { groupByPart, slideIn } from '../services/studio/parts';
 
 /**
  * Lernstudio v2: Ergebnis aus strukturierten Blöcken (formatVersion 2).
- * Phase 1: funktional, alle Blocktypen; das Feindesign folgt in Phase 3.
- * Fußnoten nutzen denselben Chip wie die Markdown-Ergebnisse
- * (Klick öffnet die Stelle im Split-Screen-Reader).
+ * Phase 3: Fußnoten als hochgestellte Nummern (je Quelle eine, alle Seiten im
+ * Tooltip und in der Leiste unten, Klick öffnet die Stelle im Reader),
+ * Kästen mit Symbol, Inhaltsverzeichnis ab 5 Kapiteln.
  */
 
 interface Props {
   result: LernstudioResult;
   sources: StudioSourceRef[];
   renderCite: (refs: CitationRef[], key: string) => React.ReactNode;
+  /** Fußnote angeklickt: Quelle, ihre Seiten und die Nummer. Ohne: Chips wie bei Markdown-Ergebnissen. */
+  onCite?: (source: StudioSourceRef, pages: number[], footnote: number) => void;
+  activeFootnote?: number | null;
 }
 
-const CALLOUT_STYLE: Record<string, { border: string; bg: string }> = {
+const CALLOUT_ICON: Record<string, React.ComponentType<{ className?: string; strokeWidth?: number }>> = {
+  merksatz: Lightbulb, klausurfalle: AlertTriangle, hinweis: Info, beispiel: Sparkles, einordnung: Compass, leitfrage: HelpCircle, bruecke: ArrowRight,
+};
+
+const CALLOUT_STYLE: Record<string, { border: string; bg: string; label?: string }> = {
   merksatz: { border: '#16a34a', bg: 'color-mix(in srgb, #16a34a 10%, transparent)' },
   klausurfalle: { border: '#ea580c', bg: 'color-mix(in srgb, #ea580c 10%, transparent)' },
   hinweis: { border: '#2563eb', bg: 'color-mix(in srgb, #2563eb 10%, transparent)' },
@@ -29,7 +37,7 @@ const CALLOUT_STYLE: Record<string, { border: string; bg: string }> = {
   einordnung: { border: '#9333ea', bg: 'color-mix(in srgb, #9333ea 10%, transparent)' },
   // Skript: Leitfrage in der Primärfarbe, Überleitung zurückhaltend.
   leitfrage: { border: 'var(--primary)', bg: 'var(--primary-soft)' },
-  bruecke: { border: 'var(--border-color)', bg: 'transparent' },
+  bruecke: { border: 'var(--border-color)', bg: 'transparent', label: 'var(--text-secondary)' },
 };
 
 const Check: React.FC<{ question: string; answer: string; label: string; aid?: React.ReactNode }> = ({ question, answer, label, aid }) => {
@@ -45,12 +53,49 @@ const Check: React.FC<{ question: string; answer: string; label: string; aid?: R
   );
 };
 
-export const StudioBlocks: React.FC<Props> = ({ result, sources, renderCite }) => {
-  const { t } = useTranslation();
+export const StudioBlocks: React.FC<Props> = ({ result, sources, renderCite, onCite, activeFootnote }) => {
+  const { t, tp } = useTranslation();
   const numberOf = (id: string) => sources.find(s => s.docId === id)?.n;
+  // Fußnoten fortlaufend in Leserichtung; die Blöcke werden der Reihe nach gerendert.
+  let footnotes = 0;
+  const footnoteTitle = (source: StudioSourceRef, pages: number[]) => {
+    if (!pages.length) return source.name;
+    if (!source.parts?.length) return `${source.name}, ${t('stu.pagesShort', { pages: pages.join(', ') })}`;
+    return groupByPart(source.parts, pages).map(({ part, pages: pg }) => part
+      ? t('stu2.slideChip', { part: part.title, slides: pg.map(p => slideIn(part, p)).join(', ') })
+      : t('stu.pagesShort', { pages: pg.join(', ') })).join('; ');
+  };
   const cite = (cites: Cite[], key: string) => {
-    const refs = cites.map(c => ({ n: numberOf(c.sourceId) ?? 0, ...(c.page ? { page: c.page } : {}) })).filter(r => r.n);
-    return refs.length ? <> {renderCite(refs, key)}</> : null;
+    if (!onCite) {
+      const refs = cites.map(c => ({ n: numberOf(c.sourceId) ?? 0, ...(c.page ? { page: c.page } : {}) })).filter(r => r.n);
+      return refs.length ? <> {renderCite(refs, key)}</> : null;
+    }
+    const bySource = new Map<string, number[]>();
+    for (const c of cites) if (numberOf(c.sourceId)) bySource.set(c.sourceId, [...(bySource.get(c.sourceId) ?? []), ...(c.page ? [c.page] : [])]);
+    if (!bySource.size) return null;
+    return (
+      <sup key={key} className="ml-0.5 whitespace-nowrap">
+        {[...bySource].map(([id, pages]) => {
+          const source = sources.find(s => s.docId === id)!;
+          const n = ++footnotes;
+          const pg = [...new Set(pages)].sort((a, b) => a - b);
+          const on = activeFootnote === n;
+          return (
+            <button
+              key={n}
+              type="button"
+              onClick={() => onCite(source, pg, n)}
+              title={footnoteTitle(source, pg)}
+              aria-label={`${t('stu2.footnote', { n })}: ${footnoteTitle(source, pg)}`}
+              className="relative inline-flex items-center justify-center min-w-[1.35rem] h-[1.15rem] px-1 mx-px rounded-md text-[11px] font-semibold tabular-nums transition-colors hover:opacity-80 after:absolute after:-inset-x-1 after:-inset-y-3 after:content-['']"
+              style={on ? { background: 'var(--primary)', color: 'var(--bg-main)' } : { background: 'var(--primary-soft)', color: 'var(--primary-ink)' }}
+            >
+              {n}
+            </button>
+          );
+        })}
+      </sup>
+    );
   };
   const ki = (b: Block) => b.origin === 'ki' && (
     <span className="ml-1.5 align-middle text-[11px] font-semibold px-1.5 py-0.5 rounded-md" style={{ background: 'color-mix(in srgb, #9333ea 14%, transparent)', color: '#a855f7' }}>{t('stu2.ki')}</span>
@@ -61,7 +106,7 @@ export const StudioBlocks: React.FC<Props> = ({ result, sources, renderCite }) =
     switch (b.type) {
       case 'heading': {
         const cls = b.level === 1 ? 'text-2xl' : b.level === 2 ? 'text-xl pt-4' : 'text-[16px] pt-2';
-        return <p role="heading" aria-level={b.level + 1} className={`${cls} font-semibold`} style={{ color: 'var(--text-main)' }}>{b.text}</p>;
+        return <p id={b.level === 2 ? `stu-ch-${b.id}` : undefined} role="heading" aria-level={b.level + 1} className={`${cls} font-semibold scroll-mt-4`} style={{ color: 'var(--text-main)' }}>{b.text}</p>;
       }
       case 'paragraph':
         return <p>{inl(b.text, b.id)}{cite(b.cites, `${b.id}-c`)}{ki(b)}</p>;
@@ -110,20 +155,33 @@ export const StudioBlocks: React.FC<Props> = ({ result, sources, renderCite }) =
       }
       case 'callout': {
         const st = CALLOUT_STYLE[b.variant] ?? CALLOUT_STYLE.hinweis;
+        const Icon = CALLOUT_ICON[b.variant] ?? Info;
         return (
           <div className="rounded-xl px-4 py-3" style={{ borderLeft: `3px solid ${st.border}`, background: st.bg }}>
-            <p className="text-[11px] font-semibold uppercase tracking-[0.08em] mb-1" style={{ color: st.border }}>{t(`stu2.callout.${b.variant}`)}{ki(b)}</p>
+            <p className="flex items-center gap-1.5 text-[11px] font-semibold uppercase tracking-[0.08em] mb-1" style={{ color: st.label ?? st.border }}>
+              <Icon className="w-3.5 h-3.5 shrink-0" strokeWidth={2.25} />{t(`stu2.callout.${b.variant}`)}{ki(b)}
+            </p>
             <p>{inl(b.text, b.id)}{cite(b.cites, `${b.id}-c`)}</p>
           </div>
         );
       }
       case 'study':
         return (
-          <div className="rounded-2xl px-4 py-3 space-y-1" style={{ border: '1px solid var(--border-color)', background: 'var(--bg-main)' }}>
-            <p className="font-semibold" style={{ color: 'var(--text-main)' }}>{b.authors}{b.year ? ` (${b.year})` : ''}{cite(b.cites, `${b.id}-c`)}</p>
-            {b.design && <p className="text-[14px]"><span className="font-semibold">{t('stu2.study.design')}:</span> {inl(b.design, `${b.id}-d`)}</p>}
-            {b.result && <p className="text-[14px]"><span className="font-semibold">{t('stu2.study.result')}:</span> {inl(b.result, `${b.id}-r`)}</p>}
-            {b.conclusion && <p className="text-[14px]"><span className="font-semibold">{t('stu2.study.conclusion')}:</span> {inl(b.conclusion, `${b.id}-s`)}</p>}
+          <div className="rounded-2xl px-4 py-3" style={{ border: '1px solid var(--border-color)', background: 'var(--bg-main)' }}>
+            <p className="flex flex-wrap items-baseline gap-x-2 font-semibold" style={{ color: 'var(--text-main)' }}>
+              <span>{b.authors}</span>
+              {b.year && <span className="font-normal tabular-nums" style={{ color: 'var(--text-secondary)' }}>({b.year})</span>}
+              <span className="font-normal">{cite(b.cites, `${b.id}-c`)}</span>
+            </p>
+            {/* Kompakt: Beschriftung links, Text rechts; auf dem Handy untereinander. */}
+            <dl className="mt-2 grid grid-cols-1 sm:grid-cols-[auto_1fr] gap-x-3 gap-y-1 text-[14px]">
+              {([['design', b.design], ['result', b.result], ['conclusion', b.conclusion]] as const).filter(([, v]) => v).map(([k, v]) => (
+                <React.Fragment key={k}>
+                  <dt className="text-[11px] font-semibold uppercase tracking-[0.08em] sm:pt-[3px]" style={{ color: 'var(--text-secondary)' }}>{t(`stu2.study.${k}`)}</dt>
+                  <dd className="mb-1 sm:mb-0">{inl(v, `${b.id}-${k}`)}</dd>
+                </React.Fragment>
+              ))}
+            </dl>
           </div>
         );
       case 'figure': {
@@ -157,11 +215,14 @@ export const StudioBlocks: React.FC<Props> = ({ result, sources, renderCite }) =
   // Länge am Haupttext (ohne Zeitleiste, Aufgaben, Übungsfragen, Klausurinfos); ältere Ergebnisse ohne mainWords: alles.
   const shown = result.stats.mainWords ?? result.stats.outputWords;
   const ratio = result.stats.sourceWords ? Math.round((shown / result.stats.sourceWords) * 100) : null;
+  // Inhaltsverzeichnis ab 5 Kapiteln (Kapitel und angehängte Abschnitte wie Übungsfragen).
+  const chapters = result.blocks.filter((b): b is Extract<Block, { type: 'heading' }> => b.type === 'heading' && b.level === 2);
+  const jump = (id: string) => document.getElementById(`stu-ch-${id}`)?.scrollIntoView({ behavior: 'smooth', block: 'start' });
   return (
     <div className="space-y-4 text-[15px] leading-relaxed" style={{ color: 'var(--text-main)' }}>
       <p className="text-[12.5px]" style={{ color: 'var(--text-secondary)' }}>
         {t('stu2.stats', { words: shown, source: result.stats.sourceWords })}{ratio !== null ? ` (${ratio} %)` : ''}
-        {' · '}{t('stu2.sourcesUsed', { n: sources.length })}
+        {' · '}{tp('stu2.sourcesUsed', sources.length)}
       </p>
       {(result.warnings.length > 0 || result.omittedSources.length > 0) && (
         <details className="rounded-xl px-4 py-3" style={{ border: '1px solid #ea580c', background: 'color-mix(in srgb, #ea580c 8%, transparent)' }}>
@@ -174,10 +235,25 @@ export const StudioBlocks: React.FC<Props> = ({ result, sources, renderCite }) =
           </ul>
         </details>
       )}
+      {chapters.length > 4 && (
+        <nav aria-label={t('stu2.toc')} className="rounded-2xl px-4 py-3" style={{ border: '1px solid var(--border-color)', background: 'var(--bg-main)' }}>
+          <p className="text-[11px] font-semibold uppercase tracking-[0.08em] mb-2" style={{ color: 'var(--text-secondary)' }}>{t('stu2.toc')}</p>
+          <ol className="space-y-0.5">
+            {chapters.map((c, i) => (
+              <li key={c.id}>
+                <button type="button" onClick={() => jump(c.id)} className="w-full flex items-baseline gap-2.5 text-left py-1 text-[14px] font-semibold rounded-md transition-opacity hover:opacity-70" style={{ color: 'var(--text-main)' }}>
+                  <span className="text-[12px] tabular-nums w-5 shrink-0" style={{ color: 'var(--primary-ink)' }}>{i + 1}</span>
+                  <span>{c.text}</span>
+                </button>
+              </li>
+            ))}
+          </ol>
+        </nav>
+      )}
       {result.blocks.map((b, i) => (
         <div key={b.id}>
-          {/* Skript: „Kurz gecheckt“ über der ersten Frage eines Abschnitts. */}
-          {b.type === 'check' && result.blocks[i - 1]?.type !== 'check' && (
+          {/* Skript: „Kurz gecheckt“ über der ersten Frage eines Abschnitts (nicht bei den Übungsfragen am Ende). */}
+          {b.type === 'check' && b.id.startsWith('c') && result.blocks[i - 1]?.type !== 'check' && (
             <p className="text-[11px] font-semibold uppercase tracking-[0.08em] mb-2" style={{ color: 'var(--primary-ink)' }}>{t('stu2.checkTitle')}</p>
           )}
           {render(b)}

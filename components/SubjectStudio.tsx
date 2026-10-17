@@ -114,7 +114,7 @@ export const SubjectStudio: React.FC<Props> = ({ collection, documents, userId, 
   const [streamText, setStreamText] = useState('');
   /** Vorarbeit vor und nach dem Schreiben: PDFs lesen, Abbildungen suchen, Abbildungen ausschneiden. */
   const [progress, setProgress] = useState<{ phase: 'pdf' | 'figures' | 'crop'; done: number; total: number; name?: string } | null>(null);
-  const [activeCitation, setActiveCitation] = useState<{ pages: number[]; source: StudioSourceRef } | null>(null);
+  const [activeCitation, setActiveCitation] = useState<{ pages: number[]; source: StudioSourceRef; footnote?: number } | null>(null);
   // Selbsttest-Antworten je Leitfaden und Frage, nur auf diesem Gerät (Schlüssel "<itemId>:<index>").
   const selfCheckKey = `studearc_studio_selfcheck_${userId ?? 'local'}`;
   const [selfChecks, setSelfChecks] = useState<Record<string, SelfCheckState>>(() => {
@@ -871,7 +871,7 @@ export const SubjectStudio: React.FC<Props> = ({ collection, documents, userId, 
         </div>
       )}
       {openItem.formatVersion === 2 && openItem.content ? (
-        <StudioBlocks result={openItem.content} sources={openItem.sources} renderCite={renderCitation(openItem.sources)} />
+        <StudioBlocks result={openItem.content} sources={openItem.sources} renderCite={renderCitation(openItem.sources)} onCite={(source, pages, footnote) => setActiveCitation({ source, pages, footnote })} activeFootnote={activeCitation?.footnote ?? null} />
       ) : openItem.kind === 'guide' ? guideBody(openItem) : (
         <div className="text-[15px] leading-relaxed">
           {richBody(openItem.markdown, openItem.sources, openItem)}
@@ -951,13 +951,16 @@ export const SubjectStudio: React.FC<Props> = ({ collection, documents, userId, 
               <>
                 <FileText className="w-4 h-4 shrink-0" style={{ color: 'var(--primary-ink)' }} strokeWidth={2} />
                 <p className="text-[13px] flex-1 min-w-[160px] break-words" style={{ color: 'var(--text-main)' }}>
+                  {activeCitation.footnote !== undefined && <span className="font-semibold" style={{ color: 'var(--primary-ink)' }}>{t('stu2.footnote', { n: activeCitation.footnote })} · </span>}
                   <span className="font-semibold">{activeCitation.source.name}</span>
-                  {(() => { const part = activeCitation.pages.length ? partOf(activeCitation.source.parts, activeCitation.pages[0]) : undefined; return part ? <span> · {part.title}</span> : null; })()}
+                  {(() => { const parts = new Set(activeCitation.pages.map(p => partOf(activeCitation.source.parts, p)?.title)); const part = parts.size === 1 ? [...parts][0] : undefined; return part ? <span> · {part}</span> : null; })()}
                 </p>
                 {activeCitation.pages.length
                   ? activeCitation.pages.slice(0, 8).map(p => {
                       const part = partOf(activeCitation.source.parts, p);
-                      return <button key={p} onClick={() => openCitation(p)} className={btn} style={primary}>{part ? t('stu2.slideBtn', { slide: slideIn(part, p), page: p }) : t('hl.page', { n: p })}</button>;
+                      // Seiten aus mehreren Vorlesungen: die Vorlesung steht am Knopf.
+                      const mixed = new Set(activeCitation.pages.map(x => partOf(activeCitation.source.parts, x)?.title)).size > 1;
+                      return <button key={p} onClick={() => openCitation(p)} className={btn} style={primary}>{part ? (mixed ? t('stu2.slideChip', { part: part.title, slides: slideIn(part, p) }) : t('stu2.slideBtn', { slide: slideIn(part, p), page: p })) : t('hl.page', { n: p })}</button>;
                     })
                   : <button onClick={() => openCitation()} className={btn} style={primary}>{t('stu.openSource')}</button>}
                 <button onClick={() => setActiveCitation(null)} className="p-2" style={{ color: 'var(--text-secondary)' }} aria-label={t('common.close')}><X className="w-4 h-4" /></button>
