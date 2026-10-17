@@ -6,7 +6,7 @@
 //   expectations.json    fachspezifische Abnahme (Zahlen, Tabellen, Aufgaben …), optional
 //   cache/               Extraktionen; spätere Läufe kosten nur Gliederung, Schreiben, Prüfen
 // Ergebnis: benchmark/results/lernstudio/<Zeit>.json und .md
-// Optional: STUDIO_EVAL_WRITER=gemini-4-argon (Schreibmodell), STUDIO_EVAL_FOCUS="…"
+// Optional: STUDIO_EVAL_WRITER=gemini-4-argon (Schreibmodell), STUDIO_EVAL_PLAN=free (alles Flash-Lite), STUDIO_EVAL_FOCUS="…"
 import { describe, it, expect } from 'vitest';
 import { appendFileSync, existsSync, mkdirSync, readdirSync, readFileSync, writeFileSync } from 'node:fs';
 import { join } from 'node:path';
@@ -134,7 +134,9 @@ const makeLlm = (usage: Usage, rawDir?: string): StudioLlm => {
     writeFileSync(join(rawDir, `${String(++n).padStart(3, '0')}-${step}.json`), JSON.stringify({ finish, prompt, text }, null, 1));
   };
   const transport: StudioTransport = async (req, onText, signal) => {
-    const model = req.step === 'write' && process.env.STUDIO_EVAL_WRITER ? process.env.STUDIO_EVAL_WRITER : req.heavy ? MODEL_HEAVY : MODEL_LITE;
+    // STUDIO_EVAL_PLAN=free: wie das Backend für Free (selectModel gibt Free immer Flash-Lite).
+    const free = process.env.STUDIO_EVAL_PLAN === 'free';
+    const model = free ? MODEL_LITE : req.step === 'write' && process.env.STUDIO_EVAL_WRITER ? process.env.STUDIO_EVAL_WRITER : req.heavy ? MODEL_HEAVY : MODEL_LITE;
     const limit = model.includes('argon') ? 32768 : 16384;
     const config: Record<string, unknown> = {
       maxOutputTokens: Math.min(limit, req.maxOutputTokens ?? limit),
@@ -308,7 +310,7 @@ run('Lernstudio-Eval (live)', () => {
     check('Keine Schleife', loops === 0, `${loops} abgebrochen`);
     check('Kein leeres oder unvollständiges Kapitel', !(r.incompleteChapters?.length), (r.incompleteChapters ?? []).join(', '));
     check('Keine leere Überschrift', checkEmptyHeadings(r.blocks).length === 0);
-    const writer = process.env.STUDIO_EVAL_WRITER || MODEL_HEAVY;
+    const writer = process.env.STUDIO_EVAL_PLAN === 'free' ? `${MODEL_LITE} (alle Schritte, wie Free)` : process.env.STUDIO_EVAL_WRITER || MODEL_HEAVY;
     const summary = [
       '',
       `Schreibmodell: ${writer}, Temperatur: ${TEMP_DEFAULT ? 'Standard des Modells' : 'Pipeline (0,1 bis 0,3)'}`,

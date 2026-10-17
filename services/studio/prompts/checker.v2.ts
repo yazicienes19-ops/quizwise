@@ -1,6 +1,6 @@
 /** Prüfer (Schritt D). */
 // v2 (16.10.2026): Tabellenzellen, Zuspitzungen ohne Beleg, Rechenbeispiele als Studienergebnis.
-// v3 (17.10.2026): unmarkierte Aussagen ohne Beleg, auch Einschränkungen und Klausurfallen.
+// v3 (17.10.2026): unmarkierte Aussagen ohne Beleg, auch Einschränkungen und Klausurfallen; Weglassungen sind kein Problem.
 export const CHECKER_PROMPT_VERSION = 'checker.v3';
 
 export const CHECKER_PROMPT = `Du prüfst einen generierten Lerntext (Blöcke) gegen die Einheiten. Melde NUR echte
@@ -22,6 +22,8 @@ Prüfe:
 8. Unmarkierte Aussagen ohne Beleg: Ein Block mit origin "quelle" (auch Klausurfallen und Beispiele) enthält
    eine Aussage, Einschränkung oder Gegenthese, die in keiner zitierten Einheit steht (z. B. „nicht zwingend“,
    „nicht unbedingt“, „entgegen der verbreiteten Annahme“): melde nicht_belegt und zitiere die Aussage.
+Nicht melden: Weglassungen. Nennt der Text einen Autor, ein Jahr oder ein Detail nicht, das in der Einheit steht,
+ist das kein Problem (nur falsche, unbelegte oder zugespitzte Aussagen sind Probleme).
 Keine Stilkritik. Leere Liste, wenn alles stimmt.`;
 
 export const checkerSchema = {
