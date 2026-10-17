@@ -209,6 +209,15 @@ export const StudioBlocks: React.FC<Props> = ({ result, sources, renderCite, onC
           </ol>
         );
       case 'check':
+        // Häufige Fragen: zum Lesen, Frage und Antwort offen, mit Fußnote.
+        if (result.format === 'faq' && b.id.startsWith('c')) {
+          return (
+            <div className="space-y-1">
+              <p className="font-semibold" style={{ color: 'var(--text-main)' }}>{inl(b.question, `${b.id}-q`)}</p>
+              <p>{inl(b.answer, `${b.id}-a`)}{cite(b.cites, `${b.id}-c`)}</p>
+            </div>
+          );
+        }
         if (renderCheck && b.id.startsWith('c')) {
           const refs = b.cites.map(c => ({ n: numberOf(c.sourceId), page: c.page })).filter(r => r.n);
           return renderCheck(b, `${b.answer}${refs.length ? ` [${refs.map(r => (r.page ? `${r.n}:${r.page}` : String(r.n))).join(', ')}]` : ''}`);

@@ -7,7 +7,7 @@ import { buildGlossaryTerms, mergeGlossary } from './glossary';
 import { buildExtraBlocks, buildPracticeQuestions, buildTimeline, timelineCandidates } from './extras';
 import { markPriority } from './priority';
 import { partOf, slideIn } from './parts';
-import { checkEmptyHeadings, checkGlossaryChapter, checkGuideStructure, checkGuideTerms, checkMerksatz, glossaryTermCoverage, checkResultNumbers, checkPriority, checkScriptSections, checkRepetition, checkSectionCoverage, checkStudies, unitCoverage, validateResult, mainTextWords, type ValidationContext } from './validate';
+import { checkEmptyHeadings, checkFaqChapter, CONTENT_TYPES, checkGlossaryChapter, checkGuideStructure, faqSectionCoverage, checkGuideTerms, checkMerksatz, glossaryTermCoverage, checkResultNumbers, checkPriority, checkScriptSections, checkRepetition, checkSectionCoverage, checkStudies, unitCoverage, validateResult, mainTextWords, type ValidationContext } from './validate';
 import { checkWithModel } from './check';
 import { mapLimit, StudioLlmError, type ExtractionCache, type StudioLlm } from './llm';
 import type { FigureRef } from './blocks';
@@ -107,6 +107,7 @@ export const runSummaryPipeline = async (input: PipelineInput): Promise<Lernstud
   const script = format === 'skript';
   const guide = format === 'leitfaden';
   const glossary = format === 'glossar';
+  const faq = format === 'faq';
   const cancelled = () => input.isCancelled?.() ?? false;
   const bail = () => { if (cancelled()) throw new PipelineCancelled(); };
   const names = new Map(input.sources.map(s => [s.docId, s.name]));
@@ -185,7 +186,7 @@ export const runSummaryPipeline = async (input: PipelineInput): Promise<Lernstud
   // Zeitleiste mit höchstens ~15 Einträgen zu je ~12 Wörtern) vorab abziehen.
   const pageWords = (sourceId: string, page: number) => countWords(deduped.find(s => s.docId === sourceId)?.pages?.[page - 1] ?? '');
   // Glossar: keine angehängten Abschnitte.
-  const reservedWords = glossary ? 0 : units.filter(u => u.type === 'task' || u.type === 'practice_question' || u.type === 'exam_info')
+  const reservedWords = glossary || faq ? 0 : units.filter(u => u.type === 'task' || u.type === 'practice_question' || u.type === 'exam_info')
     .reduce((a, u) => a + countWords(`${u.text} ${u.answer ?? ''}`), 0) + Math.min(15, timelineCandidates(units).length) * 12;
   const chapters: Chapter[] = await buildOutline(units, names, llm, sourceWords, input.focus, lectures, { pageWords, reservedWords }, format);
   bail();
@@ -238,7 +239,7 @@ export const runSummaryPipeline = async (input: PipelineInput): Promise<Lernstud
     if (script) return (await mapLimit(ch.sections, 3, async (_, k) => (cancelled() ? [] : (await writeSection(ch, i, k)) ?? []))).flat();
     const whole = await attempt(writeInput(ch, i), diag);
     // Leitfaden: Aufbau gilt je Kapitel (Kernbegriffe, Fragen …), abschnittsweise ergäbe er sich mehrfach; ein zweiter Versuch statt Aufteilen.
-    if (guide || glossary) return whole ?? (cancelled() ? [] : (await attempt(writeInput(ch, i), diag)) ?? []);
+    if (guide || glossary || faq) return whole ?? (cancelled() ? [] : (await attempt(writeInput(ch, i), diag)) ?? []);
     if (whole && !structuralIssues(ch, i, whole, byId).length) return whole;
     if (cancelled()) return whole ?? [];
     diag.split = true;
@@ -257,9 +258,9 @@ export const runSummaryPipeline = async (input: PipelineInput): Promise<Lernstud
   let written = 0;
   onProgress?.({ step: 'write', done: 0, total: chapters.length });
   // Zeitleiste nur in der Zusammenfassung; das Skript erzählt die Studien im Text, der Leitfaden hat „Wichtige Studien“.
-  const timelinePromise = script || guide || glossary ? Promise.resolve([]) : buildTimeline(units, llm);
+  const timelinePromise = script || guide || glossary || faq ? Promise.resolve([]) : buildTimeline(units, llm);
   // Glossar: nur Begriffe, keine Übungsfragen, Aufgaben oder Klausurinfos.
-  const practicePromise = glossary ? Promise.resolve(null) : buildPracticeQuestions(units, llm).catch(() => null);
+  const practicePromise = glossary || faq ? Promise.resolve(null) : buildPracticeQuestions(units, llm).catch(() => null);
   const chapterBlocks: Block[][] = await mapLimit(chapters, PARALLEL_WRITE, async (ch, i) => {
     if (cancelled()) return [];
     const blocks = await writeRobust(ch, i);
@@ -267,7 +268,7 @@ export const runSummaryPipeline = async (input: PipelineInput): Promise<Lernstud
     return blocks;
   });
   bail();
-  const extras = glossary ? [] : buildExtraBlocks(units, await timelinePromise, await practicePromise);
+  const extras = glossary || faq ? [] : buildExtraBlocks(units, await timelinePromise, await practicePromise);
 
 
   // ── D: prüfen ──
@@ -285,6 +286,17 @@ export const runSummaryPipeline = async (input: PipelineInput): Promise<Lernstud
     const head = chapterHeading(ch.title, i).id;
     const words = resultWords(chapterBlocks[i]);
     // Glossar: nur Begriffe, keine Abdeckung aller Einheiten (Studien, Beispiele gehören nicht hinein).
+    // Häufige Fragen: je Abschnitt eine Frage, belegte Antworten; Wiederholung über die Antworten.
+    if (faq) {
+      // Mindestens eine Frage je Abschnitt und etwa eine je 5 inhaltliche Einheiten (Abnahme: 3 Fragen bei 16 Einheiten).
+      const content = chapterUnitIds(ch).filter(id => CONTENT_TYPES.has(byId.get(id)?.type ?? '')).length;
+      return [
+        ...checkFaqChapter(ch.sections, chapterBlocks[i], head, Math.max(ch.sections.length, Math.ceil(content / 5))),
+        ...checkRepetition(chapterBlocks[i]),
+        // Prüfungsrelevantes (Wiederholungs- und Quizfolien) bekommt eine Frage (Abnahme: Cocktail-Party fehlte).
+        ...checkPriority(chapterUnitIds(ch), chapterBlocks[i], byId, head),
+      ];
+    }
     if (glossary) return checkGlossaryChapter(chapterUnitIds(ch).map(id => byId.get(id)).filter((u): u is Unit => !!u), chapterBlocks[i], head, requiredTerms[i], units);
     return [
       ...checkSectionCoverage(ch.sections, chapterBlocks[i], byId, head),
@@ -420,7 +432,8 @@ export const runSummaryPipeline = async (input: PipelineInput): Promise<Lernstud
     d.coverage = Math.round(unitCoverage(chapterUnitIds(ch), chapterBlocks[i], byId).ratio * 100) / 100;
     if (!chapterBlocks[i].length || checkEmptyHeadings([chapterHeading(ch.title, i), ...chapterBlocks[i]]).length
       // Leitfaden ordnet nach Art (Begriffe, Studien, Fragen), nicht nach Abschnitten: dort zählt das ganze Kapitel.
-      || (glossary ? glossaryTermCoverage(chapterUnitIds(ch).map(id => byId.get(id)).filter((u): u is Unit => !!u), chapterBlocks[i]) < GUIDE_COVERAGE_MIN
+      || (faq ? faqSectionCoverage(ch.sections, chapterBlocks[i]) < GUIDE_COVERAGE_MIN
+        : glossary ? glossaryTermCoverage(chapterUnitIds(ch).map(id => byId.get(id)).filter((u): u is Unit => !!u), chapterBlocks[i]) < GUIDE_COVERAGE_MIN
         : guide ? d.coverage < GUIDE_COVERAGE_MIN : checkSectionCoverage(ch.sections, chapterBlocks[i], byId, '').length)) incompleteChapters.push(ch.title);
   });
   const finalCode = [

@@ -26,7 +26,7 @@ Prüfe:
 9. Studienaufbau: Verknüpft ein Block Gruppen mit Bedingungen („die Gruppe X bekam Y“, „passend zu …“), die die
    Einheit nur nebeneinander nennt, melde nicht_belegt.
 Nicht melden: ein Jahr, das in einer der zitierten Einheiten für dieselben Autoren steht (Folien nennen manchmal
-zwei Jahre für dieselbe Arbeit). Weglassungen: Nennt der Text einen Autor, ein Jahr oder ein Detail nicht, das in der Einheit steht,
+zwei Jahre für dieselbe Arbeit). Abweichende Schreibweisen desselben Namens (ein Buchstabe Unterschied). Weglassungen: Nennt der Text einen Autor, ein Jahr oder ein Detail nicht, das in der Einheit steht,
 ist das kein Problem (nur falsche, unbelegte oder zugespitzte Aussagen sind Probleme).
 Keine Stilkritik. Leere Liste, wenn alles stimmt.`;
 

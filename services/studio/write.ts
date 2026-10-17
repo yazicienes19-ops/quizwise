@@ -5,6 +5,7 @@ import { SUMMARY_BLOCK_TYPES, SUMMARY_PROMPT } from './prompts/summary.v3';
 import { SCRIPT_BLOCK_TYPES, SCRIPT_PROMPT } from './prompts/script.v1';
 import { GUIDE_BLOCK_TYPES, GUIDE_PROMPT } from './prompts/guide.v1';
 import { GLOSSARY_BLOCK_TYPES, GLOSSARY_PROMPT } from './prompts/glossary.v1';
+import { FAQ_BLOCK_TYPES, FAQ_PROMPT } from './prompts/faq.v1';
 import { STUDIO_TEMPERATURE, type StudioLlm } from './llm';
 import { unitFlags } from './outline';
 import { blockTexts } from './text';
@@ -98,7 +99,7 @@ export const buildWritePrompt = (input: WriteInput): string => {
   const required = input.requiredTerms?.length
     ? `\nPFLICHTBEGRIFFE (je eine eigene Zeile, Schreibweise wie hier): ${input.requiredTerms.join('; ')}\n`
     : '';
-  return `${script ? SCRIPT_PROMPT : input.format === 'leitfaden' ? GUIDE_PROMPT : input.format === 'glossar' ? GLOSSARY_PROMPT : SUMMARY_PROMPT}
+  return `${script ? SCRIPT_PROMPT : input.format === 'leitfaden' ? GUIDE_PROMPT : input.format === 'glossar' ? GLOSSARY_PROMPT : input.format === 'faq' ? FAQ_PROMPT : SUMMARY_PROMPT}
 ${focus}${exam}${figs}${required}${repair}${part}${neighbors}
 === KAPITEL: ${input.chapter.title} ===
 WORTBUDGET: ${writerBudget(input.chapter.budget, input.argon, input.format)} Wörter${script ? ' (ungefähr)' : ' (Obergrenze, nicht überschreiten)'}
@@ -120,7 +121,7 @@ export const writeChapterBody = async (input: WriteInput, llm: StudioLlm, argon:
     // Typ "figure" nur, wenn es Abbildungen zum Einfügen gibt (sonst hielt das Modell figure-Einheiten für Bilder).
     step: 'write', prompt: buildWritePrompt(input),
     schema: writerSchema((input.format === 'skript' ? SCRIPT_BLOCK_TYPES : input.format === 'leitfaden' ? GUIDE_BLOCK_TYPES
-      : input.format === 'glossar' ? GLOSSARY_BLOCK_TYPES : SUMMARY_BLOCK_TYPES).filter(t => t !== 'figure' || input.figures.length)),
+      : input.format === 'glossar' ? GLOSSARY_BLOCK_TYPES : input.format === 'faq' ? FAQ_BLOCK_TYPES : SUMMARY_BLOCK_TYPES).filter(t => t !== 'figure' || input.figures.length)),
     heavy: true, argon, temperature: STUDIO_TEMPERATURE.write, maxOutputTokens: chapterTokenCap(input.chapter.budget),
   });
   const prefix = chapterPrefix(input);

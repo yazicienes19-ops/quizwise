@@ -97,7 +97,15 @@ export const scriptCorridor = (sourceWords: number): { min: number; max: number;
 
 export const corridorFor = (format: StudioOutputFormat, sourceWords: number) =>
   format === 'skript' ? scriptCorridor(sourceWords) : format === 'leitfaden' ? guideCorridor(sourceWords)
-    : format === 'glossar' ? glossaryCorridor(sourceWords) : summaryCorridor(sourceWords);
+    : format === 'glossar' ? glossaryCorridor(sourceWords) : format === 'faq' ? faqCorridor(sourceWords) : summaryCorridor(sourceWords);
+
+/** Zielkorridor der Häufigen Fragen (Wörter): 15 bis 40 % der Quelle, mindestens 400, höchstens 8.000. */
+export const faqCorridor = (sourceWords: number): { min: number; max: number; target: number } => {
+  const clamp = (n: number) => Math.round(Math.min(8000, Math.max(400, n)));
+  const min = clamp(sourceWords * 0.15);
+  const max = clamp(sourceWords * 0.4);
+  return { min, max, target: Math.round((min + max) / 2) };
+};
 
 /** Zielkorridor des Glossars (Wörter): 10 bis 35 % der Quelle, mindestens 300, höchstens 6.000. */
 export const glossaryCorridor = (sourceWords: number): { min: number; max: number; target: number } => {

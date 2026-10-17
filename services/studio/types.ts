@@ -13,7 +13,7 @@ export type Origin = 'quelle' | 'ki';
 export type CalloutVariant = 'merksatz' | 'klausurfalle' | 'hinweis' | 'beispiel' | 'einordnung' | 'leitfrage' | 'bruecke';
 
 /** Format des Ergebnisses: Zusammenfassung (wiederholen) oder Skript (verstehen). */
-export type StudioOutputFormat = 'zusammenfassung' | 'skript' | 'leitfaden' | 'glossar';
+export type StudioOutputFormat = 'zusammenfassung' | 'skript' | 'leitfaden' | 'glossar' | 'faq';
 
 /** unitIds: Einheiten, aus denen der Block stammt (für die Abdeckung je Abschnitt; nicht angezeigt). */
 export type Block = { id: string; origin: Origin; cites: Cite[]; unitIds?: string[] } & (

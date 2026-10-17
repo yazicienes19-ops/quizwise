@@ -572,6 +572,38 @@ export const glossaryTermCoverage = (chapterUnits: Unit[], chapterBlocks: Block[
   return terms.filter(u => inTables.has(u.id)).length / terms.length;
 };
 
+/**
+ * Häufige Fragen je Kapitel: jeder Abschnitt hat mindestens eine Frage (über ihre Einheiten), jede Antwort ist
+ * belegt, höchstens 90 Wörter, wiederholt nicht die Frage; keine Frage doppelt.
+ */
+export const FAQ_MAX_WORDS = 90;
+export const checkFaqChapter = (sections: { title: string; unitIds: string[] }[], chapterBlocks: Block[], chapterBlockId: string, minQuestions = 0): Issue[] => {
+  const checks = chapterBlocks.filter((b): b is Extract<Block, { type: 'check' }> => b.type === 'check');
+  const issues: Issue[] = [];
+  const asked = new Set(checks.flatMap(b => b.unitIds ?? []));
+  const uncovered = sections.filter(sec => !sec.unitIds.some(id => asked.has(id)));
+  if (uncovered.length) issues.push({ rule: 'guide_structure', blockId: chapterBlockId, message: `Abschnitte ohne Frage: ${uncovered.map(sec => `„${sec.title}“`).join(', ')}. Je Abschnitt mindestens eine Frage.` });
+  if (checks.length < minQuestions) issues.push({ rule: 'guide_structure', blockId: chapterBlockId, message: `Nur ${checks.length} Fragen, für den Stoff des Kapitels mindestens ${minQuestions}.` });
+  const seen = new Set<string>();
+  for (const b of checks) {
+    const words = (b.answer.match(/\S+/g) ?? []).length;
+    if (!b.cites.length) issues.push({ rule: 'guide_structure', blockId: b.id, message: `Frage „${b.question.slice(0, 80)}“ ohne Beleg: in "units" die Einheiten der Antwort angeben.` });
+    else if (answerRepeatsQuestion(b.question, b.answer)) issues.push({ rule: 'guide_structure', blockId: b.id, message: `Die Antwort auf „${b.question.slice(0, 80)}“ wiederholt nur die Frage.` });
+    if (words > FAQ_MAX_WORDS) issues.push({ rule: 'length', blockId: b.id, message: `Antwort auf „${b.question.slice(0, 60)}“ hat ${words} Wörter, höchstens ${FAQ_MAX_WORDS}.` });
+    const k = b.question.toLowerCase().replace(/[^\p{L}\p{N}]+/gu, ' ').trim();
+    if (seen.has(k)) issues.push({ rule: 'repetition', blockId: b.id, message: `Frage „${b.question.slice(0, 80)}“ steht doppelt.` });
+    seen.add(k);
+  }
+  return issues;
+};
+
+/** Anteil der Abschnitte eines Kapitels mit mindestens einer Frage. */
+export const faqSectionCoverage = (sections: { unitIds: string[] }[], chapterBlocks: Block[]): number => {
+  if (!sections.length) return 1;
+  const asked = new Set(chapterBlocks.filter(b => b.type === 'check').flatMap(b => b.unitIds ?? []));
+  return sections.filter(sec => sec.unitIds.some(id => asked.has(id))).length / sections.length;
+};
+
 export const checkScriptSections = (chapterBlocks: Block[], chapterBlockId: string): Issue[] => {
   const issues: Issue[] = [];
   const sections: { head: Extract<Block, { type: 'heading' }>; body: Block[] }[] = [];
