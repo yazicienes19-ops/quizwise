@@ -49,3 +49,6 @@ benchmark/human/
 
 # Lernstudio-Aufträge und Testläufe mit echten Vorlesungsinhalten (Repo ist öffentlich)
 docs/lernstudio/
+
+# Obsidian-Vault-Einstellungen (lokal)
+.obsidian/
