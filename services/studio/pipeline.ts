@@ -390,8 +390,9 @@ export const runSummaryPipeline = async (input: PipelineInput): Promise<Lernstud
     ...validateResult(all(), ctx).filter(i => i.rule !== 'length'),
     ...chapters.flatMap((_, i) => chapterIssues(i)).filter(i => i.rule !== 'section_coverage'),
   ].filter(i => !(i.rule === 'empty_heading' && i.blockId && incompleteChapters.includes(chapters[chapterOf(i.blockId) ?? -1]?.title)));
+  // Folienfehler-Hinweise setzt der Code; der Prüfer sähe sie sonst als Lerninhalt und beanstandete sie.
   const recheck = repairIdx.length
-    ? await checkWithModel(repairIdx.map(i => chapterBlocks[i]), units, llm).catch(() => [] as Issue[])
+    ? await checkWithModel(repairIdx.map(i => chapterBlocks[i].filter(b => !/-se\d+$/.test(b.id))), units, llm).catch(() => [] as Issue[])
     : [];
   const untouchedModel = modelIssues.filter(i => {
     const ci = i.blockId ? chapterOf(i.blockId) : null;

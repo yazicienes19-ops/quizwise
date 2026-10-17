@@ -149,7 +149,9 @@ describe('Folienfehler nur mit Bestätigung am Seitenbild', () => {
   });
   it('Pipeline: vermutete Fehler erreichen das Schreibmodell nie; den Hinweis setzt der Code mit genau einer Folie', async () => {
     const writes: string[] = [];
+    const checks: string[] = [];
     const llm: StudioLlm = async req => {
+      if (req.step === 'check') checks.push(req.prompt);
       if (req.step === 'extract') return { units: [
         { page: 1, type: 'study', text: 'Handy-Beispiel (Skowronek et al., 2023).', authors: 'Skowronek et al.', year: '2023', design: 'Zwei Gruppen', result: 'kein Ergebnis berichtet' },
         { page: 2, type: 'example', illustrative: true, text: 'Mit Handy M = 90, ohne Handy M = 30: Falsifikation.' },
@@ -179,6 +181,9 @@ describe('Folienfehler nur mit Bestätigung am Seitenbild', () => {
     expect(hints.map(h => [h.text, h.cites])).toEqual([
       ['Auf Folie 1: Hier steht vermutlich versehentlich die Hypothese aus dem Musik-Beispiel.', [{ sourceId: 'g', page: 1 }]],
     ]);
+    // Auch die Prüfung nach der Reparatur sieht den Hinweis nicht (sie beanstandete ihn sonst als Lerninhalt).
+    expect(checks.length).toBeGreaterThanOrEqual(2);
+    expect(checks.some(c => c.includes('versehentlich die Hypothese'))).toBe(false);
   });
 });
 

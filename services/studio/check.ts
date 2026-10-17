@@ -27,8 +27,9 @@ export const buildCheckPrompt = (blocks: Block[], units: Unit[]): string => {
     ...b.cites, ...(b.type === 'bullets' || b.type === 'tasks' || b.type === 'timeline' ? b.items.flatMap(i => i.cites) : []),
     ...(b.type === 'table' ? (b.rowCites ?? []).flat() : []),
   ]).map(citeKey));
+  // Folienfehler sind keine Belege; der Prüfer hielte sie sonst für Lerninhalt.
   const evidence = units
-    .filter(u => cited.has(`${u.sourceId}:${u.page}`))
+    .filter(u => u.type !== 'source_error' && cited.has(`${u.sourceId}:${u.page}`))
     .map(u => `${u.sourceId}:${u.page} | ${u.type}${unitFlags(u)} | ${[u.title, u.text, u.study && JSON.stringify(u.study)].filter(Boolean).join(' ')}`);
   return `${CHECKER_PROMPT}
 
