@@ -8,17 +8,17 @@ import { GLOSSARY_BLOCK_TYPES, GLOSSARY_PROMPT } from './prompts/glossary.v1';
 import { FAQ_BLOCK_TYPES, FAQ_PROMPT } from './prompts/faq.v1';
 import { STUDIO_TEMPERATURE, type StudioLlm } from './llm';
 import { unitFlags } from './outline';
-import { blockTexts } from './text';
+import { blockTexts, nameVariants, slideSequences } from './text';
 
 /** Schritt C: ein Kapitel (oder ein einzelner Abschnitt) schreiben, auch Reparatur E mit Beanstandungen. */
 
-const unitLine = (u: Unit, sourceNames: Map<string, string>) => {
+const unitLine = (u: Unit, sourceNames: Map<string, string>, note = '') => {
   const where = `${sourceNames.get(u.sourceId) ?? '?'}${u.page ? `, S. ${u.page}` : ''}`;
   const study = u.study
     ? ` [Studie: ${[u.study.authors, u.study.year, u.study.design, u.study.result, u.study.conclusion].filter(Boolean).join(' | ')}]`
     : '';
   const answer = u.answer ? ` [Antwort: ${u.answer}]` : '';
-  return `- ${u.id} (${u.type}, ${where})${unitFlags(u)}${u.title ? ` ${u.title}:` : ''} ${u.text}${study}${answer}`;
+  return `- ${u.id} (${u.type}, ${where})${unitFlags(u)}${u.title ? ` ${u.title}:` : ''} ${u.text}${study}${answer}${note}`;
 };
 
 /**
@@ -54,6 +54,8 @@ export interface WriteInput {
   neighbors?: { prev?: string; next?: string };
   /** Glossar: Pflichtbegriffe des Kapitels (aus der Begriffsliste). */
   requiredTerms?: string[];
+  /** Häufige Fragen: Studien und Definitionen mit Autor und Jahr samt Ergebniszahlen, die vorkommen müssen. */
+  requiredContent?: string[];
 }
 
 export interface WriteResult { blocks: Block[]; dropped: DroppedBlock[] }
@@ -74,10 +76,32 @@ const previousLine = (b: Block): string => {
   return `- [${kind}] ${blockTexts(b).filter(Boolean).join(' | ')}${ids}`;
 };
 
+/**
+ * Regeln für alle Formate (Review 17.10.: Forschungskreislauf in falscher Reihenfolge, „dicke, dünne Wörter“,
+ * Namen mit zwei Schreibweisen auf den Folien).
+ */
+export const COMMON_RULES = `
+ALLGEMEIN:
+- Abläufe, Kreisläufe und Modelle mit Schritten in genau der Reihenfolge der Folie wiedergeben; keinen Schritt
+  vorziehen oder umstellen, auch nicht in einer Zusammenfassung des Ablaufs. Zeigen aufeinanderfolgende Folien je
+  einen hervorgehobenen Schritt desselben Ablaufs, gilt die Reihenfolge der Seiten; beschreiben Einheiten einen
+  Ablauf unterschiedlich, gilt ebenfalls die Reihenfolge der Seiten.
+- Englische Bezeichnungen der Folie (z. B. für Wortlisten, Bedingungen, Aufgaben) beibehalten und erklären, nicht
+  wörtlich übersetzen: „Wörter zum Thema X (… words)“ statt einer wörtlichen Übersetzung.
+- Fragt etwas nach mehreren Dingen (Strömungen, Ziele, Theorien, Definitionen), nenne alle, die die Einheit aufzählt.`;
+
 export const buildWritePrompt = (input: WriteInput): string => {
   const byId = new Map(input.units.map(u => [u.id, u]));
+  // Abbildungen rund um eine Folienserie bekommen die Schrittfolge der Folien angehängt (Review 17.10.: eine
+  // Abbildungsbeschreibung stellte den Forschungskreislauf um, das Modell folgte ihr trotz der Vorgabe oben).
+  const allSeqs = slideSequences(input.units);
+  const noteFor = (u: Unit) => {
+    if (u.type !== 'figure' && u.type !== 'list') return '';
+    const sq = allSeqs.find(s => s.sourceId === u.sourceId && u.page >= s.from - 3 && u.page <= s.to + 1);
+    return sq ? ` [Schrittfolge laut Folien ${sq.from} bis ${sq.to}: ${sq.steps.join(' → ')}]` : '';
+  };
   const sections = (input.sectionIndex !== undefined ? [input.chapter.sections[input.sectionIndex]] : input.chapter.sections).map(s =>
-    `## Abschnitt: ${s.title}\n${s.unitIds.map(id => byId.get(id)).filter((u): u is Unit => !!u).map(u => unitLine(u, input.sourceNames)).join('\n')}`,
+    `## Abschnitt: ${s.title}\n${s.unitIds.map(id => byId.get(id)).filter((u): u is Unit => !!u).map(u => unitLine(u, input.sourceNames, noteFor(u))).join('\n')}`,
   ).join('\n\n');
   const exam = input.examInfo.length
     ? `\n=== KLAUSURINFOS (nur zur Gewichtung, nicht wiedergeben) ===\n${input.examInfo.map(u => `- ${u.text}`).join('\n')}\n`
@@ -87,20 +111,39 @@ export const buildWritePrompt = (input: WriteInput): string => {
     : '';
   const focus = input.focus?.trim() ? `\nSCHWERPUNKT: "${input.focus.trim().slice(0, 300)}"\n` : '';
   const repair = input.repair
-    ? `\n=== ÜBERARBEITUNG ===\nDeine vorherige Fassung hatte diese Probleme. Schreib ${input.format === 'skript' ? 'den Abschnitt' : 'das Kapitel'} neu, behebe sie alle und behalte alles Richtige:\n${input.repair.issues.map(i => `- ${i}`).join('\n')}\n\nVorherige Fassung:\n${input.repair.previous.filter(b => !b.id.endsWith('-h')).map(previousLine).join('\n')}\n`
+    ? `\n=== ÜBERARBEITUNG ===\nDeine vorherige Fassung hatte diese Probleme. Schreib ${input.format === 'skript' || input.format === 'faq' ? 'den Abschnitt' : 'das Kapitel'} neu, behebe sie alle und behalte alles Richtige:\n${input.repair.issues.map(i => `- ${i}`).join('\n')}\n\nVorherige Fassung:\n${input.repair.previous.filter(b => !b.id.endsWith('-h')).map(previousLine).join('\n')}\n`
     : '';
   const script = input.format === 'skript';
-  const part = input.sectionIndex !== undefined && !script
-    ? `\nDu schreibst nur EINEN Abschnitt dieses Kapitels: ein heading mit seinem Titel, danach sein Inhalt.\n`
-    : '';
+  const part = input.sectionIndex !== undefined && input.format === 'faq'
+    ? `\nDu schreibst nur die Fragen zu EINEM Abschnitt dieses Kapitels: 1 bis ${Math.min(10, Math.max(5, input.requiredContent?.length ?? 0))} Fragen, je Studie oder Definition der Pflichtinhalte eine eigene Frage.\n`
+    : input.sectionIndex !== undefined && !script
+      ? `\nDu schreibst nur EINEN Abschnitt dieses Kapitels: ein heading mit seinem Titel, danach sein Inhalt.\n`
+      : '';
   const neighbors = script
     ? `\nVORHERIGER ABSCHNITT: ${input.neighbors?.prev ?? '(keiner, dies ist der Anfang)'}\nNÄCHSTER ABSCHNITT: ${input.neighbors?.next ?? '(keiner, dies ist der letzte Abschnitt)'}\n`
     : '';
   const required = input.requiredTerms?.length
     ? `\nPFLICHTBEGRIFFE (je eine eigene Zeile, Schreibweise wie hier): ${input.requiredTerms.join('; ')}\n`
+    : input.requiredContent?.length
+      ? `\nPFLICHTINHALTE (jede Studie oder Definition in einer eigenen Frage oder Antwort, Ergebnisse exakt): ${input.requiredContent.join('; ')}\n`
+      : '';
+  const variants = nameVariants(input.units);
+  // Schrittfolgen aus Folienserien, die dieses Kapitel berührt.
+  const own = new Set(input.chapter.sections.flatMap(s => s.unitIds));
+  const seqs = slideSequences(input.units).filter(sq => input.units.some(u => own.has(u.id) && u.page >= sq.from && u.page <= sq.to));
+  // Nennen Einheiten rund um die Serie sie einen Kreislauf, heißt sie auch im Text so (Abnahme: „Ablauf“ statt „Kreislauf“).
+  const cycleWord = (sq: { sourceId: string; from: number; to: number }) => input.units
+    .filter(u => u.sourceId === sq.sourceId && u.page >= sq.from - 3 && u.page <= sq.to + 10)
+    .map(u => `${u.title ?? ''} ${u.text}`.match(/\b(Kreislauf|Zyklus|Regelkreis)\b/i)?.[1]).find(Boolean);
+  const sequences = seqs.length
+    ? `\nABLÄUFE IN FOLIENREIHENFOLGE (verbindlich, auch wenn eine Abbildungsbeschreibung anders ordnet): ${seqs.map(sq => { const c = cycleWord(sq); return `${sq.name}${c ? ` (${c}, danach wieder von vorn; im Text „${c}“ nennen)` : ''}: ${sq.steps.join(' → ')}`; }).join('; ')}\n`
+    : '';
+  const names = variants.length
+    ? `\nNAMEN MIT ZWEI SCHREIBWEISEN AUF DEN FOLIEN: ${variants.map(v => `${v.forms[0]} (${v.counts[0]}×) / ${v.forms[1]} (${v.counts[1]}×)`).join('; ')}. Nimm durchgehend die korrekte Schreibweise des Namens, im Zweifel die häufigere.\n`
     : '';
   return `${script ? SCRIPT_PROMPT : input.format === 'leitfaden' ? GUIDE_PROMPT : input.format === 'glossar' ? GLOSSARY_PROMPT : input.format === 'faq' ? FAQ_PROMPT : SUMMARY_PROMPT}
-${focus}${exam}${figs}${required}${repair}${part}${neighbors}
+${COMMON_RULES}
+${names}${sequences}${focus}${exam}${figs}${required}${repair}${part}${neighbors}
 === KAPITEL: ${input.chapter.title} ===
 WORTBUDGET: ${writerBudget(input.chapter.budget, input.argon, input.format)} Wörter${script ? ' (ungefähr)' : ' (Obergrenze, nicht überschreiten)'}
 

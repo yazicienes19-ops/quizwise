@@ -1,5 +1,5 @@
 import type { Block, Cite, Issue, SourcePart, StudioOutputFormat, Unit } from './types';
-import { authorYears, blockTexts, citationsIn, extractFacts, hasFact, INLINE_CITE_RE, isTruncatedPrefix, looksTruncated, resultWords, unbalanced } from './text';
+import { authorYears, blockTexts, nameVariants, citationsIn, extractFacts, hasFact, INLINE_CITE_RE, isTruncatedPrefix, looksTruncated, resultWords, unbalanced } from './text';
 import { corridorFor } from './outline';
 import { answerRepeatsQuestion } from './extras';
 import { GUIDE_PARTS } from './prompts/guide.v1';
@@ -141,7 +141,10 @@ export const checkAuthorYears = (blocks: Block[], ctx: ValidationContext): Issue
       // Kurzform ("Simons (1999)" für "Simons & Chabris (1999)") gilt, wenn Erstautor und Jahr passen;
       // ebenso "Rosenthal-Effekt (1968)" für "Rosenthal & Jacobson, 1968".
       const firstName = c.first.split('-')[0].toLowerCase();
-      if (!exact && !firstYears.has(`${c.first.toLowerCase()}|${c.year}`) && !firstYears.has(`${firstName}|${c.year}`)) {
+      // Genitiv („Treismans (1964)“) wie der Name; „Begriff und Levin et al (2001)“: der Teil nach dem letzten „und“.
+      const genitive = c.first.toLowerCase().replace(/s$/, '');
+      const tail = c.authors.split(/\s+und\s+/).pop()!.split(/[\s,&]+/)[0].toLowerCase();
+      if (!exact && !firstYears.has(`${c.first.toLowerCase()}|${c.year}`) && !firstYears.has(`${firstName}|${c.year}`) && !firstYears.has(`${genitive}|${c.year}`) && !firstYears.has(`${tail}|${c.year}`)) {
         issues.push({ rule: 'author_year', blockId: b.id, message: `„${c.authors} (${c.year})“ steht so in keiner Quelle.` });
       }
     }
@@ -577,12 +580,25 @@ export const glossaryTermCoverage = (chapterUnits: Unit[], chapterBlocks: Block[
  * belegt, höchstens 90 Wörter, wiederholt nicht die Frage; keine Frage doppelt.
  */
 export const FAQ_MAX_WORDS = 90;
-export const checkFaqChapter = (sections: { title: string; unitIds: string[] }[], chapterBlocks: Block[], chapterBlockId: string, minQuestions = 0): Issue[] => {
+export const checkFaqChapter = (sections: { title: string; unitIds: string[] }[], chapterBlocks: Block[], chapterBlockId: string, minQuestions = 0, chapterUnits: Unit[] = []): Issue[] => {
   const checks = chapterBlocks.filter((b): b is Extract<Block, { type: 'check' }> => b.type === 'check');
   const issues: Issue[] = [];
   const asked = new Set(checks.flatMap(b => b.unitIds ?? []));
   const uncovered = sections.filter(sec => !sec.unitIds.some(id => asked.has(id)));
   if (uncovered.length) issues.push({ rule: 'guide_structure', blockId: chapterBlockId, message: `Abschnitte ohne Frage: ${uncovered.map(sec => `„${sec.title}“`).join(', ')}. Je Abschnitt mindestens eine Frage.` });
+  // Jede Studie mit Autor und Jahr kommt in einer Frage oder Antwort vor (Review: Moray, Johnston & Heinz, Bak fehlten).
+  const faqText = checks.map(b => `${b.question} ${b.answer}`).join(' ');
+  const cited = [...new Map(chapterUnits.filter(u => !u.illustrative && CONTENT_TYPES.has(u.type))
+    .flatMap(u => citationsIn(unitText(u), { loose: true })).map(c => [c.first.replace(/s$/, ''), `${c.authors} (${c.year})`])).entries()];
+  const absentAuthors = cited.filter(([first]) => !faqText.includes(first)).map(([, label]) => label);
+  if (absentAuthors.length) issues.push({ rule: 'faq_coverage', blockId: chapterBlockId, message: `Studien und Definitionen ohne Frage oder Antwort: ${absentAuthors.join(', ')}.` });
+  // Zwei verschiedene Beispiele der Folien in einer Antwort (Review: Musik- und Handy-Beispiel „analog“ verbunden).
+  const byId = new Map(chapterUnits.map(u => [u.id, u]));
+  for (const b of checks) {
+    const examples = (b.unitIds ?? []).map(id => byId.get(id)).filter((u): u is Unit => !!u && u.type === 'example');
+    const authors = new Set(examples.flatMap(u => citationsIn(unitText(u), { loose: true }).map(c => c.first)));
+    if (authors.size >= 2) issues.push({ rule: 'guide_structure', blockId: b.id, message: `Die Antwort auf „${b.question.slice(0, 60)}“ verbindet verschiedene Beispiele (${[...authors].join(', ')}). Je Beispiel eine eigene Frage.` });
+  }
   if (checks.length < minQuestions) issues.push({ rule: 'guide_structure', blockId: chapterBlockId, message: `Nur ${checks.length} Fragen, für den Stoff des Kapitels mindestens ${minQuestions}.` });
   const seen = new Set<string>();
   for (const b of checks) {
@@ -630,7 +646,15 @@ export const checkPriority = (unitIds: string[], blocks: Block[], units: Map<str
   return missing.length ? [{ rule: 'priority_missing', blockId: chapterBlockId, message: `Prüfungsrelevanter Stoff fehlt (steht auf Wiederholungs- oder Quizfolien). Nimm diese Einheiten auf: ${missing.join(', ')}.` }] : [];
 };
 
+/** Ein Name, den die Folien in zwei Schreibweisen nennen, steht im Ergebnis nur in einer (Review 17.10.: Welford/Wellford). */
+export const checkNameSpelling = (blocks: Block[], units: Unit[]): Issue[] => {
+  const text = blocks.flatMap(blockTexts).join(' ');
+  return nameVariants(units).filter(v => v.forms.every(f => new RegExp(`\\b${f}\\b`).test(text)))
+    .map(v => ({ rule: 'author_year' as const, message: `Der Name steht in zwei Schreibweisen: ${v.forms.join(' / ')}. Einheitlich die korrekte verwenden.` }));
+};
+
 export const validateResult = (blocks: Block[], ctx: ValidationContext): Issue[] => [
+  ...checkNameSpelling(blocks, ctx.units),
   ...checkCites(blocks, ctx),
   ...checkCoverage(blocks, ctx),
   ...checkLength(blocks, ctx),

@@ -46,4 +46,27 @@ describe('Häufige Fragen', () => {
     expect(r.format).toBe('faq');
     expect(r.blocks.filter(b => b.type === 'check').length).toBe(2);
   });
+
+  it('Folienserie „Ablauf - Schritt“ ergibt die Schrittfolge in Seitenreihenfolge', async () => {
+    const { slideSequences } = await import('./text');
+    const u = (page: number, title: string) => ({ sourceId: 'd', page, title });
+    expect(slideSequences([u(7, 'Lernzyklus - Prüfen'), u(5, 'Lernzyklus - Planen'), u(6, 'Lernzyklus - Üben'), u(9, 'Anderes Thema')]))
+      .toEqual([{ sourceId: 'd', name: 'Lernzyklus', steps: ['Planen', 'Üben', 'Prüfen'], from: 5, to: 7 }]);
+  });
+
+  it('eine Antwort verbindet nie zwei Beispiele verschiedener Autoren', () => {
+    const units = [
+      { id: 'u1', sourceId: 'd', page: 1, type: 'example' as const, text: 'Beispiel 1 (Muster, 2010): Lernen mit Licht.' },
+      { id: 'u2', sourceId: 'd', page: 2, type: 'example' as const, text: 'Beispiel 2 (Probe, 2020): Lernen mit Lärm.' },
+    ];
+    const msgs = checkFaqChapter([], [q('a', 'Wie prüft man Hypothesen an Beispielen?', 'Mit Licht und analog mit Lärm.', ['u1', 'u2'])], 'c1-h', 0, units).map(i => i.message);
+    expect(msgs).toContain('Die Antwort auf „Wie prüft man Hypothesen an Beispielen?“ verbindet verschiedene Beispiele (Muster, Probe). Je Beispiel eine eigene Frage.');
+  });
+
+  it('Beschreibung eines Ablaufs in anderer Reihenfolge als die Folienserie wird erkannt', async () => {
+    const { contradictsSequence } = await import('./text');
+    const steps = ['Planen', 'Ausführung', 'Überprüfung', 'Bewertung und neue Ziele'];
+    expect(contradictsSequence('Kreislauf vom Planen über Bewertung, neue Ziele zur Ausführung und Überprüfung.', steps)).toBe(true);
+    expect(contradictsSequence('Schritte: Planen, Ausführung, Überprüfung, Bewertung und neue Ziele.', steps)).toBe(false);
+  });
 });

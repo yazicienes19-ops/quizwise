@@ -114,7 +114,7 @@ export interface PipelineSource {
 export interface Issue {
   rule: 'cites' | 'coverage' | 'length' | 'numbers' | 'author_year' | 'truncated' | 'cite_density' | 'ki_facts'
     | 'empty_heading' | 'section_coverage' | 'study_incomplete'
-    | 'merksatz' | 'source_error_hint' | 'illustrative_result' | 'repetition' | 'priority_missing' | 'table_shape' | 'illustrative_label' | 'meta' | 'guide_structure' | 'result_missing'
+    | 'merksatz' | 'source_error_hint' | 'illustrative_result' | 'repetition' | 'priority_missing' | 'table_shape' | 'illustrative_label' | 'meta' | 'guide_structure' | 'result_missing' | 'faq_coverage'
     | 'script_structure'
     | 'nicht_belegt' | 'falsch' | 'chronologie' | 'zitat_falsch' | 'ki_fakt';
   blockId?: string;

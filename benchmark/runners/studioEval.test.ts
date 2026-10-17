@@ -16,7 +16,7 @@ import { runSummaryPipeline } from '../../services/studio/pipeline';
 import { extractUnits, pageNeedsImage } from '../../services/studio/extract';
 import { findDuplicatePages } from '../../services/studio/dedupe';
 import { resultToMarkdown } from '../../services/studio/toMarkdown';
-import { blockTexts, INLINE_CITE_RE, looksTruncated } from '../../services/studio/text';
+import { blockTexts, contradictsSequence, INLINE_CITE_RE, looksTruncated } from '../../services/studio/text';
 import { checkEmptyHeadings, checkFaqChapter, checkGuideStructure, checkRepetition, checkScriptSections, checkTables } from '../../services/studio/validate';
 import { partsFromOutline } from '../../services/pdfOutlineService';
 import { hiddenItemFlags, layoutPageTextWithHidden } from '../../services/pdfPageService';
@@ -64,6 +64,10 @@ interface Expectations {
   warningsForbidden?: string[];
   /** Leitfaden: Begriffe, die als eigene Zeile in den Kernbegriffen stehen müssen. */
   guideTerms?: string[];
+  /** Abläufe: Schritte in dieser Reihenfolge (Namen wie auf den Folien), geprüft in jedem Text (alle Formate). */
+  orderedSteps?: string[][];
+  /** Häufige Fragen: Inhalte (Alternativen mit „|“), die in einer Frage oder Antwort vorkommen müssen. */
+  faqMust?: string[];
   /** Glossar: Grundbegriffe (Alternativen mit „|“) und Einträge, die nicht vorkommen dürfen. */
   glossaryTerms?: string[];
   glossaryForbiddenTerms?: string[];
@@ -267,6 +271,19 @@ run('Lernstudio-Eval (live)', () => {
       const hit = texts.find(t => new RegExp(f, 'i').test(t));
       check(`Nicht: /${f}/`, !hit, hit ? `„${hit.slice(0, 120)}“` : '');
     }
+    // Reihenfolge eines Ablaufs (Review 17.10.: Deduktion an den Anfang des Forschungskreislaufs gestellt).
+    for (const steps of exp.orderedSteps ?? []) {
+      const bad = r.blocks.flatMap(b => {
+        // Bei Fragen nur die Antwort (die Frage nennt oft den Namen des Ablaufs, z. B. „…- und Theorienbildung“).
+        // Tabellen Zeile für Zeile, Listen Punkt für Punkt (eine Begriffstabelle ist kein Ablauf).
+        const parts = b.type === 'check' ? [b.answer] : b.type === 'table' ? b.rows.map(r => r.join(' '))
+          : b.type === 'bullets' || b.type === 'tasks' ? b.items.map(i => i.text) : [blockTexts(b).join(' ')];
+        // Gleiche Logik wie die Pipeline (eindeutige Schlüsselwörter je Schritt, Endungen egal).
+        // Nur Texte, die den Ablauf aufzählen (mindestens 5 Schritte).
+        return parts.filter(t => contradictsSequence(t, steps, 5)).map(t => t.slice(0, 120));
+      });
+      check(`Ablauf in Folienreihenfolge: ${steps.length} Schritte`, bad.length === 0, bad.map(x => `„${x}“`).join(' | '));
+    }
     const tl = r.blocks.find(b => b.type === 'timeline');
     check('Zeitleiste sortiert', !tl || (tl.type === 'timeline' && tl.items.every((it, i) => i === 0 || tl.items[i - 1].year <= it.year)));
     const taskBlock = r.blocks.find(b => b.type === 'tasks');
@@ -322,11 +339,13 @@ run('Lernstudio-Eval (live)', () => {
       const qs = r.blocks.filter((b): b is Extract<Block, { type: 'check' }> => b.type === 'check' && b.id.startsWith('c'));
       const structure = chaptersOnly.flatMap(c => checkFaqChapter([], c, 'c'));
       check('FAQ: jede Antwort belegt, beantwortet die Frage, höchstens 90 Wörter, keine Frage doppelt', structure.length === 0, structure.map(x => x.message.slice(0, 90)).join(' | '));
-      check('FAQ: mindestens 4 Fragen je Kapitel', chaptersOnly.every(c => c.filter(b => b.type === 'check').length >= 4), chaptersOnly.map(c => c.filter(b => b.type === 'check').length).join(', '));
+      // Nach Thema gegliedert gibt es auch kleine Kapitel: je Kapitel mindestens 2, insgesamt mindestens 20 Fragen.
+      check('FAQ: mindestens 2 Fragen je Kapitel, 20 insgesamt', chaptersOnly.every(c => c.filter(b => b.type === 'check').length >= 2) && qs.length >= 20, `${chaptersOnly.map(c => c.filter(b => b.type === 'check').length).join(', ')} = ${qs.length}`);
       const faqText = qs.map(q => `${q.question} ${q.answer}`).join(' ').toLowerCase().replace(/-/g, ' ');
       for (const term of exp.guideTerms ?? []) check(`FAQ: Thema ${term}`, faqText.includes(term.toLowerCase().replace(/-/g, ' ')));
       const ki = r.blocks.filter(b => b.origin === 'ki').length;
       check('FAQ: keine Erklärhilfen', ki === 0, `${ki}`);
+      for (const must of exp.faqMust ?? []) check(`FAQ: enthält ${must}`, must.split('|').some(m => qs.some(q => `${q.question} ${q.answer}`.includes(m))));
       console.log(`FAQ: ${qs.length} Fragen`);
     } else if (GLOSSARY) {
       const tbls = r.blocks.filter((b): b is Extract<Block, { type: 'table' }> => b.type === 'table' && b.id.startsWith('c'));

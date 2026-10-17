@@ -4,6 +4,8 @@ import { assignUnitIds, extractUnits, filterHiddenText, hasScenarioValues, isCon
 import { buildOutline, corridorFor, SEPARATE_TYPES, type Chapter, type Lecture } from './outline';
 import { chapterHeading, writeChapterBody, type WriteInput } from './write';
 import { buildGlossaryTerms, mergeGlossary } from './glossary';
+import { blockTexts, citationsIn, contradictsSequence, extractFacts, slideSequences } from './text';
+import { applyNameFixes, resolveNameVariants } from './names';
 import { buildExtraBlocks, buildPracticeQuestions, buildTimeline, timelineCandidates } from './extras';
 import { markPriority } from './priority';
 import { partOf, slideIn } from './parts';
@@ -101,6 +103,13 @@ const structuralIssues = (ch: Chapter, i: number, blocks: Block[], byId: Map<str
 
 const chapterUnitIds = (ch: Chapter) => ch.sections.flatMap(s => s.unitIds);
 
+/** Häufige Fragen: Begriffe, die eine Einheit mit kurzem Titel (bis 3 Wörter, keine Abbildung) erklärt. */
+const faqNamedConcepts = (own: Unit[]): string[] => [...new Set(own
+  .filter(u => (u.type === 'concept' || u.type === 'definition') && u.title && !/\b(1[89]|20)\d\d\b|Abb\.|[-–:]/.test(u.title))
+  .map(u => u.title!.trim())
+  // Begriffe, keine beschreibenden Folientitel („Variablen und Versuchsplanung“, „Elemente des Experiments“).
+  .filter(t => t.split(/\s+/).length <= 3 && !/\s(?:und|oder|im|in|des|der|von|zur|zum|bei)\s/.test(` ${t} `)))];
+
 export const runSummaryPipeline = async (input: PipelineInput): Promise<LernstudioResult> => {
   const { llm, onProgress } = input;
   const format: StudioOutputFormat = input.format ?? 'zusammenfassung';
@@ -148,7 +157,22 @@ export const runSummaryPipeline = async (input: PipelineInput): Promise<Lernstud
     .map(u => (u.illustrative && !hasScenarioValues(u.text) ? (({ illustrative: _, ...rest }) => rest)(u) : u))
     // Ohne Lerninhalt (nur Folientitel, nur Organisatorisches): nicht als Pflichtstoff behandeln.
     .map(u => (u.type !== 'organizational' && u.type !== 'task' && u.type !== 'practice_question' && u.type !== 'exam_info' && isContentless(u) ? { ...u, type: 'organizational' as const } : u));
-  const units = markPriority(assignUnitIds([...checked, ...confirmed], order));
+  // Namen mit zwei Schreibweisen auf den Folien vereinheitlichen (korrekte Form), bevor jemand schreibt.
+  const nameFixes = await resolveNameVariants(checked, llm).catch(() => new Map<string, string>());
+  // Beschreibt eine Einheit einen Ablauf anders als die Folienserie dazu, ersetzt der Code die Beschreibung durch die
+  // Schrittfolge der Folien; der Begriff („Kreislauf“) bleibt (Review 17.10.: Forschungskreislauf umgestellt).
+  const seqs = slideSequences(checked.map(u => ({ sourceId: u.sourceId, page: u.page, title: u.title })));
+  const ordered = checked.map(u => {
+    // Nur Beschreibungen von Abbildungen oder Aufzählungen, die mindestens 4 Schritte nennen (sonst bespricht eine
+    // Einheit Schritte nur in anderem Zusammenhang).
+    const sq = (u.type === 'figure' || u.type === 'list')
+      ? seqs.find(s => s.sourceId === u.sourceId && (u.page < s.from || u.page > s.to) && contradictsSequence(`${u.title ?? ''} ${u.text}`, s.steps, 4))
+      : undefined;
+    if (!sq) return u;
+    const kind = u.text.match(/\b(Kreislauf|Zyklus|Regelkreis|Ablauf|Prozess)\b/i)?.[1];
+    return { ...u, text: `${sq.name}${kind ? ` ist ein ${kind}` : ''}: ${sq.steps.join(' → ')} (Schrittfolge laut Folien ${sq.from} bis ${sq.to}).` };
+  });
+  const units = markPriority(assignUnitIds(applyNameFixes([...ordered, ...confirmed], nameFixes), order));
   const byId = new Map(units.map(u => [u.id, u]));
 
   // Quellen (und Vorlesungen einer zusammengefügten PDF) ohne verwertbare Einheiten begründet auslassen.
@@ -188,7 +212,8 @@ export const runSummaryPipeline = async (input: PipelineInput): Promise<Lernstud
   // Glossar: keine angehängten Abschnitte.
   const reservedWords = glossary || faq ? 0 : units.filter(u => u.type === 'task' || u.type === 'practice_question' || u.type === 'exam_info')
     .reduce((a, u) => a + countWords(`${u.text} ${u.answer ?? ''}`), 0) + Math.min(15, timelineCandidates(units).length) * 12;
-  const chapters: Chapter[] = await buildOutline(units, names, llm, sourceWords, input.focus, lectures, { pageWords, reservedWords }, format);
+  // Häufige Fragen nach Thema statt je Vorlesung (Review 17.10.: Beispiele zu Phänomenen standen bei den Modellen).
+  const chapters: Chapter[] = await buildOutline(units, names, llm, sourceWords, input.focus, faq ? [] : lectures, { pageWords, reservedWords }, format);
   bail();
   onProgress?.({ step: 'outline', done: 1, total: 1 });
 
@@ -200,12 +225,32 @@ export const runSummaryPipeline = async (input: PipelineInput): Promise<Lernstud
       .filter(f => pages.has(`${s.docId}:${f.page}`))
       .map(f => ({ ref: f.ref, sourceId: s.docId, page: f.page, title: f.title })));
   };
+  // Häufige Fragen: Studien und Definitionen mit Autor und Jahr samt Ergebniszahlen (Review 17.10.: Moray,
+  // Johnston & Heinz, Bak, Simons & Chabris mit 58 %/27 % fehlten).
+  const faqRequired = (ch: Chapter): string[] => {
+    const own = chapterUnitIds(ch).map(id => byId.get(id)).filter((u): u is Unit => !!u && !u.illustrative && CONTENT_TYPES.has(u.type));
+    const out = new Map<string, Set<string>>();
+    for (const u of own) {
+      const text = [u.title, u.text, u.study?.result].filter(Boolean).join(' ');
+      const facts = extractFacts(text).filter(f => /%|\//.test(f));
+      for (const c of citationsIn(text, { loose: true })) {
+        const k = `${c.authors} (${c.year})`;
+        out.set(k, new Set([...(out.get(k) ?? []), ...facts]));
+      }
+    }
+    // Prüfungsrelevante Themen (Wiederholungs- und Quizfolien) mit Titel, z. B. alle Strömungen einer Übersicht.
+    const priority = [...new Set(own.filter(u => u.priority && u.title).map(u => u.title!.replace(/\s+[-–]\s+.*$/, '')))];
+    // Benannte Begriffe (kurzer Titel) einer Einheit: in mindestens einer Antwort nennen (Review: humanistischer Ansatz fehlte).
+    const named = faqNamedConcepts(own).filter(t => !priority.includes(t));
+    return [...[...out].map(([k, f]) => (f.size ? `${k}: ${[...f].join(', ')}` : k)), ...priority.map(t => `Thema „${t}“`), ...(named.length ? [`Begriffe (je in einer Antwort nennen, gern mehrere in einer Frage): ${named.join(', ')}`] : [])];
+  };
   // Glossar: Pflichtbegriffe je Kapitel vorab (eigener kleiner Aufruf je Kapitel).
   const requiredTerms: string[][] = glossary ? await mapLimit(chapters, PARALLEL_WRITE, ch => buildGlossaryTerms(ch, units, llm)) : [];
   bail();
   const writeInput = (ch: Chapter, i: number): WriteInput => ({
     chapter: ch, chapterIndex: i, units, sourceNames: names, examInfo, figures: figuresFor(ch), focus: input.focus, argon: !!input.argon, format,
     ...(requiredTerms[i]?.length ? { requiredTerms: requiredTerms[i] } : {}),
+    ...(faq ? { requiredContent: faqRequired(ch) } : {}),
   });
   const diagnostics: ChapterDiagnostic[] = chapters.map(ch => ({
     title: ch.title, units: chapterUnitIds(ch).length, blocks: 0, dropped: [], attempts: 0, aborts: [], split: false, coverage: 0,
@@ -230,13 +275,17 @@ export const runSummaryPipeline = async (input: PipelineInput): Promise<Lernstud
     const totalUnits = Math.max(1, chapterUnitIds(ch).length);
     const budget = Math.max(60, Math.round(ch.budget * ch.sections[k].unitIds.length / totalUnits));
     const neighbors = { prev: ch.sections[k - 1]?.title ?? chapters[i - 1]?.title, next: ch.sections[k + 1]?.title ?? chapters[i + 1]?.title };
-    return attempt({ ...writeInput({ ...ch, budget }, i), sectionIndex: k, neighbors, ...(repair ? { repair } : {}) }, diagnostics[i]);
+    return attempt({
+      ...writeInput({ ...ch, budget }, i), sectionIndex: k, neighbors, ...(repair ? { repair } : {}),
+      ...(faq ? { requiredContent: faqRequired({ ...ch, sections: [ch.sections[k]] }) } : {}),
+    }, diagnostics[i]);
   };
 
   /** Ganzes Kapitel; scheitert es strukturell, jeden Abschnitt einzeln und das Bessere behalten. Skript: immer je Abschnitt. */
   const writeRobust = async (ch: Chapter, i: number): Promise<Block[]> => {
     const diag = diagnostics[i];
-    if (script) return (await mapLimit(ch.sections, 3, async (_, k) => (cancelled() ? [] : (await writeSection(ch, i, k)) ?? []))).flat();
+    // Skript und Häufige Fragen je Abschnitt (FAQ-Review 17.10.: je Kapitel fehlten Studien und Begriffe trotz Pflichtliste).
+    if (script || faq) return (await mapLimit(ch.sections, 3, async (_, k) => (cancelled() ? [] : (await writeSection(ch, i, k)) ?? []))).flat();
     const whole = await attempt(writeInput(ch, i), diag);
     // Leitfaden: Aufbau gilt je Kapitel (Kernbegriffe, Fragen …), abschnittsweise ergäbe er sich mehrfach; ein zweiter Versuch statt Aufteilen.
     if (guide || glossary || faq) return whole ?? (cancelled() ? [] : (await attempt(writeInput(ch, i), diag)) ?? []);
@@ -290,11 +339,20 @@ export const runSummaryPipeline = async (input: PipelineInput): Promise<Lernstud
     if (faq) {
       // Mindestens eine Frage je Abschnitt und etwa eine je 5 inhaltliche Einheiten (Abnahme: 3 Fragen bei 16 Einheiten).
       const content = chapterUnitIds(ch).filter(id => CONTENT_TYPES.has(byId.get(id)?.type ?? '')).length;
+      const own = chapterUnitIds(ch).map(id => byId.get(id)).filter((u): u is Unit => !!u);
+      // Endungen zählen nicht („humanistische Ansatz“ nennt „Humanistischer Ansatz“).
+      const stems = (t: string) => (t.toLowerCase().match(/[\p{L}\p{N}]+/gu) ?? []).map(w => w.replace(/(?:en|er|es|em|e|n|s)$/, '')).join(' ');
+      const faqText = ` ${stems(chapterBlocks[i].flatMap(blockTexts).join(' '))} `;
+      const unnamed = faqNamedConcepts(own).filter(t => !faqText.includes(` ${stems(t)} `));
       return [
-        ...checkFaqChapter(ch.sections, chapterBlocks[i], head, Math.max(ch.sections.length, Math.ceil(content / 5))),
+        ...(unnamed.length ? [{ rule: 'faq_coverage' as const, blockId: head, message: `Begriffe ohne Frage oder Antwort: ${unnamed.join(', ')}.` }] : []),
+        ...checkFaqChapter(ch.sections, chapterBlocks[i], head, Math.max(ch.sections.length, Math.ceil(content / 5)), own),
+        // Ergebniszahlen echter Studien gehören in eine Antwort (Review: Simons & Chabris ohne 58 %/27 %).
+        ...checkResultNumbers(own, chapterBlocks[i], head),
         ...checkRepetition(chapterBlocks[i]),
-        // Prüfungsrelevantes (Wiederholungs- und Quizfolien) bekommt eine Frage (Abnahme: Cocktail-Party fehlte).
-        ...checkPriority(chapterUnitIds(ch), chapterBlocks[i], byId, head),
+        // Prüfungsrelevantes (Wiederholungs- und Quizfolien) bekommt eine Frage (Abnahme: Cocktail-Party fehlte);
+        // steuert die Überarbeitung, wird aber nicht als Prüfhinweis gezeigt.
+        ...checkPriority(chapterUnitIds(ch), chapterBlocks[i], byId, head).map(x => ({ ...x, rule: 'faq_coverage' as const })),
       ];
     }
     if (glossary) return checkGlossaryChapter(chapterUnitIds(ch).map(id => byId.get(id)).filter((u): u is Unit => !!u), chapterBlocks[i], head, requiredTerms[i], units);
@@ -355,15 +413,19 @@ export const runSummaryPipeline = async (input: PipelineInput): Promise<Lernstud
 
   // ── E: betroffene Kapitel einmal neu schreiben; übernommen wird nur, was nicht schlechter ist ──
   const repairIdx = [...perChapter.keys()].filter(i => i < chapters.length);
-  if (repairIdx.length && script) {
+  if (repairIdx.length && (script || faq)) {
     // Skript: nur die betroffenen Abschnitte neu schreiben (Blöcke c{Kapitel}[r]s{Abschnitt}-…).
     await mapLimit(repairIdx, PARALLEL_WRITE, async i => {
       const ch = chapters[i];
       const bySection = new Map<number, Issue[]>();
       for (const issue of perChapter.get(i)!) {
         const m = issue.blockId?.match(/^c\d+r?s(\d+)-/);
-        const ks = m ? [Number(m[1]) - 1]
-          : [...new Set((issue.message.match(/\bu\d+\b/g) ?? []).map(id => ch.sections.findIndex(sec => sec.unitIds.includes(id))).filter(k => k >= 0))];
+        const byUnits = [...new Set((issue.message.match(/\bu\d+\b/g) ?? []).map(id => ch.sections.findIndex(sec => sec.unitIds.includes(id))).filter(k => k >= 0))];
+        // Beanstandungen mit Namen statt IDs („Studien … ohne Frage: Moray (1959)“): Abschnitt, dessen Einheiten den Namen nennen.
+        // Auch kurze Namen („Bak“): ab 3 Buchstaben.
+        const names = (issue.message.split(':').slice(1).join(':').match(/[\p{Lu}][\p{L}-]{2,}/gu) ?? []);
+        const byNames = names.length ? ch.sections.map((sec, k) => (sec.unitIds.some(id => { const u = byId.get(id); return !!u && names.some(n => `${u.title ?? ''} ${u.text}`.includes(n)); }) ? k : -1)).filter(k => k >= 0) : [];
+        const ks = m ? [Number(m[1]) - 1] : byUnits.length ? byUnits : byNames;
         for (const k of ks) bySection.set(k, [...(bySection.get(k) ?? []), issue]);
       }
       for (const [k, list] of bySection) {
@@ -452,7 +514,8 @@ export const runSummaryPipeline = async (input: PipelineInput): Promise<Lernstud
 
   const warnings = [...new Set([
     ...incompleteChapters.map(t => `Kapitel „${t}“ ist unvollständig. Bitte neu erstellen.`),
-    ...[...finalCode, ...recheck, ...untouchedModel].map(warningText),
+    // Abdeckung der Häufigen Fragen steuert die Überarbeitung, ist aber kein Hinweis auf einen Fehler.
+    ...[...finalCode, ...recheck, ...untouchedModel].filter(i => i.rule !== 'faq_coverage').map(warningText),
   ])];
   // Leere Kapitel ohne jeden Inhalt nicht als nackte Überschrift zeigen. Glossar: alle Kapitel alphabetisch zusammengeführt.
   const blocks = glossary ? mergeGlossary(all()) : all().filter((b, idx, arr) => !(b.type === 'heading' && b.level === 2 && b.id.startsWith('c')

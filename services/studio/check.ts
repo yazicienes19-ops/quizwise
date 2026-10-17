@@ -1,7 +1,7 @@
 import type { Block, Cite, Issue, Unit } from './types';
 import { CHECKER_PROMPT, checkerSchema } from './prompts/checker.v2';
 import { STUDIO_TEMPERATURE, type StudioLlm } from './llm';
-import { blockTexts } from './text';
+import { blockTexts, slideSequences } from './text';
 import { unitFlags } from './outline';
 
 /** Schritt D2: Prüfdurchlauf durch das Modell (Belege, Zahlen, Chronologie, KI-Fakten). */
@@ -29,15 +29,19 @@ export const buildCheckPrompt = (blocks: Block[], units: Unit[]): string => {
   ]).map(citeKey));
   // Folienfehler sind keine Belege; der Prüfer hielte sie sonst für Lerninhalt.
   const evidence = units
-    .filter(u => u.type !== 'source_error' && cited.has(`${u.sourceId}:${u.page}`))
+    // Organisatorisches (auch verworfene, widersprüchliche Abbildungsbeschreibungen) ist kein Beleg.
+    .filter(u => u.type !== 'source_error' && u.type !== 'organizational' && cited.has(`${u.sourceId}:${u.page}`))
     .map(u => `${u.sourceId}:${u.page} | ${u.type}${unitFlags(u)} | ${[u.title, u.text, u.study && JSON.stringify(u.study)].filter(Boolean).join(' ')}`);
+  // Schrittfolgen aus Folienserien („Ablauf - Schritt“ auf aufeinanderfolgenden Folien) sind belegt, auch wenn ein
+  // Block nur einen Teil der Seiten zitiert (Review 17.10.: richtige Reihenfolge als „nicht belegt“ gemeldet).
+  const sequences = slideSequences(units).map(sq => `${sq.sourceId}:${sq.from}-${sq.to} | ${sq.name}: ${sq.steps.join(' → ')}`);
   return `${CHECKER_PROMPT}
 
 === BLÖCKE ===
 ${blocks.filter(b => b.type !== 'heading').map(blockLine).join('\n')}
 
 === EINHEITEN (nach Beleg "Quelle:Seite") ===
-${evidence.join('\n')}`;
+${evidence.join('\n')}${sequences.length ? `\n\n=== ABLÄUFE AUS FOLIENSERIEN (Folientitel, gelten als Beleg) ===\n${sequences.join('\n')}` : ''}`;
 };
 
 const TYPES = new Set(['nicht_belegt', 'falsch', 'chronologie', 'zitat_falsch', 'ki_fakt']);
