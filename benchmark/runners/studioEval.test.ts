@@ -61,6 +61,9 @@ interface Expectations {
   warningsForbidden?: string[];
   /** Leitfaden: Begriffe, die als eigene Zeile in den Kernbegriffen stehen müssen. */
   guideTerms?: string[];
+  /** Glossar: Grundbegriffe (Alternativen mit „|“) und Einträge, die nicht vorkommen dürfen. */
+  glossaryTerms?: string[];
+  glossaryForbiddenTerms?: string[];
   /** Begriffsgruppen (ohne Groß-/Kleinschreibung), die gemeinsam in einem Block stehen müssen. */
   together?: string[][];
   /** Überschriften, die vorkommen müssen. */
@@ -326,6 +329,10 @@ run('Lernstudio-Eval (live)', () => {
       check('Glossar: Erklärung höchstens 45 Wörter', long.length === 0, long.slice(0, 5).join(', '));
       const firstCol = rowsAll.map(x => x.term);
       for (const term of exp.guideTerms ?? []) check(`Glossar: Begriff ${term}`, firstCol.some(c => key(c) === key(term)));
+      // Grundbegriffe (Glossar-Review 17.10.): Alternativen mit „|“, Treffer irgendwo im Begriff (auch in der Klammer).
+      const loose = (t: string) => t.toLowerCase().replace(/[-\s]+/g, ' ');
+      for (const alts of exp.glossaryTerms ?? []) check(`Glossar: Grundbegriff ${alts}`, firstCol.some(c => alts.split('|').some(a => new RegExp(`(^|[^\\p{L}])${loose(a).replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}(?:n|en|s|e)?(?=$|[^\\p{L}])`, 'u').test(loose(c)))));
+      for (const t of exp.glossaryForbiddenTerms ?? []) check(`Glossar: kein Eintrag „${t}“`, !firstCol.some(c => key(c) === key(t)));
       for (const g of exp.tables ?? []) check(`Glossar: ${g.join(' / ')} vorhanden`, g.every(x => rowsAll.some(r => `${r.term} ${r.text}`.includes(x))));
       const ki = r.blocks.filter(b => b.origin === 'ki').length;
       check('Glossar: keine Erklärhilfen', ki === 0, `${ki}`);

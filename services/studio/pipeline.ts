@@ -3,7 +3,7 @@ import { findDuplicatePages, sourceWordCount, withoutDuplicates } from './dedupe
 import { assignUnitIds, extractUnits, filterHiddenText, hasScenarioValues, isContentless, scanSourceErrors, verifySourceErrors } from './extract';
 import { buildOutline, corridorFor, SEPARATE_TYPES, type Chapter, type Lecture } from './outline';
 import { chapterHeading, writeChapterBody, type WriteInput } from './write';
-import { mergeGlossary } from './glossary';
+import { buildGlossaryTerms, mergeGlossary } from './glossary';
 import { buildExtraBlocks, buildPracticeQuestions, buildTimeline, timelineCandidates } from './extras';
 import { markPriority } from './priority';
 import { partOf, slideIn } from './parts';
@@ -199,8 +199,12 @@ export const runSummaryPipeline = async (input: PipelineInput): Promise<Lernstud
       .filter(f => pages.has(`${s.docId}:${f.page}`))
       .map(f => ({ ref: f.ref, sourceId: s.docId, page: f.page, title: f.title })));
   };
+  // Glossar: Pflichtbegriffe je Kapitel vorab (eigener kleiner Aufruf je Kapitel).
+  const requiredTerms: string[][] = glossary ? await mapLimit(chapters, PARALLEL_WRITE, ch => buildGlossaryTerms(ch, units, llm)) : [];
+  bail();
   const writeInput = (ch: Chapter, i: number): WriteInput => ({
     chapter: ch, chapterIndex: i, units, sourceNames: names, examInfo, figures: figuresFor(ch), focus: input.focus, argon: !!input.argon, format,
+    ...(requiredTerms[i]?.length ? { requiredTerms: requiredTerms[i] } : {}),
   });
   const diagnostics: ChapterDiagnostic[] = chapters.map(ch => ({
     title: ch.title, units: chapterUnitIds(ch).length, blocks: 0, dropped: [], attempts: 0, aborts: [], split: false, coverage: 0,
@@ -281,7 +285,7 @@ export const runSummaryPipeline = async (input: PipelineInput): Promise<Lernstud
     const head = chapterHeading(ch.title, i).id;
     const words = resultWords(chapterBlocks[i]);
     // Glossar: nur Begriffe, keine Abdeckung aller Einheiten (Studien, Beispiele gehören nicht hinein).
-    if (glossary) return checkGlossaryChapter(chapterUnitIds(ch).map(id => byId.get(id)).filter((u): u is Unit => !!u), chapterBlocks[i], head);
+    if (glossary) return checkGlossaryChapter(chapterUnitIds(ch).map(id => byId.get(id)).filter((u): u is Unit => !!u), chapterBlocks[i], head, requiredTerms[i], units);
     return [
       ...checkSectionCoverage(ch.sections, chapterBlocks[i], byId, head),
       ...(script ? checkScriptSections(chapterBlocks[i], head) : guide ? checkGuideStructure(chapterBlocks[i], head) : checkMerksatz(chapterBlocks[i], head, ch.title)),

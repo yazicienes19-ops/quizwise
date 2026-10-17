@@ -3,7 +3,7 @@
  * (geminiService.streamStudioStep über guardedLlm), in Tests und im Eval austauschbar.
  */
 export interface StudioLlmRequest {
-  step: 'extract' | 'scan' | 'verify' | 'outline' | 'write' | 'check' | 'timeline' | 'practice';
+  step: 'extract' | 'scan' | 'verify' | 'outline' | 'write' | 'check' | 'timeline' | 'practice' | 'terms';
   prompt: string;
   schema: unknown;
   /** false = Flash-Lite, true = 3.8 Flash (Pro). */
@@ -25,7 +25,7 @@ export interface StudioLlmRequest {
  * Vergleich im Eval (Phase 1.1) entscheidet, siehe Commit-Text.
  */
 export const STUDIO_TEMPERATURE: Record<StudioLlmRequest['step'], number | undefined> = {
-  extract: 0.1, scan: 0, verify: 0, outline: 0.2, write: 0.3, check: 0, timeline: 0.2, practice: 0.1,
+  extract: 0.1, scan: 0, verify: 0, outline: 0.2, write: 0.3, check: 0, timeline: 0.2, practice: 0.1, terms: 0,
 };
 
 /** Liefert das geparste JSON der Antwort. */

@@ -71,4 +71,50 @@ describe('Glossar', () => {
     expect(warningText({ rule: 'guide_structure', message: 'Begriffe fehlen in „Kernbegriffe“ (eigene Zeile) oder „Modelle und Abläufe“: u7.' })).toBe('Ein Fachbegriff der Folien fehlt als eigene Zeile.');
     expect(warningText({ rule: 'result_missing', message: 'Ergebnisse fehlen: 46%, 78% (u108); 31% (u9). Nimm jeden Wert einzeln und exakt auf.' })).toBe('Ergebniszahlen der Folien fehlen im Text: 46%, 78%; 31%.');
   });
+
+  it('Abkürzungen brauchen einen Eintrag, Begriffe stehen so auf den Folien', () => {
+    const units = [{ id: 'u1', sourceId: 'd', page: 1, type: 'concept' as const, text: 'Experiment: die UV wird variiert, die AV gemessen. Wundt nutzte die experimentelle Methode in der Psychologie.' }];
+    const t: Block = { ...table('c1-1', [['Experiment', 'Die UV wird variiert, die AV gemessen.', 1], ['Abhängige Variable (AV)', 'Was gemessen wird.', 1], ['Experimentelle Psychologie', 'Nach Wundt.', 1]]), unitIds: ['u1'] };
+    const msgs = checkGlossaryChapter(units, [t], 'c1-h').map(i => i.message);
+    expect(msgs).toContain('Abkürzungen ohne eigenen Eintrag: UV. Je eine eigene Zeile mit der Erklärung der Folie (Langform nur, wenn sie auf der Folie steht).');
+    expect(msgs).toContain('Begriff „Abhängige Variable (AV)“ steht so nicht auf den Folien. Nur Begriffe in der Schreibweise der Folie.');
+    expect(msgs).toContain('Begriff „Experimentelle Psychologie“ steht so nicht auf den Folien. Nur Begriffe in der Schreibweise der Folie.');
+    expect(msgs.some(m => m.includes('„Experiment“'))).toBe(false);
+  });
+
+  it('Sortierung: Begriff ohne Zusatz, dann Begriffsursprung, dann Autoren nach Jahr', () => {
+    const out = mergeGlossary([table('c1-1', [['Lernen (Muster, 2010)', 'a', 1], ['Lernen (Begriffsursprung)', 'b', 1], ['Lernen', 'c', 1], ['Lernen (Probe, 1990)', 'd', 1]])]);
+    expect(out.find(b => b.type === 'table')?.type === 'table' && (out.find(b => b.type === 'table') as Extract<Block, { type: 'table' }>).rows.map(r => r[0]))
+      .toEqual(['Lernen', 'Lernen (Begriffsursprung)', 'Lernen (Probe, 1990)', 'Lernen (Muster, 2010)']);
+  });
+
+  it('Pflichtbegriff gilt auch in Mehrzahl oder über die Abkürzung als abgedeckt', async () => {
+    const { coversTerm } = await import('./glossary');
+    expect(coversTerm('Störfaktoren', 'Störfaktor')).toBe(true);
+    expect(coversTerm('Unabhängige Variable (UV)', 'UV')).toBe(true);
+    expect(coversTerm('Reiz', 'Reaktion')).toBe(false);
+  });
+
+  it('gleicher Name mit verschiedenem Zusatz sind verschiedene Begriffe', async () => {
+    const { coversTerm } = await import('./glossary');
+    expect(coversTerm('Hypothese (H1)', 'Hypothese (H0)')).toBe(false);
+    expect(coversTerm('Hypothese (H1)', 'Hypothese')).toBe(true);
+    expect(coversTerm('Lernen', 'Lernen (Muster, 2010)')).toBe(false);
+    expect(coversTerm('Lernen (Muster, 2010)', 'Lernen (Muster, 2010)')).toBe(true);
+  });
+
+  it('Definitionen mit Autor und Jahr brauchen je Autor einen Eintrag', () => {
+    const units = [{ id: 'u1', sourceId: 'd', page: 1, type: 'definition' as const, text: 'Lernen ist Verhaltensänderung (Muster, 2010). Lernen ist Erfahrung (Probe, 1990).' }];
+    const t: Block = { ...table('c1-1', [['Lernen (Muster, 2010)', 'Verhaltensänderung.', 1]]), unitIds: ['u1'] };
+    expect(checkGlossaryChapter(units, [t], 'c1-h').map(i => i.message)).toContain('Definitionen ohne eigenen Eintrag je Autor: Probe. Je Autor eine Zeile „Begriff (Autor, Jahr)“.');
+  });
+
+  it('Begriffe aus dem Folientext: „Begriff (ABK)“, „(Fachwort)“, „A vs. B“, keine Autoren', async () => {
+    const { codeTermCandidates } = await import('./glossary');
+    const units = [
+      { id: 'u1', sourceId: 'd', page: 1, type: 'concept' as const, text: 'Arbeitshypothese (H1): es gibt einen Unterschied. Nur Deutung und Auslegung (Exegetik) reicht nicht. Deduktion vs. Induktion.' },
+      { id: 'u2', sourceId: 'd', page: 2, type: 'study' as const, text: 'Befund nach Muster (2010): schneller (Muster).' },
+    ];
+    expect(codeTermCandidates(units)).toEqual(['Arbeitshypothese (H1)', 'Exegetik', 'Deduktion', 'Induktion']);
+  });
 });

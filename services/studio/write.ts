@@ -51,6 +51,8 @@ export interface WriteInput {
   format?: StudioOutputFormat;
   /** Skript: Titel der Nachbarabschnitte (für Leitfrage und Überleitung). */
   neighbors?: { prev?: string; next?: string };
+  /** Glossar: Pflichtbegriffe des Kapitels (aus der Begriffsliste). */
+  requiredTerms?: string[];
 }
 
 export interface WriteResult { blocks: Block[]; dropped: DroppedBlock[] }
@@ -93,8 +95,11 @@ export const buildWritePrompt = (input: WriteInput): string => {
   const neighbors = script
     ? `\nVORHERIGER ABSCHNITT: ${input.neighbors?.prev ?? '(keiner, dies ist der Anfang)'}\nNÄCHSTER ABSCHNITT: ${input.neighbors?.next ?? '(keiner, dies ist der letzte Abschnitt)'}\n`
     : '';
+  const required = input.requiredTerms?.length
+    ? `\nPFLICHTBEGRIFFE (je eine eigene Zeile, Schreibweise wie hier): ${input.requiredTerms.join('; ')}\n`
+    : '';
   return `${script ? SCRIPT_PROMPT : input.format === 'leitfaden' ? GUIDE_PROMPT : input.format === 'glossar' ? GLOSSARY_PROMPT : SUMMARY_PROMPT}
-${focus}${exam}${figs}${repair}${part}${neighbors}
+${focus}${exam}${figs}${required}${repair}${part}${neighbors}
 === KAPITEL: ${input.chapter.title} ===
 WORTBUDGET: ${writerBudget(input.chapter.budget, input.argon, input.format)} Wörter${script ? ' (ungefähr)' : ' (Obergrenze, nicht überschreiten)'}
 

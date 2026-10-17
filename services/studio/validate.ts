@@ -3,6 +3,7 @@ import { authorYears, blockTexts, citationsIn, extractFacts, hasFact, INLINE_CIT
 import { corridorFor } from './outline';
 import { answerRepeatsQuestion } from './extras';
 import { GUIDE_PARTS } from './prompts/guide.v1';
+import { coversTerm } from './glossary';
 
 /**
  * Schritt D1: Prüfregeln als reiner Code (Abschnitt 1.4 des Auftrags).
@@ -512,7 +513,7 @@ export const checkGuideTerms = (chapterUnits: Unit[], chapterBlocks: Block[], ch
  * 45 Wörter, jede Einheit vom Typ definition oder concept in einer Zeile, kein Begriff doppelt.
  */
 export const GLOSSARY_MAX_WORDS = 45;
-export const checkGlossaryChapter = (chapterUnits: Unit[], chapterBlocks: Block[], chapterBlockId: string): Issue[] => {
+export const checkGlossaryChapter = (chapterUnits: Unit[], chapterBlocks: Block[], chapterBlockId: string, requiredTerms: string[] = [], allUnits: Unit[] = chapterUnits): Issue[] => {
   const tables = chapterBlocks.filter((b): b is Extract<Block, { type: 'table' }> => b.type === 'table');
   const issues: Issue[] = [];
   if (!tables.length) return [{ rule: 'guide_structure', blockId: chapterBlockId, message: 'Das Kapitel hat keine Tabelle Begriff | Erklärung.' }];
@@ -529,8 +530,39 @@ export const checkGlossaryChapter = (chapterUnits: Unit[], chapterBlocks: Block[
   const inTables = new Set(tables.flatMap(b => b.unitIds ?? []));
   const missing = chapterUnits.filter(u => (u.type === 'definition' || u.type === 'concept') && !inTables.has(u.id));
   if (missing.length) issues.push({ rule: 'guide_structure', blockId: chapterBlockId, message: `Begriffe fehlen (je eine Zeile): ${missing.map(u => u.id).join(', ')}.` });
+  const source = chapterUnits.map(unitText).join(' ');
+  const terms = tables.flatMap(t => t.rows.map(r => r[0] ?? ''));
+  // Pflichtbegriffe aus der Begriffsliste (Namen statt IDs: sie sind auch für Nutzer verständlich).
+  const absent = requiredTerms.filter(r => !terms.some(t => coversTerm(t, r)));
+  if (absent.length) issues.push({ rule: 'guide_structure', blockId: chapterBlockId, message: `Fachbegriffe ohne eigenen Eintrag: ${absent.join(', ')}.` });
+  // Sammeleinträge („Eigenschaften von …“) entfernt mergeGlossary; hier keine Warnung dafür.
+  // Definitionen mit Autor und Jahr: je Autor ein eigener Eintrag mit dem Namen (Abnahme: Myers/Zimbardo/Bak fehlten).
+  const authorDefs = chapterUnits.filter(u => u.type === 'definition').flatMap(u => citationsIn(unitText(u), { loose: true }).map(c => c.first));
+  const rowsText = tables.flatMap(t => t.rows.map(r => r.join(' ')));
+  // Genitiv („Broadbents“) zählt wie der Name; der Autor darf im Begriff oder in der Erklärung stehen.
+  const noAuthor = [...new Set(authorDefs.map(n => n.replace(/s$/, '')))].filter(name => !rowsText.some(t => t.includes(name)));
+  if (noAuthor.length) issues.push({ rule: 'guide_structure', blockId: chapterBlockId, message: `Definitionen ohne eigenen Eintrag je Autor: ${noAuthor.join(', ')}. Je Autor eine Zeile „Begriff (Autor, Jahr)“.` });
+  // Abkürzungen in Erklärungen (UV, AV, H0 …), die auf den Folien stehen, brauchen einen eigenen Eintrag (Glossar-Review 17.10.).
+  const abbrevs = [...new Set(tables.flatMap(t => t.rows.flatMap(r => r.slice(1).join(' ').match(ABBREV_RE) ?? [])))]
+    // Römische Ziffern („II“) sind keine Abkürzungen.
+    .filter(a => !/^[IVXLC]+$/.test(a) && new RegExp(`\\b${a}\\b`).test(source) && !terms.some(t => new RegExp(`\\b${a}\\b`).test(t)));
+  if (abbrevs.length) issues.push({ rule: 'guide_structure', blockId: chapterBlockId, message: `Abkürzungen ohne eigenen Eintrag: ${abbrevs.join(', ')}. Je eine eigene Zeile mit der Erklärung der Folie (Langform nur, wenn sie auf der Folie steht).` });
+  // Kein erfundener Begriff: jedes Wort des Begriffs (ohne Klammerzusatz) steht in den Einheiten des Kapitels.
+  // Mehrteilige Begriffe als zusammenhängende Wortfolge (Glossar-Review 17.10.: „Experimentelle Psychologie“ war
+  // aus zwei Wörtern zusammengesetzt, die nur einzeln vorkamen); Endungen und Bindestriche zählen nicht.
+  const stem = (w: string) => w.toLowerCase().replace(/(?:en|er|es|em|e|n|s)$/, '');
+  // Gegen den ganzen Stoff: ein Begriff kann in einem anderen Kapitel stehen, als das Modell ihn einordnet.
+  const sourceSeq = ` ${(allUnits.map(unitText).join(' ').match(/[\p{L}\p{N}]+/gu) ?? []).map(stem).join(' ')} `;
+  for (const t of tables) for (const r of t.rows) {
+    const head = (r[0] ?? '').replace(/\s*\(.*$/, '');
+    const parts = head.split('/').map(p => (p.match(/[\p{L}\p{N}]+/gu) ?? []).map(stem)).filter(p => p.length);
+    const unknown = parts.filter(p => !sourceSeq.includes(` ${p.join(' ')} `)).map(p => p.join(' '));
+    if (unknown.length) issues.push({ rule: 'nicht_belegt', blockId: t.id, message: `Begriff „${r[0]}“ steht so nicht auf den Folien. Nur Begriffe in der Schreibweise der Folie.` });
+  }
   return issues;
 };
+/** Abkürzungen: 2 bis 5 Großbuchstaben (mit Ziffer), H0/H1; keine Wörter in Großschreibung als Betonung. */
+const ABBREV_RE = /\b(?:[A-ZÄÖÜ]{2,5}\d?|H[01])\b/g;
 
 /** Anteil der Einheiten definition/concept eines Kapitels, die in einer Glossarzeile stehen. */
 export const glossaryTermCoverage = (chapterUnits: Unit[], chapterBlocks: Block[]): number => {
