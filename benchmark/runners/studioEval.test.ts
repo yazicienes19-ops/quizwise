@@ -57,6 +57,8 @@ interface Expectations {
   timelineForbidden?: string[];
   /** Teilstrings, die in keiner Warnung stehen dürfen (Fehlwarnungen). */
   warningsForbidden?: string[];
+  /** Leitfaden: Begriffe, die als eigene Zeile in den Kernbegriffen stehen müssen. */
+  guideTerms?: string[];
   /** Begriffsgruppen (ohne Groß-/Kleinschreibung), die gemeinsam in einem Block stehen müssen. */
   together?: string[][];
   /** Überschriften, die vorkommen müssen. */
@@ -300,6 +302,11 @@ run('Lernstudio-Eval (live)', () => {
       check('Leitfaden: keine Erklärhilfen (nur Folieninhalt)', ki === 0, `${ki} Blöcke mit origin ki`);
       const defs = r.blocks.filter(b => b.type === 'table' && b.id.startsWith('c')).flatMap(blockTexts).join(' ');
       for (const g of exp.tables ?? []) check(`Leitfaden: Begriffe/Autoren ${g.join(' / ')} in den Tabellen`, g.every(x => defs.includes(x)));
+      // Zentrale Begriffe als eigene Zeile (erste Spalte) in den Kernbegriffen.
+      const firstCol = r.blocks.filter(b => b.type === 'table' && b.id.startsWith('c')).flatMap(b => (b.type === 'table' ? b.rows.map(row => row[0]) : []));
+      // Schreibweise wie auf der Folie zählt mit („Cocktail Party Phänomen“ = „Cocktail-Party-Phänomen“).
+      const norm = (t: string) => t.toLowerCase().replace(/\s*\(.*$/, '').replace(/[-\s]+/g, ' ').trim();
+      for (const term of exp.guideTerms ?? []) check(`Leitfaden: Kernbegriff ${term}`, firstCol.some(c => norm(c) === norm(term)));
       console.log(`Leitfaden: ${termRows} Tabellenzeilen, ${qs} Fragen`);
     } else if (!SCRIPT) check('Genau ein Merksatz je Kapitel', merk.every(n => n === 1), merk.join(', '));
     else {

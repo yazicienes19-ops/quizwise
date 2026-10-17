@@ -2,7 +2,8 @@ import { describe, it, expect } from 'vitest';
 import type { Block, PipelineSource } from './types';
 import type { StudioLlm, StudioLlmRequest } from './llm';
 import { runSummaryPipeline } from './pipeline';
-import { checkGuideStructure, checkResultNumbers } from './validate';
+import { checkGuideStructure, checkGuideTerms, checkMeta, checkResultNumbers, checkStudyMixing } from './validate';
+import { normalizeBlocks } from './blocks';
 import { guideCorridor } from './outline';
 import { GUIDE_PARTS } from './prompts/guide.v1';
 
@@ -15,13 +16,15 @@ const PAGES = [
 ];
 const source = (): PipelineSource => ({ docId: 'd', name: 'Gedächtnis', pageCount: 3, pages: [...PAGES] });
 const ids = (prompt: string) => [...prompt.matchAll(/^- (u\d+) /gm)].map(m => m[1]);
+/** Text einer Einheit aus dem Schreib-Prompt (Zeile „- u1 (typ, Quelle, S. 1) Text“). */
+const unitTextOf = (prompt: string, id: string) => prompt.match(new RegExp(`^- ${id} \\([^)]*\\)(?: \\[[^\\]]*\\])* (.+)$`, 'm'))?.[1] ?? `Erklärung ${id}.`;
 
 const check = (q: string, a: string, units: string[]) => ({ type: 'check', origin: 'quelle', check: { question: q, answer: a, units } });
 const guideChapter = (prompt: string, omit: string[] = []) => {
   const u = ids(prompt);
   return { blocks: [
     { type: 'heading', origin: 'quelle', heading: { text: GUIDE_PARTS.terms } },
-    { type: 'table', origin: 'quelle', table: { headers: ['Begriff', 'Erklärung'], rows: u.map(id => ({ cells: [`Begriff ${id}`, `Erklärung ${id} aus der Folie.`], units: [id] })) } },
+    { type: 'table', origin: 'quelle', table: { headers: ['Begriff', 'Erklärung'], rows: u.map(id => ({ cells: [`Begriff ${id}`, unitTextOf(prompt, id)], units: [id] })) } },
     { type: 'heading', origin: 'quelle', heading: { text: GUIDE_PARTS.questions } },
     ...(omit.includes('questions') ? [] : [
       check('Warum unterscheidet man Kurzzeit und Langzeit?', 'Weil beide verschieden lange speichern.', u.slice(0, 1)),
@@ -98,10 +101,65 @@ describe('Lernleitfaden', () => {
     const units = [
       { id: 'u1', sourceId: 'd', page: 2, type: 'finding' as const, text: 'Wiedergabe: 64 % mit Wiederholung, 31 % ohne.' },
       { id: 'u2', sourceId: 'd', page: 3, type: 'example' as const, text: 'Angenommen 50 % und 20 %.', illustrative: true },
+      { id: 'u3', sourceId: 'd', page: 4, type: 'concept' as const, text: 'Überschätzen: Muster & Probe (2003): 12 % sahen es, 70 % glaubten es.' },
     ];
     const p = (text: string): Block[] => [{ id: 'c1-1', origin: 'quelle', cites: [], type: 'paragraph', text }];
-    expect(checkResultNumbers(units, p('Mit Wiederholung 64 %, ohne 31 %.'), 'c1-h')).toEqual([]);
-    expect(checkResultNumbers(units, p('Bis zu 64 % gaben die Liste wieder.'), 'c1-h').map(i => i.message))
-      .toEqual(['Ergebnisse fehlen: 31% (u1). Nimm jeden Wert einzeln und exakt auf.']);
+    expect(checkResultNumbers(units, p('Mit Wiederholung 64 %, ohne 31 %. Es sahen 12 %, 70 % glaubten es.'), 'c1-h')).toEqual([]);
+    expect(checkResultNumbers(units, p('Bis zu 64 % gaben die Liste wieder. Bis zu 70 % glaubten es.'), 'c1-h').map(i => i.message))
+      .toEqual(['Ergebnisse fehlen: 31% (u1); 12% (u3). Nimm jeden Wert einzeln und exakt auf.']);
+  });
+
+  it('Studienkarte mit Belegen einer anderen Arbeit desselben Autors wird gemeldet', () => {
+    const units = [
+      { id: 'u1', sourceId: 'd', page: 5, type: 'study' as const, text: 'Split: Muster (1950) Zahlen auf beiden Ohren.' },
+      { id: 'u2', sourceId: 'd', page: 9, type: 'concept' as const, text: 'Filtermodell nach Muster (1960): seriell, Umschalten.' },
+    ];
+    const study = (pages: number[]): Block => ({ id: 'c1-1', origin: 'quelle', cites: pages.map(page => ({ sourceId: 'd', page })), type: 'study', authors: 'Muster', year: 1950, design: 'a', result: 'b', conclusion: 'c' });
+    expect(checkStudyMixing([study([5])], units)).toEqual([]);
+    expect(checkStudyMixing([study([5, 9])], units).map(i => i.message)).toEqual([
+      'Die Studie „Muster (1950)“ stützt sich auf Seite 9, dort geht es um eine andere Arbeit von Muster. Aufbau, Ergebnis und Schluss nur aus den Einheiten dieser Studie.',
+    ]);
+  });
+
+  it('Beschreibung einer Abbildung statt ihres Inhalts wird gemeldet', () => {
+    const p = (text: string): Block[] => [{ id: 'c1-1', origin: 'quelle', cites: [], type: 'bullets', items: [{ text, cites: [] }] }];
+    expect(checkMeta(p('Zwei Pfeile führen vom Reiz zur Reaktion.')).map(i => i.rule)).toEqual(['meta']);
+    expect(checkMeta(p('Der Reiz wird erst geprüft, dann folgt die Reaktion.'))).toEqual([]);
+  });
+
+  it('Klausurfalle „A vs. B: woran man sie unterscheidet: …“ wird zu „A vs. B: …“', () => {
+    const byId = new Map([['u1', { id: 'u1', sourceId: 'd', page: 1, type: 'concept' as const, text: 'x' }]]) as Parameters<typeof normalizeBlocks>[1];
+    const { blocks: [b] } = normalizeBlocks([{ type: 'callout', origin: 'quelle', callout: { variant: 'klausurfalle', text: 'Reiz vs. Reaktion: woran man sie unterscheidet: Der Reiz kommt zuerst.', units: ['u1'] } }], byId, 'c1-');
+    expect(b.type === 'callout' && b.text).toBe('Reiz vs. Reaktion: Der Reiz kommt zuerst.');
+  });
+
+  it('mehr Zellen als Spalten: der Rest kommt in die letzte Spalte, kein Formfehler', () => {
+    const byId = new Map([['u1', { id: 'u1', sourceId: 'd', page: 1, type: 'concept' as const, text: 'x' }]]) as Parameters<typeof normalizeBlocks>[1];
+    const { blocks: [b] } = normalizeBlocks([{ type: 'table', origin: 'quelle', table: { headers: ['Begriff', 'Erklärung'], rows: [{ cells: ['Reiz', 'Kommt zuerst.', 'Löst die Reaktion aus.'], units: ['u1'] }] } }], byId, 'c1-');
+    expect(b.type === 'table' && b.rows).toEqual([['Reiz', 'Kommt zuerst. Löst die Reaktion aus.']]);
+    expect(b.type === 'table' && b.shapeError).toBeUndefined();
+  });
+
+  it('„hinweis“ setzt nur der Code: vom Modell geschrieben wird es ein Beispiel', () => {
+    const byId = new Map([['u1', { id: 'u1', sourceId: 'd', page: 1, type: 'concept' as const, text: 'x' }]]) as Parameters<typeof normalizeBlocks>[1];
+    const { blocks: [b] } = normalizeBlocks([{ type: 'callout', origin: 'quelle', callout: { variant: 'hinweis', text: 'Ein Zahlenbeispiel zur Methode.', units: ['u1'] } }], byId, 'c1-');
+    expect(b.type === 'callout' && b.variant).toBe('beispiel');
+  });
+
+  it('Studienjahr kommt aus der belegten Einheit derselben Autoren', () => {
+    const byId = new Map([['u1', { id: 'u1', sourceId: 'd', page: 1, type: 'study' as const, text: 'x', study: { authors: 'Probe et al.', year: 2011 } }]]) as Parameters<typeof normalizeBlocks>[1];
+    const { blocks: [b] } = normalizeBlocks([{ type: 'study', origin: 'quelle', study: { authors: 'Probe et al.', year: '1911', design: 'a', result: 'b', conclusion: 'c', units: ['u1'] } }], byId, 'c1-');
+    expect(b.type === 'study' && b.year).toBe(2011);
+  });
+
+  it('Definitionen gehören in eine Tabellenzeile, Begriffe nicht nur in eine Frage', () => {
+    const units = [
+      { id: 'u1', sourceId: 'd', page: 1, type: 'definition' as const, text: 'Reiz: was einwirkt.' },
+      { id: 'u2', sourceId: 'd', page: 2, type: 'concept' as const, text: 'Gewöhnung: schwächere Reaktion.' },
+    ];
+    const table: Block = { id: 'c1-1', origin: 'quelle', cites: [], unitIds: ['u1'], type: 'table', headers: ['Begriff', 'Erklärung'], rows: [['Reiz', 'was einwirkt']] };
+    const question: Block = { id: 'c1-2', origin: 'quelle', cites: [], unitIds: ['u2'], type: 'check', question: 'Was ist Gewöhnung?', answer: 'Schwächere Reaktion.' };
+    expect(checkGuideTerms(units, [table, question], 'c1-h').map(i => i.message)).toEqual(['Begriffe fehlen in „Kernbegriffe“ (eigene Zeile) oder „Modelle und Abläufe“: u2.']);
+    expect(checkGuideTerms(units, [{ ...table, unitIds: ['u1', 'u2'] }], 'c1-h')).toEqual([]);
   });
 });

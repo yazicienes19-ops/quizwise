@@ -327,9 +327,35 @@ const META_RE = /\b(Selbststudium\w*|Lehrveranstaltung\w*|Vorlesung\w*|Seminar\w
 export const checkMeta = (blocks: Block[]): Issue[] => blocks.flatMap((b): Issue[] => {
   // Nur Haupttext; Hinweise (Folienfehler) und die angehängten Abschnitte dürfen über die Vorlesung sprechen.
   if (!b.id.startsWith('c') || b.type === 'heading' || b.type === 'check' || (b.type === 'callout' && b.variant === 'hinweis')) return [];
-  const sentence = blockTexts(b).flatMap(t => t.split(/(?<=[.!?])\s+/)).find(t => META_RE.test(t));
-  return sentence ? [{ rule: 'meta', blockId: b.id, message: `Satz ohne fachlichen Inhalt: „${sentence.slice(0, 160)}“. Streichen oder durch den Stoff selbst ersetzen.` }] : [];
+  const sentences = blockTexts(b).flatMap(t => t.split(/(?<=[.!?])\s+/));
+  const sentence = sentences.find(t => META_RE.test(t));
+  if (sentence) return [{ rule: 'meta', blockId: b.id, message: `Satz ohne fachlichen Inhalt: „${sentence.slice(0, 160)}“. Streichen oder durch den Stoff selbst ersetzen.` }];
+  // Abbildung beschrieben statt ihres Inhalts (Leitfaden-Abnahme 17.10.: „Parallele Linien durchlaufen …“).
+  const drawing = sentences.find(t => DRAWING_RE.test(t));
+  return drawing ? [{ rule: 'meta', blockId: b.id, message: `Beschreibt das Aussehen einer Abbildung statt ihres Inhalts: „${drawing.slice(0, 160)}“. Gib wieder, was das Modell aussagt.` }] : [];
 });
+const DRAWING_RE = /\b(Linien|Pfeile?n?|Kästen|Kästchen|Kreise|Abbildung zeigt|Grafik zeigt|Diagramm zeigt|ist dargestellt als|im Schaubild)\b/i;
+
+/**
+ * Studienkarte mit Belegen einer anderen Arbeit desselben Autors (Leitfaden-Abnahme 17.10.:
+ * „Broadbent (1954)“ zitierte die Folie zur Filtertheorie von 1958 und übernahm deren Schluss).
+ */
+export const checkStudyMixing = (blocks: Block[], units: Unit[]): Issue[] => {
+  const byPage = (c: Cite) => units.filter(u => u.sourceId === c.sourceId && u.page === c.page);
+  return blocks.flatMap((b): Issue[] => {
+    if (b.type !== 'study' || !b.year) return [];
+    const first = b.authors.split(/[\s,&]+/)[0]?.toLowerCase();
+    if (!first) return [];
+    const foreign = b.cites.filter(c => {
+      const on = byPage(c).map(unitText).join(' ');
+      const years = citationsIn(on, { loose: true }).filter(x => x.first.toLowerCase() === first).map(x => x.year);
+      return years.length > 0 && !years.includes(b.year!);
+    });
+    return foreign.length
+      ? [{ rule: 'study_incomplete', blockId: b.id, message: `Die Studie „${b.authors} (${b.year})“ stützt sich auf Seite ${foreign.map(c => c.page).join(', ')}, dort geht es um eine andere Arbeit von ${b.authors.split(/[\s,&]+/)[0]}. Aufbau, Ergebnis und Schluss nur aus den Einheiten dieser Studie.` }]
+      : [];
+  });
+};
 
 const shingles3 = (t: string): Set<string> => {
   const w = (t.toLowerCase().replace(/\*\*/g, '').match(/[\p{L}\p{N}]+/gu) ?? []);
@@ -457,11 +483,27 @@ export const checkGuideStructure = (chapterBlocks: Block[], chapterBlockId: stri
 export const checkResultNumbers = (chapterUnits: Unit[], chapterBlocks: Block[], chapterBlockId: string): Issue[] => {
   const text = chapterBlocks.flatMap(blockTexts).join(' ');
   const missing = chapterUnits
-    .filter(u => !u.illustrative && (u.type === 'study' || u.type === 'finding'))
+    // Auch Einheiten anderen Typs, die Studien mit Autor und Jahr zitieren (Abnahme: Ergebnisse in einer concept-Einheit).
+    .filter(u => !u.illustrative && (u.type === 'study' || u.type === 'finding' || citationsIn(unitText(u), { loose: true }).length > 0))
     .map(u => ({ u, facts: extractFacts(unitText(u)).filter(f => /%|\//.test(f) && !hasFact(f, text)) }))
     .filter(x => x.facts.length);
   return missing.length
     ? [{ rule: 'numbers', blockId: chapterBlockId, message: `Ergebnisse fehlen: ${missing.map(x => `${x.facts.join(', ')} (${x.u.id})`).join('; ')}. Nimm jeden Wert einzeln und exakt auf.` }]
+    : [];
+};
+
+/**
+ * Leitfaden: Einheiten mit Definition gehören in eine Tabellenzeile (Kernbegriffe), erklärte Begriffe
+ * (concept) in eine Tabelle oder Stichpunkte, nicht nur in eine Frage (Abnahme 17.10.: „Cocktail-Party-Phänomen“
+ * stand nur in einer Verständnisfrage).
+ */
+export const checkGuideTerms = (chapterUnits: Unit[], chapterBlocks: Block[], chapterBlockId: string): Issue[] => {
+  const inTables = new Set(chapterBlocks.filter(b => b.type === 'table').flatMap(b => b.unitIds ?? []));
+  const inLists = new Set(chapterBlocks.filter(b => b.type === 'bullets').flatMap(b => b.unitIds ?? []));
+  const missing = chapterUnits.filter(u => (u.type === 'definition' && !inTables.has(u.id))
+    || (u.type === 'concept' && !inTables.has(u.id) && !inLists.has(u.id)));
+  return missing.length
+    ? [{ rule: 'guide_structure', blockId: chapterBlockId, message: `Begriffe fehlen in „${GUIDE_PARTS.terms}“ (eigene Zeile) oder „${GUIDE_PARTS.models}“: ${missing.map(u => u.id).join(', ')}.` }]
     : [];
 };
 
@@ -505,6 +547,7 @@ export const validateResult = (blocks: Block[], ctx: ValidationContext): Issue[]
   ...checkIllustrative(blocks, ctx.units),
   ...checkIllustrativeLabel(blocks, ctx.units),
   ...checkMeta(blocks),
+  ...checkStudyMixing(blocks, ctx.units),
   ...checkCiteDensity(blocks),
   ...checkKiFacts(blocks, ctx),
 ];

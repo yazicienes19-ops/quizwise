@@ -111,6 +111,23 @@ export const mergeNearDuplicates = (units: Unit[], threshold = 0.8): { text: str
   return out.map(({ text, cites, unit }) => ({ text, cites, unit }));
 };
 
+/**
+ * Folientext für Aufgaben und Klausurinfos glätten (Leitfaden-Abnahme 17.10.: „Gruppen. | 10 Minuten Sie sind …“,
+ * „• Was ist …“): Spaltentrenner werden Satzgrenzen, Aufzählungszeichen fallen weg, eine lose Zeitangabe
+ * am Anfang eines Teils wird „Zeit: …“. Der Wortlaut bleibt sonst unverändert.
+ */
+export const cleanSlideText = (t: string): string => t
+  .split(/\s*\|\s*/)
+  .map(part => part.replace(/^(\d+\s*(?:Minuten|Min\.?|Stunden|Std\.?))\s+(?=\p{Lu})/u, 'Zeit: $1. '))
+  .map(part => part.trim())
+  .filter(Boolean)
+  .map(part => (/[.!?:]$/.test(part) ? part : `${part}.`))
+  .join(' ')
+  .replace(/\s*[•▪◦●]\s*/g, ' ')
+  .replace(/\s+([:;,.!?])/g, '$1')
+  .replace(/\s{2,}/g, ' ')
+  .trim();
+
 export interface PracticeItem { question: string; answer: string; answerFromSlide: boolean; unitIds: string[] }
 
 const words = (t: string) => new Set(t.toLowerCase().match(/[\p{L}\p{N}]+/gu) ?? []);
@@ -199,7 +216,7 @@ export const buildExtraBlocks = (
   const tasks = mergeNearDuplicates(units.filter(u => u.type === 'task'));
   if (tasks.length) {
     blocks.push({ id: 'x-tasks-h', origin: 'quelle', cites: [], type: 'heading', level: 2, text: 'Aufgaben aus der Vorlesung' });
-    blocks.push({ id: 'x-tasks', origin: 'quelle', cites: [], type: 'tasks', items: tasks.map(t => ({ text: t.text, cites: t.cites })) });
+    blocks.push({ id: 'x-tasks', origin: 'quelle', cites: [], type: 'tasks', items: tasks.map(t => ({ text: cleanSlideText(t.text), cites: t.cites })) });
   }
   const byId = new Map(units.map(u => [u.id, u]));
   if (practice?.length) {
@@ -227,7 +244,7 @@ export const buildExtraBlocks = (
   const exam = units.filter(u => u.type === 'exam_info');
   if (exam.length) {
     blocks.push({ id: 'x-exam-h', origin: 'quelle', cites: [], type: 'heading', level: 2, text: 'Klausurinfos' });
-    blocks.push({ id: 'x-exam', origin: 'quelle', cites: [], type: 'bullets', items: exam.map(u => ({ text: u.text, cites: [cite(u)] })) });
+    blocks.push({ id: 'x-exam', origin: 'quelle', cites: [], type: 'bullets', items: exam.map(u => ({ text: cleanSlideText(u.text), cites: [cite(u)] })) });
   }
   return blocks;
 };

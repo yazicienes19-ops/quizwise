@@ -95,15 +95,29 @@ export const parseUnits = (raw: unknown, job: Job): StoredUnit[] => {
 };
 
 /**
- * Rechenbeispiel heißt nur, was Werte als Szenario zeigt (Mittelwerte, Prozente,
- * Zahlen). Jahreszahlen, Nummern wie „Beispiel 1“ und H0/H1 zählen nicht: Eine
- * Studie mit Autor und Jahr ohne Werte ist ein Befund, keine Illustration.
+ * Rechenbeispiel heißt nur, was ausgedachte statistische Werte als Szenario
+ * zeigt: Kennwerte wie „M = 75“, „n = 25“, „r = 1“, „p < .05“ oder Prozente.
+ * Uhrzeiten, Jahreszahlen, Nummern („Beispiel 1“) und Zahlen in einem
+ * beschriebenen Effekt („die Zahl 80 genannt“) zählen nicht (Leitfaden-Abnahme
+ * 17.10.: „Morgen um 8 Uhr“ und der Anker-Effekt galten fälschlich als Rechenbeispiel).
  */
 export const hasScenarioValues = (t: string): boolean =>
-  /\d/.test(t
-    .replace(/\b(1[89]|20)\d\d\b/g, '')
-    .replace(/\b(Beispiel|Folie|Seite|Gruppe|Experiment|Studie|Bedingung|Schritt|Kapitel|Teil|Frage)\s*\d+/gi, '')
-    .replace(/\bH[01]\b/g, ''));
+  /\b(?:M|SD|N|n|r|p|d|t|F)\s*[=<>≤≥]\s*-?[.,]?\d/.test(t) || /\d\s*(?:%|Prozent\b)/.test(t);
+
+/**
+ * Einheit ohne Lerninhalt: ihr Text sagt nichts über den Folientitel hinaus (Videofolie „X im Alltag: X im Alltag.“)
+ * oder eine Abbildung, ein Beispiel, eine Aufzählung nur über Vorlesung oder Selbststudium. Solche Einheiten
+ * zählen als organisatorisch; sonst muss das Modell sie aufnehmen und baut den Titel als Inhalt ein
+ * (Leitfaden-Abnahme 17.10.: „Change Blindness …“ mit dem Titel einer Videofolie als Definition).
+ */
+export const isContentless = (u: Pick<Unit, 'type' | 'title' | 'text'>): boolean => {
+  const words = (t: string) => (t.toLowerCase().match(/[\p{L}\p{N}]+/gu) ?? []);
+  const title = new Set(words(u.title ?? ''));
+  const rest = words(u.text).filter(w => !title.has(w));
+  if (title.size && rest.length <= 1) return true;
+  return ['figure', 'example', 'list'].includes(u.type) && /\b(Selbststudium|Lehrveranstaltung|Vorlesung|Seminar)\w*/i.test(`${u.title ?? ''} ${u.text}`)
+    && !/\b(Theorie|Hypothese|Befund|Studie|Modell|Effekt)\w*/i.test(u.text);
+};
 
 /** Seiten im Fenstertext (Marken [Seite p]), in Reihenfolge. */
 export const pagesInText = (text: string): number[] => [...text.matchAll(/^\[Seite (\d+)\]$/gm)].map(m => Number(m[1]));

@@ -35,7 +35,8 @@ const BLOCK_SCHEMAS: Record<string, unknown> = {
     headers: STRS,
     rows: { type: 'ARRAY', items: obj({ cells: STRS, units: UNITS }, ['cells', 'units']) },
   }, ['headers', 'rows']),
-  callout: obj({ variant: { type: 'STRING', enum: CALLOUT_VARIANTS }, text: S, units: UNITS }, ['variant', 'text', 'units']),
+  // „hinweis“ (blauer Kasten = Folienfehler) setzt nur der Code; das Schreibmodell bekommt ihn nicht angeboten.
+  callout: obj({ variant: { type: 'STRING', enum: CALLOUT_VARIANTS.filter(v => v !== 'hinweis') }, text: S, units: UNITS }, ['variant', 'text', 'units']),
   study: obj({
     authors: S,
     year: { type: 'STRING', description: 'Jahr mit vier Ziffern, z. B. "1999"; leer lassen, wenn die Einheit keins nennt' },
@@ -122,7 +123,7 @@ export const normalizeBlocks = (
     const origin: Origin = r.origin === 'ki' ? 'ki' : 'quelle';
     const ids = knownIds(d.units, byId);
     const base = { id: `${idPrefix}${out.length + 1}`, origin, cites: origin === 'ki' ? [] : citesFromUnits(ids, byId), ...(ids.length ? { unitIds: ids } : {}) };
-    const text = clean(d.text);
+    let text = clean(d.text);
     if (!Object.keys(d).length) { drop(type, 'Unterobjekt fehlt'); continue; }
     switch (type) {
       case 'heading':
@@ -155,7 +156,10 @@ export const normalizeBlocks = (
         if (!rawRows.length) { drop(type, 'ohne Zeilen'); break; }
         if (tooLong(...rawRows.flatMap(row => row.cells))) { drop(type, 'Zelle zu lang'); break; }
         const width = headers.length;
-        // Zeilen mit anderer Zellenzahl als Spalten: aufgefüllt/gekürzt, aber gemeldet (Prüfregel table_shape).
+        // Mehr Zellen als Spalten: das Modell hat einen Text auf mehrere Zellen verteilt (Leitfaden-Abnahme 17.10.:
+        // „Begriff | Satz 1 | Satz 2“); der Rest wandert in die letzte Spalte, statt abgeschnitten zu werden.
+        for (const row of rawRows) if (row.cells.length > width) row.cells = [...row.cells.slice(0, width - 1), row.cells.slice(width - 1).filter(Boolean).join(' ')];
+        // Weniger Zellen als Spalten: aufgefüllt, aber gemeldet (Prüfregel table_shape).
         const badRows = rawRows.map((row, i) => (row.cells.length !== width ? `Zeile ${i + 1} hat ${row.cells.length} statt ${width} Zellen` : '')).filter(Boolean);
         const rowCites = rawRows.map(row => (origin === 'ki' ? [] : citesFromUnits(row.ids, byId)));
         const all = [...new Set([...ids, ...rawRows.flatMap(row => row.ids)])];
@@ -173,13 +177,17 @@ export const normalizeBlocks = (
         break;
       }
       case 'callout': {
-        const variant = CALLOUT_VARIANTS.includes(d.variant as CalloutVariant) ? d.variant as CalloutVariant : 'hinweis';
+        // Vom Modell geschriebene „hinweis“-Kästen sähen wie Folienfehler aus (Skript-Abnahme 17.10.: Rechenbeispiel
+        // als blauer Hinweis auf Folie 26); sie werden Beispiele. Unbekannte Varianten ebenso.
+        const variant = CALLOUT_VARIANTS.includes(d.variant as CalloutVariant) && d.variant !== 'hinweis' ? d.variant as CalloutVariant : 'beispiel';
         if (!text) { drop(`callout:${variant}`, 'ohne Text'); break; }
         if (tooLong(text)) { drop(`callout:${variant}`, 'Text zu lang'); break; }
         // Beispiel und Einordnung ohne Beleg sind eigene Erklärhilfe, nie Vorlesungsinhalt;
         // Leitfrage und Überleitung (Skript) sind Gliederungshilfe ohne Fußnote.
         // Klausurfallen nur aus Folieninhalt: eine Falle ohne Beleg wäre eine erfundene Prüfungsaussage.
         if (variant === 'klausurfalle' && (base.origin === 'ki' || !base.cites.length)) { drop('callout:klausurfalle', 'ohne Folienbeleg'); break; }
+        // „A vs. B: woran man sie unterscheidet: …“ (Prompt-Vorlage mitgeschrieben) wird zu „A vs. B: …“.
+        if (variant === 'klausurfalle') text = text.replace(/:\s*woran man (?:sie|beide) (?:unterscheidet|auseinanderhält)\s*:?\s*/i, ': ');
         const kiOrigin = variant === 'einordnung' || (variant === 'beispiel' && !base.cites.length);
         if (variant === 'leitfrage' || variant === 'bruecke') {
           out.push({ ...base, origin: 'quelle', cites: [], type: 'callout', variant, text });
@@ -193,7 +201,12 @@ export const normalizeBlocks = (
         const fields = { design: clean(d.design), result: clean(d.result), conclusion: clean(d.conclusion) };
         if (!authors) { drop(type, 'ohne Autor'); break; }
         if (authors.length > 200 || tooLong(...Object.values(fields))) { drop(type, 'Text zu lang'); break; }
-        const year = parseYear(d.year);
+        // Jahr aus der belegten Einheit derselben Autoren, wenn das Modell sich vertippt (Leitfaden-Abnahme 17.10.:
+        // „Li et al. (1911)“ statt 2011, die eine Reparatur behob es nicht).
+        const first = authors.split(/[\s,&]+/)[0]?.toLowerCase();
+        const fromUnit = ids.map(id => byId.get(id)?.study).find(st => st?.year && st.authors?.split(/[\s,&]+/)[0]?.toLowerCase() === first)?.year;
+        const parsed = parseYear(d.year);
+        const year = fromUnit && parsed !== fromUnit ? fromUnit : parsed;
         out.push({ ...base, type: 'study', authors, ...(year ? { year } : {}), ...fields });
         break;
       }

@@ -1,12 +1,12 @@
 import type { Block, ChapterDiagnostic, Issue, LernstudioResult, PipelineProgress, PipelineSource, SourcePart, StudioOutputFormat, Unit } from './types';
 import { findDuplicatePages, sourceWordCount, withoutDuplicates } from './dedupe';
-import { assignUnitIds, extractUnits, filterHiddenText, hasScenarioValues, scanSourceErrors, verifySourceErrors } from './extract';
-import { buildOutline, SEPARATE_TYPES, type Chapter, type Lecture } from './outline';
+import { assignUnitIds, extractUnits, filterHiddenText, hasScenarioValues, isContentless, scanSourceErrors, verifySourceErrors } from './extract';
+import { buildOutline, corridorFor, SEPARATE_TYPES, type Chapter, type Lecture } from './outline';
 import { chapterHeading, writeChapterBody, type WriteInput } from './write';
 import { buildExtraBlocks, buildPracticeQuestions, buildTimeline, timelineCandidates } from './extras';
 import { markPriority } from './priority';
 import { partOf, slideIn } from './parts';
-import { checkEmptyHeadings, checkGuideStructure, checkMerksatz, checkResultNumbers, checkPriority, checkScriptSections, checkRepetition, checkSectionCoverage, checkStudies, unitCoverage, validateResult, mainTextWords, type ValidationContext } from './validate';
+import { checkEmptyHeadings, checkGuideStructure, checkGuideTerms, checkMerksatz, checkResultNumbers, checkPriority, checkScriptSections, checkRepetition, checkSectionCoverage, checkStudies, unitCoverage, validateResult, mainTextWords, type ValidationContext } from './validate';
 import { checkWithModel } from './check';
 import { mapLimit, StudioLlmError, type ExtractionCache, type StudioLlm } from './llm';
 import type { FigureRef } from './blocks';
@@ -49,6 +49,8 @@ const LENGTH_TOLERANCE = 1.15;
 const SCRIPT_LENGTH_MAX = 1.3;
 /** Leitfaden: Fragen mit Musterantworten überziehen das Kapitelbudget (Abnahme 17.10.: 1,3 bis 1,4), das Ganze lag trotzdem mitten im Korridor. */
 const GUIDE_LENGTH_MAX = 1.5;
+/** Leitfaden: unvollständig erst unter 80 % Abdeckung des ganzen Kapitels. */
+const GUIDE_COVERAGE_MIN = 0.8;
 const SCRIPT_LENGTH_MIN = 0.7;
 
 const masked = (src: PipelineSource, ranges?: [number, number][]): PipelineSource =>
@@ -133,7 +135,9 @@ export const runSummaryPipeline = async (input: PipelineInput): Promise<Lernstud
   bail();
   // Auch für gespeicherte Extraktionen: ohne Werte kein Rechenbeispiel.
   const checked = stored.filter(u => u.type !== 'source_error')
-    .map(u => (u.illustrative && !hasScenarioValues(u.text) ? (({ illustrative: _, ...rest }) => rest)(u) : u));
+    .map(u => (u.illustrative && !hasScenarioValues(u.text) ? (({ illustrative: _, ...rest }) => rest)(u) : u))
+    // Ohne Lerninhalt (nur Folientitel, nur Organisatorisches): nicht als Pflichtstoff behandeln.
+    .map(u => (u.type !== 'organizational' && u.type !== 'task' && u.type !== 'practice_question' && u.type !== 'exam_info' && isContentless(u) ? { ...u, type: 'organizational' as const } : u));
   const units = markPriority(assignUnitIds([...checked, ...confirmed], order));
   const byId = new Map(units.map(u => [u.id, u]));
 
@@ -268,11 +272,15 @@ export const runSummaryPipeline = async (input: PipelineInput): Promise<Lernstud
     return [
       ...checkSectionCoverage(ch.sections, chapterBlocks[i], byId, head),
       ...(script ? checkScriptSections(chapterBlocks[i], head) : guide ? checkGuideStructure(chapterBlocks[i], head) : checkMerksatz(chapterBlocks[i], head, ch.title)),
-      ...(guide ? checkResultNumbers(chapterUnitIds(ch).map(id => byId.get(id)).filter((u): u is Unit => !!u), chapterBlocks[i], head) : []),
+      ...(guide ? [
+        ...checkResultNumbers(chapterUnitIds(ch).map(id => byId.get(id)).filter((u): u is Unit => !!u), chapterBlocks[i], head),
+        ...checkGuideTerms(chapterUnitIds(ch).map(id => byId.get(id)).filter((u): u is Unit => !!u), chapterBlocks[i], head),
+      ] : []),
       ...checkRepetition(chapterBlocks[i]),
       ...checkPriority(chapterUnitIds(ch), chapterBlocks[i], byId, head),
       // Länge je Kapitel durchsetzen (nicht nur warnen): zu lange Kapitel werden gekürzt neu geschrieben.
-      ...(words > ch.budget * (script ? SCRIPT_LENGTH_MAX : guide ? GUIDE_LENGTH_MAX : LENGTH_TOLERANCE)
+      // Leitfaden: je Kapitel nur kürzen, wenn das Ganze über dem Korridor liegt (Fragen machen Kapitel ungleich lang).
+      ...((!guide || mainTextWords(all()) > corridorFor(format, sourceWords).max * 1.1) && words > ch.budget * (script ? SCRIPT_LENGTH_MAX : guide ? GUIDE_LENGTH_MAX : LENGTH_TOLERANCE)
         ? [{ rule: 'length' as const, blockId: head, message: `Zu lang: ${words} Wörter, höchstens ${Math.round(ch.budget * (script ? SCRIPT_LENGTH_MAX : guide ? GUIDE_LENGTH_MAX : 1))}. Kürze, ohne Einheiten wegzulassen.` }]
         : []),
       // Skript: zu knapp heißt zu wenig erklärt.
@@ -394,7 +402,8 @@ export const runSummaryPipeline = async (input: PipelineInput): Promise<Lernstud
     d.blocks = chapterBlocks[i].length;
     d.coverage = Math.round(unitCoverage(chapterUnitIds(ch), chapterBlocks[i], byId).ratio * 100) / 100;
     if (!chapterBlocks[i].length || checkEmptyHeadings([chapterHeading(ch.title, i), ...chapterBlocks[i]]).length
-      || checkSectionCoverage(ch.sections, chapterBlocks[i], byId, '').length) incompleteChapters.push(ch.title);
+      // Leitfaden ordnet nach Art (Begriffe, Studien, Fragen), nicht nach Abschnitten: dort zählt das ganze Kapitel.
+      || (guide ? d.coverage < GUIDE_COVERAGE_MIN : checkSectionCoverage(ch.sections, chapterBlocks[i], byId, '').length)) incompleteChapters.push(ch.title);
   });
   const finalCode = [
     ...validateResult(all(), ctx).filter(i => i.rule !== 'length'),

@@ -1,7 +1,7 @@
 import { describe, it, expect } from 'vitest';
 import type { Block, Unit } from './types';
 import type { StudioLlm, StudioLlmRequest } from './llm';
-import { answerRepeatsQuestion, buildExtraBlocks, buildPracticeQuestions, practiceProblems } from './extras';
+import { answerRepeatsQuestion, buildExtraBlocks, buildPracticeQuestions, cleanSlideText, practiceProblems } from './extras';
 import { normalizeBlocks } from './blocks';
 import { checkIllustrative, checkIllustrativeLabel, checkMeta } from './validate';
 import { resultToMarkdown } from './toMarkdown';
@@ -112,7 +112,10 @@ describe('Rechenbeispiel nur mit Werten', () => {
     expect(hasScenarioValues('Muster & Beispiel (2010): Beispiel 1: Lernen mit Licht? Hypothese H1: Wer bei Licht lernt, erinnert mehr.')).toBe(false);
     expect(hasScenarioValues('Eine Person schiebt das Lernen immer wieder auf.')).toBe(false);
     expect(hasScenarioValues('Gruppe 1: M = 40, Gruppe 2: M = 55.')).toBe(true);
-    expect(hasScenarioValues('Wird vorher die Zahl 70 genannt, schätzen alle höher.')).toBe(true);
+    expect(hasScenarioValues('Wird vorher die Zahl 70 genannt, schätzen alle höher.')).toBe(false);
+    expect(hasScenarioValues('Morgen um 9 Uhr scheint hier die Sonne.')).toBe(false);
+    expect(hasScenarioValues('Korrelation r = 1 zwischen A und B.')).toBe(true);
+    expect(hasScenarioValues('Angenommen 40 % der Gruppe A.')).toBe(true);
   });
 });
 
@@ -122,5 +125,23 @@ describe('Rechenbeispiel als solches ausgewiesen', () => {
     const p = (text: string): Block => ({ id: 'c1-1', origin: 'quelle', cites: [{ sourceId: 's', page: 1 }], unitIds: ['a'], type: 'paragraph', text });
     expect(checkIllustrative([p('Muster et al. (2021) untersuchten N = 60, je Gruppe n = 30.')], units)).toHaveLength(1);
     expect(checkIllustrative([p('Ein Rechenbeispiel mit ausgedachten Werten nach Muster et al. (2021): N = 60, je Gruppe n = 30.')], units)).toEqual([]);
+  });
+});
+
+describe('Folienreste in Aufgaben', () => {
+  it('Spaltentrenner, Aufzählungszeichen und lose Zeitangaben werden geglättet, der Wortlaut bleibt', () => {
+    expect(cleanSlideText('Bildet Dreiergruppen. | 15 Minuten Ihr seid die Prüfer! Frage : Wirkt Tee? Auftrag: • Was ist die UV? • Was ist die AV?'))
+      .toBe('Bildet Dreiergruppen. Zeit: 15 Minuten. Ihr seid die Prüfer! Frage: Wirkt Tee? Auftrag: Was ist die UV? Was ist die AV?');
+    expect(cleanSlideText('Lest Kapitel 2 bis zur nächsten Sitzung.')).toBe('Lest Kapitel 2 bis zur nächsten Sitzung.');
+  });
+});
+
+describe('Einheiten ohne Lerninhalt', () => {
+  it('nur Folientitel oder nur Organisatorisches zählt nicht als Pflichtstoff', async () => {
+    const { isContentless } = await import('./extract');
+    expect(isContentless({ type: 'concept', title: 'Gedächtnis im Alltag', text: 'Gedächtnis im Alltag.' })).toBe(true);
+    expect(isContentless({ type: 'figure', title: 'Selbststudium', text: 'Übersicht zum angeleiteten Selbststudium mit Bildern.' })).toBe(true);
+    expect(isContentless({ type: 'concept', title: 'Gedächtnis', text: 'Speichert Informationen über die Zeit.' })).toBe(false);
+    expect(isContentless({ type: 'figure', title: 'Modell', text: 'Kreislauf der Theoriebildung nach der Vorlesung: Beobachtung, Hypothese, Prüfung.' })).toBe(false);
   });
 });

@@ -22,12 +22,15 @@ Aufbau des Kapitels, genau diese Überschriften (heading), in dieser Reihenfolge
 1. heading "${GUIDE_PARTS.terms}": EINE table mit den Spalten Begriff | Erklärung. Je wichtiger Begriff eine Zeile,
    Erklärung in 1 bis 2 Sätzen aus den Einheiten, "units" je Zeile. Definitionen verschiedener Autoren je eine
    eigene Zeile, Begriff mit Autor und Jahr („Psychologie (Autor, Jahr)“). Jede Einheit vom Typ definition und
-   concept kommt in einer Zeile vor.
+   concept kommt in einer Zeile vor. Auch jedes Phänomen und jeder Fachbegriff, der nur in einer Studie oder einem
+   Befund erklärt wird (oft im Studientitel genannt), bekommt eine Zeile mit der Erklärung aus dieser Einheit.
 2. heading "${GUIDE_PARTS.models}" (nur wenn es Einheiten vom Typ figure, list, comparison oder example gibt):
    Schemata, Abläufe, Kreisläufe, Aufzählungen und Beispiele. Je Modell oder Ablauf ein bullets-Block, dessen
    Stichpunkte die Schritte oder Teile in der Reihenfolge der Folie nennen (ein Kreislauf: alle Schritte bis
-   zurück zum Anfang, mit dem Wort „Kreislauf“ oder „Zyklus“, wenn die Folie es so zeigt). Beispiele als
-   Stichpunkt „Beispiel: …“; Rechenbeispiele als „Rechenbeispiel: …“. Jede dieser Einheiten kommt vor.
+   zurück zum Anfang, als „Kreislauf“ bezeichnet, wenn die Folie ihn so zeigt). Beispiele als
+   Stichpunkt „Beispiel: …“ mit dem, was es zeigt; „Rechenbeispiel: …“ NUR für Einheiten mit [Rechenbeispiel,
+   ausgedachte Werte]. Jede dieser Einheiten kommt vor. Bei Abbildungen den Inhalt des Modells wiedergeben (was
+   passiert, was folgt worauf), nie ihr Aussehen (Linien, Pfeile, Kästen).
 3. heading "${GUIDE_PARTS.studies}" (nur wenn es Einheiten vom Typ study oder finding gibt): je Studie ein study-Block
    (authors, year, design in 1 Satz, result mit exakten Zahlen, conclusion). Nur wenn die Einheiten Aufbau UND
    Ergebnis nennen; sonst die Studie als Zeile in einer table Studie | Befund.
@@ -38,8 +41,8 @@ Aufbau des Kapitels, genau diese Überschriften (heading), in dieser Reihenfolge
    Vergleich zweier Theorien, Transfer. answer: Lösungsskizze mit den Punkten, die eine gute Antwort enthält,
    nur aus den Einheiten, "units" mit deren IDs. Prüfungsrelevante Einheiten ([prüfungsrelevant]) zuerst.
 6. heading "${GUIDE_PARTS.confusions}" (nur wenn die Einheiten selbst zwei ähnliche Begriffe abgrenzen oder
-   gegenüberstellen): je Paar ein callout "klausurfalle", Text „A vs. B: woran man sie unterscheidet“, origin
-   "quelle" mit units. Keine eigenen Einschätzungen, keine Gegenthesen.
+   gegenüberstellen): je Paar ein callout "klausurfalle", der Text beginnt mit „A vs. B:“ und nennt danach direkt
+   den Unterschied, origin "quelle" mit units. Keine eigenen Einschätzungen, keine Gegenthesen.
 
 Regeln:
 - Nur Inhalte aus den Einheiten, origin "quelle", in "units" die IDs (höchstens 3 je Zeile oder Frage; ein
@@ -49,6 +52,12 @@ Regeln:
 - Jede Einheit vom Typ definition, concept, study, finding, comparison, example oder figure kommt in "units"
   mindestens eines Blocks vor; Einheiten mit [prüfungsrelevant] immer.
 - Die Antwort wiederholt nie die Frage, sie beantwortet sie. Kein bloßes „Ja“ oder „Nein“.
+- Folientitel (das Feld vor dem Doppelpunkt einer Einheit, Überschriften einer Video- oder Bildfolie) sind
+  keine Inhalte: Definitionen und Erklärungen nur aus dem Text der Einheit.
+- Studienaufbau genau wie in der Einheit: Nennt die Folie Gruppen und Bedingungen nur nebeneinander, verknüpfe
+  sie nicht (keine erfundene Zuordnung, welche Gruppe welche Bedingung bekam). Schluss einer Studie nur aus den
+  Einheiten DIESER Studie, nie aus einer späteren Theorie desselben Autors.
+- Keine Stichpunkte ohne Inhalt: ein Beispiel, das nur angekündigt wird, mit seinem Inhalt füllen oder weglassen.
 - Rechenbeispiele: Einheiten mit [Rechenbeispiel, ausgedachte Werte] sind Illustrationen einer Methode, ihre
   Werte nie das Ergebnis einer Studie. Die Wörter Rechenbeispiel oder ausgedachte Werte nur für diese Einheiten.
 - Jahreszahlen nur zusammen mit den Autoren („Autor (Jahr)“).
